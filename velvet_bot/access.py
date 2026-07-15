@@ -10,6 +10,7 @@ from aiogram import BaseMiddleware
 from aiogram.enums import ChatType, ParseMode
 from aiogram.types import (
     CallbackQuery,
+    InlineQuery,
     InlineQueryResultArticle,
     InputTextMessageContent,
     Message,
@@ -50,7 +51,10 @@ def get_caller_user(message: Message) -> User | None:
     return message.from_user or message.guest_bot_caller_user
 
 
-def message_requires_owner_access(message: Message) -> bool:
+def message_requires_owner_access(
+    message: Message,
+    bot_username: str = "",
+) -> bool:
     """Protect commands and private/guest interactions without blocking topic ingestion."""
     if message.guest_query_id:
         return True
@@ -59,7 +63,15 @@ def message_requires_owner_access(message: Message) -> bool:
         return True
 
     text = message.text or message.caption or ""
-    return text.lstrip().startswith("/")
+    stripped = text.lstrip()
+    if stripped.startswith("/"):
+        return True
+
+    expected = bot_username.strip().lstrip("@").casefold()
+    return bool(
+        expected
+        and stripped.casefold().startswith(f"@{expected} ")
+    )
 
 
 async def answer_access_denied(message: Message) -> None:
@@ -109,10 +121,41 @@ class OwnerAccessMiddleware(BaseMiddleware):
             )
             return None
 
+        if isinstance(event, InlineQuery):
+            allowed = self.policy.allows_user(event.from_user)
+            logger.info(
+                "Inline access check: caller_id=%s username=%s allowed=%s",
+                event.from_user.id,
+                event.from_user.username,
+                allowed,
+            )
+            if allowed:
+                return await handler(event, data)
+
+            await event.answer(
+                [
+                    InlineQueryResultArticle(
+                        id="access-denied",
+                        title="Доступ закрыт",
+                        description="Velvet Archive доступен только владельцу.",
+                        input_message_content=InputTextMessageContent(
+                            message_text=ACCESS_DENIED_TEXT,
+                            parse_mode=ParseMode.HTML,
+                        ),
+                    )
+                ],
+                cache_time=1,
+                is_personal=True,
+            )
+            return None
+
         if not isinstance(event, Message):
             return await handler(event, data)
 
-        if not message_requires_owner_access(event):
+        if not message_requires_owner_access(
+            event,
+            str(data.get("bot_username", "")),
+        ):
             return await handler(event, data)
 
         caller = get_caller_user(event)
