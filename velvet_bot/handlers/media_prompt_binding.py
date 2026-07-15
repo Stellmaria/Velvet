@@ -13,6 +13,7 @@ from aiogram.types import (
     Message,
 )
 
+from velvet_bot.access import AccessPolicy
 from velvet_bot.archive_catalog import get_archive_page, set_archive_media_prompt
 from velvet_bot.archive_ui import (
     ArchiveMediaCallback,
@@ -25,7 +26,10 @@ from velvet_bot.database import Database
 router = Router(name=__name__)
 
 _PROMPT_MARKER_RE = re.compile(r"PROMPT_MEDIA:(\d+):(\d+):(\d+)")
-_URL_RE = re.compile(r"https://t\.me/(?:c/\d+|[A-Za-z0-9_]+)/\d+(?:\?[^\s]+)?", re.IGNORECASE)
+_URL_RE = re.compile(
+    r"https://t\.me/(?:c/\d+|[A-Za-z0-9_]+)/\d+(?:\?[^\s]+)?",
+    re.IGNORECASE,
+)
 
 
 def _prompt_marker(*, character_id: int, media_id: int, offset: int) -> str:
@@ -58,7 +62,11 @@ def _extract_prompt_url(message: Message) -> str | None:
     return None
 
 
-def _open_media_keyboard(character_id: int, offset: int, media_id: int) -> InlineKeyboardMarkup:
+def _open_media_keyboard(
+    character_id: int,
+    offset: int,
+    media_id: int,
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -131,7 +139,15 @@ async def handle_prompt_button(
 
 
 @router.message(F.reply_to_message.text.contains("PROMPT_MEDIA:"))
-async def handle_prompt_link_reply(message: Message, database: Database) -> None:
+async def handle_prompt_link_reply(
+    message: Message,
+    database: Database,
+    access_policy: AccessPolicy,
+) -> None:
+    if not access_policy.allows_user(message.from_user):
+        await message.answer("Привязывать промты может только владелец архива.")
+        return
+
     request = _parse_prompt_request(message)
     if request is None:
         return
@@ -199,7 +215,11 @@ async def handle_prompt_remove(
         return
 
     refreshed = await get_archive_page(database, page.character.id, page.offset)
-    if refreshed is not None and refreshed.media is not None and isinstance(callback.message, Message):
+    if (
+        refreshed is not None
+        and refreshed.media is not None
+        and isinstance(callback.message, Message)
+    ):
         await callback.message.edit_caption(
             caption=format_archive_caption(refreshed),
             reply_markup=build_archive_navigation(refreshed),
