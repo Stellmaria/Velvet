@@ -2,7 +2,7 @@ import asyncio
 import logging
 from contextlib import suppress
 
-from aiogram import Bot, Dispatcher
+from aiogram import Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
@@ -13,7 +13,9 @@ from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.handlers import router
+from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_notifications import run_public_notification_worker
+from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 logger = logging.getLogger(__name__)
@@ -24,9 +26,10 @@ async def main() -> None:
     database = Database(settings.database_url)
     await database.initialize()
 
-    bot = Bot(
+    bot = ProtectedMediaBot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        unprotected_private_user_ids={PUBLIC_DOWNLOAD_USER_ID},
     )
     audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
     reference_uploads = ReferenceUploadSessions()
