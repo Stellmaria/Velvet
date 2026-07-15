@@ -21,6 +21,7 @@ class ArchiveMediaCallback(CallbackData, prefix="arc"):
     action: str
     character_id: int
     offset: int
+    media_id: int = 0
 
 
 def build_character_archive_keyboard(
@@ -83,6 +84,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
             action="noop",
             character_id=page.character.id,
             offset=page.offset,
+            media_id=page.media.id if page.media else 0,
         ).pack(),
     )
 
@@ -99,6 +101,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                         action="show",
                         character_id=page.character.id,
                         offset=previous_offset,
+                        media_id=page.media.id if page.media else 0,
                     ).pack(),
                 ),
                 counter_button,
@@ -108,6 +111,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                         action="show",
                         character_id=page.character.id,
                         offset=next_offset,
+                        media_id=page.media.id if page.media else 0,
                     ).pack(),
                 ),
             ]
@@ -129,6 +133,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                     action="del",
                     character_id=page.character.id,
                     offset=page.offset,
+                    media_id=page.media.id if page.media else 0,
                 ).pack(),
             ),
             InlineKeyboardButton(
@@ -137,6 +142,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                     action="close",
                     character_id=page.character.id,
                     offset=page.offset,
+                    media_id=page.media.id if page.media else 0,
                 ).pack(),
             ),
         ]
@@ -156,6 +162,7 @@ def build_delete_confirmation(page: ArchivePage) -> InlineKeyboardMarkup:
                         action="delok",
                         character_id=page.character.id,
                         offset=page.offset,
+                        media_id=page.media.id if page.media else 0,
                     ).pack(),
                 ),
                 InlineKeyboardButton(
@@ -164,6 +171,7 @@ def build_delete_confirmation(page: ArchivePage) -> InlineKeyboardMarkup:
                         action="delno",
                         character_id=page.character.id,
                         offset=page.offset,
+                        media_id=page.media.id if page.media else 0,
                     ).pack(),
                 ),
             ]
