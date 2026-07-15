@@ -131,7 +131,7 @@ async def main() -> None:
                     "Канал подключён к аналитике",
                     level="SUCCESS",
                     channel_id=channel_id,
-                    title=chat.title,
+                    channel_title=chat.title,
                     username=chat.username,
                 )
             except TelegramAPIError as error:
