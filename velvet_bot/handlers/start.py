@@ -21,6 +21,11 @@ async def handle_start(message: Message, bot_username: str) -> None:
         "<code>/topic Аид https://t.me/c/3951213065/1398</code>\n\n"
         "Показать персонажей: <code>/characters</code>\n"
         "Открыть профиль: <code>/character Аид</code>\n\n"
+        "Добавить одну или несколько фотографий-референсов:\n"
+        "<code>/refadd Аид</code> → отправить фото → <code>/refdone</code>\n\n"
+        "Показать референсы: <code>/refs Аид</code>\n"
+        "Вызвать референсы в любом чате:\n"
+        f"<code>@{safe_username} ref Аид</code>\n\n"
         "Чтобы сохранить фото или видео из любого чата, ответьте на него и отправьте:\n"
         f"<code>@{safe_username} save Аид</code>"
     )
