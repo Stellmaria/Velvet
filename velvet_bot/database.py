@@ -19,6 +19,9 @@ class Character:
     created_by: int | None
     created_in_chat: int | None
     created_at: datetime
+    archive_chat_id: int | None
+    archive_thread_id: int | None
+    archive_topic_url: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +31,7 @@ class SaveMediaResult:
     media_created: bool
     character_link_created: bool
     storage_file_name: str
+    archive_message_id: int | None
 
 
 def clean_character_name(value: str) -> str:
@@ -91,7 +95,15 @@ class Database:
                 )
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (normalized_name) DO NOTHING
-                RETURNING id, name, created_by, created_in_chat, created_at
+                RETURNING
+                    id,
+                    name,
+                    created_by,
+                    created_in_chat,
+                    created_at,
+                    archive_chat_id,
+                    archive_thread_id,
+                    archive_topic_url
                 """,
                 display_name,
                 normalized_name,
@@ -110,6 +122,47 @@ class Database:
 
         return self._row_to_character(row), created
 
+    async def bind_character_topic(
+        self,
+        character_id: int,
+        *,
+        archive_chat_id: int,
+        archive_thread_id: int,
+        archive_topic_url: str,
+    ) -> Character:
+        try:
+            async with self._require_pool().acquire() as connection:
+                row = await connection.fetchrow(
+                    """
+                    UPDATE characters
+                    SET archive_chat_id = $2,
+                        archive_thread_id = $3,
+                        archive_topic_url = $4
+                    WHERE id = $1
+                    RETURNING
+                        id,
+                        name,
+                        created_by,
+                        created_in_chat,
+                        created_at,
+                        archive_chat_id,
+                        archive_thread_id,
+                        archive_topic_url
+                    """,
+                    character_id,
+                    archive_chat_id,
+                    archive_thread_id,
+                    archive_topic_url,
+                )
+        except asyncpg.UniqueViolationError as error:
+            raise ValueError(
+                "Эта тема Telegram уже привязана к другому персонажу."
+            ) from error
+
+        if row is None:
+            raise RuntimeError("Персонаж для привязки темы не найден.")
+        return self._row_to_character(row)
+
     async def get_character(self, name: str) -> Character | None:
         normalized_name = normalize_character_name(name)
         async with self._require_pool().acquire() as connection:
@@ -119,12 +172,46 @@ class Database:
             )
         return self._row_to_character(row) if row is not None else None
 
+    async def get_character_by_archive_topic(
+        self,
+        archive_chat_id: int,
+        archive_thread_id: int,
+    ) -> Character | None:
+        async with self._require_pool().acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                SELECT
+                    id,
+                    name,
+                    created_by,
+                    created_in_chat,
+                    created_at,
+                    archive_chat_id,
+                    archive_thread_id,
+                    archive_topic_url
+                FROM characters
+                WHERE archive_chat_id = $1
+                  AND archive_thread_id = $2
+                """,
+                archive_chat_id,
+                archive_thread_id,
+            )
+        return self._row_to_character(row) if row is not None else None
+
     async def list_characters(self, *, limit: int = 100) -> list[Character]:
         safe_limit = max(1, min(limit, 100))
         async with self._require_pool().acquire() as connection:
             rows = await connection.fetch(
                 """
-                SELECT id, name, created_by, created_in_chat, created_at
+                SELECT
+                    id,
+                    name,
+                    created_by,
+                    created_in_chat,
+                    created_at,
+                    archive_chat_id,
+                    archive_thread_id,
+                    archive_topic_url
                 FROM characters
                 ORDER BY normalized_name
                 LIMIT $1
@@ -155,7 +242,8 @@ class Database:
         source_chat_id: int,
         source_message_id: int,
         source_thread_id: int | None,
-        command_message_id: int,
+        command_message_id: int | None,
+        archive_message_id: int | None = None,
     ) -> SaveMediaResult:
         async with self._require_pool().acquire() as connection:
             async with connection.transaction():
@@ -203,7 +291,7 @@ class Database:
                     )
 
                 if media_row is None:
-                    raise RuntimeError("Не удалось сохранить данные изображения.")
+                    raise RuntimeError("Не удалось сохранить данные медиафайла.")
 
                 link_row = await connection.fetchrow(
                     """
@@ -215,11 +303,12 @@ class Database:
                         source_chat_id,
                         source_message_id,
                         source_thread_id,
-                        command_message_id
+                        command_message_id,
+                        archive_message_id
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     ON CONFLICT (character_id, media_id) DO NOTHING
-                    RETURNING character_id
+                    RETURNING archive_message_id
                     """,
                     character.id,
                     int(media_row["id"]),
@@ -229,15 +318,57 @@ class Database:
                     source_message_id,
                     source_thread_id,
                     command_message_id,
+                    archive_message_id,
                 )
+                character_link_created = link_row is not None
+
+                if link_row is None:
+                    existing_archive_message_id = await connection.fetchval(
+                        """
+                        SELECT archive_message_id
+                        FROM character_media
+                        WHERE character_id = $1 AND media_id = $2
+                        """,
+                        character.id,
+                        int(media_row["id"]),
+                    )
+                else:
+                    existing_archive_message_id = link_row["archive_message_id"]
 
         return SaveMediaResult(
             character=character,
             media_id=int(media_row["id"]),
             media_created=media_created,
-            character_link_created=link_row is not None,
+            character_link_created=character_link_created,
             storage_file_name=str(media_row["storage_file_name"]),
+            archive_message_id=(
+                int(existing_archive_message_id)
+                if existing_archive_message_id is not None
+                else None
+            ),
         )
+
+    async def set_archive_message_id(
+        self,
+        character_id: int,
+        media_id: int,
+        archive_message_id: int,
+    ) -> int:
+        async with self._require_pool().acquire() as connection:
+            value = await connection.fetchval(
+                """
+                UPDATE character_media
+                SET archive_message_id = COALESCE(archive_message_id, $3)
+                WHERE character_id = $1 AND media_id = $2
+                RETURNING archive_message_id
+                """,
+                character_id,
+                media_id,
+                archive_message_id,
+            )
+        if value is None:
+            raise RuntimeError("Связь персонажа с медиафайлом не найдена.")
+        return int(value)
 
     async def _apply_migrations(self) -> None:
         migration_files = sorted(self.migrations_path.glob("*.sql"))
@@ -284,7 +415,15 @@ class Database:
     ) -> asyncpg.Record | None:
         return await connection.fetchrow(
             """
-            SELECT id, name, created_by, created_in_chat, created_at
+            SELECT
+                id,
+                name,
+                created_by,
+                created_in_chat,
+                created_at,
+                archive_chat_id,
+                archive_thread_id,
+                archive_topic_url
             FROM characters
             WHERE normalized_name = $1
             """,
@@ -299,4 +438,7 @@ class Database:
             created_by=row["created_by"],
             created_in_chat=row["created_in_chat"],
             created_at=row["created_at"],
+            archive_chat_id=row["archive_chat_id"],
+            archive_thread_id=row["archive_thread_id"],
+            archive_topic_url=row["archive_topic_url"],
         )
