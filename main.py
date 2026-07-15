@@ -7,6 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import BotCommand
 
 from velvet_bot.access import AccessPolicy, OwnerAccessMiddleware
+from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.handlers import router
@@ -23,6 +24,7 @@ async def main() -> None:
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
+    audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
 
     try:
         bot_info = await bot.get_me()
@@ -45,10 +47,12 @@ async def main() -> None:
         dispatcher = Dispatcher(
             database=database,
             bot_username=bot_username,
+            audit_logger=audit_logger,
         )
         dispatcher.message.outer_middleware(access_middleware)
         dispatcher.guest_message.outer_middleware(access_middleware)
         dispatcher.callback_query.outer_middleware(access_middleware)
+        dispatcher.inline_query.outer_middleware(access_middleware)
         dispatcher.include_router(router)
 
         logger.info(
@@ -70,12 +74,21 @@ async def main() -> None:
 
         allowed_updates = dispatcher.resolve_used_update_types()
         logger.info("Allowed Telegram updates: %s", ", ".join(allowed_updates))
+        await audit_logger.send(
+            "Velvet Archive запущен",
+            level="SUCCESS",
+            bot=f"@{bot_username}",
+            guest_mode=bot_info.supports_guest_queries,
+            allowed_updates=", ".join(allowed_updates),
+            log_chat_id=settings.log_chat_id,
+        )
 
         await dispatcher.start_polling(
             bot,
             allowed_updates=allowed_updates,
         )
     finally:
+        await audit_logger.send("Velvet Archive остановлен", level="WARNING")
         await bot.session.close()
         await database.close()
 
