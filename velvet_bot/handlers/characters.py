@@ -46,8 +46,8 @@ async def handle_create_character(
         f"Имя: <b>{safe_name}</b>\n"
         f"ID: <code>{character.id}</code>\n"
         "Изображений в архиве: <b>0</b>\n\n"
-        "Следующим этапом к этому профилю можно будет сохранять изображения "
-        "командой <code>/save Имя</code> в ответ на файл."
+        "Теперь изображение можно сохранить из группы: ответьте на него "
+        "командой <code>/save@имя_бота Имя</code>."
     )
 
 
@@ -100,10 +100,13 @@ async def handle_character(
         return
 
     media_count = await database.count_character_media(character.id)
+    created_at = character.created_at.astimezone().strftime(
+        "%d.%m.%Y %H:%M:%S %Z"
+    )
     await message.answer(
         "<b>Профиль персонажа</b>\n\n"
         f"Имя: <b>{escape(character.name)}</b>\n"
         f"ID: <code>{character.id}</code>\n"
         f"Изображений в архиве: <b>{media_count}</b>\n"
-        f"Создан: <code>{escape(character.created_at)}</code>"
+        f"Создан: <code>{escape(created_at)}</code>"
     )
