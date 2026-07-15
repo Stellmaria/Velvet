@@ -4,6 +4,7 @@ from html import escape
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
+from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.character_directory import (
@@ -21,75 +22,153 @@ from velvet_bot.handlers.admin_directory import (
 )
 from velvet_bot.story_catalog import (
     CharacterStory,
+    StoryPage,
     create_story,
     find_story,
+    format_story_release,
     get_story,
     list_stories,
+    list_story_page,
     set_character_story,
 )
 
 router = Router(name=__name__)
 
 
-def _cb(
+class AdminStoryCallback(CallbackData, prefix="astory"):
+    action: str
+    category: str = ""
+    directory_page: int = 0
+    story_page: int = 0
+    character_id: int = 0
+    story_id: int = 0
+
+
+def _story_cb(
     action: str,
     *,
-    category: str = "",
-    page: int = 0,
-    character_id: int = 0,
+    category: str,
+    directory_page: int,
+    story_page: int,
+    character_id: int,
     story_id: int = 0,
 ) -> str:
-    return AdminDirectoryCallback(
+    return AdminStoryCallback(
         action=action,
         category=category,
-        page=page,
+        directory_page=directory_page,
+        story_page=story_page,
         character_id=character_id,
         story_id=story_id,
     ).pack()
 
 
-def _picker_text(item: CharacterDirectoryItem) -> str:
+def _profile_cb(
+    *,
+    category: str,
+    page: int,
+    character_id: int,
+) -> str:
+    return AdminDirectoryCallback(
+        action="profile",
+        category=category,
+        page=page,
+        character_id=character_id,
+    ).pack()
+
+
+def _picker_text(item: CharacterDirectoryItem, story_page: StoryPage) -> str:
     return (
         "<b>Назначить историю</b>\n\n"
         f"Персонаж: <b>{escape(item.character.name)}</b>\n"
         f"Вселенная: <b>{escape(universe_label(item.universe))}</b>\n"
         f"Текущая история: "
         f"<b>{escape(story_label(item.story_short_label, item.story_title))}</b>\n\n"
-        "На кнопках сначала указано сокращение истории."
+        "Сортировка: <b>от новых историй к старым</b>.\n"
+        f"Страница: <b>{story_page.page + 1}</b> из "
+        f"<b>{story_page.total_pages}</b> · "
+        f"историй: <b>{story_page.total_stories}</b>"
     )
+
+
+def _story_button_text(story: CharacterStory) -> str:
+    released = format_story_release(story.released_on, story.release_precision)
+    if released == "дата не указана":
+        return f"📖 {story.short_label} · {story.title}"
+    return f"📖 {released} · {story.short_label} · {story.title}"
 
 
 def build_story_picker(
     item: CharacterDirectoryItem,
-    stories: list[CharacterStory],
+    story_page: StoryPage,
     *,
     category: str,
-    page: int,
+    directory_page: int,
 ) -> InlineKeyboardMarkup:
-    rows = [
-        [
-            InlineKeyboardButton(
-                text=f"📖 {story.short_label} · {story.title}",
-                callback_data=_cb(
-                    "setstory",
-                    category=category,
-                    page=page,
-                    character_id=item.character.id,
-                    story_id=story.id,
+    rows: list[list[InlineKeyboardButton]] = []
+    for story in story_page.items:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=_story_button_text(story),
+                    callback_data=_story_cb(
+                        "set",
+                        category=category,
+                        directory_page=directory_page,
+                        story_page=story_page.page,
+                        character_id=item.character.id,
+                        story_id=story.id,
+                    ),
+                )
+            ]
+        )
+
+    if story_page.total_pages > 1:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="◀️ Новее",
+                    callback_data=_story_cb(
+                        "page",
+                        category=category,
+                        directory_page=directory_page,
+                        story_page=(story_page.page - 1) % story_page.total_pages,
+                        character_id=item.character.id,
+                    ),
                 ),
-            )
-        ]
-        for story in stories
-    ]
+                InlineKeyboardButton(
+                    text=f"{story_page.page + 1} / {story_page.total_pages}",
+                    callback_data=_story_cb(
+                        "noop",
+                        category=category,
+                        directory_page=directory_page,
+                        story_page=story_page.page,
+                        character_id=item.character.id,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="Старее ▶️",
+                    callback_data=_story_cb(
+                        "page",
+                        category=category,
+                        directory_page=directory_page,
+                        story_page=(story_page.page + 1) % story_page.total_pages,
+                        character_id=item.character.id,
+                    ),
+                ),
+            ]
+        )
+
     if item.story_id is not None:
         rows.append(
             [
                 InlineKeyboardButton(
                     text="🗑 Убрать историю",
-                    callback_data=_cb(
-                        "setstory",
+                    callback_data=_story_cb(
+                        "set",
                         category=category,
-                        page=page,
+                        directory_page=directory_page,
+                        story_page=story_page.page,
                         character_id=item.character.id,
                         story_id=0,
                     ),
@@ -100,10 +179,9 @@ def build_story_picker(
         [
             InlineKeyboardButton(
                 text="↩️ К карточке",
-                callback_data=_cb(
-                    "profile",
+                callback_data=_profile_cb(
                     category=category,
-                    page=page,
+                    page=directory_page,
                     character_id=item.character.id,
                 ),
             )
@@ -128,6 +206,44 @@ async def _render_profile(
             item,
             category=category,
             page=page,
+        ),
+    )
+
+
+async def _render_story_picker(
+    callback: CallbackQuery,
+    database: Database,
+    *,
+    item: CharacterDirectoryItem,
+    category: str,
+    directory_page: int,
+    story_page_number: int,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    if not item.universe:
+        await callback.answer("Сначала назначьте вселенную.", show_alert=True)
+        return
+
+    story_page = await list_story_page(
+        database,
+        universe=item.universe,
+        page=story_page_number,
+    )
+    if not story_page.items:
+        await callback.answer(
+            "Для этой вселенной пока нет историй. Добавьте через /storyadd.",
+            show_alert=True,
+        )
+        return
+    await callback.message.edit_text(
+        _picker_text(item, story_page),
+        reply_markup=build_story_picker(
+            item,
+            story_page,
+            category=category,
+            directory_page=directory_page,
         ),
     )
 
@@ -219,8 +335,32 @@ async def handle_add_story(
 
     await message.answer(
         f"История добавлена в <b>{escape(universe_label(universe))}</b>: "
-        f"<b>{escape(story.short_label)} · {escape(story.title)}</b>."
+        f"<b>{escape(story.short_label)} · {escape(story.title)}</b>. "
+        "Она поставлена первой как самая новая; дату можно уточнить в каталоге."
     )
+
+
+def _story_list_chunks(universe: str, stories: list[CharacterStory]) -> list[str]:
+    header = (
+        f"<b>Истории {escape(universe_label(universe))}</b>\n"
+        "Сортировка: <b>от новых к старым</b>.\n\n"
+    )
+    chunks: list[str] = []
+    current = header
+    for story in stories:
+        released = format_story_release(story.released_on, story.release_precision)
+        date_prefix = "" if released == "дата не указана" else f"{released} · "
+        line = (
+            f"• {date_prefix}<code>{escape(story.short_label)}</code> — "
+            f"{escape(story.title)}\n"
+        )
+        if len(current) + len(line) > 3800:
+            chunks.append(current.rstrip())
+            current = header + line
+        else:
+            current += line
+    chunks.append(current.rstrip())
+    return chunks
 
 
 @router.message(Command("stories", "storylist"))
@@ -245,15 +385,8 @@ async def handle_story_list(
     if not stories:
         await message.answer("Для этой вселенной истории ещё не добавлены.")
         return
-    lines = [
-        f"• <code>{escape(story.short_label)}</code> — {escape(story.title)}"
-        for story in stories
-    ]
-    text = (
-        f"<b>Истории {escape(universe_label(universe))}</b>\n\n"
-        + "\n".join(lines)
-    )
-    await message.answer(text)
+    for chunk in _story_list_chunks(universe, stories):
+        await message.answer(chunk)
 
 
 @router.callback_query(AdminDirectoryCallback.filter(F.action == "pickstory"))
@@ -262,45 +395,50 @@ async def handle_story_picker(
     callback_data: AdminDirectoryCallback,
     database: Database,
 ) -> None:
-    if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
-        return
     item = await get_character_directory_item(database, callback_data.character_id)
     if item is None:
         await callback.answer("Персонаж больше не найден.", show_alert=True)
         return
-    if not item.universe:
-        await callback.answer("Сначала назначьте вселенную.", show_alert=True)
-        return
-
-    stories = await list_stories(database, universe=item.universe)
-    if not stories:
-        await callback.answer(
-            "Для этой вселенной пока нет историй. Добавьте через /storyadd.",
-            show_alert=True,
-        )
-        return
-    await callback.message.edit_text(
-        _picker_text(item),
-        reply_markup=build_story_picker(
-            item,
-            stories,
-            category=callback_data.category or item.category or "uncategorized",
-            page=callback_data.page,
-        ),
+    await _render_story_picker(
+        callback,
+        database,
+        item=item,
+        category=callback_data.category or item.category or "uncategorized",
+        directory_page=callback_data.page,
+        story_page_number=0,
     )
     await callback.answer()
 
 
-@router.callback_query(AdminDirectoryCallback.filter(F.action == "setstory"))
-async def handle_story_assignment(
+@router.callback_query(AdminStoryCallback.filter())
+async def handle_story_callback(
     callback: CallbackQuery,
-    callback_data: AdminDirectoryCallback,
+    callback_data: AdminStoryCallback,
     database: Database,
 ) -> None:
+    if callback_data.action == "noop":
+        await callback.answer()
+        return
+
     item = await get_character_directory_item(database, callback_data.character_id)
     if item is None:
         await callback.answer("Персонаж больше не найден.", show_alert=True)
+        return
+
+    if callback_data.action == "page":
+        await _render_story_picker(
+            callback,
+            database,
+            item=item,
+            category=callback_data.category or item.category or "uncategorized",
+            directory_page=callback_data.directory_page,
+            story_page_number=callback_data.story_page,
+        )
+        await callback.answer()
+        return
+
+    if callback_data.action != "set":
+        await callback.answer("Неизвестное действие.", show_alert=True)
         return
 
     story = None
@@ -328,7 +466,7 @@ async def handle_story_assignment(
         callback,
         item,
         category=category,
-        page=callback_data.page,
+        page=callback_data.directory_page,
     )
     await callback.answer(
         (
