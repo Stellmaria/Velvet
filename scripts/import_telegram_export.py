@@ -3,7 +3,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from dotenv import load_dotenv
 
@@ -46,7 +51,7 @@ def parse_args() -> argparse.Namespace:
 
 
 async def run(args: argparse.Namespace) -> None:
-    load_dotenv()
+    load_dotenv(ROOT / ".env")
     database_url = args.database_url or os.getenv("DATABASE_URL", "").strip()
     if not database_url:
         raise RuntimeError("Не задан DATABASE_URL в аргументе или .env.")
