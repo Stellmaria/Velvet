@@ -18,7 +18,7 @@ BEGIN
             ADD CONSTRAINT character_stories_release_precision_check
             CHECK (release_precision IN ('day', 'month', 'year', 'unknown'));
     END IF;
-END
+END;
 $$;
 
 INSERT INTO character_stories (
