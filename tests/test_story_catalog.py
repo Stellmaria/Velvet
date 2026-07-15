@@ -40,29 +40,36 @@ class StoryCatalogTests(unittest.TestCase):
     def test_exported_catalog_is_current_and_unique(self) -> None:
         path = Path(__file__).resolve().parents[1] / "data" / "story_catalog.json"
         payload = json.loads(path.read_text(encoding="utf-8"))
-        stories = payload["stories"]
+        universes = payload["universes"]
+        stories = [
+            (universe, *entry)
+            for universe, entries in universes.items()
+            for entry in entries
+        ]
         self.assertEqual("2026-07-16", payload["as_of"])
         self.assertGreaterEqual(len(stories), 83)
-        keys = {(item["universe"], item["key"]) for item in stories}
-        initials = {(item["universe"], item["short_label"]) for item in stories}
+
+        keys = {(item[0], item[1]) for item in stories}
+        initials = {(item[0], item[2]) for item in stories}
         self.assertEqual(len(stories), len(keys))
         self.assertEqual(len(stories), len(initials))
 
-        counts = {
-            universe: sum(item["universe"] == universe for item in stories)
-            for universe in {"kr", "lm", "shs", "idm", "lagerta"}
-        }
-        self.assertEqual(58, counts["kr"])
-        self.assertGreaterEqual(counts["lm"], 16)
-        self.assertGreaterEqual(counts["shs"], 7)
-        self.assertGreaterEqual(counts["idm"], 1)
-        self.assertGreaterEqual(counts["lagerta"], 1)
+        self.assertEqual(58, len(universes["kr"]))
+        self.assertGreaterEqual(len(universes["lm"]), 16)
+        self.assertGreaterEqual(len(universes["shs"]), 7)
+        self.assertGreaterEqual(len(universes["idm"]), 1)
+        self.assertGreaterEqual(len(universes["lagerta"]), 1)
 
         self.assertIn(("kr", "РС"), initials)
         self.assertIn(("kr", "ТС2"), initials)
         self.assertIn(("lm", "СП"), initials)
         self.assertIn(("shs", "РИМ"), initials)
         self.assertIn(("lagerta", "ПРЗ"), initials)
+
+        for universe, entries in universes.items():
+            orders = [entry[3] for entry in entries]
+            with self.subTest(universe=universe):
+                self.assertEqual(sorted(orders), orders)
 
     def test_owner_picker_is_paginated_newest_first(self) -> None:
         character = Character(
