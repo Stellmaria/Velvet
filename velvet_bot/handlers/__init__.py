@@ -18,7 +18,7 @@ router = Router(name=__name__)
 @router.error()
 async def handle_unhandled_error(
     event: ErrorEvent,
-    audit_logger: TelegramAuditLogger,
+    audit_logger: TelegramAuditLogger | None = None,
 ) -> bool:
     logger.critical(
         "Unhandled bot error: %s",
@@ -29,12 +29,13 @@ async def handle_unhandled_error(
             event.exception.__traceback__,
         ),
     )
-    await audit_logger.error(
-        "Необработанная ошибка бота",
-        event.exception,
-        update_id=event.update.update_id,
-        exception_type=type(event.exception).__name__,
-    )
+    if audit_logger is not None:
+        await audit_logger.error(
+            "Необработанная ошибка бота",
+            event.exception,
+            update_id=event.update.update_id,
+            exception_type=type(event.exception).__name__,
+        )
     return True
 
 
