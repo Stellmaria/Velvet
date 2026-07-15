@@ -118,6 +118,25 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
             ]
         ]
 
+    spoiler_enabled = bool(page.media and page.media.is_spoiler)
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=(
+                    "🔞 Спойлер включён"
+                    if spoiler_enabled
+                    else "👁 Включить спойлер 18+"
+                ),
+                callback_data=ArchiveMediaCallback(
+                    action="spoiler",
+                    character_id=page.character.id,
+                    offset=page.offset,
+                    media_id=media_id,
+                ).pack(),
+            )
+        ]
+    )
+
     if page.media and page.media.prompt_post_url:
         rows.append(
             [
@@ -229,11 +248,13 @@ def format_archive_caption(page: ArchivePage) -> str:
     linked_at = page.media.linked_at.astimezone().strftime("%d.%m.%Y %H:%M")
     file_name = escape(page.media.display_file_name)
     prompt_state = "<b>привязан</b>" if page.media.prompt_post_url else "не привязан"
+    spoiler_state = "<b>включён</b>" if page.media.is_spoiler else "выключен"
     return (
         f"<b>{escape(page.character.name)}</b>\n"
         f"Медиа: <b>{page.offset + 1}</b> из <b>{page.total}</b>\n"
         f"Файл: <code>{file_name}</code>\n"
         f"Добавлен: <code>{escape(linked_at)}</code>\n"
+        f"Спойлер 18+: {spoiler_state}\n"
         f"Промт: {prompt_state}"
     )
 
@@ -258,9 +279,9 @@ def build_input_media(media: ArchivedMedia, caption: str):
     }
 
     if media.media_type == "photo":
-        return InputMediaPhoto(**common)
+        return InputMediaPhoto(has_spoiler=media.is_spoiler, **common)
     if media.media_type == "video":
-        return InputMediaVideo(**common)
+        return InputMediaVideo(has_spoiler=media.is_spoiler, **common)
     if media.media_type == "animation":
-        return InputMediaAnimation(**common)
+        return InputMediaAnimation(has_spoiler=media.is_spoiler, **common)
     return InputMediaDocument(**common)

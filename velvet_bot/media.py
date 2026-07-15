@@ -159,6 +159,7 @@ async def send_media_to_topic(
     chat_id: int,
     thread_id: int,
     caption: str | None = None,
+    is_spoiler: bool = False,
 ) -> Message:
     """Place only the media itself in a topic, without captions or service text."""
     del caption
@@ -168,9 +169,21 @@ async def send_media_to_topic(
     }
 
     if media.media_type == "photo":
-        return await bot.send_photo(photo=media.telegram_file_id, **common)
+        return await bot.send_photo(
+            photo=media.telegram_file_id,
+            has_spoiler=is_spoiler,
+            **common,
+        )
     if media.media_type == "video":
-        return await bot.send_video(video=media.telegram_file_id, **common)
+        return await bot.send_video(
+            video=media.telegram_file_id,
+            has_spoiler=is_spoiler,
+            **common,
+        )
     if media.media_type == "animation":
-        return await bot.send_animation(animation=media.telegram_file_id, **common)
+        return await bot.send_animation(
+            animation=media.telegram_file_id,
+            has_spoiler=is_spoiler,
+            **common,
+        )
     return await bot.send_document(document=media.telegram_file_id, **common)

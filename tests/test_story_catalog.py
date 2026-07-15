@@ -6,6 +6,7 @@ from pathlib import Path
 from velvet_bot.character_directory import CharacterDirectoryItem
 from velvet_bot.database import Character
 from velvet_bot.handlers.admin_stories import AdminStoryCallback, build_story_picker
+from velvet_bot.public_manager_ui import manager_callback
 from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.story_catalog import (
     CharacterStory,
@@ -47,7 +48,7 @@ class StoryCatalogTests(unittest.TestCase):
             for entry in entries
         ]
         self.assertEqual("2026-07-16", payload["as_of"])
-        self.assertGreaterEqual(len(stories), 83)
+        self.assertGreaterEqual(len(stories), 84)
 
         keys = {(item[0], item[1]) for item in stories}
         initials = {(item[0], item[2]) for item in stories}
@@ -58,13 +59,15 @@ class StoryCatalogTests(unittest.TestCase):
         self.assertGreaterEqual(len(universes["lm"]), 16)
         self.assertGreaterEqual(len(universes["shs"]), 7)
         self.assertGreaterEqual(len(universes["idm"]), 1)
-        self.assertGreaterEqual(len(universes["lagerta"]), 1)
+        self.assertEqual(2, len(universes["lagerta"]))
 
         self.assertIn(("kr", "РС"), initials)
         self.assertIn(("kr", "ТС2"), initials)
         self.assertIn(("lm", "СП"), initials)
         self.assertIn(("shs", "РИМ"), initials)
-        self.assertIn(("lagerta", "ПРЗ"), initials)
+        self.assertIn(("lagerta", "ОНХ"), initials)
+        self.assertIn(("lagerta", "ПН"), initials)
+        self.assertNotIn(("lagerta", "ПРЗ"), initials)
 
         for universe, entries in universes.items():
             orders = [entry[3] for entry in entries]
@@ -147,6 +150,18 @@ class StoryCatalogTests(unittest.TestCase):
             universe="original",
             story_id=9999,
         ).pack()
+        self.assertLessEqual(len(packed.encode("utf-8")), 64)
+
+    def test_manager_callbacks_fit_telegram_limit(self) -> None:
+        packed = manager_callback(
+            "pstp",
+            character_id=123456,
+            offset=999,
+            media_id=999999,
+            page=99,
+            universe="lagerta",
+            story_id=9999,
+        )
         self.assertLessEqual(len(packed.encode("utf-8")), 64)
 
 
