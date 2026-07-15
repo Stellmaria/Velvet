@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import BufferedInputFile, Document, Message, PhotoSize
 
 MAX_REFERENCE_DOCUMENT_BYTES = 10 * 1024 * 1024
@@ -88,17 +88,24 @@ async def prepare_reference_source(
         )
 
     buffer = BytesIO()
-    await bot.download(source, destination=buffer)
-    payload = buffer.getvalue()
-    if not payload:
-        raise RuntimeError("Telegram вернул пустой файл референса.")
+    try:
+        await bot.download(source, destination=buffer)
+        payload = buffer.getvalue()
+        if not payload:
+            raise RuntimeError("Telegram вернул пустой файл референса.")
 
-    original_name = Path(source.file_name or "reference.jpg").name
-    temporary_message = await bot.send_photo(
-        chat_id=staging_chat_id,
-        photo=BufferedInputFile(payload, filename=original_name),
-        disable_notification=True,
-    )
+        original_name = Path(source.file_name or "reference.jpg").name
+        temporary_message = await bot.send_photo(
+            chat_id=staging_chat_id,
+            photo=BufferedInputFile(payload, filename=original_name),
+            disable_notification=True,
+        )
+    except TelegramAPIError as error:
+        raise RuntimeError(
+            "Telegram не смог преобразовать документ в фотографию: "
+            f"{error.message}"
+        ) from error
+
     if not temporary_message.photo:
         raise RuntimeError("Telegram не преобразовал документ в фотографию.")
 
@@ -113,8 +120,8 @@ async def prepare_reference_source(
             chat_id=staging_chat_id,
             message_id=temporary_message.message_id,
         )
-    except TelegramBadRequest:
-        # The cached photo file_id remains valid even when cleanup is not permitted.
+    except TelegramAPIError:
+        # Cleanup must never invalidate an otherwise successful reference save.
         pass
 
     return prepared
