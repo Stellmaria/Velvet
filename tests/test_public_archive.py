@@ -16,8 +16,10 @@ from velvet_bot.public_ui import (
     build_public_archive_keyboard,
     build_public_category_menu,
     build_public_character_menu,
+    build_public_story_menu,
     build_public_universe_menu,
 )
+from velvet_bot.story_catalog import StorySummary
 
 
 class PublicArchiveUiTests(unittest.TestCase):
@@ -64,7 +66,7 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertEqual("universes", callback.action)
         self.assertEqual("male", callback.category)
 
-    def test_universe_menu_opens_combined_filter(self) -> None:
+    def test_visual_novel_universe_opens_story_filter(self) -> None:
         keyboard = build_public_universe_menu(
             "male",
             [UniverseSummary("kr", "КР", "💎", 2)],
@@ -72,9 +74,34 @@ class PublicArchiveUiTests(unittest.TestCase):
         callback = PublicArchiveCallback.unpack(
             keyboard.inline_keyboard[0][0].callback_data
         )
+        self.assertEqual("stories", callback.action)
+        self.assertEqual("male", callback.category)
+        self.assertEqual("kr", callback.universe)
+
+    def test_non_novel_universe_opens_characters_directly(self) -> None:
+        keyboard = build_public_universe_menu(
+            "male",
+            [UniverseSummary("bg3", "BG3", "🎲", 2)],
+        )
+        callback = PublicArchiveCallback.unpack(
+            keyboard.inline_keyboard[0][0].callback_data
+        )
+        self.assertEqual("menu", callback.action)
+        self.assertEqual("bg3", callback.universe)
+
+    def test_story_menu_uses_initials_and_keeps_filters(self) -> None:
+        keyboard = build_public_story_menu(
+            "male",
+            "kr",
+            [StorySummary(12, "kr", "kali", "КЗТ", "Кали. Зов тьмы", 3)],
+        )
+        button = keyboard.inline_keyboard[0][0]
+        self.assertIn("КЗТ", button.text)
+        callback = PublicArchiveCallback.unpack(button.callback_data)
         self.assertEqual("menu", callback.action)
         self.assertEqual("male", callback.category)
         self.assertEqual("kr", callback.universe)
+        self.assertEqual(12, callback.story_id)
 
     def test_character_menu_opens_archive_by_button(self) -> None:
         menu_page = PublicCharacterPage(
@@ -85,6 +112,9 @@ class PublicArchiveUiTests(unittest.TestCase):
                     prompt_post_url=None,
                     media_count=3,
                     universe="kr",
+                    story_id=12,
+                    story_short_label="КЗТ",
+                    story_title="Кали. Зов тьмы",
                 )
             ],
             category="male",
@@ -92,6 +122,9 @@ class PublicArchiveUiTests(unittest.TestCase):
             page_size=6,
             total_characters=1,
             universe="kr",
+            story_id=12,
+            story_short_label="КЗТ",
+            story_title="Кали. Зов тьмы",
         )
         keyboard = build_public_character_menu(menu_page)
         callback = PublicArchiveCallback.unpack(
@@ -101,6 +134,7 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertEqual(self.character.id, callback.character_id)
         self.assertEqual("male", callback.category)
         self.assertEqual("kr", callback.universe)
+        self.assertEqual(12, callback.story_id)
 
     def test_character_menu_does_not_show_character_level_prompt(self) -> None:
         menu_page = PublicCharacterPage(
@@ -111,6 +145,9 @@ class PublicArchiveUiTests(unittest.TestCase):
                     "https://t.me/legacy/123",
                     3,
                     "kr",
+                    12,
+                    "КЗТ",
+                    "Кали. Зов тьмы",
                 )
             ],
             category="male",
@@ -118,6 +155,7 @@ class PublicArchiveUiTests(unittest.TestCase):
             page_size=6,
             total_characters=1,
             universe="kr",
+            story_id=12,
         )
         labels = [
             button.text
@@ -150,13 +188,14 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertNotIn("📝 Открыть промт", labels_without)
         self.assertIn("📝 Открыть промт", labels_with)
 
-    def test_public_keyboard_preserves_both_filters(self) -> None:
+    def test_public_keyboard_preserves_all_filters(self) -> None:
         keyboard = build_public_archive_keyboard(
             self.page,
             self.state,
             viewer_user_id=100,
             category="male",
             universe="kr",
+            story_id=12,
         )
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("🤍 4", labels)
@@ -172,6 +211,7 @@ class PublicArchiveUiTests(unittest.TestCase):
         callback = PublicArchiveCallback.unpack(back.callback_data)
         self.assertEqual("male", callback.category)
         self.assertEqual("kr", callback.universe)
+        self.assertEqual(12, callback.story_id)
 
     def test_download_button_is_hidden_from_regular_subscriber(self) -> None:
         keyboard = build_public_archive_keyboard(
