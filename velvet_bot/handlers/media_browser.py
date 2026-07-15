@@ -9,10 +9,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramAPIError
 from aiogram.types import (
     BufferedInputFile,
     CallbackQuery,
-    InputMediaAnimation,
-    InputMediaDocument,
     InputMediaPhoto,
-    InputMediaVideo,
     Message,
 )
 
@@ -186,7 +183,7 @@ async def _delete_current_item(
     deleted = await delete_archive_item(
         database,
         callback_data.character_id,
-        page.media.id,
+        callback_data.media_id or page.media.id,
     )
     if deleted is None:
         await callback.answer("Медиа уже удалено.", show_alert=True)
