@@ -5,7 +5,10 @@ from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
-from velvet_bot.archive_ui import build_character_archive_keyboard
+from velvet_bot.archive_ui import (
+    build_character_archive_keyboard,
+    build_character_list_keyboard,
+)
 from velvet_bot.database import Character, Database
 from velvet_bot.topics import TopicReference, split_character_and_topic
 
@@ -177,11 +180,14 @@ async def handle_list_characters(message: Message, database: Database) -> None:
         [
             "",
             "📁 — назначена тема архива",
-            "Профиль: <code>/character Имя</code>",
+            "Нажмите кнопку персонажа, чтобы открыть его медиа.",
         ]
     )
 
-    await message.answer("\n".join(lines))
+    await message.answer(
+        "\n".join(lines),
+        reply_markup=build_character_list_keyboard(characters),
+    )
 
 
 @router.message(Command("character"))
