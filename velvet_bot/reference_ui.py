@@ -11,20 +11,28 @@ from velvet_bot.reference_catalog import ReferencePage
 class ReferenceCallback(CallbackData, prefix="ref"):
     action: str
     character_id: int
+    reference_id: int
     offset: int
 
 
+def _callback(page: ReferencePage, action: str, offset: int | None = None) -> str:
+    if page.reference is None:
+        raise ValueError("Нельзя построить кнопку без референса.")
+    return ReferenceCallback(
+        action=action,
+        character_id=page.character.id,
+        reference_id=page.reference.id,
+        offset=page.offset if offset is None else offset,
+    ).pack()
+
+
 def build_reference_keyboard(page: ReferencePage) -> InlineKeyboardMarkup:
-    if page.total <= 0:
+    if page.total <= 0 or page.reference is None:
         return InlineKeyboardMarkup(inline_keyboard=[])
 
     counter = InlineKeyboardButton(
         text=f"{page.offset + 1} / {page.total}",
-        callback_data=ReferenceCallback(
-            action="noop",
-            character_id=page.character.id,
-            offset=page.offset,
-        ).pack(),
+        callback_data=_callback(page, "noop"),
     )
     if page.total == 1:
         rows = [[counter]]
@@ -33,24 +41,52 @@ def build_reference_keyboard(page: ReferencePage) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="◀️",
-                    callback_data=ReferenceCallback(
-                        action="show",
-                        character_id=page.character.id,
-                        offset=(page.offset - 1) % page.total,
-                    ).pack(),
+                    callback_data=_callback(
+                        page,
+                        "show",
+                        (page.offset - 1) % page.total,
+                    ),
                 ),
                 counter,
                 InlineKeyboardButton(
                     text="▶️",
-                    callback_data=ReferenceCallback(
-                        action="show",
-                        character_id=page.character.id,
-                        offset=(page.offset + 1) % page.total,
-                    ).pack(),
+                    callback_data=_callback(
+                        page,
+                        "show",
+                        (page.offset + 1) % page.total,
+                    ),
                 ),
             ]
         ]
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="🗑 Удалить референс",
+                callback_data=_callback(page, "delete_prompt"),
+            )
+        ]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_reference_delete_keyboard(page: ReferencePage) -> InlineKeyboardMarkup:
+    if page.reference is None:
+        return InlineKeyboardMarkup(inline_keyboard=[])
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Да, удалить",
+                    callback_data=_callback(page, "delete"),
+                ),
+                InlineKeyboardButton(
+                    text="↩️ Отмена",
+                    callback_data=_callback(page, "cancel_delete"),
+                ),
+            ]
+        ]
+    )
 
 
 def format_reference_caption(page: ReferencePage) -> str:
