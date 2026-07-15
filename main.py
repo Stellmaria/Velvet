@@ -8,10 +8,15 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import BotCommand, BotCommandScopeChat
 
-from velvet_bot.access import AccessPolicy, OwnerAccessMiddleware
+from velvet_bot.access import (
+    CHARACTER_EDITOR_USER_IDS,
+    AccessPolicy,
+    OwnerAccessMiddleware,
+)
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
+from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
 from velvet_bot.handlers import router
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_notifications import run_public_notification_worker
@@ -27,6 +32,7 @@ async def main() -> None:
     await database.initialize()
 
     unprotected_manager_ids = set(settings.allowed_user_ids)
+    unprotected_manager_ids.update(CHARACTER_EDITOR_USER_IDS)
     unprotected_manager_ids.add(PUBLIC_DOWNLOAD_USER_ID)
     bot = ProtectedMediaBot(
         token=settings.bot_token,
@@ -54,6 +60,7 @@ async def main() -> None:
             allowed_usernames=settings.allowed_usernames,
         )
         access_middleware = OwnerAccessMiddleware(access_policy)
+        discussion_middleware = DiscussionAnalyticsMiddleware()
 
         dispatcher = Dispatcher()
         dispatcher.workflow_data.update(
@@ -67,6 +74,9 @@ async def main() -> None:
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
+        dispatcher.message.outer_middleware(discussion_middleware)
+        dispatcher.edited_message.outer_middleware(access_middleware)
+        dispatcher.edited_message.outer_middleware(discussion_middleware)
         dispatcher.guest_message.outer_middleware(access_middleware)
         dispatcher.callback_query.outer_middleware(access_middleware)
         dispatcher.inline_query.outer_middleware(access_middleware)
@@ -77,10 +87,19 @@ async def main() -> None:
             sorted(settings.allowed_user_ids),
             sorted(settings.allowed_usernames),
         )
+        logger.info(
+            "Character editor access enabled for ids=%s",
+            sorted(CHARACTER_EDITOR_USER_IDS),
+        )
 
         public_commands = [
             BotCommand(command="start", description="Открыть меню"),
             BotCommand(command="archive", description="Архив персонажей"),
+        ]
+        editor_commands = [
+            *public_commands,
+            BotCommand(command="characters", description="Категории и персонажи"),
+            BotCommand(command="prompt", description="Привязать вариант промта"),
         ]
         admin_commands = [
             *public_commands,
@@ -103,8 +122,24 @@ async def main() -> None:
             BotCommand(command="promptstats", description="Статистика структуры промтов"),
             BotCommand(command="tagstats", description="Статистика хэштегов"),
             BotCommand(command="characterstats", description="Частота персонажей в канале"),
+            BotCommand(command="importchannel", description="Импорт экспорта канала"),
+            BotCommand(command="importdiscussion", description="Импорт обсуждения"),
+            BotCommand(command="trackdiscussion", description="Подключить чат обсуждений"),
+            BotCommand(command="discussionstats", description="Статистика обсуждения"),
         ]
         await bot.set_my_commands(public_commands)
+        for editor_id in CHARACTER_EDITOR_USER_IDS:
+            try:
+                await bot.set_my_commands(
+                    editor_commands,
+                    scope=BotCommandScopeChat(chat_id=editor_id),
+                )
+            except TelegramBadRequest as error:
+                logger.warning(
+                    "Could not set editor command menu for %s: %s",
+                    editor_id,
+                    error,
+                )
         for owner_id in settings.allowed_user_ids:
             try:
                 await bot.set_my_commands(

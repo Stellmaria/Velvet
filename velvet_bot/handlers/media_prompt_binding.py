@@ -13,7 +13,7 @@ from aiogram.types import (
     Message,
 )
 
-from velvet_bot.access import AccessPolicy
+from velvet_bot.access import AccessPolicy, is_character_editor_user
 from velvet_bot.archive_catalog import get_archive_page, set_archive_media_prompt
 from velvet_bot.archive_ui import (
     ArchiveMediaCallback,
@@ -144,8 +144,13 @@ async def handle_prompt_link_reply(
     database: Database,
     access_policy: AccessPolicy,
 ) -> None:
-    if not access_policy.allows_user(message.from_user):
-        await message.answer("Привязывать промты может только владелец архива.")
+    if not (
+        access_policy.allows_user(message.from_user)
+        or is_character_editor_user(message.from_user)
+    ):
+        await message.answer(
+            "Привязывать промты может только владелец или редактор архива."
+        )
         return
 
     request = _parse_prompt_request(message)

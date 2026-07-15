@@ -15,6 +15,7 @@ from velvet_bot.handlers.admin_universe_story_flow import (
 from velvet_bot.handlers.archive import router as archive_router
 from velvet_bot.handlers.channel_analytics import router as channel_analytics_router
 from velvet_bot.handlers.characters import router as characters_router
+from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
 from velvet_bot.handlers.guest_archive import router as guest_archive_router
 from velvet_bot.handlers.inline_help import router as inline_help_router
 from velvet_bot.handlers.media_browser import router as media_browser_router
@@ -31,6 +32,9 @@ from velvet_bot.handlers.reference_management import router as reference_managem
 from velvet_bot.handlers.references import router as references_router
 from velvet_bot.handlers.spoiler_save import router as spoiler_save_router
 from velvet_bot.handlers.start import router as start_router
+from velvet_bot.handlers.telegram_analytics_import import (
+    router as telegram_analytics_import_router,
+)
 
 logger = logging.getLogger(__name__)
 router = Router(name=__name__)
@@ -61,6 +65,8 @@ async def handle_unhandled_error(
 
 
 router.include_router(channel_analytics_router)
+router.include_router(telegram_analytics_import_router)
+router.include_router(discussion_updates_router)
 router.include_router(start_router)
 router.include_router(public_media_display_router)
 router.include_router(public_manager_router)
