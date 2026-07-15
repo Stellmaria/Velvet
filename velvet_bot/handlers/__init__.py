@@ -10,6 +10,9 @@ from velvet_bot.handlers.guest_archive import router as guest_archive_router
 from velvet_bot.handlers.inline_help import router as inline_help_router
 from velvet_bot.handlers.media_browser import router as media_browser_router
 from velvet_bot.handlers.public_archive import router as public_archive_router
+from velvet_bot.handlers.public_notification_open import (
+    router as public_notification_open_router,
+)
 from velvet_bot.handlers.reference_albums import router as reference_albums_router
 from velvet_bot.handlers.reference_documents import router as reference_documents_router
 from velvet_bot.handlers.reference_management import router as reference_management_router
@@ -45,6 +48,7 @@ async def handle_unhandled_error(
 
 
 router.include_router(start_router)
+router.include_router(public_notification_open_router)
 router.include_router(public_archive_router)
 router.include_router(characters_router)
 router.include_router(media_browser_router)
