@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia
@@ -85,20 +86,13 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertEqual(self.character.id, callback.character_id)
         self.assertEqual("male", callback.category)
 
-    def test_prompt_button_appears_only_when_url_exists(self) -> None:
-        without_prompt = PublicCharacterPage(
-            items=[PublicCharacterItem(self.character, "male", None, 3)],
-            category="male",
-            page=0,
-            page_size=6,
-            total_characters=1,
-        )
-        with_prompt = PublicCharacterPage(
+    def test_character_menu_does_not_show_character_level_prompt(self) -> None:
+        menu_page = PublicCharacterPage(
             items=[
                 PublicCharacterItem(
                     self.character,
                     "male",
-                    "https://t.me/velvet/123",
+                    "https://t.me/legacy/123",
                     3,
                 )
             ],
@@ -107,18 +101,36 @@ class PublicArchiveUiTests(unittest.TestCase):
             page_size=6,
             total_characters=1,
         )
-        labels_without = [
+        labels = [
             button.text
-            for row in build_public_character_menu(without_prompt).inline_keyboard
+            for row in build_public_character_menu(menu_page).inline_keyboard
             for button in row
+        ]
+        self.assertNotIn("📝 Промт", labels)
+
+    def test_prompt_button_appears_only_on_linked_media(self) -> None:
+        without_prompt = build_public_archive_keyboard(
+            self.page,
+            self.state,
+            viewer_user_id=100,
+        )
+        media_with_prompt = replace(
+            self.media,
+            prompt_post_url="https://t.me/velvet/123",
+        )
+        with_prompt = build_public_archive_keyboard(
+            replace(self.page, media=media_with_prompt),
+            self.state,
+            viewer_user_id=100,
+        )
+        labels_without = [
+            button.text for row in without_prompt.inline_keyboard for button in row
         ]
         labels_with = [
-            button.text
-            for row in build_public_character_menu(with_prompt).inline_keyboard
-            for button in row
+            button.text for row in with_prompt.inline_keyboard for button in row
         ]
-        self.assertNotIn("📝 Промт", labels_without)
-        self.assertIn("📝 Промт", labels_with)
+        self.assertNotIn("📝 Открыть промт", labels_without)
+        self.assertIn("📝 Открыть промт", labels_with)
 
     def test_public_keyboard_has_like_and_subscription(self) -> None:
         keyboard = build_public_archive_keyboard(

@@ -78,18 +78,19 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
     if page.total <= 0:
         return InlineKeyboardMarkup(inline_keyboard=[])
 
+    media_id = page.media.id if page.media else 0
     counter_button = InlineKeyboardButton(
         text=f"{page.offset + 1} / {page.total}",
         callback_data=ArchiveMediaCallback(
             action="noop",
             character_id=page.character.id,
             offset=page.offset,
-            media_id=page.media.id if page.media else 0,
+            media_id=media_id,
         ).pack(),
     )
 
     if page.total == 1:
-        rows = [[counter_button]]
+        rows: list[list[InlineKeyboardButton]] = [[counter_button]]
     else:
         previous_offset = (page.offset - 1) % page.total
         next_offset = (page.offset + 1) % page.total
@@ -101,7 +102,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                         action="show",
                         character_id=page.character.id,
                         offset=previous_offset,
-                        media_id=page.media.id if page.media else 0,
+                        media_id=media_id,
                     ).pack(),
                 ),
                 counter_button,
@@ -111,11 +112,53 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                         action="show",
                         character_id=page.character.id,
                         offset=next_offset,
-                        media_id=page.media.id if page.media else 0,
+                        media_id=media_id,
                     ).pack(),
                 ),
             ]
         ]
+
+    if page.media and page.media.prompt_post_url:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="📝 Открыть промт",
+                    url=page.media.prompt_post_url,
+                ),
+                InlineKeyboardButton(
+                    text="✏️ Изменить",
+                    callback_data=ArchiveMediaCallback(
+                        action="prompt",
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ).pack(),
+                ),
+                InlineKeyboardButton(
+                    text="🗑 Убрать",
+                    callback_data=ArchiveMediaCallback(
+                        action="promptremove",
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ).pack(),
+                ),
+            ]
+        )
+    else:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="📝 Привязать промт",
+                    callback_data=ArchiveMediaCallback(
+                        action="prompt",
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ).pack(),
+                )
+            ]
+        )
 
     final_row: list[InlineKeyboardButton] = []
     if page.character.archive_topic_url:
@@ -133,7 +176,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                     action="del",
                     character_id=page.character.id,
                     offset=page.offset,
-                    media_id=page.media.id if page.media else 0,
+                    media_id=media_id,
                 ).pack(),
             ),
             InlineKeyboardButton(
@@ -142,7 +185,7 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                     action="close",
                     character_id=page.character.id,
                     offset=page.offset,
-                    media_id=page.media.id if page.media else 0,
+                    media_id=media_id,
                 ).pack(),
             ),
         ]
@@ -185,11 +228,13 @@ def format_archive_caption(page: ArchivePage) -> str:
 
     linked_at = page.media.linked_at.astimezone().strftime("%d.%m.%Y %H:%M")
     file_name = escape(page.media.display_file_name)
+    prompt_state = "<b>привязан</b>" if page.media.prompt_post_url else "не привязан"
     return (
         f"<b>{escape(page.character.name)}</b>\n"
         f"Медиа: <b>{page.offset + 1}</b> из <b>{page.total}</b>\n"
         f"Файл: <code>{file_name}</code>\n"
-        f"Добавлен: <code>{escape(linked_at)}</code>"
+        f"Добавлен: <code>{escape(linked_at)}</code>\n"
+        f"Промт: {prompt_state}"
     )
 
 

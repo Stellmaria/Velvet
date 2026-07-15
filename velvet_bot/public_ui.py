@@ -108,26 +108,20 @@ def format_public_menu(page: PublicCharacterPage) -> str:
 def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for item in page.items:
-        row = [
-            InlineKeyboardButton(
-                text=f"🖼 {item.character.name} · {item.media_count}",
-                callback_data=_callback(
-                    "open",
-                    character_id=item.character.id,
-                    offset=0,
-                    page=page.page,
-                    category=page.category,
-                ),
-            )
-        ]
-        if item.prompt_post_url:
-            row.append(
+        rows.append(
+            [
                 InlineKeyboardButton(
-                    text="📝 Промт",
-                    url=item.prompt_post_url,
+                    text=f"🖼 {item.character.name} · {item.media_count}",
+                    callback_data=_callback(
+                        "open",
+                        character_id=item.character.id,
+                        offset=0,
+                        page=page.page,
+                        category=page.category,
+                    ),
                 )
-            )
-        rows.append(row)
+            ]
+        )
 
     if page.total_pages > 1:
         rows.append(
@@ -269,8 +263,12 @@ def build_public_archive_keyboard(
         ]
     )
 
-    if prompt_post_url:
-        rows.append([InlineKeyboardButton(text="📝 Открыть промт", url=prompt_post_url)])
+    # Промт относится к конкретному материалу, а не ко всему персонажу.
+    effective_prompt_url = page.media.prompt_post_url
+    if effective_prompt_url:
+        rows.append(
+            [InlineKeyboardButton(text="📝 Открыть промт", url=effective_prompt_url)]
+        )
 
     if viewer_user_id == PUBLIC_DOWNLOAD_USER_ID:
         rows.append(

@@ -18,6 +18,7 @@ class ArchivedMedia:
     mime_type: str | None
     file_size: int | None
     linked_at: datetime
+    prompt_post_url: str | None = None
     archive_message_id: int | None = None
 
     @property
@@ -70,6 +71,7 @@ def _row_to_media(row: asyncpg.Record) -> ArchivedMedia:
         mime_type=row["mime_type"],
         file_size=row["file_size"],
         linked_at=row["linked_at"],
+        prompt_post_url=row["prompt_post_url"],
         archive_message_id=(
             int(row["archive_message_id"])
             if row["archive_message_id"] is not None
@@ -139,6 +141,7 @@ async def get_archive_page(
                 mf.mime_type,
                 mf.file_size,
                 cm.created_at AS linked_at,
+                cm.prompt_post_url,
                 cm.archive_message_id
             FROM character_media AS cm
             JOIN media_files AS mf ON mf.id = cm.media_id
@@ -165,6 +168,29 @@ async def get_archive_page(
         offset=normalized_offset,
         total=total,
     )
+
+
+async def set_archive_media_prompt(
+    database: Database,
+    *,
+    character_id: int,
+    media_id: int,
+    prompt_post_url: str | None,
+) -> bool:
+    """Bind or remove a Telegram prompt post for one exact archive item."""
+    async with database._require_pool().acquire() as connection:
+        updated = await connection.fetchval(
+            """
+            UPDATE character_media
+            SET prompt_post_url = $3
+            WHERE character_id = $1 AND media_id = $2
+            RETURNING 1
+            """,
+            character_id,
+            media_id,
+            prompt_post_url,
+        )
+    return updated is not None
 
 
 async def delete_archive_item(
@@ -194,6 +220,7 @@ async def delete_archive_item(
                     mf.mime_type,
                     mf.file_size,
                     cm.created_at AS linked_at,
+                    cm.prompt_post_url,
                     cm.archive_message_id
                 FROM character_media AS cm
                 JOIN characters AS c ON c.id = cm.character_id
