@@ -32,25 +32,31 @@ def normalize_username(value: str) -> str:
     return value.strip().lstrip("@").casefold()
 
 
-def is_save_mention_text(text: str, bot_username: str) -> bool:
-    """Return True for supported save mentions without confusing inline mode."""
+def is_owner_mention_text(text: str, bot_username: str) -> bool:
+    """Recognize owner-only save and reference summons in ordinary chats."""
     expected = normalize_username(bot_username)
     cleaned = " ".join(text.split())
     if not expected or not cleaned:
         return False
 
     escaped = re.escape(expected)
+    action = r"(?:save|refs?)"
     return bool(
         re.fullmatch(
             rf"(?:"
-            rf"@{escaped}\s+/?save\s+.+|"
-            rf"/?save\s+@{escaped}\s+.+|"
-            rf"/?save\s+.+\s+@{escaped}"
+            rf"@{escaped}\s+/?{action}\s+.+|"
+            rf"/?{action}\s+@{escaped}\s+.+|"
+            rf"/?{action}\s+.+\s+@{escaped}"
             rf")",
             cleaned,
             re.IGNORECASE,
         )
     )
+
+
+# Backward-compatible alias for existing tests and imports.
+def is_save_mention_text(text: str, bot_username: str) -> bool:
+    return is_owner_mention_text(text, bot_username)
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,7 +95,7 @@ def message_requires_owner_access(
     if stripped.startswith("/"):
         return True
 
-    return is_save_mention_text(stripped, bot_username)
+    return is_owner_mention_text(stripped, bot_username)
 
 
 async def answer_access_denied(message: Message) -> None:
