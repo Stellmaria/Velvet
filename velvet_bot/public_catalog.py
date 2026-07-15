@@ -7,12 +7,15 @@ from velvet_bot.character_directory import (
     CharacterDirectoryItem,
     CharacterDirectoryPage,
     UniverseSummary,
-    list_category_summaries,
-    list_character_directory,
-    list_universe_summaries,
 )
 from velvet_bot.database import Database
-from velvet_bot.story_catalog import StorySummary, list_story_summaries
+from velvet_bot.public_directory_catalog import (
+    list_viewer_categories,
+    list_viewer_characters,
+    list_viewer_stories,
+    list_viewer_universes,
+)
+from velvet_bot.story_catalog import StorySummary
 
 PublicCharacterItem = CharacterDirectoryItem
 PublicCharacterPage = CharacterDirectoryPage
@@ -25,19 +28,27 @@ class PublicMediaState:
     subscribed: bool
 
 
-async def list_public_categories(database: Database) -> list[CategorySummary]:
-    return await list_category_summaries(database, public_only=True)
+async def list_public_categories(
+    database: Database,
+    *,
+    manager_mode: bool = False,
+) -> list[CategorySummary]:
+    return await list_viewer_categories(
+        database,
+        include_incomplete=manager_mode,
+    )
 
 
 async def list_public_universes(
     database: Database,
     *,
     category: str,
+    manager_mode: bool = False,
 ) -> list[UniverseSummary]:
-    return await list_universe_summaries(
+    return await list_viewer_universes(
         database,
         category=category,
-        public_only=True,
+        include_incomplete=manager_mode,
     )
 
 
@@ -46,12 +57,13 @@ async def list_public_stories(
     *,
     category: str,
     universe: str,
+    manager_mode: bool = False,
 ) -> list[StorySummary]:
-    return await list_story_summaries(
+    return await list_viewer_stories(
         database,
         category=category,
         universe=universe,
-        public_only=True,
+        include_unassigned=manager_mode,
     )
 
 
@@ -63,15 +75,18 @@ async def list_public_characters(
     story_id: int | None = None,
     page: int = 0,
     page_size: int = 6,
+    manager_mode: bool = False,
 ) -> PublicCharacterPage:
-    return await list_character_directory(
+    if universe is None:
+        raise ValueError("Для открытого архива нужно выбрать вселенную.")
+    return await list_viewer_characters(
         database,
         category=category,
         universe=universe,
         story_id=story_id,
         page=page,
         page_size=page_size,
-        public_only=True,
+        include_incomplete=manager_mode,
     )
 
 
