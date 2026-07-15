@@ -9,6 +9,7 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.enums import ChatType, ParseMode
 from aiogram.types import (
+    CallbackQuery,
     InlineQueryResultArticle,
     InputTextMessageContent,
     Message,
@@ -22,6 +23,7 @@ ACCESS_DENIED_TEXT = (
     "<b>Доступ закрыт</b>\n\n"
     "Velvet Archive работает в частном режиме и доступен только владельцу."
 )
+ACCESS_DENIED_CALLBACK_TEXT = "Доступ к Velvet Archive закрыт."
 
 
 def normalize_username(value: str) -> str:
@@ -90,6 +92,23 @@ class OwnerAccessMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
+        if isinstance(event, CallbackQuery):
+            allowed = self.policy.allows_user(event.from_user)
+            logger.info(
+                "Callback access check: caller_id=%s username=%s allowed=%s",
+                event.from_user.id,
+                event.from_user.username,
+                allowed,
+            )
+            if allowed:
+                return await handler(event, data)
+
+            await event.answer(
+                ACCESS_DENIED_CALLBACK_TEXT,
+                show_alert=True,
+            )
+            return None
+
         if not isinstance(event, Message):
             return await handler(event, data)
 
