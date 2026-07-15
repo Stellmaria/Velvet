@@ -13,9 +13,10 @@ class Settings:
     allowed_user_ids: frozenset[int]
     allowed_usernames: frozenset[str]
     log_chat_id: int | None
+    analytics_channel_ids: frozenset[int]
 
 
-def _parse_allowed_user_ids(value: str) -> frozenset[int]:
+def _parse_integer_list(value: str, *, variable_name: str) -> frozenset[int]:
     result: set[int] = set()
     for item in value.split(","):
         cleaned = item.strip()
@@ -25,9 +26,13 @@ def _parse_allowed_user_ids(value: str) -> frozenset[int]:
             result.add(int(cleaned))
         except ValueError as error:
             raise RuntimeError(
-                "ALLOWED_USER_IDS должен содержать Telegram ID через запятую."
+                f"{variable_name} должен содержать числовые Telegram ID через запятую."
             ) from error
     return frozenset(result)
+
+
+def _parse_allowed_user_ids(value: str) -> frozenset[int]:
+    return _parse_integer_list(value, variable_name="ALLOWED_USER_IDS")
 
 
 def _parse_allowed_usernames(value: str) -> frozenset[str]:
@@ -82,6 +87,10 @@ def load_settings() -> Settings:
     log_chat_id = _parse_optional_chat_id(
         os.getenv("LOG_CHAT_ID", "-5367533184")
     )
+    analytics_channel_ids = _parse_integer_list(
+        os.getenv("ANALYTICS_CHANNEL_IDS", "-1003802812639"),
+        variable_name="ANALYTICS_CHANNEL_IDS",
+    )
 
     return Settings(
         bot_token=bot_token,
@@ -89,4 +98,5 @@ def load_settings() -> Settings:
         allowed_user_ids=allowed_user_ids,
         allowed_usernames=allowed_usernames,
         log_chat_id=log_chat_id,
+        analytics_channel_ids=analytics_channel_ids,
     )
