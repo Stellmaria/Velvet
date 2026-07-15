@@ -103,6 +103,7 @@ async def main() -> None:
         ]
         admin_commands = [
             *public_commands,
+            BotCommand(command="analytics", description="Аналитический центр"),
             BotCommand(command="create", description="Создать персонажа и назначить тему"),
             BotCommand(command="topic", description="Назначить тему персонажу"),
             BotCommand(command="characters", description="Категории и персонажи"),
@@ -118,6 +119,10 @@ async def main() -> None:
             BotCommand(command="refdone", description="Завершить загрузку референсов"),
             BotCommand(command="refs", description="Показать референсы персонажа"),
             BotCommand(command="refdel", description="Удалить референс по номеру"),
+            BotCommand(command="aliasadd", description="Добавить алиас персонажа"),
+            BotCommand(command="aliases", description="Показать алиасы персонажа"),
+            BotCommand(command="aliasdel", description="Удалить алиас персонажа"),
+            BotCommand(command="aliasreindex", description="Пересобрать связи хэштегов"),
             BotCommand(command="channelstats", description="Общая статистика канала"),
             BotCommand(command="promptstats", description="Статистика структуры промтов"),
             BotCommand(command="tagstats", description="Статистика хэштегов"),
