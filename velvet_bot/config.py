@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -7,6 +8,7 @@ from dotenv import load_dotenv
 @dataclass(frozen=True, slots=True)
 class Settings:
     bot_token: str
+    database_path: Path
 
 
 def load_settings() -> Settings:
@@ -19,4 +21,9 @@ def load_settings() -> Settings:
             "и вставьте токен, полученный у @BotFather."
         )
 
-    return Settings(bot_token=bot_token)
+    database_path = Path(os.getenv("DATABASE_PATH", "data/velvet.db").strip())
+
+    return Settings(
+        bot_token=bot_token,
+        database_path=database_path,
+    )
