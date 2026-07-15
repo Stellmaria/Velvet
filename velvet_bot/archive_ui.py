@@ -121,19 +121,54 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
                 url=page.character.archive_topic_url,
             )
         )
-    final_row.append(
-        InlineKeyboardButton(
-            text="✖ Закрыть",
-            callback_data=ArchiveMediaCallback(
-                action="close",
-                character_id=page.character.id,
-                offset=page.offset,
-            ).pack(),
-        )
+    final_row.extend(
+        [
+            InlineKeyboardButton(
+                text="🗑 Удалить",
+                callback_data=ArchiveMediaCallback(
+                    action="del",
+                    character_id=page.character.id,
+                    offset=page.offset,
+                ).pack(),
+            ),
+            InlineKeyboardButton(
+                text="✖ Закрыть",
+                callback_data=ArchiveMediaCallback(
+                    action="close",
+                    character_id=page.character.id,
+                    offset=page.offset,
+                ).pack(),
+            ),
+        ]
     )
     rows.append(final_row)
 
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_delete_confirmation(page: ArchivePage) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Да, удалить",
+                    callback_data=ArchiveMediaCallback(
+                        action="delok",
+                        character_id=page.character.id,
+                        offset=page.offset,
+                    ).pack(),
+                ),
+                InlineKeyboardButton(
+                    text="↩️ Отмена",
+                    callback_data=ArchiveMediaCallback(
+                        action="delno",
+                        character_id=page.character.id,
+                        offset=page.offset,
+                    ).pack(),
+                ),
+            ]
+        ]
+    )
 
 
 def format_archive_caption(page: ArchivePage) -> str:
@@ -147,6 +182,18 @@ def format_archive_caption(page: ArchivePage) -> str:
         f"Медиа: <b>{page.offset + 1}</b> из <b>{page.total}</b>\n"
         f"Файл: <code>{file_name}</code>\n"
         f"Добавлен: <code>{escape(linked_at)}</code>"
+    )
+
+
+def format_delete_caption(page: ArchivePage) -> str:
+    if page.media is None:
+        return "<b>Архив пуст.</b>"
+    return (
+        "<b>Удалить медиа из архива?</b>\n\n"
+        f"Персонаж: <b>{escape(page.character.name)}</b>\n"
+        f"Файл: <code>{escape(page.media.display_file_name)}</code>\n\n"
+        "Связь в PostgreSQL будет удалена. Копия в ветке персонажа тоже будет "
+        "удалена, если Telegram ещё разрешает удалить это сообщение."
     )
 
 
