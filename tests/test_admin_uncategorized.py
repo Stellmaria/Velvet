@@ -7,6 +7,7 @@ from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
 from velvet_bot.handlers.admin_uncategorized import (
     build_category_picker,
     build_uncategorized_keyboard,
+    build_universe_picker,
 )
 
 
@@ -27,6 +28,7 @@ class AdminUncategorizedUiTests(unittest.TestCase):
             category=None,
             prompt_post_url=None,
             media_count=4,
+            universe=None,
         )
         self.page = CharacterDirectoryPage(
             items=[self.item],
@@ -39,20 +41,20 @@ class AdminUncategorizedUiTests(unittest.TestCase):
     def test_uncategorized_row_has_category_picker_button(self) -> None:
         keyboard = build_uncategorized_keyboard(self.page)
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
-        self.assertIn("🏷 Категория", labels)
+        self.assertIn("👥 Пол / состав", labels)
 
         picker_button = next(
             button
             for row in keyboard.inline_keyboard
             for button in row
-            if button.text == "🏷 Категория"
+            if button.text == "👥 Пол / состав"
         )
         callback = AdminDirectoryCallback.unpack(picker_button.callback_data)
         self.assertEqual("pickcat", callback.action)
         self.assertEqual(self.character.id, callback.character_id)
         self.assertEqual("uncategorized", callback.category)
 
-    def test_picker_contains_all_five_categories(self) -> None:
+    def test_category_picker_contains_all_five_values(self) -> None:
         keyboard = build_category_picker(self.item, page=0)
         callbacks = [
             AdminDirectoryCallback.unpack(button.callback_data)
@@ -66,6 +68,25 @@ class AdminUncategorizedUiTests(unittest.TestCase):
             {callback.category for callback in callbacks},
         )
         self.assertTrue(all(callback.character_id == self.character.id for callback in callbacks))
+
+    def test_universe_picker_contains_all_requested_values(self) -> None:
+        keyboard = build_universe_picker(
+            self.item,
+            page=0,
+            return_category="male",
+        )
+        callbacks = [
+            AdminDirectoryCallback.unpack(button.callback_data)
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.callback_data
+            and AdminDirectoryCallback.unpack(button.callback_data).action == "setuni"
+        ]
+        self.assertEqual(
+            {"shs", "kr", "lm", "idm", "bg3", "lagerta", "original"},
+            {callback.universe for callback in callbacks},
+        )
+        self.assertTrue(all(callback.return_category == "male" for callback in callbacks))
 
 
 if __name__ == "__main__":

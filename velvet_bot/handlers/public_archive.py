@@ -11,12 +11,12 @@ from aiogram.types import BufferedInputFile, CallbackQuery, InputMediaPhoto, Mes
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia, get_archive_page
 from velvet_bot.archive_ui import build_input_media
-from velvet_bot.character_directory import get_character_directory_item
 from velvet_bot.database import Database
 from velvet_bot.public_catalog import (
     get_public_media_state,
     list_public_categories,
     list_public_characters,
+    list_public_universes,
     toggle_character_subscription,
     toggle_public_like,
 )
@@ -26,9 +26,11 @@ from velvet_bot.public_ui import (
     build_public_archive_keyboard,
     build_public_category_menu,
     build_public_character_menu,
+    build_public_universe_menu,
     format_public_archive_caption,
     format_public_categories,
     format_public_menu,
+    format_public_universes,
 )
 
 router = Router(name=__name__)
@@ -50,11 +52,6 @@ async def _load_state(database: Database, page: ArchivePage, user_id: int):
         media_id=page.media.id,
         user_id=user_id,
     )
-
-
-async def _load_prompt_url(database: Database, character_id: int) -> str | None:
-    item = await get_character_directory_item(database, character_id)
-    return item.prompt_post_url if item else None
 
 
 async def _build_public_input_media(bot: Bot, page: ArchivePage, state):
@@ -79,12 +76,12 @@ async def _send_public_archive_page(
     viewer_user_id: int,
     menu_page: int,
     category: str = "",
+    universe: str = "",
 ) -> Message:
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
 
     state = await _load_state(database, page, viewer_user_id)
-    prompt_url = await _load_prompt_url(database, page.character.id)
     caption = format_public_archive_caption(page, state)
     keyboard = build_public_archive_keyboard(
         page,
@@ -92,7 +89,7 @@ async def _send_public_archive_page(
         viewer_user_id=viewer_user_id,
         menu_page=menu_page,
         category=category,
-        prompt_post_url=prompt_url,
+        universe=universe,
     )
     common = {"chat_id": chat_id, "caption": caption, "reply_markup": keyboard}
 
@@ -121,13 +118,13 @@ async def _replace_public_archive_page(
     page: ArchivePage,
     menu_page: int,
     category: str,
+    universe: str,
 ) -> None:
     if page.media is None or not isinstance(callback.message, Message):
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
 
     state = await _load_state(database, page, callback.from_user.id)
-    prompt_url = await _load_prompt_url(database, page.character.id)
     media = await _build_public_input_media(bot, page, state)
     keyboard = build_public_archive_keyboard(
         page,
@@ -135,7 +132,7 @@ async def _replace_public_archive_page(
         viewer_user_id=callback.from_user.id,
         menu_page=menu_page,
         category=category,
-        prompt_post_url=prompt_url,
+        universe=universe,
     )
     try:
         await callback.message.edit_media(media=media, reply_markup=keyboard)
@@ -149,6 +146,7 @@ async def _replace_public_archive_page(
             viewer_user_id=callback.from_user.id,
             menu_page=menu_page,
             category=category,
+            universe=universe,
         )
         try:
             await callback.message.delete()
@@ -182,15 +180,56 @@ async def _edit_category_menu(callback: CallbackQuery, database: Database) -> No
     await callback.answer()
 
 
+async def _send_universe_menu(
+    *,
+    bot: Bot,
+    database: Database,
+    chat_id: int,
+    category: str,
+) -> Message:
+    summaries = await list_public_universes(database, category=category)
+    return await bot.send_message(
+        chat_id=chat_id,
+        text=format_public_universes(category, summaries),
+        reply_markup=build_public_universe_menu(category, summaries),
+    )
+
+
+async def _edit_universe_menu(
+    callback: CallbackQuery,
+    database: Database,
+    category: str,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    summaries = await list_public_universes(database, category=category)
+    try:
+        await callback.message.edit_text(
+            text=format_public_universes(category, summaries),
+            reply_markup=build_public_universe_menu(category, summaries),
+        )
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error).casefold():
+            raise
+    await callback.answer()
+
+
 async def _send_public_menu(
     *,
     bot: Bot,
     database: Database,
     chat_id: int,
     category: str,
+    universe: str,
     page_number: int,
 ) -> Message:
-    page = await list_public_characters(database, category=category, page=page_number)
+    page = await list_public_characters(
+        database,
+        category=category,
+        universe=universe,
+        page=page_number,
+    )
     return await bot.send_message(
         chat_id=chat_id,
         text=format_public_menu(page),
@@ -202,12 +241,18 @@ async def _edit_public_menu(
     callback: CallbackQuery,
     database: Database,
     category: str,
+    universe: str,
     page_number: int,
 ) -> None:
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
-    page = await list_public_characters(database, category=category, page=page_number)
+    page = await list_public_characters(
+        database,
+        category=category,
+        universe=universe,
+        page=page_number,
+    )
     try:
         await callback.message.edit_text(
             text=format_public_menu(page),
@@ -280,12 +325,32 @@ async def handle_public_archive_callback(
                 )
                 await callback.answer()
         return
-    if action == "menu":
+    if action == "universes":
         if not callback_data.category:
-            await callback.answer("Категория не выбрана.", show_alert=True)
+            await callback.answer("Сначала выберите пол или состав.", show_alert=True)
+            return
+        try:
+            await _edit_universe_menu(callback, database, callback_data.category)
+        except TelegramBadRequest:
+            if isinstance(callback.message, Message):
+                await _send_universe_menu(
+                    bot=bot,
+                    database=database,
+                    chat_id=callback.message.chat.id,
+                    category=callback_data.category,
+                )
+                await callback.answer()
+        return
+    if action == "menu":
+        if not callback_data.category or not callback_data.universe:
+            await callback.answer("Фильтр архива выбран не полностью.", show_alert=True)
             return
         await _edit_public_menu(
-            callback, database, callback_data.category, callback_data.page
+            callback,
+            database,
+            callback_data.category,
+            callback_data.universe,
+            callback_data.page,
         )
         return
     if action == "back":
@@ -297,13 +362,21 @@ async def handle_public_archive_callback(
             await callback.message.delete()
         except TelegramBadRequest:
             pass
-        if callback_data.category:
+        if callback_data.category and callback_data.universe:
             await _send_public_menu(
                 bot=bot,
                 database=database,
                 chat_id=chat_id,
                 category=callback_data.category,
+                universe=callback_data.universe,
                 page_number=callback_data.page,
+            )
+        elif callback_data.category:
+            await _send_universe_menu(
+                bot=bot,
+                database=database,
+                chat_id=chat_id,
+                category=callback_data.category,
             )
         else:
             await _send_category_menu(bot=bot, database=database, chat_id=chat_id)
@@ -333,6 +406,7 @@ async def handle_public_archive_callback(
                 viewer_user_id=callback.from_user.id,
                 menu_page=callback_data.page,
                 category=callback_data.category,
+                universe=callback_data.universe,
             )
         except TelegramBadRequest:
             logger.exception("Failed to open public archive item")
@@ -351,6 +425,7 @@ async def handle_public_archive_callback(
             page=page,
             menu_page=callback_data.page,
             category=callback_data.category,
+            universe=callback_data.universe,
         )
         return
 
@@ -369,14 +444,13 @@ async def handle_public_archive_callback(
                 user_id=callback.from_user.id,
             )
             state = await _load_state(database, page, callback.from_user.id)
-            prompt_url = await _load_prompt_url(database, page.character.id)
             keyboard = build_public_archive_keyboard(
                 page,
                 state,
                 viewer_user_id=callback.from_user.id,
                 menu_page=callback_data.page,
                 category=callback_data.category,
-                prompt_post_url=prompt_url,
+                universe=callback_data.universe,
             )
             if isinstance(callback.message, Message):
                 await callback.message.edit_caption(
@@ -398,14 +472,13 @@ async def handle_public_archive_callback(
                 user_id=callback.from_user.id,
             )
             state = await _load_state(database, page, callback.from_user.id)
-            prompt_url = await _load_prompt_url(database, page.character.id)
             keyboard = build_public_archive_keyboard(
                 page,
                 state,
                 viewer_user_id=callback.from_user.id,
                 menu_page=callback_data.page,
                 category=callback_data.category,
-                prompt_post_url=prompt_url,
+                universe=callback_data.universe,
             )
             if isinstance(callback.message, Message):
                 await callback.message.edit_reply_markup(reply_markup=keyboard)

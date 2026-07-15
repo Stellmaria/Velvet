@@ -29,6 +29,7 @@ _CATEGORY_ALIASES = {
     "ж": "female",
     "female": "female",
     "мужской": "male",
+    "мужская": "male",
     "мужчина": "male",
     "м": "male",
     "male": "male",
@@ -45,6 +46,52 @@ _CATEGORY_ALIASES = {
     "none": "uncategorized",
     "uncategorized": "uncategorized",
 }
+
+UNIVERSE_ORDER = ("shs", "kr", "lm", "idm", "bg3", "lagerta", "original")
+UNIVERSE_LABELS = {
+    "shs": "SHS",
+    "kr": "КР",
+    "lm": "ЛМ",
+    "idm": "ИДМ",
+    "bg3": "BG3",
+    "lagerta": "Лагерта",
+    "original": "Original",
+    "unassigned": "Без вселенной",
+}
+UNIVERSE_EMOJI = {
+    "shs": "🖤",
+    "kr": "💎",
+    "lm": "🌙",
+    "idm": "🕯",
+    "bg3": "🎲",
+    "lagerta": "⚔️",
+    "original": "✨",
+    "unassigned": "📦",
+}
+_UNIVERSE_ALIASES = {
+    "shs": "shs",
+    "схс": "shs",
+    "кр": "kr",
+    "kr": "kr",
+    "лм": "lm",
+    "lm": "lm",
+    "идм": "idm",
+    "idm": "idm",
+    "bg3": "bg3",
+    "бг3": "bg3",
+    "baldursgate3": "bg3",
+    "baldur'sgate3": "bg3",
+    "лагерта": "lagerta",
+    "lagerta": "lagerta",
+    "original": "original",
+    "оригинал": "original",
+    "ориджинал": "original",
+    "без": "unassigned",
+    "нет": "unassigned",
+    "none": "unassigned",
+    "unassigned": "unassigned",
+}
+
 _PROMPT_URL_RE = re.compile(
     r"^https://t\.me/(?:c/\d+|[A-Za-z0-9_]+)/\d+(?:\?[^\s]+)?$",
     re.IGNORECASE,
@@ -60,11 +107,20 @@ class CategorySummary:
 
 
 @dataclass(frozen=True, slots=True)
+class UniverseSummary:
+    key: str
+    label: str
+    emoji: str
+    character_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class CharacterDirectoryItem:
     character: Character
     category: str | None
     prompt_post_url: str | None
     media_count: int
+    universe: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +130,7 @@ class CharacterDirectoryPage:
     page: int
     page_size: int
     total_characters: int
+    universe: str | None = None
 
     @property
     def total_pages(self) -> int:
@@ -89,10 +146,26 @@ def normalize_category(value: str, *, allow_uncategorized: bool = False) -> str:
     return category
 
 
+def normalize_universe(value: str, *, allow_unassigned: bool = False) -> str:
+    normalized = "".join(value.casefold().split())
+    universe = _UNIVERSE_ALIASES.get(normalized)
+    if universe is None or (universe == "unassigned" and not allow_unassigned):
+        allowed = "SHS, КР, ЛМ, ИДМ, BG3, Лагерта, Original"
+        raise ValueError(f"Неизвестная вселенная. Доступны: {allowed}.")
+    return universe
+
+
 def category_label(category: str | None) -> str:
     return CATEGORY_LABELS.get(
         category or "uncategorized",
         CATEGORY_LABELS["uncategorized"],
+    )
+
+
+def universe_label(universe: str | None) -> str:
+    return UNIVERSE_LABELS.get(
+        universe or "unassigned",
+        UNIVERSE_LABELS["unassigned"],
     )
 
 
@@ -135,6 +208,22 @@ async def set_character_category(
         raise ValueError("Персонаж не найден.")
 
 
+async def set_character_universe(
+    database: Database,
+    *,
+    character_id: int,
+    universe: str | None,
+) -> None:
+    async with database._require_pool().acquire() as connection:
+        result = await connection.execute(
+            "UPDATE characters SET universe = $2 WHERE id = $1",
+            character_id,
+            universe,
+        )
+    if result == "UPDATE 0":
+        raise ValueError("Персонаж не найден.")
+
+
 async def set_character_prompt_url(
     database: Database,
     *,
@@ -161,7 +250,7 @@ async def get_character_directory_item(
             SELECT
                 c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
                 c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
-                c.category, c.prompt_post_url,
+                c.category, c.universe, c.prompt_post_url,
                 COUNT(cm.media_id) AS media_count
             FROM characters AS c
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
@@ -177,6 +266,7 @@ async def get_character_directory_item(
         category=row["category"],
         prompt_post_url=row["prompt_post_url"],
         media_count=int(row["media_count"] or 0),
+        universe=row["universe"],
     )
 
 
@@ -198,7 +288,10 @@ async def list_category_summaries(
                 COUNT(DISTINCT c.id) AS character_count
             FROM characters AS c
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
-            WHERE ($1::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
+            WHERE (
+                $1::BOOLEAN = FALSE
+                OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
+            )
             GROUP BY COALESCE(c.category, 'uncategorized')
             """,
             public_only,
@@ -218,6 +311,50 @@ async def list_category_summaries(
     ]
 
 
+async def list_universe_summaries(
+    database: Database,
+    *,
+    category: str,
+    public_only: bool,
+    include_unassigned: bool = False,
+) -> list[UniverseSummary]:
+    if category not in CATEGORY_ORDER:
+        raise ValueError("Неизвестная категория архива.")
+
+    keys = list(UNIVERSE_ORDER)
+    if include_unassigned:
+        keys.append("unassigned")
+
+    async with database._require_pool().acquire() as connection:
+        rows = await connection.fetch(
+            """
+            SELECT
+                COALESCE(c.universe, 'unassigned') AS universe,
+                COUNT(DISTINCT c.id) AS character_count
+            FROM characters AS c
+            LEFT JOIN character_media AS cm ON cm.character_id = c.id
+            WHERE c.category = $1
+              AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
+            GROUP BY COALESCE(c.universe, 'unassigned')
+            """,
+            category,
+            public_only,
+        )
+    counts = {
+        str(row["universe"]): int(row["character_count"] or 0)
+        for row in rows
+    }
+    return [
+        UniverseSummary(
+            key=key,
+            label=UNIVERSE_LABELS[key],
+            emoji=UNIVERSE_EMOJI[key],
+            character_count=counts.get(key, 0),
+        )
+        for key in keys
+    ]
+
+
 async def list_character_directory(
     database: Database,
     *,
@@ -225,15 +362,21 @@ async def list_character_directory(
     page: int = 0,
     page_size: int = 6,
     public_only: bool,
+    universe: str | None = None,
 ) -> CharacterDirectoryPage:
     if category not in {*CATEGORY_ORDER, "uncategorized"}:
         raise ValueError("Неизвестная категория архива.")
+    if universe is not None and universe not in UNIVERSE_ORDER:
+        raise ValueError("Неизвестная вселенная архива.")
+    if category == "uncategorized" and universe is not None:
+        raise ValueError("Для раздела без категории фильтр вселенной недоступен.")
 
     safe_page_size = max(1, min(page_size, 10))
     safe_page = max(0, page)
     category_condition = """
         (($1::TEXT = 'uncategorized' AND c.category IS NULL) OR c.category = $1)
     """
+    universe_condition = "($3::TEXT IS NULL OR c.universe = $3)"
 
     async with database._require_pool().acquire() as connection:
         total = int(
@@ -245,12 +388,17 @@ async def list_character_directory(
                     FROM characters AS c
                     LEFT JOIN character_media AS cm ON cm.character_id = c.id
                     WHERE {category_condition}
-                      AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
+                      AND (
+                          $2::BOOLEAN = FALSE
+                          OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
+                      )
+                      AND {universe_condition}
                     GROUP BY c.id
                 ) AS directory
                 """,
                 category,
                 public_only,
+                universe,
             )
             or 0
         )
@@ -261,19 +409,24 @@ async def list_character_directory(
             SELECT
                 c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
                 c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
-                c.category, c.prompt_post_url,
+                c.category, c.universe, c.prompt_post_url,
                 COUNT(cm.media_id) AS media_count
             FROM characters AS c
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
             WHERE {category_condition}
-              AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
+              AND (
+                  $2::BOOLEAN = FALSE
+                  OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
+              )
+              AND {universe_condition}
             GROUP BY c.id
             ORDER BY c.normalized_name ASC, c.id ASC
-            OFFSET $3
-            LIMIT $4
+            OFFSET $4
+            LIMIT $5
             """,
             category,
             public_only,
+            universe,
             normalized_page * safe_page_size,
             safe_page_size,
         )
@@ -284,6 +437,7 @@ async def list_character_directory(
             category=row["category"],
             prompt_post_url=row["prompt_post_url"],
             media_count=int(row["media_count"] or 0),
+            universe=row["universe"],
         )
         for row in rows
     ]
@@ -293,4 +447,5 @@ async def list_character_directory(
         page=normalized_page,
         page_size=safe_page_size,
         total_characters=total,
+        universe=universe,
     )

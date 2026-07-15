@@ -3,6 +3,8 @@ import unittest
 from velvet_bot.character_directory import (
     category_label,
     normalize_category,
+    normalize_universe,
+    universe_label,
     validate_prompt_post_url,
 )
 
@@ -25,6 +27,33 @@ class CharacterCategoryTests(unittest.TestCase):
 
     def test_category_label_for_empty_value(self) -> None:
         self.assertEqual("Без категории", category_label(None))
+
+
+class CharacterUniverseTests(unittest.TestCase):
+    def test_all_requested_universes_are_normalized(self) -> None:
+        expected = {
+            "SHS": "shs",
+            "КР": "kr",
+            "ЛМ": "lm",
+            "ИДМ": "idm",
+            "BG3": "bg3",
+            "Лагерта": "lagerta",
+            "Original": "original",
+        }
+        for raw_value, normalized in expected.items():
+            with self.subTest(raw_value=raw_value):
+                self.assertEqual(normalized, normalize_universe(raw_value))
+
+    def test_unassigned_is_owner_only_option(self) -> None:
+        self.assertEqual(
+            "unassigned",
+            normalize_universe("без", allow_unassigned=True),
+        )
+        with self.assertRaises(ValueError):
+            normalize_universe("без")
+
+    def test_universe_label_for_empty_value(self) -> None:
+        self.assertEqual("Без вселенной", universe_label(None))
 
 
 class PromptPostUrlTests(unittest.TestCase):

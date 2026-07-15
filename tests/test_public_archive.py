@@ -3,7 +3,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia
-from velvet_bot.character_directory import CategorySummary
+from velvet_bot.character_directory import CategorySummary, UniverseSummary
 from velvet_bot.database import Character
 from velvet_bot.public_catalog import (
     PublicCharacterItem,
@@ -16,6 +16,7 @@ from velvet_bot.public_ui import (
     build_public_archive_keyboard,
     build_public_category_menu,
     build_public_character_menu,
+    build_public_universe_menu,
 )
 
 
@@ -53,15 +54,27 @@ class PublicArchiveUiTests(unittest.TestCase):
             subscribed=False,
         )
 
-    def test_category_menu_opens_selected_category(self) -> None:
+    def test_category_menu_opens_universe_filter(self) -> None:
         keyboard = build_public_category_menu(
             [CategorySummary("male", "Мужской", "👨", 3)]
         )
         callback = PublicArchiveCallback.unpack(
             keyboard.inline_keyboard[0][0].callback_data
         )
+        self.assertEqual("universes", callback.action)
+        self.assertEqual("male", callback.category)
+
+    def test_universe_menu_opens_combined_filter(self) -> None:
+        keyboard = build_public_universe_menu(
+            "male",
+            [UniverseSummary("kr", "КР", "💎", 2)],
+        )
+        callback = PublicArchiveCallback.unpack(
+            keyboard.inline_keyboard[0][0].callback_data
+        )
         self.assertEqual("menu", callback.action)
         self.assertEqual("male", callback.category)
+        self.assertEqual("kr", callback.universe)
 
     def test_character_menu_opens_archive_by_button(self) -> None:
         menu_page = PublicCharacterPage(
@@ -71,12 +84,14 @@ class PublicArchiveUiTests(unittest.TestCase):
                     category="male",
                     prompt_post_url=None,
                     media_count=3,
+                    universe="kr",
                 )
             ],
             category="male",
             page=0,
             page_size=6,
             total_characters=1,
+            universe="kr",
         )
         keyboard = build_public_character_menu(menu_page)
         callback = PublicArchiveCallback.unpack(
@@ -85,6 +100,7 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertEqual("open", callback.action)
         self.assertEqual(self.character.id, callback.character_id)
         self.assertEqual("male", callback.category)
+        self.assertEqual("kr", callback.universe)
 
     def test_character_menu_does_not_show_character_level_prompt(self) -> None:
         menu_page = PublicCharacterPage(
@@ -94,12 +110,14 @@ class PublicArchiveUiTests(unittest.TestCase):
                     "male",
                     "https://t.me/legacy/123",
                     3,
+                    "kr",
                 )
             ],
             category="male",
             page=0,
             page_size=6,
             total_characters=1,
+            universe="kr",
         )
         labels = [
             button.text
@@ -132,17 +150,28 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertNotIn("📝 Открыть промт", labels_without)
         self.assertIn("📝 Открыть промт", labels_with)
 
-    def test_public_keyboard_has_like_and_subscription(self) -> None:
+    def test_public_keyboard_preserves_both_filters(self) -> None:
         keyboard = build_public_archive_keyboard(
             self.page,
             self.state,
             viewer_user_id=100,
             category="male",
+            universe="kr",
         )
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("🤍 4", labels)
         self.assertIn("🔔 Подписаться", labels)
         self.assertNotIn("🗑 Удалить", labels)
+
+        back = next(
+            button
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.text == "↩️ К персонажам"
+        )
+        callback = PublicArchiveCallback.unpack(back.callback_data)
+        self.assertEqual("male", callback.category)
+        self.assertEqual("kr", callback.universe)
 
     def test_download_button_is_hidden_from_regular_subscriber(self) -> None:
         keyboard = build_public_archive_keyboard(

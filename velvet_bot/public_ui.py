@@ -9,7 +9,10 @@ from velvet_bot.archive_catalog import ArchivePage
 from velvet_bot.character_directory import (
     CATEGORY_EMOJI,
     CATEGORY_LABELS,
+    UNIVERSE_EMOJI,
+    UNIVERSE_LABELS,
     CategorySummary,
+    UniverseSummary,
 )
 from velvet_bot.public_catalog import PublicCharacterPage, PublicMediaState
 
@@ -23,6 +26,7 @@ class PublicArchiveCallback(CallbackData, prefix="pub"):
     media_id: int = 0
     page: int = 0
     category: str = ""
+    universe: str = ""
 
 
 def _callback(
@@ -33,6 +37,7 @@ def _callback(
     media_id: int = 0,
     page: int = 0,
     category: str = "",
+    universe: str = "",
 ) -> str:
     return PublicArchiveCallback(
         action=action,
@@ -41,6 +46,7 @@ def _callback(
         media_id=media_id,
         page=page,
         category=category,
+        universe=universe,
     ).pack()
 
 
@@ -61,8 +67,7 @@ def format_public_categories(summaries: list[CategorySummary]) -> str:
     total = sum(item.character_count for item in summaries)
     return (
         "<b>Архив персонажей Velvet</b>\n\n"
-        "Выберите категорию. Внутри персонажи расположены по алфавиту "
-        "и разбиты на страницы.\n\n"
+        "Сначала выберите пол или состав персонажей, затем вселенную.\n\n"
         f"Персонажей с материалами: <b>{total}</b>"
     )
 
@@ -73,7 +78,7 @@ def build_public_category_menu(
     buttons = [
         InlineKeyboardButton(
             text=f"{item.emoji} {item.label} · {item.character_count}",
-            callback_data=_callback("menu", category=item.key),
+            callback_data=_callback("universes", category=item.key),
         )
         for item in summaries
     ]
@@ -92,13 +97,68 @@ def build_public_category_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def format_public_menu(page: PublicCharacterPage) -> str:
-    label = CATEGORY_LABELS.get(page.category, page.category)
-    emoji = CATEGORY_EMOJI.get(page.category, "🗂")
-    if page.total_characters == 0:
-        return f"<b>{emoji} {escape(label)}</b>\n\nВ этой категории пока нет материалов."
+def format_public_universes(
+    category: str,
+    summaries: list[UniverseSummary],
+) -> str:
+    category_label = CATEGORY_LABELS.get(category, category)
+    category_emoji = CATEGORY_EMOJI.get(category, "🗂")
+    total = sum(item.character_count for item in summaries)
     return (
-        f"<b>{emoji} {escape(label)}</b>\n\n"
+        f"<b>{category_emoji} {escape(category_label)}</b>\n\n"
+        "Выберите вселенную или серию.\n\n"
+        f"Персонажей с материалами: <b>{total}</b>"
+    )
+
+
+def build_public_universe_menu(
+    category: str,
+    summaries: list[UniverseSummary],
+) -> InlineKeyboardMarkup:
+    buttons = [
+        InlineKeyboardButton(
+            text=f"{item.emoji} {item.label} · {item.character_count}",
+            callback_data=_callback(
+                "menu",
+                category=category,
+                universe=item.key,
+            ),
+        )
+        for item in summaries
+    ]
+    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="↩️ Пол / состав",
+                callback_data=_callback("categories"),
+            ),
+            InlineKeyboardButton(
+                text="🔄 Обновить",
+                callback_data=_callback("universes", category=category),
+            ),
+        ]
+    )
+    rows.append(
+        [InlineKeyboardButton(text="✖ Закрыть", callback_data=_callback("close"))]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def format_public_menu(page: PublicCharacterPage) -> str:
+    category_label = CATEGORY_LABELS.get(page.category, page.category)
+    category_emoji = CATEGORY_EMOJI.get(page.category, "🗂")
+    universe_key = page.universe or ""
+    universe_label = UNIVERSE_LABELS.get(universe_key, universe_key)
+    universe_emoji = UNIVERSE_EMOJI.get(universe_key, "🎭")
+    title = (
+        f"{category_emoji} {escape(category_label)} · "
+        f"{universe_emoji} {escape(universe_label)}"
+    )
+    if page.total_characters == 0:
+        return f"<b>{title}</b>\n\nВ этом сочетании пока нет материалов."
+    return (
+        f"<b>{title}</b>\n\n"
         "Выберите персонажа. Список отсортирован по алфавиту.\n\n"
         f"Персонажей: <b>{page.total_characters}</b> · "
         f"страница <b>{page.page + 1}</b> из <b>{page.total_pages}</b>"
@@ -106,6 +166,7 @@ def format_public_menu(page: PublicCharacterPage) -> str:
 
 
 def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMarkup:
+    universe = page.universe or ""
     rows: list[list[InlineKeyboardButton]] = []
     for item in page.items:
         rows.append(
@@ -118,6 +179,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                         offset=0,
                         page=page.page,
                         category=page.category,
+                        universe=universe,
                     ),
                 )
             ]
@@ -132,12 +194,16 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                         "menu",
                         page=(page.page - 1) % page.total_pages,
                         category=page.category,
+                        universe=universe,
                     ),
                 ),
                 InlineKeyboardButton(
                     text=f"{page.page + 1} / {page.total_pages}",
                     callback_data=_callback(
-                        "noop", page=page.page, category=page.category
+                        "noop",
+                        page=page.page,
+                        category=page.category,
+                        universe=universe,
                     ),
                 ),
                 InlineKeyboardButton(
@@ -146,6 +212,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                         "menu",
                         page=(page.page + 1) % page.total_pages,
                         category=page.category,
+                        universe=universe,
                     ),
                 ),
             ]
@@ -154,13 +221,19 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
     rows.append(
         [
             InlineKeyboardButton(
-                text="↩️ Категории",
-                callback_data=_callback("categories"),
+                text="↩️ Вселенные",
+                callback_data=_callback(
+                    "universes",
+                    category=page.category,
+                ),
             ),
             InlineKeyboardButton(
                 text="🔄 Обновить",
                 callback_data=_callback(
-                    "menu", page=page.page, category=page.category
+                    "menu",
+                    page=page.page,
+                    category=page.category,
+                    universe=universe,
                 ),
             ),
         ]
@@ -190,6 +263,7 @@ def build_public_archive_keyboard(
     viewer_user_id: int,
     menu_page: int = 0,
     category: str = "",
+    universe: str = "",
     prompt_post_url: str | None = None,
 ) -> InlineKeyboardMarkup:
     if page.media is None or page.total <= 0:
@@ -205,6 +279,7 @@ def build_public_archive_keyboard(
             media_id=media_id,
             page=menu_page,
             category=category,
+            universe=universe,
         ),
     )
     if page.total == 1:
@@ -220,6 +295,7 @@ def build_public_archive_keyboard(
                         offset=(page.offset - 1) % page.total,
                         page=menu_page,
                         category=category,
+                        universe=universe,
                     ),
                 ),
                 counter,
@@ -231,6 +307,7 @@ def build_public_archive_keyboard(
                         offset=(page.offset + 1) % page.total,
                         page=menu_page,
                         category=category,
+                        universe=universe,
                     ),
                 ),
             ]
@@ -247,6 +324,7 @@ def build_public_archive_keyboard(
                     media_id=media_id,
                     page=menu_page,
                     category=category,
+                    universe=universe,
                 ),
             ),
             InlineKeyboardButton(
@@ -258,12 +336,12 @@ def build_public_archive_keyboard(
                     media_id=media_id,
                     page=menu_page,
                     category=category,
+                    universe=universe,
                 ),
             ),
         ]
     )
 
-    # Промт относится к конкретному материалу, а не ко всему персонажу.
     effective_prompt_url = page.media.prompt_post_url
     if effective_prompt_url:
         rows.append(
@@ -282,6 +360,7 @@ def build_public_archive_keyboard(
                         media_id=media_id,
                         page=menu_page,
                         category=category,
+                        universe=universe,
                     ),
                 )
             ]
@@ -292,7 +371,10 @@ def build_public_archive_keyboard(
             InlineKeyboardButton(
                 text="↩️ К персонажам",
                 callback_data=_callback(
-                    "back", page=menu_page, category=category
+                    "back",
+                    page=menu_page,
+                    category=category,
+                    universe=universe,
                 ),
             ),
             InlineKeyboardButton(text="✖ Закрыть", callback_data=_callback("close")),
