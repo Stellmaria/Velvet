@@ -45,3 +45,26 @@ class PostgreSQLDatabaseTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(second_created)
         self.assertEqual(first.id, second.id)
         self.assertEqual("Каин", second.name)
+
+    async def test_character_can_be_found_by_archive_topic(self) -> None:
+        character, _ = await self.database.create_character(
+            "Аид",
+            created_by=1,
+            created_in_chat=2,
+        )
+        bound = await self.database.bind_character_topic(
+            character.id,
+            archive_chat_id=-1003951213065,
+            archive_thread_id=1398,
+            archive_topic_url="https://t.me/c/3951213065/1398",
+        )
+
+        found = await self.database.get_character_by_archive_topic(
+            -1003951213065,
+            1398,
+        )
+
+        self.assertEqual(character.id, bound.id)
+        self.assertIsNotNone(found)
+        self.assertEqual(character.id, found.id)
+        self.assertEqual(1398, found.archive_thread_id)
