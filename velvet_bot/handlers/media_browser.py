@@ -258,8 +258,10 @@ async def handle_archive_media_callback(
     callback_data: ArchiveMediaCallback,
     database: Database,
     bot: Bot,
-    audit_logger: TelegramAuditLogger,
+    audit_logger: TelegramAuditLogger | None = None,
 ) -> None:
+    audit_logger = audit_logger or TelegramAuditLogger(bot, None)
+
     if callback_data.action == "noop":
         await callback.answer()
         return
