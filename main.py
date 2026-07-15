@@ -10,6 +10,8 @@ from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.handlers import router
 
+logger = logging.getLogger(__name__)
+
 
 async def main() -> None:
     settings = load_settings()
@@ -20,23 +22,41 @@ async def main() -> None:
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
-    dispatcher = Dispatcher(database=database)
-    dispatcher.include_router(router)
-
-    await bot.set_my_commands(
-        [
-            BotCommand(command="start", description="Запустить бота"),
-            BotCommand(command="create", description="Создать персонажа"),
-            BotCommand(command="characters", description="Список персонажей"),
-            BotCommand(command="character", description="Профиль персонажа"),
-            BotCommand(command="save", description="Сохранить изображение персонажа"),
-        ]
-    )
 
     try:
+        bot_info = await bot.get_me()
+        bot_username = bot_info.username or ""
+
+        if bot_info.supports_guest_queries:
+            logger.info("Guest Mode enabled for @%s", bot_username)
+        else:
+            logger.warning(
+                "Guest Mode is not enabled for @%s in BotFather",
+                bot_username,
+            )
+
+        dispatcher = Dispatcher(
+            database=database,
+            bot_username=bot_username,
+        )
+        dispatcher.include_router(router)
+
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start", description="Запустить бота"),
+                BotCommand(command="create", description="Создать персонажа"),
+                BotCommand(command="characters", description="Список персонажей"),
+                BotCommand(command="character", description="Профиль персонажа"),
+                BotCommand(command="save", description="Сохранить изображение персонажа"),
+            ]
+        )
+
+        allowed_updates = dispatcher.resolve_used_update_types()
+        logger.info("Allowed Telegram updates: %s", ", ".join(allowed_updates))
+
         await dispatcher.start_polling(
             bot,
-            allowed_updates=dispatcher.resolve_used_update_types(),
+            allowed_updates=allowed_updates,
         )
     finally:
         await bot.session.close()
