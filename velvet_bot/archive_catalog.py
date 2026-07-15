@@ -20,6 +20,7 @@ class ArchivedMedia:
     linked_at: datetime
     prompt_post_url: str | None = None
     archive_message_id: int | None = None
+    is_spoiler: bool = False
 
     @property
     def display_file_name(self) -> str:
@@ -77,6 +78,7 @@ def _row_to_media(row: asyncpg.Record) -> ArchivedMedia:
             if row["archive_message_id"] is not None
             else None
         ),
+        is_spoiler=bool(row["is_spoiler"]),
     )
 
 
@@ -142,7 +144,8 @@ async def get_archive_page(
                 mf.file_size,
                 cm.created_at AS linked_at,
                 cm.prompt_post_url,
-                cm.archive_message_id
+                cm.archive_message_id,
+                cm.is_spoiler
             FROM character_media AS cm
             JOIN media_files AS mf ON mf.id = cm.media_id
             WHERE cm.character_id = $1
@@ -193,6 +196,50 @@ async def set_archive_media_prompt(
     return updated is not None
 
 
+async def set_archive_media_spoiler(
+    database: Database,
+    *,
+    character_id: int,
+    media_id: int,
+    is_spoiler: bool,
+) -> bool:
+    """Mark one character-media link as sensitive or ordinary."""
+    async with database._require_pool().acquire() as connection:
+        updated = await connection.fetchval(
+            """
+            UPDATE character_media
+            SET is_spoiler = $3
+            WHERE character_id = $1 AND media_id = $2
+            RETURNING 1
+            """,
+            character_id,
+            media_id,
+            is_spoiler,
+        )
+    return updated is not None
+
+
+async def toggle_archive_media_spoiler(
+    database: Database,
+    *,
+    character_id: int,
+    media_id: int,
+) -> bool | None:
+    """Toggle spoiler state and return the new value, or None if missing."""
+    async with database._require_pool().acquire() as connection:
+        value = await connection.fetchval(
+            """
+            UPDATE character_media
+            SET is_spoiler = NOT is_spoiler
+            WHERE character_id = $1 AND media_id = $2
+            RETURNING is_spoiler
+            """,
+            character_id,
+            media_id,
+        )
+    return bool(value) if value is not None else None
+
+
 async def delete_archive_item(
     database: Database,
     character_id: int,
@@ -221,7 +268,8 @@ async def delete_archive_item(
                     mf.file_size,
                     cm.created_at AS linked_at,
                     cm.prompt_post_url,
-                    cm.archive_message_id
+                    cm.archive_message_id,
+                    cm.is_spoiler
                 FROM character_media AS cm
                 JOIN characters AS c ON c.id = cm.character_id
                 JOIN media_files AS mf ON mf.id = cm.media_id
