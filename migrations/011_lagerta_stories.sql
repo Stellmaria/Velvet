@@ -1,13 +1,26 @@
 DO $$
 DECLARE
     ghost_id BIGINT;
+    mansion_id BIGINT;
 BEGIN
     SELECT id INTO ghost_id
     FROM character_stories
     WHERE universe = 'lagerta' AND key = 'ghost'
     LIMIT 1;
 
-    IF ghost_id IS NOT NULL THEN
+    SELECT id INTO mansion_id
+    FROM character_stories
+    WHERE universe = 'lagerta' AND key = 'mansion_on_the_hill'
+    LIMIT 1;
+
+    IF ghost_id IS NOT NULL AND mansion_id IS NOT NULL THEN
+        UPDATE characters
+        SET story_id = mansion_id
+        WHERE story_id = ghost_id;
+
+        DELETE FROM character_stories
+        WHERE id = ghost_id;
+    ELSIF ghost_id IS NOT NULL THEN
         UPDATE character_stories
         SET key = 'mansion_on_the_hill',
             short_label = 'ОНХ',
