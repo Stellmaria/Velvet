@@ -9,7 +9,7 @@ from velvet_bot.archive_catalog import (
 )
 from velvet_bot.archive_ui import ArchiveMediaCallback
 from velvet_bot.database import Database
-from velvet_bot.handlers.media_browser import _replace_archive_page
+from velvet_bot.handlers.admin_media_display import replace_admin_archive_page
 
 router = Router(name=__name__)
 
@@ -39,4 +39,4 @@ async def handle_admin_media_spoiler(
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
 
-    await _replace_archive_page(callback, bot, page)
+    await replace_admin_archive_page(callback, bot, page)
