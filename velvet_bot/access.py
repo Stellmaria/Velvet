@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -14,6 +15,8 @@ from aiogram.types import (
     TelegramObject,
     User,
 )
+
+logger = logging.getLogger(__name__)
 
 ACCESS_DENIED_TEXT = (
     "<b>Доступ закрыт</b>\n\n"
@@ -42,7 +45,7 @@ class AccessPolicy:
 
 
 def get_caller_user(message: Message) -> User | None:
-    return message.guest_bot_caller_user or message.from_user
+    return message.from_user or message.guest_bot_caller_user
 
 
 def message_requires_owner_access(message: Message) -> bool:
@@ -93,7 +96,18 @@ class OwnerAccessMiddleware(BaseMiddleware):
         if not message_requires_owner_access(event):
             return await handler(event, data)
 
-        if self.policy.allows_user(get_caller_user(event)):
+        caller = get_caller_user(event)
+        allowed = self.policy.allows_user(caller)
+
+        if event.guest_query_id:
+            logger.info(
+                "Guest access check: caller_id=%s username=%s allowed=%s",
+                caller.id if caller else None,
+                caller.username if caller else None,
+                allowed,
+            )
+
+        if allowed:
             return await handler(event, data)
 
         await answer_access_denied(event)
