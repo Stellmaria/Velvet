@@ -2,6 +2,7 @@ import unittest
 from datetime import UTC, datetime
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia
+from velvet_bot.character_directory import CategorySummary
 from velvet_bot.database import Character
 from velvet_bot.public_catalog import (
     PublicCharacterItem,
@@ -12,6 +13,7 @@ from velvet_bot.public_ui import (
     PUBLIC_DOWNLOAD_USER_ID,
     PublicArchiveCallback,
     build_public_archive_keyboard,
+    build_public_category_menu,
     build_public_character_menu,
 )
 
@@ -50,11 +52,29 @@ class PublicArchiveUiTests(unittest.TestCase):
             subscribed=False,
         )
 
+    def test_category_menu_opens_selected_category(self) -> None:
+        keyboard = build_public_category_menu(
+            [CategorySummary("male", "Мужской", "👨", 3)]
+        )
+        callback = PublicArchiveCallback.unpack(
+            keyboard.inline_keyboard[0][0].callback_data
+        )
+        self.assertEqual("menu", callback.action)
+        self.assertEqual("male", callback.category)
+
     def test_character_menu_opens_archive_by_button(self) -> None:
         menu_page = PublicCharacterPage(
-            items=[PublicCharacterItem(self.character, 3)],
+            items=[
+                PublicCharacterItem(
+                    character=self.character,
+                    category="male",
+                    prompt_post_url=None,
+                    media_count=3,
+                )
+            ],
+            category="male",
             page=0,
-            page_size=8,
+            page_size=6,
             total_characters=1,
         )
         keyboard = build_public_character_menu(menu_page)
@@ -63,12 +83,49 @@ class PublicArchiveUiTests(unittest.TestCase):
         )
         self.assertEqual("open", callback.action)
         self.assertEqual(self.character.id, callback.character_id)
+        self.assertEqual("male", callback.category)
+
+    def test_prompt_button_appears_only_when_url_exists(self) -> None:
+        without_prompt = PublicCharacterPage(
+            items=[PublicCharacterItem(self.character, "male", None, 3)],
+            category="male",
+            page=0,
+            page_size=6,
+            total_characters=1,
+        )
+        with_prompt = PublicCharacterPage(
+            items=[
+                PublicCharacterItem(
+                    self.character,
+                    "male",
+                    "https://t.me/velvet/123",
+                    3,
+                )
+            ],
+            category="male",
+            page=0,
+            page_size=6,
+            total_characters=1,
+        )
+        labels_without = [
+            button.text
+            for row in build_public_character_menu(without_prompt).inline_keyboard
+            for button in row
+        ]
+        labels_with = [
+            button.text
+            for row in build_public_character_menu(with_prompt).inline_keyboard
+            for button in row
+        ]
+        self.assertNotIn("📝 Промт", labels_without)
+        self.assertIn("📝 Промт", labels_with)
 
     def test_public_keyboard_has_like_and_subscription(self) -> None:
         keyboard = build_public_archive_keyboard(
             self.page,
             self.state,
             viewer_user_id=100,
+            category="male",
         )
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("🤍 4", labels)
