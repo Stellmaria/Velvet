@@ -12,8 +12,10 @@ from velvet_bot.handlers.admin_uncategorized import router as admin_uncategorize
 from velvet_bot.handlers.admin_universe_story_flow import (
     router as admin_universe_story_flow_router,
 )
+from velvet_bot.handlers.analytics_dashboard import router as analytics_dashboard_router
 from velvet_bot.handlers.archive import router as archive_router
 from velvet_bot.handlers.channel_analytics import router as channel_analytics_router
+from velvet_bot.handlers.character_aliases import router as character_aliases_router
 from velvet_bot.handlers.characters import router as characters_router
 from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
 from velvet_bot.handlers.guest_archive import router as guest_archive_router
@@ -65,6 +67,8 @@ async def handle_unhandled_error(
 
 
 router.include_router(channel_analytics_router)
+router.include_router(analytics_dashboard_router)
+router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
 router.include_router(start_router)
