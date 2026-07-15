@@ -33,14 +33,14 @@ def normalize_username(value: str) -> str:
 
 
 def is_owner_mention_text(text: str, bot_username: str) -> bool:
-    """Recognize owner-only save and reference summons in ordinary chats."""
+    """Recognize owner-only archive and reference actions in ordinary chats."""
     expected = normalize_username(bot_username)
     cleaned = " ".join(text.split())
     if not expected or not cleaned:
         return False
 
     escaped = re.escape(expected)
-    action = r"(?:save|refs?)"
+    action = r"(?:save|refadd|refdel|refs?)"
     return bool(
         re.fullmatch(
             rf"(?:"
