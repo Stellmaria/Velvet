@@ -4,6 +4,7 @@ from aiogram.types import User
 
 from velvet_bot.access import (
     AccessPolicy,
+    is_public_command_text,
     is_save_mention_text,
     normalize_username,
 )
@@ -60,6 +61,20 @@ class AccessPolicyTests(unittest.TestCase):
             frozenset({"va_stellmaria", "second_owner"}),
             _parse_allowed_usernames("@VA_StellMaria, second_owner"),
         )
+
+    def test_public_commands_are_available_to_subscribers(self) -> None:
+        self.assertTrue(is_public_command_text("/start"))
+        self.assertTrue(is_public_command_text("/archive"))
+        self.assertTrue(
+            is_public_command_text("/archive@dominusVelvetbot")
+        )
+        self.assertTrue(is_public_command_text("/gallery"))
+        self.assertTrue(is_public_command_text("/menu"))
+
+    def test_owner_commands_are_not_public(self) -> None:
+        self.assertFalse(is_public_command_text("/characters"))
+        self.assertFalse(is_public_command_text("/save Аид"))
+        self.assertFalse(is_public_command_text("archive"))
 
     def test_save_mention_is_protected_in_all_supported_positions(self) -> None:
         username = "dominusVelvetbot"

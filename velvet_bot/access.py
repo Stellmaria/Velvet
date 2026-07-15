@@ -21,15 +21,33 @@ from aiogram.types import (
 
 logger = logging.getLogger(__name__)
 
+PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery", "menu"})
+PUBLIC_CALLBACK_PREFIX = "pub:"
+
 ACCESS_DENIED_TEXT = (
     "<b>Доступ закрыт</b>\n\n"
-    "Velvet Archive работает в частном режиме и доступен только владельцу."
+    "Служебные команды Velvet Archive доступны только владельцу. "
+    "Открытый архив персонажей: <code>/archive</code>."
 )
-ACCESS_DENIED_CALLBACK_TEXT = "Доступ к Velvet Archive закрыт."
+ACCESS_DENIED_CALLBACK_TEXT = "Эта служебная кнопка доступна только владельцу."
 
 
 def normalize_username(value: str) -> str:
     return value.strip().lstrip("@").casefold()
+
+
+def is_public_command_text(text: str) -> bool:
+    """Return True only for commands intentionally exposed to every subscriber."""
+    cleaned = text.strip()
+    if not cleaned.startswith("/"):
+        return False
+    command_token = cleaned.split(maxsplit=1)[0][1:]
+    command = command_token.split("@", maxsplit=1)[0].casefold()
+    return command in PUBLIC_COMMANDS
+
+
+def is_public_callback(callback: CallbackQuery) -> bool:
+    return bool(callback.data and callback.data.startswith(PUBLIC_CALLBACK_PREFIX))
 
 
 def is_owner_mention_text(text: str, bot_username: str) -> bool:
@@ -129,6 +147,9 @@ class OwnerAccessMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         if isinstance(event, CallbackQuery):
+            if is_public_callback(event):
+                return await handler(event, data)
+
             allowed = self.policy.allows_user(event.from_user)
             logger.info(
                 "Callback access check: caller_id=%s username=%s allowed=%s",
@@ -161,7 +182,7 @@ class OwnerAccessMiddleware(BaseMiddleware):
                     InlineQueryResultArticle(
                         id="access-denied",
                         title="Доступ закрыт",
-                        description="Velvet Archive доступен только владельцу.",
+                        description="Inline-режим доступен только владельцу.",
                         input_message_content=InputTextMessageContent(
                             message_text=ACCESS_DENIED_TEXT,
                             parse_mode=ParseMode.HTML,
@@ -174,6 +195,10 @@ class OwnerAccessMiddleware(BaseMiddleware):
             return None
 
         if not isinstance(event, Message):
+            return await handler(event, data)
+
+        text = event.text or event.caption or ""
+        if is_public_command_text(text):
             return await handler(event, data)
 
         if not message_requires_owner_access(
