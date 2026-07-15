@@ -77,37 +77,41 @@ def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
     if page.total <= 0:
         return InlineKeyboardMarkup(inline_keyboard=[])
 
-    previous_offset = (page.offset - 1) % page.total
-    next_offset = (page.offset + 1) % page.total
+    counter_button = InlineKeyboardButton(
+        text=f"{page.offset + 1} / {page.total}",
+        callback_data=ArchiveMediaCallback(
+            action="noop",
+            character_id=page.character.id,
+            offset=page.offset,
+        ).pack(),
+    )
 
-    rows = [
-        [
-            InlineKeyboardButton(
-                text="◀️",
-                callback_data=ArchiveMediaCallback(
-                    action="show",
-                    character_id=page.character.id,
-                    offset=previous_offset,
-                ).pack(),
-            ),
-            InlineKeyboardButton(
-                text=f"{page.offset + 1} / {page.total}",
-                callback_data=ArchiveMediaCallback(
-                    action="noop",
-                    character_id=page.character.id,
-                    offset=page.offset,
-                ).pack(),
-            ),
-            InlineKeyboardButton(
-                text="▶️",
-                callback_data=ArchiveMediaCallback(
-                    action="show",
-                    character_id=page.character.id,
-                    offset=next_offset,
-                ).pack(),
-            ),
+    if page.total == 1:
+        rows = [[counter_button]]
+    else:
+        previous_offset = (page.offset - 1) % page.total
+        next_offset = (page.offset + 1) % page.total
+        rows = [
+            [
+                InlineKeyboardButton(
+                    text="◀️",
+                    callback_data=ArchiveMediaCallback(
+                        action="show",
+                        character_id=page.character.id,
+                        offset=previous_offset,
+                    ).pack(),
+                ),
+                counter_button,
+                InlineKeyboardButton(
+                    text="▶️",
+                    callback_data=ArchiveMediaCallback(
+                        action="show",
+                        character_id=page.character.id,
+                        offset=next_offset,
+                    ).pack(),
+                ),
+            ]
         ]
-    ]
 
     final_row: list[InlineKeyboardButton] = []
     if page.character.archive_topic_url:
