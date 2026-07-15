@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia
@@ -58,11 +59,31 @@ class SpoilerManagerUiTests(unittest.TestCase):
         )
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("📥 Скачать файлом", labels)
-        self.assertIn("🔞 Убрать спойлер", labels)
+        self.assertIn("🌫 Убрать блюр", labels)
         self.assertIn("🗑 Удалить", labels)
         self.assertIn("👥 Пол / состав", labels)
         self.assertIn("🎭 Вселенная", labels)
         self.assertIn("📖 История", labels)
+
+    def test_manager_keyboard_offers_blur_for_visible_media(self) -> None:
+        visible_media = replace(self.page.media, is_spoiler=False)
+        visible_page = replace(self.page, media=visible_media)
+        keyboard = build_manager_archive_keyboard(
+            visible_page,
+            self.state,
+            category="male",
+            universe="lagerta",
+            story_id=2,
+        )
+        button = next(
+            button
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.text == "🌫 Скрыть под блюр 18+"
+        )
+        callback = PublicArchiveCallback.unpack(button.callback_data)
+        self.assertEqual("psp", callback.action)
+        self.assertLessEqual(len(button.callback_data.encode("utf-8")), 64)
 
     def test_manager_delete_callback_uses_public_prefix(self) -> None:
         keyboard = build_manager_archive_keyboard(
