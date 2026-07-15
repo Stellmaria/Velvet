@@ -5,11 +5,12 @@ from dataclasses import dataclass
 
 from velvet_bot.database import Character, Database
 
-CATEGORY_ORDER = ("female", "male", "mf", "mm", "ff")
+CATEGORY_ORDER = ("female", "male", "mf", "mfm", "mm", "ff")
 CATEGORY_LABELS = {
     "female": "Женский",
     "male": "Мужской",
     "mf": "МЖ",
+    "mfm": "МЖМ",
     "mm": "ММ",
     "ff": "ЖЖ",
     "uncategorized": "Без категории",
@@ -18,6 +19,7 @@ CATEGORY_EMOJI = {
     "female": "👩",
     "male": "👨",
     "mf": "👩‍❤️‍👨",
+    "mfm": "👨‍👩‍👨",
     "mm": "👨‍❤️‍👨",
     "ff": "👩‍❤️‍👩",
     "uncategorized": "📦",
@@ -37,6 +39,8 @@ _CATEGORY_ALIASES = {
     "жм": "mf",
     "mf": "mf",
     "fm": "mf",
+    "мжм": "mfm",
+    "mfm": "mfm",
     "мм": "mm",
     "mm": "mm",
     "жж": "ff",
@@ -96,6 +100,7 @@ _PROMPT_URL_RE = re.compile(
     r"^https://t\.me/(?:c/\d+|[A-Za-z0-9_]+)/\d+(?:\?[^\s]+)?$",
     re.IGNORECASE,
 )
+_STORY_REQUIRED_SQL = "('shs', 'kr', 'lm', 'idm')"
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,6 +126,9 @@ class CharacterDirectoryItem:
     prompt_post_url: str | None
     media_count: int
     universe: str | None = None
+    story_id: int | None = None
+    story_short_label: str | None = None
+    story_title: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +139,9 @@ class CharacterDirectoryPage:
     page_size: int
     total_characters: int
     universe: str | None = None
+    story_id: int | None = None
+    story_short_label: str | None = None
+    story_title: str | None = None
 
     @property
     def total_pages(self) -> int:
@@ -141,7 +152,7 @@ def normalize_category(value: str, *, allow_uncategorized: bool = False) -> str:
     normalized = "".join(value.casefold().split())
     category = _CATEGORY_ALIASES.get(normalized)
     if category is None or (category == "uncategorized" and not allow_uncategorized):
-        allowed = "женский, мужской, мж, мм, жж"
+        allowed = "женский, мужской, мж, мжм, мм, жж"
         raise ValueError(f"Неизвестная категория. Доступны: {allowed}.")
     return category
 
@@ -169,6 +180,17 @@ def universe_label(universe: str | None) -> str:
     )
 
 
+def story_label(
+    story_short_label: str | None,
+    story_title: str | None,
+) -> str:
+    if not story_title:
+        return "Без истории"
+    if story_short_label:
+        return f"{story_short_label} · {story_title}"
+    return story_title
+
+
 def validate_prompt_post_url(value: str) -> str:
     cleaned = value.strip()
     if not _PROMPT_URL_RE.fullmatch(cleaned):
@@ -189,6 +211,19 @@ def _row_to_character(row) -> Character:
         archive_chat_id=row["archive_chat_id"],
         archive_thread_id=row["archive_thread_id"],
         archive_topic_url=row["archive_topic_url"],
+    )
+
+
+def _row_to_directory_item(row) -> CharacterDirectoryItem:
+    return CharacterDirectoryItem(
+        character=_row_to_character(row),
+        category=row["category"],
+        prompt_post_url=row["prompt_post_url"],
+        media_count=int(row["media_count"] or 0),
+        universe=row["universe"],
+        story_id=(int(row["story_id"]) if row["story_id"] is not None else None),
+        story_short_label=row["story_short_label"],
+        story_title=row["story_title"],
     )
 
 
@@ -216,7 +251,15 @@ async def set_character_universe(
 ) -> None:
     async with database._require_pool().acquire() as connection:
         result = await connection.execute(
-            "UPDATE characters SET universe = $2 WHERE id = $1",
+            """
+            UPDATE characters
+            SET story_id = CASE
+                    WHEN universe IS NOT DISTINCT FROM $2 THEN story_id
+                    ELSE NULL
+                END,
+                universe = $2
+            WHERE id = $1
+            """,
             character_id,
             universe,
         )
@@ -250,24 +293,19 @@ async def get_character_directory_item(
             SELECT
                 c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
                 c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
-                c.category, c.universe, c.prompt_post_url,
+                c.category, c.universe, c.prompt_post_url, c.story_id,
+                s.short_label AS story_short_label,
+                s.title AS story_title,
                 COUNT(cm.media_id) AS media_count
             FROM characters AS c
+            LEFT JOIN character_stories AS s ON s.id = c.story_id
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
             WHERE c.id = $1
-            GROUP BY c.id
+            GROUP BY c.id, s.id
             """,
             character_id,
         )
-    if row is None:
-        return None
-    return CharacterDirectoryItem(
-        character=_row_to_character(row),
-        category=row["category"],
-        prompt_post_url=row["prompt_post_url"],
-        media_count=int(row["media_count"] or 0),
-        universe=row["universe"],
-    )
+    return _row_to_directory_item(row) if row is not None else None
 
 
 async def list_category_summaries(
@@ -282,7 +320,7 @@ async def list_category_summaries(
 
     async with database._require_pool().acquire() as connection:
         rows = await connection.fetch(
-            """
+            f"""
             SELECT
                 COALESCE(c.category, 'uncategorized') AS category,
                 COUNT(DISTINCT c.id) AS character_count
@@ -290,7 +328,14 @@ async def list_category_summaries(
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
             WHERE (
                 $1::BOOLEAN = FALSE
-                OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
+                OR (
+                    cm.media_id IS NOT NULL
+                    AND c.universe IS NOT NULL
+                    AND (
+                        c.universe NOT IN {_STORY_REQUIRED_SQL}
+                        OR c.story_id IS NOT NULL
+                    )
+                )
             )
             GROUP BY COALESCE(c.category, 'uncategorized')
             """,
@@ -327,14 +372,23 @@ async def list_universe_summaries(
 
     async with database._require_pool().acquire() as connection:
         rows = await connection.fetch(
-            """
+            f"""
             SELECT
                 COALESCE(c.universe, 'unassigned') AS universe,
                 COUNT(DISTINCT c.id) AS character_count
             FROM characters AS c
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
             WHERE c.category = $1
-              AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
+              AND (
+                    $2::BOOLEAN = FALSE
+                    OR (
+                        cm.media_id IS NOT NULL
+                        AND (
+                            c.universe NOT IN {_STORY_REQUIRED_SQL}
+                            OR c.story_id IS NOT NULL
+                        )
+                    )
+                  )
             GROUP BY COALESCE(c.universe, 'unassigned')
             """,
             category,
@@ -363,6 +417,7 @@ async def list_character_directory(
     page_size: int = 6,
     public_only: bool,
     universe: str | None = None,
+    story_id: int | None = None,
 ) -> CharacterDirectoryPage:
     if category not in {*CATEGORY_ORDER, "uncategorized"}:
         raise ValueError("Неизвестная категория архива.")
@@ -370,6 +425,8 @@ async def list_character_directory(
         raise ValueError("Неизвестная вселенная архива.")
     if category == "uncategorized" and universe is not None:
         raise ValueError("Для раздела без категории фильтр вселенной недоступен.")
+    if story_id is not None and universe is None:
+        raise ValueError("Для фильтра по истории сначала нужна вселенная.")
 
     safe_page_size = max(1, min(page_size, 10))
     safe_page = max(0, page)
@@ -377,6 +434,20 @@ async def list_character_directory(
         (($1::TEXT = 'uncategorized' AND c.category IS NULL) OR c.category = $1)
     """
     universe_condition = "($3::TEXT IS NULL OR c.universe = $3)"
+    story_condition = "($4::BIGINT IS NULL OR c.story_id = $4)"
+    public_condition = f"""
+        (
+            $2::BOOLEAN = FALSE
+            OR (
+                cm.media_id IS NOT NULL
+                AND c.universe IS NOT NULL
+                AND (
+                    c.universe NOT IN {_STORY_REQUIRED_SQL}
+                    OR c.story_id IS NOT NULL
+                )
+            )
+        )
+    """
 
     async with database._require_pool().acquire() as connection:
         total = int(
@@ -388,17 +459,16 @@ async def list_character_directory(
                     FROM characters AS c
                     LEFT JOIN character_media AS cm ON cm.character_id = c.id
                     WHERE {category_condition}
-                      AND (
-                          $2::BOOLEAN = FALSE
-                          OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
-                      )
+                      AND {public_condition}
                       AND {universe_condition}
+                      AND {story_condition}
                     GROUP BY c.id
                 ) AS directory
                 """,
                 category,
                 public_only,
                 universe,
+                story_id,
             )
             or 0
         )
@@ -409,38 +479,43 @@ async def list_character_directory(
             SELECT
                 c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
                 c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
-                c.category, c.universe, c.prompt_post_url,
+                c.category, c.universe, c.prompt_post_url, c.story_id,
+                s.short_label AS story_short_label,
+                s.title AS story_title,
                 COUNT(cm.media_id) AS media_count
             FROM characters AS c
+            LEFT JOIN character_stories AS s ON s.id = c.story_id
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
             WHERE {category_condition}
-              AND (
-                  $2::BOOLEAN = FALSE
-                  OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
-              )
+              AND {public_condition}
               AND {universe_condition}
-            GROUP BY c.id
+              AND {story_condition}
+            GROUP BY c.id, s.id
             ORDER BY c.normalized_name ASC, c.id ASC
-            OFFSET $4
-            LIMIT $5
+            OFFSET $5
+            LIMIT $6
             """,
             category,
             public_only,
             universe,
+            story_id,
             normalized_page * safe_page_size,
             safe_page_size,
         )
 
-    items = [
-        CharacterDirectoryItem(
-            character=_row_to_character(row),
-            category=row["category"],
-            prompt_post_url=row["prompt_post_url"],
-            media_count=int(row["media_count"] or 0),
-            universe=row["universe"],
-        )
-        for row in rows
-    ]
+        selected_story = None
+        if story_id is not None:
+            selected_story = await connection.fetchrow(
+                """
+                SELECT id, short_label, title
+                FROM character_stories
+                WHERE id = $1 AND universe = $2
+                """,
+                story_id,
+                universe,
+            )
+
+    items = [_row_to_directory_item(row) for row in rows]
     return CharacterDirectoryPage(
         items=items,
         category=category,
@@ -448,4 +523,11 @@ async def list_character_directory(
         page_size=safe_page_size,
         total_characters=total,
         universe=universe,
+        story_id=story_id,
+        story_short_label=(
+            str(selected_story["short_label"]) if selected_story is not None else None
+        ),
+        story_title=(
+            str(selected_story["title"]) if selected_story is not None else None
+        ),
     )
