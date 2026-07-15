@@ -5,6 +5,7 @@ from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
+from velvet_bot.handlers.admin_uncategorized import router as admin_uncategorized_router
 from velvet_bot.handlers.archive import router as archive_router
 from velvet_bot.handlers.characters import router as characters_router
 from velvet_bot.handlers.guest_archive import router as guest_archive_router
@@ -51,6 +52,9 @@ async def handle_unhandled_error(
 router.include_router(start_router)
 router.include_router(public_notification_open_router)
 router.include_router(public_archive_router)
+# Must be before the general admin directory router so its focused callbacks
+# can render the category picker for the "Без категории" section.
+router.include_router(admin_uncategorized_router)
 router.include_router(admin_directory_router)
 router.include_router(characters_router)
 router.include_router(media_browser_router)
