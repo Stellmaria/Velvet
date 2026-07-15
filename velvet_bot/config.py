@@ -12,6 +12,7 @@ class Settings:
     database_url: str
     allowed_user_ids: frozenset[int]
     allowed_usernames: frozenset[str]
+    log_chat_id: int | None
 
 
 def _parse_allowed_user_ids(value: str) -> frozenset[int]:
@@ -35,6 +36,16 @@ def _parse_allowed_usernames(value: str) -> frozenset[str]:
         for item in value.split(",")
         if (username := normalize_username(item))
     )
+
+
+def _parse_optional_chat_id(value: str) -> int | None:
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    try:
+        return int(cleaned)
+    except ValueError as error:
+        raise RuntimeError("LOG_CHAT_ID должен быть числовым Telegram chat ID.") from error
 
 
 def load_settings() -> Settings:
@@ -68,9 +79,14 @@ def load_settings() -> Settings:
             "ALLOWED_USERNAMES в .env."
         )
 
+    log_chat_id = _parse_optional_chat_id(
+        os.getenv("LOG_CHAT_ID", "-5367533184")
+    )
+
     return Settings(
         bot_token=bot_token,
         database_url=database_url,
         allowed_user_ids=allowed_user_ids,
         allowed_usernames=allowed_usernames,
+        log_chat_id=log_chat_id,
     )
