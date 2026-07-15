@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import unicodedata
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
-import aiosqlite
+import asyncpg
 
+from velvet_bot.media import MediaDescriptor
 
 MAX_CHARACTER_NAME_LENGTH = 64
 
@@ -18,7 +18,16 @@ class Character:
     name: str
     created_by: int | None
     created_in_chat: int | None
-    created_at: str
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class SaveMediaResult:
+    character: Character
+    media_id: int
+    media_created: bool
+    character_link_created: bool
+    storage_file_name: str
 
 
 def clean_character_name(value: str) -> str:
@@ -39,55 +48,27 @@ def normalize_character_name(value: str) -> str:
 
 
 class Database:
-    def __init__(self, path: str | Path) -> None:
-        self.path = Path(path)
+    def __init__(self, database_url: str, *, migrations_path: Path | None = None) -> None:
+        self.database_url = database_url
+        self.migrations_path = (
+            migrations_path
+            or Path(__file__).resolve().parents[1] / "migrations"
+        )
+        self._pool: asyncpg.Pool | None = None
 
     async def initialize(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._pool = await asyncpg.create_pool(
+            dsn=self.database_url,
+            min_size=1,
+            max_size=10,
+            command_timeout=60,
+        )
+        await self._apply_migrations()
 
-        async with self._connect() as connection:
-            await connection.executescript(
-                """
-                PRAGMA journal_mode = WAL;
-                PRAGMA foreign_keys = ON;
-
-                CREATE TABLE IF NOT EXISTS characters (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    normalized_name TEXT NOT NULL UNIQUE,
-                    created_by INTEGER,
-                    created_in_chat INTEGER,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE IF NOT EXISTS media_files (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_file_id TEXT NOT NULL,
-                    telegram_file_unique_id TEXT NOT NULL UNIQUE,
-                    original_file_name TEXT,
-                    storage_file_name TEXT NOT NULL UNIQUE,
-                    media_type TEXT NOT NULL,
-                    file_size INTEGER,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE IF NOT EXISTS character_media (
-                    character_id INTEGER NOT NULL,
-                    media_id INTEGER NOT NULL,
-                    saved_by INTEGER,
-                    saved_in_chat INTEGER,
-                    source_message_id INTEGER,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (character_id, media_id),
-                    FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
-                    FOREIGN KEY (media_id) REFERENCES media_files(id) ON DELETE CASCADE
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_character_media_character
-                    ON character_media(character_id);
-                """
-            )
-            await connection.commit()
+    async def close(self) -> None:
+        if self._pool is not None:
+            await self._pool.close()
+            self._pool = None
 
     async def create_character(
         self,
@@ -99,26 +80,30 @@ class Database:
         display_name = clean_character_name(name)
         normalized_name = normalize_character_name(display_name)
 
-        async with self._connect() as connection:
-            cursor = await connection.execute(
+        async with self._require_pool().acquire() as connection:
+            row = await connection.fetchrow(
                 """
-                INSERT OR IGNORE INTO characters (
+                INSERT INTO characters (
                     name,
                     normalized_name,
                     created_by,
                     created_in_chat
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (normalized_name) DO NOTHING
+                RETURNING id, name, created_by, created_in_chat, created_at
                 """,
-                (display_name, normalized_name, created_by, created_in_chat),
+                display_name,
+                normalized_name,
+                created_by,
+                created_in_chat,
             )
-            await connection.commit()
-
-            created = cursor.rowcount == 1
-            row = await self._fetch_character_row(
-                connection,
-                normalized_name=normalized_name,
-            )
+            created = row is not None
+            if row is None:
+                row = await self._fetch_character_row(
+                    connection,
+                    normalized_name=normalized_name,
+                )
 
         if row is None:
             raise RuntimeError("Не удалось создать или получить профиль персонажа.")
@@ -127,75 +112,191 @@ class Database:
 
     async def get_character(self, name: str) -> Character | None:
         normalized_name = normalize_character_name(name)
-
-        async with self._connect() as connection:
+        async with self._require_pool().acquire() as connection:
             row = await self._fetch_character_row(
                 connection,
                 normalized_name=normalized_name,
             )
-
         return self._row_to_character(row) if row is not None else None
 
     async def list_characters(self, *, limit: int = 100) -> list[Character]:
         safe_limit = max(1, min(limit, 100))
-
-        async with self._connect() as connection:
-            cursor = await connection.execute(
+        async with self._require_pool().acquire() as connection:
+            rows = await connection.fetch(
                 """
                 SELECT id, name, created_by, created_in_chat, created_at
                 FROM characters
                 ORDER BY normalized_name
-                LIMIT ?
+                LIMIT $1
                 """,
-                (safe_limit,),
+                safe_limit,
             )
-            rows = await cursor.fetchall()
-
         return [self._row_to_character(row) for row in rows]
 
     async def count_character_media(self, character_id: int) -> int:
-        async with self._connect() as connection:
-            cursor = await connection.execute(
+        async with self._require_pool().acquire() as connection:
+            value = await connection.fetchval(
                 """
-                SELECT COUNT(*) AS media_count
+                SELECT COUNT(*)
                 FROM character_media
-                WHERE character_id = ?
+                WHERE character_id = $1
                 """,
-                (character_id,),
+                character_id,
             )
-            row = await cursor.fetchone()
+        return int(value or 0)
 
-        return int(row["media_count"]) if row is not None else 0
+    async def save_character_media(
+        self,
+        character: Character,
+        media: MediaDescriptor,
+        *,
+        saved_by: int | None,
+        saved_in_chat: int,
+        source_chat_id: int,
+        source_message_id: int,
+        source_thread_id: int | None,
+        command_message_id: int,
+    ) -> SaveMediaResult:
+        async with self._require_pool().acquire() as connection:
+            async with connection.transaction():
+                media_row = await connection.fetchrow(
+                    """
+                    INSERT INTO media_files (
+                        telegram_file_id,
+                        telegram_file_unique_id,
+                        original_file_name,
+                        storage_file_name,
+                        media_type,
+                        mime_type,
+                        file_size
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (telegram_file_unique_id) DO NOTHING
+                    RETURNING id, storage_file_name
+                    """,
+                    media.telegram_file_id,
+                    media.telegram_file_unique_id,
+                    media.original_file_name,
+                    media.storage_file_name,
+                    media.media_type,
+                    media.mime_type,
+                    media.file_size,
+                )
+                media_created = media_row is not None
 
-    @asynccontextmanager
-    async def _connect(self) -> AsyncIterator[aiosqlite.Connection]:
-        async with aiosqlite.connect(self.path) as connection:
-            connection.row_factory = aiosqlite.Row
-            await connection.execute("PRAGMA foreign_keys = ON")
-            yield connection
+                if media_row is None:
+                    media_row = await connection.fetchrow(
+                        """
+                        UPDATE media_files
+                        SET telegram_file_id = $2,
+                            original_file_name = COALESCE(original_file_name, $3),
+                            mime_type = COALESCE(mime_type, $4),
+                            file_size = COALESCE(file_size, $5)
+                        WHERE telegram_file_unique_id = $1
+                        RETURNING id, storage_file_name
+                        """,
+                        media.telegram_file_unique_id,
+                        media.telegram_file_id,
+                        media.original_file_name,
+                        media.mime_type,
+                        media.file_size,
+                    )
+
+                if media_row is None:
+                    raise RuntimeError("Не удалось сохранить данные изображения.")
+
+                link_row = await connection.fetchrow(
+                    """
+                    INSERT INTO character_media (
+                        character_id,
+                        media_id,
+                        saved_by,
+                        saved_in_chat,
+                        source_chat_id,
+                        source_message_id,
+                        source_thread_id,
+                        command_message_id
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    ON CONFLICT (character_id, media_id) DO NOTHING
+                    RETURNING character_id
+                    """,
+                    character.id,
+                    int(media_row["id"]),
+                    saved_by,
+                    saved_in_chat,
+                    source_chat_id,
+                    source_message_id,
+                    source_thread_id,
+                    command_message_id,
+                )
+
+        return SaveMediaResult(
+            character=character,
+            media_id=int(media_row["id"]),
+            media_created=media_created,
+            character_link_created=link_row is not None,
+            storage_file_name=str(media_row["storage_file_name"]),
+        )
+
+    async def _apply_migrations(self) -> None:
+        migration_files = sorted(self.migrations_path.glob("*.sql"))
+        if not migration_files:
+            raise RuntimeError(f"Не найдены SQL-миграции в {self.migrations_path}.")
+
+        async with self._require_pool().acquire() as connection:
+            await connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version TEXT PRIMARY KEY,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+
+            for migration_file in migration_files:
+                version = migration_file.name
+                already_applied = await connection.fetchval(
+                    "SELECT 1 FROM schema_migrations WHERE version = $1",
+                    version,
+                )
+                if already_applied:
+                    continue
+
+                sql = migration_file.read_text(encoding="utf-8")
+                async with connection.transaction():
+                    await connection.execute(sql)
+                    await connection.execute(
+                        "INSERT INTO schema_migrations (version) VALUES ($1)",
+                        version,
+                    )
+
+    def _require_pool(self) -> asyncpg.Pool:
+        if self._pool is None:
+            raise RuntimeError("Подключение к PostgreSQL ещё не инициализировано.")
+        return self._pool
 
     @staticmethod
     async def _fetch_character_row(
-        connection: aiosqlite.Connection,
+        connection: asyncpg.Connection,
         *,
         normalized_name: str,
-    ) -> aiosqlite.Row | None:
-        cursor = await connection.execute(
+    ) -> asyncpg.Record | None:
+        return await connection.fetchrow(
             """
             SELECT id, name, created_by, created_in_chat, created_at
             FROM characters
-            WHERE normalized_name = ?
+            WHERE normalized_name = $1
             """,
-            (normalized_name,),
+            normalized_name,
         )
-        return await cursor.fetchone()
 
     @staticmethod
-    def _row_to_character(row: aiosqlite.Row) -> Character:
+    def _row_to_character(row: asyncpg.Record) -> Character:
         return Character(
             id=int(row["id"]),
             name=str(row["name"]),
             created_by=row["created_by"],
             created_in_chat=row["created_in_chat"],
-            created_at=str(row["created_at"]),
+            created_at=row["created_at"],
         )
