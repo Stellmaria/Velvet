@@ -5,7 +5,7 @@ import logging
 import re
 from html import escape
 
-from aiogram import Router
+from aiogram import Bot, Router
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (
@@ -14,8 +14,8 @@ from aiogram.types import (
     Message,
 )
 
-from velvet_bot.database import Database
-from velvet_bot.media import extract_image
+from velvet_bot.database import Character, Database, SaveMediaResult
+from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -70,24 +70,80 @@ def _caller_user_id(message: Message) -> int | None:
     return caller.id if caller else None
 
 
+def _is_character_archive_source(message: Message, character: Character) -> bool:
+    return (
+        character.archive_chat_id is not None
+        and character.archive_thread_id is not None
+        and message.chat.id == character.archive_chat_id
+        and message.message_thread_id == character.archive_thread_id
+    )
+
+
+async def _place_media_in_character_topic(
+    *,
+    bot: Bot,
+    database: Database,
+    character: Character,
+    media: MediaDescriptor,
+    source_message: Message,
+    result: SaveMediaResult,
+) -> tuple[bool, str | None]:
+    if character.archive_chat_id is None or character.archive_thread_id is None:
+        return False, "У персонажа не назначена тема архива."
+
+    if _is_character_archive_source(source_message, character):
+        if result.archive_message_id is None:
+            await database.set_archive_message_id(
+                character.id,
+                result.media_id,
+                source_message.message_id,
+            )
+        return False, None
+
+    if result.archive_message_id is not None:
+        return False, None
+
+    try:
+        archived_message = await send_media_to_topic(
+            bot,
+            media,
+            chat_id=character.archive_chat_id,
+            thread_id=character.archive_thread_id,
+            caption=source_message.caption,
+        )
+        await database.set_archive_message_id(
+            character.id,
+            result.media_id,
+            archived_message.message_id,
+        )
+    except Exception as error:
+        logger.exception(
+            "Failed to send media to archive topic for character %s",
+            character.id,
+        )
+        return False, str(error)
+
+    return True, None
+
+
 async def _build_save_response(
     message: Message,
     character_name: str,
     database: Database,
+    bot: Bot,
 ) -> str:
     source_message = message.reply_to_message
     if source_message is None:
         return (
-            "Команда должна быть отправлена ответом на изображение.\n\n"
-            "Нажмите «Ответить» на фото или графический файл и снова "
-            "вызовите бота."
+            "Команда должна быть отправлена ответом на фото или видео.\n\n"
+            "Нажмите «Ответить» на медиафайл и снова вызовите бота."
         )
 
-    media = extract_image(source_message)
+    media = extract_media(source_message)
     if media is None:
         return (
-            "В сообщении, на которое вы ответили, нет поддерживаемого изображения.\n"
-            "Сейчас принимаются фотографии и изображения, отправленные как файл."
+            "В сообщении, на которое вы ответили, нет поддерживаемого медиафайла.\n"
+            "Сейчас принимаются фото, видео, анимации и изображения/видео как файл."
         )
 
     try:
@@ -99,9 +155,14 @@ async def _build_save_response(
         return (
             "Такой персонаж не найден.\n\n"
             "Сначала создайте профиль в чате с ботом: "
-            "<code>/create Каин</code>."
+            "<code>/create Имя ссылка_на_тему</code>."
         )
 
+    archive_message_id = (
+        source_message.message_id
+        if _is_character_archive_source(source_message, character)
+        else None
+    )
     result = await database.save_character_media(
         character,
         media,
@@ -111,28 +172,51 @@ async def _build_save_response(
         source_message_id=source_message.message_id,
         source_thread_id=source_message.message_thread_id,
         command_message_id=message.message_id,
+        archive_message_id=archive_message_id,
+    )
+
+    uploaded_to_topic, upload_error = await _place_media_in_character_topic(
+        bot=bot,
+        database=database,
+        character=character,
+        media=media,
+        source_message=source_message,
+        result=result,
     )
 
     safe_character_name = escape(character.name)
     safe_storage_name = escape(result.storage_file_name)
 
     if not result.character_link_created:
-        return (
-            "Это изображение уже находится в архиве персонажа "
-            f"<b>{safe_character_name}</b>.\n"
-            f"Файл: <code>{safe_storage_name}</code>"
-        )
-
-    if result.media_created:
-        status = "Новое изображение добавлено в архив."
+        status = "Этот медиафайл уже находится в архиве персонажа."
+    elif result.media_created:
+        status = "Новый медиафайл добавлен в архив."
     else:
-        status = "Изображение уже было в общем архиве и привязано к персонажу."
+        status = "Медиафайл уже был в общем архиве и привязан к персонажу."
 
-    return (
-        f"<b>{status}</b>\n\n"
-        f"Персонаж: <b>{safe_character_name}</b>\n"
-        f"Файл: <code>{safe_storage_name}</code>"
-    )
+    details = [
+        f"<b>{status}</b>",
+        "",
+        f"Персонаж: <b>{safe_character_name}</b>",
+        f"Файл: <code>{safe_storage_name}</code>",
+    ]
+
+    if uploaded_to_topic:
+        details.append("Тема: <b>копия отправлена</b>")
+    elif upload_error == "У персонажа не назначена тема архива.":
+        details.append(
+            "Тема: <b>не назначена</b>. Используйте "
+            "<code>/topic Имя ссылка</code>."
+        )
+    elif upload_error:
+        details.append(
+            "Тема: <b>не удалось отправить копию</b>\n"
+            f"<code>{escape(upload_error)}</code>"
+        )
+    elif character.archive_topic_url:
+        details.append("Тема: <b>медиа уже находится в архивной ветке</b>")
+
+    return "\n".join(details)
 
 
 async def _answer_guest_message(message: Message, text: str) -> None:
@@ -157,28 +241,34 @@ async def _answer_guest_message(message: Message, text: str) -> None:
 
 
 @router.message(Command("save"))
-async def handle_save_image(
+async def handle_save_media(
     message: Message,
     command: CommandObject,
     database: Database,
+    bot: Bot,
 ) -> None:
     if not command.args:
         await message.answer(
             "Укажите имя персонажа после команды.\n\n"
-            "Ответьте на изображение командой "
-            "<code>/save Каин</code>."
+            "Ответьте на фото или видео командой <code>/save Аид</code>."
         )
         return
 
-    response = await _build_save_response(message, command.args, database)
+    response = await _build_save_response(
+        message,
+        command.args,
+        database,
+        bot,
+    )
     await message.answer(response)
 
 
 @router.guest_message()
-async def handle_guest_save_image(
+async def handle_guest_save_media(
     message: Message,
     database: Database,
     bot_username: str,
+    bot: Bot,
 ) -> None:
     request_text = message.text or message.caption or ""
     character_name = parse_guest_save_character(request_text, bot_username)
@@ -188,10 +278,8 @@ async def handle_guest_save_image(
         await _answer_guest_message(
             message,
             "Не удалось распознать команду сохранения.\n\n"
-            "Ответьте на изображение и отправьте:\n"
-            f"<code>@{safe_username} save Каин</code>\n"
-            "или\n"
-            f"<code>/save@{safe_username} Каин</code>",
+            "Ответьте на фото или видео и отправьте:\n"
+            f"<code>@{safe_username} save Аид</code>",
         )
         return
 
@@ -200,12 +288,62 @@ async def handle_guest_save_image(
             message,
             character_name,
             database,
+            bot,
         )
     except Exception:
-        logger.exception("Guest image save failed")
+        logger.exception("Guest media save failed")
         response = (
-            "Не удалось сохранить изображение из-за внутренней ошибки. "
+            "Не удалось сохранить медиафайл из-за внутренней ошибки. "
             "Проверьте подключение к базе и журнал бота."
         )
 
     await _answer_guest_message(message, response)
+
+
+@router.message()
+async def handle_new_archive_topic_media(
+    message: Message,
+    database: Database,
+    bot: Bot,
+) -> None:
+    if message.message_thread_id is None:
+        return
+
+    bot_info = await bot.get_me()
+    if message.from_user and message.from_user.id == bot_info.id:
+        return
+
+    media = extract_media(message)
+    if media is None:
+        return
+
+    character = await database.get_character_by_archive_topic(
+        message.chat.id,
+        message.message_thread_id,
+    )
+    if character is None:
+        return
+
+    try:
+        await database.save_character_media(
+            character,
+            media,
+            saved_by=message.from_user.id if message.from_user else None,
+            saved_in_chat=message.chat.id,
+            source_chat_id=message.chat.id,
+            source_message_id=message.message_id,
+            source_thread_id=message.message_thread_id,
+            command_message_id=None,
+            archive_message_id=message.message_id,
+        )
+        logger.info(
+            "Automatically archived topic media for character %s from %s/%s",
+            character.id,
+            message.chat.id,
+            message.message_thread_id,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to automatically archive topic media for character %s",
+            character.id,
+        )
