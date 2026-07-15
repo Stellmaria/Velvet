@@ -158,8 +158,10 @@ async def send_media_to_topic(
     *,
     chat_id: int,
     thread_id: int,
+    caption: str | None = None,
 ) -> Message:
     """Place only the media itself in a topic, without captions or service text."""
+    del caption
     common = {
         "chat_id": chat_id,
         "message_thread_id": thread_id,
