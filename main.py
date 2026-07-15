@@ -13,7 +13,7 @@ from velvet_bot.handlers import router
 
 async def main() -> None:
     settings = load_settings()
-    database = Database(settings.database_path)
+    database = Database(settings.database_url)
     await database.initialize()
 
     bot = Bot(
@@ -29,13 +29,18 @@ async def main() -> None:
             BotCommand(command="create", description="Создать персонажа"),
             BotCommand(command="characters", description="Список персонажей"),
             BotCommand(command="character", description="Профиль персонажа"),
+            BotCommand(command="save", description="Сохранить изображение персонажа"),
         ]
     )
 
     try:
-        await dispatcher.start_polling(bot)
+        await dispatcher.start_polling(
+            bot,
+            allowed_updates=dispatcher.resolve_used_update_types(),
+        )
     finally:
         await bot.session.close()
+        await database.close()
 
 
 if __name__ == "__main__":
