@@ -5,6 +5,7 @@ from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
+from velvet_bot.handlers.admin_media_display import router as admin_media_display_router
 from velvet_bot.handlers.admin_media_spoiler import router as admin_media_spoiler_router
 from velvet_bot.handlers.admin_stories import router as admin_stories_router
 from velvet_bot.handlers.admin_uncategorized import router as admin_uncategorized_router
@@ -59,16 +60,13 @@ async def handle_unhandled_error(
 
 
 router.include_router(start_router)
-# Spoiler-aware display must intercept public open/show callbacks first.
 router.include_router(public_media_display_router)
 router.include_router(public_manager_router)
 router.include_router(public_notification_open_router)
 router.include_router(public_archive_router)
-# Must be before the general admin directory and media browser routers.
 router.include_router(media_prompt_binding_router)
 router.include_router(admin_media_spoiler_router)
-# Focused story and category callbacks must be handled before the general
-# directory router, which owns the same callback-data type.
+router.include_router(admin_media_display_router)
 router.include_router(admin_stories_router)
 router.include_router(admin_universe_story_flow_router)
 router.include_router(admin_uncategorized_router)
