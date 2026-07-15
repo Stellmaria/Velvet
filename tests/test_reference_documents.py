@@ -2,7 +2,10 @@ import unittest
 
 from aiogram.types import Document
 
-from velvet_bot.handlers.reference_albums import chunk_references
+from velvet_bot.handlers.reference_albums import (
+    chunk_references,
+    parse_reference_selector,
+)
 from velvet_bot.reference_media import (
     MAX_REFERENCE_DOCUMENT_BYTES,
     validate_reference_document,
@@ -55,6 +58,26 @@ class ReferenceAlbumBatchTests(unittest.TestCase):
     def test_telegram_album_limit_is_respected(self) -> None:
         batches = chunk_references(list(range(12)))
         self.assertEqual([10, 2], [len(batch) for batch in batches])
+
+
+class ReferenceSelectorTests(unittest.TestCase):
+    def test_plain_reference_number(self) -> None:
+        self.assertEqual(("Аид", 2), parse_reference_selector("Аид 2"))
+
+    def test_hash_reference_number(self) -> None:
+        self.assertEqual(("Аид", 1), parse_reference_selector("Аид #1"))
+
+    def test_character_name_with_spaces(self) -> None:
+        self.assertEqual(
+            ("Темный Аид", 3),
+            parse_reference_selector("Темный Аид 3"),
+        )
+
+    def test_request_without_number_keeps_full_name(self) -> None:
+        self.assertEqual(
+            ("Темный Аид", None),
+            parse_reference_selector("Темный Аид"),
+        )
 
 
 if __name__ == "__main__":
