@@ -61,6 +61,17 @@ class ArchiveBrowserUiTests(unittest.TestCase):
         self.assertEqual(2, previous.offset)
         self.assertEqual(1, following.offset)
 
+    def test_single_item_has_no_redundant_arrows(self) -> None:
+        page = ArchivePage(
+            character=self.character,
+            media=self.media,
+            offset=0,
+            total=1,
+        )
+        keyboard = build_archive_navigation(page)
+        self.assertEqual(1, len(keyboard.inline_keyboard[0]))
+        self.assertEqual("1 / 1", keyboard.inline_keyboard[0][0].text)
+
     def test_document_stays_document_in_browser(self) -> None:
         result = build_input_media(self.media, "caption")
         self.assertIsInstance(result, InputMediaDocument)
