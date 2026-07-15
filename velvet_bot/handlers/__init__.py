@@ -13,6 +13,7 @@ from velvet_bot.handlers.admin_universe_story_flow import (
     router as admin_universe_story_flow_router,
 )
 from velvet_bot.handlers.archive import router as archive_router
+from velvet_bot.handlers.channel_analytics import router as channel_analytics_router
 from velvet_bot.handlers.characters import router as characters_router
 from velvet_bot.handlers.guest_archive import router as guest_archive_router
 from velvet_bot.handlers.inline_help import router as inline_help_router
@@ -59,6 +60,7 @@ async def handle_unhandled_error(
     return True
 
 
+router.include_router(channel_analytics_router)
 router.include_router(start_router)
 router.include_router(public_media_display_router)
 router.include_router(public_manager_router)
