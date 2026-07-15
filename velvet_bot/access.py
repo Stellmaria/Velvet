@@ -1,0 +1,100 @@
+from __future__ import annotations
+
+import hashlib
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
+
+from aiogram import BaseMiddleware
+from aiogram.enums import ChatType, ParseMode
+from aiogram.types import (
+    InlineQueryResultArticle,
+    InputTextMessageContent,
+    Message,
+    TelegramObject,
+    User,
+)
+
+ACCESS_DENIED_TEXT = (
+    "<b>Доступ закрыт</b>\n\n"
+    "Velvet Archive работает в частном режиме и доступен только владельцу."
+)
+
+
+def normalize_username(value: str) -> str:
+    return value.strip().lstrip("@").casefold()
+
+
+@dataclass(frozen=True, slots=True)
+class AccessPolicy:
+    allowed_user_ids: frozenset[int]
+    allowed_usernames: frozenset[str]
+
+    def allows_user(self, user: User | None) -> bool:
+        if user is None:
+            return False
+
+        if user.id in self.allowed_user_ids:
+            return True
+
+        username = normalize_username(user.username or "")
+        return bool(username and username in self.allowed_usernames)
+
+
+def get_caller_user(message: Message) -> User | None:
+    return message.guest_bot_caller_user or message.from_user
+
+
+def message_requires_owner_access(message: Message) -> bool:
+    """Protect commands and private/guest interactions without blocking topic ingestion."""
+    if message.guest_query_id:
+        return True
+
+    if message.chat.type == ChatType.PRIVATE:
+        return True
+
+    text = message.text or message.caption or ""
+    return text.lstrip().startswith("/")
+
+
+async def answer_access_denied(message: Message) -> None:
+    if message.guest_query_id:
+        result_id = hashlib.sha256(
+            f"access-denied:{message.guest_query_id}".encode("utf-8")
+        ).hexdigest()[:32]
+        await message.answer_guest_query(
+            InlineQueryResultArticle(
+                id=result_id,
+                title="Velvet Archive",
+                input_message_content=InputTextMessageContent(
+                    message_text=ACCESS_DENIED_TEXT,
+                    parse_mode=ParseMode.HTML,
+                ),
+            )
+        )
+        return
+
+    await message.answer(ACCESS_DENIED_TEXT)
+
+
+class OwnerAccessMiddleware(BaseMiddleware):
+    def __init__(self, policy: AccessPolicy) -> None:
+        self.policy = policy
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        if not isinstance(event, Message):
+            return await handler(event, data)
+
+        if not message_requires_owner_access(event):
+            return await handler(event, data)
+
+        if self.policy.allows_user(get_caller_user(event)):
+            return await handler(event, data)
+
+        await answer_access_denied(event)
+        return None
