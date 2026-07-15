@@ -78,6 +78,7 @@ async def main() -> None:
                 BotCommand(command="refadd", description="Добавить референсы персонажа"),
                 BotCommand(command="refdone", description="Завершить загрузку референсов"),
                 BotCommand(command="refs", description="Показать референсы персонажа"),
+                BotCommand(command="refdel", description="Удалить референс по номеру"),
             ]
         )
 

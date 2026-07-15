@@ -73,6 +73,15 @@ class AccessPolicyTests(unittest.TestCase):
             is_save_mention_text("save Аид @dominusVelvetbot", username)
         )
 
+    def test_reference_add_mention_is_owner_only(self) -> None:
+        username = "dominusVelvetbot"
+        self.assertTrue(
+            is_save_mention_text("@dominusVelvetbot refadd Аид", username)
+        )
+        self.assertTrue(
+            is_save_mention_text("refadd Аид @dominusVelvetbot", username)
+        )
+
     def test_other_bot_mention_is_not_treated_as_ours(self) -> None:
         self.assertFalse(
             is_save_mention_text(

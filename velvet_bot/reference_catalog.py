@@ -33,6 +33,22 @@ class AddReferenceResult:
     total: int
 
 
+@dataclass(frozen=True, slots=True)
+class DeleteReferenceResult:
+    reference: CharacterReference | None
+    total: int
+
+
+_REFERENCE_SELECT = """
+    id AS reference_id,
+    character_id,
+    telegram_file_id,
+    telegram_file_unique_id,
+    added_by,
+    created_at AS reference_created_at
+"""
+
+
 def _row_to_character(row) -> Character:
     return Character(
         id=int(row["character_id"]),
@@ -67,7 +83,7 @@ async def add_character_reference(
     async with database._require_pool().acquire() as connection:
         async with connection.transaction():
             row = await connection.fetchrow(
-                """
+                f"""
                 INSERT INTO character_references (
                     character_id,
                     telegram_file_id,
@@ -76,13 +92,7 @@ async def add_character_reference(
                 )
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (character_id, telegram_file_unique_id) DO NOTHING
-                RETURNING
-                    id AS reference_id,
-                    character_id,
-                    telegram_file_id,
-                    telegram_file_unique_id,
-                    added_by,
-                    created_at AS reference_created_at
+                RETURNING {_REFERENCE_SELECT}
                 """,
                 character.id,
                 photo.file_id,
@@ -92,18 +102,12 @@ async def add_character_reference(
             created = row is not None
             if row is None:
                 row = await connection.fetchrow(
-                    """
+                    f"""
                     UPDATE character_references
                     SET telegram_file_id = $3
                     WHERE character_id = $1
                       AND telegram_file_unique_id = $2
-                    RETURNING
-                        id AS reference_id,
-                        character_id,
-                        telegram_file_id,
-                        telegram_file_unique_id,
-                        added_by,
-                        created_at AS reference_created_at
+                    RETURNING {_REFERENCE_SELECT}
                     """,
                     character.id,
                     photo.file_unique_id,
@@ -127,6 +131,38 @@ async def add_character_reference(
     )
 
 
+async def delete_character_reference(
+    database: Database,
+    character_id: int,
+    reference_id: int,
+) -> DeleteReferenceResult:
+    """Delete one exact reference and return the remaining count."""
+    async with database._require_pool().acquire() as connection:
+        async with connection.transaction():
+            row = await connection.fetchrow(
+                f"""
+                DELETE FROM character_references
+                WHERE id = $1
+                  AND character_id = $2
+                RETURNING {_REFERENCE_SELECT}
+                """,
+                reference_id,
+                character_id,
+            )
+            total = int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM character_references WHERE character_id = $1",
+                    character_id,
+                )
+                or 0
+            )
+
+    return DeleteReferenceResult(
+        reference=_row_to_reference(row) if row is not None else None,
+        total=total,
+    )
+
+
 async def count_character_references(database: Database, character_id: int) -> int:
     async with database._require_pool().acquire() as connection:
         value = await connection.fetchval(
@@ -145,14 +181,8 @@ async def list_character_references(
     safe_limit = max(1, min(limit, 50))
     async with database._require_pool().acquire() as connection:
         rows = await connection.fetch(
-            """
-            SELECT
-                id AS reference_id,
-                character_id,
-                telegram_file_id,
-                telegram_file_unique_id,
-                added_by,
-                created_at AS reference_created_at
+            f"""
+            SELECT {_REFERENCE_SELECT}
             FROM character_references
             WHERE character_id = $1
             ORDER BY created_at, id
@@ -208,14 +238,8 @@ async def get_reference_page(
 
         normalized_offset = safe_offset % total
         reference_row = await connection.fetchrow(
-            """
-            SELECT
-                id AS reference_id,
-                character_id,
-                telegram_file_id,
-                telegram_file_unique_id,
-                added_by,
-                created_at AS reference_created_at
+            f"""
+            SELECT {_REFERENCE_SELECT}
             FROM character_references
             WHERE character_id = $1
             ORDER BY created_at, id
