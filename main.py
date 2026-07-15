@@ -41,20 +41,20 @@ async def main() -> None:
             allowed_usernames=settings.allowed_usernames,
         )
         access_middleware = OwnerAccessMiddleware(access_policy)
-        router.message.outer_middleware(access_middleware)
-        router.guest_message.outer_middleware(access_middleware)
+
+        dispatcher = Dispatcher(
+            database=database,
+            bot_username=bot_username,
+        )
+        dispatcher.message.outer_middleware(access_middleware)
+        dispatcher.guest_message.outer_middleware(access_middleware)
+        dispatcher.include_router(router)
 
         logger.info(
             "Owner access enabled for ids=%s usernames=%s",
             sorted(settings.allowed_user_ids),
             sorted(settings.allowed_usernames),
         )
-
-        dispatcher = Dispatcher(
-            database=database,
-            bot_username=bot_username,
-        )
-        dispatcher.include_router(router)
 
         await bot.set_my_commands(
             [
