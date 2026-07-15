@@ -7,18 +7,15 @@ from aiogram import Bot, Router
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command
-from aiogram.types import (
-    BufferedInputFile,
-    CallbackQuery,
-    InputMediaPhoto,
-    Message,
-)
+from aiogram.types import BufferedInputFile, CallbackQuery, InputMediaPhoto, Message
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia, get_archive_page
 from velvet_bot.archive_ui import build_input_media
+from velvet_bot.character_directory import get_character_directory_item
 from velvet_bot.database import Database
 from velvet_bot.public_catalog import (
     get_public_media_state,
+    list_public_categories,
     list_public_characters,
     toggle_character_subscription,
     toggle_public_like,
@@ -27,8 +24,10 @@ from velvet_bot.public_ui import (
     PUBLIC_DOWNLOAD_USER_ID,
     PublicArchiveCallback,
     build_public_archive_keyboard,
+    build_public_category_menu,
     build_public_character_menu,
     format_public_archive_caption,
+    format_public_categories,
     format_public_menu,
 )
 
@@ -36,23 +35,13 @@ router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
 
-async def _download_image_for_preview(
-    bot: Bot,
-    media: ArchivedMedia,
-) -> BufferedInputFile:
+async def _download_image_for_preview(bot: Bot, media: ArchivedMedia) -> BufferedInputFile:
     destination = io.BytesIO()
     await bot.download(media.telegram_file_id, destination=destination, seek=True)
-    return BufferedInputFile(
-        destination.getvalue(),
-        filename=media.display_file_name,
-    )
+    return BufferedInputFile(destination.getvalue(), filename=media.display_file_name)
 
 
-async def _load_state(
-    database: Database,
-    page: ArchivePage,
-    user_id: int,
-):
+async def _load_state(database: Database, page: ArchivePage, user_id: int):
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
     return await get_public_media_state(
@@ -63,22 +52,19 @@ async def _load_state(
     )
 
 
-async def _build_public_input_media(
-    bot: Bot,
-    page: ArchivePage,
-    state,
-):
+async def _load_prompt_url(database: Database, character_id: int) -> str | None:
+    item = await get_character_directory_item(database, character_id)
+    return item.prompt_post_url if item else None
+
+
+async def _build_public_input_media(bot: Bot, page: ArchivePage, state):
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
     caption = format_public_archive_caption(page, state)
     if page.media.is_image_document:
         try:
             upload = await _download_image_for_preview(bot, page.media)
-            return InputMediaPhoto(
-                media=upload,
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-            )
+            return InputMediaPhoto(media=upload, caption=caption, parse_mode=ParseMode.HTML)
         except Exception:
             logger.exception("Failed to build public image-document preview")
     return build_input_media(page.media, caption)
@@ -92,23 +78,23 @@ async def _send_public_archive_page(
     page: ArchivePage,
     viewer_user_id: int,
     menu_page: int,
+    category: str = "",
 ) -> Message:
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
 
     state = await _load_state(database, page, viewer_user_id)
+    prompt_url = await _load_prompt_url(database, page.character.id)
     caption = format_public_archive_caption(page, state)
     keyboard = build_public_archive_keyboard(
         page,
         state,
         viewer_user_id=viewer_user_id,
         menu_page=menu_page,
+        category=category,
+        prompt_post_url=prompt_url,
     )
-    common = {
-        "chat_id": chat_id,
-        "caption": caption,
-        "reply_markup": keyboard,
-    }
+    common = {"chat_id": chat_id, "caption": caption, "reply_markup": keyboard}
 
     if page.media.media_type == "photo":
         return await bot.send_photo(photo=page.media.telegram_file_id, **common)
@@ -134,18 +120,22 @@ async def _replace_public_archive_page(
     database: Database,
     page: ArchivePage,
     menu_page: int,
+    category: str,
 ) -> None:
     if page.media is None or not isinstance(callback.message, Message):
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
 
     state = await _load_state(database, page, callback.from_user.id)
+    prompt_url = await _load_prompt_url(database, page.character.id)
     media = await _build_public_input_media(bot, page, state)
     keyboard = build_public_archive_keyboard(
         page,
         state,
         viewer_user_id=callback.from_user.id,
         menu_page=menu_page,
+        category=category,
+        prompt_post_url=prompt_url,
     )
     try:
         await callback.message.edit_media(media=media, reply_markup=keyboard)
@@ -158,6 +148,7 @@ async def _replace_public_archive_page(
             page=page,
             viewer_user_id=callback.from_user.id,
             menu_page=menu_page,
+            category=category,
         )
         try:
             await callback.message.delete()
@@ -166,14 +157,40 @@ async def _replace_public_archive_page(
     await callback.answer()
 
 
+async def _send_category_menu(*, bot: Bot, database: Database, chat_id: int) -> Message:
+    summaries = await list_public_categories(database)
+    return await bot.send_message(
+        chat_id=chat_id,
+        text=format_public_categories(summaries),
+        reply_markup=build_public_category_menu(summaries),
+    )
+
+
+async def _edit_category_menu(callback: CallbackQuery, database: Database) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    summaries = await list_public_categories(database)
+    try:
+        await callback.message.edit_text(
+            text=format_public_categories(summaries),
+            reply_markup=build_public_category_menu(summaries),
+        )
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error).casefold():
+            raise
+    await callback.answer()
+
+
 async def _send_public_menu(
     *,
     bot: Bot,
     database: Database,
     chat_id: int,
+    category: str,
     page_number: int,
 ) -> Message:
-    page = await list_public_characters(database, page=page_number)
+    page = await list_public_characters(database, category=category, page=page_number)
     return await bot.send_message(
         chat_id=chat_id,
         text=format_public_menu(page),
@@ -184,12 +201,13 @@ async def _send_public_menu(
 async def _edit_public_menu(
     callback: CallbackQuery,
     database: Database,
+    category: str,
     page_number: int,
 ) -> None:
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
-    page = await list_public_characters(database, page=page_number)
+    page = await list_public_characters(database, category=category, page=page_number)
     try:
         await callback.message.edit_text(
             text=format_public_menu(page),
@@ -201,19 +219,13 @@ async def _edit_public_menu(
     await callback.answer()
 
 
-async def _send_as_document(
-    *,
-    bot: Bot,
-    media: ArchivedMedia,
-    chat_id: int,
-) -> Message:
+async def _send_as_document(*, bot: Bot, media: ArchivedMedia, chat_id: int) -> Message:
     if media.media_type == "document":
         return await bot.send_document(
             chat_id=chat_id,
             document=media.telegram_file_id,
             caption="Файл из Velvet Archive",
         )
-
     destination = io.BytesIO()
     await bot.download(media.telegram_file_id, destination=destination, seek=True)
     payload = destination.getvalue()
@@ -226,18 +238,16 @@ async def _send_as_document(
     )
 
 
-def _page_matches_callback(page: ArchivePage, callback_data: PublicArchiveCallback) -> bool:
-    if page.media is None:
-        return False
-    return callback_data.media_id == 0 or page.media.id == callback_data.media_id
+def _page_matches_callback(page: ArchivePage, data: PublicArchiveCallback) -> bool:
+    return bool(page.media and (data.media_id == 0 or page.media.id == data.media_id))
 
 
 @router.message(Command("archive", "gallery", "menu"))
 async def handle_public_archive_menu(message: Message, database: Database) -> None:
-    page = await list_public_characters(database, page=0)
+    summaries = await list_public_categories(database)
     await message.answer(
-        format_public_menu(page),
-        reply_markup=build_public_character_menu(page),
+        format_public_categories(summaries),
+        reply_markup=build_public_category_menu(summaries),
     )
 
 
@@ -249,11 +259,9 @@ async def handle_public_archive_callback(
     bot: Bot,
 ) -> None:
     action = callback_data.action
-
     if action == "noop":
         await callback.answer()
         return
-
     if action == "close":
         if isinstance(callback.message, Message):
             try:
@@ -262,15 +270,24 @@ async def handle_public_archive_callback(
                 pass
         await callback.answer()
         return
-
-    if action == "menu":
+    if action == "categories":
         try:
-            await _edit_public_menu(callback, database, callback_data.page)
-        except Exception:
-            logger.exception("Failed to render public character menu")
-            await callback.answer("Не удалось обновить меню.", show_alert=True)
+            await _edit_category_menu(callback, database)
+        except TelegramBadRequest:
+            if isinstance(callback.message, Message):
+                await _send_category_menu(
+                    bot=bot, database=database, chat_id=callback.message.chat.id
+                )
+                await callback.answer()
         return
-
+    if action == "menu":
+        if not callback_data.category:
+            await callback.answer("Категория не выбрана.", show_alert=True)
+            return
+        await _edit_public_menu(
+            callback, database, callback_data.category, callback_data.page
+        )
+        return
     if action == "back":
         if not isinstance(callback.message, Message):
             await callback.answer("Сообщение больше недоступно.", show_alert=True)
@@ -280,19 +297,21 @@ async def handle_public_archive_callback(
             await callback.message.delete()
         except TelegramBadRequest:
             pass
-        await _send_public_menu(
-            bot=bot,
-            database=database,
-            chat_id=chat_id,
-            page_number=callback_data.page,
-        )
+        if callback_data.category:
+            await _send_public_menu(
+                bot=bot,
+                database=database,
+                chat_id=chat_id,
+                category=callback_data.category,
+                page_number=callback_data.page,
+            )
+        else:
+            await _send_category_menu(bot=bot, database=database, chat_id=chat_id)
         await callback.answer()
         return
 
     page = await get_archive_page(
-        database,
-        callback_data.character_id,
-        callback_data.offset,
+        database, callback_data.character_id, callback_data.offset
     )
     if page is None:
         await callback.answer("Персонаж больше не найден.", show_alert=True)
@@ -313,12 +332,12 @@ async def handle_public_archive_callback(
                 page=page,
                 viewer_user_id=callback.from_user.id,
                 menu_page=callback_data.page,
+                category=callback_data.category,
             )
         except TelegramBadRequest:
             logger.exception("Failed to open public archive item")
             await callback.answer(
-                "Telegram больше не может открыть этот материал.",
-                show_alert=True,
+                "Telegram больше не может открыть этот материал.", show_alert=True
             )
             return
         await callback.answer()
@@ -331,13 +350,13 @@ async def handle_public_archive_callback(
             database=database,
             page=page,
             menu_page=callback_data.page,
+            category=callback_data.category,
         )
         return
 
     if not _page_matches_callback(page, callback_data):
         await callback.answer(
-            "Архив изменился. Откройте материал заново.",
-            show_alert=True,
+            "Архив изменился. Откройте материал заново.", show_alert=True
         )
         return
 
@@ -350,11 +369,14 @@ async def handle_public_archive_callback(
                 user_id=callback.from_user.id,
             )
             state = await _load_state(database, page, callback.from_user.id)
+            prompt_url = await _load_prompt_url(database, page.character.id)
             keyboard = build_public_archive_keyboard(
                 page,
                 state,
                 viewer_user_id=callback.from_user.id,
                 menu_page=callback_data.page,
+                category=callback_data.category,
+                prompt_post_url=prompt_url,
             )
             if isinstance(callback.message, Message):
                 await callback.message.edit_caption(
@@ -376,11 +398,14 @@ async def handle_public_archive_callback(
                 user_id=callback.from_user.id,
             )
             state = await _load_state(database, page, callback.from_user.id)
+            prompt_url = await _load_prompt_url(database, page.character.id)
             keyboard = build_public_archive_keyboard(
                 page,
                 state,
                 viewer_user_id=callback.from_user.id,
                 menu_page=callback_data.page,
+                category=callback_data.category,
+                prompt_post_url=prompt_url,
             )
             if isinstance(callback.message, Message):
                 await callback.message.edit_reply_markup(reply_markup=keyboard)
@@ -401,9 +426,7 @@ async def handle_public_archive_callback(
             return
         try:
             await _send_as_document(
-                bot=bot,
-                media=page.media,
-                chat_id=PUBLIC_DOWNLOAD_USER_ID,
+                bot=bot, media=page.media, chat_id=PUBLIC_DOWNLOAD_USER_ID
             )
             await callback.answer("Файл отправлен в личный чат.")
         except Exception:
