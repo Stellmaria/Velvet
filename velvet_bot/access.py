@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -29,6 +30,27 @@ ACCESS_DENIED_CALLBACK_TEXT = "Доступ к Velvet Archive закрыт."
 
 def normalize_username(value: str) -> str:
     return value.strip().lstrip("@").casefold()
+
+
+def is_save_mention_text(text: str, bot_username: str) -> bool:
+    """Return True for supported save mentions without confusing inline mode."""
+    expected = normalize_username(bot_username)
+    cleaned = " ".join(text.split())
+    if not expected or not cleaned:
+        return False
+
+    escaped = re.escape(expected)
+    return bool(
+        re.fullmatch(
+            rf"(?:"
+            rf"@{escaped}\s+/?save\s+.+|"
+            rf"/?save\s+@{escaped}\s+.+|"
+            rf"/?save\s+.+\s+@{escaped}"
+            rf")",
+            cleaned,
+            re.IGNORECASE,
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,11 +89,7 @@ def message_requires_owner_access(
     if stripped.startswith("/"):
         return True
 
-    expected = bot_username.strip().lstrip("@").casefold()
-    return bool(
-        expected
-        and stripped.casefold().startswith(f"@{expected} ")
-    )
+    return is_save_mention_text(stripped, bot_username)
 
 
 async def answer_access_denied(message: Message) -> None:
