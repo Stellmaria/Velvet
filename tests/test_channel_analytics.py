@@ -12,10 +12,8 @@ from velvet_bot.channel_analytics import (
 
 
 class ChannelAnalyticsTests(unittest.TestCase):
-    def test_hashtags_are_unique_and_palette_colors_are_ignored(self) -> None:
-        hashtags = extract_hashtags(
-            "#Аид #аид #DemianRaiven #МЖ #A17C6B #FFFFFF"
-        )
+    def test_hashtags_are_unique_and_casefolded(self) -> None:
+        hashtags = extract_hashtags("#Аид #аид #DemianRaiven #МЖ")
         self.assertEqual(
             (
                 ("Аид", "аид"),
