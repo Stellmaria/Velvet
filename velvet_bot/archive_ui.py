@@ -53,6 +53,26 @@ def build_character_archive_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def build_character_list_keyboard(
+    characters: list[Character],
+) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"🖼 {character.name}",
+                    callback_data=ArchiveMediaCallback(
+                        action="open",
+                        character_id=character.id,
+                        offset=0,
+                    ).pack(),
+                )
+            ]
+            for character in characters
+        ]
+    )
+
+
 def build_archive_navigation(page: ArchivePage) -> InlineKeyboardMarkup:
     if page.total <= 0:
         return InlineKeyboardMarkup(inline_keyboard=[])
