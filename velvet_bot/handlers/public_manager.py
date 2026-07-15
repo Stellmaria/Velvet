@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import io
 import logging
 from html import escape
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
+from velvet_bot.access import AccessPolicy
 from velvet_bot.archive_catalog import (
+    ArchivedMedia,
     delete_archive_item,
     get_archive_page,
     toggle_archive_media_spoiler,
@@ -24,17 +27,19 @@ from velvet_bot.character_directory import (
     set_character_universe,
 )
 from velvet_bot.database import Database
+from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_archive_display import (
     refresh_viewer_archive_caption,
     replace_viewer_archive_page,
 )
+from velvet_bot.public_manager_access import has_public_manager_access
 from velvet_bot.public_manager_ui import (
     build_manager_category_picker,
     build_manager_delete_confirmation,
     build_manager_story_picker,
     build_manager_universe_picker,
 )
-from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID, PublicArchiveCallback
+from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.story_catalog import (
     list_story_page,
     set_character_story,
@@ -44,9 +49,33 @@ from velvet_bot.story_catalog import (
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 _ACTIONS = {
-    "pback", "psp", "pcats", "pcat", "punis", "puni",
+    "download", "pback", "psp", "pcats", "pcat", "punis", "puni",
     "psts", "pstp", "pst", "pdel", "pdelok", "pdelno", "pnoop",
 }
+
+
+async def _send_as_document(
+    *,
+    bot: Bot,
+    media: ArchivedMedia,
+    chat_id: int,
+) -> Message:
+    if media.media_type == "document":
+        return await bot.send_document(
+            chat_id=chat_id,
+            document=media.telegram_file_id,
+            caption="Оригинал из Velvet Archive",
+        )
+    destination = io.BytesIO()
+    await bot.download(media.telegram_file_id, destination=destination, seek=True)
+    payload = destination.getvalue()
+    if not payload:
+        raise RuntimeError("Telegram вернул пустой файл.")
+    return await bot.send_document(
+        chat_id=chat_id,
+        document=BufferedInputFile(payload, filename=media.display_file_name),
+        caption="Оригинал из Velvet Archive",
+    )
 
 
 async def _show_story_picker(
@@ -90,7 +119,6 @@ async def _show_story_picker(
 
 
 @router.callback_query(
-    F.from_user.id == PUBLIC_DOWNLOAD_USER_ID,
     PublicArchiveCallback.filter(F.action.in_(_ACTIONS)),
 )
 async def handle_public_manager(
@@ -98,8 +126,14 @@ async def handle_public_manager(
     callback_data: PublicArchiveCallback,
     database: Database,
     bot: Bot,
+    access_policy: AccessPolicy,
     audit_logger: TelegramAuditLogger | None = None,
 ) -> None:
+    if not has_public_manager_access(callback.from_user, access_policy):
+        await callback.answer("Управление архивом для вас закрыто.", show_alert=True)
+        return
+
+    viewer_user_id = callback.from_user.id
     action = callback_data.action
     if action == "pnoop":
         await callback.answer()
@@ -114,12 +148,28 @@ async def handle_public_manager(
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
 
+    if action == "download":
+        try:
+            if isinstance(bot, ProtectedMediaBot):
+                bot.allow_unprotected_private_user(viewer_user_id)
+            await _send_as_document(
+                bot=bot,
+                media=page.media,
+                chat_id=viewer_user_id,
+            )
+            await callback.answer("Оригинал отправлен в личный чат.")
+        except Exception:
+            logger.exception("Failed to send archive original to manager")
+            await callback.answer("Не удалось отправить оригинал.", show_alert=True)
+        return
+
     if action in {"pback", "pdelno"}:
         await refresh_viewer_archive_caption(
             callback=callback,
             database=database,
             page=page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer()
         return
@@ -142,7 +192,8 @@ async def handle_public_manager(
             bot=bot,
             database=database,
             page=updated_page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer(
             "Спойлер включён." if enabled else "Спойлер снят.",
@@ -176,7 +227,8 @@ async def handle_public_manager(
             callback=callback,
             database=database,
             page=page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer(
             f"Категория: {CATEGORY_LABELS[callback_data.category]}",
@@ -223,7 +275,8 @@ async def handle_public_manager(
                 callback=callback,
                 database=database,
                 page=page,
-                viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+                viewer_user_id=viewer_user_id,
+                manager_access=True,
             )
             await callback.answer(
                 f"Вселенная: {UNIVERSE_LABELS[callback_data.universe]}",
@@ -252,7 +305,8 @@ async def handle_public_manager(
             callback=callback,
             database=database,
             page=page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer("История изменена.", show_alert=True)
         return
@@ -294,7 +348,7 @@ async def handle_public_manager(
                 level="SUCCESS",
                 character=deleted.character.name,
                 media_id=deleted.media.id,
-                deleted_by=PUBLIC_DOWNLOAD_USER_ID,
+                deleted_by=viewer_user_id,
                 remaining=deleted.remaining_total,
             )
         if not isinstance(callback.message, Message):
@@ -321,6 +375,7 @@ async def handle_public_manager(
             bot=bot,
             database=database,
             page=next_page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer("Материал удалён.", show_alert=True)

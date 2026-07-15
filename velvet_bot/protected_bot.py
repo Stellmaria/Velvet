@@ -26,13 +26,7 @@ def protect_private_media_method(
     *,
     unprotected_private_user_ids: Collection[int],
 ) -> bool:
-    """Protect media sent to ordinary private users.
-
-    Telegram private user chat identifiers are positive integers. Group, supergroup,
-    and channel identifiers are negative, so internal archive topics remain untouched.
-    The explicitly allowed download recipient is exempt and can still receive a real
-    downloadable document.
-    """
+    """Protect media sent to ordinary private users."""
     if not isinstance(method, _PROTECTED_MEDIA_METHODS):
         return False
 
@@ -47,7 +41,7 @@ def protect_private_media_method(
 
 
 class ProtectedMediaBot(Bot):
-    """Bot that automatically protects public media from forwarding and saving."""
+    """Bot that protects public media while allowing explicit manager downloads."""
 
     def __init__(
         self,
@@ -58,6 +52,12 @@ class ProtectedMediaBot(Bot):
         super().__init__(*args, **kwargs)
         self._unprotected_private_user_ids = frozenset(
             int(user_id) for user_id in unprotected_private_user_ids
+        )
+
+    def allow_unprotected_private_user(self, user_id: int) -> None:
+        """Permit one verified archive manager to receive downloadable originals."""
+        self._unprotected_private_user_ids = (
+            self._unprotected_private_user_ids | {int(user_id)}
         )
 
     async def __call__(self, method: Any, request_timeout: int | None = None) -> Any:

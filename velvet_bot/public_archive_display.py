@@ -14,11 +14,7 @@ from velvet_bot.database import Database
 from velvet_bot.image_preview import build_image_document_preview
 from velvet_bot.public_catalog import get_public_media_state
 from velvet_bot.public_manager_ui import build_manager_archive_keyboard
-from velvet_bot.public_ui import (
-    PUBLIC_DOWNLOAD_USER_ID,
-    build_public_archive_keyboard,
-    format_public_archive_caption,
-)
+from velvet_bot.public_ui import build_public_archive_keyboard, format_public_archive_caption
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +50,13 @@ async def build_viewer_keyboard(
     state,
     *,
     viewer_user_id: int,
+    manager_access: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
     story_id: int = 0,
 ):
-    if viewer_user_id == PUBLIC_DOWNLOAD_USER_ID:
+    if manager_access:
         category, universe, story_id = await actual_character_filters(
             database,
             page.character.id,
@@ -111,6 +108,7 @@ async def send_viewer_archive_page(
     chat_id: int,
     page: ArchivePage,
     viewer_user_id: int,
+    manager_access: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -124,6 +122,7 @@ async def send_viewer_archive_page(
         page,
         state,
         viewer_user_id=viewer_user_id,
+        manager_access=manager_access,
         menu_page=menu_page,
         category=category,
         universe=universe,
@@ -174,6 +173,7 @@ async def replace_viewer_archive_page(
     database: Database,
     page: ArchivePage,
     viewer_user_id: int,
+    manager_access: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -189,6 +189,7 @@ async def replace_viewer_archive_page(
         page,
         state,
         viewer_user_id=viewer_user_id,
+        manager_access=manager_access,
         menu_page=menu_page,
         category=category,
         universe=universe,
@@ -206,6 +207,7 @@ async def replace_viewer_archive_page(
             chat_id=callback.message.chat.id,
             page=page,
             viewer_user_id=viewer_user_id,
+            manager_access=manager_access,
             menu_page=menu_page,
             category=category,
             universe=universe,
@@ -223,6 +225,7 @@ async def refresh_viewer_archive_caption(
     database: Database,
     page: ArchivePage,
     viewer_user_id: int,
+    manager_access: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -237,6 +240,7 @@ async def refresh_viewer_archive_caption(
         page,
         state,
         viewer_user_id=viewer_user_id,
+        manager_access=manager_access,
         menu_page=menu_page,
         category=category,
         universe=universe,
