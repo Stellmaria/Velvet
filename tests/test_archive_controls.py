@@ -92,6 +92,32 @@ class ArchiveControlsTests(unittest.TestCase):
             ),
         )
 
+    def test_guest_mention_can_follow_character_name(self) -> None:
+        self.assertEqual(
+            "Аид",
+            parse_guest_save_character(
+                "save Аид @dominusVelvetbot",
+                "dominusVelvetbot",
+            ),
+        )
+
+    def test_guest_mention_can_follow_save_keyword(self) -> None:
+        self.assertEqual(
+            "Аид",
+            parse_guest_save_character(
+                "save @dominusVelvetbot Аид",
+                "dominusVelvetbot",
+            ),
+        )
+
+    def test_other_bot_mention_is_rejected(self) -> None:
+        self.assertIsNone(
+            parse_guest_save_character(
+                "save Аид @another_bot",
+                "dominusVelvetbot",
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
