@@ -2,27 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from velvet_bot.database import Character, Database
+from velvet_bot.character_directory import (
+    CategorySummary,
+    CharacterDirectoryItem,
+    CharacterDirectoryPage,
+    list_category_summaries,
+    list_character_directory,
+)
+from velvet_bot.database import Database
 
-
-@dataclass(frozen=True, slots=True)
-class PublicCharacterItem:
-    character: Character
-    media_count: int
-
-
-@dataclass(frozen=True, slots=True)
-class PublicCharacterPage:
-    items: list[PublicCharacterItem]
-    page: int
-    page_size: int
-    total_characters: int
-
-    @property
-    def total_pages(self) -> int:
-        if self.total_characters <= 0:
-            return 1
-        return (self.total_characters + self.page_size - 1) // self.page_size
+PublicCharacterItem = CharacterDirectoryItem
+PublicCharacterPage = CharacterDirectoryPage
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,77 +22,23 @@ class PublicMediaState:
     subscribed: bool
 
 
+async def list_public_categories(database: Database) -> list[CategorySummary]:
+    return await list_category_summaries(database, public_only=True)
+
+
 async def list_public_characters(
     database: Database,
     *,
+    category: str,
     page: int = 0,
-    page_size: int = 8,
+    page_size: int = 6,
 ) -> PublicCharacterPage:
-    safe_page_size = max(1, min(page_size, 12))
-    safe_page = max(0, page)
-
-    async with database._require_pool().acquire() as connection:
-        total = int(
-            await connection.fetchval(
-                """
-                SELECT COUNT(*)
-                FROM (
-                    SELECT c.id
-                    FROM characters AS c
-                    JOIN character_media AS cm ON cm.character_id = c.id
-                    GROUP BY c.id
-                ) AS public_characters
-                """
-            )
-            or 0
-        )
-
-        total_pages = max(1, (total + safe_page_size - 1) // safe_page_size)
-        normalized_page = min(safe_page, total_pages - 1)
-        rows = await connection.fetch(
-            """
-            SELECT
-                c.id,
-                c.name,
-                c.created_by,
-                c.created_in_chat,
-                c.created_at,
-                c.archive_chat_id,
-                c.archive_thread_id,
-                c.archive_topic_url,
-                COUNT(cm.media_id) AS media_count
-            FROM characters AS c
-            JOIN character_media AS cm ON cm.character_id = c.id
-            GROUP BY c.id
-            ORDER BY c.normalized_name, c.id
-            OFFSET $1
-            LIMIT $2
-            """,
-            normalized_page * safe_page_size,
-            safe_page_size,
-        )
-
-    items = [
-        PublicCharacterItem(
-            character=Character(
-                id=int(row["id"]),
-                name=str(row["name"]),
-                created_by=row["created_by"],
-                created_in_chat=row["created_in_chat"],
-                created_at=row["created_at"],
-                archive_chat_id=row["archive_chat_id"],
-                archive_thread_id=row["archive_thread_id"],
-                archive_topic_url=row["archive_topic_url"],
-            ),
-            media_count=int(row["media_count"] or 0),
-        )
-        for row in rows
-    ]
-    return PublicCharacterPage(
-        items=items,
-        page=normalized_page,
-        page_size=safe_page_size,
-        total_characters=total,
+    return await list_character_directory(
+        database,
+        category=category,
+        page=page,
+        page_size=page_size,
+        public_only=True,
     )
 
 
