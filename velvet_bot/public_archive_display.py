@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-import io
 import logging
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.types import BufferedInputFile, CallbackQuery, InputMediaPhoto, Message
+from aiogram.types import CallbackQuery, InputMediaPhoto, Message
 
-from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia
+from velvet_bot.archive_catalog import ArchivePage
 from velvet_bot.archive_ui import build_input_media
 from velvet_bot.character_directory import get_character_directory_item
 from velvet_bot.database import Database
+from velvet_bot.image_preview import build_image_document_preview
 from velvet_bot.public_catalog import get_public_media_state
 from velvet_bot.public_manager_ui import build_manager_archive_keyboard
 from velvet_bot.public_ui import (
@@ -21,12 +21,6 @@ from velvet_bot.public_ui import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-async def download_preview(bot: Bot, media: ArchivedMedia) -> BufferedInputFile:
-    destination = io.BytesIO()
-    await bot.download(media.telegram_file_id, destination=destination, seek=True)
-    return BufferedInputFile(destination.getvalue(), filename=media.display_file_name)
 
 
 async def load_public_state(
@@ -98,7 +92,7 @@ async def build_viewer_input_media(
     caption = format_public_archive_caption(page, state)
     if page.media.is_image_document:
         try:
-            upload = await download_preview(bot, page.media)
+            upload = await build_image_document_preview(bot, page.media)
             return InputMediaPhoto(
                 media=upload,
                 caption=caption,
@@ -106,7 +100,7 @@ async def build_viewer_input_media(
                 has_spoiler=page.media.is_spoiler,
             )
         except Exception:
-            logger.exception("Failed to prepare public image preview")
+            logger.exception("Failed to prepare compressed public image preview")
     return build_input_media(page.media, caption)
 
 
@@ -160,16 +154,16 @@ async def send_viewer_archive_page(
         )
     if page.media.is_image_document:
         try:
-            upload = await download_preview(bot, page.media)
+            upload = await build_image_document_preview(bot, page.media)
             return await bot.send_photo(
                 photo=upload,
                 has_spoiler=page.media.is_spoiler,
                 **common,
             )
         except TelegramAPIError as error:
-            logger.info("Public preview fallback to document: %s", error)
+            logger.info("Compressed public preview fallback to document: %s", error)
         except Exception:
-            logger.exception("Public preview download failed")
+            logger.exception("Compressed public preview generation failed")
     return await bot.send_document(document=page.media.telegram_file_id, **common)
 
 
