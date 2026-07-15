@@ -66,9 +66,18 @@ async def _replace_archive_page(
             media=input_media,
             reply_markup=keyboard,
         )
-    except TelegramBadRequest as error:
-        logger.info("Archive media edit fallback: %s", error)
-        await _send_archive_page(bot, callback_message.chat.id, page)
+    except TelegramBadRequest as edit_error:
+        logger.info("Archive media edit fallback: %s", edit_error)
+        try:
+            await _send_archive_page(bot, callback_message.chat.id, page)
+        except TelegramBadRequest as send_error:
+            logger.warning("Archived Telegram file is unavailable: %s", send_error)
+            await callback.answer(
+                "Telegram больше не может открыть этот файл.",
+                show_alert=True,
+            )
+            return
+
         try:
             await callback_message.delete()
         except TelegramBadRequest:
@@ -97,11 +106,20 @@ async def handle_archive_media_callback(
         await callback.answer()
         return
 
-    page = await get_archive_page(
-        database,
-        callback_data.character_id,
-        callback_data.offset,
-    )
+    try:
+        page = await get_archive_page(
+            database,
+            callback_data.character_id,
+            callback_data.offset,
+        )
+    except Exception:
+        logger.exception("Failed to load character archive page")
+        await callback.answer(
+            "Не удалось загрузить архив из базы.",
+            show_alert=True,
+        )
+        return
+
     if page is None:
         await callback.answer("Персонаж больше не найден.", show_alert=True)
         return
@@ -113,7 +131,15 @@ async def handle_archive_media_callback(
         if not isinstance(callback.message, Message):
             await callback.answer("Не удалось определить чат.", show_alert=True)
             return
-        await _send_archive_page(bot, callback.message.chat.id, page)
+        try:
+            await _send_archive_page(bot, callback.message.chat.id, page)
+        except TelegramBadRequest as error:
+            logger.warning("Failed to send archived media: %s", error)
+            await callback.answer(
+                "Telegram больше не может открыть этот файл.",
+                show_alert=True,
+            )
+            return
         await callback.answer()
         return
 
