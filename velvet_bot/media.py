@@ -6,11 +6,14 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeAlias
 
 from aiogram import Bot
-from aiogram.types import Message
+from aiogram.types import ExternalReplyInfo, Message
 
 _INVALID_FILE_NAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+MediaSource: TypeAlias = Message | ExternalReplyInfo
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,10 +63,10 @@ def build_storage_file_name(
     return f"{stem}__{digest}{suffix.lower()}"
 
 
-def extract_media(message: Message) -> MediaDescriptor | None:
-    """Extract a supported Telegram photo, video, animation, or media document."""
-    if message.photo:
-        photo = message.photo[-1]
+def extract_media(source: MediaSource) -> MediaDescriptor | None:
+    """Extract supported media from a normal or external Telegram reply."""
+    if source.photo:
+        photo = source.photo[-1]
         return MediaDescriptor(
             telegram_file_id=photo.file_id,
             telegram_file_unique_id=photo.file_unique_id,
@@ -79,8 +82,8 @@ def extract_media(message: Message) -> MediaDescriptor | None:
             file_size=photo.file_size,
         )
 
-    if message.video:
-        video = message.video
+    if source.video:
+        video = source.video
         original_name = video.file_name
         return MediaDescriptor(
             telegram_file_id=video.file_id,
@@ -97,8 +100,8 @@ def extract_media(message: Message) -> MediaDescriptor | None:
             file_size=video.file_size,
         )
 
-    if message.animation:
-        animation = message.animation
+    if source.animation:
+        animation = source.animation
         original_name = animation.file_name
         guessed_extension = (
             mimetypes.guess_extension(animation.mime_type or "") or ".mp4"
@@ -118,7 +121,7 @@ def extract_media(message: Message) -> MediaDescriptor | None:
             file_size=animation.file_size,
         )
 
-    document = message.document
+    document = source.document
     mime_type = document.mime_type if document else None
     if document and (
         (mime_type or "").startswith("image/")
@@ -155,15 +158,11 @@ async def send_media_to_topic(
     *,
     chat_id: int,
     thread_id: int,
-    caption: str | None,
 ) -> Message:
-    """Reuse Telegram's file_id to place media in the configured archive topic."""
-    safe_caption = caption[:1024] if caption else None
+    """Place only the media itself in a topic, without captions or service text."""
     common = {
         "chat_id": chat_id,
         "message_thread_id": thread_id,
-        "caption": safe_caption,
-        "parse_mode": None,
     }
 
     if media.media_type == "photo":
