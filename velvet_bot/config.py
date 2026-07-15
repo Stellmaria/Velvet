@@ -1,6 +1,5 @@
 import os
 from dataclasses import dataclass
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -8,7 +7,7 @@ from dotenv import load_dotenv
 @dataclass(frozen=True, slots=True)
 class Settings:
     bot_token: str
-    database_path: Path
+    database_url: str
 
 
 def load_settings() -> Settings:
@@ -21,9 +20,11 @@ def load_settings() -> Settings:
             "и вставьте токен, полученный у @BotFather."
         )
 
-    database_path = Path(os.getenv("DATABASE_PATH", "data/velvet.db").strip())
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if not database_url:
+        raise RuntimeError(
+            "Не задан DATABASE_URL. Укажите строку подключения PostgreSQL "
+            "в локальном файле .env."
+        )
 
-    return Settings(
-        bot_token=bot_token,
-        database_path=database_path,
-    )
+    return Settings(bot_token=bot_token, database_url=database_url)
