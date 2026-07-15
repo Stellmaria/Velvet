@@ -72,9 +72,9 @@ def build_manager_archive_keyboard(
             [
                 InlineKeyboardButton(
                     text=(
-                        "🔞 Убрать спойлер"
+                        "🌫 Убрать блюр"
                         if page.media.is_spoiler
-                        else "🔞 Скрыть под спойлер"
+                        else "🌫 Скрыть под блюр 18+"
                     ),
                     callback_data=manager_callback("psp", **common),
                 ),
