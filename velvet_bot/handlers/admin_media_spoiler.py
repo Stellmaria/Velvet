@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
 
 from velvet_bot.archive_catalog import (
@@ -19,7 +19,7 @@ async def handle_admin_media_spoiler(
     callback: CallbackQuery,
     callback_data: ArchiveMediaCallback,
     database: Database,
-    bot,
+    bot: Bot,
 ) -> None:
     enabled = await toggle_archive_media_spoiler(
         database,
@@ -40,7 +40,3 @@ async def handle_admin_media_spoiler(
         return
 
     await _replace_archive_page(callback, bot, page)
-    await callback.answer(
-        "Спойлер включён." if enabled else "Спойлер снят.",
-        show_alert=True,
-    )
