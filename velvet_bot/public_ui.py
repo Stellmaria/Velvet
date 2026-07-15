@@ -7,9 +7,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.archive_catalog import ArchivePage
 from velvet_bot.character_directory import (
-    CATEGORY_EMOJI,
     CATEGORY_LABELS,
-    UNIVERSE_EMOJI,
     UNIVERSE_LABELS,
     CategorySummary,
 )
@@ -31,8 +29,8 @@ class PublicArchiveCallback(CallbackData, prefix="pub"):
 def encode_public_filter(category: str = "", universe_category: str = "") -> str:
     category = category.strip()
     universe_category = universe_category.strip()
-    if not category and not universe_category:
-        return ""
+    if not universe_category:
+        return category
     return f"{category}{_FILTER_SEPARATOR}{universe_category}"
 
 
@@ -41,7 +39,6 @@ def decode_public_filter(value: str) -> tuple[str, str]:
     if not cleaned:
         return "", ""
     if _FILTER_SEPARATOR not in cleaned:
-        # Совместимость со старыми кнопками, где хранилась только категория пола.
         return cleaned, ""
     category, universe_category = cleaned.split(_FILTER_SEPARATOR, 1)
     return category, universe_category
@@ -234,15 +231,38 @@ def build_public_filter_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-# Совместимость со старым интерфейсом и существующими тестами.
+# Старые функции оставлены для совместимости со старыми сообщениями и тестами.
 def format_public_categories(summaries: list[CategorySummary]) -> str:
-    return format_public_filters(summaries, [])
+    total = sum(item.character_count for item in summaries)
+    return (
+        "<b>Архив персонажей Velvet</b>\n\n"
+        "Выберите категорию. Внутри персонажи расположены по алфавиту "
+        "и разбиты на страницы.\n\n"
+        f"Персонажей с материалами: <b>{total}</b>"
+    )
 
 
 def build_public_category_menu(
     summaries: list[CategorySummary],
 ) -> InlineKeyboardMarkup:
-    return build_public_filter_menu(summaries, [])
+    buttons = [
+        InlineKeyboardButton(
+            text=f"{item.emoji} {item.label} · {item.character_count}",
+            callback_data=_callback("menu", category=item.key),
+        )
+        for item in summaries
+    ]
+    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="🔄 Обновить",
+                callback_data=_callback("categories"),
+            ),
+            InlineKeyboardButton(text="✖ Закрыть", callback_data=_callback("close")),
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def format_public_menu(page: PublicCharacterPage) -> str:
