@@ -90,7 +90,10 @@ def normalize_category(value: str, *, allow_uncategorized: bool = False) -> str:
 
 
 def category_label(category: str | None) -> str:
-    return CATEGORY_LABELS.get(category or "uncategorized", CATEGORY_LABELS["uncategorized"])
+    return CATEGORY_LABELS.get(
+        category or "uncategorized",
+        CATEGORY_LABELS["uncategorized"],
+    )
 
 
 def validate_prompt_post_url(value: str) -> str:
@@ -128,7 +131,7 @@ async def set_character_category(
             character_id,
             category,
         )
-    if result.endswith("0"):
+    if result == "UPDATE 0":
         raise ValueError("Персонаж не найден.")
 
 
@@ -144,7 +147,7 @@ async def set_character_prompt_url(
             character_id,
             prompt_post_url,
         )
-    if result.endswith("0"):
+    if result == "UPDATE 0":
         raise ValueError("Персонаж не найден.")
 
 
@@ -200,7 +203,10 @@ async def list_category_summaries(
             """,
             public_only,
         )
-    counts = {str(row["category"]): int(row["character_count"] or 0) for row in rows}
+    counts = {
+        str(row["category"]): int(row["character_count"] or 0)
+        for row in rows
+    }
     return [
         CategorySummary(
             key=key,
@@ -220,10 +226,14 @@ async def list_character_directory(
     page_size: int = 6,
     public_only: bool,
 ) -> CharacterDirectoryPage:
+    if category not in {*CATEGORY_ORDER, "uncategorized"}:
+        raise ValueError("Неизвестная категория архива.")
+
     safe_page_size = max(1, min(page_size, 10))
     safe_page = max(0, page)
-    category_value = None if category == "uncategorized" else category
-    condition = "c.category IS NULL" if category == "uncategorized" else "c.category = $1"
+    category_condition = """
+        (($1::TEXT = 'uncategorized' AND c.category IS NULL) OR c.category = $1)
+    """
 
     async with database._require_pool().acquire() as connection:
         total = int(
@@ -234,12 +244,12 @@ async def list_character_directory(
                     SELECT c.id
                     FROM characters AS c
                     LEFT JOIN character_media AS cm ON cm.character_id = c.id
-                    WHERE {condition}
+                    WHERE {category_condition}
                       AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
                     GROUP BY c.id
                 ) AS directory
                 """,
-                category_value,
+                category,
                 public_only,
             )
             or 0
@@ -255,14 +265,14 @@ async def list_character_directory(
                 COUNT(cm.media_id) AS media_count
             FROM characters AS c
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
-            WHERE {condition}
+            WHERE {category_condition}
               AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
             GROUP BY c.id
             ORDER BY c.normalized_name ASC, c.id ASC
             OFFSET $3
             LIMIT $4
             """,
-            category_value,
+            category,
             public_only,
             normalized_page * safe_page_size,
             safe_page_size,
