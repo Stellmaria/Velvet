@@ -5,6 +5,7 @@ from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
+from velvet_bot.archive_ui import build_character_archive_keyboard
 from velvet_bot.database import Character, Database
 from velvet_bot.topics import TopicReference, split_character_and_topic
 
@@ -101,7 +102,8 @@ async def handle_create_character(
         f"{_topic_line(character)}\n\n"
         "Новые фото и видео из назначенной темы будут учитываться автоматически. "
         "Медиа, сохранённые через <code>/save</code> или Guest Mode, "
-        "бот отправит в эту тему."
+        "бот отправит в эту тему.",
+        reply_markup=build_character_archive_keyboard(character, media_count),
     )
 
 
@@ -144,10 +146,12 @@ async def handle_bind_character_topic(
         )
         return
 
+    media_count = await database.count_character_media(character.id)
     await message.answer(
         "<b>Тема архива назначена</b>\n\n"
         f"Персонаж: <b>{escape(character.name)}</b>\n"
-        f"{_topic_line(character)}"
+        f"{_topic_line(character)}",
+        reply_markup=build_character_archive_keyboard(character, media_count),
     )
 
 
@@ -216,5 +220,6 @@ async def handle_character(
         f"ID: <code>{character.id}</code>\n"
         f"Фото и видео в архиве: <b>{media_count}</b>\n"
         f"{_topic_line(character)}\n"
-        f"Создан: <code>{escape(created_at)}</code>"
+        f"Создан: <code>{escape(created_at)}</code>",
+        reply_markup=build_character_archive_keyboard(character, media_count),
     )
