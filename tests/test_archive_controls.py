@@ -54,6 +54,17 @@ class ArchiveControlsTests(unittest.TestCase):
             if button.callback_data
         ]
         self.assertIn("del", actions)
+        delete_button = next(
+            button
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.callback_data
+            and ArchiveMediaCallback.unpack(button.callback_data).action == "del"
+        )
+        self.assertEqual(
+            11,
+            ArchiveMediaCallback.unpack(delete_button.callback_data).media_id,
+        )
 
     def test_delete_confirmation_has_confirm_and_cancel(self) -> None:
         keyboard = build_delete_confirmation(self.page)
@@ -62,6 +73,12 @@ class ArchiveControlsTests(unittest.TestCase):
             for button in keyboard.inline_keyboard[0]
         }
         self.assertEqual({"delok", "delno"}, actions)
+        self.assertTrue(
+            all(
+                ArchiveMediaCallback.unpack(button.callback_data).media_id == 11
+                for button in keyboard.inline_keyboard[0]
+            )
+        )
 
     def test_log_chat_id_parser_accepts_negative_chat_id(self) -> None:
         self.assertEqual(-5367533184, _parse_optional_chat_id("-5367533184"))
