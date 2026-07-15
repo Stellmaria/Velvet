@@ -12,6 +12,8 @@ async def handle_start(message: Message) -> None:
 
     await message.answer(
         f"<b>Velvet Archive</b>{greeting}\n\n"
-        "Бот запущен и готов к работе. "
-        "Скоро здесь появится архив персонажей и команды сохранения."
+        "Бот хранит профили персонажей и готовится к сохранению их изображений.\n\n"
+        "<code>/create Каин</code> — создать профиль\n"
+        "<code>/characters</code> — показать всех персонажей\n"
+        "<code>/character Каин</code> — открыть профиль"
     )
