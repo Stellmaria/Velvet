@@ -19,6 +19,9 @@ from velvet_bot.handlers.media_browser import router as media_browser_router
 from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
 from velvet_bot.handlers.public_archive import router as public_archive_router
 from velvet_bot.handlers.public_manager import router as public_manager_router
+from velvet_bot.handlers.public_manager_directory import (
+    router as public_manager_directory_router,
+)
 from velvet_bot.handlers.public_media_display import router as public_media_display_router
 from velvet_bot.handlers.public_notification_open import (
     router as public_notification_open_router,
@@ -62,6 +65,9 @@ router.include_router(start_router)
 # Spoiler-aware display must intercept public open/show callbacks first.
 router.include_router(public_media_display_router)
 router.include_router(public_manager_router)
+# The selected archive editor must see incomplete character metadata before
+# the ordinary public catalogue filters it out.
+router.include_router(public_manager_directory_router)
 router.include_router(public_notification_open_router)
 router.include_router(public_archive_router)
 # Must be before the general admin directory and media browser routers.
