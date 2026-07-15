@@ -6,6 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import BotCommand
 
+from velvet_bot.access import AccessPolicy, OwnerAccessMiddleware
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.handlers import router
@@ -34,6 +35,20 @@ async def main() -> None:
                 "Guest Mode is not enabled for @%s in BotFather",
                 bot_username,
             )
+
+        access_policy = AccessPolicy(
+            allowed_user_ids=settings.allowed_user_ids,
+            allowed_usernames=settings.allowed_usernames,
+        )
+        access_middleware = OwnerAccessMiddleware(access_policy)
+        router.message.outer_middleware(access_middleware)
+        router.guest_message.outer_middleware(access_middleware)
+
+        logger.info(
+            "Owner access enabled for ids=%s usernames=%s",
+            sorted(settings.allowed_user_ids),
+            sorted(settings.allowed_usernames),
+        )
 
         dispatcher = Dispatcher(
             database=database,
