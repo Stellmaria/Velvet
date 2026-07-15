@@ -54,19 +54,23 @@ class AdminUncategorizedUiTests(unittest.TestCase):
         self.assertEqual(self.character.id, callback.character_id)
         self.assertEqual("uncategorized", callback.category)
 
-    def test_category_picker_contains_all_five_values(self) -> None:
+    def test_category_picker_contains_all_six_values(self) -> None:
         keyboard = build_category_picker(self.item, page=0)
-        callbacks = [
-            AdminDirectoryCallback.unpack(button.callback_data)
+        buttons = [
+            button
             for row in keyboard.inline_keyboard
             for button in row
             if button.callback_data
             and AdminDirectoryCallback.unpack(button.callback_data).action == "setcat"
         ]
+        callbacks = [
+            AdminDirectoryCallback.unpack(button.callback_data) for button in buttons
+        ]
         self.assertEqual(
-            {"female", "male", "mf", "mm", "ff"},
+            {"female", "male", "mf", "mfm", "mm", "ff"},
             {callback.category for callback in callbacks},
         )
+        self.assertIn("👨‍👩‍👨 МЖМ", {button.text for button in buttons})
         self.assertTrue(all(callback.character_id == self.character.id for callback in callbacks))
 
     def test_universe_picker_contains_all_requested_values(self) -> None:
