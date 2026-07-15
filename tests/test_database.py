@@ -1,7 +1,9 @@
 import os
 import unittest
 
+from velvet_bot.archive_catalog import get_archive_page
 from velvet_bot.database import Database, normalize_character_name
+from velvet_bot.media import MediaDescriptor
 
 
 class CharacterNameTests(unittest.TestCase):
@@ -68,3 +70,62 @@ class PostgreSQLDatabaseTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(found)
         self.assertEqual(character.id, found.id)
         self.assertEqual(1398, found.archive_thread_id)
+
+    async def test_archive_page_returns_newest_media_and_wraps_offset(self) -> None:
+        character, _ = await self.database.create_character(
+            "Аид",
+            created_by=1,
+            created_in_chat=2,
+        )
+
+        first_media = MediaDescriptor(
+            telegram_file_id="first-file-id",
+            telegram_file_unique_id="first-unique-id",
+            original_file_name="first.png",
+            storage_file_name="first__hash.png",
+            media_type="document",
+            mime_type="image/png",
+            file_size=100,
+        )
+        second_media = MediaDescriptor(
+            telegram_file_id="second-file-id",
+            telegram_file_unique_id="second-unique-id",
+            original_file_name="second.png",
+            storage_file_name="second__hash.png",
+            media_type="document",
+            mime_type="image/png",
+            file_size=200,
+        )
+
+        await self.database.save_character_media(
+            character,
+            first_media,
+            saved_by=1,
+            saved_in_chat=2,
+            source_chat_id=2,
+            source_message_id=10,
+            source_thread_id=None,
+            command_message_id=11,
+        )
+        await self.database.save_character_media(
+            character,
+            second_media,
+            saved_by=1,
+            saved_in_chat=2,
+            source_chat_id=2,
+            source_message_id=20,
+            source_thread_id=None,
+            command_message_id=21,
+        )
+
+        newest = await get_archive_page(self.database, character.id, 0)
+        older = await get_archive_page(self.database, character.id, 1)
+        wrapped = await get_archive_page(self.database, character.id, 2)
+
+        self.assertIsNotNone(newest)
+        self.assertIsNotNone(older)
+        self.assertIsNotNone(wrapped)
+        self.assertEqual(2, newest.total)
+        self.assertEqual("second.png", newest.media.original_file_name)
+        self.assertEqual("first.png", older.media.original_file_name)
+        self.assertEqual("second.png", wrapped.media.original_file_name)
