@@ -23,10 +23,12 @@ from velvet_bot.character_directory import (
     set_character_category,
     set_character_prompt_url,
     set_character_universe,
+    story_label,
     universe_label,
     validate_prompt_post_url,
 )
 from velvet_bot.database import Database
+from velvet_bot.story_catalog import universe_requires_story
 
 router = Router(name=__name__)
 
@@ -38,6 +40,7 @@ class AdminDirectoryCallback(CallbackData, prefix="adir"):
     page: int = 0
     character_id: int = 0
     return_category: str = ""
+    story_id: int = 0
 
 
 def _cb(
@@ -48,6 +51,7 @@ def _cb(
     page: int = 0,
     character_id: int = 0,
     return_category: str = "",
+    story_id: int = 0,
 ) -> str:
     return AdminDirectoryCallback(
         action=action,
@@ -56,17 +60,20 @@ def _cb(
         page=page,
         character_id=character_id,
         return_category=return_category,
+        story_id=story_id,
     ).pack()
 
 
 def _category_text(total: int) -> str:
     return (
         "<b>Управление архивом персонажей</b>\n\n"
-        "Сначала персонажу назначается пол/состав, затем вселенная. "
-        "Персонажи внутри разделов отсортированы по алфавиту.\n\n"
+        "Персонажу назначаются пол/состав, вселенная и, для визуальных "
+        "новелл, история.\n\n"
         f"Всего персонажей: <b>{total}</b>\n\n"
         "Пол/состав: <code>/category Аид мужской</code>\n"
-        "Вселенная: <code>/universe Аид КР</code>"
+        "Вселенная: <code>/universe Аид КР</code>\n"
+        "История: <code>/story Аид КЗТ</code>\n"
+        "Новая история: <code>/storyadd КР КЗТ Кали. Зов тьмы</code>"
     )
 
 
@@ -103,20 +110,23 @@ def _page_keyboard(page: CharacterDirectoryPage) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for item in page.items:
         universe = universe_label(item.universe)
-        row = [
-            InlineKeyboardButton(
-                text=f"👤 {item.character.name} · {universe} · {item.media_count}",
-                callback_data=_cb(
-                    "profile",
-                    category=page.category,
-                    page=page.page,
-                    character_id=item.character.id,
-                ),
-            )
-        ]
-        if item.prompt_post_url:
-            row.append(InlineKeyboardButton(text="📝 Промт", url=item.prompt_post_url))
-        rows.append(row)
+        story = item.story_short_label or "—"
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=(
+                        f"👤 {item.character.name} · {universe} · "
+                        f"{story} · {item.media_count}"
+                    ),
+                    callback_data=_cb(
+                        "profile",
+                        category=page.category,
+                        page=page.page,
+                        character_id=item.character.id,
+                    ),
+                )
+            ]
+        )
 
     if page.total_pages > 1:
         rows.append(
@@ -158,16 +168,23 @@ def _profile_text(item: CharacterDirectoryItem) -> str:
         if item.prompt_post_url
         else "Промт персонажа: <b>не привязан</b>"
     )
+    story_is_required = universe_requires_story(item.universe)
+    public_ready = bool(
+        item.category
+        and item.universe
+        and (not story_is_required or item.story_id is not None)
+    )
     public_state = (
         "доступен после добавления материалов"
-        if item.category and item.universe
-        else "скрыт, пока не назначены пол/состав и вселенная"
+        if public_ready
+        else "скрыт, пока не заполнены обязательные категории"
     )
     return (
         "<b>Карточка персонажа</b>\n\n"
         f"Имя: <b>{escape(item.character.name)}</b>\n"
         f"Пол / состав: <b>{escape(category_label(item.category))}</b>\n"
         f"Вселенная: <b>{escape(universe_label(item.universe))}</b>\n"
+        f"История: <b>{escape(story_label(item.story_short_label, item.story_title))}</b>\n"
         f"Материалов: <b>{item.media_count}</b>\n"
         f"Публичный архив: <b>{public_state}</b>\n"
         f"{prompt_line}"
@@ -202,6 +219,21 @@ def _profile_keyboard(
             ),
         ]
     ]
+    if universe_requires_story(item.universe):
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="📖 Изменить историю",
+                    callback_data=_cb(
+                        "pickstory",
+                        category=category,
+                        universe=item.universe or "",
+                        page=page,
+                        character_id=item.character.id,
+                    ),
+                )
+            ]
+        )
     if item.media_count:
         rows.append(
             [
@@ -254,7 +286,7 @@ async def handle_set_category(
     if not command.args or len(command.args.rsplit(maxsplit=1)) != 2:
         await message.answer(
             "Формат: <code>/category Имя категория</code>\n"
-            "Категории: женский, мужской, мж, мм, жж.\n"
+            "Категории: женский, мужской, мж, мжм, мм, жж.\n"
             "Снять категорию: <code>/category Имя без</code>"
         )
         return
@@ -309,9 +341,14 @@ async def handle_set_universe(
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
+    suffix = (
+        "\nТеперь назначьте историю: <code>/story Имя СОКР</code>."
+        if universe_requires_story(stored_universe)
+        else ""
+    )
     await message.answer(
         f"Вселенная персонажа <b>{escape(character.name)}</b>: "
-        f"<b>{escape(universe_label(stored_universe))}</b>."
+        f"<b>{escape(universe_label(stored_universe))}</b>.{suffix}"
     )
 
 

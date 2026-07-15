@@ -15,6 +15,7 @@ from velvet_bot.character_directory import (
     UniverseSummary,
 )
 from velvet_bot.public_catalog import PublicCharacterPage, PublicMediaState
+from velvet_bot.story_catalog import StorySummary, universe_requires_story
 
 PUBLIC_DOWNLOAD_USER_ID = 8179531132
 
@@ -27,6 +28,7 @@ class PublicArchiveCallback(CallbackData, prefix="pub"):
     page: int = 0
     category: str = ""
     universe: str = ""
+    story_id: int = 0
 
 
 def _callback(
@@ -38,6 +40,7 @@ def _callback(
     page: int = 0,
     category: str = "",
     universe: str = "",
+    story_id: int = 0,
 ) -> str:
     return PublicArchiveCallback(
         action=action,
@@ -47,6 +50,7 @@ def _callback(
         page=page,
         category=category,
         universe=universe,
+        story_id=story_id,
     ).pack()
 
 
@@ -67,7 +71,8 @@ def format_public_categories(summaries: list[CategorySummary]) -> str:
     total = sum(item.character_count for item in summaries)
     return (
         "<b>Архив персонажей Velvet</b>\n\n"
-        "Сначала выберите пол или состав персонажей, затем вселенную.\n\n"
+        "Сначала выберите пол или состав персонажей, затем вселенную "
+        "и историю.\n\n"
         f"Персонажей с материалами: <b>{total}</b>"
     )
 
@@ -106,7 +111,8 @@ def format_public_universes(
     total = sum(item.character_count for item in summaries)
     return (
         f"<b>{category_emoji} {escape(category_label)}</b>\n\n"
-        "Выберите вселенную или серию.\n\n"
+        "Выберите вселенную или серию. Для визуальных новелл следующим "
+        "шагом откроются истории.\n\n"
         f"Персонажей с материалами: <b>{total}</b>"
     )
 
@@ -119,7 +125,7 @@ def build_public_universe_menu(
         InlineKeyboardButton(
             text=f"{item.emoji} {item.label} · {item.character_count}",
             callback_data=_callback(
-                "menu",
+                "stories" if universe_requires_story(item.key) else "menu",
                 category=category,
                 universe=item.key,
             ),
@@ -145,16 +151,93 @@ def build_public_universe_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def format_public_stories(
+    category: str,
+    universe: str,
+    summaries: list[StorySummary],
+) -> str:
+    category_label = CATEGORY_LABELS.get(category, category)
+    category_emoji = CATEGORY_EMOJI.get(category, "🗂")
+    universe_label = UNIVERSE_LABELS.get(universe, universe)
+    universe_emoji = UNIVERSE_EMOJI.get(universe, "🎭")
+    total = sum(item.character_count for item in summaries)
+    return (
+        f"<b>{category_emoji} {escape(category_label)} · "
+        f"{universe_emoji} {escape(universe_label)}</b>\n\n"
+        "Выберите историю. На кнопках сначала указано её сокращение "
+        "из первых букв.\n\n"
+        f"Персонажей с материалами: <b>{total}</b>"
+    )
+
+
+def build_public_story_menu(
+    category: str,
+    universe: str,
+    summaries: list[StorySummary],
+) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for item in summaries:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=(
+                        f"📖 {item.short_label} · {item.title} "
+                        f"· {item.character_count}"
+                    ),
+                    callback_data=_callback(
+                        "menu",
+                        category=category,
+                        universe=universe,
+                        story_id=item.id,
+                    ),
+                )
+            ]
+        )
+    if not rows:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="Пока нет назначенных персонажей",
+                    callback_data=_callback("noop"),
+                )
+            ]
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="↩️ Вселенные",
+                callback_data=_callback("universes", category=category),
+            ),
+            InlineKeyboardButton(
+                text="🔄 Обновить",
+                callback_data=_callback(
+                    "stories",
+                    category=category,
+                    universe=universe,
+                ),
+            ),
+        ]
+    )
+    rows.append(
+        [InlineKeyboardButton(text="✖ Закрыть", callback_data=_callback("close"))]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def format_public_menu(page: PublicCharacterPage) -> str:
     category_label = CATEGORY_LABELS.get(page.category, page.category)
     category_emoji = CATEGORY_EMOJI.get(page.category, "🗂")
     universe_key = page.universe or ""
     universe_label = UNIVERSE_LABELS.get(universe_key, universe_key)
     universe_emoji = UNIVERSE_EMOJI.get(universe_key, "🎭")
-    title = (
-        f"{category_emoji} {escape(category_label)} · "
-        f"{universe_emoji} {escape(universe_label)}"
-    )
+    parts = [
+        f"{category_emoji} {escape(category_label)}",
+        f"{universe_emoji} {escape(universe_label)}",
+    ]
+    if page.story_title:
+        short = page.story_short_label or "📖"
+        parts.append(f"📖 {escape(short)} · {escape(page.story_title)}")
+    title = " · ".join(parts)
     if page.total_characters == 0:
         return f"<b>{title}</b>\n\nВ этом сочетании пока нет материалов."
     return (
@@ -167,6 +250,7 @@ def format_public_menu(page: PublicCharacterPage) -> str:
 
 def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMarkup:
     universe = page.universe or ""
+    story_id = page.story_id or 0
     rows: list[list[InlineKeyboardButton]] = []
     for item in page.items:
         rows.append(
@@ -180,6 +264,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                         page=page.page,
                         category=page.category,
                         universe=universe,
+                        story_id=story_id,
                     ),
                 )
             ]
@@ -195,6 +280,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                         page=(page.page - 1) % page.total_pages,
                         category=page.category,
                         universe=universe,
+                        story_id=story_id,
                     ),
                 ),
                 InlineKeyboardButton(
@@ -204,6 +290,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                         page=page.page,
                         category=page.category,
                         universe=universe,
+                        story_id=story_id,
                     ),
                 ),
                 InlineKeyboardButton(
@@ -213,20 +300,32 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                         page=(page.page + 1) % page.total_pages,
                         category=page.category,
                         universe=universe,
+                        story_id=story_id,
                     ),
                 ),
             ]
         )
 
+    if universe_requires_story(universe):
+        back_button = InlineKeyboardButton(
+            text="↩️ Истории",
+            callback_data=_callback(
+                "stories",
+                category=page.category,
+                universe=universe,
+            ),
+        )
+    else:
+        back_button = InlineKeyboardButton(
+            text="↩️ Вселенные",
+            callback_data=_callback(
+                "universes",
+                category=page.category,
+            ),
+        )
     rows.append(
         [
-            InlineKeyboardButton(
-                text="↩️ Вселенные",
-                callback_data=_callback(
-                    "universes",
-                    category=page.category,
-                ),
-            ),
+            back_button,
             InlineKeyboardButton(
                 text="🔄 Обновить",
                 callback_data=_callback(
@@ -234,6 +333,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                     page=page.page,
                     category=page.category,
                     universe=universe,
+                    story_id=story_id,
                 ),
             ),
         ]
@@ -264,22 +364,27 @@ def build_public_archive_keyboard(
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
+    story_id: int = 0,
     prompt_post_url: str | None = None,
 ) -> InlineKeyboardMarkup:
     if page.media is None or page.total <= 0:
         return InlineKeyboardMarkup(inline_keyboard=[])
 
     media_id = page.media.id
+    common = {
+        "character_id": page.character.id,
+        "page": menu_page,
+        "category": category,
+        "universe": universe,
+        "story_id": story_id,
+    }
     counter = InlineKeyboardButton(
         text=f"{page.offset + 1} / {page.total}",
         callback_data=_callback(
             "noop",
-            character_id=page.character.id,
             offset=page.offset,
             media_id=media_id,
-            page=menu_page,
-            category=category,
-            universe=universe,
+            **common,
         ),
     )
     if page.total == 1:
@@ -291,11 +396,8 @@ def build_public_archive_keyboard(
                     text="◀️",
                     callback_data=_callback(
                         "show",
-                        character_id=page.character.id,
                         offset=(page.offset - 1) % page.total,
-                        page=menu_page,
-                        category=category,
-                        universe=universe,
+                        **common,
                     ),
                 ),
                 counter,
@@ -303,11 +405,8 @@ def build_public_archive_keyboard(
                     text="▶️",
                     callback_data=_callback(
                         "show",
-                        character_id=page.character.id,
                         offset=(page.offset + 1) % page.total,
-                        page=menu_page,
-                        category=category,
-                        universe=universe,
+                        **common,
                     ),
                 ),
             ]
@@ -319,24 +418,18 @@ def build_public_archive_keyboard(
                 text=("❤️" if state.liked_by_user else "🤍") + f" {state.like_count}",
                 callback_data=_callback(
                     "like",
-                    character_id=page.character.id,
                     offset=page.offset,
                     media_id=media_id,
-                    page=menu_page,
-                    category=category,
-                    universe=universe,
+                    **common,
                 ),
             ),
             InlineKeyboardButton(
                 text="🔕 Отписаться" if state.subscribed else "🔔 Подписаться",
                 callback_data=_callback(
                     "sub",
-                    character_id=page.character.id,
                     offset=page.offset,
                     media_id=media_id,
-                    page=menu_page,
-                    category=category,
-                    universe=universe,
+                    **common,
                 ),
             ),
         ]
@@ -355,12 +448,9 @@ def build_public_archive_keyboard(
                     text="📥 Скачать файлом",
                     callback_data=_callback(
                         "download",
-                        character_id=page.character.id,
                         offset=page.offset,
                         media_id=media_id,
-                        page=menu_page,
-                        category=category,
-                        universe=universe,
+                        **common,
                     ),
                 )
             ]
@@ -375,6 +465,7 @@ def build_public_archive_keyboard(
                     page=menu_page,
                     category=category,
                     universe=universe,
+                    story_id=story_id,
                 ),
             ),
             InlineKeyboardButton(text="✖ Закрыть", callback_data=_callback("close")),

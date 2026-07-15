@@ -12,6 +12,7 @@ from velvet_bot.character_directory import (
     list_universe_summaries,
 )
 from velvet_bot.database import Database
+from velvet_bot.story_catalog import StorySummary, list_story_summaries
 
 PublicCharacterItem = CharacterDirectoryItem
 PublicCharacterPage = CharacterDirectoryPage
@@ -40,11 +41,26 @@ async def list_public_universes(
     )
 
 
+async def list_public_stories(
+    database: Database,
+    *,
+    category: str,
+    universe: str,
+) -> list[StorySummary]:
+    return await list_story_summaries(
+        database,
+        category=category,
+        universe=universe,
+        public_only=True,
+    )
+
+
 async def list_public_characters(
     database: Database,
     *,
     category: str,
     universe: str | None = None,
+    story_id: int | None = None,
     page: int = 0,
     page_size: int = 6,
 ) -> PublicCharacterPage:
@@ -52,6 +68,7 @@ async def list_public_characters(
         database,
         category=category,
         universe=universe,
+        story_id=story_id,
         page=page,
         page_size=page_size,
         public_only=True,
