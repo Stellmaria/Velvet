@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-import hashlib
 import logging
 import re
 from html import escape
 
-from aiogram import Bot, Router
-from aiogram.enums import ParseMode
+from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (
-    InlineQueryResultArticle,
-    InputTextMessageContent,
-    Message,
-)
+from aiogram.types import Message
 
+from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Character, Database, SaveMediaResult
 from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
 
@@ -35,7 +30,7 @@ _GUEST_PLAIN_PATTERN = re.compile(
 
 
 def parse_guest_save_character(text: str, bot_username: str) -> str | None:
-    """Extract a character name from a Guest Mode summon message."""
+    """Extract a character name from command, mention, or Guest Mode text."""
     cleaned = " ".join(text.split())
     if not cleaned:
         return None
@@ -66,7 +61,7 @@ def parse_guest_save_character(text: str, bot_username: str) -> str | None:
 
 
 def _caller_user_id(message: Message) -> int | None:
-    caller = message.guest_bot_caller_user or message.from_user
+    caller = message.from_user or message.guest_bot_caller_user
     return caller.id if caller else None
 
 
@@ -87,6 +82,7 @@ async def _place_media_in_character_topic(
     media: MediaDescriptor,
     source_message: Message,
     result: SaveMediaResult,
+    audit_logger: TelegramAuditLogger,
 ) -> tuple[bool, str | None]:
     if character.archive_chat_id is None or character.archive_thread_id is None:
         return False, "У персонажа не назначена тема архива."
@@ -109,17 +105,34 @@ async def _place_media_in_character_topic(
             media,
             chat_id=character.archive_chat_id,
             thread_id=character.archive_thread_id,
-            caption=source_message.caption,
         )
         await database.set_archive_message_id(
             character.id,
             result.media_id,
             archived_message.message_id,
         )
+        await audit_logger.send(
+            "Медиа отправлено в ветку",
+            level="SUCCESS",
+            character=character.name,
+            file=media.storage_file_name,
+            media_type=media.media_type,
+            archive_chat_id=character.archive_chat_id,
+            archive_thread_id=character.archive_thread_id,
+            archive_message_id=archived_message.message_id,
+        )
     except Exception as error:
         logger.exception(
             "Failed to send media to archive topic for character %s",
             character.id,
+        )
+        await audit_logger.error(
+            "Ошибка отправки медиа в ветку",
+            error,
+            character=character.name,
+            file=media.storage_file_name,
+            archive_chat_id=character.archive_chat_id,
+            archive_thread_id=character.archive_thread_id,
         )
         return False, str(error)
 
@@ -131,6 +144,7 @@ async def _build_save_response(
     character_name: str,
     database: Database,
     bot: Bot,
+    audit_logger: TelegramAuditLogger,
 ) -> str:
     source_message = message.reply_to_message
     if source_message is None:
@@ -175,6 +189,19 @@ async def _build_save_response(
         archive_message_id=archive_message_id,
     )
 
+    if result.character_link_created:
+        await audit_logger.send(
+            "Медиа добавлено в архив",
+            level="SUCCESS",
+            character=character.name,
+            file=result.storage_file_name,
+            media_type=media.media_type,
+            saved_by=_caller_user_id(message),
+            saved_in_chat=message.chat.id,
+            source_chat_id=source_message.chat.id,
+            source_message_id=source_message.message_id,
+        )
+
     uploaded_to_topic, upload_error = await _place_media_in_character_topic(
         bot=bot,
         database=database,
@@ -182,6 +209,7 @@ async def _build_save_response(
         media=media,
         source_message=source_message,
         result=result,
+        audit_logger=audit_logger,
     )
 
     safe_character_name = escape(character.name)
@@ -219,25 +247,33 @@ async def _build_save_response(
     return "\n".join(details)
 
 
-async def _answer_guest_message(message: Message, text: str) -> None:
-    if not message.guest_query_id:
-        logger.error("Guest message received without guest_query_id")
-        return
-
-    result_id = hashlib.sha256(
-        message.guest_query_id.encode("utf-8")
-    ).hexdigest()[:32]
-
-    await message.answer_guest_query(
-        InlineQueryResultArticle(
-            id=result_id,
-            title="Velvet Archive",
-            input_message_content=InputTextMessageContent(
-                message_text=text,
-                parse_mode=ParseMode.HTML,
-            ),
+async def _handle_normal_save(
+    message: Message,
+    character_name: str,
+    database: Database,
+    bot: Bot,
+    audit_logger: TelegramAuditLogger,
+) -> None:
+    try:
+        response = await _build_save_response(
+            message,
+            character_name,
+            database,
+            bot,
+            audit_logger,
         )
-    )
+    except Exception as error:
+        logger.exception("Media save failed")
+        await audit_logger.error(
+            "Ошибка сохранения медиа",
+            error,
+            character=character_name,
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            user_id=_caller_user_id(message),
+        )
+        response = "Не удалось сохранить медиафайл из-за внутренней ошибки."
+    await message.answer(response)
 
 
 @router.message(Command("save"))
@@ -246,6 +282,7 @@ async def handle_save_media(
     command: CommandObject,
     database: Database,
     bot: Bot,
+    audit_logger: TelegramAuditLogger,
 ) -> None:
     if not command.args:
         await message.answer(
@@ -254,50 +291,33 @@ async def handle_save_media(
         )
         return
 
-    response = await _build_save_response(
+    await _handle_normal_save(
         message,
         command.args,
         database,
         bot,
+        audit_logger,
     )
-    await message.answer(response)
 
 
-@router.guest_message()
-async def handle_guest_save_media(
+@router.message(F.text.regexp(r"^@[A-Za-z0-9_]+\s+/?save\s+.+$"))
+async def handle_mention_save_media(
     message: Message,
     database: Database,
     bot_username: str,
     bot: Bot,
+    audit_logger: TelegramAuditLogger,
 ) -> None:
-    request_text = message.text or message.caption or ""
-    character_name = parse_guest_save_character(request_text, bot_username)
-
+    character_name = parse_guest_save_character(message.text or "", bot_username)
     if character_name is None:
-        safe_username = escape(bot_username or "имя_бота")
-        await _answer_guest_message(
-            message,
-            "Не удалось распознать команду сохранения.\n\n"
-            "Ответьте на фото или видео и отправьте:\n"
-            f"<code>@{safe_username} save Аид</code>",
-        )
         return
-
-    try:
-        response = await _build_save_response(
-            message,
-            character_name,
-            database,
-            bot,
-        )
-    except Exception:
-        logger.exception("Guest media save failed")
-        response = (
-            "Не удалось сохранить медиафайл из-за внутренней ошибки. "
-            "Проверьте подключение к базе и журнал бота."
-        )
-
-    await _answer_guest_message(message, response)
+    await _handle_normal_save(
+        message,
+        character_name,
+        database,
+        bot,
+        audit_logger,
+    )
 
 
 @router.message()
@@ -305,6 +325,7 @@ async def handle_new_archive_topic_media(
     message: Message,
     database: Database,
     bot: Bot,
+    audit_logger: TelegramAuditLogger,
 ) -> None:
     if message.message_thread_id is None:
         return
@@ -325,7 +346,7 @@ async def handle_new_archive_topic_media(
         return
 
     try:
-        await database.save_character_media(
+        result = await database.save_character_media(
             character,
             media,
             saved_by=message.from_user.id if message.from_user else None,
@@ -342,8 +363,27 @@ async def handle_new_archive_topic_media(
             message.chat.id,
             message.message_thread_id,
         )
-    except Exception:
+        if result.character_link_created:
+            await audit_logger.send(
+                "Новое медиа принято из ветки",
+                level="SUCCESS",
+                character=character.name,
+                file=result.storage_file_name,
+                media_type=media.media_type,
+                archive_chat_id=message.chat.id,
+                archive_thread_id=message.message_thread_id,
+                archive_message_id=message.message_id,
+            )
+    except Exception as error:
         logger.exception(
             "Failed to automatically archive topic media for character %s",
             character.id,
+        )
+        await audit_logger.error(
+            "Ошибка автоматического архива ветки",
+            error,
+            character=character.name,
+            archive_chat_id=message.chat.id,
+            archive_thread_id=message.message_thread_id,
+            archive_message_id=message.message_id,
         )
