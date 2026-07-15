@@ -48,6 +48,7 @@ async def main() -> None:
         )
         dispatcher.message.outer_middleware(access_middleware)
         dispatcher.guest_message.outer_middleware(access_middleware)
+        dispatcher.callback_query.outer_middleware(access_middleware)
         dispatcher.include_router(router)
 
         logger.info(
