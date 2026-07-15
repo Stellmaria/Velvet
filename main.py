@@ -5,7 +5,7 @@ from contextlib import suppress
 from aiogram import Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import BotCommand, BotCommandScopeChat
 
 from velvet_bot.access import AccessPolicy, OwnerAccessMiddleware
@@ -26,10 +26,12 @@ async def main() -> None:
     database = Database(settings.database_url)
     await database.initialize()
 
+    unprotected_manager_ids = set(settings.allowed_user_ids)
+    unprotected_manager_ids.add(PUBLIC_DOWNLOAD_USER_ID)
     bot = ProtectedMediaBot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        unprotected_private_user_ids={PUBLIC_DOWNLOAD_USER_ID},
+        unprotected_private_user_ids=unprotected_manager_ids,
     )
     audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
     reference_uploads = ReferenceUploadSessions()
@@ -61,6 +63,7 @@ async def main() -> None:
                 "audit_logger": audit_logger,
                 "reference_uploads": reference_uploads,
                 "access_policy": access_policy,
+                "analytics_channel_ids": settings.analytics_channel_ids,
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
@@ -96,6 +99,10 @@ async def main() -> None:
             BotCommand(command="refdone", description="Завершить загрузку референсов"),
             BotCommand(command="refs", description="Показать референсы персонажа"),
             BotCommand(command="refdel", description="Удалить референс по номеру"),
+            BotCommand(command="channelstats", description="Общая статистика канала"),
+            BotCommand(command="promptstats", description="Статистика структуры промтов"),
+            BotCommand(command="tagstats", description="Статистика хэштегов"),
+            BotCommand(command="characterstats", description="Частота персонажей в канале"),
         ]
         await bot.set_my_commands(public_commands)
         for owner_id in settings.allowed_user_ids:
@@ -111,6 +118,36 @@ async def main() -> None:
                     error,
                 )
 
+        for channel_id in sorted(settings.analytics_channel_ids):
+            try:
+                chat = await bot.get_chat(channel_id)
+                logger.info(
+                    "Channel analytics enabled: id=%s title=%s username=%s",
+                    channel_id,
+                    chat.title,
+                    chat.username,
+                )
+                await audit_logger.send(
+                    "Канал подключён к аналитике",
+                    level="SUCCESS",
+                    channel_id=channel_id,
+                    title=chat.title,
+                    username=chat.username,
+                )
+            except TelegramAPIError as error:
+                logger.warning(
+                    "Analytics channel %s is unavailable to the bot: %s",
+                    channel_id,
+                    error,
+                )
+                await audit_logger.send(
+                    "Канал аналитики недоступен",
+                    level="WARNING",
+                    channel_id=channel_id,
+                    error=str(error),
+                    hint="Добавьте бота администратором канала.",
+                )
+
         allowed_updates = dispatcher.resolve_used_update_types()
         logger.info("Allowed Telegram updates: %s", ", ".join(allowed_updates))
         await audit_logger.send(
@@ -119,6 +156,9 @@ async def main() -> None:
             bot=f"@{bot_username}",
             guest_mode=bot_info.supports_guest_queries,
             allowed_updates=", ".join(allowed_updates),
+            analytics_channels=", ".join(
+                str(value) for value in sorted(settings.analytics_channel_ids)
+            ),
             log_chat_id=settings.log_chat_id,
         )
 
@@ -134,6 +174,7 @@ async def main() -> None:
             audit_logger=audit_logger,
             reference_uploads=reference_uploads,
             access_policy=access_policy,
+            analytics_channel_ids=settings.analytics_channel_ids,
         )
     finally:
         if notification_task is not None:
