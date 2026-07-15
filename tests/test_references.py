@@ -1,12 +1,18 @@
 import unittest
 from datetime import UTC, datetime
 
-from aiogram.types import PhotoSize
-
 from velvet_bot.database import Character
+from velvet_bot.handlers.reference_management import (
+    parse_reference_add_character,
+    parse_reference_delete_args,
+)
 from velvet_bot.handlers.references import parse_reference_character
 from velvet_bot.reference_catalog import CharacterReference, ReferencePage
-from velvet_bot.reference_ui import ReferenceCallback, build_reference_keyboard
+from velvet_bot.reference_ui import (
+    ReferenceCallback,
+    build_reference_delete_keyboard,
+    build_reference_keyboard,
+)
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 
@@ -29,6 +35,15 @@ class ReferenceCommandTests(unittest.TestCase):
             ),
         )
 
+    def test_guest_reference_add_prefix(self) -> None:
+        self.assertEqual(
+            "Аид",
+            parse_reference_add_character(
+                "@dominusVelvetbot refadd Аид",
+                "dominusVelvetbot",
+            ),
+        )
+
     def test_other_bot_is_rejected(self) -> None:
         self.assertIsNone(
             parse_reference_character(
@@ -36,6 +51,19 @@ class ReferenceCommandTests(unittest.TestCase):
                 "dominusVelvetbot",
             )
         )
+        self.assertIsNone(
+            parse_reference_add_character(
+                "@another_bot refadd Аид",
+                "dominusVelvetbot",
+            )
+        )
+
+    def test_delete_command_arguments(self) -> None:
+        self.assertEqual(
+            ("Темный Аид", 12),
+            parse_reference_delete_args("Темный Аид #12"),
+        )
+        self.assertIsNone(parse_reference_delete_args("Аид"))
 
 
 class ReferenceUploadSessionTests(unittest.TestCase):
@@ -86,6 +114,25 @@ class ReferenceUiTests(unittest.TestCase):
         )
         self.assertEqual(0, previous.offset)
         self.assertEqual(2, following.offset)
+
+    def test_delete_button_targets_exact_reference(self) -> None:
+        keyboard = build_reference_keyboard(self.page)
+        delete_callback = ReferenceCallback.unpack(
+            keyboard.inline_keyboard[1][0].callback_data
+        )
+        self.assertEqual("delete_prompt", delete_callback.action)
+        self.assertEqual(11, delete_callback.reference_id)
+
+    def test_delete_confirmation_has_delete_and_cancel(self) -> None:
+        keyboard = build_reference_delete_keyboard(self.page)
+        delete_callback = ReferenceCallback.unpack(
+            keyboard.inline_keyboard[0][0].callback_data
+        )
+        cancel_callback = ReferenceCallback.unpack(
+            keyboard.inline_keyboard[0][1].callback_data
+        )
+        self.assertEqual("delete", delete_callback.action)
+        self.assertEqual("cancel_delete", cancel_callback.action)
 
 
 if __name__ == "__main__":
