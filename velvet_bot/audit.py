@@ -25,7 +25,7 @@ class TelegramAuditLogger:
 
     async def send(
         self,
-        title: str,
+        event_title: str,
         *,
         level: str = "INFO",
         **fields: Any,
@@ -35,7 +35,7 @@ class TelegramAuditLogger:
 
         normalized_level = level.upper()
         emoji = _LEVEL_EMOJI.get(normalized_level, "•")
-        lines = [f"<b>{emoji} {escape(title)}</b>"]
+        lines = [f"<b>{emoji} {escape(event_title)}</b>"]
         for name, value in fields.items():
             if value is None or value == "":
                 continue
@@ -55,16 +55,16 @@ class TelegramAuditLogger:
             )
         except Exception:
             # Never let a broken log destination break the archive itself.
-            logger.exception("Failed to send Telegram audit event: %s", title)
+            logger.exception("Failed to send Telegram audit event: %s", event_title)
 
     async def error(
         self,
-        title: str,
+        event_title: str,
         error: BaseException | str,
         **fields: Any,
     ) -> None:
         await self.send(
-            title,
+            event_title,
             level="ERROR",
             error=str(error),
             **fields,
