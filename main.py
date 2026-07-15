@@ -4,7 +4,8 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.types import BotCommand
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import BotCommand, BotCommandScopeChat
 
 from velvet_bot.access import AccessPolicy, OwnerAccessMiddleware
 from velvet_bot.audit import TelegramAuditLogger
@@ -53,6 +54,7 @@ async def main() -> None:
                 "bot_username": bot_username,
                 "audit_logger": audit_logger,
                 "reference_uploads": reference_uploads,
+                "access_policy": access_policy,
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
@@ -67,20 +69,35 @@ async def main() -> None:
             sorted(settings.allowed_usernames),
         )
 
-        await bot.set_my_commands(
-            [
-                BotCommand(command="start", description="Запустить бота"),
-                BotCommand(command="create", description="Создать персонажа и назначить тему"),
-                BotCommand(command="topic", description="Назначить тему персонажу"),
-                BotCommand(command="characters", description="Список персонажей"),
-                BotCommand(command="character", description="Профиль персонажа"),
-                BotCommand(command="save", description="Сохранить фото или видео"),
-                BotCommand(command="refadd", description="Добавить референсы персонажа"),
-                BotCommand(command="refdone", description="Завершить загрузку референсов"),
-                BotCommand(command="refs", description="Показать референсы персонажа"),
-                BotCommand(command="refdel", description="Удалить референс по номеру"),
-            ]
-        )
+        public_commands = [
+            BotCommand(command="start", description="Открыть меню"),
+            BotCommand(command="archive", description="Архив персонажей"),
+        ]
+        admin_commands = [
+            *public_commands,
+            BotCommand(command="create", description="Создать персонажа и назначить тему"),
+            BotCommand(command="topic", description="Назначить тему персонажу"),
+            BotCommand(command="characters", description="Список персонажей"),
+            BotCommand(command="character", description="Профиль персонажа"),
+            BotCommand(command="save", description="Сохранить фото или видео"),
+            BotCommand(command="refadd", description="Добавить референсы персонажа"),
+            BotCommand(command="refdone", description="Завершить загрузку референсов"),
+            BotCommand(command="refs", description="Показать референсы персонажа"),
+            BotCommand(command="refdel", description="Удалить референс по номеру"),
+        ]
+        await bot.set_my_commands(public_commands)
+        for owner_id in settings.allowed_user_ids:
+            try:
+                await bot.set_my_commands(
+                    admin_commands,
+                    scope=BotCommandScopeChat(chat_id=owner_id),
+                )
+            except TelegramBadRequest as error:
+                logger.warning(
+                    "Could not set private owner command menu for %s: %s",
+                    owner_id,
+                    error,
+                )
 
         allowed_updates = dispatcher.resolve_used_update_types()
         logger.info("Allowed Telegram updates: %s", ", ".join(allowed_updates))
@@ -100,6 +117,7 @@ async def main() -> None:
             bot_username=bot_username,
             audit_logger=audit_logger,
             reference_uploads=reference_uploads,
+            access_policy=access_policy,
         )
     finally:
         await audit_logger.send("Velvet Archive остановлен", level="WARNING")
