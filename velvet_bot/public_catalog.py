@@ -44,7 +44,7 @@ async def list_public_characters(
     database: Database,
     *,
     category: str,
-    universe: str,
+    universe: str | None = None,
     page: int = 0,
     page_size: int = 6,
 ) -> PublicCharacterPage:
