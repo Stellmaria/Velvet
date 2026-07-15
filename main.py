@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from contextlib import suppress
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -12,6 +13,7 @@ from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.handlers import router
+from velvet_bot.public_notifications import run_public_notification_worker
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 logger = logging.getLogger(__name__)
@@ -28,6 +30,7 @@ async def main() -> None:
     )
     audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
     reference_uploads = ReferenceUploadSessions()
+    notification_task: asyncio.Task[None] | None = None
 
     try:
         bot_info = await bot.get_me()
@@ -110,6 +113,10 @@ async def main() -> None:
             log_chat_id=settings.log_chat_id,
         )
 
+        notification_task = asyncio.create_task(
+            run_public_notification_worker(bot, database),
+            name="public-archive-notifications",
+        )
         await dispatcher.start_polling(
             bot,
             allowed_updates=allowed_updates,
@@ -120,6 +127,10 @@ async def main() -> None:
             access_policy=access_policy,
         )
     finally:
+        if notification_task is not None:
+            notification_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await notification_task
         await audit_logger.send("Velvet Archive остановлен", level="WARNING")
         await bot.session.close()
         await database.close()
