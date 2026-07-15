@@ -8,32 +8,42 @@ Telegram-бот для архива персонажей Velvet. Бот рабо
 - `/create Каин` — создать профиль персонажа;
 - `/characters` — показать профили;
 - `/character Каин` — открыть профиль;
-- `/save Каин` — сохранить изображение, если команда отправлена ответом на фото;
+- `/save Каин` — сохранить изображение в обычном чате с ботом;
+- Guest Mode — вызвать бота ответом на изображение из любого поддерживаемого чата;
 - защита от повторного создания персонажей без учёта регистра;
 - защита от повторного сохранения одного Telegram-файла;
 - сохранение исходного имени документа и отдельного безопасного имени архива;
 - хранение чата и сообщения, из которого было взято изображение.
 
-## Как работает `/save` в другом чате
+## Сохранение через Guest Mode
 
-1. Добавьте бота в нужную группу или супергруппу.
-2. Найдите сообщение с фотографией или изображением, отправленным как файл.
-3. Нажмите **Ответить** на это сообщение.
-4. Отправьте:
+Guest Mode должен быть включён для бота в BotFather.
+
+Чтобы сохранить изображение из чата, в котором бот не состоит:
+
+1. Найдите фотографию или изображение, отправленное как файл.
+2. Нажмите **Ответить** на это сообщение.
+3. Отправьте один из вариантов:
+
+```text
+@username_бота save Каин
+```
+
+или:
 
 ```text
 /save@username_бота Каин
 ```
 
-Явное имя бота после `@` рекомендуется для групп: так команда гарантированно адресуется нужному боту даже при включённом Privacy Mode.
+Telegram передаст боту только сообщение-вызов и сообщение, на которое пользователь ответил. Бот сохранит изображение и отправит один гостевой ответ с результатом.
 
-Если бот является администратором группы или Privacy Mode отключён, обычно достаточно:
+## Обычное сохранение
+
+В личном чате с ботом или в группе, где бот уже состоит, можно ответить на изображение командой:
 
 ```text
 /save Каин
 ```
-
-Бот должен присутствовать в группе. Вызов из произвольного чата без добавления бота относится к отдельному Telegram Guest Mode и не используется в текущем этапе.
 
 ## Требования
 
@@ -41,33 +51,16 @@ Telegram-бот для архива персонажей Velvet. Бот рабо
 - PostgreSQL;
 - токен бота от `@BotFather`.
 
-## Быстрый запуск PostgreSQL через Docker
-
-```powershell
-docker compose up -d postgres
-```
-
-Контейнер создаст локальную базу:
-
-```text
-База: velvet
-Пользователь: velvet
-Пароль: velvet_password
-Порт: 5432
-```
-
-Пароль в `docker-compose.yml` предназначен только для локальной разработки. На сервере нужно использовать отдельный секрет.
-
 ## Установка на Windows
 
 ```powershell
 git clone https://github.com/Stellmaria/Velvet.git
 cd Velvet
 
-py -3.14 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+py -3.14 -m venv .venv314
+.\.venv314\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 Copy-Item .env.example .env
 ```
@@ -76,7 +69,15 @@ Copy-Item .env.example .env
 
 ```env
 BOT_TOKEN=токен_от_BotFather
-DATABASE_URL=postgresql://velvet:velvet_password@localhost:5432/velvet
+DATABASE_URL=postgresql://velvet:пароль@localhost:5432/velvet
+```
+
+PostgreSQL можно установить как обычную службу Windows. Docker для запуска бота не требуется.
+
+При наличии Docker Compose остаётся дополнительный вариант локального запуска базы:
+
+```powershell
+docker compose up -d postgres
 ```
 
 ## Запуск
@@ -85,7 +86,18 @@ DATABASE_URL=postgresql://velvet:velvet_password@localhost:5432/velvet
 python main.py
 ```
 
-При старте бот подключается к PostgreSQL и автоматически применяет SQL-миграции из каталога `migrations`.
+При старте бот:
+
+- подключается к PostgreSQL;
+- автоматически применяет SQL-миграции из каталога `migrations`;
+- проверяет через `getMe`, включён ли Guest Mode;
+- подписывается на обновления `message` и `guest_message`.
+
+В журнале при корректной настройке появится строка:
+
+```text
+Guest Mode enabled for @username_бота
+```
 
 ## Дубликаты и имена файлов
 
@@ -114,7 +126,7 @@ python -m unittest discover -s tests -v
 Интеграционные тесты PostgreSQL запускаются только при наличии отдельной тестовой базы:
 
 ```powershell
-$env:TEST_DATABASE_URL="postgresql://velvet:velvet_password@localhost:5432/velvet_test"
+$env:TEST_DATABASE_URL="postgresql://velvet:пароль@localhost:5432/velvet_test"
 python -m unittest discover -s tests -v
 ```
 
