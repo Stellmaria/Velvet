@@ -24,6 +24,11 @@ logger = logging.getLogger(__name__)
 PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery", "menu"})
 PUBLIC_CALLBACK_PREFIX = "pub:"
 
+CHARACTER_EDITOR_USER_IDS = frozenset({8179531132})
+CHARACTER_EDITOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
+CHARACTER_EDITOR_CALLBACK_PREFIXES = ("adir:", "astory:", "arc:")
+_PROMPT_REPLY_MARKER = "PROMPT_MEDIA:"
+
 ACCESS_DENIED_TEXT = (
     "<b>Доступ закрыт</b>\n\n"
     "Служебные команды Velvet Archive доступны только владельцу. "
@@ -36,18 +41,51 @@ def normalize_username(value: str) -> str:
     return value.strip().lstrip("@").casefold()
 
 
-def is_public_command_text(text: str) -> bool:
-    """Return True only for commands intentionally exposed to every subscriber."""
+def command_name(text: str) -> str | None:
     cleaned = text.strip()
     if not cleaned.startswith("/"):
-        return False
+        return None
     command_token = cleaned.split(maxsplit=1)[0][1:]
-    command = command_token.split("@", maxsplit=1)[0].casefold()
-    return command in PUBLIC_COMMANDS
+    return command_token.split("@", maxsplit=1)[0].casefold()
+
+
+def is_public_command_text(text: str) -> bool:
+    """Return True only for commands intentionally exposed to every subscriber."""
+    command = command_name(text)
+    return bool(command and command in PUBLIC_COMMANDS)
 
 
 def is_public_callback(callback: CallbackQuery) -> bool:
     return bool(callback.data and callback.data.startswith(PUBLIC_CALLBACK_PREFIX))
+
+
+def is_character_editor_user(user: User | None) -> bool:
+    return bool(user and user.id in CHARACTER_EDITOR_USER_IDS)
+
+
+def is_character_editor_callback(callback: CallbackQuery) -> bool:
+    return bool(
+        is_character_editor_user(callback.from_user)
+        and callback.data
+        and callback.data.startswith(CHARACTER_EDITOR_CALLBACK_PREFIXES)
+    )
+
+
+def is_character_editor_message(message: Message) -> bool:
+    caller = get_caller_user(message)
+    if not is_character_editor_user(caller):
+        return False
+
+    text = message.text or message.caption or ""
+    command = command_name(text)
+    if command in CHARACTER_EDITOR_COMMANDS:
+        return True
+
+    reply = message.reply_to_message
+    if reply is None:
+        return False
+    reply_text = reply.text or reply.caption or ""
+    return _PROMPT_REPLY_MARKER in reply_text
 
 
 def is_owner_mention_text(text: str, bot_username: str) -> bool:
@@ -147,7 +185,7 @@ class OwnerAccessMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         if isinstance(event, CallbackQuery):
-            if is_public_callback(event):
+            if is_public_callback(event) or is_character_editor_callback(event):
                 return await handler(event, data)
 
             allowed = self.policy.allows_user(event.from_user)
@@ -198,7 +236,7 @@ class OwnerAccessMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         text = event.text or event.caption or ""
-        if is_public_command_text(text):
+        if is_public_command_text(text) or is_character_editor_message(event):
             return await handler(event, data)
 
         if not message_requires_owner_access(
