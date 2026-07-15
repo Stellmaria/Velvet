@@ -3,6 +3,7 @@ from __future__ import annotations
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, Message
 
+from velvet_bot.access import AccessPolicy
 from velvet_bot.archive_catalog import get_archive_page
 from velvet_bot.database import Database
 from velvet_bot.public_archive_display import (
@@ -14,8 +15,9 @@ from velvet_bot.public_catalog import (
     toggle_character_subscription,
     toggle_public_like,
 )
+from velvet_bot.public_manager_access import has_public_manager_access
 from velvet_bot.public_media_lookup import get_character_media_offset
-from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID, PublicArchiveCallback
+from velvet_bot.public_ui import PublicArchiveCallback
 
 router = Router(name=__name__)
 
@@ -28,6 +30,7 @@ async def handle_spoiler_aware_open(
     callback_data: PublicArchiveCallback,
     database: Database,
     bot: Bot,
+    access_policy: AccessPolicy,
 ) -> None:
     offset = callback_data.offset
     if callback_data.action == "open" and callback_data.media_id:
@@ -46,6 +49,7 @@ async def handle_spoiler_aware_open(
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
 
+    manager_access = has_public_manager_access(callback.from_user, access_policy)
     if callback_data.action == "open":
         if not isinstance(callback.message, Message):
             await callback.answer("Не удалось определить чат.", show_alert=True)
@@ -56,6 +60,7 @@ async def handle_spoiler_aware_open(
             chat_id=callback.message.chat.id,
             page=page,
             viewer_user_id=callback.from_user.id,
+            manager_access=manager_access,
             menu_page=callback_data.page,
             category=callback_data.category,
             universe=callback_data.universe,
@@ -68,6 +73,7 @@ async def handle_spoiler_aware_open(
             database=database,
             page=page,
             viewer_user_id=callback.from_user.id,
+            manager_access=manager_access,
             menu_page=callback_data.page,
             category=callback_data.category,
             universe=callback_data.universe,
@@ -77,13 +83,13 @@ async def handle_spoiler_aware_open(
 
 
 @router.callback_query(
-    F.from_user.id == PUBLIC_DOWNLOAD_USER_ID,
-    PublicArchiveCallback.filter(F.action.in_({"like", "sub"})),
+    PublicArchiveCallback.filter(F.action.in_({"like", "sub"}))
 )
-async def handle_manager_like_and_subscription(
+async def handle_like_and_subscription(
     callback: CallbackQuery,
     callback_data: PublicArchiveCallback,
     database: Database,
+    access_policy: AccessPolicy,
 ) -> None:
     page = await get_archive_page(
         database,
@@ -95,18 +101,18 @@ async def handle_manager_like_and_subscription(
         return
 
     if callback_data.action == "like":
-        await toggle_public_like(
+        liked, _ = await toggle_public_like(
             database,
             character_id=page.character.id,
             media_id=page.media.id,
-            user_id=PUBLIC_DOWNLOAD_USER_ID,
+            user_id=callback.from_user.id,
         )
-        alert = None
+        alert = "Отметка поставлена." if liked else "Отметка снята."
     else:
         subscribed = await toggle_character_subscription(
             database,
             character_id=page.character.id,
-            user_id=PUBLIC_DOWNLOAD_USER_ID,
+            user_id=callback.from_user.id,
         )
         alert = "Подписка включена." if subscribed else "Подписка отключена."
 
@@ -114,6 +120,11 @@ async def handle_manager_like_and_subscription(
         callback=callback,
         database=database,
         page=page,
-        viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+        viewer_user_id=callback.from_user.id,
+        manager_access=has_public_manager_access(callback.from_user, access_policy),
+        menu_page=callback_data.page,
+        category=callback_data.category,
+        universe=callback_data.universe,
+        story_id=callback_data.story_id,
     )
     await callback.answer(alert)
