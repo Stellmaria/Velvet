@@ -14,6 +14,8 @@ class CharacterCategoryTests(unittest.TestCase):
         self.assertEqual("female", normalize_category("женский"))
         self.assertEqual("male", normalize_category("МУЖСКОЙ"))
         self.assertEqual("mf", normalize_category("мж"))
+        self.assertEqual("mfm", normalize_category("мжм"))
+        self.assertEqual("mfm", normalize_category("MFM"))
         self.assertEqual("mm", normalize_category("мм"))
         self.assertEqual("ff", normalize_category("жж"))
 
@@ -27,6 +29,9 @@ class CharacterCategoryTests(unittest.TestCase):
 
     def test_category_label_for_empty_value(self) -> None:
         self.assertEqual("Без категории", category_label(None))
+
+    def test_mfm_category_label(self) -> None:
+        self.assertEqual("МЖМ", category_label("mfm"))
 
 
 class CharacterUniverseTests(unittest.TestCase):
