@@ -44,10 +44,13 @@ async def main() -> None:
         )
         access_middleware = OwnerAccessMiddleware(access_policy)
 
-        dispatcher = Dispatcher(
-            database=database,
-            bot_username=bot_username,
-            audit_logger=audit_logger,
+        dispatcher = Dispatcher()
+        dispatcher.workflow_data.update(
+            {
+                "database": database,
+                "bot_username": bot_username,
+                "audit_logger": audit_logger,
+            }
         )
         dispatcher.message.outer_middleware(access_middleware)
         dispatcher.guest_message.outer_middleware(access_middleware)
@@ -86,6 +89,9 @@ async def main() -> None:
         await dispatcher.start_polling(
             bot,
             allowed_updates=allowed_updates,
+            database=database,
+            bot_username=bot_username,
+            audit_logger=audit_logger,
         )
     finally:
         await audit_logger.send("Velvet Archive остановлен", level="WARNING")
