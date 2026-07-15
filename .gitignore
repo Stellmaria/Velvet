@@ -1,6 +1,12 @@
 # Secrets
 .env
 
+# Runtime data
+data/
+*.db
+*.db-shm
+*.db-wal
+
 # Python
 __pycache__/
 *.py[cod]
