@@ -5,6 +5,7 @@ from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
+from velvet_bot.handlers.admin_stories import router as admin_stories_router
 from velvet_bot.handlers.admin_uncategorized import router as admin_uncategorized_router
 from velvet_bot.handlers.archive import router as archive_router
 from velvet_bot.handlers.characters import router as characters_router
@@ -56,8 +57,9 @@ router.include_router(public_archive_router)
 # Must be before the general admin directory and media browser routers:
 # it intercepts /prompt and the focused prompt callbacks for one media item.
 router.include_router(media_prompt_binding_router)
-# Must be before the general admin directory router so its focused callbacks
-# can render the category picker for the "Без категории" section.
+# Focused story and category callbacks must be handled before the general
+# directory router, which owns the same callback-data type.
+router.include_router(admin_stories_router)
 router.include_router(admin_uncategorized_router)
 router.include_router(admin_directory_router)
 router.include_router(characters_router)
