@@ -8,6 +8,7 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, Message
 
+from velvet_bot.access import AccessPolicy
 from velvet_bot.archive_catalog import (
     delete_archive_item,
     get_archive_page,
@@ -28,13 +29,14 @@ from velvet_bot.public_archive_display import (
     refresh_viewer_archive_caption,
     replace_viewer_archive_page,
 )
+from velvet_bot.public_manager_access import has_public_manager_access
 from velvet_bot.public_manager_ui import (
     build_manager_category_picker,
     build_manager_delete_confirmation,
     build_manager_story_picker,
     build_manager_universe_picker,
 )
-from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID, PublicArchiveCallback
+from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.story_catalog import (
     list_story_page,
     set_character_story,
@@ -90,7 +92,6 @@ async def _show_story_picker(
 
 
 @router.callback_query(
-    F.from_user.id == PUBLIC_DOWNLOAD_USER_ID,
     PublicArchiveCallback.filter(F.action.in_(_ACTIONS)),
 )
 async def handle_public_manager(
@@ -98,8 +99,14 @@ async def handle_public_manager(
     callback_data: PublicArchiveCallback,
     database: Database,
     bot: Bot,
+    access_policy: AccessPolicy,
     audit_logger: TelegramAuditLogger | None = None,
 ) -> None:
+    if not has_public_manager_access(callback.from_user, access_policy):
+        await callback.answer("Управление архивом для вас закрыто.", show_alert=True)
+        return
+
+    viewer_user_id = callback.from_user.id
     action = callback_data.action
     if action == "pnoop":
         await callback.answer()
@@ -119,7 +126,8 @@ async def handle_public_manager(
             callback=callback,
             database=database,
             page=page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer()
         return
@@ -142,7 +150,8 @@ async def handle_public_manager(
             bot=bot,
             database=database,
             page=updated_page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer(
             "Спойлер включён." if enabled else "Спойлер снят.",
@@ -176,7 +185,8 @@ async def handle_public_manager(
             callback=callback,
             database=database,
             page=page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer(
             f"Категория: {CATEGORY_LABELS[callback_data.category]}",
@@ -223,7 +233,8 @@ async def handle_public_manager(
                 callback=callback,
                 database=database,
                 page=page,
-                viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+                viewer_user_id=viewer_user_id,
+                manager_access=True,
             )
             await callback.answer(
                 f"Вселенная: {UNIVERSE_LABELS[callback_data.universe]}",
@@ -252,7 +263,8 @@ async def handle_public_manager(
             callback=callback,
             database=database,
             page=page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer("История изменена.", show_alert=True)
         return
@@ -294,7 +306,7 @@ async def handle_public_manager(
                 level="SUCCESS",
                 character=deleted.character.name,
                 media_id=deleted.media.id,
-                deleted_by=PUBLIC_DOWNLOAD_USER_ID,
+                deleted_by=viewer_user_id,
                 remaining=deleted.remaining_total,
             )
         if not isinstance(callback.message, Message):
@@ -321,6 +333,7 @@ async def handle_public_manager(
             bot=bot,
             database=database,
             page=next_page,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=viewer_user_id,
+            manager_access=True,
         )
         await callback.answer("Материал удалён.", show_alert=True)
