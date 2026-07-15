@@ -4,6 +4,7 @@ from aiogram import Router
 from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
+from velvet_bot.handlers.admin_directory import router as admin_directory_router
 from velvet_bot.handlers.archive import router as archive_router
 from velvet_bot.handlers.characters import router as characters_router
 from velvet_bot.handlers.guest_archive import router as guest_archive_router
@@ -50,6 +51,7 @@ async def handle_unhandled_error(
 router.include_router(start_router)
 router.include_router(public_notification_open_router)
 router.include_router(public_archive_router)
+router.include_router(admin_directory_router)
 router.include_router(characters_router)
 router.include_router(media_browser_router)
 router.include_router(reference_documents_router)
