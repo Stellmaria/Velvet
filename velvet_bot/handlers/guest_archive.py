@@ -14,6 +14,7 @@ from aiogram.types import (
     Message,
 )
 
+from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Character, Database
 from velvet_bot.handlers.archive import parse_guest_save_character
 from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
@@ -28,7 +29,6 @@ class GuestSource:
     source_chat_id: int
     source_message_id: int
     source_thread_id: int | None
-    source_message: Message | None
 
 
 def _resolve_guest_source(message: Message) -> GuestSource | None:
@@ -39,7 +39,6 @@ def _resolve_guest_source(message: Message) -> GuestSource | None:
             source_chat_id=source.chat.id,
             source_message_id=source.message_id,
             source_thread_id=source.message_thread_id,
-            source_message=source,
         )
 
     if message.external_reply is not None:
@@ -53,7 +52,6 @@ def _resolve_guest_source(message: Message) -> GuestSource | None:
                 else message.message_id
             ),
             source_thread_id=None,
-            source_message=None,
         )
 
     return None
@@ -93,7 +91,8 @@ async def _archive_guest_media(
     character: Character,
     media: MediaDescriptor,
     source: GuestSource,
-) -> tuple[str, bool]:
+    audit_logger: TelegramAuditLogger,
+) -> str:
     result = await database.save_character_media(
         character,
         media,
@@ -106,24 +105,57 @@ async def _archive_guest_media(
         archive_message_id=None,
     )
 
+    if result.character_link_created:
+        await audit_logger.send(
+            "Медиа добавлено через Guest Mode",
+            level="SUCCESS",
+            character=character.name,
+            file=result.storage_file_name,
+            media_type=media.media_type,
+            saved_by=_caller_user_id(message),
+            guest_chat_id=message.chat.id,
+            source_chat_id=source.source_chat_id,
+            source_message_id=source.source_message_id,
+        )
+
     uploaded = False
     if (
         character.archive_chat_id is not None
         and character.archive_thread_id is not None
         and result.archive_message_id is None
     ):
-        archived_message = await send_media_to_topic(
-            bot,
-            media,
-            chat_id=character.archive_chat_id,
-            thread_id=character.archive_thread_id,
-        )
-        await database.set_archive_message_id(
-            character.id,
-            result.media_id,
-            archived_message.message_id,
-        )
-        uploaded = True
+        try:
+            archived_message = await send_media_to_topic(
+                bot,
+                media,
+                chat_id=character.archive_chat_id,
+                thread_id=character.archive_thread_id,
+            )
+            await database.set_archive_message_id(
+                character.id,
+                result.media_id,
+                archived_message.message_id,
+            )
+            uploaded = True
+            await audit_logger.send(
+                "Guest-медиа отправлено в ветку",
+                level="SUCCESS",
+                character=character.name,
+                file=result.storage_file_name,
+                archive_chat_id=character.archive_chat_id,
+                archive_thread_id=character.archive_thread_id,
+                archive_message_id=archived_message.message_id,
+            )
+        except Exception as error:
+            await audit_logger.error(
+                "Ошибка отправки Guest-медиа в ветку",
+                error,
+                character=character.name,
+                file=result.storage_file_name,
+                archive_chat_id=character.archive_chat_id,
+                archive_thread_id=character.archive_thread_id,
+            )
+            raise
 
     if not result.character_link_created:
         status = "Этот файл уже был сохранён для персонажа."
@@ -137,7 +169,7 @@ async def _archive_guest_media(
     elif character.archive_chat_id is None:
         status += " Ветка архива не назначена."
 
-    return status, result.character_link_created
+    return status
 
 
 @router.guest_message()
@@ -146,6 +178,7 @@ async def handle_guest_archive(
     database: Database,
     bot: Bot,
     bot_username: str,
+    audit_logger: TelegramAuditLogger,
 ) -> None:
     caller = message.from_user or message.guest_bot_caller_user
     logger.info(
@@ -194,13 +227,14 @@ async def handle_guest_archive(
             )
             return
 
-        status, _ = await _archive_guest_media(
+        status = await _archive_guest_media(
             message=message,
             database=database,
             bot=bot,
             character=character,
             media=media,
             source=source,
+            audit_logger=audit_logger,
         )
         await _send_guest_answer(
             message,
@@ -209,6 +243,15 @@ async def handle_guest_archive(
         )
     except Exception as error:
         logger.exception("Guest archive request failed")
+        await audit_logger.error(
+            "Ошибка Guest Mode",
+            error,
+            character=character_name,
+            caller_id=_caller_user_id(message),
+            guest_chat_id=message.chat.id,
+            source_chat_id=source.source_chat_id,
+            source_message_id=source.source_message_id,
+        )
         await _send_guest_answer(
             message,
             "Не удалось сохранить файл.\n"
