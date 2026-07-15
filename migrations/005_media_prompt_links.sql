@@ -15,3 +15,9 @@ WHERE c.id = cm.character_id
       FROM character_media AS only_cm
       WHERE only_cm.character_id = c.id
   ) = 1;
+
+-- Старая привязка к персонажу больше не используется: один персонаж может
+-- иметь много изображений и у каждого изображения свой пост с промтом.
+UPDATE characters
+SET prompt_post_url = NULL
+WHERE prompt_post_url IS NOT NULL;
