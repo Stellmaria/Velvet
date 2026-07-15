@@ -9,11 +9,14 @@ from velvet_bot.archive_catalog import ArchivePage
 from velvet_bot.character_directory import (
     CATEGORY_EMOJI,
     CATEGORY_LABELS,
+    UNIVERSE_EMOJI,
+    UNIVERSE_LABELS,
     CategorySummary,
 )
 from velvet_bot.public_catalog import PublicCharacterPage, PublicMediaState
 
 PUBLIC_DOWNLOAD_USER_ID = 8179531132
+_FILTER_SEPARATOR = "~"
 
 
 class PublicArchiveCallback(CallbackData, prefix="pub"):
@@ -23,6 +26,25 @@ class PublicArchiveCallback(CallbackData, prefix="pub"):
     media_id: int = 0
     page: int = 0
     category: str = ""
+
+
+def encode_public_filter(category: str = "", universe_category: str = "") -> str:
+    category = category.strip()
+    universe_category = universe_category.strip()
+    if not category and not universe_category:
+        return ""
+    return f"{category}{_FILTER_SEPARATOR}{universe_category}"
+
+
+def decode_public_filter(value: str) -> tuple[str, str]:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return "", ""
+    if _FILTER_SEPARATOR not in cleaned:
+        # Совместимость со старыми кнопками, где хранилась только категория пола.
+        return cleaned, ""
+    category, universe_category = cleaned.split(_FILTER_SEPARATOR, 1)
+    return category, universe_category
 
 
 def _callback(
@@ -50,41 +72,161 @@ def build_public_entry_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="🖼 Открыть архив персонажей",
-                    callback_data=_callback("categories"),
+                    callback_data=_callback("filters"),
                 )
             ]
         ]
     )
 
 
-def format_public_categories(summaries: list[CategorySummary]) -> str:
-    total = sum(item.character_count for item in summaries)
+def _selected_label(
+    value: str,
+    labels: dict[str, str],
+    *,
+    empty_label: str,
+) -> str:
+    return labels.get(value, empty_label) if value else empty_label
+
+
+def format_public_filters(
+    category_summaries: list[CategorySummary],
+    universe_summaries: list[CategorySummary],
+    *,
+    selected_category: str = "",
+    selected_universe: str = "",
+) -> str:
+    total = sum(item.character_count for item in category_summaries)
+    type_label = _selected_label(
+        selected_category,
+        CATEGORY_LABELS,
+        empty_label="Все типы",
+    )
+    universe_label = _selected_label(
+        selected_universe,
+        UNIVERSE_LABELS,
+        empty_label="Все вселенные",
+    )
     return (
         "<b>Архив персонажей Velvet</b>\n\n"
-        "Выберите категорию. Внутри персонажи расположены по алфавиту "
-        "и разбиты на страницы.\n\n"
+        "Настройте два фильтра. Их можно сочетать, например "
+        "<b>Мужской + КР</b>.\n\n"
+        f"Тип: <b>{escape(type_label)}</b>\n"
+        f"Вселенная: <b>{escape(universe_label)}</b>\n\n"
         f"Персонажей с материалами: <b>{total}</b>"
     )
 
 
-def build_public_category_menu(
-    summaries: list[CategorySummary],
+def _filter_button_text(
+    *,
+    selected: bool,
+    emoji: str,
+    label: str,
+    count: int | None = None,
+) -> str:
+    marker = "✅" if selected else emoji
+    suffix = f" · {count}" if count is not None else ""
+    return f"{marker} {label}{suffix}"
+
+
+def build_public_filter_menu(
+    category_summaries: list[CategorySummary],
+    universe_summaries: list[CategorySummary],
+    *,
+    selected_category: str = "",
+    selected_universe: str = "",
 ) -> InlineKeyboardMarkup:
-    buttons = [
-        InlineKeyboardButton(
-            text=f"{item.emoji} {item.label} · {item.character_count}",
-            callback_data=_callback("menu", category=item.key),
-        )
-        for item in summaries
-    ]
     rows: list[list[InlineKeyboardButton]] = []
-    for index in range(0, len(buttons), 2):
-        rows.append(buttons[index : index + 2])
+
     rows.append(
         [
             InlineKeyboardButton(
-                text="🔄 Обновить",
-                callback_data=_callback("categories"),
+                text=_filter_button_text(
+                    selected=not selected_category,
+                    emoji="👥",
+                    label="Все типы",
+                ),
+                callback_data=_callback(
+                    "filters",
+                    category=encode_public_filter("", selected_universe),
+                ),
+            )
+        ]
+    )
+    category_buttons = [
+        InlineKeyboardButton(
+            text=_filter_button_text(
+                selected=item.key == selected_category,
+                emoji=item.emoji,
+                label=item.label,
+                count=item.character_count,
+            ),
+            callback_data=_callback(
+                "filters",
+                category=encode_public_filter(
+                    "" if item.key == selected_category else item.key,
+                    selected_universe,
+                ),
+            ),
+        )
+        for item in category_summaries
+    ]
+    rows.extend(
+        category_buttons[index : index + 2]
+        for index in range(0, len(category_buttons), 2)
+    )
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=_filter_button_text(
+                    selected=not selected_universe,
+                    emoji="🌐",
+                    label="Все вселенные",
+                ),
+                callback_data=_callback(
+                    "filters",
+                    category=encode_public_filter(selected_category, ""),
+                ),
+            )
+        ]
+    )
+    universe_buttons = [
+        InlineKeyboardButton(
+            text=_filter_button_text(
+                selected=item.key == selected_universe,
+                emoji=item.emoji,
+                label=item.label,
+                count=item.character_count,
+            ),
+            callback_data=_callback(
+                "filters",
+                category=encode_public_filter(
+                    selected_category,
+                    "" if item.key == selected_universe else item.key,
+                ),
+            ),
+        )
+        for item in universe_summaries
+    ]
+    rows.extend(
+        universe_buttons[index : index + 2]
+        for index in range(0, len(universe_buttons), 2)
+    )
+
+    filter_key = encode_public_filter(selected_category, selected_universe)
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="🔎 Показать персонажей",
+                callback_data=_callback("menu", category=filter_key),
+            )
+        ]
+    )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="♻ Сбросить",
+                callback_data=_callback("filters"),
             ),
             InlineKeyboardButton(text="✖ Закрыть", callback_data=_callback("close")),
         ]
@@ -92,13 +234,36 @@ def build_public_category_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+# Совместимость со старым интерфейсом и существующими тестами.
+def format_public_categories(summaries: list[CategorySummary]) -> str:
+    return format_public_filters(summaries, [])
+
+
+def build_public_category_menu(
+    summaries: list[CategorySummary],
+) -> InlineKeyboardMarkup:
+    return build_public_filter_menu(summaries, [])
+
+
 def format_public_menu(page: PublicCharacterPage) -> str:
-    label = CATEGORY_LABELS.get(page.category, page.category)
-    emoji = CATEGORY_EMOJI.get(page.category, "🗂")
+    type_label = _selected_label(
+        page.category,
+        CATEGORY_LABELS,
+        empty_label="Все типы",
+    )
+    universe_label = _selected_label(
+        page.universe_category,
+        UNIVERSE_LABELS,
+        empty_label="Все вселенные",
+    )
+    heading = f"{escape(type_label)} · {escape(universe_label)}"
     if page.total_characters == 0:
-        return f"<b>{emoji} {escape(label)}</b>\n\nВ этой категории пока нет материалов."
+        return (
+            f"<b>🔎 {heading}</b>\n\n"
+            "По этому сочетанию пока нет персонажей с материалами."
+        )
     return (
-        f"<b>{emoji} {escape(label)}</b>\n\n"
+        f"<b>🔎 {heading}</b>\n\n"
         "Выберите персонажа. Список отсортирован по алфавиту.\n\n"
         f"Персонажей: <b>{page.total_characters}</b> · "
         f"страница <b>{page.page + 1}</b> из <b>{page.total_pages}</b>"
@@ -107,17 +272,20 @@ def format_public_menu(page: PublicCharacterPage) -> str:
 
 def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
+    filter_key = encode_public_filter(page.category, page.universe_category)
     for item in page.items:
+        world = UNIVERSE_LABELS.get(item.universe_category or "", "")
+        world_suffix = f" · {world}" if world else ""
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"🖼 {item.character.name} · {item.media_count}",
+                    text=f"🖼 {item.character.name}{world_suffix} · {item.media_count}",
                     callback_data=_callback(
                         "open",
                         character_id=item.character.id,
                         offset=0,
                         page=page.page,
-                        category=page.category,
+                        category=filter_key,
                     ),
                 )
             ]
@@ -131,13 +299,13 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                     callback_data=_callback(
                         "menu",
                         page=(page.page - 1) % page.total_pages,
-                        category=page.category,
+                        category=filter_key,
                     ),
                 ),
                 InlineKeyboardButton(
                     text=f"{page.page + 1} / {page.total_pages}",
                     callback_data=_callback(
-                        "noop", page=page.page, category=page.category
+                        "noop", page=page.page, category=filter_key
                     ),
                 ),
                 InlineKeyboardButton(
@@ -145,7 +313,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
                     callback_data=_callback(
                         "menu",
                         page=(page.page + 1) % page.total_pages,
-                        category=page.category,
+                        category=filter_key,
                     ),
                 ),
             ]
@@ -154,13 +322,13 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
     rows.append(
         [
             InlineKeyboardButton(
-                text="↩️ Категории",
-                callback_data=_callback("categories"),
+                text="↩️ Фильтры",
+                callback_data=_callback("filters", category=filter_key),
             ),
             InlineKeyboardButton(
                 text="🔄 Обновить",
                 callback_data=_callback(
-                    "menu", page=page.page, category=page.category
+                    "menu", page=page.page, category=filter_key
                 ),
             ),
         ]
@@ -263,7 +431,6 @@ def build_public_archive_keyboard(
         ]
     )
 
-    # Промт относится к конкретному материалу, а не ко всему персонажу.
     effective_prompt_url = page.media.prompt_post_url
     if effective_prompt_url:
         rows.append(
