@@ -44,10 +44,11 @@ async def main() -> None:
         await bot.set_my_commands(
             [
                 BotCommand(command="start", description="Запустить бота"),
-                BotCommand(command="create", description="Создать персонажа"),
+                BotCommand(command="create", description="Создать персонажа и назначить тему"),
+                BotCommand(command="topic", description="Назначить тему персонажу"),
                 BotCommand(command="characters", description="Список персонажей"),
                 BotCommand(command="character", description="Профиль персонажа"),
-                BotCommand(command="save", description="Сохранить изображение персонажа"),
+                BotCommand(command="save", description="Сохранить фото или видео"),
             ]
         )
 
