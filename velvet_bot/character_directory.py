@@ -388,7 +388,10 @@ async def list_character_directory(
                     FROM characters AS c
                     LEFT JOIN character_media AS cm ON cm.character_id = c.id
                     WHERE {category_condition}
-                      AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
+                      AND (
+                          $2::BOOLEAN = FALSE
+                          OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
+                      )
                       AND {universe_condition}
                     GROUP BY c.id
                 ) AS directory
@@ -411,7 +414,10 @@ async def list_character_directory(
             FROM characters AS c
             LEFT JOIN character_media AS cm ON cm.character_id = c.id
             WHERE {category_condition}
-              AND ($2::BOOLEAN = FALSE OR cm.media_id IS NOT NULL)
+              AND (
+                  $2::BOOLEAN = FALSE
+                  OR (cm.media_id IS NOT NULL AND c.universe IS NOT NULL)
+              )
               AND {universe_condition}
             GROUP BY c.id
             ORDER BY c.normalized_name ASC, c.id ASC
