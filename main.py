@@ -11,6 +11,7 @@ from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.handlers import router
+from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
+    reference_uploads = ReferenceUploadSessions()
 
     try:
         bot_info = await bot.get_me()
@@ -50,6 +52,7 @@ async def main() -> None:
                 "database": database,
                 "bot_username": bot_username,
                 "audit_logger": audit_logger,
+                "reference_uploads": reference_uploads,
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
@@ -72,6 +75,9 @@ async def main() -> None:
                 BotCommand(command="characters", description="Список персонажей"),
                 BotCommand(command="character", description="Профиль персонажа"),
                 BotCommand(command="save", description="Сохранить фото или видео"),
+                BotCommand(command="refadd", description="Добавить референсы персонажа"),
+                BotCommand(command="refdone", description="Завершить загрузку референсов"),
+                BotCommand(command="refs", description="Показать референсы персонажа"),
             ]
         )
 
@@ -92,6 +98,7 @@ async def main() -> None:
             database=database,
             bot_username=bot_username,
             audit_logger=audit_logger,
+            reference_uploads=reference_uploads,
         )
     finally:
         await audit_logger.send("Velvet Archive остановлен", level="WARNING")
