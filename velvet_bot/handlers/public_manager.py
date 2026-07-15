@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import io
 import logging
 from html import escape
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
 from velvet_bot.access import AccessPolicy
 from velvet_bot.archive_catalog import (
+    ArchivedMedia,
     delete_archive_item,
     get_archive_page,
     toggle_archive_media_spoiler,
@@ -25,6 +27,7 @@ from velvet_bot.character_directory import (
     set_character_universe,
 )
 from velvet_bot.database import Database
+from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_archive_display import (
     refresh_viewer_archive_caption,
     replace_viewer_archive_page,
@@ -46,9 +49,33 @@ from velvet_bot.story_catalog import (
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 _ACTIONS = {
-    "pback", "psp", "pcats", "pcat", "punis", "puni",
+    "download", "pback", "psp", "pcats", "pcat", "punis", "puni",
     "psts", "pstp", "pst", "pdel", "pdelok", "pdelno", "pnoop",
 }
+
+
+async def _send_as_document(
+    *,
+    bot: Bot,
+    media: ArchivedMedia,
+    chat_id: int,
+) -> Message:
+    if media.media_type == "document":
+        return await bot.send_document(
+            chat_id=chat_id,
+            document=media.telegram_file_id,
+            caption="Оригинал из Velvet Archive",
+        )
+    destination = io.BytesIO()
+    await bot.download(media.telegram_file_id, destination=destination, seek=True)
+    payload = destination.getvalue()
+    if not payload:
+        raise RuntimeError("Telegram вернул пустой файл.")
+    return await bot.send_document(
+        chat_id=chat_id,
+        document=BufferedInputFile(payload, filename=media.display_file_name),
+        caption="Оригинал из Velvet Archive",
+    )
 
 
 async def _show_story_picker(
@@ -119,6 +146,21 @@ async def handle_public_manager(
     )
     if page is None or page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
+        return
+
+    if action == "download":
+        try:
+            if isinstance(bot, ProtectedMediaBot):
+                bot.allow_unprotected_private_user(viewer_user_id)
+            await _send_as_document(
+                bot=bot,
+                media=page.media,
+                chat_id=viewer_user_id,
+            )
+            await callback.answer("Оригинал отправлен в личный чат.")
+        except Exception:
+            logger.exception("Failed to send archive original to manager")
+            await callback.answer("Не удалось отправить оригинал.", show_alert=True)
         return
 
     if action in {"pback", "pdelno"}:
