@@ -28,6 +28,7 @@ def _build_bot(settings: Settings) -> ProtectedMediaBot:
     return ProtectedMediaBot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        unprotected_private_user_ids=settings.allowed_user_ids,
     )
 
 
