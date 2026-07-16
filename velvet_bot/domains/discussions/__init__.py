@@ -16,6 +16,12 @@ from velvet_bot.domains.discussions.models import (
     DiscussionOverview,
     ParticipantStat,
 )
+from velvet_bot.domains.discussions.post_insight_repository import (
+    DiscussionPostInsightRepository,
+)
+from velvet_bot.domains.discussions.post_insight_service import (
+    DiscussionPostInsightService,
+)
 from velvet_bot.domains.discussions.repository import DiscussionRepository
 from velvet_bot.domains.discussions.service import DiscussionService
 
@@ -31,6 +37,8 @@ __all__ = (
     "DiscussionInsightService",
     "DiscussionMessageEvent",
     "DiscussionOverview",
+    "DiscussionPostInsightRepository",
+    "DiscussionPostInsightService",
     "DiscussionRepository",
     "DiscussionService",
     "DiscussionSummary",
