@@ -4,15 +4,13 @@ from functools import partial
 
 from aiogram import Bot
 
+from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
-from velvet_bot.workers.iterations import (
-    process_backup_once,
-    process_public_notifications_once,
-)
+from velvet_bot.workers.iterations import process_backup_once
 
 
 def build_worker_manager(
@@ -22,6 +20,7 @@ def build_worker_manager(
     backup_service: BackupService,
 ) -> WorkerManager:
     """Build the complete periodic-worker registry for the application."""
+    public_notifications = build_public_notification_dispatcher(bot, database)
     publication_service = build_publication_service(bot, database)
     media_quality_service = MediaQualityService(
         bot=bot,
@@ -34,7 +33,7 @@ def build_worker_manager(
             name="public-archive-notifications",
             description="Уведомления открытого архива",
             interval_seconds=5,
-            runner=partial(process_public_notifications_once, bot, database),
+            runner=public_notifications.process_once,
         )
     )
     manager.register(
