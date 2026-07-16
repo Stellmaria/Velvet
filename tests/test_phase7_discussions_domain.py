@@ -8,47 +8,51 @@ from velvet_bot.domains.discussions import DiscussionService
 
 
 class DiscussionServiceTests(unittest.IsolatedAsyncioTestCase):
-    async def test_empty_reaction_key_is_rejected_before_repository(self) -> None:
+    async def test_empty_reaction_delta_is_ignored(self) -> None:
         repository = SimpleNamespace(apply_reaction_delta=AsyncMock())
         service = DiscussionService(repository)
 
-        with self.assertRaisesRegex(ValueError, "Пустая реакция"):
-            await service.apply_reaction_delta(
-                discussion_chat_id=-1001,
-                discussion_message_id=5,
-                reaction_key="   ",
-                delta=1,
-            )
-
-        repository.apply_reaction_delta.assert_not_awaited()
-
-    async def test_zero_reaction_delta_is_ignored(self) -> None:
-        repository = SimpleNamespace(apply_reaction_delta=AsyncMock())
-        service = DiscussionService(repository)
-
-        await service.apply_reaction_delta(
+        result = await service.apply_reaction_delta(
             discussion_chat_id=-1001,
             discussion_message_id=5,
-            reaction_key="emoji:🔥",
-            delta=0,
+            delta={"   ": 1, "emoji:🔥": 0},
         )
 
+        self.assertFalse(result)
         repository.apply_reaction_delta.assert_not_awaited()
+
+    async def test_reaction_delta_is_normalized_and_delegated(self) -> None:
+        repository = SimpleNamespace(apply_reaction_delta=AsyncMock(return_value=True))
+        service = DiscussionService(repository)
+
+        result = await service.apply_reaction_delta(
+            discussion_chat_id=-1001,
+            discussion_message_id=5,
+            delta={" emoji:🔥 ": 1, "emoji:👍": -1},
+        )
+
+        self.assertTrue(result)
+        repository.apply_reaction_delta.assert_awaited_once_with(
+            discussion_chat_id=-1001,
+            discussion_message_id=5,
+            delta={"emoji:🔥": 1, "emoji:👍": -1},
+        )
 
     async def test_reaction_counts_are_delegated(self) -> None:
-        repository = SimpleNamespace(set_reaction_counts=AsyncMock())
+        repository = SimpleNamespace(set_reaction_counts=AsyncMock(return_value=True))
         service = DiscussionService(repository)
 
-        await service.set_reaction_counts(
+        result = await service.set_reaction_counts(
             discussion_chat_id=-1001,
             discussion_message_id=5,
-            reaction_counts={"emoji:🔥": 4},
+            reaction_breakdown={"emoji:🔥": 4},
         )
 
+        self.assertTrue(result)
         repository.set_reaction_counts.assert_awaited_once_with(
             discussion_chat_id=-1001,
             discussion_message_id=5,
-            reaction_counts={"emoji:🔥": 4},
+            reaction_breakdown={"emoji:🔥": 4},
         )
 
     async def test_reports_are_delegated(self) -> None:
