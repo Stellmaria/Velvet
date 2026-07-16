@@ -14,6 +14,7 @@ from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.error_center import ErrorIncidentCenter
+from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.ollama_vision import ReliableVisionClient
 from velvet_bot.resilient_ai_vision import (
     ResilientMediaAIRepository,
@@ -74,7 +75,7 @@ def build_worker_manager(
         )
     )
     if settings is not None and settings.ai_vision_enabled:
-        ai_lock = asyncio.Lock()
+        ai_lock = get_local_ai_lock()
         ai_service = ResilientMediaAIVisionService(
             bot=bot,
             repository=ResilientMediaAIRepository(database),
