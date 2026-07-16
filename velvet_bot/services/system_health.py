@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,6 +15,16 @@ from velvet_bot.repositories.system_repository import (
     SystemRepository,
 )
 from velvet_bot.workers.manager import WorkerManager, WorkerSnapshot
+
+_CONNECTION_URL_RE = re.compile(
+    r"\b(?:postgres(?:ql)?|mysql|mariadb|redis|mongodb(?:\+srv)?)://[^\s]+",
+    re.IGNORECASE,
+)
+_BOT_TOKEN_RE = re.compile(r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b")
+_SECRET_ASSIGNMENT_RE = re.compile(
+    r"\b(?:BOT_TOKEN|DATABASE_URL|PASSWORD|SECRET|API_KEY)\s*=\s*[^\s]+",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +85,15 @@ class SystemHealthService:
     def _tool_available(configured: str) -> bool:
         candidate = Path(configured).expanduser()
         return candidate.is_file() or shutil.which(configured) is not None
+
+    @staticmethod
+    def redact_text(value: str | None) -> str | None:
+        if value is None:
+            return None
+        redacted = _CONNECTION_URL_RE.sub("<redacted-connection-url>", value)
+        redacted = _BOT_TOKEN_RE.sub("<redacted-bot-token>", redacted)
+        redacted = _SECRET_ASSIGNMENT_RE.sub("<redacted-secret>", redacted)
+        return redacted
 
     def _disk_snapshot(self) -> DiskSnapshot:
         candidate = self.backup_dir
@@ -156,8 +176,8 @@ class SystemHealthService:
             workers=workers,
         )
 
-    @staticmethod
-    def report_to_dict(report: SystemHealthReport) -> dict[str, Any]:
+    @classmethod
+    def report_to_dict(cls, report: SystemHealthReport) -> dict[str, Any]:
         database = report.database
         return {
             "status": report.status,
@@ -169,11 +189,11 @@ class SystemHealthService:
             "telegram": {
                 "ok": report.telegram_ok,
                 "bot_username": report.bot_username,
-                "error": report.telegram_error,
+                "error": cls.redact_text(report.telegram_error),
             },
             "postgresql": {
                 "ok": report.database_ok,
-                "error": report.database_error,
+                "error": cls.redact_text(report.database_error),
                 "database_name": database.database_name if database else None,
                 "postgres_version": database.postgres_version if database else None,
                 "database_size_bytes": database.database_size_bytes if database else None,
@@ -239,7 +259,7 @@ class SystemHealthService:
                     "successful_runs": item.successful_runs,
                     "failed_runs": item.failed_runs,
                     "consecutive_failures": item.consecutive_failures,
-                    "last_error": item.last_error,
+                    "last_error": cls.redact_text(item.last_error),
                 }
                 for item in report.workers
             ],
