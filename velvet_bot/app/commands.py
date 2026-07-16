@@ -21,56 +21,19 @@ def build_public_commands() -> tuple[BotCommand, ...]:
 
 def build_editor_commands() -> tuple[BotCommand, ...]:
     return (
-        *build_public_commands(),
-        BotCommand(command="characters", description="Категории и персонажи"),
-        BotCommand(command="prompt", description="Привязать вариант промта"),
+        BotCommand(command="start", description="Открыть меню"),
+        BotCommand(command="menu", description="Центр управления"),
+        BotCommand(command="archive", description="Архив персонажей"),
     )
 
 
 def build_admin_commands() -> tuple[BotCommand, ...]:
+    # Служебные slash-команды сохранены в обработчиках как аварийный резерв,
+    # но обычное меню Telegram ведёт владельца в единый кнопочный центр.
     return (
-        *build_public_commands(),
-        BotCommand(command="system", description="Состояние бота и фоновых процессов"),
-        BotCommand(command="supervisor", description="Перезапуск, Git, логи и Codex"),
-        BotCommand(command="logs", description="Последние строки журнала бота"),
-        BotCommand(command="restart", description="Безопасно перезапустить бота"),
-        BotCommand(command="update", description="Обновить main, проверить и перезапустить"),
-        BotCommand(command="rollback", description="Откатить последнее развёртывание"),
-        BotCommand(command="codex", description="Поставить задачу Codex"),
-        BotCommand(command="codex_status", description="Проверить задачу Codex"),
-        BotCommand(command="version", description="Версия приложения и схемы"),
-        BotCommand(command="analytics", description="Аналитический центр"),
-        BotCommand(command="backup", description="Резервные копии PostgreSQL"),
-        BotCommand(command="quality", description="Контроль качества и дубли"),
-        BotCommand(command="publish", description="Проверка и очередь публикаций"),
-        BotCommand(command="checkpost", description="Проверить пост ответом"),
-        BotCommand(command="create", description="Создать персонажа и назначить тему"),
-        BotCommand(command="topic", description="Назначить тему персонажу"),
-        BotCommand(command="characters", description="Категории и персонажи"),
-        BotCommand(command="category", description="Назначить пол или состав"),
-        BotCommand(command="universe", description="Назначить вселенную"),
-        BotCommand(command="story", description="Назначить историю"),
-        BotCommand(command="stories", description="Список историй вселенной"),
-        BotCommand(command="storyadd", description="Добавить новую историю"),
-        BotCommand(command="prompt", description="Привязать пост с промтом"),
-        BotCommand(command="character", description="Профиль персонажа"),
-        BotCommand(command="save", description="Сохранить фото или видео"),
-        BotCommand(command="refadd", description="Добавить референсы персонажа"),
-        BotCommand(command="refdone", description="Завершить загрузку референсов"),
-        BotCommand(command="refs", description="Показать референсы персонажа"),
-        BotCommand(command="refdel", description="Удалить референс по номеру"),
-        BotCommand(command="aliasadd", description="Добавить алиас персонажа"),
-        BotCommand(command="aliases", description="Показать алиасы персонажа"),
-        BotCommand(command="aliasdel", description="Удалить алиас персонажа"),
-        BotCommand(command="aliasreindex", description="Пересобрать связи хэштегов"),
-        BotCommand(command="channelstats", description="Общая статистика канала"),
-        BotCommand(command="promptstats", description="Статистика структуры промтов"),
-        BotCommand(command="tagstats", description="Статистика хэштегов"),
-        BotCommand(command="characterstats", description="Частота персонажей в канале"),
-        BotCommand(command="importchannel", description="Импорт экспорта канала"),
-        BotCommand(command="importdiscussion", description="Импорт обсуждения"),
-        BotCommand(command="trackdiscussion", description="Подключить чат обсуждений"),
-        BotCommand(command="discussionstats", description="Статистика обсуждения"),
+        BotCommand(command="start", description="Открыть центр управления"),
+        BotCommand(command="menu", description="Центр управления"),
+        BotCommand(command="archive", description="Архив персонажей"),
     )
 
 
@@ -97,7 +60,7 @@ async def _set_scoped_commands(
 
 
 async def install_command_menus(bot: Bot, settings: Settings) -> None:
-    """Install public, editor and owner command menus in one place."""
+    """Install compact command menus; all normal management lives in buttons."""
     await bot.set_my_commands(list(build_public_commands()))
     await _set_scoped_commands(
         bot,

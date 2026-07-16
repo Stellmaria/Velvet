@@ -29,9 +29,12 @@ class CommandCatalogTests(unittest.TestCase):
         admin = {item.command for item in build_admin_commands()}
         self.assertLessEqual(public, editor)
         self.assertLessEqual(public, admin)
-        self.assertIn("system", admin)
-        self.assertIn("backup", admin)
-        self.assertNotIn("system", editor)
+        self.assertIn("menu", admin)
+        self.assertIn("menu", editor)
+        self.assertNotIn("system", admin)
+        self.assertNotIn("backup", admin)
+        self.assertNotIn("supervisor", admin)
+        self.assertLessEqual(len(admin), 3)
 
 
 class WorkerRegistryTests(unittest.TestCase):

@@ -8,6 +8,7 @@ from aiogram.types import ErrorEvent
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
 from velvet_bot.media_set_ui_compat import install_media_set_ui
+from velvet_bot.owner_menu_compat import install_owner_menu_navigation
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ def _build_root_router() -> Router:
     import velvet_bot.media_set_ai_discovery  # noqa: F401
 
     install_media_set_ui()
+    install_owner_menu_navigation()
 
     from velvet_bot.handlers.admin_directory import router as admin_directory_router
     from velvet_bot.handlers.admin_large_media_preview import (
@@ -56,6 +58,7 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.media_browser import router as media_browser_router
     from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
     from velvet_bot.handlers.multi_story_kr import router as multi_story_kr_router
+    from velvet_bot.handlers.owner_menu import router as owner_menu_router
     from velvet_bot.handlers.public_archive import router as public_archive_router
     from velvet_bot.handlers.public_manager import router as public_manager_router
     from velvet_bot.handlers.public_media_display import router as public_media_display_router
@@ -107,6 +110,7 @@ def _build_root_router() -> Router:
             )
         return True
 
+    root.include_router(owner_menu_router)
     root.include_router(supervisor_control_router)
     root.include_router(system_center_router)
     root.include_router(channel_analytics_router)
