@@ -14,7 +14,8 @@ from velvet_bot.access import (
     OwnerAccessMiddleware,
 )
 from velvet_bot.audit import TelegramAuditLogger
-from velvet_bot.backup_service import BackupService, run_backup_worker
+from velvet_bot.backup_runtime import BackupService
+from velvet_bot.backup_service import run_backup_worker
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
