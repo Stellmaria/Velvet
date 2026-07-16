@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality.models import (
+    DuplicateCandidate,
+    DuplicatePage,
     MediaFileCheckTarget,
     MediaScanTarget,
     StoredFingerprint,
@@ -10,9 +12,37 @@ from velvet_bot.visual_fingerprint import FingerprintComparison, VisualFingerpri
 
 TELEGRAM_BOT_DOWNLOAD_LIMIT = 20 * 1024 * 1024
 
+_DUPLICATE_SELECT = """
+    SELECT
+        dc.*,
+        COALESCE(m1.original_file_name, m1.storage_file_name) AS first_file_name,
+        COALESCE(m2.original_file_name, m2.storage_file_name) AS second_file_name,
+        m1.telegram_file_id AS first_file_id,
+        m2.telegram_file_id AS second_file_id,
+        m1.media_type AS first_media_type,
+        m2.media_type AS second_media_type,
+        m1.mime_type AS first_mime_type,
+        m2.mime_type AS second_mime_type,
+        COALESCE((
+            SELECT ARRAY_AGG(c.name ORDER BY c.name)
+            FROM character_media cm
+            JOIN characters c ON c.id = cm.character_id
+            WHERE cm.media_id = m1.id
+        ), ARRAY[]::VARCHAR[]) AS first_characters,
+        COALESCE((
+            SELECT ARRAY_AGG(c.name ORDER BY c.name)
+            FROM character_media cm
+            JOIN characters c ON c.id = cm.character_id
+            WHERE cm.media_id = m2.id
+        ), ARRAY[]::VARCHAR[]) AS second_characters
+    FROM media_duplicate_candidates dc
+    JOIN media_files m1 ON m1.id = dc.first_media_id
+    JOIN media_files m2 ON m2.id = dc.second_media_id
+"""
+
 
 class MediaQualityRepository:
-    """Own all PostgreSQL operations used by the media-quality worker."""
+    """Own all PostgreSQL operations used by the media-quality domain."""
 
     def __init__(self, database: Database) -> None:
         self._database = database
@@ -239,6 +269,108 @@ class MediaQualityRepository:
                 error_text=error_text,
             )
 
+    async def list_duplicate_candidates(
+        self,
+        *,
+        status: str = "pending",
+        page: int = 0,
+        page_size: int = 6,
+    ) -> DuplicatePage:
+        safe_size = max(1, min(page_size, 8))
+        safe_page = max(0, page)
+        async with self._database._require_pool().acquire() as connection:
+            total = int(
+                await connection.fetchval(
+                    """
+                    SELECT COUNT(*)
+                    FROM media_duplicate_candidates
+                    WHERE status = $1::VARCHAR
+                    """,
+                    status,
+                )
+                or 0
+            )
+            total_pages = max(1, (total + safe_size - 1) // safe_size)
+            normalized_page = min(safe_page, total_pages - 1)
+            rows = await connection.fetch(
+                _DUPLICATE_SELECT
+                + """
+                    WHERE dc.status = $1::VARCHAR
+                    ORDER BY dc.similarity_score DESC, dc.id
+                    OFFSET $2::INTEGER LIMIT $3::INTEGER
+                """,
+                status,
+                normalized_page * safe_size,
+                safe_size,
+            )
+        return DuplicatePage(
+            items=tuple(self._row_to_duplicate(row) for row in rows),
+            page=normalized_page,
+            page_size=safe_size,
+            total_items=total,
+        )
+
+    async def get_duplicate_candidate(
+        self,
+        candidate_id: int,
+    ) -> DuplicateCandidate | None:
+        async with self._database._require_pool().acquire() as connection:
+            row = await connection.fetchrow(
+                _DUPLICATE_SELECT + " WHERE dc.id = $1::BIGINT",
+                candidate_id,
+            )
+        return self._row_to_duplicate(row) if row is not None else None
+
+    async def decide_duplicate_candidate(
+        self,
+        candidate_id: int,
+        *,
+        status: str,
+        decided_by: int,
+    ) -> bool:
+        if status not in {"confirmed", "ignored", "pending"}:
+            raise ValueError("Неизвестное решение по дублю.")
+        async with self._database._require_pool().acquire() as connection:
+            value = await connection.fetchval(
+                """
+                UPDATE media_duplicate_candidates
+                SET status = $2::VARCHAR,
+                    decided_by = CASE
+                        WHEN $2::VARCHAR = 'pending'::VARCHAR THEN NULL::BIGINT
+                        ELSE $3::BIGINT
+                    END,
+                    decided_at = CASE
+                        WHEN $2::VARCHAR = 'pending'::VARCHAR THEN NULL::TIMESTAMPTZ
+                        ELSE NOW()
+                    END,
+                    updated_at = NOW()
+                WHERE id = $1::BIGINT
+                RETURNING id
+                """,
+                candidate_id,
+                status,
+                decided_by,
+            )
+        return value is not None
+
+    async def reset_failed_scans(self) -> int:
+        async with self._database._require_pool().acquire() as connection:
+            result = await connection.execute(
+                """
+                UPDATE media_files
+                SET visual_scan_status = 'pending', visual_scan_error = NULL
+                WHERE visual_scan_status = 'error'
+                  AND (
+                      media_type = 'photo'
+                      OR (
+                          media_type = 'document'
+                          AND COALESCE(mime_type, '') LIKE 'image/%'
+                      )
+                  )
+                """
+            )
+        return int(result.split()[-1])
+
     @staticmethod
     async def _record_file_check_on_connection(
         connection,
@@ -279,6 +411,31 @@ class MediaQualityRepository:
                 image_format=row["image_format"],
                 version=int(row["fingerprint_version"]),
             ),
+        )
+
+    @staticmethod
+    def _row_to_duplicate(row) -> DuplicateCandidate:
+        return DuplicateCandidate(
+            id=int(row["id"]),
+            first_media_id=int(row["first_media_id"]),
+            second_media_id=int(row["second_media_id"]),
+            similarity_score=int(row["similarity_score"]),
+            phash_distance=int(row["phash_distance"]),
+            center_distance=int(row["center_distance"]),
+            dhash_distance=int(row["dhash_distance"]),
+            ahash_distance=int(row["ahash_distance"]),
+            exact_bytes=bool(row["exact_bytes"]),
+            status=str(row["status"]),
+            first_file_name=str(row["first_file_name"]),
+            second_file_name=str(row["second_file_name"]),
+            first_file_id=str(row["first_file_id"]),
+            second_file_id=str(row["second_file_id"]),
+            first_media_type=str(row["first_media_type"]),
+            second_media_type=str(row["second_media_type"]),
+            first_mime_type=row["first_mime_type"],
+            second_mime_type=row["second_mime_type"],
+            first_characters=tuple(str(value) for value in row["first_characters"]),
+            second_characters=tuple(str(value) for value in row["second_characters"]),
         )
 
 
