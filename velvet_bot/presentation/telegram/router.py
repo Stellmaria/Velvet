@@ -70,10 +70,12 @@ def _build_root_router() -> Router:
         router as publication_center_router,
     )
     from velvet_bot.handlers.quality_ai import router as quality_ai_router
+    from velvet_bot.handlers.quality_ai_preview import router as quality_ai_preview_router
     from velvet_bot.handlers.quality_center import router as quality_center_router
     from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
     from velvet_bot.handlers.quality_sets import router as quality_sets_router
     from velvet_bot.handlers.reference_albums import router as reference_albums_router
+    from velvet_bot.handlers.reference_comparison import router as reference_comparison_router
     from velvet_bot.handlers.reference_documents import router as reference_documents_router
     from velvet_bot.handlers.reference_management import router as reference_management_router
     from velvet_bot.handlers.references import router as references_router
@@ -115,6 +117,7 @@ def _build_root_router() -> Router:
     root.include_router(backup_center_router)
     root.include_router(quality_duplicates_router)
     root.include_router(quality_sets_router)
+    root.include_router(quality_ai_preview_router)
     root.include_router(quality_ai_router)
     root.include_router(quality_center_router)
     root.include_router(character_aliases_router)
@@ -138,6 +141,7 @@ def _build_root_router() -> Router:
     root.include_router(admin_directory_router)
     root.include_router(characters_router)
     root.include_router(media_browser_router)
+    root.include_router(reference_comparison_router)
     root.include_router(reference_documents_router)
     root.include_router(reference_albums_router)
     root.include_router(reference_management_router)
