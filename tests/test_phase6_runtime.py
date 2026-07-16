@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from velvet_bot.database import Database
 from velvet_bot.handlers.system_center import SystemCallback, _format_bytes
@@ -13,7 +14,7 @@ from velvet_bot.repositories.system_repository import (
     RuntimeDatabaseSnapshot,
     SystemRepository,
 )
-from velvet_bot.services.system_health import SystemHealthService
+from velvet_bot.services.system_health import DiskSnapshot, SystemHealthService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
 
 
@@ -137,7 +138,17 @@ class SystemHealthServiceTests(unittest.IsolatedAsyncioTestCase):
                 pg_restore_path=sys.executable,
                 app_version="1.1.0-test",
             )
-            report = await service.check(bot=_BotStub(), worker_manager=manager)
+            with patch.object(
+                service,
+                "_disk_snapshot",
+                return_value=DiskSnapshot(
+                    path=directory,
+                    total_bytes=1000,
+                    used_bytes=100,
+                    free_bytes=900,
+                ),
+            ):
+                report = await service.check(bot=_BotStub(), worker_manager=manager)
             payload = service.report_to_dict(report)
 
         self.assertEqual("ok", report.status)
