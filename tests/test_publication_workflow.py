@@ -1,6 +1,9 @@
 import unittest
 from datetime import UTC, datetime
 
+from aiogram.enums import ChatType
+from aiogram.types import Chat, Message, User
+
 from velvet_bot.handlers.publication_center import PublicationCallback
 from velvet_bot.handlers.publication_center_safe import PublicationReplyMarkerFilter
 from velvet_bot.publication_worker import split_publication_text
@@ -36,11 +39,6 @@ class PublicationWorkflowTests(unittest.TestCase):
         ]
         for value in values:
             self.assertLessEqual(len(value.encode("utf-8")), 64)
-
-    def test_publication_marker_filter_is_specific(self) -> None:
-        marker = PublicationReplyMarkerFilter()
-        self.assertIsNotNone(marker)
-        self.assertIn("PUBLICATION_", marker.__class__.__module__ or "PUBLICATION_")
 
     def test_publication_models_keep_validation_report(self) -> None:
         issue = PublicationIssue("story", "error", "Нет истории", "Каэль")
@@ -84,6 +82,37 @@ class PublicationWorkflowTests(unittest.TestCase):
         )
         self.assertEqual("story", draft.validation_report[0].code)
         self.assertTrue(draft.items[0].has_spoiler)
+
+
+class PublicationReplyFilterTests(unittest.IsolatedAsyncioTestCase):
+    @staticmethod
+    def message(reply_text: str | None) -> Message:
+        chat = Chat(id=10, type=ChatType.PRIVATE)
+        user = User(id=10, is_bot=False, first_name="Owner")
+        reply = None
+        if reply_text is not None:
+            reply = Message(
+                message_id=1,
+                date=datetime(2026, 7, 16, tzinfo=UTC),
+                chat=chat,
+                from_user=user,
+                text=reply_text,
+            )
+        return Message(
+            message_id=2,
+            date=datetime(2026, 7, 16, tzinfo=UTC),
+            chat=chat,
+            from_user=user,
+            text="Ответ",
+            reply_to_message=reply,
+        )
+
+    async def test_marker_filter_accepts_only_publication_replies(self) -> None:
+        filter_ = PublicationReplyMarkerFilter()
+        self.assertTrue(await filter_(self.message("PUBLICATION_SCHEDULE:42")))
+        self.assertTrue(await filter_(self.message("PUBLICATION_TEXT:42")))
+        self.assertFalse(await filter_(self.message("PROMPT_MEDIA:42")))
+        self.assertFalse(await filter_(self.message(None)))
 
 
 if __name__ == "__main__":
