@@ -52,7 +52,7 @@ class PhaseFivePostgreSQLTests(unittest.IsolatedAsyncioTestCase):
                     name, normalized_name, created_by, created_in_chat,
                     universe
                 )
-                VALUES ('Каэль', 'каэль', 1, 1, 'Original')
+                VALUES ('Каэль', 'каэль', 1, 1, 'original')
                 RETURNING id
                 """
             )
