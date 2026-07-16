@@ -11,6 +11,7 @@ from aiogram.types import Message
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Character, Database, SaveMediaResult
 from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
+from velvet_bot.media_preview_persistence import set_media_preview
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -89,6 +90,25 @@ def _is_character_archive_source(message: Message, character: Character) -> bool
         and character.archive_thread_id is not None
         and message.chat.id == character.archive_chat_id
         and message.message_thread_id == character.archive_thread_id
+    )
+
+
+async def _persist_descriptor_preview(
+    database: Database,
+    *,
+    media_id: int,
+    media: MediaDescriptor,
+) -> None:
+    if not media.preview_file_id:
+        return
+    await set_media_preview(
+        database,
+        media_id=media_id,
+        file_id=media.preview_file_id,
+        file_unique_id=media.preview_file_unique_id,
+        width=media.preview_width,
+        height=media.preview_height,
+        source=media.preview_source or "source_thumbnail",
     )
 
 
@@ -205,6 +225,11 @@ async def _build_save_response(
         source_thread_id=source_message.message_thread_id,
         command_message_id=message.message_id,
         archive_message_id=archive_message_id,
+    )
+    await _persist_descriptor_preview(
+        database,
+        media_id=result.media_id,
+        media=media,
     )
 
     if result.character_link_created:
@@ -374,6 +399,11 @@ async def handle_new_archive_topic_media(
             source_thread_id=message.message_thread_id,
             command_message_id=None,
             archive_message_id=message.message_id,
+        )
+        await _persist_descriptor_preview(
+            database,
+            media_id=result.media_id,
+            media=media,
         )
         logger.info(
             "Automatically archived topic media for character %s from %s/%s",

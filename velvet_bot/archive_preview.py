@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import logging
 from dataclasses import dataclass
 from typing import TypeAlias
@@ -25,6 +26,7 @@ class PreviewRecord:
     file_unique_id: str | None
     width: int | None
     height: int | None
+    source: str | None
     source_chat_id: int | None
     source_message_id: int | None
     archive_chat_id: int | None
@@ -45,6 +47,7 @@ async def _load_preview_record(
                 mf.preview_file_unique_id,
                 mf.preview_width,
                 mf.preview_height,
+                mf.preview_source,
                 cm.source_chat_id,
                 cm.source_message_id,
                 c.archive_chat_id,
@@ -59,12 +62,13 @@ async def _load_preview_record(
             media_id,
         )
     if row is None:
-        return PreviewRecord(None, None, None, None, None, None, None, None)
+        return PreviewRecord(None, None, None, None, None, None, None, None, None)
     return PreviewRecord(
         file_id=row["preview_file_id"],
         file_unique_id=row["preview_file_unique_id"],
         width=row["preview_width"],
         height=row["preview_height"],
+        source=row["preview_source"],
         source_chat_id=row["source_chat_id"],
         source_message_id=row["source_message_id"],
         archive_chat_id=row["archive_chat_id"],
@@ -82,6 +86,35 @@ def _message_thumbnail(message: Message) -> PhotoSize | None:
     if message.photo:
         return message.photo[-1]
     return None
+
+
+def _is_telegram_thumbnail_source(source: str | None) -> bool:
+    return bool(source and "thumbnail" in source.casefold())
+
+
+async def _download_thumbnail_as_photo(
+    bot: Bot,
+    *,
+    file_id: str,
+) -> BufferedInputFile | None:
+    """Re-upload a Telegram thumbnail as a real photo-compatible file.
+
+    Telegram thumbnail file IDs cannot be passed directly to sendPhoto. Downloading
+    the thumbnail bytes and uploading them again turns it into a normal photo.
+    """
+    destination = io.BytesIO()
+    try:
+        await bot.download(file_id, destination=destination, seek=True)
+    except TelegramAPIError as error:
+        logger.info("Could not download stored Telegram thumbnail: %s", error)
+        return None
+
+    payload = destination.getvalue()
+    if not payload:
+        logger.info("Telegram returned an empty stored thumbnail file")
+        return None
+
+    return BufferedInputFile(payload, filename="archive_thumbnail.jpg")
 
 
 async def _forward_for_thumbnail(
@@ -119,6 +152,56 @@ async def _forward_for_thumbnail(
                 pass
 
 
+async def _resend_document_for_thumbnail(
+    bot: Bot,
+    *,
+    cache_chat_id: int,
+    file_id: str,
+) -> PhotoSize | None:
+    """Ask Telegram to expose the document thumbnail without downloading the file."""
+    temporary: Message | None = None
+    try:
+        temporary = await bot.send_document(
+            chat_id=cache_chat_id,
+            document=file_id,
+            disable_notification=True,
+        )
+        return _message_thumbnail(temporary)
+    except TelegramAPIError as error:
+        logger.info("Could not recover preview by resending document: %s", error)
+        return None
+    finally:
+        if temporary is not None:
+            try:
+                await bot.delete_message(
+                    chat_id=cache_chat_id,
+                    message_id=temporary.message_id,
+                )
+            except TelegramAPIError:
+                pass
+
+
+async def _store_thumbnail(
+    database: Database,
+    page: ArchivePage,
+    thumbnail: PhotoSize,
+    *,
+    source: str,
+) -> str | None:
+    if page.media is None:
+        return None
+    await set_media_preview(
+        database,
+        media_id=page.media.id,
+        file_id=thumbnail.file_id,
+        file_unique_id=thumbnail.file_unique_id,
+        width=thumbnail.width,
+        height=thumbnail.height,
+        source=source,
+    )
+    return thumbnail.file_id
+
+
 async def _recover_stored_thumbnail(
     bot: Bot,
     database: Database,
@@ -151,18 +234,26 @@ async def _recover_stored_thumbnail(
             from_chat_id=from_chat_id,
             message_id=message_id,
         )
-        if thumbnail is None:
-            continue
-        await set_media_preview(
+        if thumbnail is not None:
+            return await _store_thumbnail(
+                database,
+                page,
+                thumbnail,
+                source=source,
+            )
+
+    thumbnail = await _resend_document_for_thumbnail(
+        bot,
+        cache_chat_id=cache_chat_id,
+        file_id=page.media.telegram_file_id,
+    )
+    if thumbnail is not None:
+        return await _store_thumbnail(
             database,
-            media_id=page.media.id,
-            file_id=thumbnail.file_id,
-            file_unique_id=thumbnail.file_unique_id,
-            width=thumbnail.width,
-            height=thumbnail.height,
-            source=source,
+            page,
+            thumbnail,
+            source="document_resend_thumbnail",
         )
-        return thumbnail.file_id
     return None
 
 
@@ -175,8 +266,9 @@ async def resolve_archive_image_preview(
 ) -> PreviewMedia | None:
     """Return a photo-compatible preview for an image document.
 
-    Stored Telegram thumbnails are preferred for large files. Smaller files can be
-    downloaded and converted into a high-resolution JPEG preview.
+    Stored photo IDs are reused directly. Telegram document thumbnails are
+    downloaded and re-uploaded because their file IDs are not valid for sendPhoto.
+    Smaller original files can be converted into a high-resolution JPEG preview.
     """
     if page.media is None or not page.media.is_image_document:
         return None
@@ -187,7 +279,15 @@ async def resolve_archive_image_preview(
         media_id=page.media.id,
     )
     if record.file_id:
-        return record.file_id
+        if _is_telegram_thumbnail_source(record.source):
+            thumbnail_photo = await _download_thumbnail_as_photo(
+                bot,
+                file_id=record.file_id,
+            )
+            if thumbnail_photo is not None:
+                return thumbnail_photo
+        else:
+            return record.file_id
 
     file_size = page.media.file_size
     if file_size is None or file_size <= DEFAULT_BOT_API_DOWNLOAD_LIMIT:
@@ -200,13 +300,16 @@ async def resolve_archive_image_preview(
                 error,
             )
 
-    return await _recover_stored_thumbnail(
+    thumbnail_file_id = await _recover_stored_thumbnail(
         bot,
         database,
         page,
         cache_chat_id=cache_chat_id,
         record=record,
     )
+    if thumbnail_file_id is None:
+        return None
+    return await _download_thumbnail_as_photo(bot, file_id=thumbnail_file_id)
 
 
 async def persist_preview_from_sent_message(
@@ -216,9 +319,9 @@ async def persist_preview_from_sent_message(
     message: Message,
     source: str = "generated_preview",
 ) -> None:
-    if not message.photo:
+    preview = _message_thumbnail(message)
+    if preview is None:
         return
-    preview = message.photo[-1]
     await set_media_preview(
         database,
         media_id=media_id,
