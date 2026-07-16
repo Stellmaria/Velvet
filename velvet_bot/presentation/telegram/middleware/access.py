@@ -25,13 +25,14 @@ from velvet_bot.core.access import (
     PROMPT_REPLY_MARKER,
     PUBLIC_CALLBACK_PREFIX,
     command_name,
+    is_moderator_callback_data,
     is_owner_mention_text,
     is_public_command_text,
 )
 
 logger = logging.getLogger(__name__)
 
-# Compatibility aliases.  The role is deliberately narrower than an admin.
+# Compatibility alias. The role is deliberately narrower than an admin.
 CHARACTER_EDITOR_CALLBACK_PREFIXES = MODERATOR_CALLBACK_PREFIXES
 
 ACCESS_DENIED_TEXT = (
@@ -55,8 +56,7 @@ def is_moderator_user(user: User | None) -> bool:
 def is_moderator_callback(callback: CallbackQuery) -> bool:
     return bool(
         is_moderator_user(callback.from_user)
-        and callback.data
-        and callback.data.startswith(MODERATOR_CALLBACK_PREFIXES)
+        and is_moderator_callback_data(callback.data)
     )
 
 
