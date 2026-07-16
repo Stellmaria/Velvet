@@ -77,7 +77,7 @@
 - остановка миграции, если предмиграционная копия не прошла проверку;
 - автоматическое восстановление рабочей базы намеренно отсутствует.
 
-## Фаза 6. Архитектура и эксплуатационная устойчивость — выполняется
+## Фаза 6. Эксплуатационная устойчивость — завершена
 
 ### 6A. Управляемые фоновые процессы
 
@@ -105,18 +105,60 @@
 
 - системные SQL-запросы вынесены в `SystemRepository`;
 - объединение данных и оценка состояния вынесены в `SystemHealthService`;
-- Telegram-обработчик отвечает только за кнопки и форматирование;
-- дальнейшие модули будут переноситься в repositories/services постепенно, без массовой рискованной переписи.
+- публикации и публичные уведомления получили первые repositories;
+- Telegram-обработчики системного центра отвечают только за кнопки и форматирование.
 
-## Дальнейшие этапы без веб-панели
+## Фаза 7. Полная модульная архитектура — выполняется
 
-- разделение публикаций на repository/service/transport;
-- разделение контроля медиа и дублей;
-- общий журнал фоновых ошибок;
-- команды безопасного перезапуска отдельных очередей;
-- экспорт диагностического отчёта;
-- Docker Compose и переносимость;
-- автоматические релизные версии и changelog;
-- интеллектуальные рекомендации по контенту на основе накопленной аналитики.
+### 7A. Application и presentation composition root
+
+- `main.py` становится минимальной точкой запуска;
+- сборка зависимостей и lifecycle переносится в `velvet_bot/app`;
+- Telegram-команды вынесены в отдельный каталог;
+- middleware и workflow dependencies собираются в `app/dispatcher.py`;
+- workers регистрируются в `app/workers.py`;
+- корневой Telegram router и порядок handlers находятся в `presentation/telegram`;
+- legacy monkey-patching изолируется в compatibility layer;
+- `handlers/__init__.py` перестаёт быть главным composition root.
+
+### 7B. Media quality domain
+
+- `MediaQualityRepository` для SQL;
+- `MediaQualityService` для fingerprinting, проверок и решений по дублям;
+- Telegram handlers только отображают карточки и принимают действия.
+
+### 7C. Publication domain
+
+- отдельные draft, validation, scheduling, delivery и event services;
+- единый repository для состояний и очередей;
+- transport не управляет транзакциями напрямую.
+
+### 7D. Characters, stories и references
+
+- отдельные доменные пакеты персонажей, историй и референсов;
+- устранение runtime monkey-patching;
+- совместимые фасады для старых импортов на время переноса.
+
+### 7E. Archive and previews
+
+- единый application service публичного и административного архива;
+- preview resolver как инфраструктурный Telegram-адаптер;
+- форматирование, клавиатуры и callback-data отделены от доменных операций.
+
+### 7F. Analytics and discussions
+
+- SQL отчётов в repositories/query services;
+- расчёты не зависят от Telegram;
+- handlers используют готовые view models.
+
+### 7G. Infrastructure and deployment
+
+- Docker Compose;
+- healthcheck;
+- окружения development/staging/production;
+- релизные версии и автоматизированный changelog;
+- регулярная проверка восстановления backup в тестовую базу.
+
+Подробная целевая структура находится в `docs/architecture_target.md`.
 
 Веб-панель исключена из текущего маршрута разработки.
