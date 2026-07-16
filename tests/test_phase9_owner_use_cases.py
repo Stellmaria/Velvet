@@ -51,6 +51,13 @@ class Phase9ArchitectureTests(unittest.TestCase):
         self.assertNotIn("CommandObject", source)
         self.assertNotIn("model_copy(", source)
 
+    def test_owner_profiles_is_only_a_small_compatibility_facade(self) -> None:
+        source = Path("velvet_bot/application/owner_profiles.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertLess(len(source.splitlines()), 80)
+        self.assertNotIn("reference_catalog", source)
+
     def test_reserve_adapters_use_shared_application_or_boundary_services(self) -> None:
         expected_imports = {
             "velvet_bot/handlers/characters.py": "velvet_bot.application.owner_profiles",
@@ -86,7 +93,7 @@ class Phase9UseCaseTests(unittest.TestCase):
         character = SimpleNamespace(id=7, name="Аид")
         database = SimpleNamespace(get_character=AsyncMock(return_value=character))
         with patch(
-            "velvet_bot.application.owner_profiles.set_character_prompt_url",
+            "velvet_bot.application.owner_classification.set_character_prompt_url",
             new=AsyncMock(),
         ) as setter:
             result = asyncio.run(set_prompt_from_text(database, "Аид off"))
@@ -101,7 +108,7 @@ class Phase9UseCaseTests(unittest.TestCase):
         character = SimpleNamespace(id=9, name="Каэль Лэнг")
         database = SimpleNamespace(get_character=AsyncMock(return_value=character))
         with patch(
-            "velvet_bot.application.owner_profiles.delete_character_alias",
+            "velvet_bot.application.owner_aliases.delete_character_alias",
             new=AsyncMock(return_value=True),
         ) as delete_alias:
             result = asyncio.run(delete_alias_from_text(database, "Каэль Лэнг KaelLang"))
