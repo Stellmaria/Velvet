@@ -41,7 +41,6 @@ class DiscussionInsightCallback(CallbackData, prefix="d5"):
     action: str
     period: str = "30d"
     chat_id: int = 0
-    parent_id: int = 0
     page: int = 0
     item_id: int = 0
 
@@ -51,18 +50,35 @@ def _dcb(
     *,
     period: str,
     chat_id: int,
-    parent_id: int,
+    parent_id: int = 0,
     page: int = 0,
     item_id: int = 0,
 ) -> str:
+    # parent_id is intentionally not packed: it is resolved from tracked_channels.
+    # This keeps callback_data below Telegram's 64-byte hard limit.
+    del parent_id
     return DiscussionInsightCallback(
         action=action,
         period=normalize_period(period),
         chat_id=int(chat_id),
-        parent_id=int(parent_id),
         page=max(0, int(page)),
         item_id=max(0, int(item_id)),
     ).pack()
+
+
+async def _resolve_parent_id(database: Database, chat_id: int) -> int | None:
+    async with database._require_pool().acquire() as connection:
+        value = await connection.fetchval(
+            """
+            SELECT parent_channel_id
+            FROM tracked_channels
+            WHERE chat_id = $1::BIGINT
+              AND source_kind = 'discussion'
+              AND enabled = TRUE
+            """,
+            int(chat_id),
+        )
+    return int(value) if value is not None else None
 
 
 def _dperiod_row(
@@ -470,11 +486,16 @@ async def handle_discussion_insight(
     action = callback_data.action
     period = normalize_period(callback_data.period)
     chat_id = int(callback_data.chat_id)
-    parent_id = int(callback_data.parent_id)
 
     if action == "noop":
         await callback.answer()
         return
+
+    parent_id = await _resolve_parent_id(database, chat_id)
+    if parent_id is None:
+        await callback.answer("Связанный канал обсуждения не найден.", show_alert=True)
+        return
+
     if action == "sources":
         await _render_sources(
             callback,
@@ -500,14 +521,14 @@ async def handle_discussion_insight(
         )
         start = page.page * page.page_size
         lines = []
-        rows: list[list[InlineKeyboardButton]] = []
+        post_rows: list[list[InlineKeyboardButton]] = []
         for index, item in enumerate(page.items, start=start + 1):
             lines.append(
                 f"{index}. <b>{escape(_snippet(item.text_content, 76))}</b>\n"
                 f"   💬 {item.comment_count} · 👥 {item.unique_participants} · "
                 f"❤️ {item.comment_reactions} · первый {format_delay(item.first_comment_seconds)}"
             )
-            rows.append(
+            post_rows.append(
                 [
                     InlineKeyboardButton(
                         text=f"🔎 Публикация {index}",
@@ -528,7 +549,7 @@ async def handle_discussion_insight(
             chat_id=chat_id,
             parent_id=parent_id,
         )
-        keyboard.inline_keyboard[1:1] = rows
+        keyboard.inline_keyboard[1:1] = post_rows
         text = (
             "<b>🔥 Самые обсуждаемые публикации</b>\n\n"
             f"Период: <b>{PERIOD_LABELS[period]}</b>\n"
