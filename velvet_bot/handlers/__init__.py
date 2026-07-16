@@ -32,6 +32,7 @@ from velvet_bot.handlers.analytics_discussion_overrides import (
 )
 from velvet_bot.handlers.analytics_management import router as analytics_management_router
 from velvet_bot.handlers.archive import router as archive_router
+from velvet_bot.handlers.backup_center import router as backup_center_router
 from velvet_bot.handlers.channel_analytics import router as channel_analytics_router
 from velvet_bot.handlers.character_aliases import router as character_aliases_router
 from velvet_bot.handlers.characters import router as characters_router
@@ -100,6 +101,7 @@ router.include_router(analytics_dashboard_overrides_router)
 router.include_router(analytics_discussion_overrides_router)
 router.include_router(analytics_management_router)
 router.include_router(analytics_dashboard_router)
+router.include_router(backup_center_router)
 router.include_router(quality_duplicates_router)
 router.include_router(quality_center_router)
 router.include_router(character_aliases_router)
