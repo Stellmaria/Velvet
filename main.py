@@ -21,6 +21,7 @@ from velvet_bot.handlers import router
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_notifications import run_public_notification_worker
 from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID
+from velvet_bot.publication_inbox_middleware import PublicationInboxMiddleware
 from velvet_bot.publication_worker import run_publication_worker
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 
@@ -61,6 +62,7 @@ async def main() -> None:
             allowed_usernames=settings.allowed_usernames,
         )
         access_middleware = OwnerAccessMiddleware(access_policy)
+        publication_inbox_middleware = PublicationInboxMiddleware()
         discussion_middleware = DiscussionAnalyticsMiddleware()
 
         dispatcher = Dispatcher()
@@ -76,6 +78,7 @@ async def main() -> None:
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
+        dispatcher.message.outer_middleware(publication_inbox_middleware)
         dispatcher.message.outer_middleware(discussion_middleware)
         dispatcher.edited_message.outer_middleware(access_middleware)
         dispatcher.edited_message.outer_middleware(discussion_middleware)
