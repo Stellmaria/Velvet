@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS error_incidents (
     fingerprint CHAR(64) NOT NULL UNIQUE,
     severity VARCHAR(16) NOT NULL,
     logger_name TEXT NOT NULL,
-    source TEXT,
     summary TEXT NOT NULL,
     details TEXT,
     occurrence_count INTEGER NOT NULL DEFAULT 1,
