@@ -4,14 +4,17 @@ import logging
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InputMediaPhoto, Message
 
 from velvet_bot.archive_catalog import ArchivePage
+from velvet_bot.archive_preview import (
+    persist_preview_from_sent_message,
+    resolve_archive_image_preview,
+)
 from velvet_bot.archive_ui import build_input_media
 from velvet_bot.character_directory import get_character_directory_item
 from velvet_bot.database import Database
-from velvet_bot.image_preview import build_image_document_preview
 from velvet_bot.public_catalog import get_public_media_state
 from velvet_bot.public_manager_ui import build_manager_archive_keyboard
 from velvet_bot.public_ui import build_public_archive_keyboard, format_public_archive_caption
@@ -19,11 +22,7 @@ from velvet_bot.public_ui import build_public_archive_keyboard, format_public_ar
 logger = logging.getLogger(__name__)
 
 
-async def load_public_state(
-    database: Database,
-    page: ArchivePage,
-    user_id: int,
-):
+async def load_public_state(database: Database, page: ArchivePage, user_id: int):
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
     return await get_public_media_state(
@@ -58,8 +57,7 @@ async def build_viewer_keyboard(
 ):
     if manager_access:
         category, universe, story_id = await actual_character_filters(
-            database,
-            page.character.id,
+            database, page.character.id
         )
         return build_manager_archive_keyboard(
             page,
@@ -81,23 +79,29 @@ async def build_viewer_keyboard(
 
 async def build_viewer_input_media(
     bot: Bot,
+    database: Database,
     page: ArchivePage,
     state,
+    *,
+    cache_chat_id: int,
 ):
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
     caption = format_public_archive_caption(page, state)
     if page.media.is_image_document:
-        try:
-            upload = await build_image_document_preview(bot, page.media)
+        preview = await resolve_archive_image_preview(
+            bot,
+            database,
+            page,
+            cache_chat_id=cache_chat_id,
+        )
+        if preview is not None:
             return InputMediaPhoto(
-                media=upload,
+                media=preview,
                 caption=caption,
                 parse_mode=ParseMode.HTML,
                 has_spoiler=page.media.is_spoiler,
             )
-        except Exception:
-            logger.exception("Failed to prepare compressed public image preview")
     return build_input_media(page.media, caption)
 
 
@@ -133,37 +137,45 @@ async def send_viewer_archive_page(
         "caption": format_public_archive_caption(page, state),
         "reply_markup": keyboard,
     }
-    if page.media.media_type == "photo":
+    media = page.media
+    if media.media_type == "photo":
         return await bot.send_photo(
-            photo=page.media.telegram_file_id,
-            has_spoiler=page.media.is_spoiler,
+            photo=media.telegram_file_id,
+            has_spoiler=media.is_spoiler,
             **common,
         )
-    if page.media.media_type == "video":
+    if media.media_type == "video":
         return await bot.send_video(
-            video=page.media.telegram_file_id,
-            has_spoiler=page.media.is_spoiler,
+            video=media.telegram_file_id,
+            has_spoiler=media.is_spoiler,
             **common,
         )
-    if page.media.media_type == "animation":
+    if media.media_type == "animation":
         return await bot.send_animation(
-            animation=page.media.telegram_file_id,
-            has_spoiler=page.media.is_spoiler,
+            animation=media.telegram_file_id,
+            has_spoiler=media.is_spoiler,
             **common,
         )
-    if page.media.is_image_document:
-        try:
-            upload = await build_image_document_preview(bot, page.media)
-            return await bot.send_photo(
-                photo=upload,
-                has_spoiler=page.media.is_spoiler,
+    if media.is_image_document:
+        preview = await resolve_archive_image_preview(
+            bot,
+            database,
+            page,
+            cache_chat_id=chat_id,
+        )
+        if preview is not None:
+            sent = await bot.send_photo(
+                photo=preview,
+                has_spoiler=media.is_spoiler,
                 **common,
             )
-        except TelegramAPIError as error:
-            logger.info("Compressed public preview fallback to document: %s", error)
-        except Exception:
-            logger.exception("Compressed public preview generation failed")
-    return await bot.send_document(document=page.media.telegram_file_id, **common)
+            await persist_preview_from_sent_message(
+                database,
+                media_id=media.id,
+                message=sent,
+            )
+            return sent
+    return await bot.send_document(document=media.telegram_file_id, **common)
 
 
 async def replace_viewer_archive_page(
@@ -183,7 +195,13 @@ async def replace_viewer_archive_page(
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
     state = await load_public_state(database, page, viewer_user_id)
-    media = await build_viewer_input_media(bot, page, state)
+    media = await build_viewer_input_media(
+        bot,
+        database,
+        page,
+        state,
+        cache_chat_id=callback.message.chat.id,
+    )
     keyboard = await build_viewer_keyboard(
         database,
         page,
@@ -196,7 +214,12 @@ async def replace_viewer_archive_page(
         story_id=story_id,
     )
     try:
-        await callback.message.edit_media(media=media, reply_markup=keyboard)
+        edited = await callback.message.edit_media(media=media, reply_markup=keyboard)
+        await persist_preview_from_sent_message(
+            database,
+            media_id=page.media.id,
+            message=edited,
+        )
     except TelegramBadRequest as error:
         if "message is not modified" in str(error).casefold():
             await callback.message.edit_reply_markup(reply_markup=keyboard)
