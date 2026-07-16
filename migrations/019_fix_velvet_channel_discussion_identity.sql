@@ -48,3 +48,20 @@ SET enabled = FALSE,
 WHERE source_kind = 'discussion'
   AND parent_channel_id = -1003802812639
   AND chat_id <> -1003859952761;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'tracked_channels_not_self_parent_check'
+    ) THEN
+        ALTER TABLE tracked_channels
+            ADD CONSTRAINT tracked_channels_not_self_parent_check
+            CHECK (
+                parent_channel_id IS NULL
+                OR parent_channel_id <> chat_id
+            );
+    END IF;
+END;
+$$;
