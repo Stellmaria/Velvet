@@ -47,6 +47,8 @@ from velvet_bot.handlers.public_notification_open import (
 from velvet_bot.handlers.publication_center_safe import (
     router as publication_center_router,
 )
+from velvet_bot.handlers.quality_center import router as quality_center_router
+from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
 from velvet_bot.handlers.reference_albums import router as reference_albums_router
 from velvet_bot.handlers.reference_documents import router as reference_documents_router
 from velvet_bot.handlers.reference_management import router as reference_management_router
@@ -93,6 +95,8 @@ router.include_router(analytics_dashboard_overrides_router)
 router.include_router(analytics_discussion_overrides_router)
 router.include_router(analytics_management_router)
 router.include_router(analytics_dashboard_router)
+router.include_router(quality_duplicates_router)
+router.include_router(quality_center_router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
