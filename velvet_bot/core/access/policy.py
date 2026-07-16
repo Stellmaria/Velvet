@@ -4,9 +4,22 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-# Public access is deliberately limited to archive entry points. `/start` only
-# renders the archive welcome screen; `/menu` belongs to the owner control panel.
+# Public access is deliberately limited to archive viewing. `/start` renders the
+# archive welcome screen; `/menu` belongs to the owner control panel.
 PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery"})
+PUBLIC_CALLBACK_ACTIONS = frozenset(
+    {
+        "categories",
+        "universes",
+        "stories",
+        "menu",
+        "open",
+        "show",
+        "noop",
+        "close",
+        "back",
+    }
+)
 PUBLIC_CALLBACK_PREFIX = "pub:"
 
 # One explicitly trusted moderator may maintain character cards and archive
@@ -55,6 +68,9 @@ MODERATOR_CALLBACK_ACTIONS = {
             "close",
         }
     ),
+    # Download is shown only to this moderator in the public viewer. It is not a
+    # public archive action and must not become available through the pub prefix.
+    "pub": frozenset({"download"}),
 }
 MODERATOR_CALLBACK_PREFIXES = tuple(
     f"{prefix}:" for prefix in MODERATOR_CALLBACK_ACTIONS
@@ -119,13 +135,29 @@ def is_owner_only_command_text(text: str) -> bool:
     return bool(command and command in OWNER_ONLY_COMMANDS)
 
 
-def is_moderator_callback_data(value: str | None) -> bool:
+def _callback_parts(value: str | None) -> tuple[str, str] | None:
     if not value:
-        return False
+        return None
     parts = value.split(":", maxsplit=2)
     if len(parts) < 2:
+        return None
+    return parts[0], parts[1]
+
+
+def is_public_callback_data(value: str | None) -> bool:
+    parts = _callback_parts(value)
+    return bool(
+        parts
+        and parts[0] == "pub"
+        and parts[1] in PUBLIC_CALLBACK_ACTIONS
+    )
+
+
+def is_moderator_callback_data(value: str | None) -> bool:
+    parts = _callback_parts(value)
+    if parts is None:
         return False
-    prefix, action = parts[0], parts[1]
+    prefix, action = parts
     return action in MODERATOR_CALLBACK_ACTIONS.get(prefix, frozenset())
 
 
@@ -184,12 +216,14 @@ __all__ = (
     "MODERATOR_USER_IDS",
     "OWNER_ONLY_COMMANDS",
     "PROMPT_REPLY_MARKER",
+    "PUBLIC_CALLBACK_ACTIONS",
     "PUBLIC_CALLBACK_PREFIX",
     "PUBLIC_COMMANDS",
     "command_name",
     "is_moderator_callback_data",
     "is_owner_mention_text",
     "is_owner_only_command_text",
+    "is_public_callback_data",
     "is_public_command_text",
     "is_save_mention_text",
     "normalize_username",
