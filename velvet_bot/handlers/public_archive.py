@@ -345,7 +345,7 @@ def _page_matches_callback(page: ArchivePage, data: PublicArchiveCallback) -> bo
     return bool(page.media and (data.media_id == 0 or page.media.id == data.media_id))
 
 
-@router.message(Command("archive", "gallery", "menu"))
+@router.message(Command("archive", "gallery"))
 async def handle_public_archive_menu(message: Message, database: Database) -> None:
     summaries = await list_public_categories(database)
     await message.answer(
