@@ -3,11 +3,29 @@ from __future__ import annotations
 import html
 import json
 import logging
+import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+
+def _owner_ids_from_environment() -> tuple[int, ...]:
+    raw = os.getenv(
+        "SUPERVISOR_NOTIFICATION_OWNER_IDS",
+        os.getenv("ALLOWED_USER_IDS", ""),
+    )
+    result: list[int] = []
+    for item in raw.split(","):
+        cleaned = item.strip()
+        if not cleaned:
+            continue
+        try:
+            result.append(int(cleaned))
+        except ValueError:
+            logger.warning("Invalid Supervisor notification owner id: %r", cleaned)
+    return tuple(dict.fromkeys(result))
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,6 +34,10 @@ class TelegramNotifier:
     chat_id: int | None
     timeout_seconds: int = 15
     owner_chat_ids: tuple[int, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.owner_chat_ids:
+            object.__setattr__(self, "owner_chat_ids", _owner_ids_from_environment())
 
     @property
     def enabled(self) -> bool:
