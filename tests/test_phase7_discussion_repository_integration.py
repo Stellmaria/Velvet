@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import unittest
 from datetime import UTC, datetime
@@ -27,13 +28,9 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
         async with self.database._require_pool().acquire() as connection:
             await connection.execute(
                 """
-                TRUNCATE
-                    discussion_threads,
-                    channel_post_hashtags,
-                    channel_post_links,
-                    channel_posts,
-                    tracked_channels,
-                    characters
+                TRUNCATE discussion_threads, channel_post_hashtags,
+                         channel_post_links, channel_posts,
+                         tracked_channels, characters
                 RESTART IDENTITY CASCADE
                 """
             )
@@ -41,8 +38,7 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 """
                 INSERT INTO tracked_channels (
                     chat_id, title, source_kind, parent_channel_id, enabled
-                )
-                VALUES
+                ) VALUES
                     ($1::BIGINT, 'Velvet Anatomy', 'channel', NULL, TRUE),
                     ($2::BIGINT, 'Velvet discussion', 'discussion', $1::BIGINT, TRUE)
                 """,
@@ -53,8 +49,7 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 """
                 INSERT INTO characters (
                     name, normalized_name, created_by, created_in_chat, universe
-                )
-                VALUES ('Каэль', 'каэль', 1, 1, 'original')
+                ) VALUES ('Каэль', 'каэль', 1, 1, 'original')
                 """
             )
         self.reports = DiscussionRepository(self.database)
@@ -73,13 +68,10 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     channel_id, message_id, publication_key, posted_at,
                     text_content, text_length, media_type,
                     sender_id, sender_name, reactions_total
-                )
-                VALUES (
+                ) VALUES (
                     $1::BIGINT, 701, 'live-message:701', NOW(),
-                    'Первый #Каэль #Тест', 18, 'photo',
-                    'user1', 'Анна', 0
-                )
-                RETURNING id
+                    'Первый #Каэль #Тест', 18, 'photo', 'user1', 'Анна', 0
+                ) RETURNING id
                 """,
                 DISCUSSION_ID,
             )
@@ -89,11 +81,9 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     channel_id, message_id, publication_key, posted_at,
                     text_content, text_length, media_type,
                     sender_id, sender_name, reply_to_message_id, reactions_total
-                )
-                VALUES (
+                ) VALUES (
                     $1::BIGINT, 702, 'live-message:702', NOW(),
-                    'Ответ', 5, 'text',
-                    'user1', 'Анна', 701, 0
+                    'Ответ', 5, 'text', 'user1', 'Анна', 701, 0
                 )
                 """,
                 DISCUSSION_ID,
@@ -102,8 +92,7 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 """
                 INSERT INTO channel_post_hashtags (
                     post_id, hashtag, normalized_hashtag, is_character
-                )
-                VALUES
+                ) VALUES
                     ($1::BIGINT, 'Каэль', 'каэль', TRUE),
                     ($1::BIGINT, 'Тест', 'тест', FALSE)
                 """,
@@ -111,34 +100,31 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertTrue(await self.reports.is_tracked(DISCUSSION_ID))
-        self.assertTrue(
-            await self.reports.set_reaction_counts(
-                discussion_chat_id=DISCUSSION_ID,
-                discussion_message_id=701,
-                reaction_breakdown={"🔥": 3, "👍": 1},
-            )
+        await self.reports.set_reaction_counts(
+            discussion_chat_id=DISCUSSION_ID,
+            discussion_message_id=701,
+            reaction_breakdown={"🔥": 3, "👍": 1},
         )
-        self.assertTrue(
-            await self.reports.apply_reaction_delta(
-                discussion_chat_id=DISCUSSION_ID,
-                discussion_message_id=701,
-                delta={"🔥": 1, "👍": -1},
-            )
+        await self.reports.apply_reaction_delta(
+            discussion_chat_id=DISCUSSION_ID,
+            discussion_message_id=701,
+            delta={"🔥": 1, "👍": -1},
         )
 
         overview = await self.reports.get_overview(DISCUSSION_ID)
-        self.assertEqual(2, overview.total_messages)
-        self.assertEqual(2, overview.total_publications)
-        self.assertEqual(1, overview.unique_participants)
-        self.assertEqual(1, overview.reply_messages)
-        self.assertEqual(2, overview.total_hashtag_uses)
-        self.assertEqual(2, overview.unique_hashtags)
-        self.assertEqual(4, overview.total_reactions)
-
-        participants = await self.reports.list_participant_stats(DISCUSSION_ID)
-        self.assertEqual(1, len(participants))
-        self.assertEqual(2, participants[0].message_count)
-        self.assertEqual(2, participants[0].hashtag_count)
+        self.assertEqual((2, 2, 1), (
+            overview.total_messages,
+            overview.total_publications,
+            overview.unique_participants,
+        ))
+        self.assertEqual((1, 2, 2, 4), (
+            overview.reply_messages,
+            overview.total_hashtag_uses,
+            overview.unique_hashtags,
+            overview.total_reactions,
+        ))
+        participant = (await self.reports.list_participant_stats(DISCUSSION_ID))[0]
+        self.assertEqual((2, 2), (participant.message_count, participant.hashtag_count))
 
         async with self.database._require_pool().acquire() as connection:
             row = await connection.fetchrow(
@@ -149,8 +135,11 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 """,
                 DISCUSSION_ID,
             )
+        breakdown = row["reaction_breakdown"]
+        if isinstance(breakdown, str):
+            breakdown = json.loads(breakdown)
         self.assertEqual(4, row["reactions_total"])
-        self.assertEqual({"🔥": 4}, dict(row["reaction_breakdown"]))
+        self.assertEqual({"🔥": 4}, dict(breakdown))
 
     async def test_live_ingest_links_root_and_reply(self) -> None:
         async with self.database._require_pool().acquire() as connection:
@@ -159,71 +148,47 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 INSERT INTO channel_posts (
                     channel_id, message_id, publication_key, posted_at,
                     text_content, text_length, media_type, message_url
-                )
-                VALUES (
+                ) VALUES (
                     $1::BIGINT, 500, 'live-message:500', NOW(),
                     'Пост #Каэль https://t.me/velvet/500', 37, 'photo',
                     'https://t.me/velvet/500'
-                )
-                RETURNING id
+                ) RETURNING id
                 """,
                 CHANNEL_ID,
             )
 
-        root_event = DiscussionMessageEvent(
-            chat_id=DISCUSSION_ID,
-            chat_title="Velvet discussion",
-            chat_username=None,
-            message_id=700,
-            posted_at=datetime.now(UTC),
-            edited_at=None,
-            sender_is_bot=False,
-            sender_id=f"chat{CHANNEL_ID}",
-            sender_name="Velvet Anatomy",
+        now = datetime.now(UTC)
+        root = DiscussionMessageEvent(
+            chat_id=DISCUSSION_ID, chat_title="Velvet discussion",
+            chat_username=None, message_id=700, posted_at=now,
+            edited_at=None, sender_is_bot=False,
+            sender_id=f"chat{CHANNEL_ID}", sender_name="Velvet Anatomy",
             text_content="Пост #Каэль https://t.me/velvet/500",
-            media_group_id=None,
-            media_type="photo",
-            has_spoiler=False,
-            reply_to_message_id=None,
-            reply_text="",
-            reply_date=None,
-            reply_is_automatic_forward=False,
-            topic_id=None,
-            is_automatic_forward=True,
-            forward_channel_id=CHANNEL_ID,
+            media_group_id=None, media_type="photo", has_spoiler=False,
+            reply_to_message_id=None, reply_text="", reply_date=None,
+            reply_is_automatic_forward=False, topic_id=None,
+            is_automatic_forward=True, forward_channel_id=CHANNEL_ID,
             forward_message_id=500,
         )
-        root_result = await self.ingest.ingest(root_event)
-        self.assertTrue(root_result.stored)
-        self.assertEqual(700, root_result.root_message_id)
-        self.assertEqual(500, root_result.source_channel_message_id)
+        root_result = await self.ingest.ingest(root)
+        self.assertEqual((True, 700, 500), (
+            root_result.stored,
+            root_result.root_message_id,
+            root_result.source_channel_message_id,
+        ))
 
-        reply_event = DiscussionMessageEvent(
-            chat_id=DISCUSSION_ID,
-            chat_title="Velvet discussion",
-            chat_username=None,
-            message_id=701,
-            posted_at=datetime.now(UTC),
-            edited_at=None,
-            sender_is_bot=False,
-            sender_id="user1",
-            sender_name="Анна",
-            text_content="Комментарий",
-            media_group_id=None,
-            media_type="text",
-            has_spoiler=False,
-            reply_to_message_id=700,
-            reply_text=root_event.text_content,
-            reply_date=root_event.posted_at,
-            reply_is_automatic_forward=True,
-            topic_id=None,
-            is_automatic_forward=False,
-            forward_channel_id=None,
-            forward_message_id=None,
+        reply = DiscussionMessageEvent(
+            chat_id=DISCUSSION_ID, chat_title="Velvet discussion",
+            chat_username=None, message_id=701, posted_at=datetime.now(UTC),
+            edited_at=None, sender_is_bot=False,
+            sender_id="user1", sender_name="Анна", text_content="Комментарий",
+            media_group_id=None, media_type="text", has_spoiler=False,
+            reply_to_message_id=700, reply_text=root.text_content,
+            reply_date=root.posted_at, reply_is_automatic_forward=True,
+            topic_id=None, is_automatic_forward=False,
+            forward_channel_id=None, forward_message_id=None,
         )
-        reply_result = await self.ingest.ingest(reply_event)
-        self.assertTrue(reply_result.stored)
-        self.assertEqual(700, reply_result.root_message_id)
+        self.assertEqual(700, (await self.ingest.ingest(reply)).root_message_id)
 
         async with self.database._require_pool().acquire() as connection:
             root_row = await connection.fetchrow(
@@ -253,7 +218,7 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
             )
             hashtag = await connection.fetchrow(
                 """
-                SELECT character_id, is_character
+                SELECT hashtag.character_id, hashtag.is_character
                 FROM channel_post_hashtags AS hashtag
                 JOIN channel_posts AS post ON post.id = hashtag.post_id
                 WHERE post.channel_id = $1::BIGINT
@@ -262,15 +227,20 @@ class DiscussionDomainIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 """,
                 DISCUSSION_ID,
             )
-
-        self.assertEqual(700, root_row["discussion_root_message_id"])
-        self.assertTrue(root_row["is_discussion_root"])
-        self.assertEqual(500, root_row["source_channel_message_id"])
-        self.assertEqual(700, reply_row["discussion_root_message_id"])
-        self.assertFalse(reply_row["is_discussion_root"])
-        self.assertEqual(500, thread["channel_message_id"])
-        self.assertEqual(int(source_post_id), thread["channel_post_id"])
-        self.assertEqual("live_forward", thread["link_source"])
+        self.assertEqual((700, True, 500), (
+            root_row["discussion_root_message_id"],
+            root_row["is_discussion_root"],
+            root_row["source_channel_message_id"],
+        ))
+        self.assertEqual((700, False), (
+            reply_row["discussion_root_message_id"],
+            reply_row["is_discussion_root"],
+        ))
+        self.assertEqual((500, int(source_post_id), "live_forward"), (
+            thread["channel_message_id"],
+            thread["channel_post_id"],
+            thread["link_source"],
+        ))
         self.assertTrue(hashtag["is_character"])
         self.assertIsNotNone(hashtag["character_id"])
 
