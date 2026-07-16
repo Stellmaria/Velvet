@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from contextlib import suppress
+from functools import partial
 
 from aiogram import Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -15,18 +15,24 @@ from velvet_bot.access import (
 )
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
-from velvet_bot.backup_service import run_backup_worker
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
 from velvet_bot.handlers import router
-from velvet_bot.media_quality import run_media_quality_worker
 from velvet_bot.protected_bot import ProtectedMediaBot
-from velvet_bot.public_notifications import run_public_notification_worker
 from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID
 from velvet_bot.publication_inbox_middleware import PublicationInboxMiddleware
-from velvet_bot.publication_worker import run_publication_worker
 from velvet_bot.reference_uploads import ReferenceUploadSessions
+from velvet_bot.repositories.system_repository import SystemRepository
+from velvet_bot.services.system_health import SystemHealthService
+from velvet_bot.version import APP_VERSION
+from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
+from velvet_bot.workers.iterations import (
+    process_backup_once,
+    process_due_publications_once,
+    process_media_quality_once,
+    process_public_notifications_once,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +54,15 @@ async def main() -> None:
     await database.initialize()
     await backup_service.persist_pre_migration_backup(database)
 
+    system_repository = SystemRepository(database)
+    system_service = SystemHealthService(
+        repository=system_repository,
+        backup_dir=settings.backup_dir,
+        pg_dump_path=settings.pg_dump_path,
+        pg_restore_path=settings.pg_restore_path,
+        app_version=APP_VERSION,
+    )
+
     unprotected_manager_ids = set(settings.allowed_user_ids)
     unprotected_manager_ids.update(CHARACTER_EDITOR_USER_IDS)
     unprotected_manager_ids.add(PUBLIC_DOWNLOAD_USER_ID)
@@ -58,7 +73,39 @@ async def main() -> None:
     )
     audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
     reference_uploads = ReferenceUploadSessions()
-    background_tasks: list[asyncio.Task[None]] = []
+    worker_manager = WorkerManager()
+    worker_manager.register(
+        PeriodicWorkerSpec(
+            name="public-archive-notifications",
+            description="Уведомления открытого архива",
+            interval_seconds=5,
+            runner=partial(process_public_notifications_once, bot, database),
+        )
+    )
+    worker_manager.register(
+        PeriodicWorkerSpec(
+            name="publication-queue",
+            description="Очередь публикаций",
+            interval_seconds=15,
+            runner=partial(process_due_publications_once, bot, database),
+        )
+    )
+    worker_manager.register(
+        PeriodicWorkerSpec(
+            name="media-quality",
+            description="Дубли и проверка медиа",
+            interval_seconds=4,
+            runner=partial(process_media_quality_once, bot, database),
+        )
+    )
+    worker_manager.register(
+        PeriodicWorkerSpec(
+            name="postgresql-backups",
+            description="Автоматические копии PostgreSQL",
+            interval_seconds=300,
+            runner=partial(process_backup_once, backup_service, database),
+        )
+    )
 
     try:
         bot_info = await bot.get_me()
@@ -91,6 +138,8 @@ async def main() -> None:
                 "analytics_channel_ids": settings.analytics_channel_ids,
                 "publication_timezone": settings.publication_timezone,
                 "backup_service": backup_service,
+                "system_service": system_service,
+                "worker_manager": worker_manager,
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
@@ -124,6 +173,8 @@ async def main() -> None:
         ]
         admin_commands = [
             *public_commands,
+            BotCommand(command="system", description="Состояние бота и фоновых процессов"),
+            BotCommand(command="version", description="Версия приложения и схемы"),
             BotCommand(command="analytics", description="Аналитический центр"),
             BotCommand(command="backup", description="Резервные копии PostgreSQL"),
             BotCommand(command="quality", description="Контроль качества и дубли"),
@@ -219,38 +270,19 @@ async def main() -> None:
             "Velvet Archive запущен",
             level="SUCCESS",
             bot=f"@{bot_username}",
+            app_version=APP_VERSION,
             guest_mode=bot_info.supports_guest_queries,
             allowed_updates=", ".join(allowed_updates),
             analytics_channels=", ".join(
                 str(value) for value in sorted(settings.analytics_channel_ids)
             ),
             publication_timezone=settings.publication_timezone,
-            media_quality_worker=True,
-            backup_worker=True,
+            managed_workers=", ".join(worker_manager.registered_names()),
             backup_dir=settings.backup_dir,
             log_chat_id=settings.log_chat_id,
         )
 
-        background_tasks.extend(
-            [
-                asyncio.create_task(
-                    run_public_notification_worker(bot, database),
-                    name="public-archive-notifications",
-                ),
-                asyncio.create_task(
-                    run_publication_worker(bot, database),
-                    name="publication-queue",
-                ),
-                asyncio.create_task(
-                    run_media_quality_worker(bot, database),
-                    name="media-quality",
-                ),
-                asyncio.create_task(
-                    run_backup_worker(backup_service, database),
-                    name="postgresql-backups",
-                ),
-            ]
-        )
+        await worker_manager.start_all()
         await dispatcher.start_polling(
             bot,
             allowed_updates=allowed_updates,
@@ -262,13 +294,11 @@ async def main() -> None:
             analytics_channel_ids=settings.analytics_channel_ids,
             publication_timezone=settings.publication_timezone,
             backup_service=backup_service,
+            system_service=system_service,
+            worker_manager=worker_manager,
         )
     finally:
-        for task in background_tasks:
-            task.cancel()
-        for task in background_tasks:
-            with suppress(asyncio.CancelledError):
-                await task
+        await worker_manager.stop_all()
         await audit_logger.send("Velvet Archive остановлен", level="WARNING")
         await bot.session.close()
         await database.close()
