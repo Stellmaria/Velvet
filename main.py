@@ -18,6 +18,7 @@ from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
 from velvet_bot.handlers import router
+from velvet_bot.media_quality import run_media_quality_worker
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_notifications import run_public_notification_worker
 from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID
@@ -109,6 +110,7 @@ async def main() -> None:
         admin_commands = [
             *public_commands,
             BotCommand(command="analytics", description="Аналитический центр"),
+            BotCommand(command="quality", description="Контроль качества и дубли"),
             BotCommand(command="publish", description="Проверка и очередь публикаций"),
             BotCommand(command="checkpost", description="Проверить пост ответом"),
             BotCommand(command="create", description="Создать персонажа и назначить тему"),
@@ -207,6 +209,7 @@ async def main() -> None:
                 str(value) for value in sorted(settings.analytics_channel_ids)
             ),
             publication_timezone=settings.publication_timezone,
+            media_quality_worker=True,
             log_chat_id=settings.log_chat_id,
         )
 
@@ -219,6 +222,10 @@ async def main() -> None:
                 asyncio.create_task(
                     run_publication_worker(bot, database),
                     name="publication-queue",
+                ),
+                asyncio.create_task(
+                    run_media_quality_worker(bot, database),
+                    name="media-quality",
                 ),
             ]
         )
