@@ -6,7 +6,6 @@ from aiogram import Router
 from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
-from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
 from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.owner_menu_compat import install_owner_menu_navigation
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
@@ -40,7 +39,6 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.analytics_dashboard_overrides import (
         router as analytics_dashboard_overrides_router,
     )
-    import velvet_bot.handlers.analytics_discussion_overrides as analytics_discussion_module
     from velvet_bot.handlers.analytics_discussion_overrides import (
         router as analytics_discussion_overrides_router,
     )
@@ -58,9 +56,6 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.media_browser import router as media_browser_router
     from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
     from velvet_bot.handlers.multi_story_kr import router as multi_story_kr_router
-    from velvet_bot.handlers.owner_action_callback_fix import (
-        router as owner_action_callback_fix_router,
-    )
     from velvet_bot.handlers.owner_actions import router as owner_actions_router
     from velvet_bot.handlers.owner_menu import router as owner_menu_router
     from velvet_bot.handlers.public_archive import router as public_archive_router
@@ -87,8 +82,6 @@ def _build_root_router() -> Router:
         router as telegram_analytics_import_router,
     )
 
-    analytics_discussion_module._get_discussion_dashboard = get_discussion_dashboard_compat
-
     root = Router(name="velvet_bot.presentation.telegram")
 
     @root.error()
@@ -114,7 +107,6 @@ def _build_root_router() -> Router:
             )
         return True
 
-    root.include_router(owner_action_callback_fix_router)
     root.include_router(owner_actions_router)
     root.include_router(owner_menu_router)
     root.include_router(supervisor_control_router)

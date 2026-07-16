@@ -19,6 +19,7 @@ from velvet_bot.reference_uploads import ReferenceUploadSessions
 from velvet_bot.repositories.system_repository import SystemRepository
 from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.version import APP_VERSION
+from velvet_bot.workers import WorkerManager
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,38 @@ async def _probe_analytics_channels(
             )
 
 
+async def _close_application_resources(
+    *,
+    worker_manager: WorkerManager | None,
+    audit_logger: TelegramAuditLogger | None,
+    bot: ProtectedMediaBot | None,
+    database: Database,
+) -> None:
+    """Release every acquired resource even when another cleanup step fails."""
+    if worker_manager is not None:
+        try:
+            await worker_manager.stop_all()
+        except Exception:
+            logger.exception("Could not stop all background workers")
+
+    if audit_logger is not None:
+        try:
+            await audit_logger.send("Velvet Archive остановлен", level="WARNING")
+        except Exception as error:
+            logger.warning("Could not send shutdown audit message: %s", error)
+
+    if bot is not None:
+        try:
+            await bot.session.close()
+        except Exception:
+            logger.exception("Could not close Telegram bot session")
+
+    try:
+        await database.close()
+    except Exception:
+        logger.exception("Could not close PostgreSQL pool")
+
+
 async def run_application() -> None:
     """Create all application dependencies and own their complete lifecycle."""
     settings = load_settings()
@@ -76,33 +109,36 @@ async def run_application() -> None:
         pg_dump_path=settings.pg_dump_path,
         pg_restore_path=settings.pg_restore_path,
     )
-
-    pre_migration_created = await backup_service.prepare_pre_migration_backup()
-    if pre_migration_created:
-        logger.info("Verified pre-migration PostgreSQL backup created")
-
     database = Database(settings.database_url)
-    await database.initialize()
-    await backup_service.persist_pre_migration_backup(database)
-
-    system_service = SystemHealthService(
-        repository=SystemRepository(database),
-        backup_dir=settings.backup_dir,
-        pg_dump_path=settings.pg_dump_path,
-        pg_restore_path=settings.pg_restore_path,
-        app_version=APP_VERSION,
-    )
-    bot = _build_bot(settings)
-    audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
-    reference_uploads = ReferenceUploadSessions()
-    worker_manager = build_worker_manager(
-        bot=bot,
-        database=database,
-        backup_service=backup_service,
-        settings=settings,
-    )
+    bot: ProtectedMediaBot | None = None
+    audit_logger: TelegramAuditLogger | None = None
+    worker_manager: WorkerManager | None = None
 
     try:
+        pre_migration_created = await backup_service.prepare_pre_migration_backup()
+        if pre_migration_created:
+            logger.info("Verified pre-migration PostgreSQL backup created")
+
+        await database.initialize()
+        await backup_service.persist_pre_migration_backup(database)
+
+        system_service = SystemHealthService(
+            repository=SystemRepository(database),
+            backup_dir=settings.backup_dir,
+            pg_dump_path=settings.pg_dump_path,
+            pg_restore_path=settings.pg_restore_path,
+            app_version=APP_VERSION,
+        )
+        bot = _build_bot(settings)
+        audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
+        reference_uploads = ReferenceUploadSessions()
+        worker_manager = build_worker_manager(
+            bot=bot,
+            database=database,
+            backup_service=backup_service,
+            settings=settings,
+        )
+
         bot_info = await bot.get_me()
         bot_username = bot_info.username or ""
 
@@ -187,13 +223,12 @@ async def run_application() -> None:
             worker_manager=worker_manager,
         )
     finally:
-        await worker_manager.stop_all()
-        try:
-            await audit_logger.send("Velvet Archive остановлен", level="WARNING")
-        except TelegramAPIError as error:
-            logger.warning("Could not send shutdown audit message: %s", error)
-        await bot.session.close()
-        await database.close()
+        await _close_application_resources(
+            worker_manager=worker_manager,
+            audit_logger=audit_logger,
+            bot=bot,
+            database=database,
+        )
 
 
 __all__ = ("run_application",)

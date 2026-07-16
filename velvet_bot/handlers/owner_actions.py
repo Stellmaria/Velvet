@@ -8,7 +8,6 @@ from typing import Any
 from aiogram import Bot, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import BaseFilter
-from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
     CallbackQuery,
     ForceReply,
@@ -50,26 +49,28 @@ from velvet_bot.handlers.references import (
     handle_reference_upload_start,
     handle_show_references,
 )
+from velvet_bot.handlers.spoiler_save import handle_save_spoiler_media
 from velvet_bot.handlers.telegram_analytics_import import (
     handle_discussion_stats,
     handle_import_channel,
     handle_import_discussion,
     handle_track_discussion,
 )
+from velvet_bot.owner_callbacks import (
+    OwnerActionCallback,
+    owner_action_callback,
+    owner_callback,
+)
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 router = Router(name=__name__)
 
-_OWNER_HOME = "own:menu"
+_OWNER_HOME = owner_callback("menu")
 _MARKER_RE = re.compile(r"OWNER_ACTION:([a-z0-9_]+)")
 
 
-class OwnerActionCallback(CallbackData, prefix="oact"):
-    action: str
-
-
 def _cb(action: str) -> str:
-    return OwnerActionCallback(action=action).pack()
+    return owner_action_callback(action)
 
 
 class OwnerActionReplyFilter(BaseFilter):
@@ -183,6 +184,11 @@ _MEDIA_FORMS: dict[str, tuple[str, str]] = {
         "Ответьте на это сообщение фотографией, видео, анимацией или файлом. "
         "В подписи укажите только имя персонажа.",
     ),
+    "save_spoiler": (
+        "Сохранить медиа со спойлером",
+        "Ответьте фотографией, видео, анимацией или файлом. В подписи укажите "
+        "имя персонажа. Материал будет размыт в открытом архиве.",
+    ),
     "check_post": (
         "Проверить публикацию",
         "Ответьте на это сообщение готовым текстом, медиа или пересланным постом. "
@@ -247,6 +253,7 @@ def _section_keyboard(section: str) -> InlineKeyboardMarkup:
         ],
         "media": [
             [("💾 Сохранить медиа", "media.save_media")],
+            [("🌫 Сохранить со спойлером", "media.save_spoiler")],
             [("📝 Привязать промт", "form.prompt")],
             [("🧪 Проверить пост", "media.check_post")],
         ],
@@ -290,12 +297,13 @@ def _section_text(section: str) -> str:
 def _map_text() -> str:
     return (
         "<b>📋 Карта переноса slash-команд</b>\n\n"
-        "<b>Прямые панели:</b> system, version, analytics, channelstats, "
-        "promptstats, characterstats, backup, quality, publish, characters.\n\n"
+        "<b>Прямые панели:</b> system, health, version, analytics, channelstats, "
+        "promptstats, characterstats, backup, quality, auditarchive, publish, "
+        "characters, supervisor, logs, restart, update, rollback и Codex.\n\n"
         "<b>Формы:</b> create, topic, character, category, universe, story, "
         "stories, storyadd, prompt, refadd, refs, refdel, aliasadd, aliases, "
         "aliasdel, tagstats, trackdiscussion, discussionstats.\n\n"
-        "<b>Контекстные формы:</b> save, checkpost, importchannel, "
+        "<b>Контекстные формы:</b> save, save18, checkpost, importchannel, "
         "importdiscussion. В них файл или пост отправляется ответом на форму.\n\n"
         "<b>Отдельные кнопки:</b> refdone, refcancel, aliasreindex.\n\n"
         "Старые обработчики не удалены и остаются аварийным резервом, но для "
@@ -309,6 +317,25 @@ def _confirm_keyboard(action: str, label: str, *, back: str) -> InlineKeyboardMa
             [
                 InlineKeyboardButton(text=label, callback_data=_cb(f"do.{action}")),
                 InlineKeyboardButton(text="✖ Отмена", callback_data=_cb(back)),
+            ]
+        ]
+    )
+
+
+def _reference_session_message(callback: CallbackQuery) -> Message:
+    assert isinstance(callback.message, Message)
+    return callback.message.model_copy(
+        update={"from_user": callback.from_user},
+        deep=False,
+    )
+
+
+def _reference_back_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="↩️ Референсы", callback_data=_cb("references")),
+                InlineKeyboardButton(text="🏠 Главное меню", callback_data=_OWNER_HOME),
             ]
         ]
     )
@@ -377,10 +404,16 @@ async def handle_owner_action_callback(
         await _send_form(callback.message, action.removeprefix("form."))
     elif action.startswith("media."):
         await _send_media_form(callback.message, action.removeprefix("media."))
-    elif action == "direct.refdone":
-        await handle_reference_upload_done(callback.message, reference_uploads)
-    elif action == "direct.refcancel":
-        await handle_reference_upload_cancel(callback.message, reference_uploads)
+    elif action in {"direct.refdone", "direct.refcancel"}:
+        session_message = _reference_session_message(callback)
+        if action == "direct.refdone":
+            await handle_reference_upload_done(session_message, reference_uploads)
+        else:
+            await handle_reference_upload_cancel(session_message, reference_uploads)
+        await session_message.answer(
+            "Вернуться к управлению:",
+            reply_markup=_reference_back_keyboard(),
+        )
     elif action == "ask.aliasreindex":
         await _safe_edit(
             callback.message,
@@ -419,7 +452,7 @@ async def handle_owner_action_reply(
         await message.answer(_main_text(), reply_markup=_main_keyboard())
         return
 
-    if owner_action == "save_media":
+    if owner_action in {"save_media", "save_spoiler"}:
         if not value:
             await message.answer("Укажите имя персонажа в подписи к медиа.")
             return
@@ -428,13 +461,22 @@ async def handle_owner_action_reply(
             update={"reply_to_message": source, "text": None, "caption": None},
             deep=False,
         )
-        await _handle_normal_save(
-            command_message,
-            value,
-            database,
-            bot,
-            audit_logger,
-        )
+        if owner_action == "save_spoiler":
+            await handle_save_spoiler_media(
+                command_message,
+                _command(value),
+                database,
+                bot,
+                audit_logger,
+            )
+        else:
+            await _handle_normal_save(
+                command_message,
+                value,
+                database,
+                bot,
+                audit_logger,
+            )
         return
 
     if owner_action == "check_post":

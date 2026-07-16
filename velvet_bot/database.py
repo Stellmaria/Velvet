@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
@@ -10,6 +11,9 @@ import asyncpg
 from velvet_bot.media import MediaDescriptor
 
 MAX_CHARACTER_NAME_LENGTH = 64
+_LEGACY_DUPLICATE_MIGRATION_NUMBERS = {
+    "003": frozenset({"003_character_references.sql", "003_public_archive.sql"}),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +55,33 @@ def normalize_character_name(value: str) -> str:
     return clean_character_name(value).casefold()
 
 
+def _migration_checksum(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _validate_migration_catalog(migration_files: list[Path]) -> None:
+    """Reject ambiguous new migration numbers while preserving the legacy 003 pair."""
+    by_number: dict[str, set[str]] = {}
+    for path in migration_files:
+        number, separator, _ = path.name.partition("_")
+        if not separator or not number.isdigit():
+            continue
+        by_number.setdefault(number, set()).add(path.name)
+
+    for number, names in sorted(by_number.items()):
+        if len(names) <= 1:
+            continue
+        allowed = _LEGACY_DUPLICATE_MIGRATION_NUMBERS.get(number)
+        if allowed == frozenset(names):
+            continue
+        joined = ", ".join(sorted(names))
+        raise RuntimeError(
+            f"Номер миграции {number} используется несколькими файлами: {joined}. "
+            "Создайте следующий свободный номер; переименование уже применённой "
+            "миграции запрещено."
+        )
+
+
 class Database:
     def __init__(self, database_url: str, *, migrations_path: Path | None = None) -> None:
         self.database_url = database_url
@@ -67,7 +98,11 @@ class Database:
             max_size=10,
             command_timeout=60,
         )
-        await self._apply_migrations()
+        try:
+            await self._apply_migrations()
+        except BaseException:
+            await self.close()
+            raise
 
     async def close(self) -> None:
         if self._pool is not None:
@@ -374,32 +409,51 @@ class Database:
         migration_files = sorted(self.migrations_path.glob("*.sql"))
         if not migration_files:
             raise RuntimeError(f"Не найдены SQL-миграции в {self.migrations_path}.")
+        _validate_migration_catalog(migration_files)
 
         async with self._require_pool().acquire() as connection:
             await connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS schema_migrations (
                     version TEXT PRIMARY KEY,
+                    checksum TEXT,
                     applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
                 """
             )
+            await connection.execute(
+                "ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT"
+            )
 
             for migration_file in migration_files:
                 version = migration_file.name
-                already_applied = await connection.fetchval(
-                    "SELECT 1 FROM schema_migrations WHERE version = $1",
+                checksum = _migration_checksum(migration_file)
+                applied = await connection.fetchrow(
+                    "SELECT checksum FROM schema_migrations WHERE version = $1",
                     version,
                 )
-                if already_applied:
+                if applied is not None:
+                    stored_checksum = applied["checksum"]
+                    if stored_checksum is None:
+                        await connection.execute(
+                            "UPDATE schema_migrations SET checksum = $2 WHERE version = $1",
+                            version,
+                            checksum,
+                        )
+                    elif str(stored_checksum) != checksum:
+                        raise RuntimeError(
+                            f"Применённая миграция {version} была изменена. "
+                            "Верните исходный SQL и создайте новую миграцию."
+                        )
                     continue
 
                 sql = migration_file.read_text(encoding="utf-8")
                 async with connection.transaction():
                     await connection.execute(sql)
                     await connection.execute(
-                        "INSERT INTO schema_migrations (version) VALUES ($1)",
+                        "INSERT INTO schema_migrations (version, checksum) VALUES ($1, $2)",
                         version,
+                        checksum,
                     )
 
     def _require_pool(self) -> asyncpg.Pool:
@@ -442,3 +496,13 @@ class Database:
             archive_thread_id=row["archive_thread_id"],
             archive_topic_url=row["archive_topic_url"],
         )
+
+
+__all__ = (
+    "Character",
+    "Database",
+    "MAX_CHARACTER_NAME_LENGTH",
+    "SaveMediaResult",
+    "clean_character_name",
+    "normalize_character_name",
+)

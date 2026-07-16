@@ -68,8 +68,10 @@ class OwnerActionMenuTests(unittest.TestCase):
             "prompt",
             "character",
             "save",
+            "save18",
             "refadd",
             "refdone",
+            "refcancel",
             "refs",
             "refdel",
             "aliasadd",
@@ -114,6 +116,7 @@ class OwnerActionMenuTests(unittest.TestCase):
         form_commands = set(_FORM_COPY)
         context_mapping = {
             "save_media": "save",
+            "save_spoiler": "save18",
             "check_post": "checkpost",
             "import_channel": "importchannel",
             "import_discussion": "importdiscussion",
@@ -121,7 +124,7 @@ class OwnerActionMenuTests(unittest.TestCase):
         context_commands = {
             context_mapping[action] for action in _MEDIA_FORMS
         }
-        direct_commands = {"refdone", "aliasreindex"}
+        direct_commands = {"refdone", "refcancel", "aliasreindex"}
         covered = panel_commands | form_commands | context_commands | direct_commands
         self.assertEqual(historical_commands, covered)
 
