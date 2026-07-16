@@ -4,13 +4,13 @@ from functools import partial
 
 from aiogram import Bot
 
+from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
 from velvet_bot.workers.iterations import (
     process_backup_once,
-    process_due_publications_once,
     process_public_notifications_once,
 )
 
@@ -22,6 +22,7 @@ def build_worker_manager(
     backup_service: BackupService,
 ) -> WorkerManager:
     """Build the complete periodic-worker registry for the application."""
+    publication_service = build_publication_service(bot, database)
     media_quality_service = MediaQualityService(
         bot=bot,
         repository=MediaQualityRepository(database),
@@ -41,7 +42,7 @@ def build_worker_manager(
             name="publication-queue",
             description="Очередь публикаций",
             interval_seconds=15,
-            runner=partial(process_due_publications_once, bot, database),
+            runner=publication_service.process_due_once,
         )
     )
     manager.register(
