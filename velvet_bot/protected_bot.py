@@ -44,7 +44,7 @@ def protect_private_media_method(
 
 
 class ProtectedMediaBot(Bot):
-    """Protect private media and allow only scoped manager-original downloads."""
+    """Protect private media and allow only one explicit manager download."""
 
     def __init__(
         self,
@@ -55,7 +55,7 @@ class ProtectedMediaBot(Bot):
         if unprotected_private_user_ids:
             raise ValueError(
                 "Permanent unprotected recipients are disabled. "
-                "Use unprotected_private_media() around one explicit download."
+                "Use allow_unprotected_private_user() immediately before one download."
             )
         super().__init__(*args, **kwargs)
         self._scoped_unprotected_private_user_ids: ContextVar[frozenset[int]] = (
@@ -67,7 +67,7 @@ class ProtectedMediaBot(Bot):
 
     @asynccontextmanager
     async def unprotected_private_media(self, user_id: int) -> AsyncIterator[None]:
-        """Disable protection only for this task and this explicit private send."""
+        """Allow one unprotected media send in this task, then restore protection."""
         current = self._scoped_unprotected_private_user_ids.get()
         token = self._scoped_unprotected_private_user_ids.set(
             current | {int(user_id)}
@@ -77,15 +77,26 @@ class ProtectedMediaBot(Bot):
         finally:
             self._scoped_unprotected_private_user_ids.reset(token)
 
-    def allow_unprotected_private_user(self, user_id: int):
-        """Compatibility alias returning a scoped context manager, not a permanent grant."""
-        return self.unprotected_private_media(user_id)
+    def allow_unprotected_private_user(self, user_id: int) -> None:
+        """Allow only the next private media send to this verified manager."""
+        current = self._scoped_unprotected_private_user_ids.get()
+        self._scoped_unprotected_private_user_ids.set(current | {int(user_id)})
 
     async def __call__(self, method: Any, request_timeout: int | None = None) -> Any:
+        unprotected_ids = self._scoped_unprotected_private_user_ids.get()
+        chat_id = getattr(method, "chat_id", None)
+        if (
+            isinstance(method, _PROTECTED_MEDIA_METHODS)
+            and isinstance(chat_id, int)
+            and chat_id > 0
+            and chat_id in unprotected_ids
+        ):
+            self._scoped_unprotected_private_user_ids.set(
+                unprotected_ids - {chat_id}
+            )
+
         protect_private_media_method(
             method,
-            unprotected_private_user_ids=(
-                self._scoped_unprotected_private_user_ids.get()
-            ),
+            unprotected_private_user_ids=unprotected_ids,
         )
         return await super().__call__(method, request_timeout=request_timeout)
