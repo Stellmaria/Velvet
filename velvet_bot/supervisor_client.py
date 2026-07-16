@@ -40,6 +40,11 @@ class SupervisorClient:
             payload["target_sha"] = target_sha
         return await self._request("POST", "/v1/rollback", payload)
 
+    async def codex_tasks(self, *, limit: int = 20) -> dict[str, Any]:
+        safe_limit = max(1, min(int(limit), 100))
+        query = urllib.parse.urlencode({"limit": safe_limit})
+        return await self._request("GET", f"/v1/codex?{query}")
+
     async def create_codex_task(
         self,
         *,
