@@ -3,6 +3,7 @@ from __future__ import annotations
 from html import escape
 
 import velvet_bot.archive_ui as archive_ui
+import velvet_bot.media_set_actions  # noqa: F401
 import velvet_bot.public_ui as public_ui
 
 _INSTALLED = False
