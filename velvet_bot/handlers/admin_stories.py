@@ -7,10 +7,14 @@ from aiogram.filters import Command, CommandObject
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from velvet_bot.application.owner_profiles import (
+    add_story_from_text,
+    list_stories_from_text,
+    set_story_from_text,
+)
 from velvet_bot.character_directory import (
     CharacterDirectoryItem,
     get_character_directory_item,
-    normalize_universe,
     story_label,
     universe_label,
 )
@@ -23,11 +27,8 @@ from velvet_bot.handlers.admin_directory import (
 from velvet_bot.story_catalog import (
     CharacterStory,
     StoryPage,
-    create_story,
-    find_story,
     format_story_release,
     get_story,
-    list_stories,
     list_story_page,
     set_character_story,
 )
@@ -63,12 +64,7 @@ def _story_cb(
     ).pack()
 
 
-def _profile_cb(
-    *,
-    category: str,
-    page: int,
-    character_id: int,
-) -> str:
+def _profile_cb(*, category: str, page: int, character_id: int) -> str:
     return AdminDirectoryCallback(
         action="profile",
         category=category,
@@ -122,7 +118,6 @@ def build_story_picker(
                 )
             ]
         )
-
     if story_page.total_pages > 1:
         rows.append(
             [
@@ -158,7 +153,6 @@ def build_story_picker(
                 ),
             ]
         )
-
     if item.story_id is not None:
         rows.append(
             [
@@ -202,11 +196,7 @@ async def _render_profile(
         return
     await callback.message.edit_text(
         _profile_text(item),
-        reply_markup=_profile_keyboard(
-            item,
-            category=category,
-            page=page,
-        ),
+        reply_markup=_profile_keyboard(item, category=category, page=page),
     )
 
 
@@ -225,7 +215,6 @@ async def _render_story_picker(
     if not item.universe:
         await callback.answer("Сначала назначьте вселенную.", show_alert=True)
         return
-
     story_page = await list_story_page(
         database,
         universe=item.universe,
@@ -233,7 +222,7 @@ async def _render_story_picker(
     )
     if not story_page.items:
         await callback.answer(
-            "Для этой вселенной пока нет историй. Добавьте через /storyadd.",
+            "Для этой вселенной пока нет историй. Добавьте через центр управления.",
             show_alert=True,
         )
         return
@@ -254,56 +243,24 @@ async def handle_set_story(
     command: CommandObject,
     database: Database,
 ) -> None:
-    if not command.args or len(command.args.rsplit(maxsplit=1)) != 2:
+    if not command.args:
         await message.answer(
             "Формат: <code>/story Имя СОКР</code>\n"
-            "Например: <code>/story Каин СНР</code>\n"
             "Снять историю: <code>/story Имя без</code>"
         )
         return
-
-    character_name, raw_story = command.args.rsplit(maxsplit=1)
-    character = await database.get_character(character_name)
-    if character is None:
-        await message.answer("Такой персонаж не найден.")
+    try:
+        result = await set_story_from_text(database, command.args)
+    except ValueError as error:
+        await message.answer(escape(str(error)))
         return
-    item = await get_character_directory_item(database, character.id)
-    if item is None or not item.universe:
-        await message.answer("Сначала назначьте персонажу вселенную.")
+    if result.removed:
+        await message.answer(f"История у <b>{escape(result.character.name)}</b> удалена.")
         return
-
-    if raw_story.casefold() in {"без", "нет", "off", "удалить", "-"}:
-        await set_character_story(
-            database,
-            character_id=character.id,
-            story_id=None,
-        )
-        await message.answer(
-            f"История у <b>{escape(character.name)}</b> удалена."
-        )
-        return
-
-    story = await find_story(
-        database,
-        universe=item.universe,
-        value=raw_story,
-    )
-    if story is None:
-        await message.answer(
-            "История не найдена в этой вселенной. "
-            "Посмотреть сокращения: <code>/stories "
-            f"{escape(universe_label(item.universe))}</code>"
-        )
-        return
-
-    await set_character_story(
-        database,
-        character_id=character.id,
-        story_id=story.id,
-    )
+    assert result.story is not None
     await message.answer(
-        f"История персонажа <b>{escape(character.name)}</b>: "
-        f"<b>{escape(story.short_label)} · {escape(story.title)}</b>."
+        f"История персонажа <b>{escape(result.character.name)}</b>: "
+        f"<b>{escape(result.story.short_label)} · {escape(result.story.title)}</b>."
     )
 
 
@@ -313,34 +270,24 @@ async def handle_add_story(
     command: CommandObject,
     database: Database,
 ) -> None:
-    if not command.args or len(command.args.split(maxsplit=2)) != 3:
+    if not command.args:
         await message.answer(
-            "Формат: <code>/storyadd Вселенная СОКР Полное название</code>\n"
-            "Например: <code>/storyadd КР СНР Секрет Небес: Реквием</code>"
+            "Формат: <code>/storyadd Вселенная СОКР Полное название</code>"
         )
         return
-
-    raw_universe, short_label, title = command.args.split(maxsplit=2)
     try:
-        universe = normalize_universe(raw_universe)
-        story = await create_story(
-            database,
-            universe=universe,
-            short_label=short_label,
-            title=title,
-        )
+        story = await add_story_from_text(database, command.args)
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
-
     await message.answer(
-        f"История добавлена в <b>{escape(universe_label(universe))}</b>: "
+        f"История добавлена в <b>{escape(universe_label(story.universe))}</b>: "
         f"<b>{escape(story.short_label)} · {escape(story.title)}</b>. "
-        "Она поставлена первой как самая новая; дату можно уточнить в каталоге."
+        "Она поставлена первой как самая новая."
     )
 
 
-def _story_list_chunks(universe: str, stories: list[CharacterStory]) -> list[str]:
+def _story_list_chunks(universe: str, stories: tuple[CharacterStory, ...]) -> list[str]:
     header = (
         f"<b>Истории {escape(universe_label(universe))}</b>\n"
         "Сортировка: <b>от новых к старым</b>.\n\n"
@@ -370,22 +317,17 @@ async def handle_story_list(
     database: Database,
 ) -> None:
     if not command.args:
-        await message.answer(
-            "Формат: <code>/stories Вселенная</code>\n"
-            "Например: <code>/stories КР</code>"
-        )
+        await message.answer("Формат: <code>/stories Вселенная</code>")
         return
     try:
-        universe = normalize_universe(command.args)
+        result = await list_stories_from_text(database, command.args)
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
-
-    stories = await list_stories(database, universe=universe)
-    if not stories:
+    if not result.stories:
         await message.answer("Для этой вселенной истории ещё не добавлены.")
         return
-    for chunk in _story_list_chunks(universe, stories):
+    for chunk in _story_list_chunks(result.universe, result.stories):
         await message.answer(chunk)
 
 
@@ -419,12 +361,10 @@ async def handle_story_callback(
     if callback_data.action == "noop":
         await callback.answer()
         return
-
     item = await get_character_directory_item(database, callback_data.character_id)
     if item is None:
         await callback.answer("Персонаж больше не найден.", show_alert=True)
         return
-
     if callback_data.action == "page":
         await _render_story_picker(
             callback,
@@ -436,11 +376,9 @@ async def handle_story_callback(
         )
         await callback.answer()
         return
-
     if callback_data.action != "set":
         await callback.answer("Неизвестное действие.", show_alert=True)
         return
-
     story = None
     if callback_data.story_id:
         story = await get_story(database, callback_data.story_id)
@@ -450,7 +388,6 @@ async def handle_story_callback(
                 show_alert=True,
             )
             return
-
     await set_character_story(
         database,
         character_id=item.character.id,
@@ -460,7 +397,6 @@ async def handle_story_callback(
     if item is None:
         await callback.answer("Персонаж больше не найден.", show_alert=True)
         return
-
     category = callback_data.category or item.category or "uncategorized"
     await _render_profile(
         callback,

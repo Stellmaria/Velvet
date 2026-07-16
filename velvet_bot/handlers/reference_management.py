@@ -19,6 +19,10 @@ from aiogram.types import (
 )
 
 from velvet_bot.access import get_caller_user
+from velvet_bot.application.owner_references import (
+    delete_reference_by_index,
+    parse_reference_index,
+)
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Character, Database
 from velvet_bot.reference_catalog import (
@@ -60,7 +64,6 @@ def parse_reference_add_character(text: str, bot_username: str) -> str | None:
     cleaned = " ".join(text.split())
     if not cleaned:
         return None
-
     expected_username = bot_username.lstrip("@").casefold()
     patterns = (
         re.compile(
@@ -98,14 +101,10 @@ def parse_reference_add_character(text: str, bot_username: str) -> str | None:
 
 
 def parse_reference_delete_args(value: str) -> tuple[str, int] | None:
-    match = re.fullmatch(r"\s*(?P<name>.+?)\s+#?(?P<index>\d+)\s*", value)
-    if match is None:
+    try:
+        return parse_reference_index(value)
+    except ValueError:
         return None
-    name = match.group("name").strip()
-    index = int(match.group("index"))
-    if not name or index < 1:
-        return None
-    return name, index
 
 
 def _find_context_photo(message: Message) -> PhotoSize | None:
@@ -174,14 +173,12 @@ async def _save_context_reference(
             "Ответьте этой командой на фотографию. "
             "Файл должен быть отправлен как фото, а не как документ."
         )
-
     try:
         character = await database.get_character(character_name)
     except ValueError as error:
         return escape(str(error))
     if character is None:
         return "Такой персонаж не найден."
-
     caller = get_caller_user(message)
     created, total = await _add_reference(
         database=database,
@@ -272,42 +269,33 @@ async def handle_reference_delete_command(
     database: Database,
     audit_logger: TelegramAuditLogger,
 ) -> None:
-    parsed = parse_reference_delete_args(command.args or "")
-    if parsed is None:
+    if not command.args:
         await message.answer(
             "Укажите персонажа и номер референса.\n\n"
             "Пример: <code>/refdel Аид 2</code>"
         )
         return
-
-    character_name, index = parsed
-    character = await database.get_character(character_name)
-    if character is None:
-        await message.answer("Такой персонаж не найден.")
+    try:
+        result = await delete_reference_by_index(database, command.args)
+    except ValueError as error:
+        await message.answer(escape(str(error)))
         return
-    page = await get_reference_page(database, character.id, index - 1)
-    if page is None or page.reference is None or index > page.total:
-        await message.answer("Референс с таким номером не найден.")
-        return
-
-    result = await delete_character_reference(database, character.id, page.reference.id)
     if result.reference is None:
         await message.answer("Референс уже удалён.")
         return
-
     caller = get_caller_user(message)
     await audit_logger.send(
         "Референс персонажа удалён",
         level="WARNING",
-        character=character.name,
+        character=result.character.name,
         reference_id=result.reference.id,
-        remaining=result.total,
+        remaining=result.remaining,
         deleted_by=caller.id if caller else None,
     )
     await message.answer(
-        f"🗑 Референс <b>{index}</b> персонажа "
-        f"<b>{escape(character.name)}</b> удалён. "
-        f"Осталось: <b>{result.total}</b>."
+        f"🗑 Референс <b>{result.index}</b> персонажа "
+        f"<b>{escape(result.character.name)}</b> удалён. "
+        f"Осталось: <b>{result.remaining}</b>."
     )
 
 
@@ -390,9 +378,7 @@ async def _show_empty_reference_state(
 
 
 @router.callback_query(
-    ReferenceCallback.filter(
-        F.action.in_({"delete_prompt", "cancel_delete", "delete"})
-    )
+    ReferenceCallback.filter(F.action.in_({"delete_prompt", "cancel_delete", "delete"}))
 )
 async def handle_reference_delete_callback(
     callback: CallbackQuery,
@@ -412,7 +398,6 @@ async def handle_reference_delete_callback(
     if page.reference is None:
         await callback.answer("Референсы больше не найдены.", show_alert=True)
         return
-
     try:
         if callback_data.action in {"delete_prompt", "cancel_delete"}:
             if page.reference.id != callback_data.reference_id:
@@ -429,7 +414,6 @@ async def handle_reference_delete_callback(
             )
             await callback.answer()
             return
-
         result = await delete_character_reference(
             database,
             callback_data.character_id,
@@ -438,7 +422,6 @@ async def handle_reference_delete_callback(
         if result.reference is None:
             await callback.answer("Референс уже удалён.", show_alert=True)
             return
-
         await audit_logger.send(
             "Референс персонажа удалён",
             level="WARNING",
@@ -447,7 +430,6 @@ async def handle_reference_delete_callback(
             remaining=result.total,
             deleted_by=callback.from_user.id,
         )
-
         if result.total == 0:
             await _show_empty_reference_state(callback, bot, page.character.name)
         else:
@@ -463,5 +445,4 @@ async def handle_reference_delete_callback(
         logger.info("Reference deletion UI failed: %s", error)
         await callback.answer("Не удалось обновить референс.", show_alert=True)
         return
-
     await callback.answer("Референс удалён.")

@@ -19,6 +19,11 @@ from aiogram.types import (
     Message,
 )
 
+from velvet_bot.application.owner_references import (
+    finish_reference_upload,
+    get_reference_page_by_name,
+    start_reference_upload,
+)
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Character, Database
 from velvet_bot.reference_catalog import (
@@ -53,10 +58,7 @@ _REF_MENTION_SUFFIX_PATTERN = re.compile(
     r"^/?refs?\s+(?P<name>.+?)\s+@(?P<bot>[A-Za-z0-9_]+)$",
     re.IGNORECASE,
 )
-_REF_PLAIN_PATTERN = re.compile(
-    r"^/?refs?\s+(?P<name>.+)$",
-    re.IGNORECASE,
-)
+_REF_PLAIN_PATTERN = re.compile(r"^/?refs?\s+(?P<name>.+)$", re.IGNORECASE)
 _REF_GUEST_FILTER = re.compile(
     r"^(?:"
     r"/refs?(?:@[A-Za-z0-9_]+)?\s+.+|"
@@ -107,17 +109,10 @@ async def _resolve_page_by_name(
     database: Database,
     character_name: str,
 ) -> ReferencePage | None:
-    character = await database.get_character(character_name)
-    if character is None:
-        return None
-    return await get_reference_page(database, character.id, 0)
+    return await get_reference_page_by_name(database, character_name)
 
 
-async def _send_reference_page(
-    bot: Bot,
-    chat_id: int,
-    page: ReferencePage,
-) -> Message:
+async def _send_reference_page(bot: Bot, chat_id: int, page: ReferencePage) -> Message:
     if page.reference is None:
         raise ValueError("У персонажа пока нет референсов.")
     return await bot.send_photo(
@@ -171,9 +166,7 @@ async def _add_photo_reference(
     audit_logger: TelegramAuditLogger,
 ) -> tuple[bool, int]:
     if not message.photo:
-        raise ValueError(
-            "Референсы нужно отправлять как фотографию, а не как документ."
-        )
+        raise ValueError("Референсы нужно отправлять как фотографию, а не как документ.")
     photo = message.photo[-1]
     result = await add_character_reference(
         database,
@@ -205,29 +198,23 @@ async def handle_reference_upload_start(
         await message.answer("Загружайте референсы в личном чате с ботом.")
         return
     if not command.args:
-        await message.answer(
-            "Укажите персонажа.\n\n"
-            "Пример: <code>/refadd Аид</code>"
-        )
-        return
-    try:
-        character = await database.get_character(command.args)
-    except ValueError as error:
-        await message.answer(escape(str(error)))
-        return
-    if character is None:
-        await message.answer("Такой персонаж не найден.")
+        await message.answer("Укажите персонажа. Пример: <code>/refadd Аид</code>")
         return
     if message.from_user is None:
         await message.answer("Не удалось определить владельца загрузки.")
         return
-
-    reference_uploads.start(
-        message.from_user.id,
-        character_id=character.id,
-        character_name=character.name,
-    )
-
+    try:
+        session = await start_reference_upload(
+            database,
+            reference_uploads,
+            user_id=message.from_user.id,
+            character_name=command.args,
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
+    character = await database.get_character(session.character_name)
+    assert character is not None
     source = message.reply_to_message or message
     added_now = False
     total = None
@@ -240,18 +227,17 @@ async def handle_reference_upload_start(
         )
         if added_now:
             reference_uploads.increment(message.from_user.id)
-
     status = (
         f"\nТекущий референс сохранён. Всего: <b>{total}</b>."
         if added_now and total is not None
         else ""
     )
     await message.answer(
-        f"<b>Загрузка референсов: {escape(character.name)}</b>\n\n"
-        "Отправьте одну фотографию или целый альбом. "
-        "Каждая фотография будет добавлена в профиль персонажа.\n\n"
-        "Завершение: <code>/refdone</code>\n"
-        "Отмена: <code>/refcancel</code>"
+        f"<b>Загрузка референсов: {escape(session.character_name)}</b>\n\n"
+        "Отправьте одну фотографию или целый альбом. Каждая фотография будет "
+        "добавлена в профиль персонажа.\n\n"
+        "Завершение и отмена доступны кнопками или резервными командами "
+        "<code>/refdone</code> и <code>/refcancel</code>."
         f"{status}"
     )
 
@@ -263,15 +249,14 @@ async def handle_reference_upload_done(
 ) -> None:
     if message.from_user is None:
         return
-    session = reference_uploads.stop(message.from_user.id)
+    session = finish_reference_upload(reference_uploads, user_id=message.from_user.id)
     if session is None:
         await message.answer("Активной загрузки референсов нет.")
         return
     await message.answer(
-        f"<b>Загрузка завершена</b>\n\n"
+        "<b>Загрузка завершена</b>\n\n"
         f"Персонаж: <b>{escape(session.character_name)}</b>\n"
-        f"Добавлено за сеанс: <b>{session.added_count}</b>\n\n"
-        f"Просмотр: <code>/refs {escape(session.character_name)}</code>"
+        f"Добавлено за сеанс: <b>{session.added_count}</b>"
     )
 
 
@@ -282,11 +267,12 @@ async def handle_reference_upload_cancel(
 ) -> None:
     if message.from_user is None:
         return
-    session = reference_uploads.stop(message.from_user.id)
-    if session is None:
-        await message.answer("Активной загрузки референсов нет.")
-        return
-    await message.answer("Загрузка референсов остановлена.")
+    session = finish_reference_upload(reference_uploads, user_id=message.from_user.id)
+    await message.answer(
+        "Загрузка референсов остановлена."
+        if session is not None
+        else "Активной загрузки референсов нет."
+    )
 
 
 @router.message(F.photo, F.chat.type == ChatType.PRIVATE)
@@ -303,7 +289,7 @@ async def handle_reference_upload_photo(
         return
     character = await database.get_character(session.character_name)
     if character is None:
-        reference_uploads.stop(message.from_user.id)
+        finish_reference_upload(reference_uploads, user_id=message.from_user.id)
         await message.answer("Персонаж больше не найден. Загрузка остановлена.")
         return
     created, total = await _add_photo_reference(
@@ -316,11 +302,9 @@ async def handle_reference_upload_photo(
         reference_uploads.increment(message.from_user.id)
     if message.media_group_id is None:
         await message.answer(
-            (
-                f"✅ Референс добавлен. Всего у персонажа: <b>{total}</b>."
-                if created
-                else "Этот референс уже был добавлен."
-            )
+            f"✅ Референс добавлен. Всего у персонажа: <b>{total}</b>."
+            if created
+            else "Этот референс уже был добавлен."
         )
 
 
@@ -334,15 +318,16 @@ async def handle_show_references(
     if not command.args:
         await message.answer("Укажите персонажа: <code>/refs Аид</code>")
         return
-    page = await _resolve_page_by_name(database, command.args)
+    try:
+        page = await get_reference_page_by_name(database, command.args)
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
     if page is None:
         await message.answer("Такой персонаж не найден.")
         return
     if page.reference is None:
-        await message.answer(
-            "У персонажа пока нет референсов.\n\n"
-            f"Добавление: <code>/refadd {escape(page.character.name)}</code>"
-        )
+        await message.answer("У персонажа пока нет референсов.")
         return
     await _send_reference_page(bot, message.chat.id, page)
 
