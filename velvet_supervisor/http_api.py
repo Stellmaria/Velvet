@@ -105,11 +105,18 @@ class SupervisorRequestHandler(BaseHTTPRequestHandler):
                 )
                 return
             if parsed.path == "/v1/codex":
+                query = parse_qs(parsed.query)
+                raw_limit = query.get("limit", ["20"])[0]
+                try:
+                    limit = int(raw_limit)
+                except ValueError:
+                    limit = 20
+                limit = max(1, min(limit, 100))
                 self._send(
                     HTTPStatus.OK,
                     {
                         "ok": True,
-                        "tasks": self.server.runtime.codex.list_tasks(limit=20),
+                        "tasks": self.server.runtime.codex.list_tasks(limit=limit),
                     },
                 )
                 return
