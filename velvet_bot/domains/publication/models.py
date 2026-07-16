@@ -75,6 +75,28 @@ class PublicationDraftPage:
 
 
 @dataclass(frozen=True, slots=True)
+class PublicationInboxPayload:
+    owner_id: int
+    source_chat_id: int
+    source_message_id: int
+    media_group_id: str | None
+    text_content: str
+    telegram_file_id: str | None
+    telegram_file_unique_id: str | None
+    media_type: str
+    mime_type: str | None
+    file_name: str | None
+    file_size: int | None
+    has_spoiler: bool
+
+
+@dataclass(frozen=True, slots=True)
+class PublicationInboxItem:
+    id: int
+    payload: PublicationInboxPayload
+
+
+@dataclass(frozen=True, slots=True)
 class PublicationCharacterInfo:
     id: int
     name: str
@@ -110,6 +132,8 @@ __all__ = (
     "PublicationCharacterInfo",
     "PublicationDraft",
     "PublicationDraftPage",
+    "PublicationInboxItem",
+    "PublicationInboxPayload",
     "PublicationIssue",
     "PublicationItem",
     "PublicationValidationContext",
