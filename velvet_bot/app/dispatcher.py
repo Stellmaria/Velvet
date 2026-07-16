@@ -32,13 +32,12 @@ def build_dispatcher(
     database: Database,
     bot_username: str,
     audit_logger: TelegramAuditLogger,
-    error_center: ErrorIncidentCenter,
     reference_uploads: ReferenceUploadSessions,
     backup_service: BackupService,
     system_service: SystemHealthService,
     worker_manager: WorkerManager,
+    error_center: ErrorIncidentCenter | None = None,
 ) -> DispatcherBundle:
-    """Build the Telegram dispatcher and its dependency-injection context."""
     access_policy = AccessPolicy(
         allowed_user_ids=settings.allowed_user_ids,
         allowed_usernames=settings.allowed_usernames,
@@ -48,24 +47,24 @@ def build_dispatcher(
     discussion_middleware = DiscussionAnalyticsMiddleware()
     supervisor_client = build_supervisor_client()
 
-    dispatcher = Dispatcher()
-    dispatcher.workflow_data.update(
-        {
-            "database": database,
-            "bot_username": bot_username,
-            "audit_logger": audit_logger,
-            "error_center": error_center,
-            "reference_uploads": reference_uploads,
-            "access_policy": access_policy,
-            "analytics_channel_ids": settings.analytics_channel_ids,
-            "publication_timezone": settings.publication_timezone,
-            "backup_service": backup_service,
-            "system_service": system_service,
-            "worker_manager": worker_manager,
-            "supervisor_client": supervisor_client,
-        }
-    )
+    workflow_data = {
+        "database": database,
+        "bot_username": bot_username,
+        "audit_logger": audit_logger,
+        "reference_uploads": reference_uploads,
+        "access_policy": access_policy,
+        "analytics_channel_ids": settings.analytics_channel_ids,
+        "publication_timezone": settings.publication_timezone,
+        "backup_service": backup_service,
+        "system_service": system_service,
+        "worker_manager": worker_manager,
+        "supervisor_client": supervisor_client,
+    }
+    if error_center is not None:
+        workflow_data["error_center"] = error_center
 
+    dispatcher = Dispatcher()
+    dispatcher.workflow_data.update(workflow_data)
     dispatcher.message.outer_middleware(access_middleware)
     dispatcher.message.outer_middleware(publication_inbox_middleware)
     dispatcher.message.outer_middleware(discussion_middleware)
@@ -75,11 +74,7 @@ def build_dispatcher(
     dispatcher.callback_query.outer_middleware(access_middleware)
     dispatcher.inline_query.outer_middleware(access_middleware)
     dispatcher.include_router(get_root_router())
-
-    return DispatcherBundle(
-        dispatcher=dispatcher,
-        access_policy=access_policy,
-    )
+    return DispatcherBundle(dispatcher=dispatcher, access_policy=access_policy)
 
 
 __all__ = ("DispatcherBundle", "build_dispatcher")
