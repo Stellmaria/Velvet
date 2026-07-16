@@ -12,6 +12,23 @@ class DiscussionRepository:
     def __init__(self, database: Database) -> None:
         self._database = database
 
+    @staticmethod
+    def _decode_reaction_breakdown(value) -> dict[str, int]:
+        if not value:
+            return {}
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                return {}
+        if not isinstance(value, dict):
+            return {}
+        return {
+            str(key): max(0, int(count))
+            for key, count in value.items()
+            if int(count) > 0
+        }
+
     async def is_tracked(self, chat_id: int) -> bool:
         async with self._database._require_pool().acquire() as connection:
             value = await connection.fetchval(
@@ -104,10 +121,9 @@ class DiscussionRepository:
                 )
                 if row is None:
                     return False
-                current = {
-                    str(key): max(0, int(value))
-                    for key, value in dict(row["reaction_breakdown"] or {}).items()
-                }
+                current = self._decode_reaction_breakdown(
+                    row["reaction_breakdown"]
+                )
                 for key, value in normalized_delta.items():
                     next_value = max(0, current.get(key, 0) + value)
                     if next_value:
