@@ -5,38 +5,15 @@ import logging
 
 from aiogram import Bot
 
+from velvet_bot.app.publication import build_publication_service
 from velvet_bot.database import Database
-from velvet_bot.domains.publication import PublicationDraft, PublicationRepository, PublicationService
+from velvet_bot.domains.publication import PublicationDraft, PublicationRepository
 from velvet_bot.infrastructure.telegram.publication_delivery import (
     TelegramPublicationDelivery,
     split_publication_text,
 )
-from velvet_bot.publication_workflow import validate_publication_draft
 
 logger = logging.getLogger(__name__)
-
-
-async def _validate_draft(
-    database: Database,
-    draft_id: int,
-    owner_id: int,
-) -> PublicationDraft:
-    return await validate_publication_draft(
-        database,
-        draft_id,
-        owner_id=owner_id,
-    )
-
-
-def build_publication_service(bot: Bot, database: Database) -> PublicationService:
-    async def validator(draft_id: int, owner_id: int) -> PublicationDraft:
-        return await _validate_draft(database, draft_id, owner_id)
-
-    return PublicationService(
-        repository=PublicationRepository(database),
-        delivery=TelegramPublicationDelivery(bot),
-        validator=validator,
-    )
 
 
 async def send_publication(bot: Bot, draft: PublicationDraft) -> list[int]:
