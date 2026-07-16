@@ -12,6 +12,7 @@ multi_story_support.list_assigned_character_stories = list_assigned_character_st
 multi_story_support.install_multi_story_support()
 
 from velvet_bot.audit import TelegramAuditLogger
+from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
 from velvet_bot.handlers.admin_large_media_preview import (
     router as admin_large_media_preview_router,
@@ -27,6 +28,7 @@ from velvet_bot.handlers.analytics_dashboard import router as analytics_dashboar
 from velvet_bot.handlers.analytics_dashboard_overrides import (
     router as analytics_dashboard_overrides_router,
 )
+import velvet_bot.handlers.analytics_discussion_overrides as analytics_discussion_module
 from velvet_bot.handlers.analytics_discussion_overrides import (
     router as analytics_discussion_overrides_router,
 )
@@ -66,6 +68,7 @@ from velvet_bot.handlers.telegram_analytics_import import (
 )
 from velvet_bot.safe_analytics_edit import install_safe_analytics_edit
 
+analytics_discussion_module._get_discussion_dashboard = get_discussion_dashboard_compat
 install_safe_analytics_edit()
 
 logger = logging.getLogger(__name__)
