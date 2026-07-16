@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 
 from aiogram import Bot
@@ -21,6 +20,7 @@ from velvet_bot.publication_workflow import (
     get_publication_draft,
     validate_publication_draft,
 )
+from velvet_bot.repositories.publication_repository import PublicationRepository
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +165,7 @@ async def publish_publication_draft(
     owner_id: int | None = None,
     actor_id: int | None = None,
 ) -> PublicationDraft:
+    repository = PublicationRepository(database)
     draft = await get_publication_draft(database, draft_id, owner_id=owner_id)
     if draft is None:
         raise ValueError("Черновик не найден.")
@@ -175,75 +176,29 @@ async def publish_publication_draft(
     if draft.status == "published":
         return draft
 
-    async with database._require_pool().acquire() as connection:
-        result = await connection.execute(
-            """
-            UPDATE publication_drafts
-            SET status = 'publishing', attempt_count = attempt_count + 1,
-                last_error = NULL, updated_at = NOW()
-            WHERE id = $1
-              AND status IN ('draft', 'checked', 'scheduled', 'error')
-            """,
-            draft_id,
-        )
-        if result == "UPDATE 0":
-            current = await get_publication_draft(database, draft_id, owner_id=owner_id)
-            if current is not None and current.status == "published":
-                return current
-            raise ValueError("Черновик уже обрабатывается или отменён.")
+    if not await repository.claim_for_publishing(draft_id):
+        current = await get_publication_draft(database, draft_id, owner_id=owner_id)
+        if current is not None and current.status == "published":
+            return current
+        raise ValueError("Черновик уже обрабатывается или отменён.")
 
     try:
         refreshed = await get_publication_draft(database, draft_id, owner_id=owner_id)
         if refreshed is None:
             raise RuntimeError("Черновик исчез перед публикацией.")
         message_ids = await send_publication(bot, refreshed)
-        async with database._require_pool().acquire() as connection:
-            async with connection.transaction():
-                await connection.execute(
-                    """
-                    UPDATE publication_drafts
-                    SET status = 'published', published_at = NOW(),
-                        published_message_ids = $2::BIGINT[], scheduled_at = NULL,
-                        last_error = NULL, updated_at = NOW()
-                    WHERE id = $1
-                    """,
-                    draft_id,
-                    message_ids,
-                )
-                await connection.execute(
-                    """
-                    INSERT INTO publication_events (
-                        draft_id, event_type, actor_id, details
-                    )
-                    VALUES ($1, 'published', $2, $3::JSONB)
-                    """,
-                    draft_id,
-                    actor_id,
-                    json.dumps({"message_ids": message_ids}, ensure_ascii=False),
-                )
+        await repository.mark_published(
+            draft_id,
+            message_ids=message_ids,
+            actor_id=actor_id,
+        )
     except Exception as error:
         logger.exception("Publication failed draft_id=%s", draft_id)
-        async with database._require_pool().acquire() as connection:
-            await connection.execute(
-                """
-                UPDATE publication_drafts
-                SET status = 'error', last_error = $2, updated_at = NOW()
-                WHERE id = $1
-                """,
-                draft_id,
-                str(error)[:4000],
-            )
-            await connection.execute(
-                """
-                INSERT INTO publication_events (
-                    draft_id, event_type, actor_id, details
-                )
-                VALUES ($1, 'error', $2, $3::JSONB)
-                """,
-                draft_id,
-                actor_id,
-                json.dumps({"error": str(error)}, ensure_ascii=False),
-            )
+        await repository.mark_error(
+            draft_id,
+            error=error,
+            actor_id=actor_id,
+        )
         raise
 
     result_draft = await get_publication_draft(database, draft_id, owner_id=owner_id)
@@ -253,29 +208,8 @@ async def publish_publication_draft(
 
 
 async def _due_publication_ids(database: Database, *, limit: int = 5) -> list[int]:
-    async with database._require_pool().acquire() as connection:
-        await connection.execute(
-            """
-            UPDATE publication_drafts
-            SET status = 'error',
-                last_error = COALESCE(last_error, 'Публикация зависла и была остановлена.'),
-                updated_at = NOW()
-            WHERE status = 'publishing'
-              AND updated_at < NOW() - INTERVAL '15 minutes'
-            """
-        )
-        rows = await connection.fetch(
-            """
-            SELECT id
-            FROM publication_drafts
-            WHERE status = 'scheduled'
-              AND scheduled_at <= NOW()
-            ORDER BY scheduled_at, id
-            LIMIT $1
-            """,
-            max(1, min(limit, 20)),
-        )
-    return [int(row["id"]) for row in rows]
+    """Backward-compatible queue query delegated to PublicationRepository."""
+    return await PublicationRepository(database).list_due_draft_ids(limit=limit)
 
 
 async def process_due_publications_once(
