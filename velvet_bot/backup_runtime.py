@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,8 +16,59 @@ from velvet_bot.backup_service import (
 from velvet_bot.database import Database
 
 
+def _decode_json(value: Any, default: Any) -> Any:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return default
+    return value
+
+
 class BackupService(BaseBackupService):
     """Runtime-hardened backup service used by the bot entrypoint."""
+
+    @staticmethod
+    def _row_to_record(row: Any) -> BackupRecord:
+        validation = _decode_json(row["validation"], {})
+        if not isinstance(validation, dict):
+            validation = {}
+        return BackupRecord(
+            id=int(row["id"]),
+            backup_kind=str(row["backup_kind"]),
+            status=str(row["status"]),
+            file_name=row["file_name"],
+            file_path=row["file_path"],
+            size_bytes=(
+                int(row["size_bytes"]) if row["size_bytes"] is not None else None
+            ),
+            sha256=row["sha256"],
+            schema_version=row["schema_version"],
+            created_by=(
+                int(row["created_by"]) if row["created_by"] is not None else None
+            ),
+            started_at=row["started_at"],
+            finished_at=row["finished_at"],
+            error_message=row["error_message"],
+            validation=validation,
+        )
+
+    async def _expected_tables_for_record(
+        self,
+        database: Database,
+        backup_id: int,
+    ) -> tuple[str, ...]:
+        async with database._require_pool().acquire() as connection:
+            value = await connection.fetchval(
+                "SELECT expected_tables FROM backup_runs WHERE id = $1::BIGINT",
+                int(backup_id),
+            )
+        decoded = _decode_json(value, [])
+        if not isinstance(decoded, list):
+            return ()
+        return tuple(str(item) for item in decoded)
 
     async def _create_dump_file(
         self,
