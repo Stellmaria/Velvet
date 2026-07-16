@@ -21,6 +21,7 @@ from velvet_bot.handlers import router
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_notifications import run_public_notification_worker
 from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID
+from velvet_bot.publication_worker import run_publication_worker
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ async def main() -> None:
     )
     audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
     reference_uploads = ReferenceUploadSessions()
-    notification_task: asyncio.Task[None] | None = None
+    background_tasks: list[asyncio.Task[None]] = []
 
     try:
         bot_info = await bot.get_me()
@@ -71,6 +72,7 @@ async def main() -> None:
                 "reference_uploads": reference_uploads,
                 "access_policy": access_policy,
                 "analytics_channel_ids": settings.analytics_channel_ids,
+                "publication_timezone": settings.publication_timezone,
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
@@ -104,6 +106,8 @@ async def main() -> None:
         admin_commands = [
             *public_commands,
             BotCommand(command="analytics", description="Аналитический центр"),
+            BotCommand(command="publish", description="Проверка и очередь публикаций"),
+            BotCommand(command="checkpost", description="Проверить пост ответом"),
             BotCommand(command="create", description="Создать персонажа и назначить тему"),
             BotCommand(command="topic", description="Назначить тему персонажу"),
             BotCommand(command="characters", description="Категории и персонажи"),
@@ -199,12 +203,21 @@ async def main() -> None:
             analytics_channels=", ".join(
                 str(value) for value in sorted(settings.analytics_channel_ids)
             ),
+            publication_timezone=settings.publication_timezone,
             log_chat_id=settings.log_chat_id,
         )
 
-        notification_task = asyncio.create_task(
-            run_public_notification_worker(bot, database),
-            name="public-archive-notifications",
+        background_tasks.extend(
+            [
+                asyncio.create_task(
+                    run_public_notification_worker(bot, database),
+                    name="public-archive-notifications",
+                ),
+                asyncio.create_task(
+                    run_publication_worker(bot, database),
+                    name="publication-queue",
+                ),
+            ]
         )
         await dispatcher.start_polling(
             bot,
@@ -215,12 +228,14 @@ async def main() -> None:
             reference_uploads=reference_uploads,
             access_policy=access_policy,
             analytics_channel_ids=settings.analytics_channel_ids,
+            publication_timezone=settings.publication_timezone,
         )
     finally:
-        if notification_task is not None:
-            notification_task.cancel()
+        for task in background_tasks:
+            task.cancel()
+        for task in background_tasks:
             with suppress(asyncio.CancelledError):
-                await notification_task
+                await task
         await audit_logger.send("Velvet Archive остановлен", level="WARNING")
         await bot.session.close()
         await database.close()
