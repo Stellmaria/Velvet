@@ -4,14 +4,10 @@ import logging
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, InputMediaPhoto, Message
 
 from velvet_bot.archive_catalog import ArchivePage, get_archive_page
-from velvet_bot.archive_preview import (
-    persist_preview_from_sent_message,
-    resolve_archive_image_preview,
-)
 from velvet_bot.archive_ui import (
     ArchiveMediaCallback,
     build_archive_navigation,
@@ -25,34 +21,22 @@ router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
 
-async def build_admin_display_media(
-    bot: Bot,
-    page: ArchivePage,
-    *,
-    database: Database | None = None,
-    cache_chat_id: int | None = None,
-):
+async def build_admin_display_media(bot: Bot, page: ArchivePage):
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
 
     caption = format_archive_caption(page)
     if page.media.is_image_document:
-        if database is not None and cache_chat_id is not None:
-            preview = await resolve_archive_image_preview(
-                bot,
-                database,
-                page,
-                cache_chat_id=cache_chat_id,
-            )
-        else:
-            preview = await build_image_document_preview(bot, page.media)
-        if preview is not None:
+        try:
+            upload = await build_image_document_preview(bot, page.media)
             return InputMediaPhoto(
-                media=preview,
+                media=upload,
                 caption=caption,
                 parse_mode=ParseMode.HTML,
                 has_spoiler=page.media.is_spoiler,
             )
+        except Exception:
+            logger.exception("Failed to prepare compressed admin image preview")
 
     return build_input_media(page.media, caption)
 
@@ -62,7 +46,6 @@ async def send_admin_archive_page(
     bot: Bot,
     chat_id: int,
     page: ArchivePage,
-    database: Database | None = None,
 ) -> Message:
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
@@ -93,28 +76,17 @@ async def send_admin_archive_page(
             **common,
         )
     if media.is_image_document:
-        if database is not None:
-            preview = await resolve_archive_image_preview(
-                bot,
-                database,
-                page,
-                cache_chat_id=chat_id,
-            )
-        else:
-            preview = await build_image_document_preview(bot, media)
-        if preview is not None:
-            sent = await bot.send_photo(
-                photo=preview,
+        try:
+            upload = await build_image_document_preview(bot, media)
+            return await bot.send_photo(
+                photo=upload,
                 has_spoiler=media.is_spoiler,
                 **common,
             )
-            if database is not None:
-                await persist_preview_from_sent_message(
-                    database,
-                    media_id=media.id,
-                    message=sent,
-                )
-            return sent
+        except TelegramAPIError as error:
+            logger.info("Compressed admin preview fallback to document: %s", error)
+        except Exception:
+            logger.exception("Compressed admin preview generation failed")
 
     return await bot.send_document(document=media.telegram_file_id, **common)
 
@@ -123,34 +95,21 @@ async def replace_admin_archive_page(
     callback: CallbackQuery,
     bot: Bot,
     page: ArchivePage,
-    database: Database | None = None,
 ) -> None:
     if page.media is None or not isinstance(callback.message, Message):
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
 
-    media = await build_admin_display_media(
-        bot,
-        page,
-        database=database,
-        cache_chat_id=callback.message.chat.id if database is not None else None,
-    )
+    media = await build_admin_display_media(bot, page)
     keyboard = build_archive_navigation(page)
     try:
-        edited = await callback.message.edit_media(media=media, reply_markup=keyboard)
-        if database is not None:
-            await persist_preview_from_sent_message(
-                database,
-                media_id=page.media.id,
-                message=edited,
-            )
+        await callback.message.edit_media(media=media, reply_markup=keyboard)
     except TelegramBadRequest as error:
         if "message is not modified" in str(error).casefold():
             await callback.message.edit_reply_markup(reply_markup=keyboard)
             return
         await send_admin_archive_page(
             bot=bot,
-            database=database,
             chat_id=callback.message.chat.id,
             page=page,
         )
@@ -188,7 +147,6 @@ async def handle_admin_archive_display(
         try:
             await send_admin_archive_page(
                 bot=bot,
-                database=database,
                 chat_id=callback.message.chat.id,
                 page=page,
             )
@@ -202,5 +160,5 @@ async def handle_admin_archive_display(
         await callback.answer()
         return
 
-    await replace_admin_archive_page(callback, bot, page, database=database)
+    await replace_admin_archive_page(callback, bot, page)
     await callback.answer()
