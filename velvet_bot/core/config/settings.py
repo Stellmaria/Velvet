@@ -21,6 +21,13 @@ class Settings:
     backup_dir: str
     pg_dump_path: str
     pg_restore_path: str
+    ai_vision_enabled: bool = False
+    ai_vision_provider: str = "ollama"
+    ai_vision_base_url: str = "http://127.0.0.1:11434"
+    ai_vision_model: str = "qwen3-vl:8b"
+    ai_vision_api_key: str | None = None
+    ai_vision_timeout_seconds: int = 180
+    ai_vision_max_attempts: int = 3
 
 
 def parse_integer_list(value: str, *, variable_name: str) -> frozenset[int]:
@@ -58,6 +65,39 @@ def parse_optional_chat_id(value: str) -> int | None:
         return int(cleaned)
     except ValueError as error:
         raise RuntimeError("LOG_CHAT_ID должен быть числовым Telegram chat ID.") from error
+
+
+def parse_boolean(value: str, *, variable_name: str) -> bool:
+    cleaned = value.strip().casefold()
+    if cleaned in {"1", "true", "yes", "on", "да"}:
+        return True
+    if cleaned in {"0", "false", "no", "off", "нет", ""}:
+        return False
+    raise RuntimeError(
+        f"{variable_name} должен быть true/false, yes/no, on/off или 1/0."
+    )
+
+
+def parse_bounded_integer(
+    value: str,
+    *,
+    variable_name: str,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    cleaned = value.strip()
+    if not cleaned:
+        return default
+    try:
+        result = int(cleaned)
+    except ValueError as error:
+        raise RuntimeError(f"{variable_name} должен быть целым числом.") from error
+    if not minimum <= result <= maximum:
+        raise RuntimeError(
+            f"{variable_name} должен быть от {minimum} до {maximum}."
+        )
+    return result
 
 
 def parse_timezone(value: str) -> str:
@@ -110,6 +150,22 @@ def load_settings() -> Settings:
             "ALLOWED_USERNAMES в .env."
         )
 
+    ai_provider = os.getenv("AI_VISION_PROVIDER", "ollama").strip().casefold()
+    if ai_provider not in {"ollama", "openai_compatible"}:
+        raise RuntimeError(
+            "AI_VISION_PROVIDER должен быть ollama или openai_compatible."
+        )
+    ai_base_url = os.getenv(
+        "AI_VISION_BASE_URL",
+        "http://127.0.0.1:11434",
+    ).strip().rstrip("/")
+    if not ai_base_url:
+        raise RuntimeError("AI_VISION_BASE_URL не может быть пустым.")
+    ai_model = os.getenv("AI_VISION_MODEL", "qwen3-vl:8b").strip()
+    if not ai_model:
+        raise RuntimeError("AI_VISION_MODEL не может быть пустым.")
+    ai_api_key = os.getenv("AI_VISION_API_KEY", "").strip() or None
+
     return Settings(
         bot_token=bot_token,
         database_url=database_url,
@@ -138,6 +194,28 @@ def load_settings() -> Settings:
             default="pg_restore",
             variable_name="PG_RESTORE_PATH",
         ),
+        ai_vision_enabled=parse_boolean(
+            os.getenv("AI_VISION_ENABLED", "false"),
+            variable_name="AI_VISION_ENABLED",
+        ),
+        ai_vision_provider=ai_provider,
+        ai_vision_base_url=ai_base_url,
+        ai_vision_model=ai_model,
+        ai_vision_api_key=ai_api_key,
+        ai_vision_timeout_seconds=parse_bounded_integer(
+            os.getenv("AI_VISION_TIMEOUT_SECONDS", "180"),
+            variable_name="AI_VISION_TIMEOUT_SECONDS",
+            default=180,
+            minimum=10,
+            maximum=600,
+        ),
+        ai_vision_max_attempts=parse_bounded_integer(
+            os.getenv("AI_VISION_MAX_ATTEMPTS", "3"),
+            variable_name="AI_VISION_MAX_ATTEMPTS",
+            default=3,
+            minimum=1,
+            maximum=10,
+        ),
     )
 
 
@@ -146,6 +224,8 @@ __all__ = (
     "load_settings",
     "parse_allowed_user_ids",
     "parse_allowed_usernames",
+    "parse_boolean",
+    "parse_bounded_integer",
     "parse_integer_list",
     "parse_optional_chat_id",
     "parse_required_path",
