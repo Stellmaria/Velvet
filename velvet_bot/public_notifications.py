@@ -5,6 +5,7 @@ import logging
 
 from aiogram import Bot
 
+from velvet_bot.app.public_archive import build_public_archive_service
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.database import Database
 from velvet_bot.domains.public_archive import PendingPublicNotification
@@ -19,16 +20,18 @@ async def _list_pending_notifications(
     *,
     limit: int = 100,
 ) -> list[PendingPublicNotification]:
-    dispatcher = build_public_notification_dispatcher(None, database)  # type: ignore[arg-type]
-    return await dispatcher._service.list_pending_notifications(limit=limit)
+    return await build_public_archive_service(database).list_pending_notifications(
+        limit=limit
+    )
 
 
 async def _mark_delivered(
     database: Database,
     notification: PendingPublicNotification,
 ) -> None:
-    dispatcher = build_public_notification_dispatcher(None, database)  # type: ignore[arg-type]
-    await dispatcher._service.mark_notification_delivered(notification)
+    await build_public_archive_service(database).mark_notification_delivered(
+        notification
+    )
 
 
 async def process_public_notifications_once(
