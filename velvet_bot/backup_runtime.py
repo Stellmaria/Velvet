@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,9 @@ from velvet_bot.backup_service import (
 )
 from velvet_bot.database import Database
 
+logger = logging.getLogger(__name__)
+_MISSING_PG_DUMP_PREFIX = "Не найден pg_dump."
+
 
 def _decode_json(value: Any, default: Any) -> Any:
     if value is None:
@@ -27,8 +31,36 @@ def _decode_json(value: Any, default: Any) -> Any:
     return value
 
 
+def _is_missing_pg_dump_error(error: BaseException) -> bool:
+    return str(error).startswith(_MISSING_PG_DUMP_PREFIX)
+
+
 class BackupService(BaseBackupService):
     """Runtime-hardened backup service used by the bot entrypoint."""
+
+    def _warn_missing_pg_dump_once(self, *, context: str, error: BackupError) -> None:
+        if getattr(self, "_missing_pg_dump_warning_emitted", False):
+            return
+        self._missing_pg_dump_warning_emitted = True
+        logger.warning(
+            "%s skipped because pg_dump is unavailable. "
+            "The bot will continue without automatic PostgreSQL backups: %s",
+            context,
+            error,
+        )
+
+    async def prepare_pre_migration_backup(self) -> bool:
+        """Skip only the optional startup backup when pg_dump is unavailable."""
+        try:
+            return await super().prepare_pre_migration_backup()
+        except BackupError as error:
+            if not _is_missing_pg_dump_error(error):
+                raise
+            self._warn_missing_pg_dump_once(
+                context="Pre-migration backup",
+                error=error,
+            )
+            return False
 
     @staticmethod
     def _row_to_record(row: Any) -> BackupRecord:
@@ -171,7 +203,16 @@ class BackupService(BaseBackupService):
             )
         )
         if weekly_due:
-            record = await self.create_backup(database, backup_kind="weekly")
+            try:
+                record = await self.create_backup(database, backup_kind="weekly")
+            except BackupError as error:
+                if not _is_missing_pg_dump_error(error):
+                    raise
+                self._warn_missing_pg_dump_once(
+                    context="Scheduled PostgreSQL backup",
+                    error=error,
+                )
+                return None
             await self.cleanup_old_backups(database)
             return record
 
@@ -186,7 +227,16 @@ class BackupService(BaseBackupService):
             )
         )
         if daily_due:
-            record = await self.create_backup(database, backup_kind="daily")
+            try:
+                record = await self.create_backup(database, backup_kind="daily")
+            except BackupError as error:
+                if not _is_missing_pg_dump_error(error):
+                    raise
+                self._warn_missing_pg_dump_once(
+                    context="Scheduled PostgreSQL backup",
+                    error=error,
+                )
+                return None
             await self.cleanup_old_backups(database)
             return record
         return None
