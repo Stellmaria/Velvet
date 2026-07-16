@@ -4,19 +4,63 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-# Public access is deliberately limited to archive entry points.  `/start` only
+# Public access is deliberately limited to archive entry points. `/start` only
 # renders the archive welcome screen; `/menu` belongs to the owner control panel.
 PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery"})
 PUBLIC_CALLBACK_PREFIX = "pub:"
 
 # One explicitly trusted moderator may maintain character cards and archive
-# metadata.  This role must never inherit owner-only system, publication,
+# metadata. This role must never inherit owner-only system, publication,
 # analytics, backup, Supervisor, Git, or Codex operations.
 MODERATOR_USER_IDS = frozenset({8179531132})
 MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
-MODERATOR_CALLBACK_PREFIXES = ("adir:", "astory:", "arc:")
+MODERATOR_CALLBACK_ACTIONS = {
+    "adir": frozenset(
+        {
+            "categories",
+            "close",
+            "menu",
+            "noop",
+            "profile",
+            "pickcat",
+            "setcat",
+            "pickuni",
+            "setuni",
+            "pickstory",
+        }
+    ),
+    "astory": frozenset(
+        {
+            "noop",
+            "page",
+            "set",
+            "mtoggle",
+            "mpage",
+            "mclear",
+            "mdone",
+            "mnoop",
+        }
+    ),
+    "arc": frozenset(
+        {
+            "open",
+            "show",
+            "noop",
+            "spoiler",
+            "prompt",
+            "promptremove",
+            "del",
+            "delok",
+            "delno",
+            "close",
+        }
+    ),
+}
+MODERATOR_CALLBACK_PREFIXES = tuple(
+    f"{prefix}:" for prefix in MODERATOR_CALLBACK_ACTIONS
+)
 
-# Compatibility aliases for older imports.  New code should use MODERATOR_*.
+# Compatibility aliases for older imports. New code should use MODERATOR_*.
 CHARACTER_EDITOR_USER_IDS = MODERATOR_USER_IDS
 CHARACTER_EDITOR_COMMANDS = MODERATOR_COMMANDS
 
@@ -75,6 +119,16 @@ def is_owner_only_command_text(text: str) -> bool:
     return bool(command and command in OWNER_ONLY_COMMANDS)
 
 
+def is_moderator_callback_data(value: str | None) -> bool:
+    if not value:
+        return False
+    parts = value.split(":", maxsplit=2)
+    if len(parts) < 2:
+        return False
+    prefix, action = parts[0], parts[1]
+    return action in MODERATOR_CALLBACK_ACTIONS.get(prefix, frozenset())
+
+
 def is_owner_mention_text(text: str, bot_username: str) -> bool:
     expected = normalize_username(bot_username)
     cleaned = " ".join(text.split())
@@ -124,6 +178,7 @@ __all__ = (
     "AccessPolicy",
     "CHARACTER_EDITOR_COMMANDS",
     "CHARACTER_EDITOR_USER_IDS",
+    "MODERATOR_CALLBACK_ACTIONS",
     "MODERATOR_CALLBACK_PREFIXES",
     "MODERATOR_COMMANDS",
     "MODERATOR_USER_IDS",
@@ -132,6 +187,7 @@ __all__ = (
     "PUBLIC_CALLBACK_PREFIX",
     "PUBLIC_COMMANDS",
     "command_name",
+    "is_moderator_callback_data",
     "is_owner_mention_text",
     "is_owner_only_command_text",
     "is_public_command_text",
