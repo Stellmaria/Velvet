@@ -37,6 +37,9 @@ class ApplicationCleanupTests(unittest.IsolatedAsyncioTestCase):
         audit_logger = SimpleNamespace(
             send=AsyncMock(side_effect=RuntimeError("audit failed"))
         )
+        error_center = SimpleNamespace(
+            stop=AsyncMock(side_effect=RuntimeError("error center stop failed"))
+        )
         session = SimpleNamespace(close=AsyncMock())
         bot = SimpleNamespace(session=session)
         database = SimpleNamespace(close=AsyncMock())
@@ -44,12 +47,14 @@ class ApplicationCleanupTests(unittest.IsolatedAsyncioTestCase):
         await _close_application_resources(
             worker_manager=worker_manager,
             audit_logger=audit_logger,
+            error_center=error_center,
             bot=bot,
             database=database,  # type: ignore[arg-type]
         )
 
         worker_manager.stop_all.assert_awaited_once()
         audit_logger.send.assert_awaited_once()
+        error_center.stop.assert_awaited_once()
         session.close.assert_awaited_once()
         database.close.assert_awaited_once()
 
@@ -59,6 +64,7 @@ class ApplicationCleanupTests(unittest.IsolatedAsyncioTestCase):
         await _close_application_resources(
             worker_manager=None,
             audit_logger=None,
+            error_center=None,
             bot=None,
             database=database,  # type: ignore[arg-type]
         )
