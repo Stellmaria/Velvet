@@ -16,6 +16,9 @@ _ROOT_ROUTER: Router | None = None
 def _build_root_router() -> Router:
     install_legacy_compatibility()
 
+    # Install the corrected duplicate-to-set action before quality handlers bind it.
+    import velvet_bot.media_set_duplicate_actions  # noqa: F401
+
     from velvet_bot.handlers.admin_directory import router as admin_directory_router
     from velvet_bot.handlers.admin_large_media_preview import (
         router as admin_large_media_preview_router,
