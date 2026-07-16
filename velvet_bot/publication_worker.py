@@ -278,24 +278,41 @@ async def _due_publication_ids(database: Database, *, limit: int = 5) -> list[in
     return [int(row["id"]) for row in rows]
 
 
+async def process_due_publications_once(
+    bot: Bot,
+    database: Database,
+    *,
+    limit: int = 5,
+) -> int:
+    """Process one bounded scheduled-publication batch."""
+    published = 0
+    for draft_id in await _due_publication_ids(database, limit=limit):
+        try:
+            await publish_publication_draft(
+                bot,
+                database,
+                draft_id,
+                actor_id=None,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Scheduled publication failed draft_id=%s", draft_id)
+        else:
+            published += 1
+    return published
+
+
 async def run_publication_worker(
     bot: Bot,
     database: Database,
     *,
     interval_seconds: float = 15.0,
 ) -> None:
+    """Backward-compatible standalone publication loop."""
     while True:
         try:
-            for draft_id in await _due_publication_ids(database):
-                try:
-                    await publish_publication_draft(
-                        bot,
-                        database,
-                        draft_id,
-                        actor_id=None,
-                    )
-                except Exception:
-                    logger.exception("Scheduled publication failed draft_id=%s", draft_id)
+            await process_due_publications_once(bot, database)
         except asyncio.CancelledError:
             raise
         except Exception:
