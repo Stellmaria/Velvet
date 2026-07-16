@@ -10,6 +10,7 @@ from velvet_bot.archive_preview import (
     persist_preview_from_sent_message,
     resolve_archive_image_preview,
 )
+from velvet_bot.archive_ui import build_input_media
 from velvet_bot.database import Database
 from velvet_bot.public_ui import format_public_archive_caption
 
@@ -89,7 +90,15 @@ async def send_viewer_archive_page(
             )
             return sent
 
-    return await bot.send_document(document=media.telegram_file_id, **common)
+    sent = await bot.send_document(document=media.telegram_file_id, **common)
+    if media.is_image_document:
+        await persist_preview_from_sent_message(
+            database,
+            media_id=media.id,
+            message=sent,
+            source="document_fallback_thumbnail",
+        )
+    return sent
 
 
 async def replace_viewer_archive_page(
@@ -140,9 +149,15 @@ async def replace_viewer_archive_page(
                 has_spoiler=page.media.is_spoiler,
             )
         else:
-            input_media = await public_display.build_viewer_input_media(bot, page, state)
+            input_media = build_input_media(
+                page.media,
+                format_public_archive_caption(page, state),
+            )
     else:
-        input_media = await public_display.build_viewer_input_media(bot, page, state)
+        input_media = build_input_media(
+            page.media,
+            format_public_archive_caption(page, state),
+        )
 
     try:
         edited = await callback.message.edit_media(
