@@ -84,13 +84,25 @@ def _open_media_keyboard(
     )
 
 
+def _prompt_scope_text(media) -> str:
+    if getattr(media, "belongs_to_set", False):
+        title = getattr(media, "media_set_title", None) or "без названия"
+        return (
+            f"Материал входит в сет <b>{escape(str(title))}</b>. "
+            "Ссылка будет закреплена сразу за всеми выбранными материалами этого сета."
+        )
+    return "Ссылка будет закреплена только за этой картинкой или видео."
+
+
 @router.message(Command("prompt", "setprompt"))
 async def handle_prompt_command_help(message: Message) -> None:
     await message.answer(
-        "<b>Промт привязывается к конкретной картинке или видео.</b>\n\n"
+        "<b>Промт можно привязать к отдельному материалу или целому сету.</b>\n\n"
         "Откройте <code>/characters</code> → выберите персонажа → откройте архив → "
         "на нужном материале нажмите <b>📝 Привязать промт</b>.\n\n"
-        "Так у разных изображений одного персонажа могут быть разные посты с промтами."
+        "Если материал входит в медиасет, один промт автоматически появится у "
+        "всех изображений этого сета. Для одиночного материала ссылка останется "
+        "только у него."
     )
 
 
@@ -124,9 +136,10 @@ async def handle_prompt_button(
         offset=page.offset,
     )
     await callback.message.answer(
-        "<b>Привязать промт к материалу</b>\n\n"
+        "<b>Привязать промт</b>\n\n"
         f"Персонаж: <b>{escape(page.character.name)}</b>\n"
-        f"Материал: <b>{page.offset + 1}</b> из <b>{page.total}</b>\n\n"
+        f"Материал: <b>{page.offset + 1}</b> из <b>{page.total}</b>\n"
+        f"{_prompt_scope_text(page.media)}\n\n"
         "Ответьте на это сообщение ссылкой на конкретный пост Telegram с промтом. "
         "Для публичного канала можно также переслать сам пост.\n\n"
         f"<code>{marker}</code>",
@@ -181,9 +194,19 @@ async def handle_prompt_link_reply(
         await message.answer("Материал больше не найден в архиве.")
         return
 
+    refreshed = await get_archive_page(database, character_id, offset)
+    applies_to_set = bool(
+        refreshed is not None
+        and refreshed.media is not None
+        and refreshed.media.belongs_to_set
+    )
+    scope = (
+        "Кнопка <b>📝 Открыть промт</b> появилась у всех материалов сета."
+        if applies_to_set
+        else "Кнопка <b>📝 Открыть промт</b> появилась у этого материала."
+    )
     await message.answer(
-        "<b>Промт привязан.</b>\n\n"
-        "Кнопка <b>📝 Открыть промт</b> появится только у этой картинки или видео.",
+        f"<b>Промт привязан.</b>\n\n{scope}",
         reply_markup=_open_media_keyboard(character_id, offset, media_id),
     )
 
@@ -209,6 +232,7 @@ async def handle_prompt_remove(
         )
         return
 
+    belonged_to_set = page.media.belongs_to_set
     updated = await set_archive_media_prompt(
         database,
         character_id=page.character.id,
@@ -229,4 +253,7 @@ async def handle_prompt_remove(
             caption=format_archive_caption(refreshed),
             reply_markup=build_archive_navigation(refreshed),
         )
-    await callback.answer("Промт отвязан.", show_alert=True)
+    await callback.answer(
+        "Промт отвязан от всего сета." if belonged_to_set else "Промт отвязан.",
+        show_alert=True,
+    )
