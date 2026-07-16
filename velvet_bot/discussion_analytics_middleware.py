@@ -8,7 +8,7 @@ from aiogram import BaseMiddleware
 from aiogram.enums import ChatType
 from aiogram.types import Message, TelegramObject
 
-from velvet_bot.discussion_analytics import ingest_live_discussion_message
+from velvet_bot.discussion_ingest import ingest_live_discussion_message
 
 logger = logging.getLogger(__name__)
 
@@ -40,3 +40,6 @@ class DiscussionAnalyticsMiddleware(BaseMiddleware):
                             event.message_id,
                         )
         return await handler(event, data)
+
+
+__all__ = ("DiscussionAnalyticsMiddleware",)
