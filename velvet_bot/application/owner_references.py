@@ -2,13 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from velvet_bot.app.references import build_reference_service
 from velvet_bot.database import Character, Database
-from velvet_bot.reference_catalog import (
-    CharacterReference,
-    ReferencePage,
-    delete_character_reference,
-    get_reference_page,
-)
+from velvet_bot.domains.references import CharacterReference, ReferencePage
 from velvet_bot.reference_uploads import ReferenceUploadSession, ReferenceUploadSessions
 
 
@@ -52,7 +48,7 @@ async def get_reference_page_by_name(
     character = await database.get_character(character_name)
     if character is None:
         return None
-    return await get_reference_page(database, character.id, 0)
+    return await build_reference_service(database).get_page(character.id, 0)
 
 
 async def delete_reference_by_index(
@@ -63,13 +59,13 @@ async def delete_reference_by_index(
     character = await database.get_character(character_name)
     if character is None:
         raise ValueError("Такой персонаж не найден.")
-    page = await get_reference_page(database, character.id, index - 1)
+    service = build_reference_service(database)
+    page = await service.get_page(character.id, index - 1)
     if page is None or page.reference is None or index > page.total:
         raise ValueError("Референс с таким номером не найден.")
-    result = await delete_character_reference(
-        database,
-        character.id,
-        page.reference.id,
+    result = await service.delete(
+        character_id=character.id,
+        reference_id=page.reference.id,
     )
     return ReferenceDeleteResult(
         character=character,
