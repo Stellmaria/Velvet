@@ -7,6 +7,7 @@ from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
+from velvet_bot.application.owner_analytics import load_hashtag_stats
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.channel_analytics import (
     ChannelOverview,
@@ -14,7 +15,6 @@ from velvet_bot.channel_analytics import (
     HashtagStat,
     PromptStructureStats,
     get_channel_overview,
-    get_hashtag_stat,
     get_prompt_structure_stats,
     ingest_channel_post,
     list_character_usage_stats,
@@ -51,12 +51,10 @@ def _format_date(value) -> str:
 
 
 def _percent(part: int, total: int) -> str:
-    if total <= 0:
-        return "0%"
-    return f"{part * 100 / total:.1f}%"
+    return "0%" if total <= 0 else f"{part * 100 / total:.1f}%"
 
 
-def _hashtag_lines(items: list[HashtagStat], *, limit: int = 10) -> str:
+def _hashtag_lines(items, *, limit: int = 10) -> str:
     if not items:
         return "• пока нет данных"
     lines = []
@@ -127,10 +125,7 @@ def _overview_text(
     )
 
 
-def _prompt_text(
-    stats: PromptStructureStats,
-    hashtags: list[HashtagStat],
-) -> str:
+def _prompt_text(stats: PromptStructureStats, hashtags: list[HashtagStat]) -> str:
     total = stats.prompt_publications
     return (
         "<b>Аналитика промтов канала</b>\n\n"
@@ -221,11 +216,7 @@ async def handle_channel_stats(
         return
     overview = await get_channel_overview(database, channel_id)
     if overview.total_messages == 0:
-        await message.answer(
-            "<b>Данных пока нет.</b>\n\n"
-            f"Добавьте бота администратором канала <code>{channel_id}</code>. "
-            "После этого новые и отредактированные посты начнут попадать в статистику."
-        )
+        await message.answer("<b>Данных пока нет.</b>")
         return
     hashtags = await list_hashtag_stats(database, channel_id, limit=10)
     characters = await list_character_usage_stats(database, channel_id, limit=10)
@@ -263,34 +254,32 @@ async def handle_hashtag_stats(
     database: Database,
     analytics_channel_ids: frozenset[int],
 ) -> None:
-    channel_id = _primary_channel_id(analytics_channel_ids)
-    if channel_id is None:
-        await message.answer("Каналы для аналитики не настроены.")
+    try:
+        result = await load_hashtag_stats(
+            database,
+            analytics_channel_ids,
+            command.args or "",
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
         return
-    if command.args:
-        item = await get_hashtag_stat(database, channel_id, command.args)
-        if item is None:
-            await message.answer("Такой хэштег пока не встречался в собранных постах.")
-            return
+    if isinstance(result, HashtagStat):
         character = (
-            f"\nПерсонаж в архиве: <b>{escape(item.character_name)}</b>"
-            if item.character_name
+            f"\nПерсонаж в архиве: <b>{escape(result.character_name)}</b>"
+            if result.character_name
             else "\nС карточкой персонажа пока не сопоставлен."
         )
         await message.answer(
-            f"<b>#{escape(item.hashtag)}</b>\n\n"
-            f"Публикаций: <b>{item.publication_count}</b>\n"
-            f"Из них промтов: <b>{item.prompt_count}</b>\n"
-            f"Последнее использование: <b>{_format_date(item.last_used_at)}</b>"
+            f"<b>#{escape(result.hashtag)}</b>\n\n"
+            f"Публикаций: <b>{result.publication_count}</b>\n"
+            f"Из них промтов: <b>{result.prompt_count}</b>\n"
+            f"Последнее использование: <b>{_format_date(result.last_used_at)}</b>"
             f"{character}"
         )
         return
-
-    items = await list_hashtag_stats(database, channel_id, limit=30)
     await message.answer(
         "<b>Хэштеги канала</b>\n\n"
-        f"{_hashtag_lines(items, limit=30)}\n\n"
-        "Подробно: <code>/tagstats #Аид</code>"
+        f"{_hashtag_lines(list(result), limit=30)}"
     )
 
 
