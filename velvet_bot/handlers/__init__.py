@@ -3,9 +3,11 @@ import logging
 from aiogram import Router
 from aiogram.types import ErrorEvent
 
+import velvet_bot.media_preview_persistence as media_preview_persistence
 import velvet_bot.multi_story_support as multi_story_support
 from velvet_bot.multi_story_queries import list_assigned_character_stories
 
+media_preview_persistence.install_media_preview_persistence()
 multi_story_support.list_assigned_character_stories = list_assigned_character_stories
 multi_story_support.install_multi_story_support()
 
