@@ -1,10 +1,10 @@
 import asyncio
+import json
 import os
 import sys
 import tempfile
 import unittest
 from datetime import UTC, datetime
-from pathlib import Path
 from types import SimpleNamespace
 
 from velvet_bot.database import Database
@@ -53,6 +53,36 @@ class WorkerManagerTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await manager.stop_all()
         self.assertEqual("stopped", manager.snapshot("test-worker").state)
+
+    async def test_manual_run_and_restart_are_safe(self) -> None:
+        calls = 0
+
+        async def runner() -> None:
+            nonlocal calls
+            calls += 1
+
+        manager = WorkerManager()
+        manager.register(
+            PeriodicWorkerSpec(
+                name="manual-worker",
+                description="Manual worker",
+                interval_seconds=60,
+                runner=runner,
+                run_immediately=False,
+            )
+        )
+        await manager.start_all()
+        try:
+            self.assertTrue(await manager.run_now("manual-worker"))
+            self.assertEqual(1, calls)
+            self.assertEqual(1, manager.snapshot("manual-worker").successful_runs)
+
+            await manager.restart("manual-worker")
+            snapshot = manager.snapshot("manual-worker")
+            self.assertEqual("starting", snapshot.state)
+            self.assertEqual(1, snapshot.successful_runs)
+        finally:
+            await manager.stop_all()
 
     async def test_duplicate_worker_name_is_rejected(self) -> None:
         async def runner() -> None:
@@ -108,6 +138,7 @@ class SystemHealthServiceTests(unittest.IsolatedAsyncioTestCase):
                 app_version="1.1.0-test",
             )
             report = await service.check(bot=_BotStub(), worker_manager=manager)
+            payload = service.report_to_dict(report)
 
         self.assertEqual("ok", report.status)
         self.assertTrue(report.database_ok)
@@ -118,9 +149,25 @@ class SystemHealthServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(report.pg_restore_available)
         self.assertEqual("velvet", report.database.database_name)
         self.assertGreater(report.disk.total_bytes, 0)
+        self.assertEqual("velvet", payload["postgresql"]["database_name"])
+        self.assertEqual("valid", payload["backup"]["latest_status"])
+        self.assertIn("checked_at", payload)
+        json.dumps(payload)
 
     def test_callback_data_and_size_formatter(self) -> None:
-        for action in ("overview", "workers", "database", "queues", "backups", "version"):
+        actions = (
+            "overview",
+            "workers",
+            "database",
+            "queues",
+            "backups",
+            "version",
+            "export",
+            "worker.public-archive-notifications",
+            "run.publication-queue",
+            "restart.postgresql-backups",
+        )
+        for action in actions:
             self.assertLessEqual(len(SystemCallback(action=action).pack().encode()), 64)
         self.assertEqual("1.0 КБ", _format_bytes(1024))
 
