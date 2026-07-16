@@ -76,6 +76,9 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.quality_sets import router as quality_sets_router
     from velvet_bot.handlers.reference_albums import router as reference_albums_router
     from velvet_bot.handlers.reference_comparison import router as reference_comparison_router
+    from velvet_bot.handlers.reference_comparison_help import (
+        router as reference_comparison_help_router,
+    )
     from velvet_bot.handlers.reference_documents import router as reference_documents_router
     from velvet_bot.handlers.reference_management import router as reference_management_router
     from velvet_bot.handlers.references import router as references_router
@@ -141,6 +144,7 @@ def _build_root_router() -> Router:
     root.include_router(admin_directory_router)
     root.include_router(characters_router)
     root.include_router(media_browser_router)
+    root.include_router(reference_comparison_help_router)
     root.include_router(reference_comparison_router)
     root.include_router(reference_documents_router)
     root.include_router(reference_albums_router)
