@@ -20,7 +20,7 @@ def build_worker_manager(
     bot: Bot,
     database: Database,
     backup_service: BackupService,
-    settings: Settings,
+    settings: Settings | None = None,
 ) -> WorkerManager:
     """Build the complete periodic-worker registry for the application."""
     public_notifications = build_public_notification_dispatcher(bot, database)
@@ -55,7 +55,7 @@ def build_worker_manager(
             runner=media_quality_service.process_once,
         )
     )
-    if settings.ai_vision_enabled:
+    if settings is not None and settings.ai_vision_enabled:
         ai_service = MediaAIVisionService(
             bot=bot,
             repository=MediaAIRepository(database),
