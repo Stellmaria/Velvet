@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,8 +15,8 @@ class DiscussionOverview:
     replies: int
     participant_count: int
     reactions_total: int
-    first_message_at: object | None
-    last_message_at: object | None
+    first_message_at: datetime | None
+    last_message_at: datetime | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +27,7 @@ class ParticipantStat:
     message_count: int
     reply_count: int
     reactions_received: int
-    last_message_at: object | None
+    last_message_at: datetime | None
 
 
 __all__ = ("DiscussionOverview", "ParticipantStat")
