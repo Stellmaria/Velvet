@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import BufferedInputFile
 from PIL import Image, ImageOps, UnidentifiedImageError
 
@@ -17,6 +18,12 @@ from velvet_bot.archive_catalog import ArchivedMedia
 PREVIEW_MAX_EDGE = 2560
 PREVIEW_MAX_BYTES = 4_500_000
 PREVIEW_MAX_ASPECT_RATIO = 20.0
+
+# The hosted Telegram Bot API cannot return files larger than 20 MiB through
+# getFile/download. Such files can still be re-sent by their existing file_id,
+# so the archive viewer must skip local preview generation and use its document
+# fallback instead of making a request that Telegram is guaranteed to reject.
+TELEGRAM_BOT_DOWNLOAD_MAX_BYTES = 20 * 1024 * 1024
 
 
 class ImagePreviewError(ValueError):
@@ -137,12 +144,30 @@ async def build_image_document_preview(
     media: ArchivedMedia,
 ) -> BufferedInputFile:
     """Download the original Telegram document and build a compressed photo copy."""
+    if (
+        media.file_size is not None
+        and media.file_size > TELEGRAM_BOT_DOWNLOAD_MAX_BYTES
+    ):
+        raise ImagePreviewError(
+            "Файл превышает лимит скачивания Telegram Bot API; "
+            "в архиве будет показан исходный документ."
+        )
+
     destination = io.BytesIO()
-    await bot.download(
-        media.telegram_file_id,
-        destination=destination,
-        seek=True,
-    )
+    try:
+        await bot.download(
+            media.telegram_file_id,
+            destination=destination,
+            seek=True,
+        )
+    except TelegramBadRequest as error:
+        if "file is too big" not in str(error).casefold():
+            raise
+        raise ImagePreviewError(
+            "Telegram не разрешил скачать файл для превью из-за его размера; "
+            "в архиве будет показан исходный документ."
+        ) from error
+
     payload, filename = await asyncio.to_thread(
         render_photo_preview,
         destination.getvalue(),
