@@ -5,7 +5,7 @@ import asyncio
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from velvet_bot.application.owner_profiles import (
     delete_alias_from_text,
@@ -51,6 +51,24 @@ class Phase9ArchitectureTests(unittest.TestCase):
         self.assertNotIn("CommandObject", source)
         self.assertNotIn("model_copy(", source)
 
+    def test_reserve_adapters_use_shared_application_or_boundary_services(self) -> None:
+        expected_imports = {
+            "velvet_bot/handlers/characters.py": "velvet_bot.application.owner_profiles",
+            "velvet_bot/handlers/admin_directory.py": "velvet_bot.application.owner_profiles",
+            "velvet_bot/handlers/admin_stories.py": "velvet_bot.application.owner_profiles",
+            "velvet_bot/handlers/character_aliases.py": "velvet_bot.application.owner_profiles",
+            "velvet_bot/handlers/references.py": "velvet_bot.application.owner_references",
+            "velvet_bot/handlers/reference_management.py": "velvet_bot.application.owner_references",
+            "velvet_bot/handlers/channel_analytics.py": "velvet_bot.application.owner_analytics",
+            "velvet_bot/handlers/telegram_analytics_import.py": "velvet_bot.application.owner_analytics",
+            "velvet_bot/handlers/archive.py": "velvet_bot.services.media_save",
+            "velvet_bot/handlers/spoiler_save.py": "velvet_bot.services.media_save",
+        }
+        for raw_path, expected in expected_imports.items():
+            with self.subTest(path=raw_path):
+                source = Path(raw_path).read_text(encoding="utf-8")
+                self.assertIn(expected, source)
+
 
 class Phase9UseCaseTests(unittest.TestCase):
     def test_reference_index_supports_multiword_character_names(self) -> None:
@@ -67,7 +85,7 @@ class Phase9UseCaseTests(unittest.TestCase):
     def test_prompt_off_is_normalized_by_use_case(self) -> None:
         character = SimpleNamespace(id=7, name="Аид")
         database = SimpleNamespace(get_character=AsyncMock(return_value=character))
-        with unittest.mock.patch(
+        with patch(
             "velvet_bot.application.owner_profiles.set_character_prompt_url",
             new=AsyncMock(),
         ) as setter:
@@ -82,7 +100,7 @@ class Phase9UseCaseTests(unittest.TestCase):
     def test_alias_delete_keeps_multiword_name(self) -> None:
         character = SimpleNamespace(id=9, name="Каэль Лэнг")
         database = SimpleNamespace(get_character=AsyncMock(return_value=character))
-        with unittest.mock.patch(
+        with patch(
             "velvet_bot.application.owner_profiles.delete_character_alias",
             new=AsyncMock(return_value=True),
         ) as delete_alias:
