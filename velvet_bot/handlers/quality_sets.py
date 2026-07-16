@@ -6,6 +6,7 @@ from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from velvet_bot.ai_vision import MediaAIRepository
 from velvet_bot.database import Database
 from velvet_bot.media_sets import (
     MediaSetCandidate,
@@ -157,15 +158,27 @@ async def show_media_set_candidates(
         status="pending",
         page=page_number,
     )
+    ai = await MediaAIRepository(database).summary()
     lines = [
         "<b>🎞 Предложения медиасетов</b>",
         "",
         f"На проверке: <b>{page.total_items}</b>",
         f"Страница: <b>{page.page + 1}</b> из <b>{page.total_pages}</b>",
         "",
-        "Бот объединяет общий промт, серию имён файлов, время загрузки, "
-        "вселенную/историю и визуальную композицию. Это предложения, а не "
-        "автоматическое решение.",
+        (
+            "ИИ-профили: "
+            f"готово <b>{ai.ready}</b>, "
+            f"в очереди <b>{ai.pending + ai.processing}</b>, "
+            f"ошибок/пропусков <b>{ai.errors + ai.skipped}</b>."
+        ),
+        "",
+        "Глубокий анализ сравнивает тему, жанр, эпоху, локацию, окружение, "
+        "предметы, одежду, композицию, свет и настроение независимо от лица "
+        "персонажа. Общий промт и ручные предложения сохраняются. Слабые "
+        "совпадения только по времени или имени файла скрываются после появления "
+        "ИИ-профилей.",
+        "",
+        "Бот создаёт только предложения. Сет формируется после вашего выбора.",
     ]
     rows: list[list[InlineKeyboardButton]] = []
     for candidate in page.items:
@@ -212,7 +225,7 @@ async def show_media_set_candidates(
     rows.append(
         [
             InlineKeyboardButton(
-                text="🔄 Повторить анализ",
+                text="🔄 Обновить предложения",
                 callback_data=quality_callback("sets", section="pending", page=page.page),
             ),
             InlineKeyboardButton(
