@@ -127,10 +127,18 @@ async def persist_preview_from_sent_message(
     message: Message,
     source: str = "generated_preview",
 ) -> None:
-    await build_archive_preview_resolver(message.bot, database).persist_from_message(
+    preview = message_thumbnail(message)
+    if preview is None:
+        return
+    await ArchivePreviewRepository(database).save(
         media_id=media_id,
-        message=message,
-        source=source,
+        preview=PreviewPayload(
+            file_id=preview.file_id,
+            file_unique_id=preview.file_unique_id,
+            width=preview.width,
+            height=preview.height,
+            source=source,
+        ),
     )
 
 
