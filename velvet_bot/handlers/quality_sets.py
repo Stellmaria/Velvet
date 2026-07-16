@@ -34,6 +34,46 @@ async def _safe_edit(
             raise
 
 
+async def _retire_weak_fallback_candidates(database: Database) -> None:
+    """Hide filename/time guesses once the archive is queued for AI analysis."""
+    async with database._require_pool().acquire() as connection:
+        await connection.execute(
+            """
+            UPDATE media_set_candidates
+            SET status = 'ignored',
+                decided_at = COALESCE(decided_at, NOW()),
+                updated_at = NOW(),
+                reason = CASE
+                    WHEN reason LIKE '%Скрыто после включения Qwen.%'
+                        THEN reason
+                    ELSE reason || ' Скрыто после включения Qwen.'
+                END
+            WHERE status = 'pending'
+              AND (
+                    candidate_key LIKE 'filename:%'
+                    OR candidate_key LIKE 'context:%'
+                  )
+            """
+        )
+
+
+async def _latest_ai_error(database: Database) -> str | None:
+    async with database._require_pool().acquire() as connection:
+        value = await connection.fetchval(
+            """
+            SELECT error_message
+            FROM media_ai_profiles
+            WHERE status IN ('error', 'skipped')
+              AND NULLIF(BTRIM(error_message), '') IS NOT NULL
+            ORDER BY updated_at DESC, media_id DESC
+            LIMIT 1
+            """
+        )
+    if value is None:
+        return None
+    return " ".join(str(value).split())[:600]
+
+
 def _candidate_text(candidate: MediaSetCandidate) -> str:
     prompt_state = (
         "<b>будет привязан ко всему сету</b>"
@@ -153,12 +193,17 @@ async def show_media_set_candidates(
     page_number: int,
 ) -> None:
     await discover_media_set_candidates(database)
+    ai = await MediaAIRepository(database).summary()
+    ai_total = ai.pending + ai.processing + ai.ready + ai.errors + ai.skipped
+    if ai_total:
+        await _retire_weak_fallback_candidates(database)
     page = await list_media_set_candidates(
         database,
         status="pending",
         page=page_number,
     )
-    ai = await MediaAIRepository(database).summary()
+    latest_error = await _latest_ai_error(database) if ai.errors or ai.skipped else None
+
     lines = [
         "<b>🎞 Предложения медиасетов</b>",
         "",
@@ -166,20 +211,44 @@ async def show_media_set_candidates(
         f"Страница: <b>{page.page + 1}</b> из <b>{page.total_pages}</b>",
         "",
         (
-            "ИИ-профили: "
+            "Qwen-профили: "
             f"готово <b>{ai.ready}</b>, "
             f"в очереди <b>{ai.pending + ai.processing}</b>, "
             f"ошибок/пропусков <b>{ai.errors + ai.skipped}</b>."
         ),
         "",
-        "Глубокий анализ сравнивает тему, жанр, эпоху, локацию, окружение, "
-        "предметы, одежду, композицию, свет и настроение независимо от лица "
-        "персонажа. Общий промт и ручные предложения сохраняются. Слабые "
-        "совпадения только по времени или имени файла скрываются после появления "
-        "ИИ-профилей.",
+        "Qwen анализирует сохранённые изображения локально через Ollama. "
+        "В Telegram и сторонние облака изображения для этого анализа не отправляются.",
         "",
-        "Бот создаёт только предложения. Сет формируется после вашего выбора.",
     ]
+    if ai.ready:
+        lines.extend(
+            [
+                "Глубокий анализ сравнивает тему, жанр, эпоху, локацию, окружение, "
+                "предметы, одежду, композицию, свет и настроение независимо от лица "
+                "персонажа.",
+                "",
+            ]
+        )
+    elif ai.pending or ai.processing:
+        lines.extend(
+            [
+                "Qwen пока не завершил ни одного изображения. Слабые предложения "
+                "только по времени загрузки или имени файла скрыты и не выдаются "
+                "за результат ИИ.",
+                "",
+            ]
+        )
+    if latest_error:
+        lines.extend(
+            [
+                "<b>Последняя ошибка Qwen:</b>",
+                f"<code>{escape(latest_error)}</code>",
+                "",
+            ]
+        )
+    lines.append("Бот создаёт только предложения. Сет формируется после вашего выбора.")
+
     rows: list[list[InlineKeyboardButton]] = []
     for candidate in page.items:
         rows.append(
