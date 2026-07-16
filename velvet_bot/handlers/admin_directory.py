@@ -8,6 +8,11 @@ from aiogram.filters import Command, CommandObject
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from velvet_bot.application.owner_profiles import (
+    set_category_from_text,
+    set_prompt_from_text,
+    set_universe_from_text,
+)
 from velvet_bot.archive_ui import ArchiveMediaCallback
 from velvet_bot.character_directory import (
     CATEGORY_EMOJI,
@@ -18,14 +23,8 @@ from velvet_bot.character_directory import (
     get_character_directory_item,
     list_category_summaries,
     list_character_directory,
-    normalize_category,
-    normalize_universe,
-    set_character_category,
-    set_character_prompt_url,
-    set_character_universe,
     story_label,
     universe_label,
-    validate_prompt_post_url,
 )
 from velvet_bot.database import Database
 from velvet_bot.story_catalog import universe_requires_story
@@ -70,10 +69,7 @@ def _category_text(total: int) -> str:
         "Персонажу назначаются пол/состав, вселенная и, для визуальных "
         "новелл, история.\n\n"
         f"Всего персонажей: <b>{total}</b>\n\n"
-        "Пол/состав: <code>/category Аид мужской</code>\n"
-        "Вселенная: <code>/universe Аид КР</code>\n"
-        "История: <code>/story Аид КЗТ</code>\n"
-        "Новая история: <code>/storyadd КР КЗТ Кали. Зов тьмы</code>"
+        "Все операции доступны кнопками в центре управления."
     )
 
 
@@ -127,7 +123,6 @@ def _page_keyboard(page: CharacterDirectoryPage) -> InlineKeyboardMarkup:
                 )
             ]
         )
-
     if page.total_pages > 1:
         rows.append(
             [
@@ -283,32 +278,20 @@ async def handle_set_category(
     command: CommandObject,
     database: Database,
 ) -> None:
-    if not command.args or len(command.args.rsplit(maxsplit=1)) != 2:
+    if not command.args:
         await message.answer(
             "Формат: <code>/category Имя категория</code>\n"
-            "Категории: женский, мужской, мж, мжм, мм, жж.\n"
-            "Снять категорию: <code>/category Имя без</code>"
+            "Категории: женский, мужской, мж, мжм, мм, жж."
         )
-        return
-    character_name, raw_category = command.args.rsplit(maxsplit=1)
-    character = await database.get_character(character_name)
-    if character is None:
-        await message.answer("Такой персонаж не найден.")
         return
     try:
-        category = normalize_category(raw_category, allow_uncategorized=True)
-        stored_category = None if category == "uncategorized" else category
-        await set_character_category(
-            database,
-            character_id=character.id,
-            category=stored_category,
-        )
+        result = await set_category_from_text(database, command.args)
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
     await message.answer(
-        f"Пол / состав персонажа <b>{escape(character.name)}</b>: "
-        f"<b>{escape(category_label(stored_category))}</b>."
+        f"Пол / состав персонажа <b>{escape(result.character.name)}</b>: "
+        f"<b>{escape(category_label(result.value))}</b>."
     )
 
 
@@ -318,37 +301,25 @@ async def handle_set_universe(
     command: CommandObject,
     database: Database,
 ) -> None:
-    if not command.args or len(command.args.rsplit(maxsplit=1)) != 2:
+    if not command.args:
         await message.answer(
             "Формат: <code>/universe Имя вселенная</code>\n"
-            "Вселенные: SHS, КР, ЛМ, ИДМ, BG3, Лагерта, Original.\n"
-            "Снять вселенную: <code>/universe Имя без</code>"
+            "Вселенные: SHS, КР, ЛМ, ИДМ, BG3, Лагерта, Original."
         )
-        return
-    character_name, raw_universe = command.args.rsplit(maxsplit=1)
-    character = await database.get_character(character_name)
-    if character is None:
-        await message.answer("Такой персонаж не найден.")
         return
     try:
-        universe = normalize_universe(raw_universe, allow_unassigned=True)
-        stored_universe = None if universe == "unassigned" else universe
-        await set_character_universe(
-            database,
-            character_id=character.id,
-            universe=stored_universe,
-        )
+        result = await set_universe_from_text(database, command.args)
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
     suffix = (
         "\nТеперь назначьте историю: <code>/story Имя СОКР</code>."
-        if universe_requires_story(stored_universe)
+        if universe_requires_story(result.value)
         else ""
     )
     await message.answer(
-        f"Вселенная персонажа <b>{escape(character.name)}</b>: "
-        f"<b>{escape(universe_label(stored_universe))}</b>.{suffix}"
+        f"Вселенная персонажа <b>{escape(result.character.name)}</b>: "
+        f"<b>{escape(universe_label(result.value))}</b>.{suffix}"
     )
 
 
@@ -358,38 +329,25 @@ async def handle_set_prompt(
     command: CommandObject,
     database: Database,
 ) -> None:
-    if not command.args or len(command.args.rsplit(maxsplit=1)) != 2:
+    if not command.args:
         await message.answer(
             "Формат: <code>/prompt Имя https://t.me/channel/123</code>\n"
             "Удалить ссылку: <code>/prompt Имя off</code>"
         )
         return
-    character_name, raw_value = command.args.rsplit(maxsplit=1)
-    character = await database.get_character(character_name)
-    if character is None:
-        await message.answer("Такой персонаж не найден.")
-        return
     try:
-        if raw_value.casefold() in {"off", "нет", "удалить", "-"}:
-            prompt_url = None
-        else:
-            prompt_url = validate_prompt_post_url(raw_value)
-        await set_character_prompt_url(
-            database,
-            character_id=character.id,
-            prompt_post_url=prompt_url,
-        )
+        result = await set_prompt_from_text(database, command.args)
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
-    if prompt_url:
+    if result.value:
         await message.answer(
-            f"Промт привязан к карточке <b>{escape(character.name)}</b>.\n"
+            f"Промт привязан к карточке <b>{escape(result.character.name)}</b>.\n"
             "Кнопка появится в меню и внутри архива."
         )
     else:
         await message.answer(
-            f"Ссылка на промт удалена у <b>{escape(character.name)}</b>."
+            f"Ссылка на промт удалена у <b>{escape(result.character.name)}</b>."
         )
 
 
@@ -413,7 +371,6 @@ async def handle_admin_directory_callback(
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
-
     if callback_data.action == "categories":
         summaries = await list_category_summaries(
             database,
@@ -426,7 +383,6 @@ async def handle_admin_directory_callback(
         )
         await callback.answer()
         return
-
     if callback_data.action == "menu":
         page = await list_character_directory(
             database,
@@ -440,7 +396,6 @@ async def handle_admin_directory_callback(
         )
         await callback.answer()
         return
-
     if callback_data.action == "profile":
         item = await get_character_directory_item(database, callback_data.character_id)
         if item is None:
@@ -456,5 +411,4 @@ async def handle_admin_directory_callback(
         )
         await callback.answer()
         return
-
     await callback.answer("Неизвестное действие.", show_alert=True)
