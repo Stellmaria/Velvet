@@ -70,11 +70,14 @@ class ArchiveRepository:
                     mf.mime_type,
                     mf.file_size,
                     cm.created_at AS linked_at,
-                    cm.prompt_post_url,
+                    COALESCE(ms.prompt_post_url, cm.prompt_post_url) AS prompt_post_url,
                     cm.archive_message_id,
-                    cm.is_spoiler
+                    cm.is_spoiler,
+                    ms.id AS media_set_id,
+                    ms.title AS media_set_title
                 FROM character_media AS cm
                 JOIN media_files AS mf ON mf.id = cm.media_id
+                LEFT JOIN media_sets AS ms ON ms.id = mf.media_set_id
                 WHERE cm.character_id = $1::BIGINT
                 ORDER BY cm.created_at DESC, mf.id DESC
                 OFFSET $2::INTEGER
@@ -189,12 +192,15 @@ class ArchiveRepository:
                         mf.mime_type,
                         mf.file_size,
                         cm.created_at AS linked_at,
-                        cm.prompt_post_url,
+                        COALESCE(ms.prompt_post_url, cm.prompt_post_url) AS prompt_post_url,
                         cm.archive_message_id,
-                        cm.is_spoiler
+                        cm.is_spoiler,
+                        ms.id AS media_set_id,
+                        ms.title AS media_set_title
                     FROM character_media AS cm
                     JOIN characters AS c ON c.id = cm.character_id
                     JOIN media_files AS mf ON mf.id = cm.media_id
+                    LEFT JOIN media_sets AS ms ON ms.id = mf.media_set_id
                     WHERE cm.character_id = $1::BIGINT
                       AND cm.media_id = $2::BIGINT
                     FOR UPDATE OF cm
@@ -227,10 +233,23 @@ class ArchiveRepository:
                 )
                 orphan_media_removed = remaining_links == 0
                 if orphan_media_removed:
+                    media_set_id = row["media_set_id"]
                     await connection.execute(
                         "DELETE FROM media_files WHERE id = $1::BIGINT",
                         int(media_id),
                     )
+                    if media_set_id is not None:
+                        await connection.execute(
+                            """
+                            DELETE FROM media_sets AS media_set
+                            WHERE media_set.id = $1::BIGINT
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM media_files
+                                  WHERE media_set_id = media_set.id
+                              )
+                            """,
+                            int(media_set_id),
+                        )
                 remaining_total = int(
                     await connection.fetchval(
                         """
@@ -281,6 +300,12 @@ class ArchiveRepository:
                 else None
             ),
             is_spoiler=bool(row["is_spoiler"]),
+            media_set_id=(
+                int(row["media_set_id"])
+                if row["media_set_id"] is not None
+                else None
+            ),
+            media_set_title=row["media_set_title"],
         )
 
 
