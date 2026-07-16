@@ -8,6 +8,7 @@ from aiogram.types import ErrorEvent
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
 from velvet_bot.media_set_ui_compat import install_media_set_ui
+from velvet_bot.owner_menu_compat import install_owner_menu_navigation
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ def _build_root_router() -> Router:
     import velvet_bot.media_set_ai_discovery  # noqa: F401
 
     install_media_set_ui()
+    install_owner_menu_navigation()
 
     from velvet_bot.handlers.admin_directory import router as admin_directory_router
     from velvet_bot.handlers.admin_large_media_preview import (
