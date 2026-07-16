@@ -14,6 +14,7 @@ from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.access import CHARACTER_EDITOR_USER_IDS
 from velvet_bot.core.config import Settings, load_settings
 from velvet_bot.database import Database
+from velvet_bot.error_center import ErrorIncidentCenter, ErrorIncidentRepository
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 from velvet_bot.repositories.system_repository import SystemRepository
@@ -73,6 +74,7 @@ async def _close_application_resources(
     *,
     worker_manager: WorkerManager | None,
     audit_logger: TelegramAuditLogger | None,
+    error_center: ErrorIncidentCenter | None,
     bot: ProtectedMediaBot | None,
     database: Database,
 ) -> None:
@@ -88,6 +90,14 @@ async def _close_application_resources(
             await audit_logger.send("Velvet Archive остановлен", level="WARNING")
         except Exception as error:
             logger.warning("Could not send shutdown audit message: %s", error)
+
+    # Stop the incident center only after all other components have finished so
+    # cleanup failures are also delivered to the log chat.
+    if error_center is not None:
+        try:
+            await error_center.stop()
+        except Exception:
+            logger.exception("Could not stop error incident center")
 
     if bot is not None:
         try:
@@ -113,6 +123,7 @@ async def run_application() -> None:
     database = Database(settings.database_url)
     bot: ProtectedMediaBot | None = None
     audit_logger: TelegramAuditLogger | None = None
+    error_center: ErrorIncidentCenter | None = None
     worker_manager: WorkerManager | None = None
 
     try:
@@ -132,12 +143,21 @@ async def run_application() -> None:
         )
         bot = _build_bot(settings)
         audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
+        error_center = ErrorIncidentCenter(
+            bot=bot,
+            repository=ErrorIncidentRepository(database),
+            log_chat_id=settings.log_chat_id,
+            owner_user_ids=settings.allowed_user_ids,
+        )
+        await error_center.start()
+
         reference_uploads = ReferenceUploadSessions()
         worker_manager = build_worker_manager(
             bot=bot,
             database=database,
             backup_service=backup_service,
             settings=settings,
+            error_center=error_center,
         )
 
         bot_info = await bot.get_me()
@@ -153,6 +173,7 @@ async def run_application() -> None:
             database=database,
             bot_username=bot_username,
             audit_logger=audit_logger,
+            error_center=error_center,
             reference_uploads=reference_uploads,
             backup_service=backup_service,
             system_service=system_service,
@@ -206,6 +227,7 @@ async def run_application() -> None:
             ),
             backup_dir=settings.backup_dir,
             log_chat_id=settings.log_chat_id,
+            error_center="enabled",
         )
 
         await worker_manager.start_all()
@@ -215,6 +237,7 @@ async def run_application() -> None:
             database=database,
             bot_username=bot_username,
             audit_logger=audit_logger,
+            error_center=error_center,
             reference_uploads=reference_uploads,
             access_policy=bundle.access_policy,
             analytics_channel_ids=settings.analytics_channel_ids,
@@ -223,10 +246,23 @@ async def run_application() -> None:
             system_service=system_service,
             worker_manager=worker_manager,
         )
+    except Exception as error:
+        if error_center is not None:
+            try:
+                await error_center.report_exception(
+                    "Критическое завершение приложения",
+                    error,
+                    severity="CRITICAL",
+                    logger_name=__name__,
+                )
+            except Exception:
+                logger.exception("Could not report fatal application error")
+        raise
     finally:
         await _close_application_resources(
             worker_manager=worker_manager,
             audit_logger=audit_logger,
+            error_center=error_center,
             bot=bot,
             database=database,
         )
