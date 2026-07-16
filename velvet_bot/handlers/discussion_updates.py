@@ -10,11 +10,9 @@ from aiogram.types import (
     MessageReactionUpdated,
 )
 
+from velvet_bot.analytics_reactions import set_analytics_reaction_counts
 from velvet_bot.database import Database
-from velvet_bot.discussion_analytics import (
-    apply_discussion_reaction_delta,
-    set_discussion_reaction_counts,
-)
+from velvet_bot.discussion_analytics import apply_discussion_reaction_delta
 
 router = Router(name=__name__)
 
@@ -58,7 +56,7 @@ async def handle_discussion_reaction_delta(
 
 
 @router.message_reaction_count()
-async def handle_discussion_reaction_count(
+async def handle_analytics_reaction_count(
     update: MessageReactionCountUpdated,
     database: Database,
 ) -> None:
@@ -67,7 +65,7 @@ async def handle_discussion_reaction_count(
         for item in update.reactions
         if int(item.total_count) > 0
     }
-    await set_discussion_reaction_counts(
+    await set_analytics_reaction_counts(
         database,
         chat_id=update.chat.id,
         message_id=update.message_id,
