@@ -136,7 +136,7 @@ def extract_media(source: MediaSource) -> MediaDescriptor | None:
         default_stem = (
             "video" if (mime_type or "").startswith("video/") else "image"
         )
-        thumbnail = document.thumbnail
+        thumbnail = getattr(document, "thumbnail", None)
         return MediaDescriptor(
             telegram_file_id=document.file_id,
             telegram_file_unique_id=document.file_unique_id,
