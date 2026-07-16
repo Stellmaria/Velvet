@@ -1,8 +1,13 @@
+from velvet_bot.domains.discussions.activity_repository import (
+    DiscussionActivityRepository,
+)
+from velvet_bot.domains.discussions.activity_service import DiscussionActivityService
 from velvet_bot.domains.discussions.ingest_repository import DiscussionIngestRepository
 from velvet_bot.domains.discussions.ingest_service import DiscussionIngestService
 from velvet_bot.domains.discussions.insight_models import (
     ActivityBreakdown,
     ActivitySpike,
+    DailyActivityCount,
     DiscussedPost,
     DiscussedPostPage,
     DiscussionSummary,
@@ -32,8 +37,11 @@ from velvet_bot.domains.discussions.service import DiscussionService
 __all__ = (
     "ActivityBreakdown",
     "ActivitySpike",
+    "DailyActivityCount",
     "DiscussedPost",
     "DiscussedPostPage",
+    "DiscussionActivityRepository",
+    "DiscussionActivityService",
     "DiscussionIngestRepository",
     "DiscussionIngestResult",
     "DiscussionIngestService",

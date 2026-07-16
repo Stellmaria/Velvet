@@ -53,6 +53,12 @@ class ActivityBreakdown:
 
 
 @dataclass(frozen=True, slots=True)
+class DailyActivityCount:
+    day: date
+    comment_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class ActivitySpike:
     day: date
     comment_count: int
@@ -70,6 +76,7 @@ class RelinkResult:
 __all__ = (
     "ActivityBreakdown",
     "ActivitySpike",
+    "DailyActivityCount",
     "DiscussedPost",
     "DiscussedPostPage",
     "DiscussionSummary",
