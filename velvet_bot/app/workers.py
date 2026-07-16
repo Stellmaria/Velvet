@@ -4,9 +4,11 @@ from functools import partial
 
 from aiogram import Bot
 
+from velvet_bot.ai_vision import MediaAIRepository, MediaAIVisionService, VisionClient
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
+from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
@@ -18,6 +20,7 @@ def build_worker_manager(
     bot: Bot,
     database: Database,
     backup_service: BackupService,
+    settings: Settings,
 ) -> WorkerManager:
     """Build the complete periodic-worker registry for the application."""
     public_notifications = build_public_notification_dispatcher(bot, database)
@@ -52,6 +55,27 @@ def build_worker_manager(
             runner=media_quality_service.process_once,
         )
     )
+    if settings.ai_vision_enabled:
+        ai_service = MediaAIVisionService(
+            bot=bot,
+            repository=MediaAIRepository(database),
+            client=VisionClient(
+                provider=settings.ai_vision_provider,
+                base_url=settings.ai_vision_base_url,
+                model=settings.ai_vision_model,
+                api_key=settings.ai_vision_api_key,
+                timeout_seconds=settings.ai_vision_timeout_seconds,
+            ),
+            max_attempts=settings.ai_vision_max_attempts,
+        )
+        manager.register(
+            PeriodicWorkerSpec(
+                name="ai-vision",
+                description="Смысловой ИИ-анализ изображений",
+                interval_seconds=8,
+                runner=ai_service.process_once,
+            )
+        )
     manager.register(
         PeriodicWorkerSpec(
             name="postgresql-backups",
