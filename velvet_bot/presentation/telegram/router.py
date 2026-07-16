@@ -7,6 +7,7 @@ from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
+from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,10 @@ _ROOT_ROUTER: Router | None = None
 def _build_root_router() -> Router:
     install_legacy_compatibility()
 
-    # Install the corrected duplicate-to-set action before quality handlers bind it.
+    # Install corrected media-set compatibility before handlers bind functions.
     import velvet_bot.media_set_duplicate_actions  # noqa: F401
+
+    install_media_set_ui()
 
     from velvet_bot.handlers.admin_directory import router as admin_directory_router
     from velvet_bot.handlers.admin_large_media_preview import (
