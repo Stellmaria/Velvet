@@ -19,6 +19,7 @@
 - `PublicNotificationRepository` для выборки и фиксации доставок подписчикам;
 - application layer `velvet_bot/app` для composition root, Dispatcher, команд и workers;
 - presentation layer `velvet_bot/presentation/telegram` для сборки Telegram router;
+- media quality domain с `MediaQualityRepository`, `MediaQualityService` и отдельными моделями;
 - целевая архитектура и порядок доменного переноса в `docs/architecture_target.md`;
 - архитектурные регрессионные тесты;
 - версия приложения `1.2.0-dev.1`.
@@ -36,7 +37,9 @@
 - регистрация middleware и workflow dependencies вынесена в `app/dispatcher.py`;
 - регистрация периодических процессов вынесена в `app/workers.py`;
 - сборка корневого router и порядок handlers вынесены из `handlers/__init__.py`;
-- legacy monkey-patching изолирован в compatibility layer.
+- legacy monkey-patching изолирован в compatibility layer;
+- фоновый `media-quality` больше не зависит от приватных функций монолитного модуля;
+- захват очереди, fingerprint persistence, duplicate candidate persistence и file checks выполняются через domain repository/service.
 
 ## [1.0.0] - 2026-07-16
 
