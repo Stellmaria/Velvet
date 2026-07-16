@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import velvet_bot.discussion_insights as discussion_insights_module
 import velvet_bot.multi_story_support as multi_story_support
+from velvet_bot.discussion_post_insights import (
+    get_discussed_post,
+    list_discussed_posts,
+)
 from velvet_bot.discussion_summary_runtime import get_discussion_summary
 from velvet_bot.multi_story_queries import list_assigned_character_stories
 from velvet_bot.runtime_log_hotfixes import install_runtime_log_hotfixes
@@ -20,6 +24,8 @@ def install_legacy_compatibility() -> None:
     multi_story_support.list_assigned_character_stories = list_assigned_character_stories
     multi_story_support.install_multi_story_support()
     discussion_insights_module.get_discussion_summary = get_discussion_summary
+    discussion_insights_module.list_discussed_posts = list_discussed_posts
+    discussion_insights_module.get_discussed_post = get_discussed_post
     install_safe_analytics_edit()
     _INSTALLED = True
 
