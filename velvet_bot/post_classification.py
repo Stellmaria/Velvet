@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
 
@@ -23,6 +24,28 @@ class PostClassification:
     reason: str
 
 
+def _looks_like_prompt(text: str, lowered: str, *, is_prompt: bool) -> bool:
+    if is_prompt:
+        return True
+    has_important = bool(
+        re.search(r"(?:^|\n)\s*(?:важно|important)\s*:?", lowered)
+    )
+    has_strict = bool(
+        re.search(r"(?:^|\n)\s*(?:строго|strict)\s*:?", lowered)
+    )
+    if has_important and has_strict:
+        return True
+    score = 0
+    score += 2 if has_important else 0
+    score += 2 if has_strict else 0
+    score += 2 if "референс" in lowered or "reference" in lowered else 0
+    score += 1 if "композиция" in lowered or "поза" in lowered else 0
+    score += 1 if "negative prompt" in lowered or "негативный промт" in lowered else 0
+    score += 1 if any(marker in lowered for marker in ("📷", "9:16", "shallow dof")) else 0
+    score += 1 if len(text) >= 800 else 0
+    return score >= 6
+
+
 def classify_post(
     text: str,
     hashtags: tuple[tuple[str, str], ...],
@@ -33,7 +56,7 @@ def classify_post(
     lowered = unicodedata.normalize("NFKC", text).casefold()
     tags = {normalized for _, normalized in hashtags}
 
-    if is_prompt or "промт" in tags or "prompt" in tags:
+    if _looks_like_prompt(text, lowered, is_prompt=is_prompt) or "промт" in tags or "prompt" in tags:
         return PostClassification("prompt", 98 if is_prompt else 95, "структура промта")
 
     if tags.intersection({"розыгрыш", "конкурс", "giveaway"}):
