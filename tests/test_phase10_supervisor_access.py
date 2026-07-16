@@ -7,6 +7,7 @@ from pathlib import Path
 from aiogram.types import CallbackQuery, User
 
 from velvet_bot.core.access import (
+    MODERATOR_CALLBACK_ACTIONS,
     MODERATOR_CALLBACK_PREFIXES,
     MODERATOR_COMMANDS,
     MODERATOR_USER_IDS,
@@ -65,6 +66,15 @@ def _commands(path: str) -> set[str]:
     return commands
 
 
+def _callback(user: User, data: str, *, callback_id: str) -> CallbackQuery:
+    return CallbackQuery(
+        id=callback_id,
+        from_user=user,
+        chat_instance="test",
+        data=data,
+    )
+
+
 class AccessBoundaryTests(unittest.TestCase):
     def test_public_access_is_archive_viewing_only(self) -> None:
         self.assertEqual(PUBLIC_COMMANDS, {"start", "archive", "gallery"})
@@ -75,6 +85,10 @@ class AccessBoundaryTests(unittest.TestCase):
         self.assertEqual(MODERATOR_USER_IDS, {8179531132})
         self.assertEqual(MODERATOR_COMMANDS, {"characters", "prompt", "setprompt"})
         self.assertEqual(MODERATOR_CALLBACK_PREFIXES, ("adir:", "astory:", "arc:"))
+        self.assertEqual(
+            set(MODERATOR_CALLBACK_ACTIONS),
+            {"adir", "astory", "arc"},
+        )
 
     def test_owner_system_commands_do_not_overlap_other_roles(self) -> None:
         self.assertTrue(PUBLIC_COMMANDS.isdisjoint(OWNER_ONLY_COMMANDS))
@@ -98,28 +112,64 @@ class AccessBoundaryTests(unittest.TestCase):
 
     def test_supervisor_callback_is_owner_only(self) -> None:
         moderator = User(id=8179531132, is_bot=False, first_name="Moderator")
-        supervisor_callback = CallbackQuery(
-            id="supervisor",
-            from_user=moderator,
-            chat_instance="test",
-            data=SupervisorCallback(action="status").pack(),
+        supervisor_callback = _callback(
+            moderator,
+            SupervisorCallback(action="status").pack(),
+            callback_id="supervisor",
         )
-        moderator_callback = CallbackQuery(
-            id="moderator",
-            from_user=moderator,
-            chat_instance="test",
-            data="adir:profile:0",
+        moderator_callback = _callback(
+            moderator,
+            "adir:profile:0",
+            callback_id="moderator",
         )
-        public_callback = CallbackQuery(
-            id="public",
-            from_user=moderator,
-            chat_instance="test",
-            data="pub:archive:0",
+        public_callback = _callback(
+            moderator,
+            "pub:archive:0",
+            callback_id="public",
         )
         self.assertFalse(is_public_callback(supervisor_callback))
         self.assertFalse(is_moderator_callback(supervisor_callback))
         self.assertTrue(is_moderator_callback(moderator_callback))
         self.assertTrue(is_public_callback(public_callback))
+
+    def test_unknown_actions_do_not_inherit_moderator_access(self) -> None:
+        moderator = User(id=8179531132, is_bot=False, first_name="Moderator")
+        for data in (
+            "adir:owner_settings:0",
+            "astory:delete_catalog:0",
+            "arc:purge_all:0",
+            "sup:status:",
+        ):
+            with self.subTest(data=data):
+                self.assertFalse(
+                    is_moderator_callback(
+                        _callback(moderator, data, callback_id=data)
+                    )
+                )
+
+    def test_current_moderator_archive_actions_remain_available(self) -> None:
+        moderator = User(id=8179531132, is_bot=False, first_name="Moderator")
+        for action in (
+            "open",
+            "show",
+            "spoiler",
+            "prompt",
+            "promptremove",
+            "del",
+            "delok",
+            "delno",
+            "close",
+        ):
+            with self.subTest(action=action):
+                self.assertTrue(
+                    is_moderator_callback(
+                        _callback(
+                            moderator,
+                            f"arc:{action}:1:0:2",
+                            callback_id=action,
+                        )
+                    )
+                )
 
 
 class SupervisorArchitectureTests(unittest.TestCase):
