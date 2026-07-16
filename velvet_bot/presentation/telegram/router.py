@@ -67,6 +67,7 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.publication_center_safe import (
         router as publication_center_router,
     )
+    from velvet_bot.handlers.quality_ai import router as quality_ai_router
     from velvet_bot.handlers.quality_center import router as quality_center_router
     from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
     from velvet_bot.handlers.quality_sets import router as quality_sets_router
@@ -112,6 +113,7 @@ def _build_root_router() -> Router:
     root.include_router(backup_center_router)
     root.include_router(quality_duplicates_router)
     root.include_router(quality_sets_router)
+    root.include_router(quality_ai_router)
     root.include_router(quality_center_router)
     root.include_router(character_aliases_router)
     root.include_router(telegram_analytics_import_router)
