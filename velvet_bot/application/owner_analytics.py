@@ -10,7 +10,7 @@ from velvet_bot.discussion_analytics import (
     get_discussion_overview,
     list_participant_stats,
 )
-from velvet_bot.discussion_insights import ThreadRebuildResult, rebuild_discussion_threads
+from velvet_bot.discussion_insights import RelinkResult, rebuild_discussion_threads
 from velvet_bot.telegram_export_import import (
     ExportImportSummary,
     import_telegram_export,
@@ -38,7 +38,7 @@ class DiscussionStats:
 @dataclass(frozen=True, slots=True)
 class ImportResult:
     summary: ExportImportSummary
-    relink: ThreadRebuildResult | None
+    relink: RelinkResult | None
 
 
 def primary_channel_id(channel_ids: frozenset[int]) -> int | None:
