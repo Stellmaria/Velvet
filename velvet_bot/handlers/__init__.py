@@ -69,6 +69,7 @@ from velvet_bot.handlers.reference_management import router as reference_managem
 from velvet_bot.handlers.references import router as references_router
 from velvet_bot.handlers.spoiler_save import router as spoiler_save_router
 from velvet_bot.handlers.start import router as start_router
+from velvet_bot.handlers.system_center import router as system_center_router
 from velvet_bot.handlers.telegram_analytics_import import (
     router as telegram_analytics_import_router,
 )
@@ -105,6 +106,7 @@ async def handle_unhandled_error(
     return True
 
 
+router.include_router(system_center_router)
 router.include_router(channel_analytics_router)
 router.include_router(analytics_dashboard_overrides_router)
 router.include_router(analytics_discussion_overrides_router)
