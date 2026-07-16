@@ -13,6 +13,12 @@ multi_story_support.install_multi_story_support()
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
+import velvet_bot.discussion_insights as discussion_insights_module
+from velvet_bot.discussion_summary_runtime import get_discussion_summary
+
+# Install the corrected Phase 5 query before the callback module imports it.
+discussion_insights_module.get_discussion_summary = get_discussion_summary
+
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
 from velvet_bot.handlers.admin_large_media_preview import (
     router as admin_large_media_preview_router,
