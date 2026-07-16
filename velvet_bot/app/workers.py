@@ -4,14 +4,17 @@ from functools import partial
 
 from aiogram import Bot
 
-from velvet_bot.ai_vision import MediaAIVisionService
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
-from velvet_bot.ollama_vision import ReliableMediaAIRepository, ReliableVisionClient
+from velvet_bot.ollama_vision import ReliableVisionClient
+from velvet_bot.resilient_ai_vision import (
+    ResilientMediaAIRepository,
+    ResilientMediaAIVisionService,
+)
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
 from velvet_bot.workers.iterations import process_backup_once
 
@@ -57,9 +60,9 @@ def build_worker_manager(
         )
     )
     if settings is not None and settings.ai_vision_enabled:
-        ai_service = MediaAIVisionService(
+        ai_service = ResilientMediaAIVisionService(
             bot=bot,
-            repository=ReliableMediaAIRepository(database),
+            repository=ResilientMediaAIRepository(database),
             client=ReliableVisionClient(
                 provider=settings.ai_vision_provider,
                 base_url=settings.ai_vision_base_url,
