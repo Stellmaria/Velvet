@@ -19,6 +19,7 @@ def _build_root_router() -> Router:
 
     # Install corrected media-set compatibility before handlers bind functions.
     import velvet_bot.media_set_duplicate_actions  # noqa: F401
+    import velvet_bot.media_set_ai_discovery  # noqa: F401
 
     install_media_set_ui()
 
