@@ -101,4 +101,6 @@ def install_media_set_actions() -> None:
     media_sets.create_media_set = create_media_set
 
 
+install_media_set_actions()
+
 __all__ = ("create_media_set", "install_media_set_actions")
