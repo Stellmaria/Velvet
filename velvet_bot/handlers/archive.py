@@ -9,7 +9,7 @@ from aiogram.types import Message
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Database
-from velvet_bot.media import extract_media
+from velvet_bot.media import MediaDescriptor, extract_media
 from velvet_bot.media_preview_persistence import set_media_preview
 from velvet_bot.services.media_save import save_media_from_message
 
@@ -73,6 +73,26 @@ def parse_guest_save_character(text: str, bot_username: str) -> str | None:
 def _caller_user_id(message: Message) -> int | None:
     caller = message.from_user or message.guest_bot_caller_user
     return caller.id if caller else None
+
+
+async def _persist_descriptor_preview(
+    database: Database,
+    *,
+    media_id: int,
+    media: MediaDescriptor,
+) -> None:
+    """Compatibility facade used by regression tests and legacy callers."""
+    if not media.preview_file_id:
+        return
+    await set_media_preview(
+        database,
+        media_id=media_id,
+        file_id=media.preview_file_id,
+        file_unique_id=media.preview_file_unique_id,
+        width=media.preview_width,
+        height=media.preview_height,
+        source=media.preview_source or "source_thumbnail",
+    )
 
 
 async def _build_save_response(
@@ -193,16 +213,11 @@ async def handle_new_archive_topic_media(
             command_message_id=None,
             archive_message_id=message.message_id,
         )
-        if media.preview_file_id:
-            await set_media_preview(
-                database,
-                media_id=result.media_id,
-                file_id=media.preview_file_id,
-                file_unique_id=media.preview_file_unique_id,
-                width=media.preview_width,
-                height=media.preview_height,
-                source=media.preview_source or "source_thumbnail",
-            )
+        await _persist_descriptor_preview(
+            database,
+            media_id=result.media_id,
+            media=media,
+        )
         logger.info(
             "Automatically archived topic media for character %s from %s/%s",
             character.id,
