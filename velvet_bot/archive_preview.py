@@ -119,6 +119,56 @@ async def _forward_for_thumbnail(
                 pass
 
 
+async def _resend_document_for_thumbnail(
+    bot: Bot,
+    *,
+    cache_chat_id: int,
+    file_id: str,
+) -> PhotoSize | None:
+    """Ask Telegram to expose the document thumbnail without downloading the file."""
+    temporary: Message | None = None
+    try:
+        temporary = await bot.send_document(
+            chat_id=cache_chat_id,
+            document=file_id,
+            disable_notification=True,
+        )
+        return _message_thumbnail(temporary)
+    except TelegramAPIError as error:
+        logger.info("Could not recover preview by resending document: %s", error)
+        return None
+    finally:
+        if temporary is not None:
+            try:
+                await bot.delete_message(
+                    chat_id=cache_chat_id,
+                    message_id=temporary.message_id,
+                )
+            except TelegramAPIError:
+                pass
+
+
+async def _store_thumbnail(
+    database: Database,
+    page: ArchivePage,
+    thumbnail: PhotoSize,
+    *,
+    source: str,
+) -> str | None:
+    if page.media is None:
+        return None
+    await set_media_preview(
+        database,
+        media_id=page.media.id,
+        file_id=thumbnail.file_id,
+        file_unique_id=thumbnail.file_unique_id,
+        width=thumbnail.width,
+        height=thumbnail.height,
+        source=source,
+    )
+    return thumbnail.file_id
+
+
 async def _recover_stored_thumbnail(
     bot: Bot,
     database: Database,
@@ -151,18 +201,26 @@ async def _recover_stored_thumbnail(
             from_chat_id=from_chat_id,
             message_id=message_id,
         )
-        if thumbnail is None:
-            continue
-        await set_media_preview(
+        if thumbnail is not None:
+            return await _store_thumbnail(
+                database,
+                page,
+                thumbnail,
+                source=source,
+            )
+
+    thumbnail = await _resend_document_for_thumbnail(
+        bot,
+        cache_chat_id=cache_chat_id,
+        file_id=page.media.telegram_file_id,
+    )
+    if thumbnail is not None:
+        return await _store_thumbnail(
             database,
-            media_id=page.media.id,
-            file_id=thumbnail.file_id,
-            file_unique_id=thumbnail.file_unique_id,
-            width=thumbnail.width,
-            height=thumbnail.height,
-            source=source,
+            page,
+            thumbnail,
+            source="document_resend_thumbnail",
         )
-        return thumbnail.file_id
     return None
 
 
@@ -216,9 +274,9 @@ async def persist_preview_from_sent_message(
     message: Message,
     source: str = "generated_preview",
 ) -> None:
-    if not message.photo:
+    preview = _message_thumbnail(message)
+    if preview is None:
         return
-    preview = message.photo[-1]
     await set_media_preview(
         database,
         media_id=media_id,
