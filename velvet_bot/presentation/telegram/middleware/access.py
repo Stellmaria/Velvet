@@ -27,6 +27,7 @@ from velvet_bot.core.access import (
     command_name,
     is_moderator_callback_data,
     is_owner_mention_text,
+    is_public_callback_data,
     is_public_command_text,
 )
 
@@ -46,7 +47,7 @@ ACCESS_DENIED_CALLBACK_TEXT = (
 
 
 def is_public_callback(callback: CallbackQuery) -> bool:
-    return bool(callback.data and callback.data.startswith(PUBLIC_CALLBACK_PREFIX))
+    return is_public_callback_data(callback.data)
 
 
 def is_moderator_user(user: User | None) -> bool:
