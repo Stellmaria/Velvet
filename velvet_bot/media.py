@@ -25,6 +25,11 @@ class MediaDescriptor:
     media_type: str
     mime_type: str | None
     file_size: int | None
+    preview_file_id: str | None = None
+    preview_file_unique_id: str | None = None
+    preview_width: int | None = None
+    preview_height: int | None = None
+    preview_source: str | None = None
 
 
 def sanitize_file_name(value: str) -> str:
@@ -64,7 +69,7 @@ def build_storage_file_name(
 
 
 def extract_media(source: MediaSource) -> MediaDescriptor | None:
-    """Extract supported media from a normal or external Telegram reply."""
+    """Extract supported media and its reusable preview from a Telegram message."""
     if source.photo:
         photo = source.photo[-1]
         return MediaDescriptor(
@@ -131,6 +136,7 @@ def extract_media(source: MediaSource) -> MediaDescriptor | None:
         default_stem = (
             "video" if (mime_type or "").startswith("video/") else "image"
         )
+        thumbnail = document.thumbnail
         return MediaDescriptor(
             telegram_file_id=document.file_id,
             telegram_file_unique_id=document.file_unique_id,
@@ -144,6 +150,11 @@ def extract_media(source: MediaSource) -> MediaDescriptor | None:
             media_type="document",
             mime_type=mime_type,
             file_size=document.file_size,
+            preview_file_id=thumbnail.file_id if thumbnail else None,
+            preview_file_unique_id=(thumbnail.file_unique_id if thumbnail else None),
+            preview_width=thumbnail.width if thumbnail else None,
+            preview_height=thumbnail.height if thumbnail else None,
+            preview_source="source_thumbnail" if thumbnail else None,
         )
 
     return None
