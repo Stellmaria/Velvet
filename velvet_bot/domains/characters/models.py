@@ -46,7 +46,7 @@ class CharacterDirectoryItem:
 
 @dataclass(frozen=True, slots=True)
 class CharacterDirectoryPage:
-    items: tuple[CharacterDirectoryItem, ...]
+    items: list[CharacterDirectoryItem]
     category: str
     page: int
     page_size: int
