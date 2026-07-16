@@ -14,6 +14,7 @@ from velvet_bot.discussion_analytics import (
     get_discussion_overview,
     list_participant_stats,
 )
+from velvet_bot.discussion_insights import rebuild_discussion_threads
 from velvet_bot.telegram_export_import import (
     ExportImportSummary,
     import_telegram_export,
@@ -122,10 +123,22 @@ async def _handle_import(
             parent_channel_id=(primary_channel_id if source_kind == "discussion" else None),
             imported_by=message.from_user.id if message.from_user else None,
         )
+        relink_text = ""
+        if source_kind == "discussion":
+            relink = await rebuild_discussion_threads(
+                database,
+                summary.source_chat_id,
+            )
+            relink_text = (
+                "\n\n<b>Связка с публикациями</b>\n"
+                f"Корней найдено: <b>{relink.roots_marked}</b>\n"
+                f"Комментариев привязано: <b>{relink.comments_linked}</b>\n"
+                f"Веток сопоставлено: <b>{relink.threads_linked}</b>"
+            )
     except (ValueError, RuntimeError) as error:
         await status.edit_text(f"<b>Импорт не выполнен</b>\n\n{escape(str(error))}")
         return
-    await status.edit_text(_import_summary_text(summary))
+    await status.edit_text(_import_summary_text(summary) + relink_text)
 
 
 @router.message(Command("importchannel"))
