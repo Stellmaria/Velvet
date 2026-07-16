@@ -6,8 +6,8 @@ import unittest
 from velvet_bot.database import Database
 from velvet_bot.domains.archive.repository import ArchiveRepository
 from velvet_bot.media import MediaDescriptor
+from velvet_bot.media_set_actions import create_media_set
 from velvet_bot.media_sets import (
-    create_media_set,
     discover_media_set_candidates,
     list_media_set_candidates,
 )
@@ -136,22 +136,28 @@ class MediaSetsPostgreSQLTests(unittest.IsolatedAsyncioTestCase):
                 prompt_post_url=replacement_url,
             )
         )
+        first_page = await archive.get_page(character_id=ada.id, offset=0)
+        second_page = await archive.get_page(character_id=eric.id, offset=0)
         async with self.database._require_pool().acquire() as connection:
-            prompt_rows = await connection.fetch(
-                """
-                SELECT DISTINCT cm.prompt_post_url
-                FROM character_media AS cm
-                JOIN media_files AS mf ON mf.id = cm.media_id
-                WHERE mf.media_set_id = $1::BIGINT
-                """,
-                created_set.id,
-            )
             set_prompt = await connection.fetchval(
                 "SELECT prompt_post_url FROM media_sets WHERE id = $1::BIGINT",
                 created_set.id,
             )
-        self.assertEqual([replacement_url], [row["prompt_post_url"] for row in prompt_rows])
         self.assertEqual(replacement_url, set_prompt)
+        self.assertEqual(replacement_url, first_page.media.prompt_post_url)
+        self.assertEqual(replacement_url, second_page.media.prompt_post_url)
+
+        self.assertTrue(
+            await archive.set_prompt(
+                character_id=eric.id,
+                media_id=second.media_id,
+                prompt_post_url=None,
+            )
+        )
+        first_page = await archive.get_page(character_id=ada.id, offset=0)
+        second_page = await archive.get_page(character_id=eric.id, offset=0)
+        self.assertIsNone(first_page.media.prompt_post_url)
+        self.assertIsNone(second_page.media.prompt_post_url)
 
 
 if __name__ == "__main__":
