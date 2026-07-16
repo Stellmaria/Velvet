@@ -56,6 +56,7 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.media_browser import router as media_browser_router
     from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
     from velvet_bot.handlers.multi_story_kr import router as multi_story_kr_router
+    from velvet_bot.handlers.owner_menu import router as owner_menu_router
     from velvet_bot.handlers.public_archive import router as public_archive_router
     from velvet_bot.handlers.public_manager import router as public_manager_router
     from velvet_bot.handlers.public_media_display import router as public_media_display_router
@@ -107,6 +108,7 @@ def _build_root_router() -> Router:
             )
         return True
 
+    root.include_router(owner_menu_router)
     root.include_router(supervisor_control_router)
     root.include_router(system_center_router)
     root.include_router(channel_analytics_router)
