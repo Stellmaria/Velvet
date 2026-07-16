@@ -344,8 +344,7 @@ async def _send_export(
         BufferedInputFile(payload, filename=f"velvet_system_report_{stamp}.json"),
         caption=(
             "<b>Диагностический отчёт Velvet Archive</b>\n\n"
-            "Токены, пароли и DATABASE_URL в файл не включаются. "
-            "Секреты хотя бы раз оставили за дверью, редкое достижение."
+            "Файл не содержит токены, пароли, DATABASE_URL и значения .env."
         ),
     )
 
@@ -389,9 +388,10 @@ async def handle_system_callback(
             await worker_manager.run_now(name)
         except (ValueError, RuntimeError) as error:
             if isinstance(callback.message, Message):
-                await callback.message.answer(f"<b>Запуск не выполнен</b>\n\n{escape(str(error))}")
+                await callback.message.answer(
+                    f"<b>Запуск не выполнен</b>\n\n{escape(str(error))}"
+                )
             return
-        report = await _build_report(bot, system_service, worker_manager)
         item = worker_manager.snapshot(name)
         if item is not None:
             await _safe_edit(callback, _worker_text(item), _worker_keyboard(name))
