@@ -70,7 +70,10 @@ class ArchiveRepository:
                     mf.mime_type,
                     mf.file_size,
                     cm.created_at AS linked_at,
-                    COALESCE(ms.prompt_post_url, cm.prompt_post_url) AS prompt_post_url,
+                    CASE
+                        WHEN ms.id IS NOT NULL THEN ms.prompt_post_url
+                        ELSE cm.prompt_post_url
+                    END AS prompt_post_url,
                     cm.archive_message_id,
                     cm.is_spoiler,
                     ms.id AS media_set_id,
@@ -192,7 +195,10 @@ class ArchiveRepository:
                         mf.mime_type,
                         mf.file_size,
                         cm.created_at AS linked_at,
-                        COALESCE(ms.prompt_post_url, cm.prompt_post_url) AS prompt_post_url,
+                        CASE
+                            WHEN ms.id IS NOT NULL THEN ms.prompt_post_url
+                            ELSE cm.prompt_post_url
+                        END AS prompt_post_url,
                         cm.archive_message_id,
                         cm.is_spoiler,
                         ms.id AS media_set_id,
