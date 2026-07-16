@@ -22,6 +22,10 @@ from velvet_bot.domains.discussions.post_insight_repository import (
 from velvet_bot.domains.discussions.post_insight_service import (
     DiscussionPostInsightService,
 )
+from velvet_bot.domains.discussions.ranking_repository import (
+    DiscussionRankingRepository,
+)
+from velvet_bot.domains.discussions.ranking_service import DiscussionRankingService
 from velvet_bot.domains.discussions.repository import DiscussionRepository
 from velvet_bot.domains.discussions.service import DiscussionService
 
@@ -39,6 +43,8 @@ __all__ = (
     "DiscussionOverview",
     "DiscussionPostInsightRepository",
     "DiscussionPostInsightService",
+    "DiscussionRankingRepository",
+    "DiscussionRankingService",
     "DiscussionRepository",
     "DiscussionService",
     "DiscussionSummary",
