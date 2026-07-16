@@ -3,6 +3,10 @@
 
 # Runtime data
 data/
+backups/
+*.dump
+*.dump.part
+*.dump.json
 *.db
 *.db-shm
 *.db-wal

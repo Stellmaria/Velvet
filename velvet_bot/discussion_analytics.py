@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
+import asyncpg
 from aiogram.types import Message
 
 from velvet_bot.channel_analytics import (
@@ -14,7 +16,6 @@ from velvet_bot.channel_analytics import (
     extract_links,
 )
 from velvet_bot.database import Database
-from velvet_bot.telegram_export_import import is_tracked_discussion
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,12 +62,184 @@ def _sender_id(message: Message) -> str | None:
     return None
 
 
+def _forwarded_channel_message_id(
+    message: Message,
+    parent_channel_id: int,
+) -> int | None:
+    origin = getattr(message, "forward_origin", None)
+    origin_chat = getattr(origin, "chat", None)
+    origin_message_id = getattr(origin, "message_id", None)
+    if (
+        origin_chat is not None
+        and getattr(origin_chat, "id", None) == parent_channel_id
+        and origin_message_id is not None
+    ):
+        return int(origin_message_id)
+
+    legacy_chat = getattr(message, "forward_from_chat", None)
+    legacy_message_id = getattr(message, "forward_from_message_id", None)
+    if (
+        legacy_chat is not None
+        and getattr(legacy_chat, "id", None) == parent_channel_id
+        and legacy_message_id is not None
+    ):
+        return int(legacy_message_id)
+    return None
+
+
+async def _tracked_discussion_parent(
+    connection: asyncpg.Connection,
+    chat_id: int,
+) -> int | None:
+    value = await connection.fetchval(
+        """
+        SELECT parent_channel_id
+        FROM tracked_channels
+        WHERE chat_id = $1::BIGINT
+          AND source_kind = 'discussion'
+          AND enabled = TRUE
+        """,
+        int(chat_id),
+    )
+    return int(value) if value is not None else None
+
+
+async def _resolve_root_message_id(
+    connection: asyncpg.Connection,
+    message: Message,
+    *,
+    is_root: bool,
+) -> int | None:
+    if is_root:
+        return int(message.message_id)
+    reply = message.reply_to_message
+    if reply is None:
+        return None
+    row = await connection.fetchrow(
+        """
+        SELECT message_id, discussion_root_message_id, is_discussion_root
+        FROM channel_posts
+        WHERE channel_id = $1::BIGINT
+          AND message_id = $2::BIGINT
+        """,
+        int(message.chat.id),
+        int(reply.message_id),
+    )
+    if row is not None:
+        if row["discussion_root_message_id"] is not None:
+            return int(row["discussion_root_message_id"])
+        if bool(row["is_discussion_root"]):
+            return int(row["message_id"])
+
+    if bool(getattr(reply, "is_automatic_forward", False)):
+        return int(reply.message_id)
+    return None
+
+
+async def _match_channel_post(
+    connection: asyncpg.Connection,
+    *,
+    parent_channel_id: int,
+    source_channel_message_id: int | None,
+    root_text: str,
+    root_date: datetime,
+) -> tuple[int | None, int | None, str]:
+    if source_channel_message_id is not None:
+        row = await connection.fetchrow(
+            """
+            SELECT id, message_id
+            FROM channel_posts
+            WHERE channel_id = $1::BIGINT
+              AND message_id = $2::BIGINT
+            """,
+            int(parent_channel_id),
+            int(source_channel_message_id),
+        )
+        return (
+            int(row["id"]) if row else None,
+            int(source_channel_message_id),
+            "live_forward" if row else "pending_forward",
+        )
+
+    if root_text.strip():
+        row = await connection.fetchrow(
+            """
+            SELECT id, message_id
+            FROM channel_posts
+            WHERE channel_id = $1::BIGINT
+              AND text_content = $2::TEXT
+              AND ABS(EXTRACT(EPOCH FROM (posted_at - $3::TIMESTAMPTZ))) <= 3600
+            ORDER BY ABS(EXTRACT(EPOCH FROM (posted_at - $3::TIMESTAMPTZ))), id
+            LIMIT 1
+            """,
+            int(parent_channel_id),
+            root_text,
+            root_date,
+        )
+        if row is not None:
+            return int(row["id"]), int(row["message_id"]), "live_exact_text"
+    return None, None, "pending"
+
+
+async def _upsert_discussion_thread(
+    connection: asyncpg.Connection,
+    *,
+    discussion_chat_id: int,
+    root_message_id: int,
+    parent_channel_id: int,
+    source_channel_message_id: int | None,
+    root_text: str,
+    root_date: datetime,
+) -> None:
+    channel_post_id, channel_message_id, link_source = await _match_channel_post(
+        connection,
+        parent_channel_id=parent_channel_id,
+        source_channel_message_id=source_channel_message_id,
+        root_text=root_text,
+        root_date=root_date,
+    )
+    await connection.execute(
+        """
+        INSERT INTO discussion_threads (
+            discussion_chat_id,
+            root_message_id,
+            parent_channel_id,
+            channel_message_id,
+            channel_post_id,
+            link_source,
+            updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (discussion_chat_id, root_message_id) DO UPDATE
+        SET parent_channel_id = EXCLUDED.parent_channel_id,
+            channel_message_id = COALESCE(
+                discussion_threads.channel_message_id,
+                EXCLUDED.channel_message_id
+            ),
+            channel_post_id = COALESCE(
+                discussion_threads.channel_post_id,
+                EXCLUDED.channel_post_id
+            ),
+            link_source = CASE
+                WHEN discussion_threads.channel_post_id IS NULL
+                    THEN EXCLUDED.link_source
+                ELSE discussion_threads.link_source
+            END,
+            updated_at = NOW()
+        """,
+        int(discussion_chat_id),
+        int(root_message_id),
+        int(parent_channel_id),
+        channel_message_id,
+        channel_post_id,
+        link_source,
+    )
+
+
 async def ingest_live_discussion_message(
     database: Database,
     message: Message,
 ) -> bool:
-    if not await is_tracked_discussion(database, message.chat.id):
-        return False
     if message.from_user is not None and message.from_user.is_bot:
         return False
 
@@ -87,6 +260,27 @@ async def ingest_live_discussion_message(
     media_type = detect_media_type(message)
 
     async with database._require_pool().acquire() as connection:
+        parent_channel_id = await _tracked_discussion_parent(
+            connection,
+            message.chat.id,
+        )
+        if parent_channel_id is None:
+            return False
+
+        source_channel_message_id = _forwarded_channel_message_id(
+            message,
+            parent_channel_id,
+        )
+        is_root = bool(
+            source_channel_message_id is not None
+            or getattr(message, "is_automatic_forward", False)
+        )
+        root_message_id = await _resolve_root_message_id(
+            connection,
+            message,
+            is_root=is_root,
+        )
+
         character_rows = await connection.fetch(
             "SELECT id, normalized_name FROM characters"
         )
@@ -102,10 +296,10 @@ async def ingest_live_discussion_message(
                     username = COALESCE($3, username),
                     last_post_at = GREATEST(last_post_at, $4),
                     updated_at = NOW()
-                WHERE chat_id = $1
+                WHERE chat_id = $1::BIGINT
                   AND source_kind = 'discussion'
                 """,
-                message.chat.id,
+                int(message.chat.id),
                 message.chat.title,
                 message.chat.username,
                 message.date,
@@ -121,7 +315,8 @@ async def ingest_live_discussion_message(
                     has_technical_section, has_palette,
                     sender_id, sender_name, reply_to_message_id, topic_id,
                     reactions_total, reaction_breakdown,
-                    imported_from_export, updated_at
+                    imported_from_export, discussion_root_message_id,
+                    is_discussion_root, source_channel_message_id, updated_at
                 )
                 VALUES (
                     $1, $2, $3, $4,
@@ -132,7 +327,7 @@ async def ingest_live_discussion_message(
                     $17, $18,
                     $19, $20, $21, $22,
                     0, '{}'::JSONB,
-                    FALSE, NOW()
+                    FALSE, $23, $24, $25, NOW()
                 )
                 ON CONFLICT (channel_id, message_id) DO UPDATE
                 SET publication_key = EXCLUDED.publication_key,
@@ -153,11 +348,23 @@ async def ingest_live_discussion_message(
                     sender_name = EXCLUDED.sender_name,
                     reply_to_message_id = EXCLUDED.reply_to_message_id,
                     topic_id = EXCLUDED.topic_id,
+                    discussion_root_message_id = COALESCE(
+                        EXCLUDED.discussion_root_message_id,
+                        channel_posts.discussion_root_message_id
+                    ),
+                    is_discussion_root = (
+                        channel_posts.is_discussion_root
+                        OR EXCLUDED.is_discussion_root
+                    ),
+                    source_channel_message_id = COALESCE(
+                        EXCLUDED.source_channel_message_id,
+                        channel_posts.source_channel_message_id
+                    ),
                     updated_at = NOW()
                 RETURNING id
                 """,
-                message.chat.id,
-                message.message_id,
+                int(message.chat.id),
+                int(message.message_id),
                 publication_key,
                 message.date,
                 message.edit_date,
@@ -178,17 +385,20 @@ async def ingest_live_discussion_message(
                 sender_name,
                 reply_to_message_id,
                 topic_id,
+                root_message_id,
+                is_root,
+                source_channel_message_id,
             )
             if post_id is None:
                 return False
 
             await connection.execute(
-                "DELETE FROM channel_post_hashtags WHERE post_id = $1",
-                post_id,
+                "DELETE FROM channel_post_hashtags WHERE post_id = $1::BIGINT",
+                int(post_id),
             )
             await connection.execute(
-                "DELETE FROM channel_post_links WHERE post_id = $1",
-                post_id,
+                "DELETE FROM channel_post_links WHERE post_id = $1::BIGINT",
+                int(post_id),
             )
             for display, normalized in extract_hashtags(text_content):
                 character_id = character_by_alias.get(compact_identity(normalized))
@@ -204,7 +414,7 @@ async def ingest_live_discussion_message(
                         character_id = EXCLUDED.character_id,
                         is_character = EXCLUDED.is_character
                     """,
-                    post_id,
+                    int(post_id),
                     display,
                     normalized,
                     character_id,
@@ -221,11 +431,138 @@ async def ingest_live_discussion_message(
                     SET domain = EXCLUDED.domain,
                         is_telegram = EXCLUDED.is_telegram
                     """,
-                    post_id,
+                    int(post_id),
                     url,
                     domain,
                     is_telegram,
                 )
+
+            if root_message_id is not None:
+                root_text = text_content
+                root_date = message.date
+                if not is_root and message.reply_to_message is not None:
+                    root_row = await connection.fetchrow(
+                        """
+                        SELECT text_content, posted_at, source_channel_message_id
+                        FROM channel_posts
+                        WHERE channel_id = $1::BIGINT
+                          AND message_id = $2::BIGINT
+                        """,
+                        int(message.chat.id),
+                        int(root_message_id),
+                    )
+                    if root_row is not None:
+                        root_text = str(root_row["text_content"] or "")
+                        root_date = root_row["posted_at"]
+                        if source_channel_message_id is None:
+                            source_channel_message_id = root_row[
+                                "source_channel_message_id"
+                            ]
+                    else:
+                        root_text = (
+                            message.reply_to_message.text
+                            or message.reply_to_message.caption
+                            or ""
+                        )
+                        root_date = message.reply_to_message.date
+
+                await _upsert_discussion_thread(
+                    connection,
+                    discussion_chat_id=message.chat.id,
+                    root_message_id=root_message_id,
+                    parent_channel_id=parent_channel_id,
+                    source_channel_message_id=(
+                        int(source_channel_message_id)
+                        if source_channel_message_id is not None
+                        else None
+                    ),
+                    root_text=root_text,
+                    root_date=root_date,
+                )
+    return True
+
+
+async def set_discussion_reaction_counts(
+    database: Database,
+    *,
+    chat_id: int,
+    message_id: int,
+    breakdown: dict[str, int],
+) -> bool:
+    clean = {
+        str(key): max(0, int(value))
+        for key, value in breakdown.items()
+        if int(value) > 0
+    }
+    async with database._require_pool().acquire() as connection:
+        if await _tracked_discussion_parent(connection, chat_id) is None:
+            return False
+        updated = await connection.fetchval(
+            """
+            UPDATE channel_posts
+            SET reactions_total = $3::INTEGER,
+                reaction_breakdown = $4::JSONB,
+                updated_at = NOW()
+            WHERE channel_id = $1::BIGINT
+              AND message_id = $2::BIGINT
+            RETURNING 1
+            """,
+            int(chat_id),
+            int(message_id),
+            sum(clean.values()),
+            json.dumps(clean, ensure_ascii=False),
+        )
+    return updated is not None
+
+
+async def apply_discussion_reaction_delta(
+    database: Database,
+    *,
+    chat_id: int,
+    message_id: int,
+    delta: dict[str, int],
+) -> bool:
+    async with database._require_pool().acquire() as connection:
+        if await _tracked_discussion_parent(connection, chat_id) is None:
+            return False
+        async with connection.transaction():
+            row = await connection.fetchrow(
+                """
+                SELECT reaction_breakdown
+                FROM channel_posts
+                WHERE channel_id = $1::BIGINT
+                  AND message_id = $2::BIGINT
+                FOR UPDATE
+                """,
+                int(chat_id),
+                int(message_id),
+            )
+            if row is None:
+                return False
+            current: dict[str, Any] = dict(row["reaction_breakdown"] or {})
+            normalized: dict[str, int] = {
+                str(key): max(0, int(value)) for key, value in current.items()
+            }
+            for key, value in delta.items():
+                new_value = max(0, normalized.get(str(key), 0) + int(value))
+                if new_value:
+                    normalized[str(key)] = new_value
+                else:
+                    normalized.pop(str(key), None)
+            await connection.execute(
+                """
+                UPDATE channel_posts
+                SET reactions_total = $3::INTEGER,
+                    reaction_breakdown = $4::JSONB,
+                    updated_at = NOW()
+                WHERE channel_id = $1::BIGINT
+                  AND message_id = $2::BIGINT
+                """,
+                int(chat_id),
+                int(message_id),
+                sum(normalized.values()),
+                json.dumps(normalized, ensure_ascii=False),
+            )
     return True
 
 
@@ -250,9 +587,9 @@ async def get_discussion_overview(
                 MIN(posted_at) AS first_message_at,
                 MAX(posted_at) AS last_message_at
             FROM channel_posts
-            WHERE channel_id = $1
+            WHERE channel_id = $1::BIGINT
             """,
-            chat_id,
+            int(chat_id),
         )
         hashtag_row = await connection.fetchrow(
             """
@@ -261,12 +598,12 @@ async def get_discussion_overview(
                 COUNT(DISTINCT h.normalized_hashtag) AS unique_hashtags
             FROM channel_post_hashtags AS h
             JOIN channel_posts AS p ON p.id = h.post_id
-            WHERE p.channel_id = $1
+            WHERE p.channel_id = $1::BIGINT
             """,
-            chat_id,
+            int(chat_id),
         )
     return DiscussionOverview(
-        chat_id=chat_id,
+        chat_id=int(chat_id),
         total_messages=int(row["total_messages"] or 0),
         total_publications=int(row["total_publications"] or 0),
         unique_participants=int(row["unique_participants"] or 0),
@@ -302,12 +639,12 @@ async def list_participant_stats(
                 MAX(p.posted_at) AS last_message_at
             FROM channel_posts AS p
             LEFT JOIN channel_post_hashtags AS h ON h.post_id = p.id
-            WHERE p.channel_id = $1
+            WHERE p.channel_id = $1::BIGINT
             GROUP BY COALESCE(sender_id, 'unknown')
             ORDER BY message_count DESC, last_message_at DESC
-            LIMIT $2
+            LIMIT $2::INTEGER
             """,
-            chat_id,
+            int(chat_id),
             max(1, min(limit, 100)),
         )
     return [

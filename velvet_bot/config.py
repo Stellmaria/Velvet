@@ -16,6 +16,9 @@ class Settings:
     log_chat_id: int | None
     analytics_channel_ids: frozenset[int]
     publication_timezone: str
+    backup_dir: str
+    pg_dump_path: str
+    pg_restore_path: str
 
 
 def _parse_integer_list(value: str, *, variable_name: str) -> frozenset[int]:
@@ -67,6 +70,13 @@ def _parse_timezone(value: str) -> str:
     return cleaned
 
 
+def _parse_required_path(value: str, *, default: str, variable_name: str) -> str:
+    cleaned = value.strip() or default
+    if "\x00" in cleaned:
+        raise RuntimeError(f"{variable_name} содержит недопустимый путь.")
+    return cleaned
+
+
 def load_settings() -> Settings:
     load_dotenv()
 
@@ -108,6 +118,21 @@ def load_settings() -> Settings:
     publication_timezone = _parse_timezone(
         os.getenv("PUBLICATION_TIMEZONE", "Europe/Berlin")
     )
+    backup_dir = _parse_required_path(
+        os.getenv("BACKUP_DIR", "backups"),
+        default="backups",
+        variable_name="BACKUP_DIR",
+    )
+    pg_dump_path = _parse_required_path(
+        os.getenv("PG_DUMP_PATH", "pg_dump"),
+        default="pg_dump",
+        variable_name="PG_DUMP_PATH",
+    )
+    pg_restore_path = _parse_required_path(
+        os.getenv("PG_RESTORE_PATH", "pg_restore"),
+        default="pg_restore",
+        variable_name="PG_RESTORE_PATH",
+    )
 
     return Settings(
         bot_token=bot_token,
@@ -117,4 +142,7 @@ def load_settings() -> Settings:
         log_chat_id=log_chat_id,
         analytics_channel_ids=analytics_channel_ids,
         publication_timezone=publication_timezone,
+        backup_dir=backup_dir,
+        pg_dump_path=pg_dump_path,
+        pg_restore_path=pg_restore_path,
     )

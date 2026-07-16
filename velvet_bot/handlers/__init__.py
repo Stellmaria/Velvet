@@ -12,6 +12,13 @@ multi_story_support.list_assigned_character_stories = list_assigned_character_st
 multi_story_support.install_multi_story_support()
 
 from velvet_bot.audit import TelegramAuditLogger
+from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
+import velvet_bot.discussion_insights as discussion_insights_module
+from velvet_bot.discussion_summary_runtime import get_discussion_summary
+
+# Install the corrected Phase 5 query before the callback module imports it.
+discussion_insights_module.get_discussion_summary = get_discussion_summary
+
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
 from velvet_bot.handlers.admin_large_media_preview import (
     router as admin_large_media_preview_router,
@@ -27,11 +34,13 @@ from velvet_bot.handlers.analytics_dashboard import router as analytics_dashboar
 from velvet_bot.handlers.analytics_dashboard_overrides import (
     router as analytics_dashboard_overrides_router,
 )
+import velvet_bot.handlers.analytics_discussion_overrides as analytics_discussion_module
 from velvet_bot.handlers.analytics_discussion_overrides import (
     router as analytics_discussion_overrides_router,
 )
 from velvet_bot.handlers.analytics_management import router as analytics_management_router
 from velvet_bot.handlers.archive import router as archive_router
+from velvet_bot.handlers.backup_center import router as backup_center_router
 from velvet_bot.handlers.channel_analytics import router as channel_analytics_router
 from velvet_bot.handlers.character_aliases import router as character_aliases_router
 from velvet_bot.handlers.characters import router as characters_router
@@ -65,6 +74,7 @@ from velvet_bot.handlers.telegram_analytics_import import (
 )
 from velvet_bot.safe_analytics_edit import install_safe_analytics_edit
 
+analytics_discussion_module._get_discussion_dashboard = get_discussion_dashboard_compat
 install_safe_analytics_edit()
 
 logger = logging.getLogger(__name__)
@@ -100,6 +110,7 @@ router.include_router(analytics_dashboard_overrides_router)
 router.include_router(analytics_discussion_overrides_router)
 router.include_router(analytics_management_router)
 router.include_router(analytics_dashboard_router)
+router.include_router(backup_center_router)
 router.include_router(quality_duplicates_router)
 router.include_router(quality_center_router)
 router.include_router(character_aliases_router)
