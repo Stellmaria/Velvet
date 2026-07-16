@@ -80,6 +80,7 @@ async def _send_page(
         "chat_id": chat_id,
         "caption": format_archive_caption(page),
         "reply_markup": build_archive_navigation(page),
+        "protect_content": True,
     }
     media = page.media
 

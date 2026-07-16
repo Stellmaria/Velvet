@@ -62,6 +62,7 @@ async def send_viewer_archive_page(
         "chat_id": chat_id,
         "caption": format_public_archive_caption(page, state),
         "reply_markup": keyboard,
+        "protect_content": True,
     }
     media = page.media
 
