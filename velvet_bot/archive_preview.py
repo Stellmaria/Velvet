@@ -10,6 +10,7 @@ from velvet_bot.domains.archive.preview_models import PreviewPayload, PreviewRec
 from velvet_bot.domains.archive.preview_repository import ArchivePreviewRepository
 from velvet_bot.infrastructure.telegram.archive_previews import (
     DEFAULT_BOT_API_DOWNLOAD_LIMIT,
+    FULL_QUALITY_PHOTO_SOURCE,
     PreviewMedia,
     TelegramArchivePreviewResolver,
     is_telegram_thumbnail_source,
@@ -125,7 +126,7 @@ async def persist_preview_from_sent_message(
     *,
     media_id: int,
     message: Message,
-    source: str = "generated_preview",
+    source: str = FULL_QUALITY_PHOTO_SOURCE,
 ) -> None:
     preview = message_thumbnail(message)
     if preview is None:
@@ -144,6 +145,7 @@ async def persist_preview_from_sent_message(
 
 __all__ = (
     "DEFAULT_BOT_API_DOWNLOAD_LIMIT",
+    "FULL_QUALITY_PHOTO_SOURCE",
     "PreviewMedia",
     "PreviewRecord",
     "persist_preview_from_sent_message",
