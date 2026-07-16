@@ -4,6 +4,7 @@ from aiogram.types import User
 
 from velvet_bot.access import (
     AccessPolicy,
+    is_owner_only_command_text,
     is_public_command_text,
     is_save_mention_text,
     normalize_username,
@@ -62,40 +63,46 @@ class AccessPolicyTests(unittest.TestCase):
             _parse_allowed_usernames("@VA_StellMaria, second_owner"),
         )
 
-    def test_public_commands_are_available_to_subscribers(self) -> None:
+    def test_public_commands_are_archive_entry_points_only(self) -> None:
         self.assertTrue(is_public_command_text("/start"))
         self.assertTrue(is_public_command_text("/archive"))
-        self.assertTrue(
-            is_public_command_text("/archive@dominusVelvetbot")
-        )
+        self.assertTrue(is_public_command_text("/archive@dominusVelvetbot"))
         self.assertTrue(is_public_command_text("/gallery"))
-        self.assertTrue(is_public_command_text("/menu"))
+        self.assertFalse(is_public_command_text("/menu"))
 
     def test_owner_commands_are_not_public(self) -> None:
         self.assertFalse(is_public_command_text("/characters"))
         self.assertFalse(is_public_command_text("/save Аид"))
+        self.assertFalse(is_public_command_text("/supervisor"))
+        self.assertFalse(is_public_command_text("/update"))
         self.assertFalse(is_public_command_text("archive"))
+
+    def test_owner_only_command_catalog_contains_system_controls(self) -> None:
+        for command in (
+            "/menu",
+            "/system",
+            "/backup",
+            "/publish",
+            "/supervisor",
+            "/logs",
+            "/restart",
+            "/update",
+            "/rollback",
+            "/codex",
+        ):
+            with self.subTest(command=command):
+                self.assertTrue(is_owner_only_command_text(command))
 
     def test_save_mention_is_protected_in_all_supported_positions(self) -> None:
         username = "dominusVelvetbot"
-        self.assertTrue(
-            is_save_mention_text("@dominusVelvetbot save Аид", username)
-        )
-        self.assertTrue(
-            is_save_mention_text("save @dominusVelvetbot Аид", username)
-        )
-        self.assertTrue(
-            is_save_mention_text("save Аид @dominusVelvetbot", username)
-        )
+        self.assertTrue(is_save_mention_text("@dominusVelvetbot save Аид", username))
+        self.assertTrue(is_save_mention_text("save @dominusVelvetbot Аид", username))
+        self.assertTrue(is_save_mention_text("save Аид @dominusVelvetbot", username))
 
     def test_reference_add_mention_is_owner_only(self) -> None:
         username = "dominusVelvetbot"
-        self.assertTrue(
-            is_save_mention_text("@dominusVelvetbot refadd Аид", username)
-        )
-        self.assertTrue(
-            is_save_mention_text("refadd Аид @dominusVelvetbot", username)
-        )
+        self.assertTrue(is_save_mention_text("@dominusVelvetbot refadd Аид", username))
+        self.assertTrue(is_save_mention_text("refadd Аид @dominusVelvetbot", username))
 
     def test_other_bot_mention_is_not_treated_as_ours(self) -> None:
         self.assertFalse(
