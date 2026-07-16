@@ -5,6 +5,7 @@ from html import escape
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from velvet_bot.ai_quality import AIQualitySummary
 from velvet_bot.media_quality import DuplicatePage
 from velvet_bot.quality_audit import QualityPage, QualitySummary
 
@@ -33,16 +34,37 @@ def quality_callback(
 
 def build_quality_dashboard(
     summary: QualitySummary,
+    ai_quality: AIQualitySummary | None = None,
 ) -> tuple[str, InlineKeyboardMarkup]:
-    text = (
-        "<b>Контроль качества Velvet Archive</b>\n\n"
-        f"Найдено проблем: <b>{summary.total_problems}</b>\n"
+    lines = [
+        "<b>Контроль качества Velvet Archive</b>",
+        "",
+        f"Найдено проблем: <b>{summary.total_problems}</b>",
         f"Визуальное сканирование: <b>{summary.pending_scans}</b> в очереди, "
-        f"ошибок <b>{summary.scan_errors}</b>\n"
-        f"Проверка Telegram-файлов: <b>{summary.unchecked_files}</b> в очереди\n\n"
-        "Выберите раздел. Исправления открываются через существующие карточки "
-        "персонажей и материалов."
+        f"ошибок <b>{summary.scan_errors}</b>",
+        f"Проверка Telegram-файлов: <b>{summary.unchecked_files}</b> в очереди",
+    ]
+    if ai_quality is not None:
+        lines.extend(
+            [
+                (
+                    "Qwen-проверка качества: "
+                    f"готово <b>{ai_quality.ready}</b>, "
+                    f"в очереди <b>{ai_quality.pending + ai_quality.processing}</b>, "
+                    f"ошибок <b>{ai_quality.errors + ai_quality.skipped}</b>"
+                ),
+                f"Решения владельца: принято <b>{ai_quality.accepted}</b>, "
+                f"на исправление <b>{ai_quality.fix_required}</b>",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "Выберите раздел. Исправления открываются через существующие карточки "
+            "персонажей и материалов.",
+        ]
     )
+
     rows = [
         [
             InlineKeyboardButton(
@@ -60,58 +82,71 @@ def build_quality_dashboard(
                 callback_data=quality_callback("sets", section="pending"),
             )
         ],
-        [
-            InlineKeyboardButton(
-                text=f"👥 Без категории · {summary.missing_category}",
-                callback_data=quality_callback("section", section="missing_category"),
-            ),
-            InlineKeyboardButton(
-                text=f"🌌 Без вселенной · {summary.missing_universe}",
-                callback_data=quality_callback("section", section="missing_universe"),
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"📖 Без истории · {summary.missing_story}",
-                callback_data=quality_callback("section", section="missing_story"),
-            ),
-            InlineKeyboardButton(
-                text=f"📦 Без материалов · {summary.empty_characters}",
-                callback_data=quality_callback("section", section="empty_characters"),
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"📝 Без поста · {summary.media_without_prompt}",
-                callback_data=quality_callback("section", section="media_without_prompt"),
-            ),
-            InlineKeyboardButton(
-                text=f"🔗 Битые файлы · {summary.broken_files}",
-                callback_data=quality_callback("section", section="broken_files"),
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"⚠ Ошибки сканирования · {summary.scan_errors}",
-                callback_data=quality_callback("section", section="scan_errors"),
-            ),
-            InlineKeyboardButton(
-                text=f"#️⃣ Не распознано · {summary.unresolved_hashtags}",
-                callback_data=quality_callback("section", section="unresolved_hashtags"),
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"🗃 Сиротские записи · {summary.orphan_media}",
-                callback_data=quality_callback("orphan_info"),
-            )
-        ],
-        [
-            InlineKeyboardButton(text="🔄 Обновить", callback_data=quality_callback("menu")),
-            InlineKeyboardButton(text="✖ Закрыть", callback_data=quality_callback("close")),
-        ],
     ]
-    return text, InlineKeyboardMarkup(inline_keyboard=rows)
+    if ai_quality is not None:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"🧠 Проверка изображений · {ai_quality.unreviewed}",
+                    callback_data=quality_callback("qchecks", section="review"),
+                )
+            ]
+        )
+    rows.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    text=f"👥 Без категории · {summary.missing_category}",
+                    callback_data=quality_callback("section", section="missing_category"),
+                ),
+                InlineKeyboardButton(
+                    text=f"🌌 Без вселенной · {summary.missing_universe}",
+                    callback_data=quality_callback("section", section="missing_universe"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"📖 Без истории · {summary.missing_story}",
+                    callback_data=quality_callback("section", section="missing_story"),
+                ),
+                InlineKeyboardButton(
+                    text=f"📦 Без материалов · {summary.empty_characters}",
+                    callback_data=quality_callback("section", section="empty_characters"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"📝 Без поста · {summary.media_without_prompt}",
+                    callback_data=quality_callback("section", section="media_without_prompt"),
+                ),
+                InlineKeyboardButton(
+                    text=f"🔗 Битые файлы · {summary.broken_files}",
+                    callback_data=quality_callback("section", section="broken_files"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"⚠ Ошибки сканирования · {summary.scan_errors}",
+                    callback_data=quality_callback("section", section="scan_errors"),
+                ),
+                InlineKeyboardButton(
+                    text=f"#️⃣ Не распознано · {summary.unresolved_hashtags}",
+                    callback_data=quality_callback("section", section="unresolved_hashtags"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"🗃 Сиротские записи · {summary.orphan_media}",
+                    callback_data=quality_callback("orphan_info"),
+                )
+            ],
+            [
+                InlineKeyboardButton(text="🔄 Обновить", callback_data=quality_callback("menu")),
+                InlineKeyboardButton(text="✖ Закрыть", callback_data=quality_callback("close")),
+            ],
+        ]
+    )
+    return "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def page_navigation(

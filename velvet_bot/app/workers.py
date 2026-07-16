@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from functools import partial
+from typing import Awaitable, Callable
 
 from aiogram import Bot
 
+from velvet_bot.ai_quality import AIQualityRepository, AIQualityService, QualityVisionClient
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
@@ -18,6 +21,15 @@ from velvet_bot.resilient_ai_vision import (
 )
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
 from velvet_bot.workers.iterations import process_backup_once
+
+
+async def _run_ai_locked(
+    lock: asyncio.Lock,
+    runner: Callable[[], Awaitable[int]],
+) -> int:
+    """Do not let two local vision requests compete for the same model memory."""
+    async with lock:
+        return await runner()
 
 
 def build_worker_manager(
@@ -62,10 +74,23 @@ def build_worker_manager(
         )
     )
     if settings is not None and settings.ai_vision_enabled:
+        ai_lock = asyncio.Lock()
         ai_service = ResilientMediaAIVisionService(
             bot=bot,
             repository=ResilientMediaAIRepository(database),
             client=ReliableVisionClient(
+                provider=settings.ai_vision_provider,
+                base_url=settings.ai_vision_base_url,
+                model=settings.ai_vision_model,
+                api_key=settings.ai_vision_api_key,
+                timeout_seconds=settings.ai_vision_timeout_seconds,
+            ),
+            max_attempts=settings.ai_vision_max_attempts,
+        )
+        quality_service = AIQualityService(
+            bot=bot,
+            repository=AIQualityRepository(database),
+            client=QualityVisionClient(
                 provider=settings.ai_vision_provider,
                 base_url=settings.ai_vision_base_url,
                 model=settings.ai_vision_model,
@@ -79,7 +104,15 @@ def build_worker_manager(
                 name="ai-vision",
                 description="Смысловой ИИ-анализ изображений",
                 interval_seconds=8,
-                runner=ai_service.process_once,
+                runner=partial(_run_ai_locked, ai_lock, ai_service.process_once),
+            )
+        )
+        manager.register(
+            PeriodicWorkerSpec(
+                name="ai-quality",
+                description="Qwen-проверка качества изображений",
+                interval_seconds=10,
+                runner=partial(_run_ai_locked, ai_lock, quality_service.process_once),
             )
         )
     if error_center is not None:
