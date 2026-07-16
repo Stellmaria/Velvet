@@ -31,6 +31,13 @@ def build_admin_commands() -> tuple[BotCommand, ...]:
     return (
         *build_public_commands(),
         BotCommand(command="system", description="Состояние бота и фоновых процессов"),
+        BotCommand(command="supervisor", description="Перезапуск, Git, логи и Codex"),
+        BotCommand(command="logs", description="Последние строки журнала бота"),
+        BotCommand(command="restart", description="Безопасно перезапустить бота"),
+        BotCommand(command="update", description="Обновить main, проверить и перезапустить"),
+        BotCommand(command="rollback", description="Откатить последнее развёртывание"),
+        BotCommand(command="codex", description="Поставить задачу Codex"),
+        BotCommand(command="codex_status", description="Проверить задачу Codex"),
         BotCommand(command="version", description="Версия приложения и схемы"),
         BotCommand(command="analytics", description="Аналитический центр"),
         BotCommand(command="backup", description="Резервные копии PostgreSQL"),
