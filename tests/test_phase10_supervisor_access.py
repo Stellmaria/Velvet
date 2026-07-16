@@ -12,6 +12,7 @@ from velvet_bot.core.access import (
     MODERATOR_COMMANDS,
     MODERATOR_USER_IDS,
     OWNER_ONLY_COMMANDS,
+    PUBLIC_CALLBACK_ACTIONS,
     PUBLIC_CALLBACK_PREFIX,
     PUBLIC_COMMANDS,
 )
@@ -79,16 +80,37 @@ class AccessBoundaryTests(unittest.TestCase):
     def test_public_access_is_archive_viewing_only(self) -> None:
         self.assertEqual(PUBLIC_COMMANDS, {"start", "archive", "gallery"})
         self.assertEqual(PUBLIC_CALLBACK_PREFIX, "pub:")
+        self.assertEqual(
+            PUBLIC_CALLBACK_ACTIONS,
+            {
+                "categories",
+                "universes",
+                "stories",
+                "menu",
+                "open",
+                "show",
+                "noop",
+                "close",
+                "back",
+            },
+        )
         self.assertNotIn("menu", PUBLIC_COMMANDS)
+        self.assertNotIn("like", PUBLIC_CALLBACK_ACTIONS)
+        self.assertNotIn("sub", PUBLIC_CALLBACK_ACTIONS)
+        self.assertNotIn("download", PUBLIC_CALLBACK_ACTIONS)
 
     def test_single_moderator_has_narrow_editor_permissions(self) -> None:
         self.assertEqual(MODERATOR_USER_IDS, {8179531132})
         self.assertEqual(MODERATOR_COMMANDS, {"characters", "prompt", "setprompt"})
-        self.assertEqual(MODERATOR_CALLBACK_PREFIXES, ("adir:", "astory:", "arc:"))
+        self.assertEqual(
+            MODERATOR_CALLBACK_PREFIXES,
+            ("adir:", "astory:", "arc:", "pub:"),
+        )
         self.assertEqual(
             set(MODERATOR_CALLBACK_ACTIONS),
-            {"adir", "astory", "arc"},
+            {"adir", "astory", "arc", "pub"},
         )
+        self.assertEqual(MODERATOR_CALLBACK_ACTIONS["pub"], {"download"})
 
     def test_owner_system_commands_do_not_overlap_other_roles(self) -> None:
         self.assertTrue(PUBLIC_COMMANDS.isdisjoint(OWNER_ONLY_COMMANDS))
@@ -124,7 +146,7 @@ class AccessBoundaryTests(unittest.TestCase):
         )
         public_callback = _callback(
             moderator,
-            "pub:archive:0",
+            "pub:categories:0",
             callback_id="public",
         )
         self.assertFalse(is_public_callback(supervisor_callback))
@@ -132,12 +154,27 @@ class AccessBoundaryTests(unittest.TestCase):
         self.assertTrue(is_moderator_callback(moderator_callback))
         self.assertTrue(is_public_callback(public_callback))
 
+    def test_public_mutations_are_not_public_callbacks(self) -> None:
+        stranger = User(id=11, is_bot=False, first_name="Viewer")
+        for action in ("like", "sub", "download", "pcat", "puni", "purge"):
+            with self.subTest(action=action):
+                self.assertFalse(
+                    is_public_callback(
+                        _callback(
+                            stranger,
+                            f"pub:{action}:1:0:2",
+                            callback_id=action,
+                        )
+                    )
+                )
+
     def test_unknown_actions_do_not_inherit_moderator_access(self) -> None:
         moderator = User(id=8179531132, is_bot=False, first_name="Moderator")
         for data in (
             "adir:owner_settings:0",
             "astory:delete_catalog:0",
             "arc:purge_all:0",
+            "pub:like:1:0:2",
             "sup:status:",
         ):
             with self.subTest(data=data):
@@ -170,6 +207,15 @@ class AccessBoundaryTests(unittest.TestCase):
                         )
                     )
                 )
+        self.assertTrue(
+            is_moderator_callback(
+                _callback(
+                    moderator,
+                    "pub:download:1:0:2",
+                    callback_id="download",
+                )
+            )
+        )
 
 
 class SupervisorArchitectureTests(unittest.TestCase):
