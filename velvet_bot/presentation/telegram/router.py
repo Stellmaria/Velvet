@@ -5,7 +5,6 @@ import logging
 from aiogram import Router
 from aiogram.types import ErrorEvent
 
-from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.owner_menu_compat import install_owner_menu_navigation
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
@@ -49,6 +48,7 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.character_aliases import router as character_aliases_router
     from velvet_bot.handlers.characters import router as characters_router
     from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
+    from velvet_bot.handlers.error_center import router as error_center_router
     from velvet_bot.handlers.guest_archive import router as guest_archive_router
     from velvet_bot.handlers.inline_help import router as inline_help_router
     from velvet_bot.handlers.kr_profile_overrides import router as kr_profile_overrides_router
@@ -85,10 +85,9 @@ def _build_root_router() -> Router:
     root = Router(name="velvet_bot.presentation.telegram")
 
     @root.error()
-    async def handle_unhandled_error(
-        event: ErrorEvent,
-        audit_logger: TelegramAuditLogger | None = None,
-    ) -> bool:
+    async def handle_unhandled_error(event: ErrorEvent) -> bool:
+        # The root logging handler forwards this record, traceback included, to the
+        # persistent incident center. Do not send a second audit message here.
         logger.critical(
             "Unhandled bot error: %s",
             event.exception,
@@ -98,15 +97,9 @@ def _build_root_router() -> Router:
                 event.exception.__traceback__,
             ),
         )
-        if audit_logger is not None:
-            await audit_logger.error(
-                "Необработанная ошибка бота",
-                event.exception,
-                update_id=event.update.update_id,
-                exception_type=type(event.exception).__name__,
-            )
         return True
 
+    root.include_router(error_center_router)
     root.include_router(owner_actions_router)
     root.include_router(owner_menu_router)
     root.include_router(supervisor_control_router)
