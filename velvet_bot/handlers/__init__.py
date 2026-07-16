@@ -20,6 +20,9 @@ from velvet_bot.handlers.analytics_dashboard import router as analytics_dashboar
 from velvet_bot.handlers.analytics_dashboard_overrides import (
     router as analytics_dashboard_overrides_router,
 )
+from velvet_bot.handlers.analytics_discussion_overrides import (
+    router as analytics_discussion_overrides_router,
+)
 from velvet_bot.handlers.analytics_management import router as analytics_management_router
 from velvet_bot.handlers.archive import router as archive_router
 from velvet_bot.handlers.channel_analytics import router as channel_analytics_router
@@ -80,6 +83,7 @@ async def handle_unhandled_error(
 
 router.include_router(channel_analytics_router)
 router.include_router(analytics_dashboard_overrides_router)
+router.include_router(analytics_discussion_overrides_router)
 router.include_router(analytics_management_router)
 router.include_router(analytics_dashboard_router)
 router.include_router(character_aliases_router)
