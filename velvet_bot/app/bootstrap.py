@@ -15,7 +15,6 @@ from velvet_bot.core.access import CHARACTER_EDITOR_USER_IDS
 from velvet_bot.core.config import Settings, load_settings
 from velvet_bot.database import Database
 from velvet_bot.protected_bot import ProtectedMediaBot
-from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 from velvet_bot.repositories.system_repository import SystemRepository
 from velvet_bot.services.system_health import SystemHealthService
@@ -25,13 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 def _build_bot(settings: Settings) -> ProtectedMediaBot:
-    unprotected_manager_ids = set(settings.allowed_user_ids)
-    unprotected_manager_ids.update(CHARACTER_EDITOR_USER_IDS)
-    unprotected_manager_ids.add(PUBLIC_DOWNLOAD_USER_ID)
     return ProtectedMediaBot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        unprotected_private_user_ids=unprotected_manager_ids,
     )
 
 
