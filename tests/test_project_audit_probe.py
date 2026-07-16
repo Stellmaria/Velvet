@@ -4,7 +4,7 @@ import ast
 import json
 import re
 import unittest
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -29,16 +29,25 @@ def _call_name(node: ast.AST) -> str:
     return ""
 
 
+def _literal_strings(call: ast.Call) -> list[str]:
+    return [
+        value.value
+        for value in call.args
+        if isinstance(value, ast.Constant) and isinstance(value.value, str)
+    ]
+
+
 class ProjectArchitectureProbe(unittest.TestCase):
     def test_emit_full_architecture_report(self) -> None:
         files = _python_files()
         modules = {_module_name(path): path for path in files}
         imports: dict[str, set[str]] = defaultdict(set)
         callback_prefixes: dict[str, list[str]] = defaultdict(list)
+        command_routes: dict[str, list[str]] = defaultdict(list)
         handler_imports: list[str] = []
         catch_all_routes: list[str] = []
         broad_exceptions: list[str] = []
-        private_db_access: list[str] = []
+        private_internal_access: list[str] = []
         monkeypatches: list[str] = []
         raw_callbacks: list[str] = []
         model_copies: list[str] = []
@@ -60,9 +69,7 @@ class ProjectArchitectureProbe(unittest.TestCase):
                         and node.module.startswith("velvet_bot.handlers.")
                         and node.module != module
                     ):
-                        handler_imports.append(
-                            f"{path}:{node.lineno} -> {node.module}"
-                        )
+                        handler_imports.append(f"{path}:{node.lineno} -> {node.module}")
                 elif isinstance(node, ast.Import):
                     for alias in node.names:
                         imports[module].add(alias.name)
@@ -86,6 +93,14 @@ class ProjectArchitectureProbe(unittest.TestCase):
                         name = _call_name(decorator.func)
                         if name.endswith("router.message") and not decorator.args and not decorator.keywords:
                             catch_all_routes.append(f"{path}:{node.lineno} {node.name}")
+                        if not name.endswith("router.message"):
+                            continue
+                        for argument in decorator.args:
+                            if isinstance(argument, ast.Call) and _call_name(argument.func).endswith("Command"):
+                                for command in _literal_strings(argument):
+                                    command_routes[command].append(
+                                        f"{path}:{node.lineno} {node.name}"
+                                    )
 
                 if isinstance(node, ast.ExceptHandler):
                     if isinstance(node.type, ast.Name) and node.type.id == "Exception":
@@ -93,7 +108,7 @@ class ProjectArchitectureProbe(unittest.TestCase):
 
                 if isinstance(node, ast.Attribute):
                     if node.attr in {"_require_pool", "_pool", "_connection", "_settings"}:
-                        private_db_access.append(f"{path}:{node.lineno} .{node.attr}")
+                        private_internal_access.append(f"{path}:{node.lineno} .{node.attr}")
 
                 if isinstance(node, ast.Call) and _call_name(node.func) == "setattr":
                     monkeypatches.append(f"{path}:{node.lineno} setattr")
@@ -126,6 +141,11 @@ class ProjectArchitectureProbe(unittest.TestCase):
             for prefix, owners in callback_prefixes.items()
             if len(owners) > 1
         }
+        duplicate_command_routes = {
+            command: routes
+            for command, routes in command_routes.items()
+            if len(routes) > 1
+        }
 
         migration_numbers: dict[str, list[str]] = defaultdict(list)
         for path in sorted(Path("migrations").glob("*.sql")):
@@ -147,6 +167,8 @@ class ProjectArchitectureProbe(unittest.TestCase):
         report = {
             "python_files": len(files),
             "total_lines": sum(len(path.read_text(encoding="utf-8").splitlines()) for path in files),
+            "all_command_names": sorted(command_routes),
+            "duplicate_command_routes": duplicate_command_routes,
             "long_modules_ge_500": sorted(long_modules, reverse=True),
             "duplicate_callback_prefixes": duplicate_prefixes,
             "duplicate_migration_numbers": duplicate_migrations,
@@ -154,8 +176,8 @@ class ProjectArchitectureProbe(unittest.TestCase):
             "catch_all_message_routes": sorted(set(catch_all_routes)),
             "broad_exception_handlers_count": len(broad_exceptions),
             "broad_exception_samples": sorted(set(broad_exceptions))[:80],
-            "private_internal_access_count": len(private_db_access),
-            "private_internal_access_samples": sorted(set(private_db_access))[:80],
+            "private_internal_access_count": len(private_internal_access),
+            "private_internal_access_samples": sorted(set(private_internal_access))[:80],
             "monkeypatch_sites": sorted(set(monkeypatches)),
             "raw_callback_literals": sorted(set(raw_callbacks)),
             "message_model_copy_sites": sorted(set(model_copies)),
