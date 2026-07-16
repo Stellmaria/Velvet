@@ -1,50 +1,23 @@
+from functools import partial
 from html import escape
 
 from aiogram import Bot, Router
-from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
+from velvet_bot.application.owner_profiles import (
+    bind_character_topic,
+    create_character_profile,
+    load_character_profile,
+)
 from velvet_bot.archive_ui import (
     build_character_archive_keyboard,
     build_character_list_keyboard,
 )
 from velvet_bot.database import Character, Database
-from velvet_bot.reference_catalog import count_character_references
-from velvet_bot.topics import TopicReference, split_character_and_topic
+from velvet_bot.services.telegram_topics import validate_topic_access
 
 router = Router(name=__name__)
-
-
-async def _validate_topic_access(bot: Bot, topic: TopicReference) -> None:
-    chat = await bot.get_chat(topic.chat_id)
-    if not chat.is_forum:
-        raise ValueError("Ссылка должна вести в тему группы с включёнными ветками.")
-
-    bot_info = await bot.get_me()
-    member = await bot.get_chat_member(topic.chat_id, bot_info.id)
-    if member.status not in {
-        ChatMemberStatus.CREATOR,
-        ChatMemberStatus.ADMINISTRATOR,
-    }:
-        raise ValueError(
-            "Бот должен быть администратором группы, к теме которой привязывается персонаж."
-        )
-
-
-async def _bind_topic(
-    bot: Bot,
-    database: Database,
-    character: Character,
-    topic: TopicReference,
-) -> Character:
-    await _validate_topic_access(bot, topic)
-    return await database.bind_character_topic(
-        character.id,
-        archive_chat_id=topic.chat_id,
-        archive_thread_id=topic.thread_id,
-        archive_topic_url=topic.url,
-    )
 
 
 def _topic_line(character: Character) -> str:
@@ -63,21 +36,19 @@ async def handle_create_character(
 ) -> None:
     if not command.args:
         await message.answer(
-            "Укажите имя персонажа и ссылку на его тему.\n\n"
+            "Укажите имя персонажа и при необходимости ссылку на его тему.\n\n"
             "Пример:\n"
             "<code>/create Аид https://t.me/c/3951213065/1398</code>"
         )
         return
-
     try:
-        character_name, topic = split_character_and_topic(command.args)
-        character, created = await database.create_character(
-            character_name,
-            created_by=message.from_user.id if message.from_user else None,
-            created_in_chat=message.chat.id,
+        result = await create_character_profile(
+            database,
+            command.args,
+            actor_id=message.from_user.id if message.from_user else None,
+            chat_id=message.chat.id,
+            validate_topic=partial(validate_topic_access, bot),
         )
-        if topic is not None:
-            character = await _bind_topic(bot, database, character, topic)
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
@@ -88,29 +59,23 @@ async def handle_create_character(
         )
         return
 
-    safe_name = escape(character.name)
-    media_count = await database.count_character_media(character.id)
-    reference_count = await count_character_references(database, character.id)
-
-    if created:
+    profile = result.profile
+    character = profile.character
+    if result.created:
         heading = "<b>Профиль персонажа создан</b>"
-    elif topic is not None:
+    elif result.topic_supplied:
         heading = "<b>Профиль уже существовал, тема архива обновлена</b>"
     else:
         heading = "<b>Профиль уже существует</b>"
-
     await message.answer(
         f"{heading}\n\n"
-        f"Имя: <b>{safe_name}</b>\n"
+        f"Имя: <b>{escape(character.name)}</b>\n"
         f"ID: <code>{character.id}</code>\n"
-        f"Фото и видео в архиве: <b>{media_count}</b>\n"
-        f"Референсов: <b>{reference_count}</b>\n"
+        f"Фото и видео в архиве: <b>{profile.media_count}</b>\n"
+        f"Референсов: <b>{profile.reference_count}</b>\n"
         f"{_topic_line(character)}\n\n"
-        "Новые фото и видео из назначенной темы будут учитываться автоматически. "
-        "Медиа, сохранённые через <code>/save</code> или Guest Mode, "
-        "бот отправит в эту тему.\n"
-        f"Добавить референсы: <code>/refadd {safe_name}</code>.",
-        reply_markup=build_character_archive_keyboard(character, media_count),
+        "Новые фото и видео из назначенной темы будут учитываться автоматически.",
+        reply_markup=build_character_archive_keyboard(character, profile.media_count),
     )
 
 
@@ -128,21 +93,12 @@ async def handle_bind_character_topic(
             "<code>/topic Аид https://t.me/c/3951213065/1398</code>"
         )
         return
-
     try:
-        character_name, topic = split_character_and_topic(command.args)
-        if topic is None:
-            raise ValueError("После имени укажите ссылку на тему Telegram.")
-
-        character = await database.get_character(character_name)
-        if character is None:
-            await message.answer(
-                "Такой персонаж не найден.\n"
-                "Сначала создайте его командой <code>/create Имя</code>."
-            )
-            return
-
-        character = await _bind_topic(bot, database, character, topic)
+        profile = await bind_character_topic(
+            database,
+            command.args,
+            validate_topic=partial(validate_topic_access, bot),
+        )
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
@@ -152,13 +108,14 @@ async def handle_bind_character_topic(
             f"<code>{escape(str(error))}</code>"
         )
         return
-
-    media_count = await database.count_character_media(character.id)
     await message.answer(
         "<b>Тема архива назначена</b>\n\n"
-        f"Персонаж: <b>{escape(character.name)}</b>\n"
-        f"{_topic_line(character)}",
-        reply_markup=build_character_archive_keyboard(character, media_count),
+        f"Персонаж: <b>{escape(profile.character.name)}</b>\n"
+        f"{_topic_line(profile.character)}",
+        reply_markup=build_character_archive_keyboard(
+            profile.character,
+            profile.media_count,
+        ),
     )
 
 
@@ -172,7 +129,6 @@ async def handle_list_characters(message: Message, database: Database) -> None:
             "<code>/create Аид https://t.me/c/3951213065/1398</code>"
         )
         return
-
     lines = ["<b>Персонажи Velvet Archive</b>", ""]
     for index, character in enumerate(characters, start=1):
         topic_mark = " 📁" if character.archive_topic_url else ""
@@ -187,7 +143,6 @@ async def handle_list_characters(message: Message, database: Database) -> None:
             "Нажмите кнопку персонажа, чтобы открыть его медиа.",
         ]
     )
-
     await message.answer(
         "\n".join(lines),
         reply_markup=build_character_list_keyboard(characters),
@@ -206,33 +161,23 @@ async def handle_character(
             "Пример: <code>/character Аид</code>"
         )
         return
-
     try:
-        character = await database.get_character(command.args)
+        profile = await load_character_profile(database, command.args)
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
-
-    if character is None:
-        await message.answer(
-            "Такой персонаж не найден.\n\n"
-            "Список: <code>/characters</code>"
-        )
+    if profile is None:
+        await message.answer("Такой персонаж не найден.\n\nСписок: <code>/characters</code>")
         return
-
-    media_count = await database.count_character_media(character.id)
-    reference_count = await count_character_references(database, character.id)
-    created_at = character.created_at.astimezone().strftime(
-        "%d.%m.%Y %H:%M:%S %Z"
-    )
+    character = profile.character
+    created_at = character.created_at.astimezone().strftime("%d.%m.%Y %H:%M:%S %Z")
     await message.answer(
         "<b>Профиль персонажа</b>\n\n"
         f"Имя: <b>{escape(character.name)}</b>\n"
         f"ID: <code>{character.id}</code>\n"
-        f"Фото и видео в архиве: <b>{media_count}</b>\n"
-        f"Референсов: <b>{reference_count}</b>\n"
+        f"Фото и видео в архиве: <b>{profile.media_count}</b>\n"
+        f"Референсов: <b>{profile.reference_count}</b>\n"
         f"{_topic_line(character)}\n"
-        f"Создан: <code>{escape(created_at)}</code>\n\n"
-        f"Референсы: <code>/refs {escape(character.name)}</code>",
-        reply_markup=build_character_archive_keyboard(character, media_count),
+        f"Создан: <code>{escape(created_at)}</code>",
+        reply_markup=build_character_archive_keyboard(character, profile.media_count),
     )
