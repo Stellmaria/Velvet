@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS discussion_threads (
         CHECK (discussion_chat_id <> parent_channel_id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_discussion_threads_source_message
+-- The same publication can produce more than one root in imported histories
+-- or albums, so this is deliberately non-unique.
+CREATE INDEX IF NOT EXISTS idx_discussion_threads_source_message
     ON discussion_threads(discussion_chat_id, channel_message_id)
     WHERE channel_message_id IS NOT NULL;
 
