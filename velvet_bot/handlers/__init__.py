@@ -13,6 +13,10 @@ from velvet_bot.handlers.admin_universe_story_flow import (
     router as admin_universe_story_flow_router,
 )
 from velvet_bot.handlers.analytics_dashboard import router as analytics_dashboard_router
+from velvet_bot.handlers.analytics_dashboard_overrides import (
+    router as analytics_dashboard_overrides_router,
+)
+from velvet_bot.handlers.analytics_management import router as analytics_management_router
 from velvet_bot.handlers.archive import router as archive_router
 from velvet_bot.handlers.channel_analytics import router as channel_analytics_router
 from velvet_bot.handlers.character_aliases import router as character_aliases_router
@@ -67,6 +71,8 @@ async def handle_unhandled_error(
 
 
 router.include_router(channel_analytics_router)
+router.include_router(analytics_dashboard_overrides_router)
+router.include_router(analytics_management_router)
 router.include_router(analytics_dashboard_router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)

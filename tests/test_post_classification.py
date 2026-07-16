@@ -14,6 +14,16 @@ class PostClassificationTests(unittest.TestCase):
         self.assertEqual("prompt", result.post_type)
         self.assertGreaterEqual(result.confidence, 95)
 
+    def test_prompt_structure_is_rediscovered_after_manual_override(self) -> None:
+        result = classify_post(
+            "ВАЖНО:\nСохранить внешность.\nСТРОГО:\nНе менять лицо.",
+            (),
+            is_prompt=False,
+            media_type="photo",
+        )
+        self.assertEqual("prompt", result.post_type)
+        self.assertGreaterEqual(result.confidence, 95)
+
     def test_giveaway_by_hashtag(self) -> None:
         result = classify_post(
             "Создайте работу и участвуйте",
