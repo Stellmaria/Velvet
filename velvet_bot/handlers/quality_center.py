@@ -5,6 +5,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 
+from velvet_bot.ai_quality import AIQualityRepository
 from velvet_bot.archive_ui import ArchiveMediaCallback
 from velvet_bot.database import Database
 from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
@@ -45,16 +46,20 @@ async def _safe_edit(message: Message, text: str, reply_markup) -> None:
             raise
 
 
-async def _show_dashboard(message: Message, database: Database) -> None:
+async def _dashboard_payload(database: Database):
     summary = await get_quality_summary(database)
-    text, keyboard = build_quality_dashboard(summary)
+    ai_quality = await AIQualityRepository(database).summary()
+    return build_quality_dashboard(summary, ai_quality)
+
+
+async def _show_dashboard(message: Message, database: Database) -> None:
+    text, keyboard = await _dashboard_payload(database)
     await _safe_edit(message, text, keyboard)
 
 
 @router.message(Command("quality", "auditarchive"))
 async def handle_quality_command(message: Message, database: Database) -> None:
-    summary = await get_quality_summary(database)
-    text, keyboard = build_quality_dashboard(summary)
+    text, keyboard = await _dashboard_payload(database)
     await message.answer(text, reply_markup=keyboard)
 
 
