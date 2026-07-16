@@ -1,6 +1,10 @@
 import unittest
+from unittest.mock import AsyncMock, patch
 
+from velvet_bot.backup_runtime import BackupService as RuntimeBackupService
 from velvet_bot.backup_service import (
+    BackupError,
+    BackupService as BaseBackupService,
     parse_pg_restore_tables,
     select_retained_paths,
 )
@@ -81,6 +85,38 @@ class BackupHelperTests(unittest.TestCase):
         kept, deleted = select_retained_paths(records, 1)
         self.assertEqual({5, 4, 3}, kept)
         self.assertEqual({2, 1}, deleted)
+
+
+class BackupRuntimeTests(unittest.IsolatedAsyncioTestCase):
+    def make_service(self) -> RuntimeBackupService:
+        return RuntimeBackupService(
+            database_url="postgresql://test:test@localhost/test",
+            backup_dir="backups-test",
+            pg_dump_path="missing-pg-dump",
+            pg_restore_path="missing-pg-restore",
+        )
+
+    async def test_missing_pg_dump_skips_optional_startup_backup(self) -> None:
+        service = self.make_service()
+        missing = BackupError(
+            "Не найден pg_dump. Укажите путь в .env или добавьте утилиты PostgreSQL в PATH."
+        )
+        with patch.object(
+            BaseBackupService,
+            "prepare_pre_migration_backup",
+            new=AsyncMock(side_effect=missing),
+        ):
+            self.assertFalse(await service.prepare_pre_migration_backup())
+
+    async def test_other_startup_backup_errors_are_not_hidden(self) -> None:
+        service = self.make_service()
+        with patch.object(
+            BaseBackupService,
+            "prepare_pre_migration_backup",
+            new=AsyncMock(side_effect=BackupError("PostgreSQL недоступен.")),
+        ):
+            with self.assertRaisesRegex(BackupError, "PostgreSQL недоступен"):
+                await service.prepare_pre_migration_backup()
 
 
 if __name__ == "__main__":
