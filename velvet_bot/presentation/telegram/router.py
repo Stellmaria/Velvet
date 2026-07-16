@@ -6,7 +6,6 @@ from aiogram import Router
 from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
-from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
 from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.owner_menu_compat import install_owner_menu_navigation
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
@@ -40,7 +39,6 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.analytics_dashboard_overrides import (
         router as analytics_dashboard_overrides_router,
     )
-    import velvet_bot.handlers.analytics_discussion_overrides as analytics_discussion_module
     from velvet_bot.handlers.analytics_discussion_overrides import (
         router as analytics_discussion_overrides_router,
     )
@@ -83,8 +81,6 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.telegram_analytics_import import (
         router as telegram_analytics_import_router,
     )
-
-    analytics_discussion_module._get_discussion_dashboard = get_discussion_dashboard_compat
 
     root = Router(name="velvet_bot.presentation.telegram")
 
