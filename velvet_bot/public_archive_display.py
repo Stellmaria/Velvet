@@ -11,7 +11,7 @@ from velvet_bot.archive_catalog import ArchivePage
 from velvet_bot.archive_ui import build_input_media
 from velvet_bot.character_directory import get_character_directory_item
 from velvet_bot.database import Database
-from velvet_bot.image_preview import build_image_document_preview
+from velvet_bot.image_preview import ImagePreviewError, build_image_document_preview
 from velvet_bot.public_catalog import get_public_media_state
 from velvet_bot.public_manager_ui import build_manager_archive_keyboard
 from velvet_bot.public_ui import build_public_archive_keyboard, format_public_archive_caption
@@ -96,8 +96,23 @@ async def build_viewer_input_media(
                 parse_mode=ParseMode.HTML,
                 has_spoiler=page.media.is_spoiler,
             )
+        except ImagePreviewError as error:
+            logger.info(
+                "Public image preview unavailable for media_id=%s: %s",
+                page.media.id,
+                error,
+            )
+        except TelegramAPIError as error:
+            logger.info(
+                "Telegram rejected public image preview for media_id=%s: %s",
+                page.media.id,
+                error,
+            )
         except Exception:
-            logger.exception("Failed to prepare compressed public image preview")
+            logger.exception(
+                "Failed to prepare compressed public image preview for media_id=%s",
+                page.media.id,
+            )
     return build_input_media(page.media, caption)
 
 
@@ -159,10 +174,23 @@ async def send_viewer_archive_page(
                 has_spoiler=page.media.is_spoiler,
                 **common,
             )
+        except ImagePreviewError as error:
+            logger.info(
+                "Compressed public preview unavailable for media_id=%s: %s",
+                page.media.id,
+                error,
+            )
         except TelegramAPIError as error:
-            logger.info("Compressed public preview fallback to document: %s", error)
+            logger.info(
+                "Compressed public preview fallback to document for media_id=%s: %s",
+                page.media.id,
+                error,
+            )
         except Exception:
-            logger.exception("Compressed public preview generation failed")
+            logger.exception(
+                "Compressed public preview generation failed for media_id=%s",
+                page.media.id,
+            )
     return await bot.send_document(document=page.media.telegram_file_id, **common)
 
 
