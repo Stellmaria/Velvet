@@ -6,11 +6,11 @@ from pathlib import Path
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.database import Database
 from velvet_bot.discussion_insights import (
-    get_discussion_summary,
     list_active_participants,
     list_discussed_characters,
     list_discussed_posts,
 )
+from velvet_bot.discussion_summary_runtime import get_discussion_summary
 
 
 @unittest.skipUnless(
