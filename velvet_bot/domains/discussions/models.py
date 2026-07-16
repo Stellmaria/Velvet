@@ -7,26 +7,28 @@ from datetime import datetime
 @dataclass(frozen=True, slots=True)
 class DiscussionOverview:
     chat_id: int
-    parent_channel_id: int | None
-    chat_title: str | None
-    chat_username: str | None
     total_messages: int
-    root_posts: int
-    replies: int
-    participant_count: int
-    reactions_total: int
+    total_publications: int
+    unique_participants: int
+    reply_messages: int
+    media_messages: int
+    spoiler_messages: int
+    prompt_messages: int
+    total_hashtag_uses: int
+    unique_hashtags: int
+    total_reactions: int
     first_message_at: datetime | None
     last_message_at: datetime | None
 
 
 @dataclass(frozen=True, slots=True)
 class ParticipantStat:
-    user_id: int | None
-    display_name: str
-    username: str | None
+    sender_id: str
+    sender_name: str
     message_count: int
     reply_count: int
-    reactions_received: int
+    media_count: int
+    hashtag_count: int
     last_message_at: datetime | None
 
 
