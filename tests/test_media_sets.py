@@ -44,7 +44,7 @@ class MediaSetHeuristicTests(unittest.TestCase):
         self.assertEqual(
             "wild west",
             _filename_family(
-                "Wild_West_Ada__1234567890abcdef12345678.png",
+                "Wild-West-Ada__1234567890abcdef12345678.png",
                 ("Ада", "Ada"),
             ),
         )
@@ -55,7 +55,7 @@ class MediaSetHeuristicTests(unittest.TestCase):
             self.make_context(
                 media_id,
                 character=character,
-                file_name=f"western_{character}.png",
+                file_name=f"western-{character}.png",
                 minutes=media_id,
                 prompt_url=prompt,
             )
