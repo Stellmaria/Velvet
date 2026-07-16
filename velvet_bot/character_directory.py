@@ -1,230 +1,30 @@
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
-
-from velvet_bot.database import Character, Database
-
-CATEGORY_ORDER = ("female", "male", "mf", "mfm", "mm", "ff")
-CATEGORY_LABELS = {
-    "female": "Женский",
-    "male": "Мужской",
-    "mf": "МЖ",
-    "mfm": "МЖМ",
-    "mm": "ММ",
-    "ff": "ЖЖ",
-    "uncategorized": "Без категории",
-}
-CATEGORY_EMOJI = {
-    "female": "👩",
-    "male": "👨",
-    "mf": "👩‍❤️‍👨",
-    "mfm": "👨‍👩‍👨",
-    "mm": "👨‍❤️‍👨",
-    "ff": "👩‍❤️‍👩",
-    "uncategorized": "📦",
-}
-_CATEGORY_ALIASES = {
-    "женский": "female",
-    "женская": "female",
-    "женщина": "female",
-    "ж": "female",
-    "female": "female",
-    "мужской": "male",
-    "мужская": "male",
-    "мужчина": "male",
-    "м": "male",
-    "male": "male",
-    "мж": "mf",
-    "жм": "mf",
-    "mf": "mf",
-    "fm": "mf",
-    "мжм": "mfm",
-    "mfm": "mfm",
-    "мм": "mm",
-    "mm": "mm",
-    "жж": "ff",
-    "ff": "ff",
-    "без": "uncategorized",
-    "нет": "uncategorized",
-    "none": "uncategorized",
-    "uncategorized": "uncategorized",
-}
-
-UNIVERSE_ORDER = ("shs", "kr", "lm", "idm", "bg3", "lagerta", "original")
-UNIVERSE_LABELS = {
-    "shs": "SHS",
-    "kr": "КР",
-    "lm": "ЛМ",
-    "idm": "ИДМ",
-    "bg3": "BG3",
-    "lagerta": "Лагерта",
-    "original": "Original",
-    "unassigned": "Без вселенной",
-}
-UNIVERSE_EMOJI = {
-    "shs": "🖤",
-    "kr": "💎",
-    "lm": "🌙",
-    "idm": "🕯",
-    "bg3": "🎲",
-    "lagerta": "⚔️",
-    "original": "✨",
-    "unassigned": "📦",
-}
-_UNIVERSE_ALIASES = {
-    "shs": "shs",
-    "схс": "shs",
-    "кр": "kr",
-    "kr": "kr",
-    "лм": "lm",
-    "lm": "lm",
-    "идм": "idm",
-    "idm": "idm",
-    "bg3": "bg3",
-    "бг3": "bg3",
-    "baldursgate3": "bg3",
-    "baldur'sgate3": "bg3",
-    "лагерта": "lagerta",
-    "lagerta": "lagerta",
-    "original": "original",
-    "оригинал": "original",
-    "ориджинал": "original",
-    "без": "unassigned",
-    "нет": "unassigned",
-    "none": "unassigned",
-    "unassigned": "unassigned",
-}
-
-_PROMPT_URL_RE = re.compile(
-    r"^https://t\.me/(?:c/\d+|[A-Za-z0-9_]+)/\d+(?:\?[^\s]+)?$",
-    re.IGNORECASE,
+from velvet_bot.database import Database
+from velvet_bot.domains.characters import (
+    CATEGORY_EMOJI,
+    CATEGORY_LABELS,
+    CATEGORY_ORDER,
+    UNIVERSE_EMOJI,
+    UNIVERSE_LABELS,
+    UNIVERSE_ORDER,
+    CategorySummary,
+    CharacterDirectoryItem,
+    CharacterDirectoryPage,
+    CharacterDirectoryRepository,
+    CharacterDirectoryService,
+    UniverseSummary,
+    category_label,
+    normalize_category,
+    normalize_universe,
+    story_label,
+    universe_label,
+    validate_prompt_post_url,
 )
-_STORY_REQUIRED_SQL = "('shs', 'kr', 'lm', 'idm')"
 
 
-@dataclass(frozen=True, slots=True)
-class CategorySummary:
-    key: str
-    label: str
-    emoji: str
-    character_count: int
-
-
-@dataclass(frozen=True, slots=True)
-class UniverseSummary:
-    key: str
-    label: str
-    emoji: str
-    character_count: int
-
-
-@dataclass(frozen=True, slots=True)
-class CharacterDirectoryItem:
-    character: Character
-    category: str | None
-    prompt_post_url: str | None
-    media_count: int
-    universe: str | None = None
-    story_id: int | None = None
-    story_short_label: str | None = None
-    story_title: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class CharacterDirectoryPage:
-    items: list[CharacterDirectoryItem]
-    category: str
-    page: int
-    page_size: int
-    total_characters: int
-    universe: str | None = None
-    story_id: int | None = None
-    story_short_label: str | None = None
-    story_title: str | None = None
-
-    @property
-    def total_pages(self) -> int:
-        return max(1, (self.total_characters + self.page_size - 1) // self.page_size)
-
-
-def normalize_category(value: str, *, allow_uncategorized: bool = False) -> str:
-    normalized = "".join(value.casefold().split())
-    category = _CATEGORY_ALIASES.get(normalized)
-    if category is None or (category == "uncategorized" and not allow_uncategorized):
-        allowed = "женский, мужской, мж, мжм, мм, жж"
-        raise ValueError(f"Неизвестная категория. Доступны: {allowed}.")
-    return category
-
-
-def normalize_universe(value: str, *, allow_unassigned: bool = False) -> str:
-    normalized = "".join(value.casefold().split())
-    universe = _UNIVERSE_ALIASES.get(normalized)
-    if universe is None or (universe == "unassigned" and not allow_unassigned):
-        allowed = "SHS, КР, ЛМ, ИДМ, BG3, Лагерта, Original"
-        raise ValueError(f"Неизвестная вселенная. Доступны: {allowed}.")
-    return universe
-
-
-def category_label(category: str | None) -> str:
-    return CATEGORY_LABELS.get(
-        category or "uncategorized",
-        CATEGORY_LABELS["uncategorized"],
-    )
-
-
-def universe_label(universe: str | None) -> str:
-    return UNIVERSE_LABELS.get(
-        universe or "unassigned",
-        UNIVERSE_LABELS["unassigned"],
-    )
-
-
-def story_label(
-    story_short_label: str | None,
-    story_title: str | None,
-) -> str:
-    if not story_title:
-        return "Без истории"
-    if story_short_label:
-        return f"{story_short_label} · {story_title}"
-    return story_title
-
-
-def validate_prompt_post_url(value: str) -> str:
-    cleaned = value.strip()
-    if not _PROMPT_URL_RE.fullmatch(cleaned):
-        raise ValueError(
-            "Нужна ссылка на пост Telegram: https://t.me/channel/123 "
-            "или https://t.me/c/1234567890/123."
-        )
-    return cleaned
-
-
-def _row_to_character(row) -> Character:
-    return Character(
-        id=int(row["id"]),
-        name=str(row["name"]),
-        created_by=row["created_by"],
-        created_in_chat=row["created_in_chat"],
-        created_at=row["created_at"],
-        archive_chat_id=row["archive_chat_id"],
-        archive_thread_id=row["archive_thread_id"],
-        archive_topic_url=row["archive_topic_url"],
-    )
-
-
-def _row_to_directory_item(row) -> CharacterDirectoryItem:
-    return CharacterDirectoryItem(
-        character=_row_to_character(row),
-        category=row["category"],
-        prompt_post_url=row["prompt_post_url"],
-        media_count=int(row["media_count"] or 0),
-        universe=row["universe"],
-        story_id=(int(row["story_id"]) if row["story_id"] is not None else None),
-        story_short_label=row["story_short_label"],
-        story_title=row["story_title"],
-    )
+def _service(database: Database) -> CharacterDirectoryService:
+    return CharacterDirectoryService(CharacterDirectoryRepository(database))
 
 
 async def set_character_category(
@@ -233,14 +33,10 @@ async def set_character_category(
     character_id: int,
     category: str | None,
 ) -> None:
-    async with database._require_pool().acquire() as connection:
-        result = await connection.execute(
-            "UPDATE characters SET category = $2 WHERE id = $1",
-            character_id,
-            category,
-        )
-    if result == "UPDATE 0":
-        raise ValueError("Персонаж не найден.")
+    await _service(database).set_category(
+        character_id=character_id,
+        category=category,
+    )
 
 
 async def set_character_universe(
@@ -249,22 +45,10 @@ async def set_character_universe(
     character_id: int,
     universe: str | None,
 ) -> None:
-    async with database._require_pool().acquire() as connection:
-        result = await connection.execute(
-            """
-            UPDATE characters
-            SET story_id = CASE
-                    WHEN universe IS NOT DISTINCT FROM $2 THEN story_id
-                    ELSE NULL
-                END,
-                universe = $2
-            WHERE id = $1
-            """,
-            character_id,
-            universe,
-        )
-    if result == "UPDATE 0":
-        raise ValueError("Персонаж не найден.")
+    await _service(database).set_universe(
+        character_id=character_id,
+        universe=universe,
+    )
 
 
 async def set_character_prompt_url(
@@ -273,39 +57,17 @@ async def set_character_prompt_url(
     character_id: int,
     prompt_post_url: str | None,
 ) -> None:
-    async with database._require_pool().acquire() as connection:
-        result = await connection.execute(
-            "UPDATE characters SET prompt_post_url = $2 WHERE id = $1",
-            character_id,
-            prompt_post_url,
-        )
-    if result == "UPDATE 0":
-        raise ValueError("Персонаж не найден.")
+    await _service(database).set_prompt_url(
+        character_id=character_id,
+        prompt_post_url=prompt_post_url,
+    )
 
 
 async def get_character_directory_item(
     database: Database,
     character_id: int,
 ) -> CharacterDirectoryItem | None:
-    async with database._require_pool().acquire() as connection:
-        row = await connection.fetchrow(
-            """
-            SELECT
-                c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
-                c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
-                c.category, c.universe, c.prompt_post_url, c.story_id,
-                s.short_label AS story_short_label,
-                s.title AS story_title,
-                COUNT(cm.media_id) AS media_count
-            FROM characters AS c
-            LEFT JOIN character_stories AS s ON s.id = c.story_id
-            LEFT JOIN character_media AS cm ON cm.character_id = c.id
-            WHERE c.id = $1
-            GROUP BY c.id, s.id
-            """,
-            character_id,
-        )
-    return _row_to_directory_item(row) if row is not None else None
+    return await _service(database).get_item(character_id)
 
 
 async def list_category_summaries(
@@ -314,46 +76,11 @@ async def list_category_summaries(
     public_only: bool,
     include_uncategorized: bool = False,
 ) -> list[CategorySummary]:
-    keys = list(CATEGORY_ORDER)
-    if include_uncategorized:
-        keys.append("uncategorized")
-
-    async with database._require_pool().acquire() as connection:
-        rows = await connection.fetch(
-            f"""
-            SELECT
-                COALESCE(c.category, 'uncategorized') AS category,
-                COUNT(DISTINCT c.id) AS character_count
-            FROM characters AS c
-            LEFT JOIN character_media AS cm ON cm.character_id = c.id
-            WHERE (
-                $1::BOOLEAN = FALSE
-                OR (
-                    cm.media_id IS NOT NULL
-                    AND c.universe IS NOT NULL
-                    AND (
-                        c.universe NOT IN {_STORY_REQUIRED_SQL}
-                        OR c.story_id IS NOT NULL
-                    )
-                )
-            )
-            GROUP BY COALESCE(c.category, 'uncategorized')
-            """,
-            public_only,
-        )
-    counts = {
-        str(row["category"]): int(row["character_count"] or 0)
-        for row in rows
-    }
-    return [
-        CategorySummary(
-            key=key,
-            label=CATEGORY_LABELS[key],
-            emoji=CATEGORY_EMOJI[key],
-            character_count=counts.get(key, 0),
-        )
-        for key in keys
-    ]
+    result = await _service(database).list_category_summaries(
+        public_only=public_only,
+        include_uncategorized=include_uncategorized,
+    )
+    return list(result)
 
 
 async def list_universe_summaries(
@@ -363,50 +90,12 @@ async def list_universe_summaries(
     public_only: bool,
     include_unassigned: bool = False,
 ) -> list[UniverseSummary]:
-    if category not in CATEGORY_ORDER:
-        raise ValueError("Неизвестная категория архива.")
-
-    keys = list(UNIVERSE_ORDER)
-    if include_unassigned:
-        keys.append("unassigned")
-
-    async with database._require_pool().acquire() as connection:
-        rows = await connection.fetch(
-            f"""
-            SELECT
-                COALESCE(c.universe, 'unassigned') AS universe,
-                COUNT(DISTINCT c.id) AS character_count
-            FROM characters AS c
-            LEFT JOIN character_media AS cm ON cm.character_id = c.id
-            WHERE c.category = $1
-              AND (
-                    $2::BOOLEAN = FALSE
-                    OR (
-                        cm.media_id IS NOT NULL
-                        AND (
-                            c.universe NOT IN {_STORY_REQUIRED_SQL}
-                            OR c.story_id IS NOT NULL
-                        )
-                    )
-                  )
-            GROUP BY COALESCE(c.universe, 'unassigned')
-            """,
-            category,
-            public_only,
-        )
-    counts = {
-        str(row["universe"]): int(row["character_count"] or 0)
-        for row in rows
-    }
-    return [
-        UniverseSummary(
-            key=key,
-            label=UNIVERSE_LABELS[key],
-            emoji=UNIVERSE_EMOJI[key],
-            character_count=counts.get(key, 0),
-        )
-        for key in keys
-    ]
+    result = await _service(database).list_universe_summaries(
+        category=category,
+        public_only=public_only,
+        include_unassigned=include_unassigned,
+    )
+    return list(result)
 
 
 async def list_character_directory(
@@ -419,115 +108,51 @@ async def list_character_directory(
     universe: str | None = None,
     story_id: int | None = None,
 ) -> CharacterDirectoryPage:
-    if category not in {*CATEGORY_ORDER, "uncategorized"}:
-        raise ValueError("Неизвестная категория архива.")
-    if universe is not None and universe not in UNIVERSE_ORDER:
-        raise ValueError("Неизвестная вселенная архива.")
-    if category == "uncategorized" and universe is not None:
-        raise ValueError("Для раздела без категории фильтр вселенной недоступен.")
-    if story_id is not None and universe is None:
-        raise ValueError("Для фильтра по истории сначала нужна вселенная.")
-
-    safe_page_size = max(1, min(page_size, 10))
-    safe_page = max(0, page)
-    category_condition = """
-        (($1::TEXT = 'uncategorized' AND c.category IS NULL) OR c.category = $1)
-    """
-    universe_condition = "($3::TEXT IS NULL OR c.universe = $3)"
-    story_condition = "($4::BIGINT IS NULL OR c.story_id = $4)"
-    public_condition = f"""
-        (
-            $2::BOOLEAN = FALSE
-            OR (
-                cm.media_id IS NOT NULL
-                AND c.universe IS NOT NULL
-                AND (
-                    c.universe NOT IN {_STORY_REQUIRED_SQL}
-                    OR c.story_id IS NOT NULL
-                )
-            )
-        )
-    """
-
-    async with database._require_pool().acquire() as connection:
-        total = int(
-            await connection.fetchval(
-                f"""
-                SELECT COUNT(*)
-                FROM (
-                    SELECT c.id
-                    FROM characters AS c
-                    LEFT JOIN character_media AS cm ON cm.character_id = c.id
-                    WHERE {category_condition}
-                      AND {public_condition}
-                      AND {universe_condition}
-                      AND {story_condition}
-                    GROUP BY c.id
-                ) AS directory
-                """,
-                category,
-                public_only,
-                universe,
-                story_id,
-            )
-            or 0
-        )
-        total_pages = max(1, (total + safe_page_size - 1) // safe_page_size)
-        normalized_page = min(safe_page, total_pages - 1)
-        rows = await connection.fetch(
-            f"""
-            SELECT
-                c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
-                c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
-                c.category, c.universe, c.prompt_post_url, c.story_id,
-                s.short_label AS story_short_label,
-                s.title AS story_title,
-                COUNT(cm.media_id) AS media_count
-            FROM characters AS c
-            LEFT JOIN character_stories AS s ON s.id = c.story_id
-            LEFT JOIN character_media AS cm ON cm.character_id = c.id
-            WHERE {category_condition}
-              AND {public_condition}
-              AND {universe_condition}
-              AND {story_condition}
-            GROUP BY c.id, s.id
-            ORDER BY c.normalized_name ASC, c.id ASC
-            OFFSET $5
-            LIMIT $6
-            """,
-            category,
-            public_only,
-            universe,
-            story_id,
-            normalized_page * safe_page_size,
-            safe_page_size,
-        )
-
-        selected_story = None
-        if story_id is not None:
-            selected_story = await connection.fetchrow(
-                """
-                SELECT id, short_label, title
-                FROM character_stories
-                WHERE id = $1 AND universe = $2
-                """,
-                story_id,
-                universe,
-            )
-
-    items = [_row_to_directory_item(row) for row in rows]
-    return CharacterDirectoryPage(
-        items=items,
+    result = await _service(database).list_directory(
         category=category,
-        page=normalized_page,
-        page_size=safe_page_size,
-        total_characters=total,
+        page=page,
+        page_size=page_size,
+        public_only=public_only,
         universe=universe,
         story_id=story_id,
-        story_short_label=(
-            str(selected_story["short_label"]) if selected_story is not None else None
-        ),
-        story_title=(
-            str(selected_story["title"]) if selected_story is not None else None
-        ),
     )
+    if isinstance(result.items, list):
+        return result
+    return CharacterDirectoryPage(
+        items=list(result.items),
+        category=result.category,
+        page=result.page,
+        page_size=result.page_size,
+        total_characters=result.total_characters,
+        universe=result.universe,
+        story_id=result.story_id,
+        story_short_label=result.story_short_label,
+        story_title=result.story_title,
+    )
+
+
+__all__ = (
+    "CATEGORY_EMOJI",
+    "CATEGORY_LABELS",
+    "CATEGORY_ORDER",
+    "UNIVERSE_EMOJI",
+    "UNIVERSE_LABELS",
+    "UNIVERSE_ORDER",
+    "CategorySummary",
+    "CharacterDirectoryItem",
+    "CharacterDirectoryPage",
+    "UniverseSummary",
+    "category_label",
+    "get_character_directory_item",
+    "list_category_summaries",
+    "list_character_directory",
+    "list_universe_summaries",
+    "normalize_category",
+    "normalize_universe",
+    "set_character_category",
+    "set_character_prompt_url",
+    "set_character_universe",
+    "story_label",
+    "universe_label",
+    "validate_prompt_post_url",
+)
