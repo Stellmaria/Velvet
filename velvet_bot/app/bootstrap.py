@@ -99,6 +99,7 @@ async def run_application() -> None:
         bot=bot,
         database=database,
         backup_service=backup_service,
+        settings=settings,
     )
 
     try:
@@ -130,6 +131,15 @@ async def run_application() -> None:
             "Character editor access enabled for ids=%s",
             sorted(CHARACTER_EDITOR_USER_IDS),
         )
+        if settings.ai_vision_enabled:
+            logger.info(
+                "AI vision enabled provider=%s base_url=%s model=%s",
+                settings.ai_vision_provider,
+                settings.ai_vision_base_url,
+                settings.ai_vision_model,
+            )
+        else:
+            logger.info("AI vision disabled; media sets use fallback heuristics")
 
         await install_command_menus(bot, settings)
         await _probe_analytics_channels(
@@ -152,6 +162,11 @@ async def run_application() -> None:
             ),
             publication_timezone=settings.publication_timezone,
             managed_workers=", ".join(worker_manager.registered_names()),
+            ai_vision=(
+                f"{settings.ai_vision_provider}:{settings.ai_vision_model}"
+                if settings.ai_vision_enabled
+                else "disabled"
+            ),
             backup_dir=settings.backup_dir,
             log_chat_id=settings.log_chat_id,
         )
