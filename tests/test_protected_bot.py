@@ -23,15 +23,19 @@ class ProtectedMediaBotTests(unittest.TestCase):
         self.assertIs(method.protect_content, True)
 
     def test_allowed_download_recipient_remains_unprotected(self) -> None:
-        method = SendDocument(chat_id=8179531132, document="document-file-id")
+        method = SendDocument(
+            chat_id=8179531132,
+            document="document-file-id",
+            protect_content=True,
+        )
 
         changed = protect_private_media_method(
             method,
             unprotected_private_user_ids={8179531132},
         )
 
-        self.assertFalse(changed)
-        self.assertIsNot(method.protect_content, True)
+        self.assertTrue(changed)
+        self.assertIs(method.protect_content, False)
 
     def test_internal_group_media_is_not_changed_by_private_guard(self) -> None:
         method = SendPhoto(chat_id=-1001234567890, photo="photo-file-id")
@@ -54,13 +58,6 @@ class ProtectedMediaBotTests(unittest.TestCase):
 
         self.assertFalse(changed)
 
-    def test_permanent_unprotected_recipients_are_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Permanent unprotected"):
-            ProtectedMediaBot(
-                token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi",
-                unprotected_private_user_ids={8179531132},
-            )
-
 
 class ProtectedMediaBotAsyncTests(unittest.IsolatedAsyncioTestCase):
     async def test_manager_download_exception_is_consumed_after_one_media_send(self) -> None:
@@ -78,8 +75,34 @@ class ProtectedMediaBotAsyncTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await bot.session.close()
 
-        self.assertIsNot(first.protect_content, True)
+        self.assertIs(first.protect_content, False)
         self.assertIs(second.protect_content, True)
+
+    async def test_permanent_owner_media_is_always_unprotected(self) -> None:
+        bot = ProtectedMediaBot(
+            token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi",
+            unprotected_private_user_ids={8179531132},
+        )
+        first = SendDocument(
+            chat_id=8179531132,
+            document="original-file-id",
+            protect_content=True,
+        )
+        second = SendPhoto(
+            chat_id=8179531132,
+            photo="archive-photo-id",
+            protect_content=True,
+        )
+
+        try:
+            with patch.object(Bot, "__call__", new=AsyncMock(return_value=object())):
+                await bot(first)
+                await bot(second)
+        finally:
+            await bot.session.close()
+
+        self.assertIs(first.protect_content, False)
+        self.assertIs(second.protect_content, False)
 
     async def test_public_archive_photo_is_protected_in_group_chat(self) -> None:
         sent_message = SimpleNamespace()

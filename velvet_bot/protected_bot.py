@@ -28,7 +28,7 @@ def protect_private_media_method(
     *,
     unprotected_private_user_ids: Collection[int],
 ) -> bool:
-    """Protect media sent to private users unless this send is explicitly scoped."""
+    """Protect private media except for explicitly trusted private recipients."""
     if not isinstance(method, _PROTECTED_MEDIA_METHODS):
         return False
 
@@ -36,7 +36,9 @@ def protect_private_media_method(
     if not isinstance(chat_id, int) or chat_id <= 0:
         return False
     if chat_id in unprotected_private_user_ids:
-        return False
+        changed = method.protect_content is not False
+        method.protect_content = False
+        return changed
 
     changed = method.protect_content is not True
     method.protect_content = True
@@ -44,7 +46,7 @@ def protect_private_media_method(
 
 
 class ProtectedMediaBot(Bot):
-    """Protect private media and allow only one explicit manager download."""
+    """Protect private media while allowing trusted owners and scoped downloads."""
 
     def __init__(
         self,
@@ -52,12 +54,12 @@ class ProtectedMediaBot(Bot):
         unprotected_private_user_ids: Collection[int] = (),
         **kwargs: Any,
     ) -> None:
-        if unprotected_private_user_ids:
-            raise ValueError(
-                "Permanent unprotected recipients are disabled. "
-                "Use allow_unprotected_private_user() immediately before one download."
-            )
         super().__init__(*args, **kwargs)
+        self._permanent_unprotected_private_user_ids = frozenset(
+            int(user_id)
+            for user_id in unprotected_private_user_ids
+            if int(user_id) > 0
+        )
         self._scoped_unprotected_private_user_ids: ContextVar[frozenset[int]] = (
             ContextVar(
                 f"velvet_unprotected_private_media_{id(self)}",
@@ -67,7 +69,7 @@ class ProtectedMediaBot(Bot):
 
     @asynccontextmanager
     async def unprotected_private_media(self, user_id: int) -> AsyncIterator[None]:
-        """Allow one unprotected media send in this task, then restore protection."""
+        """Allow unprotected media sends in this task, then restore protection."""
         current = self._scoped_unprotected_private_user_ids.get()
         token = self._scoped_unprotected_private_user_ids.set(
             current | {int(user_id)}
@@ -83,16 +85,17 @@ class ProtectedMediaBot(Bot):
         self._scoped_unprotected_private_user_ids.set(current | {int(user_id)})
 
     async def __call__(self, method: Any, request_timeout: int | None = None) -> Any:
-        unprotected_ids = self._scoped_unprotected_private_user_ids.get()
+        scoped_ids = self._scoped_unprotected_private_user_ids.get()
+        unprotected_ids = self._permanent_unprotected_private_user_ids | scoped_ids
         chat_id = getattr(method, "chat_id", None)
         if (
             isinstance(method, _PROTECTED_MEDIA_METHODS)
             and isinstance(chat_id, int)
             and chat_id > 0
-            and chat_id in unprotected_ids
+            and chat_id in scoped_ids
         ):
             self._scoped_unprotected_private_user_ids.set(
-                unprotected_ids - {chat_id}
+                scoped_ids - {chat_id}
             )
 
         protect_private_media_method(
