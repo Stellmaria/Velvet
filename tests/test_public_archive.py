@@ -18,6 +18,7 @@ from velvet_bot.public_ui import (
     build_public_character_menu,
     build_public_story_menu,
     build_public_universe_menu,
+    format_public_archive_caption,
 )
 from velvet_bot.story_catalog import StorySummary
 
@@ -188,7 +189,7 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertNotIn("📝 Открыть промт", labels_without)
         self.assertIn("📝 Открыть промт", labels_with)
 
-    def test_public_keyboard_is_read_only_and_preserves_filters(self) -> None:
+    def test_public_keyboard_has_engagement_and_preserves_filters(self) -> None:
         keyboard = build_public_archive_keyboard(
             self.page,
             self.state,
@@ -198,8 +199,8 @@ class PublicArchiveUiTests(unittest.TestCase):
             story_id=12,
         )
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
-        self.assertNotIn("🤍 4", labels)
-        self.assertNotIn("🔔 Подписаться", labels)
+        self.assertIn("🤍 4", labels)
+        self.assertIn("🔔 Подписаться", labels)
         self.assertNotIn("🗑 Удалить", labels)
 
         actions = {
@@ -208,8 +209,9 @@ class PublicArchiveUiTests(unittest.TestCase):
             for button in row
             if button.callback_data
         }
-        self.assertNotIn("like", actions)
-        self.assertNotIn("sub", actions)
+        self.assertIn("like", actions)
+        self.assertIn("sub", actions)
+        self.assertNotIn("download", actions)
 
         back = next(
             button
@@ -221,6 +223,22 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertEqual("male", callback.category)
         self.assertEqual("kr", callback.universe)
         self.assertEqual(12, callback.story_id)
+
+    def test_engagement_labels_follow_current_user_state(self) -> None:
+        state = PublicMediaState(
+            like_count=5,
+            liked_by_user=True,
+            subscribed=True,
+        )
+        keyboard = build_public_archive_keyboard(
+            self.page,
+            state,
+            viewer_user_id=100,
+        )
+        labels = [button.text for row in keyboard.inline_keyboard for button in row]
+        self.assertIn("❤️ 5", labels)
+        self.assertIn("🔕 Отписаться", labels)
+        self.assertIn("Отметок: <b>5</b>", format_public_archive_caption(self.page, state))
 
     def test_download_button_is_hidden_from_regular_viewer(self) -> None:
         keyboard = build_public_archive_keyboard(
