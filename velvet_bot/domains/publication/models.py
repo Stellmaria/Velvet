@@ -74,9 +74,43 @@ class PublicationDraftPage:
         return max(1, (self.total_items + self.page_size - 1) // self.page_size)
 
 
+@dataclass(frozen=True, slots=True)
+class PublicationCharacterInfo:
+    id: int
+    name: str
+    category: str | None
+    universe: str | None
+    story_id: int | None
+    has_multi_story: bool
+    normalized_alias: str
+
+
+@dataclass(frozen=True, slots=True)
+class DuplicateDraftInfo:
+    id: int
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
+class DuplicatePostInfo:
+    message_id: int
+    message_url: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class PublicationValidationContext:
+    characters: tuple[PublicationCharacterInfo, ...]
+    duplicate_draft: DuplicateDraftInfo | None
+    duplicate_post: DuplicatePostInfo | None
+
+
 __all__ = (
+    "DuplicateDraftInfo",
+    "DuplicatePostInfo",
+    "PublicationCharacterInfo",
     "PublicationDraft",
     "PublicationDraftPage",
     "PublicationIssue",
     "PublicationItem",
+    "PublicationValidationContext",
 )
