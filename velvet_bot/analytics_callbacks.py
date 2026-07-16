@@ -3,13 +3,7 @@ from __future__ import annotations
 from aiogram.filters.callback_data import CallbackData
 
 from velvet_bot.analytics_dashboard import normalize_period
-
-
-class DashboardLinkCallback(CallbackData, prefix="dash"):
-    action: str
-    period: str = "all"
-    page: int = 0
-    source_id: int = 0
+from velvet_bot.handlers.analytics_dashboard import AnalyticsCallback as DashboardLinkCallback
 
 
 class AnalyticsManageCallback(CallbackData, prefix="dashm"):
@@ -56,3 +50,11 @@ def management_link(
         alias_id=alias_id,
         value=value,
     ).pack()
+
+
+__all__ = (
+    "AnalyticsManageCallback",
+    "DashboardLinkCallback",
+    "dashboard_link",
+    "management_link",
+)
