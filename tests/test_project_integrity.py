@@ -86,7 +86,7 @@ CONTEXT_COMMANDS = {
     "importchannel",
     "importdiscussion",
 }
-DIRECT_COMMANDS = {"refdone", "refcancel", "aliasreindex"}
+DIRECT_COMMANDS = {"refdone", "refcancel", "aliasreindex", "test_error_alert"}
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
 
