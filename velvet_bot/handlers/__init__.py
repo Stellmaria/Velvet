@@ -5,12 +5,17 @@ from aiogram.types import ErrorEvent
 
 import velvet_bot.multi_story_support as multi_story_support
 from velvet_bot.multi_story_queries import list_assigned_character_stories
+from velvet_bot.runtime_log_hotfixes import install_runtime_log_hotfixes
 
+install_runtime_log_hotfixes()
 multi_story_support.list_assigned_character_stories = list_assigned_character_stories
 multi_story_support.install_multi_story_support()
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
+from velvet_bot.handlers.admin_large_media_preview import (
+    router as admin_large_media_preview_router,
+)
 from velvet_bot.handlers.admin_media_display import router as admin_media_display_router
 from velvet_bot.handlers.admin_media_spoiler import router as admin_media_spoiler_router
 from velvet_bot.handlers.admin_stories import router as admin_stories_router
@@ -110,6 +115,7 @@ router.include_router(public_notification_open_router)
 router.include_router(public_archive_router)
 router.include_router(media_prompt_binding_router)
 router.include_router(admin_media_spoiler_router)
+router.include_router(admin_large_media_preview_router)
 router.include_router(admin_media_display_router)
 router.include_router(admin_stories_router)
 router.include_router(admin_universe_story_flow_router)
