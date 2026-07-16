@@ -188,7 +188,7 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertNotIn("📝 Открыть промт", labels_without)
         self.assertIn("📝 Открыть промт", labels_with)
 
-    def test_public_keyboard_preserves_all_filters(self) -> None:
+    def test_public_keyboard_is_read_only_and_preserves_filters(self) -> None:
         keyboard = build_public_archive_keyboard(
             self.page,
             self.state,
@@ -198,9 +198,18 @@ class PublicArchiveUiTests(unittest.TestCase):
             story_id=12,
         )
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
-        self.assertIn("🤍 4", labels)
-        self.assertIn("🔔 Подписаться", labels)
+        self.assertNotIn("🤍 4", labels)
+        self.assertNotIn("🔔 Подписаться", labels)
         self.assertNotIn("🗑 Удалить", labels)
+
+        actions = {
+            PublicArchiveCallback.unpack(button.callback_data).action
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.callback_data
+        }
+        self.assertNotIn("like", actions)
+        self.assertNotIn("sub", actions)
 
         back = next(
             button
@@ -213,7 +222,7 @@ class PublicArchiveUiTests(unittest.TestCase):
         self.assertEqual("kr", callback.universe)
         self.assertEqual(12, callback.story_id)
 
-    def test_download_button_is_hidden_from_regular_subscriber(self) -> None:
+    def test_download_button_is_hidden_from_regular_viewer(self) -> None:
         keyboard = build_public_archive_keyboard(
             self.page,
             self.state,

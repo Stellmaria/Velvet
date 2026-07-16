@@ -4,9 +4,112 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery", "menu"})
-CHARACTER_EDITOR_USER_IDS = frozenset({8179531132})
-CHARACTER_EDITOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
+# Public access is deliberately limited to archive viewing. `/start` renders the
+# archive welcome screen; `/menu` belongs to the owner control panel.
+PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery"})
+PUBLIC_CALLBACK_ACTIONS = frozenset(
+    {
+        "categories",
+        "universes",
+        "stories",
+        "menu",
+        "open",
+        "show",
+        "noop",
+        "close",
+        "back",
+    }
+)
+PUBLIC_CALLBACK_PREFIX = "pub:"
+
+# One explicitly trusted moderator may maintain character cards and archive
+# metadata. This role must never inherit owner-only system, publication,
+# analytics, backup, Supervisor, Git, or Codex operations.
+MODERATOR_USER_IDS = frozenset({8179531132})
+MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
+MODERATOR_CALLBACK_ACTIONS = {
+    "adir": frozenset(
+        {
+            "categories",
+            "close",
+            "menu",
+            "noop",
+            "profile",
+            "pickcat",
+            "setcat",
+            "pickuni",
+            "setuni",
+            "pickstory",
+        }
+    ),
+    "astory": frozenset(
+        {
+            "noop",
+            "page",
+            "set",
+            "mtoggle",
+            "mpage",
+            "mclear",
+            "mdone",
+            "mnoop",
+        }
+    ),
+    "arc": frozenset(
+        {
+            "open",
+            "show",
+            "noop",
+            "spoiler",
+            "prompt",
+            "promptremove",
+            "del",
+            "delok",
+            "delno",
+            "close",
+        }
+    ),
+    # Download is shown only to this moderator in the public viewer. It is not a
+    # public archive action and must not become available through the pub prefix.
+    "pub": frozenset({"download"}),
+}
+MODERATOR_CALLBACK_PREFIXES = tuple(
+    f"{prefix}:" for prefix in MODERATOR_CALLBACK_ACTIONS
+)
+
+# Compatibility aliases for older imports. New code should use MODERATOR_*.
+CHARACTER_EDITOR_USER_IDS = MODERATOR_USER_IDS
+CHARACTER_EDITOR_COMMANDS = MODERATOR_COMMANDS
+
+OWNER_ONLY_COMMANDS = frozenset(
+    {
+        "admin",
+        "menu",
+        "system",
+        "health",
+        "version",
+        "analytics",
+        "analyticsmenu",
+        "channelstats",
+        "stats",
+        "promptstats",
+        "characterstats",
+        "backup",
+        "quality",
+        "auditarchive",
+        "publish",
+        "publishing",
+        "publications",
+        "supervisor",
+        "status",
+        "logs",
+        "restart",
+        "update",
+        "rollback",
+        "codex",
+        "codex_status",
+    }
+)
+
 PROMPT_REPLY_MARKER = "PROMPT_MEDIA:"
 
 
@@ -25,6 +128,37 @@ def command_name(text: str) -> str | None:
 def is_public_command_text(text: str) -> bool:
     command = command_name(text)
     return bool(command and command in PUBLIC_COMMANDS)
+
+
+def is_owner_only_command_text(text: str) -> bool:
+    command = command_name(text)
+    return bool(command and command in OWNER_ONLY_COMMANDS)
+
+
+def _callback_parts(value: str | None) -> tuple[str, str] | None:
+    if not value:
+        return None
+    parts = value.split(":", maxsplit=2)
+    if len(parts) < 2:
+        return None
+    return parts[0], parts[1]
+
+
+def is_public_callback_data(value: str | None) -> bool:
+    parts = _callback_parts(value)
+    return bool(
+        parts
+        and parts[0] == "pub"
+        and parts[1] in PUBLIC_CALLBACK_ACTIONS
+    )
+
+
+def is_moderator_callback_data(value: str | None) -> bool:
+    parts = _callback_parts(value)
+    if parts is None:
+        return False
+    prefix, action = parts
+    return action in MODERATOR_CALLBACK_ACTIONS.get(prefix, frozenset())
 
 
 def is_owner_mention_text(text: str, bot_username: str) -> bool:
@@ -76,10 +210,20 @@ __all__ = (
     "AccessPolicy",
     "CHARACTER_EDITOR_COMMANDS",
     "CHARACTER_EDITOR_USER_IDS",
+    "MODERATOR_CALLBACK_ACTIONS",
+    "MODERATOR_CALLBACK_PREFIXES",
+    "MODERATOR_COMMANDS",
+    "MODERATOR_USER_IDS",
+    "OWNER_ONLY_COMMANDS",
     "PROMPT_REPLY_MARKER",
+    "PUBLIC_CALLBACK_ACTIONS",
+    "PUBLIC_CALLBACK_PREFIX",
     "PUBLIC_COMMANDS",
     "command_name",
+    "is_moderator_callback_data",
     "is_owner_mention_text",
+    "is_owner_only_command_text",
+    "is_public_callback_data",
     "is_public_command_text",
     "is_save_mention_text",
     "normalize_username",
