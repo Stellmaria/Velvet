@@ -86,6 +86,20 @@ async def create_media_set(
                 int(created_by),
                 set_id,
             )
+            await connection.execute(
+                """
+                UPDATE media_duplicate_candidates
+                SET status = 'ignored',
+                    decided_by = $2::BIGINT,
+                    decided_at = NOW(),
+                    updated_at = NOW()
+                WHERE status = 'pending'
+                  AND first_media_id = ANY($1::BIGINT[])
+                  AND second_media_id = ANY($1::BIGINT[])
+                """,
+                list(media_ids),
+                int(created_by),
+            )
 
     return CreatedMediaSet(
         id=set_id,
