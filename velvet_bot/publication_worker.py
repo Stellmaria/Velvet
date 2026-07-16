@@ -3,10 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from contextlib import suppress
 
 from aiogram import Bot
-from aiogram.enums import ParseMode
 from aiogram.types import (
     InputMediaDocument,
     InputMediaPhoto,
@@ -302,5 +300,4 @@ async def run_publication_worker(
             raise
         except Exception:
             logger.exception("Publication queue loop failed")
-        with suppress(asyncio.CancelledError):
-            await asyncio.sleep(interval_seconds)
+        await asyncio.sleep(interval_seconds)
