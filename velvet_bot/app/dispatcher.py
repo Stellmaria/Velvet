@@ -4,12 +4,13 @@ from dataclasses import dataclass
 
 from aiogram import Dispatcher
 
-from velvet_bot.access import AccessPolicy, OwnerAccessMiddleware
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
-from velvet_bot.config import Settings
+from velvet_bot.core.access import AccessPolicy
+from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
+from velvet_bot.presentation.telegram.middleware import OwnerAccessMiddleware
 from velvet_bot.presentation.telegram.router import get_root_router
 from velvet_bot.publication_inbox_middleware import PublicationInboxMiddleware
 from velvet_bot.reference_uploads import ReferenceUploadSessions
