@@ -19,9 +19,11 @@ from aiogram.types import (
 
 from velvet_bot.core.access import (
     AccessPolicy,
-    CHARACTER_EDITOR_COMMANDS,
-    CHARACTER_EDITOR_USER_IDS,
+    MODERATOR_CALLBACK_PREFIXES,
+    MODERATOR_COMMANDS,
+    MODERATOR_USER_IDS,
     PROMPT_REPLY_MARKER,
+    PUBLIC_CALLBACK_PREFIX,
     command_name,
     is_owner_mention_text,
     is_public_command_text,
@@ -29,30 +31,32 @@ from velvet_bot.core.access import (
 
 logger = logging.getLogger(__name__)
 
-PUBLIC_CALLBACK_PREFIX = "pub:"
-CHARACTER_EDITOR_CALLBACK_PREFIXES = ("adir:", "astory:", "arc:")
+# Compatibility aliases.  The role is deliberately narrower than an admin.
+CHARACTER_EDITOR_CALLBACK_PREFIXES = MODERATOR_CALLBACK_PREFIXES
 
 ACCESS_DENIED_TEXT = (
     "<b>Доступ закрыт</b>\n\n"
-    "Служебные команды Velvet Archive доступны только владельцу. "
-    "Открытый архив персонажей: <code>/archive</code>."
+    "В открытом доступе находится только просмотр архива персонажей: "
+    "<code>/archive</code>. Остальное управление доступно владельцу."
 )
-ACCESS_DENIED_CALLBACK_TEXT = "Эта служебная кнопка доступна только владельцу."
+ACCESS_DENIED_CALLBACK_TEXT = (
+    "Эта служебная кнопка недоступна. Открыт только просмотр архива."
+)
 
 
 def is_public_callback(callback: CallbackQuery) -> bool:
     return bool(callback.data and callback.data.startswith(PUBLIC_CALLBACK_PREFIX))
 
 
-def is_character_editor_user(user: User | None) -> bool:
-    return bool(user and user.id in CHARACTER_EDITOR_USER_IDS)
+def is_moderator_user(user: User | None) -> bool:
+    return bool(user and user.id in MODERATOR_USER_IDS)
 
 
-def is_character_editor_callback(callback: CallbackQuery) -> bool:
+def is_moderator_callback(callback: CallbackQuery) -> bool:
     return bool(
-        is_character_editor_user(callback.from_user)
+        is_moderator_user(callback.from_user)
         and callback.data
-        and callback.data.startswith(CHARACTER_EDITOR_CALLBACK_PREFIXES)
+        and callback.data.startswith(MODERATOR_CALLBACK_PREFIXES)
     )
 
 
@@ -60,13 +64,13 @@ def get_caller_user(message: Message) -> User | None:
     return message.from_user or message.guest_bot_caller_user
 
 
-def is_character_editor_message(message: Message) -> bool:
+def is_moderator_message(message: Message) -> bool:
     caller = get_caller_user(message)
-    if not is_character_editor_user(caller):
+    if not is_moderator_user(caller):
         return False
 
     text = message.text or message.caption or ""
-    if command_name(text) in CHARACTER_EDITOR_COMMANDS:
+    if command_name(text) in MODERATOR_COMMANDS:
         return True
 
     reply = message.reply_to_message
@@ -74,6 +78,12 @@ def is_character_editor_message(message: Message) -> bool:
         return False
     reply_text = reply.text or reply.caption or ""
     return PROMPT_REPLY_MARKER in reply_text
+
+
+# Compatibility aliases used by existing imports and tests.
+is_character_editor_user = is_moderator_user
+is_character_editor_callback = is_moderator_callback
+is_character_editor_message = is_moderator_message
 
 
 def message_requires_owner_access(
@@ -112,6 +122,8 @@ async def answer_access_denied(message: Message) -> None:
 
 
 class OwnerAccessMiddleware(BaseMiddleware):
+    """Apply the three-level access matrix before Telegram handlers run."""
+
     def __init__(self, policy: AccessPolicy) -> None:
         self.policy = policy
 
@@ -122,7 +134,7 @@ class OwnerAccessMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         if isinstance(event, CallbackQuery):
-            if is_public_callback(event) or is_character_editor_callback(event):
+            if is_public_callback(event) or is_moderator_callback(event):
                 return await handler(event, data)
 
             allowed = self.policy.allows_user(event.from_user)
@@ -134,10 +146,7 @@ class OwnerAccessMiddleware(BaseMiddleware):
             )
             if allowed:
                 return await handler(event, data)
-            await event.answer(
-                ACCESS_DENIED_CALLBACK_TEXT,
-                show_alert=True,
-            )
+            await event.answer(ACCESS_DENIED_CALLBACK_TEXT, show_alert=True)
             return None
 
         if isinstance(event, InlineQuery):
@@ -171,7 +180,7 @@ class OwnerAccessMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         text = event.text or event.caption or ""
-        if is_public_command_text(text) or is_character_editor_message(event):
+        if is_public_command_text(text) or is_moderator_message(event):
             return await handler(event, data)
 
         if not message_requires_owner_access(
@@ -207,6 +216,9 @@ __all__ = (
     "is_character_editor_callback",
     "is_character_editor_message",
     "is_character_editor_user",
+    "is_moderator_callback",
+    "is_moderator_message",
+    "is_moderator_user",
     "is_public_callback",
     "message_requires_owner_access",
 )
