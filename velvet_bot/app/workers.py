@@ -6,11 +6,11 @@ from aiogram import Bot
 
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.database import Database
+from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
 from velvet_bot.workers.iterations import (
     process_backup_once,
     process_due_publications_once,
-    process_media_quality_once,
     process_public_notifications_once,
 )
 
@@ -22,6 +22,11 @@ def build_worker_manager(
     backup_service: BackupService,
 ) -> WorkerManager:
     """Build the complete periodic-worker registry for the application."""
+    media_quality_service = MediaQualityService(
+        bot=bot,
+        repository=MediaQualityRepository(database),
+    )
+
     manager = WorkerManager()
     manager.register(
         PeriodicWorkerSpec(
@@ -44,7 +49,7 @@ def build_worker_manager(
             name="media-quality",
             description="Дубли и проверка медиа",
             interval_seconds=4,
-            runner=partial(process_media_quality_once, bot, database),
+            runner=media_quality_service.process_once,
         )
     )
     manager.register(
