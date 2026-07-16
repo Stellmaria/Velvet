@@ -19,9 +19,22 @@ from velvet_bot.archive_ui import (
     format_archive_caption,
 )
 from velvet_bot.database import Database
+from velvet_bot.image_preview import BOT_API_DOWNLOAD_MAX_BYTES, ImagePreviewError
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
+
+
+def _image_display_error(page: ArchivePage) -> ImagePreviewError:
+    media = page.media
+    if media is not None and media.file_size is not None:
+        if media.file_size > BOT_API_DOWNLOAD_MAX_BYTES:
+            return ImagePreviewError(
+                "Изображение больше 20 МБ нельзя открыть фотографией через облачный Bot API."
+            )
+    return ImagePreviewError(
+        "Telegram не смог открыть это изображение фотографией в хорошем качестве."
+    )
 
 
 async def _build_display_media(
@@ -36,19 +49,20 @@ async def _build_display_media(
 
     caption = format_archive_caption(page)
     if page.media.is_image_document:
-        preview = await resolve_archive_image_preview(
+        photo = await resolve_archive_image_preview(
             bot,
             database,
             page,
             cache_chat_id=cache_chat_id,
         )
-        if preview is not None:
-            return InputMediaPhoto(
-                media=preview,
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-                has_spoiler=page.media.is_spoiler,
-            )
+        if photo is None:
+            raise _image_display_error(page)
+        return InputMediaPhoto(
+            media=photo,
+            caption=caption,
+            parse_mode=ParseMode.HTML,
+            has_spoiler=page.media.is_spoiler,
+        )
     return build_input_media(page.media, caption)
 
 
@@ -88,25 +102,25 @@ async def _send_page(
             **common,
         )
     if media.is_image_document:
-        preview = await resolve_archive_image_preview(
+        photo = await resolve_archive_image_preview(
             bot,
             database,
             page,
             cache_chat_id=chat_id,
         )
-        if preview is not None:
-            sent = await bot.send_photo(
-                photo=preview,
-                has_spoiler=media.is_spoiler,
-                **common,
-            )
-            await persist_preview_from_sent_message(
-                database,
-                media_id=media.id,
-                message=sent,
-                source="admin_archive_preview",
-            )
-            return sent
+        if photo is None:
+            raise _image_display_error(page)
+        sent = await bot.send_photo(
+            photo=photo,
+            has_spoiler=media.is_spoiler,
+            **common,
+        )
+        await persist_preview_from_sent_message(
+            database,
+            media_id=media.id,
+            message=sent,
+        )
+        return sent
 
     return await bot.send_document(
         document=media.telegram_file_id,
@@ -141,7 +155,6 @@ async def _replace_page(
                 database,
                 media_id=page.media.id,
                 message=edited,
-                source="admin_archive_preview",
             )
     except TelegramBadRequest as error:
         if "message is not modified" in str(error).casefold():
@@ -180,26 +193,27 @@ async def handle_admin_large_media_preview(
         await callback.answer("Архив персонажа пока пуст.", show_alert=True)
         return
 
-    if callback_data.action == "open":
-        if not isinstance(callback.message, Message):
-            await callback.answer("Не удалось определить чат.", show_alert=True)
-            return
-        try:
+    try:
+        if callback_data.action == "open":
+            if not isinstance(callback.message, Message):
+                await callback.answer("Не удалось определить чат.", show_alert=True)
+                return
             await _send_page(
                 bot=bot,
                 database=database,
                 chat_id=callback.message.chat.id,
                 page=page,
             )
-        except TelegramBadRequest as error:
-            logger.warning("Failed to send admin archive media: %s", error)
-            await callback.answer(
-                "Telegram больше не может открыть этот файл.",
-                show_alert=True,
-            )
+            await callback.answer()
             return
-        await callback.answer()
-        return
 
-    await _replace_page(callback, bot, database, page)
-    await callback.answer()
+        await _replace_page(callback, bot, database, page)
+        await callback.answer()
+    except ImagePreviewError as error:
+        await callback.answer(str(error), show_alert=True)
+    except TelegramBadRequest as error:
+        logger.warning("Failed to send admin archive media: %s", error)
+        await callback.answer(
+            "Telegram больше не может открыть этот материал.",
+            show_alert=True,
+        )

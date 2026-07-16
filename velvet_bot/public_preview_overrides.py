@@ -12,9 +12,22 @@ from velvet_bot.archive_preview import (
 )
 from velvet_bot.archive_ui import build_input_media
 from velvet_bot.database import Database
+from velvet_bot.image_preview import BOT_API_DOWNLOAD_MAX_BYTES, ImagePreviewError
 from velvet_bot.public_ui import format_public_archive_caption
 
 _INSTALLED = False
+
+
+def _image_display_error(page: ArchivePage) -> ImagePreviewError:
+    media = page.media
+    if media is not None and media.file_size is not None:
+        if media.file_size > BOT_API_DOWNLOAD_MAX_BYTES:
+            return ImagePreviewError(
+                "Изображение больше 20 МБ нельзя открыть фотографией через облачный Bot API."
+            )
+    return ImagePreviewError(
+        "Telegram не смог открыть это изображение фотографией в хорошем качестве."
+    )
 
 
 async def send_viewer_archive_page(
@@ -71,34 +84,27 @@ async def send_viewer_archive_page(
             **common,
         )
     if media.is_image_document:
-        preview = await resolve_archive_image_preview(
+        photo = await resolve_archive_image_preview(
             bot,
             database,
             page,
             cache_chat_id=chat_id,
         )
-        if preview is not None:
-            sent = await bot.send_photo(
-                photo=preview,
-                has_spoiler=media.is_spoiler,
-                **common,
-            )
-            await persist_preview_from_sent_message(
-                database,
-                media_id=media.id,
-                message=sent,
-            )
-            return sent
-
-    sent = await bot.send_document(document=media.telegram_file_id, **common)
-    if media.is_image_document:
+        if photo is None:
+            raise _image_display_error(page)
+        sent = await bot.send_photo(
+            photo=photo,
+            has_spoiler=media.is_spoiler,
+            **common,
+        )
         await persist_preview_from_sent_message(
             database,
             media_id=media.id,
             message=sent,
-            source="document_fallback_thumbnail",
         )
-    return sent
+        return sent
+
+    return await bot.send_document(document=media.telegram_file_id, **common)
 
 
 async def replace_viewer_archive_page(
@@ -132,27 +138,24 @@ async def replace_viewer_archive_page(
     )
 
     if page.media.is_image_document:
-        preview = await resolve_archive_image_preview(
+        photo = await resolve_archive_image_preview(
             bot,
             database,
             page,
             cache_chat_id=callback.message.chat.id,
         )
-        if preview is not None:
-            from aiogram.enums import ParseMode
-            from aiogram.types import InputMediaPhoto
+        if photo is None:
+            raise _image_display_error(page)
 
-            input_media = InputMediaPhoto(
-                media=preview,
-                caption=format_public_archive_caption(page, state),
-                parse_mode=ParseMode.HTML,
-                has_spoiler=page.media.is_spoiler,
-            )
-        else:
-            input_media = build_input_media(
-                page.media,
-                format_public_archive_caption(page, state),
-            )
+        from aiogram.enums import ParseMode
+        from aiogram.types import InputMediaPhoto
+
+        input_media = InputMediaPhoto(
+            media=photo,
+            caption=format_public_archive_caption(page, state),
+            parse_mode=ParseMode.HTML,
+            has_spoiler=page.media.is_spoiler,
+        )
     else:
         input_media = build_input_media(
             page.media,
