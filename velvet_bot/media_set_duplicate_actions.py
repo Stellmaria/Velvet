@@ -119,4 +119,16 @@ async def create_set_candidate_from_duplicate(
     return candidate_id
 
 
-__all__ = ("create_set_candidate_from_duplicate",)
+def install_media_sets_compatibility() -> None:
+    """Replace the first implementation before Telegram handlers import it."""
+    import velvet_bot.media_sets as media_sets
+
+    media_sets.create_set_candidate_from_duplicate = create_set_candidate_from_duplicate
+
+
+install_media_sets_compatibility()
+
+__all__ = (
+    "create_set_candidate_from_duplicate",
+    "install_media_sets_compatibility",
+)
