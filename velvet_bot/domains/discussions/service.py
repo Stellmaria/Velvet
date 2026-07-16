@@ -18,12 +18,12 @@ class DiscussionService:
         *,
         discussion_chat_id: int,
         discussion_message_id: int,
-        reaction_counts: dict[str, int],
-    ) -> None:
-        await self._repository.set_reaction_counts(
+        reaction_breakdown: dict[str, int],
+    ) -> bool:
+        return await self._repository.set_reaction_counts(
             discussion_chat_id=discussion_chat_id,
             discussion_message_id=discussion_message_id,
-            reaction_counts=reaction_counts,
+            reaction_breakdown=reaction_breakdown,
         )
 
     async def apply_reaction_delta(
@@ -31,35 +31,32 @@ class DiscussionService:
         *,
         discussion_chat_id: int,
         discussion_message_id: int,
-        reaction_key: str,
-        delta: int,
-    ) -> None:
-        cleaned_key = reaction_key.strip()
-        if not cleaned_key:
-            raise ValueError("Пустая реакция недопустима.")
-        if delta == 0:
-            return
-        await self._repository.apply_reaction_delta(
+        delta: dict[str, int],
+    ) -> bool:
+        normalized = {
+            str(key).strip(): int(value)
+            for key, value in delta.items()
+            if str(key).strip() and int(value) != 0
+        }
+        if not normalized:
+            return False
+        return await self._repository.apply_reaction_delta(
             discussion_chat_id=discussion_chat_id,
             discussion_message_id=discussion_message_id,
-            reaction_key=cleaned_key,
-            delta=delta,
+            delta=normalized,
         )
 
-    async def get_overview(
-        self,
-        discussion_chat_id: int,
-    ) -> DiscussionOverview | None:
-        return await self._repository.get_overview(discussion_chat_id)
+    async def get_overview(self, chat_id: int) -> DiscussionOverview | None:
+        return await self._repository.get_overview(chat_id)
 
     async def list_participant_stats(
         self,
-        discussion_chat_id: int,
+        chat_id: int,
         *,
-        limit: int = 10,
+        limit: int = 20,
     ) -> list[ParticipantStat]:
         return await self._repository.list_participant_stats(
-            discussion_chat_id,
+            chat_id,
             limit=limit,
         )
 
