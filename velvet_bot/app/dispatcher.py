@@ -10,6 +10,7 @@ from velvet_bot.core.access import AccessPolicy
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
+from velvet_bot.error_center import ErrorIncidentCenter
 from velvet_bot.presentation.telegram.middleware import OwnerAccessMiddleware
 from velvet_bot.presentation.telegram.router import get_root_router
 from velvet_bot.publication_inbox_middleware import PublicationInboxMiddleware
@@ -31,6 +32,7 @@ def build_dispatcher(
     database: Database,
     bot_username: str,
     audit_logger: TelegramAuditLogger,
+    error_center: ErrorIncidentCenter,
     reference_uploads: ReferenceUploadSessions,
     backup_service: BackupService,
     system_service: SystemHealthService,
@@ -52,6 +54,7 @@ def build_dispatcher(
             "database": database,
             "bot_username": bot_username,
             "audit_logger": audit_logger,
+            "error_center": error_center,
             "reference_uploads": reference_uploads,
             "access_policy": access_policy,
             "analytics_channel_ids": settings.analytics_channel_ids,
