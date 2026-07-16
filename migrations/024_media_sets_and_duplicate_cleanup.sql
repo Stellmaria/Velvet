@@ -69,6 +69,10 @@ CREATE TABLE IF NOT EXISTS media_set_candidate_items (
 CREATE INDEX IF NOT EXISTS idx_media_set_candidate_items_media
     ON media_set_candidate_items(media_id, candidate_id);
 
+-- `character_media.prompt_post_url` remains the editing entry point used by the
+-- existing handlers. For a set member the trigger only updates the single set
+-- record. Archive queries deliberately read `media_sets.prompt_post_url` instead
+-- of copying the value into every link row.
 CREATE OR REPLACE FUNCTION sync_media_set_prompt_from_character_media()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -76,10 +80,6 @@ AS $$
 DECLARE
     target_set_id BIGINT;
 BEGIN
-    IF pg_trigger_depth() > 1 THEN
-        RETURN NEW;
-    END IF;
-
     SELECT media_set_id
     INTO target_set_id
     FROM media_files
@@ -94,13 +94,6 @@ BEGIN
         updated_at = NOW()
     WHERE id = target_set_id
       AND prompt_post_url IS DISTINCT FROM NEW.prompt_post_url;
-
-    UPDATE character_media AS cm
-    SET prompt_post_url = NEW.prompt_post_url
-    FROM media_files AS mf
-    WHERE mf.id = cm.media_id
-      AND mf.media_set_id = target_set_id
-      AND cm.prompt_post_url IS DISTINCT FROM NEW.prompt_post_url;
 
     RETURN NEW;
 END
