@@ -6,6 +6,7 @@ from aiogram.types import CallbackQuery, Message
 from velvet_bot.access import AccessPolicy
 from velvet_bot.archive_catalog import get_archive_page
 from velvet_bot.database import Database
+from velvet_bot.image_preview import ImagePreviewError
 from velvet_bot.public_archive_display import refresh_viewer_archive_caption
 from velvet_bot.public_catalog import (
     toggle_character_subscription,
@@ -52,35 +53,40 @@ async def handle_spoiler_aware_open(
         return
 
     manager_access = has_public_manager_access(callback.from_user, access_policy)
-    if callback_data.action == "open":
-        if not isinstance(callback.message, Message):
-            await callback.answer("Не удалось определить чат.", show_alert=True)
-            return
-        await send_viewer_archive_page(
-            bot=bot,
-            database=database,
-            chat_id=callback.message.chat.id,
-            page=page,
-            viewer_user_id=callback.from_user.id,
-            manager_access=manager_access,
-            menu_page=callback_data.page,
-            category=callback_data.category,
-            universe=callback_data.universe,
-            story_id=callback_data.story_id,
-        )
-    else:
-        await replace_viewer_archive_page(
-            callback=callback,
-            bot=bot,
-            database=database,
-            page=page,
-            viewer_user_id=callback.from_user.id,
-            manager_access=manager_access,
-            menu_page=callback_data.page,
-            category=callback_data.category,
-            universe=callback_data.universe,
-            story_id=callback_data.story_id,
-        )
+    try:
+        if callback_data.action == "open":
+            if not isinstance(callback.message, Message):
+                await callback.answer("Не удалось определить чат.", show_alert=True)
+                return
+            await send_viewer_archive_page(
+                bot=bot,
+                database=database,
+                chat_id=callback.message.chat.id,
+                page=page,
+                viewer_user_id=callback.from_user.id,
+                manager_access=manager_access,
+                menu_page=callback_data.page,
+                category=callback_data.category,
+                universe=callback_data.universe,
+                story_id=callback_data.story_id,
+            )
+        else:
+            await replace_viewer_archive_page(
+                callback=callback,
+                bot=bot,
+                database=database,
+                page=page,
+                viewer_user_id=callback.from_user.id,
+                manager_access=manager_access,
+                menu_page=callback_data.page,
+                category=callback_data.category,
+                universe=callback_data.universe,
+                story_id=callback_data.story_id,
+            )
+    except ImagePreviewError as error:
+        await callback.answer(str(error), show_alert=True)
+        return
+
     await callback.answer()
 
 
