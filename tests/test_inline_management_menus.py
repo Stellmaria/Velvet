@@ -194,7 +194,17 @@ class InlineManagementKeyboardTests(unittest.TestCase):
         values = _callback_values(build_owner_main_keyboard())
         prefixes = {value.split(":", 1)[0] for value in values}
         self.assertTrue(
-            {"pub", "adir", "sup", "sys", "qa", "bkp", "dash", "pubq", "own"}
+            {
+                "pub",
+                "adir",
+                "sup",
+                "sys",
+                "quality",
+                "bkp",
+                "dash",
+                "pubq",
+                "own",
+            }
             <= prefixes
         )
 
