@@ -5,6 +5,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from aiogram import Bot
 
@@ -154,3 +155,92 @@ class SystemHealthService:
             pg_restore_available=pg_restore_available,
             workers=workers,
         )
+
+    @staticmethod
+    def report_to_dict(report: SystemHealthReport) -> dict[str, Any]:
+        database = report.database
+        return {
+            "status": report.status,
+            "checked_at": report.checked_at.isoformat(),
+            "started_at": report.started_at.isoformat(),
+            "uptime_seconds": report.uptime_seconds,
+            "app_version": report.app_version,
+            "process_id": report.process_id,
+            "telegram": {
+                "ok": report.telegram_ok,
+                "bot_username": report.bot_username,
+                "error": report.telegram_error,
+            },
+            "postgresql": {
+                "ok": report.database_ok,
+                "error": report.database_error,
+                "database_name": database.database_name if database else None,
+                "postgres_version": database.postgres_version if database else None,
+                "database_size_bytes": database.database_size_bytes if database else None,
+                "schema_version": database.schema_version if database else None,
+                "migration_count": database.migration_count if database else None,
+                "character_count": database.character_count if database else None,
+                "media_count": database.media_count if database else None,
+                "tracked_channel_count": database.tracked_channel_count if database else None,
+                "tracked_discussion_count": (
+                    database.tracked_discussion_count if database else None
+                ),
+            },
+            "queues": {
+                "scheduled_publications": (
+                    database.scheduled_publications if database else None
+                ),
+                "publishing_publications": (
+                    database.publishing_publications if database else None
+                ),
+                "publication_errors": database.publication_errors if database else None,
+                "pending_visual_scans": (
+                    database.pending_visual_scans if database else None
+                ),
+                "unknown_file_checks": database.unknown_file_checks if database else None,
+            },
+            "backup": {
+                "pg_dump_available": report.pg_dump_available,
+                "pg_restore_available": report.pg_restore_available,
+                "latest_status": database.latest_backup_status if database else None,
+                "latest_at": (
+                    database.latest_backup_at.isoformat()
+                    if database and database.latest_backup_at
+                    else None
+                ),
+                "latest_file_name": (
+                    database.latest_backup_file_name if database else None
+                ),
+            },
+            "disk": {
+                "path": report.disk.path,
+                "total_bytes": report.disk.total_bytes,
+                "used_bytes": report.disk.used_bytes,
+                "free_bytes": report.disk.free_bytes,
+                "free_percent": round(report.disk.free_percent, 2),
+            },
+            "workers": [
+                {
+                    "name": item.name,
+                    "description": item.description,
+                    "state": item.state,
+                    "interval_seconds": item.interval_seconds,
+                    "started_at": item.started_at.isoformat() if item.started_at else None,
+                    "last_started_at": (
+                        item.last_started_at.isoformat() if item.last_started_at else None
+                    ),
+                    "last_success_at": (
+                        item.last_success_at.isoformat() if item.last_success_at else None
+                    ),
+                    "last_error_at": (
+                        item.last_error_at.isoformat() if item.last_error_at else None
+                    ),
+                    "next_run_at": item.next_run_at.isoformat() if item.next_run_at else None,
+                    "successful_runs": item.successful_runs,
+                    "failed_runs": item.failed_runs,
+                    "consecutive_failures": item.consecutive_failures,
+                    "last_error": item.last_error,
+                }
+                for item in report.workers
+            ],
+        }
