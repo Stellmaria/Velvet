@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS error_incidents (
     fingerprint CHAR(64) NOT NULL UNIQUE,
     severity VARCHAR(16) NOT NULL,
     logger_name TEXT NOT NULL,
+    source TEXT,
     summary TEXT NOT NULL,
     details TEXT,
     occurrence_count INTEGER NOT NULL DEFAULT 1,
@@ -11,7 +12,6 @@ CREATE TABLE IF NOT EXISTS error_incidents (
     acknowledged_at TIMESTAMPTZ,
     acknowledged_by BIGINT,
     log_chat_message_id BIGINT,
-    last_owner_notified_at TIMESTAMPTZ,
     CONSTRAINT error_incidents_severity_check
         CHECK (severity IN ('WARNING', 'ERROR', 'CRITICAL')),
     CONSTRAINT error_incidents_occurrence_count_check
