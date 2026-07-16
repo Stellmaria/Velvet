@@ -1,6 +1,9 @@
 import os
+import tempfile
 import unittest
+from pathlib import Path
 
+from velvet_bot.backup_runtime import BackupService
 from velvet_bot.database import Database
 from velvet_bot.discussion_insights import (
     get_discussion_summary,
@@ -182,6 +185,31 @@ class PhaseFivePostgreSQLTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, characters.total_items)
         self.assertEqual("Каэль", characters.items[0].label)
         self.assertEqual(2, characters.items[0].count)
+
+    async def test_backup_is_created_and_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            service = BackupService(
+                database_url=os.environ["TEST_DATABASE_URL"],
+                backup_dir=temporary_directory,
+                pg_dump_path="pg_dump",
+                pg_restore_path="pg_restore",
+            )
+            record = await service.create_backup(
+                self.database,
+                backup_kind="manual",
+                created_by=1,
+            )
+
+            self.assertEqual("valid", record.status)
+            self.assertTrue(record.file_path)
+            self.assertTrue(Path(record.file_path).is_file())
+            self.assertGreater(record.size_bytes or 0, 0)
+            self.assertEqual(64, len(record.sha256 or ""))
+            self.assertTrue(record.validation.get("valid"))
+
+            verified = await service.verify_latest(self.database)
+            self.assertEqual(record.id, verified.id)
+            self.assertEqual("valid", verified.status)
 
 
 if __name__ == "__main__":
