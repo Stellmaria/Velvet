@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import velvet_bot.discussion_insights as discussion_insights_module
 import velvet_bot.multi_story_support as multi_story_support
+from velvet_bot.discussion_activity import (
+    get_activity_breakdown,
+    list_activity_spikes,
+    list_publications_without_comments,
+)
 from velvet_bot.discussion_post_insights import (
     get_discussed_post,
     list_discussed_posts,
@@ -43,6 +48,11 @@ def install_legacy_compatibility() -> None:
     discussion_insights_module.list_discussed_characters = list_discussed_characters
     discussion_insights_module.list_discussed_universes = list_discussed_universes
     discussion_insights_module.list_discussed_stories = list_discussed_stories
+    discussion_insights_module.list_publications_without_comments = (
+        list_publications_without_comments
+    )
+    discussion_insights_module.get_activity_breakdown = get_activity_breakdown
+    discussion_insights_module.list_activity_spikes = list_activity_spikes
 
     install_safe_analytics_edit()
     _INSTALLED = True
