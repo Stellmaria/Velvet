@@ -6,13 +6,13 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 
-from velvet_bot.access import CHARACTER_EDITOR_USER_IDS
 from velvet_bot.app.commands import install_command_menus
 from velvet_bot.app.dispatcher import build_dispatcher
 from velvet_bot.app.workers import build_worker_manager
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
-from velvet_bot.config import Settings, load_settings
+from velvet_bot.core.access import CHARACTER_EDITOR_USER_IDS
+from velvet_bot.core.config import Settings, load_settings
 from velvet_bot.database import Database
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_ui import PUBLIC_DOWNLOAD_USER_ID
