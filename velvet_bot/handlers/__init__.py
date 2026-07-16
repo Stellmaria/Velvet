@@ -44,6 +44,9 @@ from velvet_bot.handlers.public_media_display import router as public_media_disp
 from velvet_bot.handlers.public_notification_open import (
     router as public_notification_open_router,
 )
+from velvet_bot.handlers.publication_center_safe import (
+    router as publication_center_router,
+)
 from velvet_bot.handlers.reference_albums import router as reference_albums_router
 from velvet_bot.handlers.reference_documents import router as reference_documents_router
 from velvet_bot.handlers.reference_management import router as reference_management_router
@@ -117,6 +120,8 @@ router.include_router(references_router)
 router.include_router(inline_help_router)
 router.include_router(guest_archive_router)
 router.include_router(spoiler_save_router)
+# Publication commands must be before archive.py's catch-all topic handler.
+router.include_router(publication_center_router)
 router.include_router(archive_router)
 
 __all__ = ("router",)

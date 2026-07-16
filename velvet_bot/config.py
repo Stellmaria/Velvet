@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 
@@ -14,6 +15,7 @@ class Settings:
     allowed_usernames: frozenset[str]
     log_chat_id: int | None
     analytics_channel_ids: frozenset[int]
+    publication_timezone: str
 
 
 def _parse_integer_list(value: str, *, variable_name: str) -> frozenset[int]:
@@ -51,6 +53,18 @@ def _parse_optional_chat_id(value: str) -> int | None:
         return int(cleaned)
     except ValueError as error:
         raise RuntimeError("LOG_CHAT_ID должен быть числовым Telegram chat ID.") from error
+
+
+def _parse_timezone(value: str) -> str:
+    cleaned = value.strip() or "Europe/Berlin"
+    try:
+        ZoneInfo(cleaned)
+    except ZoneInfoNotFoundError as error:
+        raise RuntimeError(
+            "PUBLICATION_TIMEZONE должен быть корректным IANA-часовым поясом, "
+            "например Europe/Berlin."
+        ) from error
+    return cleaned
 
 
 def load_settings() -> Settings:
@@ -91,6 +105,9 @@ def load_settings() -> Settings:
         os.getenv("ANALYTICS_CHANNEL_IDS", "-1003802812639"),
         variable_name="ANALYTICS_CHANNEL_IDS",
     )
+    publication_timezone = _parse_timezone(
+        os.getenv("PUBLICATION_TIMEZONE", "Europe/Berlin")
+    )
 
     return Settings(
         bot_token=bot_token,
@@ -99,4 +116,5 @@ def load_settings() -> Settings:
         allowed_usernames=allowed_usernames,
         log_chat_id=log_chat_id,
         analytics_channel_ids=analytics_channel_ids,
+        publication_timezone=publication_timezone,
     )
