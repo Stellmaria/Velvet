@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+import logging
+
 from aiogram import F, Router
-from aiogram.types import CallbackQuery
+from aiogram.filters import Command
+from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.error_center import ErrorIncidentCenter
 
+logger = logging.getLogger(__name__)
 router = Router(name=__name__)
+
+
+@router.message(Command("test_error_alert"))
+async def test_error_alert_command(message: Message) -> None:
+    owner_id = message.from_user.id if message.from_user is not None else 0
+    logger.error("Manual error-center test requested by owner_id=%s", owner_id)
+    await message.answer(
+        "Тестовая ошибка записана. Проверьте лог-чат и личные сообщения владельца."
+    )
 
 
 @router.callback_query(F.data.startswith("err:ack:"))
