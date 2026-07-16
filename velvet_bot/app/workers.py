@@ -10,6 +10,7 @@ from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
+from velvet_bot.error_center import ErrorIncidentCenter
 from velvet_bot.ollama_vision import ReliableVisionClient
 from velvet_bot.resilient_ai_vision import (
     ResilientMediaAIRepository,
@@ -25,6 +26,7 @@ def build_worker_manager(
     database: Database,
     backup_service: BackupService,
     settings: Settings | None = None,
+    error_center: ErrorIncidentCenter | None = None,
 ) -> WorkerManager:
     """Build the complete periodic-worker registry for the application."""
     public_notifications = build_public_notification_dispatcher(bot, database)
@@ -78,6 +80,15 @@ def build_worker_manager(
                 description="Смысловой ИИ-анализ изображений",
                 interval_seconds=8,
                 runner=ai_service.process_once,
+            )
+        )
+    if error_center is not None:
+        manager.register(
+            PeriodicWorkerSpec(
+                name="error-alert-reminders",
+                description="Напоминания владельцу о непросмотренных ошибках",
+                interval_seconds=300,
+                runner=error_center.send_owner_reminder_once,
             )
         )
     manager.register(
