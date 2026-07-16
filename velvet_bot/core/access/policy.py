@@ -4,8 +4,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-# Public access is deliberately limited to archive viewing. `/start` renders the
-# archive welcome screen; `/menu` belongs to the owner control panel.
+# Public access includes archive viewing plus user-facing likes and subscriptions.
+# `/menu` still belongs exclusively to the owner control panel.
 PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery"})
 PUBLIC_CALLBACK_ACTIONS = frozenset(
     {
@@ -18,6 +18,8 @@ PUBLIC_CALLBACK_ACTIONS = frozenset(
         "noop",
         "close",
         "back",
+        "like",
+        "sub",
     }
 )
 PUBLIC_CALLBACK_PREFIX = "pub:"

@@ -77,7 +77,7 @@ def _callback(user: User, data: str, *, callback_id: str) -> CallbackQuery:
 
 
 class AccessBoundaryTests(unittest.TestCase):
-    def test_public_access_is_archive_viewing_only(self) -> None:
+    def test_public_access_includes_archive_engagement(self) -> None:
         self.assertEqual(PUBLIC_COMMANDS, {"start", "archive", "gallery"})
         self.assertEqual(PUBLIC_CALLBACK_PREFIX, "pub:")
         self.assertEqual(
@@ -92,11 +92,13 @@ class AccessBoundaryTests(unittest.TestCase):
                 "noop",
                 "close",
                 "back",
+                "like",
+                "sub",
             },
         )
         self.assertNotIn("menu", PUBLIC_COMMANDS)
-        self.assertNotIn("like", PUBLIC_CALLBACK_ACTIONS)
-        self.assertNotIn("sub", PUBLIC_CALLBACK_ACTIONS)
+        self.assertIn("like", PUBLIC_CALLBACK_ACTIONS)
+        self.assertIn("sub", PUBLIC_CALLBACK_ACTIONS)
         self.assertNotIn("download", PUBLIC_CALLBACK_ACTIONS)
 
     def test_single_moderator_has_narrow_editor_permissions(self) -> None:
@@ -154,9 +156,20 @@ class AccessBoundaryTests(unittest.TestCase):
         self.assertTrue(is_moderator_callback(moderator_callback))
         self.assertTrue(is_public_callback(public_callback))
 
-    def test_public_mutations_are_not_public_callbacks(self) -> None:
+    def test_likes_and_subscriptions_are_public_but_management_is_not(self) -> None:
         stranger = User(id=11, is_bot=False, first_name="Viewer")
-        for action in ("like", "sub", "download", "pcat", "puni", "purge"):
+        for action in ("like", "sub"):
+            with self.subTest(action=action):
+                self.assertTrue(
+                    is_public_callback(
+                        _callback(
+                            stranger,
+                            f"pub:{action}:1:0:2",
+                            callback_id=action,
+                        )
+                    )
+                )
+        for action in ("download", "pcat", "puni", "purge"):
             with self.subTest(action=action):
                 self.assertFalse(
                     is_public_callback(
@@ -174,7 +187,7 @@ class AccessBoundaryTests(unittest.TestCase):
             "adir:owner_settings:0",
             "astory:delete_catalog:0",
             "arc:purge_all:0",
-            "pub:like:1:0:2",
+            "pub:purge:1:0:2",
             "sup:status:",
         ):
             with self.subTest(data=data):
