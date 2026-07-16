@@ -24,8 +24,8 @@ class PeriodicWorkerSpec:
         cleaned = self.name.strip()
         if not cleaned:
             raise ValueError("Имя фонового процесса не может быть пустым.")
-        if self.interval_seconds < 1:
-            raise ValueError("Интервал фонового процесса не может быть меньше секунды.")
+        if self.interval_seconds <= 0:
+            raise ValueError("Интервал фонового процесса должен быть положительным.")
         object.__setattr__(self, "name", cleaned)
         object.__setattr__(self, "description", self.description.strip() or cleaned)
 
