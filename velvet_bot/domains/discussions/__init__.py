@@ -31,6 +31,8 @@ from velvet_bot.domains.discussions.ranking_repository import (
     DiscussionRankingRepository,
 )
 from velvet_bot.domains.discussions.ranking_service import DiscussionRankingService
+from velvet_bot.domains.discussions.relink_repository import DiscussionRelinkRepository
+from velvet_bot.domains.discussions.relink_service import DiscussionRelinkService
 from velvet_bot.domains.discussions.repository import DiscussionRepository
 from velvet_bot.domains.discussions.service import DiscussionService
 
@@ -53,6 +55,8 @@ __all__ = (
     "DiscussionPostInsightService",
     "DiscussionRankingRepository",
     "DiscussionRankingService",
+    "DiscussionRelinkRepository",
+    "DiscussionRelinkService",
     "DiscussionRepository",
     "DiscussionService",
     "DiscussionSummary",
