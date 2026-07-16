@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from html import escape
 
-from aiogram import Bot, F, Router
+from aiogram import Bot, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    BufferedInputFile,
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from velvet_bot.services.system_health import SystemHealthReport, SystemHealthService
 from velvet_bot.version import APP_VERSION
@@ -94,9 +101,15 @@ def _main_keyboard() -> InlineKeyboardMarkup:
                     callback_data=SystemCallback(action="version").pack(),
                 ),
                 InlineKeyboardButton(
+                    text="📄 Отчёт",
+                    callback_data=SystemCallback(action="export").pack(),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
                     text="🔄 Обновить",
                     callback_data=SystemCallback(action="overview").pack(),
-                ),
+                )
             ],
         ]
     )
@@ -115,6 +128,60 @@ def _back_keyboard(action: str) -> InlineKeyboardMarkup:
                     callback_data=SystemCallback(action=action).pack(),
                 ),
             ]
+        ]
+    )
+
+
+def _workers_keyboard(report: SystemHealthReport) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=f"{_worker_icon(item)} {item.description[:38]}",
+                callback_data=SystemCallback(action=f"worker.{item.name}").pack(),
+            )
+        ]
+        for item in report.workers
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="↩️ Система",
+                callback_data=SystemCallback(action="overview").pack(),
+            ),
+            InlineKeyboardButton(
+                text="🔄 Обновить",
+                callback_data=SystemCallback(action="workers").pack(),
+            ),
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _worker_keyboard(name: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="▶️ Запустить сейчас",
+                    callback_data=SystemCallback(action=f"run.{name}").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="♻️ Перезапустить процесс",
+                    callback_data=SystemCallback(action=f"restart.{name}").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Воркеры",
+                    callback_data=SystemCallback(action="workers").pack(),
+                ),
+                InlineKeyboardButton(
+                    text="🔄 Обновить",
+                    callback_data=SystemCallback(action=f"worker.{name}").pack(),
+                ),
+            ],
         ]
     )
 
@@ -145,20 +212,31 @@ def _overview_text(report: SystemHealthReport) -> str:
 def _workers_text(report: SystemHealthReport) -> str:
     lines = ["<b>⚙️ Фоновые процессы</b>", ""]
     for item in report.workers:
-        lines.extend(
-            [
-                f"{_worker_icon(item)} <b>{escape(item.description)}</b>",
-                f"Состояние: <code>{escape(item.state)}</code>",
-                f"Успешных запусков: <b>{item.successful_runs}</b>",
-                f"Ошибок: <b>{item.failed_runs}</b>",
-                f"Последний успех: <b>{_format_datetime(item.last_success_at)}</b>",
-                f"Следующий запуск: <b>{_format_datetime(item.next_run_at)}</b>",
-            ]
+        lines.append(
+            f"{_worker_icon(item)} <b>{escape(item.description)}</b> · "
+            f"<code>{escape(item.state)}</code> · ошибок {item.failed_runs}"
         )
-        if item.last_error:
-            lines.append(f"Последняя ошибка: <code>{escape(item.last_error[:400])}</code>")
-        lines.append("")
-    return "\n".join(lines).rstrip()
+    lines.extend(["", "Выберите процесс для подробностей и безопасного управления."])
+    return "\n".join(lines)
+
+
+def _worker_text(item: WorkerSnapshot) -> str:
+    text = (
+        f"<b>{_worker_icon(item)} {escape(item.description)}</b>\n\n"
+        f"Имя: <code>{escape(item.name)}</code>\n"
+        f"Состояние: <code>{escape(item.state)}</code>\n"
+        f"Интервал: <b>{item.interval_seconds:g} сек.</b>\n"
+        f"Успешных запусков: <b>{item.successful_runs}</b>\n"
+        f"Ошибок: <b>{item.failed_runs}</b>\n"
+        f"Ошибок подряд: <b>{item.consecutive_failures}</b>\n"
+        f"Последний запуск: <b>{_format_datetime(item.last_started_at)}</b>\n"
+        f"Последний успех: <b>{_format_datetime(item.last_success_at)}</b>\n"
+        f"Последняя ошибка: <b>{_format_datetime(item.last_error_at)}</b>\n"
+        f"Следующий запуск: <b>{_format_datetime(item.next_run_at)}</b>"
+    )
+    if item.last_error:
+        text += f"\n\n<code>{escape(item.last_error[:1000])}</code>"
+    return text
 
 
 def _database_text(report: SystemHealthReport) -> str:
@@ -248,6 +326,30 @@ async def _safe_edit(
             raise
 
 
+async def _send_export(
+    callback: CallbackQuery,
+    report: SystemHealthReport,
+    system_service: SystemHealthService,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Чат для отчёта недоступен.", show_alert=True)
+        return
+    payload = json.dumps(
+        system_service.report_to_dict(report),
+        ensure_ascii=False,
+        indent=2,
+    ).encode("utf-8")
+    stamp = report.checked_at.strftime("%Y%m%dT%H%M%SZ")
+    await callback.message.answer_document(
+        BufferedInputFile(payload, filename=f"velvet_system_report_{stamp}.json"),
+        caption=(
+            "<b>Диагностический отчёт Velvet Archive</b>\n\n"
+            "Токены, пароли и DATABASE_URL в файл не включаются. "
+            "Секреты хотя бы раз оставили за дверью, редкое достижение."
+        ),
+    )
+
+
 @router.message(Command("system", "health"))
 async def handle_system_command(
     message: Message,
@@ -270,9 +372,7 @@ async def handle_version_command(
     await message.answer(_version_text(report))
 
 
-@router.callback_query(SystemCallback.filter(F.action.in_({
-    "overview", "workers", "database", "queues", "backups", "version"
-})))
+@router.callback_query(SystemCallback.filter())
 async def handle_system_callback(
     callback: CallbackQuery,
     callback_data: SystemCallback,
@@ -280,10 +380,53 @@ async def handle_system_callback(
     system_service: SystemHealthService,
     worker_manager: WorkerManager,
 ) -> None:
-    report = await _build_report(bot, system_service, worker_manager)
     action = callback_data.action
-    if action == "workers":
-        text, keyboard = _workers_text(report), _back_keyboard(action)
+
+    if action.startswith("run."):
+        name = action.removeprefix("run.")
+        await callback.answer("Запускаю одну итерацию…")
+        try:
+            await worker_manager.run_now(name)
+        except (ValueError, RuntimeError) as error:
+            if isinstance(callback.message, Message):
+                await callback.message.answer(f"<b>Запуск не выполнен</b>\n\n{escape(str(error))}")
+            return
+        report = await _build_report(bot, system_service, worker_manager)
+        item = worker_manager.snapshot(name)
+        if item is not None:
+            await _safe_edit(callback, _worker_text(item), _worker_keyboard(name))
+        return
+
+    if action.startswith("restart."):
+        name = action.removeprefix("restart.")
+        await callback.answer("Перезапускаю процесс…")
+        try:
+            await worker_manager.restart(name)
+        except (ValueError, RuntimeError) as error:
+            if isinstance(callback.message, Message):
+                await callback.message.answer(
+                    f"<b>Перезапуск не выполнен</b>\n\n{escape(str(error))}"
+                )
+            return
+        item = worker_manager.snapshot(name)
+        if item is not None:
+            await _safe_edit(callback, _worker_text(item), _worker_keyboard(name))
+        return
+
+    report = await _build_report(bot, system_service, worker_manager)
+    if action == "export":
+        await callback.answer("Готовлю отчёт…")
+        await _send_export(callback, report, system_service)
+        return
+    if action.startswith("worker."):
+        name = action.removeprefix("worker.")
+        item = worker_manager.snapshot(name)
+        if item is None:
+            await callback.answer("Процесс не найден.", show_alert=True)
+            return
+        text, keyboard = _worker_text(item), _worker_keyboard(name)
+    elif action == "workers":
+        text, keyboard = _workers_text(report), _workers_keyboard(report)
     elif action == "database":
         text, keyboard = _database_text(report), _back_keyboard(action)
     elif action == "queues":
