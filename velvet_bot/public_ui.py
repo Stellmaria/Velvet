@@ -351,8 +351,7 @@ def format_public_archive_caption(page: ArchivePage, state: PublicMediaState) ->
     return (
         f"<b>{escape(page.character.name)}</b>\n"
         f"Материал: <b>{page.offset + 1}</b> из <b>{page.total}</b>\n"
-        f"Добавлен: <code>{escape(linked_at)}</code>\n"
-        f"Отметок: <b>{state.like_count}</b>"
+        f"Добавлен: <code>{escape(linked_at)}</code>"
     )
 
 
@@ -411,29 +410,6 @@ def build_public_archive_keyboard(
                 ),
             ]
         ]
-
-    rows.append(
-        [
-            InlineKeyboardButton(
-                text=("❤️" if state.liked_by_user else "🤍") + f" {state.like_count}",
-                callback_data=_callback(
-                    "like",
-                    offset=page.offset,
-                    media_id=media_id,
-                    **common,
-                ),
-            ),
-            InlineKeyboardButton(
-                text="🔕 Отписаться" if state.subscribed else "🔔 Подписаться",
-                callback_data=_callback(
-                    "sub",
-                    offset=page.offset,
-                    media_id=media_id,
-                    **common,
-                ),
-            ),
-        ]
-    )
 
     effective_prompt_url = page.media.prompt_post_url
     if effective_prompt_url:
