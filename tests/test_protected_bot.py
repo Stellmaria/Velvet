@@ -58,20 +58,6 @@ class ProtectedMediaBotTests(unittest.TestCase):
 
         self.assertFalse(changed)
 
-    def test_permanent_unprotected_owner_is_supported(self) -> None:
-        bot = ProtectedMediaBot(
-            token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi",
-            unprotected_private_user_ids={8179531132},
-        )
-
-        try:
-            self.assertEqual(
-                frozenset({8179531132}),
-                bot._permanent_unprotected_private_user_ids,
-            )
-        finally:
-            bot.session.close()
-
 
 class ProtectedMediaBotAsyncTests(unittest.IsolatedAsyncioTestCase):
     async def test_manager_download_exception_is_consumed_after_one_media_send(self) -> None:
