@@ -19,6 +19,8 @@ class ArchivedMedia:
     prompt_post_url: str | None = None
     archive_message_id: int | None = None
     is_spoiler: bool = False
+    media_set_id: int | None = None
+    media_set_title: str | None = None
 
     @property
     def display_file_name(self) -> str:
@@ -29,6 +31,10 @@ class ArchivedMedia:
         return self.media_type == "document" and (self.mime_type or "").startswith(
             "image/"
         )
+
+    @property
+    def belongs_to_set(self) -> bool:
+        return self.media_set_id is not None
 
 
 @dataclass(frozen=True, slots=True)

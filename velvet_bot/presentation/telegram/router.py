@@ -7,6 +7,7 @@ from aiogram.types import ErrorEvent
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.discussion_dashboard_compat import get_discussion_dashboard_compat
+from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,11 @@ _ROOT_ROUTER: Router | None = None
 
 def _build_root_router() -> Router:
     install_legacy_compatibility()
+
+    # Install corrected media-set compatibility before handlers bind functions.
+    import velvet_bot.media_set_duplicate_actions  # noqa: F401
+
+    install_media_set_ui()
 
     from velvet_bot.handlers.admin_directory import router as admin_directory_router
     from velvet_bot.handlers.admin_large_media_preview import (
@@ -60,6 +66,7 @@ def _build_root_router() -> Router:
     )
     from velvet_bot.handlers.quality_center import router as quality_center_router
     from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
+    from velvet_bot.handlers.quality_sets import router as quality_sets_router
     from velvet_bot.handlers.reference_albums import router as reference_albums_router
     from velvet_bot.handlers.reference_documents import router as reference_documents_router
     from velvet_bot.handlers.reference_management import router as reference_management_router
@@ -106,6 +113,7 @@ def _build_root_router() -> Router:
     root.include_router(analytics_dashboard_router)
     root.include_router(backup_center_router)
     root.include_router(quality_duplicates_router)
+    root.include_router(quality_sets_router)
     root.include_router(quality_center_router)
     root.include_router(character_aliases_router)
     root.include_router(telegram_analytics_import_router)

@@ -56,6 +56,12 @@ def build_quality_dashboard(
         ],
         [
             InlineKeyboardButton(
+                text="🎞 Предложения медиасетов",
+                callback_data=quality_callback("sets", section="pending"),
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 text=f"👥 Без категории · {summary.missing_category}",
                 callback_data=quality_callback("section", section="missing_category"),
             ),
