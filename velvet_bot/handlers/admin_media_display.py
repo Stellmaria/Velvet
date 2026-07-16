@@ -19,6 +19,7 @@ from velvet_bot.archive_ui import (
     format_archive_caption,
 )
 from velvet_bot.database import Database
+from velvet_bot.image_preview import build_image_document_preview
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -26,22 +27,25 @@ logger = logging.getLogger(__name__)
 
 async def build_admin_display_media(
     bot: Bot,
-    database: Database,
     page: ArchivePage,
     *,
-    cache_chat_id: int,
+    database: Database | None = None,
+    cache_chat_id: int | None = None,
 ):
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
 
     caption = format_archive_caption(page)
     if page.media.is_image_document:
-        preview = await resolve_archive_image_preview(
-            bot,
-            database,
-            page,
-            cache_chat_id=cache_chat_id,
-        )
+        if database is not None and cache_chat_id is not None:
+            preview = await resolve_archive_image_preview(
+                bot,
+                database,
+                page,
+                cache_chat_id=cache_chat_id,
+            )
+        else:
+            preview = await build_image_document_preview(bot, page.media)
         if preview is not None:
             return InputMediaPhoto(
                 media=preview,
@@ -56,9 +60,9 @@ async def build_admin_display_media(
 async def send_admin_archive_page(
     *,
     bot: Bot,
-    database: Database,
     chat_id: int,
     page: ArchivePage,
+    database: Database | None = None,
 ) -> Message:
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
@@ -89,23 +93,27 @@ async def send_admin_archive_page(
             **common,
         )
     if media.is_image_document:
-        preview = await resolve_archive_image_preview(
-            bot,
-            database,
-            page,
-            cache_chat_id=chat_id,
-        )
+        if database is not None:
+            preview = await resolve_archive_image_preview(
+                bot,
+                database,
+                page,
+                cache_chat_id=chat_id,
+            )
+        else:
+            preview = await build_image_document_preview(bot, media)
         if preview is not None:
             sent = await bot.send_photo(
                 photo=preview,
                 has_spoiler=media.is_spoiler,
                 **common,
             )
-            await persist_preview_from_sent_message(
-                database,
-                media_id=media.id,
-                message=sent,
-            )
+            if database is not None:
+                await persist_preview_from_sent_message(
+                    database,
+                    media_id=media.id,
+                    message=sent,
+                )
             return sent
 
     return await bot.send_document(document=media.telegram_file_id, **common)
@@ -114,8 +122,8 @@ async def send_admin_archive_page(
 async def replace_admin_archive_page(
     callback: CallbackQuery,
     bot: Bot,
-    database: Database,
     page: ArchivePage,
+    database: Database | None = None,
 ) -> None:
     if page.media is None or not isinstance(callback.message, Message):
         await callback.answer("Материал больше недоступен.", show_alert=True)
@@ -123,18 +131,19 @@ async def replace_admin_archive_page(
 
     media = await build_admin_display_media(
         bot,
-        database,
         page,
-        cache_chat_id=callback.message.chat.id,
+        database=database,
+        cache_chat_id=callback.message.chat.id if database is not None else None,
     )
     keyboard = build_archive_navigation(page)
     try:
         edited = await callback.message.edit_media(media=media, reply_markup=keyboard)
-        await persist_preview_from_sent_message(
-            database,
-            media_id=page.media.id,
-            message=edited,
-        )
+        if database is not None:
+            await persist_preview_from_sent_message(
+                database,
+                media_id=page.media.id,
+                message=edited,
+            )
     except TelegramBadRequest as error:
         if "message is not modified" in str(error).casefold():
             await callback.message.edit_reply_markup(reply_markup=keyboard)
@@ -193,5 +202,5 @@ async def handle_admin_archive_display(
         await callback.answer()
         return
 
-    await replace_admin_archive_page(callback, bot, database, page)
+    await replace_admin_archive_page(callback, bot, page, database=database)
     await callback.answer()
