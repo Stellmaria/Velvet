@@ -11,6 +11,7 @@ from velvet_bot.media_sets import (
     discover_media_set_candidates,
     list_media_set_candidates,
 )
+from velvet_bot.quality_set_audit_compat import get_quality_summary_with_sets
 
 
 @unittest.skipUnless(
@@ -127,6 +128,10 @@ class MediaSetsPostgreSQLTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(created_set.title, first_page.media.media_set_title)
         self.assertEqual(prompt_url, first_page.media.prompt_post_url)
         self.assertEqual(prompt_url, second_page.media.prompt_post_url)
+        self.assertEqual(
+            0,
+            (await get_quality_summary_with_sets(self.database)).media_without_prompt,
+        )
 
         replacement_url = "https://t.me/velvet/200"
         self.assertTrue(
@@ -158,6 +163,10 @@ class MediaSetsPostgreSQLTests(unittest.IsolatedAsyncioTestCase):
         second_page = await archive.get_page(character_id=eric.id, offset=0)
         self.assertIsNone(first_page.media.prompt_post_url)
         self.assertIsNone(second_page.media.prompt_post_url)
+        self.assertEqual(
+            2,
+            (await get_quality_summary_with_sets(self.database)).media_without_prompt,
+        )
 
 
 if __name__ == "__main__":
