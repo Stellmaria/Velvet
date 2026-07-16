@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
@@ -9,16 +8,13 @@ from velvet_bot.handlers.backup_center import BackupCallback
 from velvet_bot.handlers.publication_center import PublicationCallback
 from velvet_bot.handlers.supervisor_control import SupervisorCallback
 from velvet_bot.handlers.system_center import SystemCallback
+from velvet_bot.owner_callbacks import (
+    OwnerMenuCallback,
+    owner_action_callback,
+    owner_callback,
+)
 from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.quality_ui import quality_callback
-
-
-class OwnerMenuCallback(CallbackData, prefix="own"):
-    action: str
-
-
-def owner_callback(action: str) -> str:
-    return OwnerMenuCallback(action=action).pack()
 
 
 def build_owner_main_keyboard() -> InlineKeyboardMarkup:
@@ -37,7 +33,7 @@ def build_owner_main_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="🧰 Все действия",
-                    callback_data="oact:menu",
+                    callback_data=owner_action_callback("menu"),
                 )
             ],
             [
