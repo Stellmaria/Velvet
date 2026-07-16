@@ -4,6 +4,8 @@
 # Runtime data
 data/
 backups/
+logs/
+runtime/
 *.dump
 *.dump.part
 *.dump.json
