@@ -3,9 +3,11 @@ import logging
 from aiogram import Router
 from aiogram.types import ErrorEvent
 
-from velvet_bot.multi_story_support import install_multi_story_support
+import velvet_bot.multi_story_support as multi_story_support
+from velvet_bot.multi_story_queries import list_assigned_character_stories
 
-install_multi_story_support()
+multi_story_support.list_assigned_character_stories = list_assigned_character_stories
+multi_story_support.install_multi_story_support()
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.handlers.admin_directory import router as admin_directory_router
@@ -31,6 +33,8 @@ from velvet_bot.handlers.characters import router as characters_router
 from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
 from velvet_bot.handlers.guest_archive import router as guest_archive_router
 from velvet_bot.handlers.inline_help import router as inline_help_router
+from velvet_bot.handlers.kr_profile_overrides import router as kr_profile_overrides_router
+from velvet_bot.handlers.kr_universe_entry import router as kr_universe_entry_router
 from velvet_bot.handlers.media_browser import router as media_browser_router
 from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
 from velvet_bot.handlers.multi_story_kr import router as multi_story_kr_router
@@ -91,6 +95,8 @@ router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
 router.include_router(start_router)
 router.include_router(public_media_display_router)
+router.include_router(kr_universe_entry_router)
+router.include_router(kr_profile_overrides_router)
 router.include_router(multi_story_kr_router)
 router.include_router(public_manager_router)
 router.include_router(public_notification_open_router)
