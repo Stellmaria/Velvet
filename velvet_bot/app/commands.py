@@ -6,8 +6,8 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import BotCommand, BotCommandScopeChat
 
-from velvet_bot.access import CHARACTER_EDITOR_USER_IDS
-from velvet_bot.config import Settings
+from velvet_bot.core.access import CHARACTER_EDITOR_USER_IDS
+from velvet_bot.core.config import Settings
 
 logger = logging.getLogger(__name__)
 
