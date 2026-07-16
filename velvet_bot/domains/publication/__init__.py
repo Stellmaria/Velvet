@@ -3,12 +3,16 @@ from velvet_bot.domains.publication.constants import (
     MEDIA_GROUP_LIMIT,
     TEXT_LIMIT,
 )
+from velvet_bot.domains.publication.draft_repository import PublicationDraftRepository
+from velvet_bot.domains.publication.draft_service import PublicationDraftService
 from velvet_bot.domains.publication.models import (
     DuplicateDraftInfo,
     DuplicatePostInfo,
     PublicationCharacterInfo,
     PublicationDraft,
     PublicationDraftPage,
+    PublicationInboxItem,
+    PublicationInboxPayload,
     PublicationIssue,
     PublicationItem,
     PublicationValidationContext,
@@ -30,6 +34,10 @@ __all__ = (
     "PublicationDelivery",
     "PublicationDraft",
     "PublicationDraftPage",
+    "PublicationDraftRepository",
+    "PublicationDraftService",
+    "PublicationInboxItem",
+    "PublicationInboxPayload",
     "PublicationIssue",
     "PublicationItem",
     "PublicationRepository",
