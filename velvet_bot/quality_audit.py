@@ -128,8 +128,13 @@ async def list_character_issues(
     filters = {
         "missing_category": "c.category IS NULL",
         "missing_universe": "c.universe IS NULL",
-        "missing_story": "c.universe = ANY($1::TEXT[]) AND NOT EXISTS (SELECT 1 FROM character_story_links l WHERE l.character_id = c.id)",
-        "empty_characters": "NOT EXISTS (SELECT 1 FROM character_media cm WHERE cm.character_id = c.id)",
+        "missing_story": (
+            "c.universe = ANY($1::TEXT[]) AND NOT EXISTS "
+            "(SELECT 1 FROM character_story_links l WHERE l.character_id = c.id)"
+        ),
+        "empty_characters": (
+            "NOT EXISTS (SELECT 1 FROM character_media cm WHERE cm.character_id = c.id)"
+        ),
     }
     condition = filters.get(section)
     if condition is None:
@@ -218,9 +223,16 @@ async def list_media_issues(
                    mf.id AS media_id,
                    COALESCE(mf.original_file_name, mf.storage_file_name) AS file_name,
                    mf.media_type, mf.visual_scan_error, fc.error_text,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY c.id ORDER BY cm.created_at DESC, mf.id DESC
-                   ) - 1 AS media_offset
+                   (
+                       SELECT COUNT(*)
+                       FROM character_media cm2
+                       JOIN media_files mf2 ON mf2.id = cm2.media_id
+                       WHERE cm2.character_id = c.id
+                         AND (
+                             cm2.created_at > cm.created_at
+                             OR (cm2.created_at = cm.created_at AND mf2.id > mf.id)
+                         )
+                   ) AS media_offset
             FROM character_media cm
             JOIN characters c ON c.id = cm.character_id
             JOIN media_files mf ON mf.id = cm.media_id
@@ -237,13 +249,13 @@ async def list_media_issues(
             QualityItem(
                 id=int(row["media_id"]),
                 label=f"{row['character_name']} · {row['file_name']}",
-                detail=(
-                    str(row["visual_scan_error"] or row["error_text"] or row["media_type"])
+                detail=str(
+                    row["visual_scan_error"] or row["error_text"] or row["media_type"]
                 )[:180],
                 character_id=int(row["character_id"]),
                 category=row["category"],
                 media_id=int(row["media_id"]),
-                media_offset=int(row["media_offset"]),
+                media_offset=int(row["media_offset"] or 0),
             )
             for row in rows
         ),
@@ -262,7 +274,8 @@ async def list_unresolved_hashtags(
     async with database._require_pool().acquire() as connection:
         total = int(
             await connection.fetchval(
-                "SELECT COUNT(DISTINCT normalized_hashtag) FROM channel_post_hashtags WHERE character_id IS NULL"
+                "SELECT COUNT(DISTINCT normalized_hashtag) "
+                "FROM channel_post_hashtags WHERE character_id IS NULL"
             )
             or 0
         )
@@ -295,25 +308,13 @@ async def list_unresolved_hashtags(
     )
 
 
-async def remove_orphan_media(database: Database) -> int:
-    async with database._require_pool().acquire() as connection:
-        result = await connection.execute(
-            """
-            DELETE FROM media_files mf
-            WHERE NOT EXISTS (
-                SELECT 1 FROM character_media cm WHERE cm.media_id = mf.id
-            )
-            """
-        )
-    return int(result.split()[-1])
-
-
 async def reset_broken_file_checks(database: Database) -> int:
     async with database._require_pool().acquire() as connection:
         result = await connection.execute(
             """
             UPDATE media_file_checks
-            SET status = 'unknown', error_text = NULL, checked_at = NULL, updated_at = NOW()
+            SET status = 'unknown', error_text = NULL,
+                checked_at = NULL, updated_at = NOW()
             WHERE status = 'broken'
             """
         )
