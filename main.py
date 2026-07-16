@@ -14,6 +14,7 @@ from velvet_bot.access import (
     OwnerAccessMiddleware,
 )
 from velvet_bot.audit import TelegramAuditLogger
+from velvet_bot.backup_service import BackupService, run_backup_worker
 from velvet_bot.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
@@ -31,8 +32,20 @@ logger = logging.getLogger(__name__)
 
 async def main() -> None:
     settings = load_settings()
+    backup_service = BackupService(
+        database_url=settings.database_url,
+        backup_dir=settings.backup_dir,
+        pg_dump_path=settings.pg_dump_path,
+        pg_restore_path=settings.pg_restore_path,
+    )
+
+    pre_migration_created = await backup_service.prepare_pre_migration_backup()
+    if pre_migration_created:
+        logger.info("Verified pre-migration PostgreSQL backup created")
+
     database = Database(settings.database_url)
     await database.initialize()
+    await backup_service.persist_pre_migration_backup(database)
 
     unprotected_manager_ids = set(settings.allowed_user_ids)
     unprotected_manager_ids.update(CHARACTER_EDITOR_USER_IDS)
@@ -76,6 +89,7 @@ async def main() -> None:
                 "access_policy": access_policy,
                 "analytics_channel_ids": settings.analytics_channel_ids,
                 "publication_timezone": settings.publication_timezone,
+                "backup_service": backup_service,
             }
         )
         dispatcher.message.outer_middleware(access_middleware)
@@ -110,6 +124,7 @@ async def main() -> None:
         admin_commands = [
             *public_commands,
             BotCommand(command="analytics", description="Аналитический центр"),
+            BotCommand(command="backup", description="Резервные копии PostgreSQL"),
             BotCommand(command="quality", description="Контроль качества и дубли"),
             BotCommand(command="publish", description="Проверка и очередь публикаций"),
             BotCommand(command="checkpost", description="Проверить пост ответом"),
@@ -210,6 +225,8 @@ async def main() -> None:
             ),
             publication_timezone=settings.publication_timezone,
             media_quality_worker=True,
+            backup_worker=True,
+            backup_dir=settings.backup_dir,
             log_chat_id=settings.log_chat_id,
         )
 
@@ -227,6 +244,10 @@ async def main() -> None:
                     run_media_quality_worker(bot, database),
                     name="media-quality",
                 ),
+                asyncio.create_task(
+                    run_backup_worker(backup_service, database),
+                    name="postgresql-backups",
+                ),
             ]
         )
         await dispatcher.start_polling(
@@ -239,6 +260,7 @@ async def main() -> None:
             access_policy=access_policy,
             analytics_channel_ids=settings.analytics_channel_ids,
             publication_timezone=settings.publication_timezone,
+            backup_service=backup_service,
         )
     finally:
         for task in background_tasks:
