@@ -16,6 +16,7 @@ from velvet_bot.image_preview import build_image_document_preview
 logger = logging.getLogger(__name__)
 
 DEFAULT_BOT_API_DOWNLOAD_LIMIT = 20 * 1024 * 1024
+FULL_QUALITY_PHOTO_SOURCE = "full_quality_photo_v2"
 PreviewMedia: TypeAlias = str | BufferedInputFile
 
 
@@ -36,7 +37,7 @@ def is_telegram_thumbnail_source(source: str | None) -> bool:
 
 
 class TelegramArchivePreviewResolver:
-    """Resolve a photo-compatible archive preview through Telegram infrastructure."""
+    """Resolve an archived image document as a full-quality Telegram photo."""
 
     def __init__(
         self,
@@ -53,6 +54,8 @@ class TelegramArchivePreviewResolver:
         *,
         cache_chat_id: int,
     ) -> PreviewMedia | None:
+        del cache_chat_id  # Kept in the public signature for compatibility.
+
         if page.media is None or not page.media.is_image_document:
             return None
 
@@ -60,42 +63,38 @@ class TelegramArchivePreviewResolver:
             character_id=page.character.id,
             media_id=page.media.id,
         )
-        if record.file_id:
-            if is_telegram_thumbnail_source(record.source):
-                thumbnail_photo = await self._download_thumbnail_as_photo(
-                    file_id=record.file_id,
-                )
-                if thumbnail_photo is not None:
-                    return thumbnail_photo
-            else:
-                return record.file_id
+        # Only photos created by the new full-quality pipeline are reusable.
+        # Old generated_preview and Telegram thumbnail records are deliberately
+        # ignored so previously cached low-quality images repair themselves on
+        # the next opening.
+        if record.file_id and record.source == FULL_QUALITY_PHOTO_SOURCE:
+            return record.file_id
 
         file_size = page.media.file_size
-        if file_size is None or file_size <= DEFAULT_BOT_API_DOWNLOAD_LIMIT:
-            try:
-                return await build_image_document_preview(self._bot, page.media)
-            except Exception as error:
-                logger.info(
-                    "Could not generate preview from original media_id=%s: %s",
-                    page.media.id,
-                    error,
-                )
-
-        thumbnail_file_id = await self._recover_stored_thumbnail(
-            page,
-            cache_chat_id=cache_chat_id,
-            record=record,
-        )
-        if thumbnail_file_id is None:
+        if file_size is not None and file_size > DEFAULT_BOT_API_DOWNLOAD_LIMIT:
+            logger.info(
+                "Image media_id=%s exceeds the cloud Bot API download limit; "
+                "thumbnail and document fallbacks are disabled",
+                page.media.id,
+            )
             return None
-        return await self._download_thumbnail_as_photo(file_id=thumbnail_file_id)
+
+        try:
+            return await build_image_document_preview(self._bot, page.media)
+        except Exception as error:
+            logger.info(
+                "Could not prepare full-quality image media_id=%s: %s",
+                page.media.id,
+                error,
+            )
+            return None
 
     async def persist_from_message(
         self,
         *,
         media_id: int,
         message: Message,
-        source: str = "generated_preview",
+        source: str = FULL_QUALITY_PHOTO_SOURCE,
     ) -> None:
         preview = message_thumbnail(message)
         if preview is None:
@@ -111,6 +110,9 @@ class TelegramArchivePreviewResolver:
             ),
         )
 
+    # The helpers below remain for migration compatibility and diagnostics.
+    # They are intentionally no longer called by resolve(), because a Telegram
+    # document thumbnail is not an acceptable archive image.
     async def _download_thumbnail_as_photo(
         self,
         *,
@@ -266,6 +268,7 @@ class TelegramArchivePreviewResolver:
 
 __all__ = (
     "DEFAULT_BOT_API_DOWNLOAD_LIMIT",
+    "FULL_QUALITY_PHOTO_SOURCE",
     "PreviewMedia",
     "TelegramArchivePreviewResolver",
     "is_telegram_thumbnail_source",
