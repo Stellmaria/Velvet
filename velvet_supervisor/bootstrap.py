@@ -242,8 +242,6 @@ def launch_bootstrap(
         action_text,
         "/SC",
         "ONCE",
-        "/SD",
-        start_at.strftime("%m/%d/%Y"),
         "/ST",
         start_at.strftime("%H:%M"),
         "/RL",

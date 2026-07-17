@@ -142,7 +142,10 @@ async def handle_console_callback(
         if action == "console.quick":
             payload = await supervisor_client.preview_console_command(
                 command_key=callback_data.task_id,
-                requested_by=_requested_by(callback.message),
+                requested_by=(
+                    f"{callback.from_user.id}:@"
+                    f"{callback.from_user.username or 'без_username'}"
+                ),
             )
             request = payload.get("request", {})
             if not isinstance(request, dict):

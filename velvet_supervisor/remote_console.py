@@ -10,7 +10,7 @@ from typing import Iterable
 
 from .config import SupervisorSettings
 
-_FORBIDDEN_INPUT_RE = re.compile(r"[\x00-\x1f;&|><`]|$\(")
+_FORBIDDEN_INPUT_RE = re.compile(r"[\x00-\x1f;&|><`]|\$\(")
 _SECRET_RE = re.compile(
     r"(?i)(BOT_TOKEN|DATABASE_URL|PASSWORD|SECRET|API_KEY|SUPERVISOR_TOKEN)\s*[=:]\s*\S+"
 )
