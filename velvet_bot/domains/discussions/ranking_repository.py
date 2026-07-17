@@ -27,7 +27,7 @@ class DiscussionRankingRepository:
         page: int,
         page_size: int = 8,
     ) -> DashboardPage:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(await connection.fetchval(count_sql, *args) or 0)
             normalized_page, safe_size = _safe_page(page, page_size, total)
             rows = await connection.fetch(
