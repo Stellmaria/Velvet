@@ -2,14 +2,14 @@
 
 Дата среза: 17 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18P, `PublicationDraftRepository`.
+Последний завершённый срез: Фаза 18Q, `SystemRepository`.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 118 внешних обращений к `Database._require_pool()`;
-- 32 production-файла;
+- 116 внешних обращений к `Database._require_pool()`;
+- 31 production-файл;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -26,22 +26,24 @@ AST-сканирование production package `velvet_bot/` фиксирует
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Compatibility-фасады | 5 | переводить после их штатных источников либо удалять после проверки импортов |
 | Application/application-service | 4 | вынести persistence в repository boundary |
-| Infrastructure repository | 2 | отдельный малый срез |
 
-Всего: 118.
+Всего: 116.
 
 ## Завершённые погашения baseline
 
 - Фаза 18N: `ArchivePreviewRepository`, удалены 2 обращения и 1 production-файл.
 - Фаза 18O: `PublicationValidationRepository`, удалены 2 обращения и 1 production-файл.
-- Фаза 18P: `PublicationDraftRepository`, удалены 8 обращений и 1 production-файл; явные domain repositories из baseline закрыты.
+- Фаза 18P: `PublicationDraftRepository`, удалены 8 обращений и 1 production-файл; явные domain repositories закрыты.
+- Фаза 18Q: `SystemRepository`, удалены 2 обращения и 1 production-файл; отдельный infrastructure repository закрыт.
 
 ## Очередь
 
-### Волна A. Явные repositories
+### Волна A. Repository-классы внутри модулей
 
-1. **Фаза 18Q:** `SystemRepository`, 2 connection points.
-2. AI quality, media AI, error center, calibration и report repositories отдельными срезами.
+1. **Фаза 18R:** `PromptResultReportRepository`, 1 connection point.
+2. `PaletteCompositionReportRepository`, 1 connection point.
+3. `VelvetFormattingReportRepository`, 1 connection point.
+4. AI quality, media AI, error center и calibration repositories отдельными срезами.
 
 ### Волна B. Infrastructure
 
