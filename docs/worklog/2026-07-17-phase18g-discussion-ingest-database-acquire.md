@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18g-discussion-ingest-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18G
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18g-discussion-ingest-database-acquire`
 - Базовый commit: `c48b2f456c8edbcd4976038270d24a996901bc6f`
 
@@ -52,24 +52,39 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- три точки самостоятельного получения соединения в `DiscussionIngestRepository` переведены на `self._database.acquire()`;
+- ранние возвраты `resolve_root_message_id` для root-сообщения и сообщения без reply сохранены без обращения к PostgreSQL;
+- загрузка character aliases остаётся перед transaction context `store_message`;
+- tracked channel update, post upsert, очистка и повторная запись hashtags/links, а также thread upsert остаются в прежней транзакции;
+- алгоритм thread matching по forwarded message и точному тексту не изменён;
+- regression-тест Фазы 18 дополнен discussion ingest repository;
+- добавлен runtime-тест минимального `store_message`, проверяющий public acquire, transaction context, character query, post insert и очистку связей;
+- project memory, development status и changelog обновлены;
+- следующим отдельным срезом определён `DiscussionInsightRepository`.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции отсутствуют. Модель `DiscussionMessageEvent`, SQL, порядок операций, алгоритм сопоставления публикаций, unique constraints и Telegram adapter не менялись. Аукционные события в ingest-модель не добавлялись.
 
 ### Проверки
 
-Заполняется после реализации.
+- production repository изменён тремя симметричными заменами private pool access на публичный API базы;
+- архитектурный regression-тест контролирует девять завершённых repositories;
+- runtime-тест `store_message` добавлен, полный CI ещё не запущен;
+- существующие PostgreSQL integration tests discussion ingest остаются частью общего workflow.
 
 ### PR и commit
 
-Заполняется после реализации.
+PR ещё не открыт. Текущий head будет записан после создания draft PR.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- сравнить ветку с `main`;
+- открыть draft PR;
+- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
+- исправить возможные регрессии;
+- закрыть дневник точными run и итоговым commit.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+После успешного слияния начать отдельную Фазу 18H для `DiscussionInsightRepository`, не включая ranking, activity, post insight или relink repositories в тот же PR.
