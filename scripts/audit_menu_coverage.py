@@ -8,6 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "velvet_bot"
+# Audit both current sources and historical refs because the missing screen may
+# survive only on an old development branch.
 SCREENSHOT_LABELS = (
     "Проверить новое изображение",
     "Очередь ошибок",
