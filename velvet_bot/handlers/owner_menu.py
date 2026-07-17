@@ -5,6 +5,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
+from velvet_bot.handlers.watermark import router as watermark_router
 from velvet_bot.owner_menu import (
     OwnerMenuCallback,
     build_owner_back_keyboard,
@@ -71,5 +72,7 @@ async def handle_owner_menu_callback(
 
     await callback.answer("Неизвестный раздел.", show_alert=True)
 
+
+router.include_router(watermark_router)
 
 __all__ = ("router", "show_owner_menu")
