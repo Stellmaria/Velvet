@@ -9,6 +9,8 @@ from velvet_bot.ai_quality_schema_compat import install_ai_quality_schema_compat
 from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.owner_menu_compat import install_owner_menu_navigation
 from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
+from velvet_bot.quality_calibration_dashboard import install_quality_calibration_dashboard
+from velvet_bot.quality_calibration_ui import install_quality_calibration_report_ui
 from velvet_bot.quality_set_ai_dashboard import install_set_consistency_dashboard
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,7 @@ def _build_root_router() -> Router:
     install_legacy_compatibility()
     install_ai_quality_schema_compatibility()
     install_set_consistency_dashboard()
+    install_quality_calibration_dashboard()
 
     # Install corrected media-set compatibility before handlers bind functions.
     import velvet_bot.media_set_duplicate_actions  # noqa: F401
@@ -73,6 +76,7 @@ def _build_root_router() -> Router:
     )
     from velvet_bot.handlers.quality_ai import router as quality_ai_router
     from velvet_bot.handlers.quality_ai_preview import router as quality_ai_preview_router
+    from velvet_bot.handlers.quality_calibration import router as quality_calibration_router
     from velvet_bot.handlers.quality_center import router as quality_center_router
     from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
     from velvet_bot.handlers.quality_set_ai import router as quality_set_ai_router
@@ -92,6 +96,8 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.telegram_analytics_import import (
         router as telegram_analytics_import_router,
     )
+
+    install_quality_calibration_report_ui()
 
     root = Router(name="velvet_bot.presentation.telegram")
 
@@ -124,6 +130,7 @@ def _build_root_router() -> Router:
     root.include_router(quality_duplicates_router)
     root.include_router(quality_sets_router)
     root.include_router(quality_set_ai_router)
+    root.include_router(quality_calibration_router)
     root.include_router(quality_ai_preview_router)
     root.include_router(quality_ai_router)
     root.include_router(quality_center_router)
