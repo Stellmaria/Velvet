@@ -97,6 +97,7 @@ def _build_root_router() -> Router:
         router as telegram_analytics_import_router,
     )
     from velvet_bot.handlers.velvet_ai import router as velvet_ai_router
+    from velvet_bot.handlers.velvet_ai_visual import router as velvet_ai_visual_router
 
     install_quality_calibration_report_ui()
 
@@ -128,6 +129,7 @@ def _build_root_router() -> Router:
     root.include_router(analytics_management_router)
     root.include_router(analytics_dashboard_router)
     root.include_router(backup_center_router)
+    root.include_router(velvet_ai_visual_router)
     root.include_router(velvet_ai_router)
     root.include_router(quality_duplicates_router)
     root.include_router(quality_sets_router)

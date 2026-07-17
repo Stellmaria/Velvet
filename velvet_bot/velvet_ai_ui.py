@@ -19,9 +19,9 @@ def build_velvet_ai_menu(
         f"Локальный анализ: <b>{state}</b>\n"
         f"Провайдер: <code>{provider}</code>\n"
         f"Модель: <code>{model}</code>\n\n"
-        "Здесь собраны проверки изображения, референса, исходного промта и "
-        "целостности медиасетов. Старые slash-команды сохранены как резервные, "
-        "но нормальная работа выполняется кнопками."
+        "Здесь собраны проверки изображения, референса, исходного промта, "
+        "палитры, композиции и целостности медиасетов. Старые slash-команды "
+        "сохранены как резервные, но нормальная работа выполняется кнопками."
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -41,6 +41,12 @@ def build_velvet_ai_menu(
                 InlineKeyboardButton(
                     text="📝 Промт против результата",
                     callback_data=quality_callback("promptcheck_start"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🎨 Палитра и композиция",
+                    callback_data=quality_callback("visual_start"),
                 )
             ],
             [
