@@ -2,14 +2,14 @@
 
 Дата среза: 17 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18T, `VelvetFormattingReportRepository`.
+Последний завершённый срез: Фаза 18U, `QualityCalibrationRepository`.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 113 внешних обращений к `Database._require_pool()`;
-- 28 production-файлов;
+- 110 внешних обращений к `Database._require_pool()`;
+- 27 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -21,13 +21,13 @@ AST-сканирование production package `velvet_bot/` фиксирует
 | Категория | Обращений | Подход |
 |---|---:|---|
 | Legacy query-модули | 53 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
-| Repository-классы внутри крупных модулей | 27 | переводить по одному repository с runtime-тестами |
+| Repository-классы внутри крупных модулей | 24 | переводить по одному repository с runtime-тестами |
 | Backup infrastructure | 17 | отдельный срез с сохранением restore/retention contracts |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Compatibility-фасады | 5 | переводить после их штатных источников либо удалять после проверки импортов |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 
-Всего: 113.
+Всего: 110.
 
 ## Завершённые погашения baseline
 
@@ -38,13 +38,14 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18R: `PromptResultReportRepository`, удалено 1 обращение и 1 production-файл.
 - Фаза 18S: `PaletteCompositionReportRepository`, удалено 1 обращение и 1 production-файл.
 - Фаза 18T: `VelvetFormattingReportRepository`, удалено 1 обращение и 1 production-файл; одиночные report repositories закрыты.
+- Фаза 18U: `QualityCalibrationRepository`, удалены 3 обращения и 1 production-файл; profile, pagination и case lookup переведены вместе.
 
 ## Очередь
 
 ### Волна A. Repository-классы внутри модулей
 
-1. **Фаза 18U:** `QualityCalibrationRepository`, 3 connection points.
-2. AI quality, media AI и error center repositories отдельными срезами.
+1. **Фаза 18V:** repository-контур `ai_quality.py`, 8 connection points.
+2. Media AI и error center repositories отдельными срезами.
 
 ### Волна B. Infrastructure
 

@@ -248,7 +248,7 @@ class QualityCalibrationRepository:
         limit: int = 1000,
     ) -> CalibrationProfile:
         safe_limit = max(20, min(int(limit), 5000))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT predicted_verdict, quality_score, confidence,
@@ -300,7 +300,7 @@ class QualityCalibrationRepository:
         outcomes = self._section_outcomes(section)
         safe_size = max(1, min(int(page_size), 10))
         outcome_values = list(outcomes) if outcomes is not None else None
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(
                 await connection.fetchval(
                     """
@@ -350,7 +350,7 @@ class QualityCalibrationRepository:
         )
 
     async def get_case(self, feedback_id: int) -> CalibrationCase | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT feedback.*,
