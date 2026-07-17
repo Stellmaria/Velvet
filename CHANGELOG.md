@@ -21,7 +21,7 @@
 ### Changed
 
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
-- character, story, archive, public archive, reference, media quality, publication, discussion и discussion ingest repositories больше не обращаются к приватному `_require_pool()`;
+- character, story, archive, public archive, reference, media quality, publication, discussion, discussion ingest и discussion insight repositories больше не обращаются к приватному `_require_pool()`;
 - `AGENTS.md` и карта проекта закрепляют Velvet Archive как отдельный owner-oriented архивный продукт без логики аукционного бота;
 - промт против результата, палитра и композиция, оформление, ручная проверка изображения, сравнение с референсом и анализ медиасета регистрируются до обращения к Qwen;
 - длинные AI-результаты отправляются отдельным сообщением и полностью сохраняются в истории;
@@ -57,7 +57,7 @@
 - analytics navigation вынесена в единый presentation-контракт;
 - parent-channel lookup обсуждений перенесён из Telegram handler в repository/service/query;
 - центр публикаций переведён с набора compatibility-фасадов на application coordinator;
-- управление аналитикой разделено на независимые модули тегов, алиасов и классификации;
+- управление аналитикой разделено на независимые модули тегов, алиасы и классификацию;
 - владельческие reply-формы разделены на media, profiles, references и data presentation-модули;
 - несколько историй перенесены в штатные character/story repositories;
 - `character_story_links` используется для публичной готовности, фильтрации и статистики;
