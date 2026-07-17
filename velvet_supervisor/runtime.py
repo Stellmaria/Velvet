@@ -73,11 +73,12 @@ class VelvetSupervisor:
                     daemon=True,
                 )
                 self._monitor_thread.start()
+        identity = _startup_identity(self.settings.project_dir, self._repository)
         self._notifier.send(
             "Velvet Supervisor запущен",
             (
                 f"PID Supervisor: {os.getpid()}\n"
-                f"Проект: {self.settings.project_dir}\n"
+                f"{identity}\n"
                 f"API: {self.settings.host}:{self.settings.port}"
             ),
             level="SUCCESS",
@@ -631,6 +632,20 @@ def _is_recoverable_polling_disconnect(line: str) -> bool:
         )
     )
 
+
+
+def _startup_identity(project_dir: Path, repository: GitRepository) -> str:
+    """Render the exact runtime source and Unicode contract used by Supervisor."""
+    try:
+        git_head = repository.head_sha()[:12]
+    except Exception as error:
+        git_head = f"unavailable:{type(error).__name__}"
+    return (
+        f"Проект: {project_dir}\n"
+        f"Git HEAD: {git_head}\n"
+        f"PYTHONUTF8: {os.environ.get('PYTHONUTF8', 'unset')}\n"
+        f"PYTHONIOENCODING: {os.environ.get('PYTHONIOENCODING', 'unset')}"
+    )
 
 def _build_child_logger(logs_dir: Path) -> logging.Logger:
     child_logger = logging.getLogger("velvet_supervisor.child")
