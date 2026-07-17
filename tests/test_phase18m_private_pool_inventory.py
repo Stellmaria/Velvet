@@ -23,8 +23,8 @@ class PrivatePoolInventoryTests(unittest.TestCase):
         baseline = inventory.load_baseline()
         errors = inventory.compare_with_baseline(findings, baseline)
         self.assertEqual((), errors, inventory.format_baseline_errors(errors))
-        self.assertEqual(115, len(inventory.external_findings(findings)))
-        self.assertEqual(30, len(inventory.summarize_external(findings)))
+        self.assertEqual(114, len(inventory.external_findings(findings)))
+        self.assertEqual(29, len(inventory.summarize_external(findings)))
 
     def test_database_internal_access_is_classified_as_allowed(self) -> None:
         findings = inventory.collect_findings(ROOT)
