@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/_patch_supervisor_startup_identity.py
       - .github/workflows/patch-supervisor-startup-identity.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/_patch_supervisor_startup_identity.py
+      - .github/workflows/patch-supervisor-startup-identity.yml
 
 permissions:
   contents: write
