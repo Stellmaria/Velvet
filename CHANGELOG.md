@@ -16,12 +16,16 @@
 - внешний Windows bootstrap для удалённого перезапуска и self-update самого Supervisor;
 - постоянная карта фаз `docs/project_memory.md` и рабочий журнал `docs/worklog/`;
 - CI-контракт, требующий завершённую запись разработки для каждого содержательного PR;
-- AST-контракт, запрещающий аукционные доменные зависимости в production package Velvet Archive.
+- AST-контракт, запрещающий аукционные доменные зависимости в production package Velvet Archive;
+- AST-инвентаризация обращений к `Database._require_pool()`, включая dynamic `getattr`;
+- машинный baseline private pool debt с count и SHA-256 identity для каждого production-файла;
+- документированная очередь погашения private pool debt по архитектурным слоям.
 
 ### Changed
 
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
 - character, story, archive, public archive, reference, media quality, publication, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight и discussion relink repositories больше не обращаются к приватному `_require_pool()`;
+- новые либо изменённые private pool access блокируются CI до отдельного review и обновления baseline;
 - `AGENTS.md` и карта проекта закрепляют Velvet Archive как отдельный owner-oriented архивный продукт без логики аукционного бота;
 - промт против результата, палитра и композиция, оформление, ручная проверка изображения, сравнение с референсом и анализ медиасета регистрируются до обращения к Qwen;
 - длинные AI-результаты отправляются отдельным сообщением и полностью сохраняются в истории;

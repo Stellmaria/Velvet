@@ -11,6 +11,7 @@
 - правила работы агента: `AGENTS.md`;
 - записи каждой рабочей сессии: `docs/worklog/`;
 - эксплуатация Supervisor: `docs/SUPERVISOR.md`;
+- инвентаризация private pool: `docs/private_pool_inventory.md` и `docs/private_pool_inventory.json`;
 - этот файл: карта фаз, решений, открытых обязательств и следующего направления.
 
 При расхождении факты из кода, миграций, тестов и слитых PR имеют приоритет над старым планом.
@@ -97,7 +98,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## Фаза 18. Публичная граница PostgreSQL
 
-Статус: срезы 18A–18L реализованы, P2-перенос продолжается.
+Статус: срезы 18A–18M реализованы, постепенное погашение baseline продолжается.
 
 - 18A: добавлен `Database.acquire()`;
 - 18A: character и story repositories больше не используют приватный `_require_pool()`;
@@ -112,9 +113,13 @@ Owner-операции вынесены из Telegram handlers в application us
 - 18J: discussion activity repository переведён с сохранением silent-publication pagination, weekday/hour buckets и daily activity rows;
 - 18K: discussion post insight repository переведён с сохранением count/detail CTE, page normalization и моделей `DiscussedPost`;
 - 18L: discussion relink repository переведён с сохранением единой транзакции, recursive reply tree, exact-text matching и `RelinkResult`;
+- 18M: добавлен AST-сканер private pool access и машинный baseline;
+- инвентаризация зафиксировала 130 внешних обращений в 35 production-файлах;
+- baseline хранит число и SHA-256 набора методов для каждого файла, поэтому новые или подменённые обращения блокируются CI;
+- долг разделён на domain repositories, repository-классы, legacy query-модули, backup infrastructure, handlers, application services и compatibility-фасады;
 - SQL и транзакционные границы завершённых доменов сохранены;
-- добавлен автоматический контракт, не допускающий аукционные доменные зависимости в production package;
-- следующий изолированный срез 18M: машинная инвентаризация оставшихся production-вызовов `_require_pool()` и формирование фактической очереди.
+- автоматический контракт не допускает аукционные доменные зависимости в production package;
+- следующий срез 18N: `ArchivePreviewRepository`, два connection points.
 
 ## Фаза 19. Полный операционный контур Velvet AI
 
@@ -171,12 +176,14 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## P2
 
-1. Выполнить Фазу 18M: автоматически проинвентаризировать оставшиеся production-вызовы `_require_pool()` и выбрать следующий repository по фактическому коду; discussion-контур полностью использует `Database.acquire()`.
-2. Сокращать широкие `except Exception` внутри бизнес-логики.
-3. Добавить зашифрованную репликацию backup во внешнее хранилище.
-4. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
-5. Добавить метрики длительности AI-задач и стоимости внешнего provider.
-6. Разделять крупные presentation-фасады только при реальном уменьшении связанности.
+1. Выполнить Фазу 18N: перевести `ArchivePreviewRepository` на `Database.acquire()` и уменьшить baseline с 130 до 128 обращений.
+2. Затем переводить `PublicationValidationRepository`, `PublicationDraftRepository` и `SystemRepository` отдельными срезами.
+3. Вынести семь прямых DB access из handlers в application/domain services, а не ограничиваться механической заменой метода.
+4. Сокращать широкие `except Exception` внутри бизнес-логики.
+5. Добавить зашифрованную репликацию backup во внешнее хранилище.
+6. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
+7. Добавить метрики длительности AI-задач и стоимости внешнего provider.
+8. Разделять крупные presentation-фасады только при реальном уменьшении связанности.
 
 ## P3
 
