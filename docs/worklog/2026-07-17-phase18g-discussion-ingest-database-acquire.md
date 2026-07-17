@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18g-discussion-ingest-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18G
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18g-discussion-ingest-database-acquire`
 - Базовый commit: `c48b2f456c8edbcd4976038270d24a996901bc6f`
 
@@ -68,23 +68,25 @@
 
 ### Проверки
 
+- GitHub compare подтвердил изолированный diff из шести файлов;
 - production repository изменён тремя симметричными заменами private pool access на публичный API базы;
 - архитектурный regression-тест контролирует девять завершённых repositories;
-- runtime-тест `store_message` добавлен, полный CI ещё не запущен;
-- существующие PostgreSQL integration tests discussion ingest остаются частью общего workflow.
+- runtime-тест `store_message` проверяет public acquire, transaction context, character alias query, post insert и очистку hashtags/links;
+- `project notes contract #16` — успешно;
+- полный workflow `tests #526` с PostgreSQL 16 — успешно;
+- `docker build #132` — успешно;
+- после закрытия дневника workflows повторно запускаются на финальном head PR.
 
 ### PR и commit
 
-PR ещё не открыт. Текущий head будет записан после создания draft PR.
+- PR: #102 `Фаза 18G: перевести DiscussionIngestRepository на Database.acquire`;
+- проверенный head до закрытия дневника: `c5a47effebead8a6829508ad82d0547e5b5e483f`;
+- итоговый squash commit фиксируется GitHub при слиянии PR #102.
 
 ### Незавершённое
 
-- сравнить ветку с `main`;
-- открыть draft PR;
-- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
-- исправить возможные регрессии;
-- закрыть дневник точными run и итоговым commit.
+Обязательных пунктов Фазы 18G не осталось. Живые Windows/Telegram-проверки Фазы 20 остаются отдельным эксплуатационным обязательством.
 
 ### Следующий шаг
 
-После успешного слияния начать отдельную Фазу 18H для `DiscussionInsightRepository`, не включая ranking, activity, post insight или relink repositories в тот же PR.
+Начать Фазу 18H отдельной веткой и worklog: перевести `DiscussionInsightRepository` на `Database.acquire()` без включения ranking, activity, post insight или relink repositories в тот же PR.
