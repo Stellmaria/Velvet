@@ -18,7 +18,7 @@ class ArchiveRepository:
         offset: int,
     ) -> ArchivePage | None:
         safe_offset = max(0, int(offset))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             character_row = await connection.fetchrow(
                 """
                 SELECT
@@ -111,7 +111,7 @@ class ArchiveRepository:
         media_id: int,
         prompt_post_url: str | None,
     ) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             updated = await connection.fetchval(
                 """
                 UPDATE character_media
@@ -133,7 +133,7 @@ class ArchiveRepository:
         media_id: int,
         is_spoiler: bool,
     ) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             updated = await connection.fetchval(
                 """
                 UPDATE character_media
@@ -154,7 +154,7 @@ class ArchiveRepository:
         character_id: int,
         media_id: int,
     ) -> bool | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 UPDATE character_media
@@ -174,7 +174,7 @@ class ArchiveRepository:
         character_id: int,
         media_id: int,
     ) -> DeletedArchiveItem | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 row = await connection.fetchrow(
                     """
