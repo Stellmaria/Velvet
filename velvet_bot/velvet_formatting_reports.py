@@ -22,7 +22,7 @@ class VelvetFormattingReportRepository:
         rendered_text: str,
         created_by: int | None,
     ) -> int:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 INSERT INTO velvet_formatting_reports (
