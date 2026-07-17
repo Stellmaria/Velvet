@@ -59,7 +59,7 @@ async def _list_items(
 ) -> AIQualityPage:
     condition = self._section_condition(section)
     safe_size = max(1, min(int(page_size), 10))
-    async with self._database._require_pool().acquire() as connection:
+    async with self._database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 f"SELECT COUNT(*) FROM media_ai_quality_checks q WHERE {condition}"
@@ -100,7 +100,7 @@ async def _get_item(
     self: AIQualityRepository,
     media_id: int,
 ) -> AIQualityItem | None:
-    async with self._database._require_pool().acquire() as connection:
+    async with self._database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT q.*, mf.media_type, mf.mime_type, mf.telegram_file_id,

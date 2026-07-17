@@ -1,15 +1,13 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "8384506bae9e23399dd540178728eca327805213",
-  "total_external_findings": 110,
-  "total_files": 27,
+  "generated_from_commit": "cf83db5a98151e52a16dc601523763c03ca3585a",
+  "total_external_findings": 100,
+  "total_files": 25,
   "next_slice": {
-    "phase": "18V",
-    "target": "velvet_bot/ai_quality.py"
+    "phase": "18W",
+    "target": "velvet_bot/ai_vision.py"
   },
   "files": [
-    {"path":"velvet_bot/ai_quality.py","count":8,"identity_sha256":"48558fa7161b71e0a9ed1912be4b444e94658691310cca90dda591e86eaeda45","categories":["repository_in_module"]},
-    {"path":"velvet_bot/ai_quality_schema_compat.py","count":2,"identity_sha256":"66dede1002a6dbe67b42d5fae8198c1a9db35efee35ab9b795bcaa2b0cfc564c","categories":["compatibility_facade"]},
     {"path":"velvet_bot/ai_vision.py","count":4,"identity_sha256":"e099711b9469cb3aa6e7fd74b5a6b67c344cc49e5c2fae3d69b4b8acf20d9556","categories":["repository_in_module"]},
     {"path":"velvet_bot/alias_management.py","count":2,"identity_sha256":"c1f3260d87c753b5e0f6220fb2d1ca242486c056b1bebf9d28cf79bd3993e987","categories":["legacy_query_module"]},
     {"path":"velvet_bot/analytics_dashboard.py","count":8,"identity_sha256":"ba40ab30c832435146ee0c7d7a26dc7d987af5903015b972b60709bb93d79284","categories":["legacy_query_module"]},
