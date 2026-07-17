@@ -76,7 +76,7 @@
 - публичный `Database.acquire()` для infrastructure и domain repositories;
 - character repository переведён с приватного `_require_pool()`;
 - story repository переведён с приватного `_require_pool()`;
-- regression-тест запрещает возврат приватного pool access в эти домены.
+- регрессионный тест фиксирует запрет на возврат приватного pool access в эти домены.
 
 ## Оставшийся долг
 
