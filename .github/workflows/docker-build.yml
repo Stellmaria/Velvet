@@ -35,8 +35,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare compose environment
-        run: cp .env.example .env
+      - name: Prepare minimal compose environment
+        run: |
+          cat > .env <<'EOF'
+          BOT_TOKEN=test_token
+          DATABASE_URL=postgresql://velvet:test_password@postgres:5432/velvet
+          POSTGRES_DB=velvet
+          POSTGRES_USER=velvet
+          POSTGRES_PASSWORD=test_password
+          ALLOWED_USER_IDS=1
+          LOG_CHAT_ID=-1001
+          ANALYTICS_CHANNEL_IDS=-1002
+          AI_VISION_ENABLED=false
+          EOF
 
       - name: Validate Docker Compose
         run: docker compose config --quiet
