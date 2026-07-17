@@ -8,12 +8,14 @@ from velvet_bot.analytics_dashboard import normalize_period
 from velvet_bot.database import Database
 from velvet_bot.handlers.analytics_management_aliases import (
     ALIAS_ACTIONS,
+    _ALIAS_REPLY_RE,
     handle_alias_action,
     handle_alias_reply_message,
 )
-from velvet_bot.handlers.analytics_management_common import _primary_channel_id
+from velvet_bot.handlers.analytics_management_common import _primary_channel_id, _short
 from velvet_bot.handlers.analytics_management_publications import (
     PUBLICATION_ACTIONS,
+    _TYPE_BUTTON_LABELS,
     handle_publication_action,
 )
 from velvet_bot.handlers.analytics_management_tags import TAG_ACTIONS, handle_tag_action
@@ -81,4 +83,9 @@ async def handle_alias_reply(message: Message, database: Database) -> None:
     await handle_alias_reply_message(message, database)
 
 
-__all__ = ("router",)
+__all__ = (
+    "_ALIAS_REPLY_RE",
+    "_TYPE_BUTTON_LABELS",
+    "_short",
+    "router",
+)
