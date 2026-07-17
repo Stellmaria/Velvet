@@ -13,12 +13,14 @@
 - PostgreSQL integration tests жизненного цикла AI-заданий;
 - автоматическая проверка соответствия всех literal `quality:` callbacks реальным handlers;
 - безопасная удалённая консоль Supervisor с allowlist, preview, подтверждением, таймаутами и аудитом;
-- внешний Windows bootstrap для удалённого перезапуска и self-update самого Supervisor.
+- внешний Windows bootstrap для удалённого перезапуска и self-update самого Supervisor;
+- постоянная карта фаз `docs/project_memory.md` и рабочий журнал `docs/worklog/`;
+- CI-контракт, требующий завершённую запись разработки для каждого содержательного PR.
 
 ### Changed
 
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
-- character и story repositories больше не обращаются к приватному `_require_pool()`;
+- character, story, archive и public archive repositories больше не обращаются к приватному `_require_pool()`;
 - промт против результата, палитра и композиция, оформление, ручная проверка изображения, сравнение с референсом и анализ медиасета регистрируются до обращения к Qwen;
 - длинные AI-результаты отправляются отдельным сообщением и полностью сохраняются в истории;
 - кнопка ручного запуска worker подтверждает нажатие до выполнения длительного цикла;
