@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18d-media-quality-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18D
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18d-media-quality-database-acquire`
 - Базовый commit: `f3a381bab81257a85b37ca5fe489c5afb4936b6c`
 
@@ -50,30 +50,33 @@
 - `FOR UPDATE SKIP LOCKED` сохранён внутри той же транзакции, а выбранные строки по-прежнему переводятся в processing до освобождения соединения;
 - regression-контракт Фазы 18 дополнен media quality repository;
 - добавлен исполняемый тест public acquire, transaction context, ограничения limit и сохранения блокирующего SQL;
+- legacy-тестовый `_Database` дополнен public `acquire()` без удаления `_require_pool()` для ещё не перенесённых компонентов;
 - project memory, development status и changelog обновлены;
 - следующим отдельным срезом определён `PublicationRepository`.
 
 ### Миграции и совместимость
 
-Миграции отсутствуют. Пороги сравнения, схемы fingerprint, статусы кандидатов дублей, правила решений и контракты Telegram file checks не изменялись.
+Миграции отсутствуют. Пороги сравнения, схемы fingerprint, статусы кандидатов дублей, правила решений и контракты Telegram file checks не изменялись. Production compatibility-fallback к приватному пулу намеренно не добавлялся.
 
 ### Проверки
 
-- GitHub compare подтвердил изолированный diff из шести файлов;
-- изменение repository состоит из десяти симметричных замен способа получения соединения;
-- новый runtime-тест добавлен, но полный CI ещё не запущен.
+- GitHub compare подтвердил изолированный diff без временных patch/workflow-файлов;
+- `project notes contract #7` и `docker build #120` прошли на первом head;
+- `tests #514` выявил два legacy-теста с муляжом базы без public `acquire()`;
+- тестовый double исправлен, production repository не ослаблялся;
+- на исправленном head успешно завершены `project notes contract #8`, `tests #515` с PostgreSQL 16 и `docker build #121`;
+- после закрытия дневника workflows повторно запускаются на финальном head PR.
 
 ### PR и commit
 
-PR ещё не открыт. Текущий head будет записан после создания draft PR.
+- PR: #99 `Фаза 18D: перевести MediaQualityRepository на Database.acquire`;
+- проверенный head до закрытия дневника: `3fa242d46bb79005fabb4db49a809c82ff764895`;
+- итоговый squash commit фиксируется GitHub при слиянии PR #99.
 
 ### Незавершённое
 
-- открыть PR;
-- получить результаты notes contract, tests и Docker;
-- исправить возможные регрессии;
-- закрыть дневник финальными run и commit.
+Обязательных пунктов Фазы 18D не осталось. Эксплуатационные проверки Фазы 20 остаются отдельным обязательством.
 
 ### Следующий шаг
 
-Открыть draft PR Фазы 18D; после слияния начать отдельную Фазу 18E для `PublicationRepository`.
+Начать Фазу 18E отдельной веткой и worklog: перевести `PublicationRepository` на `Database.acquire()` с сохранением draft pagination, queue transitions и event records.
