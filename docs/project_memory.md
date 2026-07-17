@@ -91,11 +91,13 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## Фаза 18. Публичная граница PostgreSQL
 
-Статус: первый P2-срез завершён.
+Статус: срезы 18A–18B завершены, P2-перенос продолжается.
 
-- добавлен `Database.acquire()`;
-- character и story repositories больше не используют приватный `_require_pool()`;
-- оставшиеся repositories ещё требуется переводить постепенно.
+- 18A: добавлен `Database.acquire()`;
+- 18A: character и story repositories больше не используют приватный `_require_pool()`;
+- 18B: archive и public archive repositories переведены на публичную границу;
+- SQL и транзакционные границы архивных операций сохранены;
+- следующий изолированный срез: references repository и его PostgreSQL-контракты.
 
 ## Фаза 19. Полный операционный контур Velvet AI
 
@@ -166,7 +168,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## P2
 
-1. Продолжить перевод repositories на `Database.acquire()`.
+1. Продолжить Фазу 18 с `ReferenceRepository`; characters, stories, archive и public archive уже используют `Database.acquire()`.
 2. Сокращать широкие `except Exception` внутри бизнес-логики.
 3. Добавить зашифрованную репликацию backup во внешнее хранилище.
 4. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
