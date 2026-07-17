@@ -2,14 +2,14 @@
 
 Дата среза: 17 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18Q, `SystemRepository`.
+Последний завершённый срез: Фаза 18R, `PromptResultReportRepository`.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 116 внешних обращений к `Database._require_pool()`;
-- 31 production-файл;
+- 115 внешних обращений к `Database._require_pool()`;
+- 30 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -21,13 +21,13 @@ AST-сканирование production package `velvet_bot/` фиксирует
 | Категория | Обращений | Подход |
 |---|---:|---|
 | Legacy query-модули | 53 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
-| Repository-классы внутри крупных модулей | 30 | переводить по одному repository с runtime-тестами |
+| Repository-классы внутри крупных модулей | 29 | переводить по одному repository с runtime-тестами |
 | Backup infrastructure | 17 | отдельный срез с сохранением restore/retention contracts |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Compatibility-фасады | 5 | переводить после их штатных источников либо удалять после проверки импортов |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 
-Всего: 116.
+Всего: 115.
 
 ## Завершённые погашения baseline
 
@@ -35,15 +35,15 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18O: `PublicationValidationRepository`, удалены 2 обращения и 1 production-файл.
 - Фаза 18P: `PublicationDraftRepository`, удалены 8 обращений и 1 production-файл; явные domain repositories закрыты.
 - Фаза 18Q: `SystemRepository`, удалены 2 обращения и 1 production-файл; отдельный infrastructure repository закрыт.
+- Фаза 18R: `PromptResultReportRepository`, удалено 1 обращение и 1 production-файл.
 
 ## Очередь
 
 ### Волна A. Repository-классы внутри модулей
 
-1. **Фаза 18R:** `PromptResultReportRepository`, 1 connection point.
-2. `PaletteCompositionReportRepository`, 1 connection point.
-3. `VelvetFormattingReportRepository`, 1 connection point.
-4. AI quality, media AI, error center и calibration repositories отдельными срезами.
+1. **Фаза 18S:** `PaletteCompositionReportRepository`, 1 connection point.
+2. `VelvetFormattingReportRepository`, 1 connection point.
+3. AI quality, media AI, error center и calibration repositories отдельными срезами.
 
 ### Волна B. Infrastructure
 
