@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18t-velvet-formatting-report-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18T
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18t-velvet-formatting-report-acquire`
 - Базовый commit: `3c6cf97e11cb39b76435e379eb6c501a212f2d2f`
 
@@ -57,7 +57,7 @@
 - `FormattingMode`, исходный и отрендеренный текст не менялись;
 - provider/model limits, JSON payload и `created_by` сохранены;
 - добавлен source/runtime regression-тест публичной границы, параметров и кириллического JSON;
-- private pool baseline уменьшен с 114/29 до 113/28;
+- private pool baseline уменьшен с 114 обращений в 29 файлах до 113 обращений в 28 файлах;
 - одиночные report repositories полностью удалены из baseline;
 - следующим срезом назначена Фаза 18U: `QualityCalibrationRepository`, 3 connection points;
 - inventory, project memory, development status и changelog обновлены.
@@ -68,20 +68,24 @@
 
 ### Проверки
 
-Полный CI ещё не запущен. Добавленные тесты должны подтвердить одну public acquire boundary, SQL, 7 параметров, FormattingMode, text fields, JSON и provider/model limits.
+На head `e7ed7bbbe85feb8f25b54d91fa95da03fcf502f3` успешно завершены:
+
+- `project notes contract #59`;
+- `docker build #177`;
+- полный workflow `tests #583` с PostgreSQL 16.
+
+После этой итоговой записи CI запускается повторно на финальном head перед merge.
 
 ### PR и commit
 
-Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
+- PR: #116 `Фаза 18T: VelvetFormattingReportRepository и Database.acquire`;
+- зелёный промежуточный head: `e7ed7bbbe85feb8f25b54d91fa95da03fcf502f3`;
+- финальный squash commit фиксируется GitHub при слиянии PR #116.
 
 ### Незавершённое
 
-- открыть draft PR;
-- получить tests, Docker build и project notes contract;
-- исправить только фактические регрессии;
-- закрыть worklog точными run;
-- слить Фазу 18T.
+Обязательных пунктов Фазы 18T не осталось. Живые эксплуатационные проверки Supervisor, staging и независимый backup/restore drill остаются отдельными стабилизационными воротами.
 
 ### Следующий шаг
 
-Открыть PR и прогнать полный CI. После merge начать Фазу 18U отдельной сессией.
+Начать Фазу 18U: перевести `QualityCalibrationRepository` на `Database.acquire()` отдельным worklog/PR и уменьшить baseline с 113 до 110 обращений.
