@@ -30,7 +30,7 @@ class DiscussionPostInsightRepository:
         page: int,
         page_size: int = 6,
     ) -> DiscussedPostPage:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(
                 await connection.fetchval(
                     """
@@ -138,7 +138,7 @@ class DiscussionPostInsightRepository:
         post_id: int,
         since: datetime | None,
     ) -> DiscussedPost | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 WITH selected AS (
