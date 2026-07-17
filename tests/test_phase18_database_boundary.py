@@ -27,15 +27,18 @@ class DatabaseAcquireBoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "ещё не инициализировано"):
             database.acquire()
 
-    def test_character_and_story_repositories_use_public_boundary(self) -> None:
+    def test_migrated_domain_repositories_use_public_boundary(self) -> None:
         paths = (
             ROOT / "velvet_bot/domains/characters/repository.py",
             ROOT / "velvet_bot/domains/stories/repository.py",
+            ROOT / "velvet_bot/domains/archive/repository.py",
+            ROOT / "velvet_bot/domains/public_archive/repository.py",
         )
         for path in paths:
-            source = path.read_text(encoding="utf-8")
-            self.assertNotIn("._require_pool()", source)
-            self.assertIn("self._database.acquire()", source)
+            with self.subTest(path=path.relative_to(ROOT)):
+                source = path.read_text(encoding="utf-8")
+                self.assertNotIn("._require_pool()", source)
+                self.assertIn("self._database.acquire()", source)
 
 
 if __name__ == "__main__":
