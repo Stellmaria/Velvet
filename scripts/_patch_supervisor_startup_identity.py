@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "velvet_supervisor/runtime.py"
+# This one-shot patch keeps the public PR diff focused on runtime behavior.
 
 
 OLD_START = r'''        self._notifier.send(
