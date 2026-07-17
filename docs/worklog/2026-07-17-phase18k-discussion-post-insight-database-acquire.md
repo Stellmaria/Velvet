@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18k-discussion-post-insight-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18K
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18k-discussion-post-insight-database-acquire`
 - Базовый commit: `6bf443a66d6b3c946556549f225dacea911dd4e9`
 
@@ -49,24 +49,40 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- обе точки получения соединения в `DiscussionPostInsightRepository` переведены на `self._database.acquire()`;
+- count query списка сохраняет distinct publication key, фильтры discussion/parent channel и period parameter;
+- CTE `publications`, `thread_map`, `comments`, ordering и page normalization не изменены;
+- detail query сохраняет CTE `selected/publication/roots/comments` и nullable first-comment delay;
+- преобразование строк в `DiscussedPost` и `DiscussedPostPage` не изменено;
+- добавлен source-boundary и два runtime regression-теста;
+- тесты проверяют крайнюю страницу списка, параметры count/rows query и nullable delay detail mapping;
+- project memory, development status и changelog обновлены;
+- следующим отдельным срезом определён `DiscussionRelinkRepository`.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции отсутствуют. SQL, определения linked publication, comment/reaction counts, first-comment delay, ordering, pagination и domain-модели не менялись. Аукционные сущности в post insight не добавлялись.
 
 ### Проверки
 
-Заполняется после реализации.
+- production diff содержит две симметричные замены private pool access на публичный API базы;
+- source-тест проверяет отсутствие `._require_pool()` и наличие двух public acquire contexts;
+- runtime-тест списка проверяет total `13`, нормализацию страницы `99` до `2`, offset `12`, limit `6` и итоговый `DiscussedPost`;
+- runtime-тест detail проверяет параметры `discussion_chat_id/parent_channel_id/post_id/since` и сохранение nullable `first_comment_seconds`;
+- полный CI ещё не запущен.
 
 ### PR и commit
 
-Заполняется после реализации.
+PR ещё не открыт. Текущий head будет записан после создания draft PR.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- сравнить ветку с `main`;
+- открыть draft PR;
+- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
+- исправить возможные регрессии;
+- закрыть дневник точными run и итоговым commit.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+После успешного слияния начать отдельную Фазу 18L для `DiscussionRelinkRepository`.
