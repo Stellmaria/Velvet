@@ -56,6 +56,16 @@ class AnalyticsManagementSplitTests(unittest.TestCase):
         ):
             self.assertTrue((ROOT / "velvet_bot/handlers" / path).is_file())
 
+    def test_dashboard_override_uses_tag_module_directly(self) -> None:
+        source = (
+            ROOT / "velvet_bot/handlers/analytics_dashboard_overrides.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("analytics_management_tags import _show_unresolved_queue", source)
+        self.assertNotIn(
+            "analytics_management import _show_unresolved_queue",
+            source,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
