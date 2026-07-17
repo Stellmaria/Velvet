@@ -61,6 +61,12 @@ from velvet_bot.services.telegram_exports import import_export_from_message
 from velvet_bot.services.telegram_publications import create_publication_draft
 from velvet_bot.services.telegram_topics import validate_topic_access
 from velvet_bot.story_catalog import format_story_release, universe_requires_story
+from velvet_bot.presentation.telegram.owner_actions import (
+    handle_owner_data_action,
+    handle_owner_media_action,
+    handle_owner_profile_action,
+    handle_owner_reference_action,
+)
 
 router = Router(name=__name__)
 
@@ -491,12 +497,6 @@ async def handle_owner_action_callback(
             f"<b>{result.total_hashtags}</b>.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row("aliases")]),
         )
-    else:
-        await callback.answer("Неизвестное действие.", show_alert=True)
-        return
-    await callback.answer()
-
-
 @router.message(OwnerActionReplyFilter())
 async def handle_owner_action_reply(
     message: Message,
@@ -516,278 +516,53 @@ async def handle_owner_action_reply(
 
     actor_id = message.from_user.id if message.from_user else None
     try:
-        if owner_action in {"save_media", "save_spoiler"}:
-            if not value:
-                raise ValueError("Укажите имя персонажа в подписи к медиа.")
-            response = await save_media_from_message(
-                database,
-                bot,
-                audit_logger,
-                request_message=message,
-                source_message=message,
-                character_name=value,
-                actor_id=actor_id,
-                spoiler=owner_action == "save_spoiler",
-            )
-            await message.answer(response)
+        if await handle_owner_media_action(
+            message=message,
+            owner_action=owner_action,
+            value=value,
+            database=database,
+            bot=bot,
+            audit_logger=audit_logger,
+            analytics_channel_ids=analytics_channel_ids,
+            actor_id=actor_id,
+        ):
             return
-
-        if owner_action == "check_post":
-            if actor_id is None:
-                raise ValueError("Не удалось определить владельца черновика.")
-            draft = await create_publication_draft(
-                database,
-                message,
-                analytics_channel_ids=analytics_channel_ids,
-                owner_id=actor_id,
-            )
-            await message.answer(
-                f"<b>Черновик №{draft.id} создан и проверен.</b>\n\n"
-                f"Ошибок: <b>{draft.validation_error_count}</b>\n"
-                f"Предупреждений: <b>{draft.validation_warning_count}</b>\n\n"
-                "Откройте раздел «Публикации» в главном меню для редактирования, "
-                "расписания или отправки.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row()]),
-            )
+        if await handle_owner_profile_action(
+            message=message,
+            owner_action=owner_action,
+            value=value,
+            database=database,
+            bot=bot,
+            actor_id=actor_id,
+        ):
             return
-
-        if owner_action in {"import_channel", "import_discussion"}:
-            status = await message.answer("⏳ Читаю экспорт и обновляю статистику.")
-            result = await import_export_from_message(
-                database,
-                bot,
-                message,
-                analytics_channel_ids=analytics_channel_ids,
-                source_kind=("channel" if owner_action == "import_channel" else "discussion"),
-                target_chat_value=(value if owner_action == "import_discussion" else None),
-                imported_by=actor_id,
-            )
-            await status.edit_text(_import_text(result))
+        if await handle_owner_reference_action(
+            message=message,
+            owner_action=owner_action,
+            value=value,
+            database=database,
+            bot=bot,
+            audit_logger=audit_logger,
+            reference_uploads=reference_uploads,
+            actor_id=actor_id,
+        ):
             return
-
-        if owner_action == "create":
-            result = await create_character_profile(
-                database,
-                value,
-                actor_id=actor_id,
-                chat_id=message.chat.id,
-                validate_topic=partial(validate_topic_access, bot),
-            )
-            heading = (
-                "Профиль персонажа создан"
-                if result.created
-                else (
-                    "Профиль уже существовал, тема архива обновлена"
-                    if result.topic_supplied
-                    else "Профиль уже существует"
-                )
-            )
-            await _answer_profile(message, result.profile, heading=heading)
+        if await handle_owner_data_action(
+            message=message,
+            owner_action=owner_action,
+            value=value,
+            database=database,
+            bot=bot,
+            analytics_channel_ids=analytics_channel_ids,
+            actor_id=actor_id,
+        ):
             return
-
-        if owner_action == "topic":
-            profile = await bind_character_topic(
-                database,
-                value,
-                validate_topic=partial(validate_topic_access, bot),
-            )
-            await _answer_profile(message, profile, heading="Тема архива назначена")
-            return
-
-        if owner_action == "character":
-            profile = await load_character_profile(database, value)
-            if profile is None:
-                raise ValueError("Такой персонаж не найден.")
-            await _answer_profile(message, profile)
-            return
-
-        if owner_action == "category":
-            result = await set_category_from_text(database, value)
-            await message.answer(
-                f"Пол / состав персонажа <b>{escape(result.character.name)}</b>: "
-                f"<b>{escape(category_label(result.value))}</b>."
-            )
-            return
-
-        if owner_action == "universe":
-            result = await set_universe_from_text(database, value)
-            suffix = (
-                "\nТеперь назначьте историю через раздел профилей."
-                if universe_requires_story(result.value)
-                else ""
-            )
-            await message.answer(
-                f"Вселенная персонажа <b>{escape(result.character.name)}</b>: "
-                f"<b>{escape(universe_label(result.value))}</b>.{suffix}"
-            )
-            return
-
-        if owner_action == "prompt":
-            result = await set_prompt_from_text(database, value)
-            await message.answer(
-                (
-                    f"Промт привязан к карточке <b>{escape(result.character.name)}</b>."
-                    if result.value
-                    else f"Ссылка на промт удалена у <b>{escape(result.character.name)}</b>."
-                )
-            )
-            return
-
-        if owner_action == "story":
-            result = await set_story_from_text(database, value)
-            if result.removed:
-                await message.answer(f"История у <b>{escape(result.character.name)}</b> удалена.")
-            else:
-                assert result.story is not None
-                await message.answer(
-                    f"История персонажа <b>{escape(result.character.name)}</b>: "
-                    f"<b>{escape(result.story.short_label)} · "
-                    f"{escape(result.story.title)}</b>."
-                )
-            return
-
-        if owner_action == "storyadd":
-            story = await add_story_from_text(database, value)
-            await message.answer(
-                f"История добавлена в <b>{escape(universe_label(story.universe))}</b>: "
-                f"<b>{escape(story.short_label)} · {escape(story.title)}</b>."
-            )
-            return
-
-        if owner_action == "stories":
-            result = await list_stories_from_text(database, value)
-            if not result.stories:
-                raise ValueError("Для этой вселенной истории ещё не добавлены.")
-            for chunk in _story_chunks(result.universe, result.stories):
-                await message.answer(chunk)
-            return
-
-        if owner_action == "refadd":
-            if message.chat.type != ChatType.PRIVATE:
-                raise ValueError("Загружайте референсы в личном чате с ботом.")
-            if actor_id is None:
-                raise ValueError("Не удалось определить владельца загрузки.")
-            session = await start_reference_upload(
-                database,
-                reference_uploads,
-                user_id=actor_id,
-                character_name=value,
-            )
-            await message.answer(
-                f"<b>Загрузка референсов: {escape(session.character_name)}</b>\n\n"
-                "Отправляйте фотографии или альбом. Завершение и отмена доступны "
-                "кнопками в разделе «Референсы»."
-            )
-            return
-
-        if owner_action == "refs":
-            page = await get_reference_page_by_name(database, value)
-            if page is None:
-                raise ValueError("Такой персонаж не найден.")
-            if page.reference is None:
-                raise ValueError("У персонажа пока нет референсов.")
-            await bot.send_photo(
-                chat_id=message.chat.id,
-                photo=page.reference.telegram_file_id,
-                caption=format_reference_caption(page),
-                reply_markup=build_reference_keyboard(page),
-            )
-            return
-
-        if owner_action == "refdel":
-            result = await delete_reference_by_index(database, value)
-            if result.reference is None:
-                raise ValueError("Референс уже удалён.")
-            await audit_logger.send(
-                "Референс персонажа удалён",
-                level="WARNING",
-                character=result.character.name,
-                reference_id=result.reference.id,
-                remaining=result.remaining,
-                deleted_by=actor_id,
-            )
-            await message.answer(
-                f"🗑 Референс <b>{result.index}</b> персонажа "
-                f"<b>{escape(result.character.name)}</b> удалён. "
-                f"Осталось: <b>{result.remaining}</b>."
-            )
-            return
-
-        if owner_action == "aliasadd":
-            item = await add_alias_from_text(database, value, actor_id=actor_id)
-            await message.answer(
-                f"Алиас <code>#{escape(item.alias)}</code> назначен персонажу "
-                f"<b>{escape(item.character_name)}</b>."
-            )
-            return
-
-        if owner_action == "aliases":
-            character, items = await list_aliases_from_text(database, value)
-            lines = [
-                f"• <code>#{escape(item.alias)}</code>"
-                + (" · основное имя" if item.source == "name" else "")
-                for item in items
-            ] or ["• алиасов пока нет"]
-            await message.answer(
-                f"<b>Алиасы: {escape(character.name)}</b>\n\n" + "\n".join(lines)
-            )
-            return
-
-        if owner_action == "aliasdel":
-            result = await delete_alias_from_text(database, value)
-            if not result.deleted:
-                raise ValueError(
-                    "Алиас не найден или это основное имя персонажа, которое удалять нельзя."
-                )
-            await message.answer(
-                f"Алиас <code>#{escape(result.alias)}</code> удалён у "
-                f"<b>{escape(result.character.name)}</b>."
-            )
-            return
-
-        if owner_action == "tagstats":
-            result = await load_hashtag_stats(database, analytics_channel_ids, value)
-            if isinstance(result, HashtagStat):
-                await message.answer(_hashtag_text(result))
-            else:
-                lines = [
-                    f"• <code>#{escape(item.hashtag)}</code> — "
-                    f"<b>{item.publication_count}</b> публикаций"
-                    for item in result
-                ] or ["• пока нет данных"]
-                await message.answer("<b>Хэштеги канала</b>\n\n" + "\n".join(lines))
-            return
-
-        if owner_action == "trackdiscussion":
-            try:
-                chat_id = int(value)
-            except ValueError as error:
-                raise ValueError("Chat ID должен быть числом.") from error
-            chat = await bot.get_chat(chat_id)
-            result = await register_discussion(
-                database,
-                analytics_channel_ids,
-                chat_id=chat_id,
-                title=chat.title,
-                username=chat.username,
-            )
-            await message.answer(
-                "<b>Чат обсуждений подключён.</b>\n\n"
-                f"Название: <b>{escape(result.title or 'без названия')}</b>\n"
-                f"Chat ID: <code>{result.chat_id}</code>\n"
-                f"Связан с каналом: <code>{result.parent_channel_id}</code>"
-            )
-            return
-
-        if owner_action == "discussionstats":
-            result = await load_discussion_stats(
-                database,
-                analytics_channel_ids,
-                None if value.casefold() == "основной" else value,
-            )
-            await message.answer(_discussion_text(result))
-            return
-
+        raise ValueError("Неизвестная форма действия.")
+    except (ValueError, RuntimeError) as error:
+        await message.answer(
+            escape(str(error)),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row()]),
+        )
         raise ValueError("Неизвестная форма действия.")
     except (ValueError, RuntimeError) as error:
         await message.answer(
