@@ -1,0 +1,35 @@
+name: audit menu coverage
+
+on:
+  push:
+    branches:
+      - agent/ai-menu-command-coverage
+    paths:
+      - scripts/audit_menu_coverage.py
+      - .github/workflows/audit-menu-coverage.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Generate report
+        run: python scripts/audit_menu_coverage.py
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: menu-coverage-report
+          path: menu_coverage_report.md
