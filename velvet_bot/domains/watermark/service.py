@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from aiogram import Bot
@@ -13,11 +16,20 @@ from velvet_bot.domains.watermark.models import (
     WatermarkSettings,
     WatermarkWorkItem,
 )
-from velvet_bot.domains.watermark.repository import WatermarkRepository
+from velvet_bot.domains.watermark.repository import CancelResult, WatermarkRepository
 from velvet_bot.infrastructure.krita_bridge import KritaBridge
 from velvet_bot.watermark_ui import build_watermark_keyboard, format_watermark_caption
 
 logger = logging.getLogger(__name__)
+
+
+def _processing_stale_seconds() -> int:
+    raw = os.getenv("KRITA_PROCESSING_STALE_SECONDS", "600").strip()
+    try:
+        return max(30, int(raw))
+    except ValueError:
+        logger.warning("Invalid KRITA_PROCESSING_STALE_SECONDS=%r; using 600", raw)
+        return 600
 
 
 class WatermarkService:
@@ -27,10 +39,16 @@ class WatermarkService:
         bot: Bot,
         repository: WatermarkRepository,
         bridge: KritaBridge,
+        processing_stale_seconds: int | None = None,
     ) -> None:
         self._bot = bot
         self._repository = repository
         self._bridge = bridge
+        self._processing_stale_seconds = (
+            max(30, processing_stale_seconds)
+            if processing_stale_seconds is not None
+            else _processing_stale_seconds()
+        )
 
     @property
     def bridge(self) -> KritaBridge:
@@ -98,16 +116,23 @@ class WatermarkService:
 
     async def approve(self, job_id: int, *, owner_user_id: int) -> WatermarkWorkItem:
         await self.get_current(job_id, owner_user_id=owner_user_id)
-        return await self._repository.approve(job_id)
+        item = await self._repository.approve(job_id)
+        final_path = self._bridge.validate_response_output(
+            item.job.final_path or "",
+            expected_path=item.revision.output_path,
+        )
+        if not final_path.is_file():
+            raise ValueError("Финальный файл не найден в разрешённом каталоге bridge.")
+        return item
 
-    async def cancel(self, job_id: int, *, owner_user_id: int) -> None:
+    async def cancel(self, job_id: int, *, owner_user_id: int) -> CancelResult:
         await self.get_current(job_id, owner_user_id=owner_user_id)
-        await self._repository.cancel(job_id)
+        return await self._repository.cancel(job_id)
 
     async def process_once(self) -> int:
         processed = 0
         for item in await self._repository.list_processing(limit=20):
-            if not item.revision.response_path:
+            if not item.revision.response_path or not item.revision.request_path:
                 request_path, output_path, response_path = self._bridge.dispatch(item)
                 await self._repository.set_dispatched_paths(
                     job_id=item.job.id,
@@ -115,6 +140,35 @@ class WatermarkService:
                     request_path=str(request_path),
                     output_path=str(output_path),
                     response_path=str(response_path),
+                )
+                processed += 1
+                continue
+
+            recovery = self._bridge.recover_processing(
+                request_path=item.revision.request_path,
+                response_path=item.revision.response_path,
+                stale_after_seconds=self._processing_stale_seconds,
+            )
+            if recovery == "requeued":
+                logger.warning(
+                    "Recovered stale Krita request job=%s revision=%s path=%s",
+                    item.job.id,
+                    item.revision.revision,
+                    item.revision.request_path,
+                )
+                processed += 1
+                continue
+            if recovery == "retry_failed":
+                logger.warning(
+                    "Could not requeue stale Krita request job=%s revision=%s",
+                    item.job.id,
+                    item.revision.revision,
+                )
+                continue
+            if recovery == "missing" and self._is_revision_stale(item):
+                await self._mark_recovery_error(
+                    item,
+                    "Krita request исчез: нет request, processing и response файлов.",
                 )
                 processed += 1
                 continue
@@ -138,40 +192,41 @@ class WatermarkService:
         response_path = item.revision.response_path
         if not response_path:
             return False
-        payload = self._bridge.read_response(response_path)
+        try:
+            payload = self._bridge.read_response(response_path)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            await self._mark_recovery_error(item, f"Некорректный response Krita: {error}")
+            return True
         if payload is None:
             return False
 
-        if int(payload.get("job_id", item.job.id)) != item.job.id or int(
-            payload.get("revision", item.revision.revision)
-        ) != item.revision.revision:
-            await self._repository.mark_error(
-                job_id=item.job.id,
-                revision=item.revision.revision,
-                error="Ответ Krita не совпадает с job/revision.",
-            )
+        try:
+            response_job_id = int(payload.get("job_id", item.job.id))
+            response_revision = int(payload.get("revision", item.revision.revision))
+        except (TypeError, ValueError):
+            response_job_id = -1
+            response_revision = -1
+        if response_job_id != item.job.id or response_revision != item.revision.revision:
+            await self._mark_recovery_error(item, "Ответ Krita не совпадает с job/revision.")
             return True
 
         if payload.get("status") != "ok":
             error = str(payload.get("error") or "Krita bridge вернул ошибку.")
-            await self._repository.mark_error(
-                job_id=item.job.id,
-                revision=item.revision.revision,
-                error=error,
-            )
-            if item.job.current_revision == item.revision.revision:
-                await self._safe_send_message(
-                    item.job.chat_id,
-                    f"❌ Водяной знак: {error[:1500]}",
-                )
+            await self._mark_recovery_error(item, error)
             return True
 
-        output_path = Path(str(payload.get("output_path") or item.revision.output_path or ""))
-        if not output_path.exists():
-            await self._repository.mark_error(
-                job_id=item.job.id,
-                revision=item.revision.revision,
-                error="Krita сообщила успех, но итоговый файл не найден.",
+        try:
+            output_path = self._bridge.validate_response_output(
+                str(payload.get("output_path") or ""),
+                expected_path=item.revision.output_path,
+            )
+        except ValueError as error:
+            await self._mark_recovery_error(item, f"Небезопасный output_path: {error}")
+            return True
+        if not output_path.is_file():
+            await self._mark_recovery_error(
+                item,
+                "Krita сообщила успех, но итоговый файл не найден.",
             )
             return True
 
@@ -217,9 +272,35 @@ class WatermarkService:
                 pass
         return True
 
+    async def _mark_recovery_error(self, item: WatermarkWorkItem, error: str) -> None:
+        logger.error(
+            "Krita watermark job failed job=%s revision=%s: %s",
+            item.job.id,
+            item.revision.revision,
+            error,
+        )
+        await self._repository.mark_error(
+            job_id=item.job.id,
+            revision=item.revision.revision,
+            error=error,
+        )
+        if item.job.current_revision == item.revision.revision:
+            await self._safe_send_message(
+                item.job.chat_id,
+                f"❌ Водяной знак: {error[:1500]}",
+            )
+
+    def _is_revision_stale(self, item: WatermarkWorkItem) -> bool:
+        created_at = item.revision.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=UTC)
+        return (datetime.now(UTC) - created_at).total_seconds() >= self._processing_stale_seconds
+
     def _build_telegram_preview(self, output_path: Path, item: WatermarkWorkItem) -> Path:
-        preview_path = self._bridge.paths.previews / (
-            f"job-{item.job.id}-r{item.revision.revision}.jpg"
+        preview_path = self._bridge.paths.ensure_in(
+            self._bridge.paths.previews
+            / f"job-{item.job.id}-r{item.revision.revision}.jpg",
+            self._bridge.paths.previews,
         )
         with Image.open(output_path) as image:
             image = image.convert("RGB")
