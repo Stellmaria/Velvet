@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import importlib
 import unittest
 from pathlib import Path
@@ -48,13 +49,16 @@ class AnalyticsManagementSplitTests(unittest.TestCase):
         self.assertNotIn("set_manual_publication_type", source)
         self.assertNotIn("get_character_alias_summary", source)
 
-    def test_domain_modules_are_separate(self) -> None:
-        for path in (
+    def test_domain_modules_are_separate_and_parse(self) -> None:
+        for name in (
             "analytics_management_tags.py",
             "analytics_management_aliases.py",
             "analytics_management_publications.py",
+            "analytics_management_common.py",
         ):
-            self.assertTrue((ROOT / "velvet_bot/handlers" / path).is_file())
+            path = ROOT / "velvet_bot/handlers" / name
+            self.assertTrue(path.is_file())
+            ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
     def test_dashboard_override_uses_tag_module_directly(self) -> None:
         source = (
