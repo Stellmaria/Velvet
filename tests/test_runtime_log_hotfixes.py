@@ -56,6 +56,9 @@ class _Database:
         self.connection = _Connection()
         self.pool = _Pool(self.connection)
 
+    def acquire(self):
+        return self.pool.acquire()
+
     def _require_pool(self):
         return self.pool
 
