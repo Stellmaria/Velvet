@@ -15,6 +15,7 @@ from velvet_bot.owner_callbacks import (
 )
 from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.quality_ui import quality_callback
+from velvet_bot.watermark_ui import WatermarkCallback
 
 
 def build_owner_main_keyboard() -> InlineKeyboardMarkup:
@@ -32,9 +33,13 @@ def build_owner_main_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
+                    text="💧 Водяной знак",
+                    callback_data=WatermarkCallback(action="start").pack(),
+                ),
+                InlineKeyboardButton(
                     text="🧰 Все действия",
                     callback_data=owner_action_callback("menu"),
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(
@@ -109,6 +114,8 @@ def owner_help_text() -> str:
         "🖼 <b>Архив</b> — публичный просмотр материалов.\n"
         "👥 <b>Персонажи</b> — карточки, категории, вселенные, истории, промты "
         "и переходы к медиа.\n"
+        "💧 <b>Водяной знак</b> — отправка изображения в локальную Krita, "
+        "preview, выбор угла, цвета, прозрачности, размера и отступа.\n"
         "🧰 <b>Все действия</b> — формы создания персонажей, тем, историй, "
         "референсов, алиасов, сохранения медиа и импорта.\n"
         "🛡 <b>Supervisor и Codex</b> — состояние процесса, логи, Git, "
