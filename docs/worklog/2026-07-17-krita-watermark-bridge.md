@@ -85,6 +85,7 @@ Watermark является частью подготовки уже сущест
 - плагин автоматически опрашивает очередь, удаляет прежний vector layer, поддерживает HEX и анализ контраста, экспортирует отдельный output и закрывает открытый bridge-документ без сохранения исходника;
 - добавлены упаковщик ZIP, эксплуатационная документация, `.env.example` и changelog;
 - добавлены unit/regression-тесты protocol, settings bounds, path boundary и Telegram callback length;
+- добавлен PostgreSQL integration test полного repository-сценария revisions → undo → ready → approve;
 - установочный ZIP собран из финальных исходников плагина и проверен через `zipfile.testzip()`.
 
 ### Миграции и совместимость
@@ -93,29 +94,30 @@ Watermark является частью подготовки уже сущест
 
 ### Проверки
 
-- локально выполнен `python -m py_compile` для финальных файлов `velvet_logo.py`, `logo_data.py` и `package_plugin.py`;
+- локально выполнен `python -m py_compile` для финальных файлов `velvet_logo.py`, `logo_data.py`, `package_plugin.py` и всех новых Python-модулей watermark;
 - установочный ZIP плагина прошёл `zipfile.testzip()` без повреждённых записей;
-- первый CI tests run `29598080835` обнаружил конфликт миграции `099`, отсутствие `/watermark` в каталоге reserve routes и обязательного заголовка `Исходный контекст`;
-- второй CI tests run `29598438148` подтвердил исправление route-каталога и worklog; единственной причиной 21 integration error и одного integrity failure остался конфликт номера миграции `100` с `100_ai_quality_checks.sql`;
-- миграция перенесена в отдельный диапазон под номером `900`;
-- project notes contract run `29598438061` завершился успешно;
-- Docker build run `29598438144` завершился успешно;
-- tests и backup restore drill повторно запускаются после переноса миграции на `900`;
+- первый CI tests run `29598080835` выявил конфликт миграции `099`, отсутствие `/watermark` в каталоге reserve routes и обязательного заголовка `Исходный контекст`;
+- второй CI tests run `29598438148` подтвердил исправление route-каталога и worklog; оставался конфликт номера миграции `100`;
+- tests run `29598849868` успешно выполнил новую PostgreSQL-проверку watermark, но выявил один циклический импорт `watermark_ui ↔ domains.watermark.service`; лишний eager-export `WatermarkService` удалён из package `__init__`;
+- полный tests run `29598975215` завершился успешно, включая 522 теста и PostgreSQL integration test watermark;
+- project notes contract run `29598975218` завершился успешно;
+- Docker build run `29598975203` завершился успешно;
+- backup restore drill run `29598975251` завершился успешно: миграция, dump и восстановление свежей PostgreSQL-базы прошли;
 - живая проверка Krita Python API на целевой Windows в CI невозможна и пока не выполнена.
 
 ### PR и commit
 
 - Draft PR: `#117`, `Krita bridge для управляемого водяного знака`;
 - ветка: `agent/krita-watermark-bridge`;
-- PR оставлен draft до зелёного CI и живой Windows-проверки.
+- финальный проверенный production head до обновления журнала: `601d8203e0520400adcd77c51d6132b32bb1608c`;
+- PR оставлен draft до живой Windows-проверки.
 
 ### Незавершённое
 
-- получить окончательные результаты CI после миграции `900` и исправить возможные оставшиеся ошибки;
-- установить плагин в Krita на целевой Windows;
+- установить собранный плагин в Krita на целевой Windows;
 - проверить единый bridge-каталог, четыре угла, белый/чёрный/auto/HEX, revisions, откат, режим без знака, финальный документ и продолжение processing job после перезапуска;
-- только после живой проверки перевести срез из статуса `частично` в `завершено` и решать вопрос о слиянии.
+- после живой проверки перевести срез из статуса `частично` в `завершено` и решать вопрос о слиянии.
 
 ### Следующий шаг
 
-Дождаться CI на актуальном head PR #117 и выполнить живой Windows-checklist из `docs/krita_watermark.md` с собранным ZIP плагина.
+Установить ZIP плагина на целевой Windows, включить одинаковый `KRITA_BRIDGE_DIR` в боте и Krita и выполнить checklist из `docs/krita_watermark.md`.
