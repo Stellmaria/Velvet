@@ -86,6 +86,27 @@ class AIMenuCoverageTests(unittest.TestCase):
             QualityCallback.unpack(by_label["🔎 Сравнение с референсом"]).action,
         )
 
+    def test_ai_slash_fallbacks_have_button_entry_points(self) -> None:
+        _, ai_markup = build_velvet_ai_menu(
+            enabled=True,
+            provider="ollama",
+            model="qwen3-vl:8b",
+        )
+        _, operations_markup = build_quality_operations_menu(self.summary, None)
+        actions = quality_actions(ai_markup) | quality_actions(operations_markup)
+        command_to_button = {
+            "quality": "quality_ops",
+            "auditarchive": "menu",
+            "qwen_calibration": "qcal",
+            "qcalibration": "qcal",
+            "analyze_set": "setreports",
+            "qwen_set": "setreports",
+            "compare_ref": "refcompare_start",
+            "compare_reference": "refcompare_start",
+        }
+
+        self.assertEqual(set(), set(command_to_button.values()) - actions)
+
     def test_quality_operations_restores_expected_controls(self) -> None:
         text, markup = build_quality_operations_menu(self.summary, None)
         labels = {
