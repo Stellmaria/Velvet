@@ -1,0 +1,787 @@
+from __future__ import annotations
+
+import asyncio
+import io
+import json
+import logging
+from dataclasses import dataclass
+from html import escape
+
+from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
+from aiogram.exceptions import (
+    TelegramAPIError,
+    TelegramBadRequest,
+    TelegramNetworkError,
+)
+from aiogram.filters import Command, CommandObject
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+
+from velvet_bot.core.config import load_settings
+from velvet_bot.database import Database
+from velvet_bot.local_ai_runtime import get_local_ai_lock
+from velvet_bot.quality_ui import QualityCallback, quality_callback
+from velvet_bot.set_consistency import SetConsistencyClient, SetConsistencyInput
+
+router = Router(name=__name__)
+logger = logging.getLogger(__name__)
+
+_DOWNLOAD_ATTEMPTS = 3
+_DOWNLOAD_TIMEOUT_SECONDS = 90
+_RETRY_DELAYS = (1.0, 3.0)
+
+
+@dataclass(frozen=True, slots=True)
+class SetMediaItem:
+    media_id: int
+    telegram_file_id: str
+    preview_file_id: str | None
+    media_type: str
+    file_name: str
+    characters: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MediaSetBundle:
+    id: int
+    title: str
+    items: tuple[SetMediaItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SetReportListItem:
+    set_id: int
+    title: str
+    item_count: int
+    report_id: int | None
+    verdict: str | None
+    overall_score: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class SetReportPage:
+    items: tuple[SetReportListItem, ...]
+    page: int
+    page_size: int
+    total_items: int
+
+    @property
+    def total_pages(self) -> int:
+        return max(1, (self.total_items + self.page_size - 1) // self.page_size)
+
+
+async def _safe_edit(
+    message: Message,
+    text: str,
+    keyboard: InlineKeyboardMarkup | None = None,
+) -> None:
+    try:
+        await message.edit_text(text, reply_markup=keyboard)
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error).casefold():
+            raise
+
+
+async def _load_set(database: Database, set_id: int) -> MediaSetBundle | None:
+    async with database._require_pool().acquire() as connection:
+        header = await connection.fetchrow(
+            """
+            SELECT id, title
+            FROM media_sets
+            WHERE id = $1::BIGINT
+            """,
+            int(set_id),
+        )
+        if header is None:
+            return None
+        rows = await connection.fetch(
+            """
+            SELECT
+                mf.id AS media_id,
+                mf.telegram_file_id,
+                mf.preview_file_id,
+                mf.media_type,
+                COALESCE(mf.original_file_name, mf.storage_file_name,
+                         'media-' || mf.id::TEXT) AS file_name,
+                COALESCE(
+                    ARRAY_AGG(DISTINCT c.name ORDER BY c.name)
+                        FILTER (WHERE c.id IS NOT NULL),
+                    ARRAY[]::VARCHAR[]
+                ) AS characters
+            FROM media_files AS mf
+            LEFT JOIN character_media AS cm ON cm.media_id = mf.id
+            LEFT JOIN characters AS c ON c.id = cm.character_id
+            WHERE mf.media_set_id = $1::BIGINT
+              AND (
+                    mf.media_type = 'photo'
+                    OR (mf.media_type = 'document'
+                        AND COALESCE(mf.mime_type, '') LIKE 'image/%')
+                  )
+            GROUP BY mf.id, mf.telegram_file_id, mf.preview_file_id,
+                     mf.media_type, mf.original_file_name, mf.storage_file_name
+            ORDER BY mf.id
+            LIMIT 13
+            """,
+            int(set_id),
+        )
+    items = tuple(
+        SetMediaItem(
+            media_id=int(row["media_id"]),
+            telegram_file_id=str(row["telegram_file_id"]),
+            preview_file_id=(
+                str(row["preview_file_id"])
+                if row["preview_file_id"] is not None
+                else None
+            ),
+            media_type=str(row["media_type"]),
+            file_name=str(row["file_name"]),
+            characters=tuple(str(value) for value in row["characters"] if value),
+        )
+        for row in rows
+    )
+    return MediaSetBundle(id=int(header["id"]), title=str(header["title"]), items=items)
+
+
+async def _list_sets(
+    database: Database,
+    *,
+    page: int,
+    page_size: int = 6,
+) -> SetReportPage:
+    safe_size = max(1, min(int(page_size), 8))
+    async with database._require_pool().acquire() as connection:
+        total = int(
+            await connection.fetchval(
+                """
+                SELECT COUNT(*)
+                FROM (
+                    SELECT mf.media_set_id
+                    FROM media_files AS mf
+                    WHERE mf.media_set_id IS NOT NULL
+                      AND (
+                            mf.media_type = 'photo'
+                            OR (mf.media_type = 'document'
+                                AND COALESCE(mf.mime_type, '') LIKE 'image/%')
+                          )
+                    GROUP BY mf.media_set_id
+                    HAVING COUNT(*) >= 2
+                ) AS eligible
+                """
+            )
+            or 0
+        )
+        total_pages = max(1, (total + safe_size - 1) // safe_size)
+        safe_page = min(max(0, int(page)), total_pages - 1)
+        rows = await connection.fetch(
+            """
+            SELECT
+                ms.id AS set_id,
+                ms.title,
+                COUNT(mf.id)::INTEGER AS item_count,
+                latest.id AS report_id,
+                latest.verdict,
+                latest.overall_score
+            FROM media_sets AS ms
+            JOIN media_files AS mf
+              ON mf.media_set_id = ms.id
+             AND (
+                    mf.media_type = 'photo'
+                    OR (mf.media_type = 'document'
+                        AND COALESCE(mf.mime_type, '') LIKE 'image/%')
+                 )
+            LEFT JOIN LATERAL (
+                SELECT report.id, report.verdict, report.overall_score,
+                       report.created_at
+                FROM media_set_ai_reports AS report
+                WHERE report.media_set_id = ms.id
+                ORDER BY report.created_at DESC, report.id DESC
+                LIMIT 1
+            ) AS latest ON TRUE
+            GROUP BY ms.id, ms.title, latest.id, latest.verdict,
+                     latest.overall_score, latest.created_at
+            HAVING COUNT(mf.id) >= 2
+            ORDER BY latest.created_at DESC NULLS LAST, ms.id DESC
+            OFFSET $1::INTEGER LIMIT $2::INTEGER
+            """,
+            safe_page * safe_size,
+            safe_size,
+        )
+    return SetReportPage(
+        items=tuple(
+            SetReportListItem(
+                set_id=int(row["set_id"]),
+                title=str(row["title"]),
+                item_count=int(row["item_count"]),
+                report_id=int(row["report_id"]) if row["report_id"] is not None else None,
+                verdict=str(row["verdict"]) if row["verdict"] is not None else None,
+                overall_score=(
+                    int(row["overall_score"])
+                    if row["overall_score"] is not None
+                    else None
+                ),
+            )
+            for row in rows
+        ),
+        page=safe_page,
+        page_size=safe_size,
+        total_items=total,
+    )
+
+
+async def _latest_report(
+    database: Database,
+    set_id: int,
+) -> tuple[int, dict[str, object]] | None:
+    async with database._require_pool().acquire() as connection:
+        row = await connection.fetchrow(
+            """
+            SELECT id, report
+            FROM media_set_ai_reports
+            WHERE media_set_id = $1::BIGINT
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            int(set_id),
+        )
+    if row is None:
+        return None
+    value = row["report"]
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            value = None
+    if not isinstance(value, dict):
+        return None
+    return int(row["id"]), value
+
+
+async def _save_report(
+    database: Database,
+    *,
+    set_id: int,
+    provider: str,
+    model: str,
+    report: dict[str, object],
+    created_by: int | None,
+) -> int:
+    async with database._require_pool().acquire() as connection:
+        value = await connection.fetchval(
+            """
+            INSERT INTO media_set_ai_reports (
+                media_set_id, provider, model, analysis_version, item_count,
+                overall_score, style_score, lighting_score, palette_score,
+                environment_score, composition_score, narrative_score,
+                character_continuity_score, technical_score, confidence,
+                verdict, report, created_by
+            )
+            VALUES (
+                $1::BIGINT, $2::VARCHAR, $3::VARCHAR, $4::SMALLINT, $5::SMALLINT,
+                $6::SMALLINT, $7::SMALLINT, $8::SMALLINT, $9::SMALLINT,
+                $10::SMALLINT, $11::SMALLINT, $12::SMALLINT, $13::SMALLINT,
+                $14::SMALLINT, $15::SMALLINT, $16::VARCHAR, $17::JSONB, $18::BIGINT
+            )
+            RETURNING id
+            """,
+            int(set_id),
+            provider[:64],
+            model[:160],
+            int(report.get("analysis_version") or 1),
+            len(report.get("items") or []),
+            int(report["overall_score"]),
+            int(report["style_score"]),
+            int(report["lighting_score"]),
+            int(report["palette_score"]),
+            int(report["environment_score"]),
+            int(report["composition_score"]),
+            int(report["narrative_score"]),
+            int(report["character_continuity_score"]),
+            int(report["technical_score"]),
+            int(report["confidence"]),
+            str(report["verdict"]),
+            json.dumps(report, ensure_ascii=False),
+            created_by,
+        )
+    return int(value)
+
+
+async def _download_item(bot: Bot, item: SetMediaItem) -> bytes:
+    file_ids = [item.telegram_file_id]
+    if item.preview_file_id and item.preview_file_id not in file_ids:
+        file_ids.append(item.preview_file_id)
+    errors: list[BaseException] = []
+    for file_id in file_ids:
+        for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
+            try:
+                destination = io.BytesIO()
+                await bot.download(
+                    file_id,
+                    destination=destination,
+                    timeout=_DOWNLOAD_TIMEOUT_SECONDS,
+                    seek=True,
+                )
+                value = destination.getvalue()
+                if value:
+                    return value
+                errors.append(RuntimeError("Telegram вернул пустой файл."))
+                break
+            except asyncio.CancelledError:
+                raise
+            except TelegramBadRequest as error:
+                errors.append(error)
+                break
+            except (TelegramNetworkError, TimeoutError, ConnectionError, OSError) as error:
+                errors.append(error)
+                if attempt >= _DOWNLOAD_ATTEMPTS:
+                    break
+                await asyncio.sleep(_RETRY_DELAYS[attempt - 1])
+            except TelegramAPIError as error:
+                errors.append(error)
+                break
+    if errors:
+        raise RuntimeError(
+            f"Не удалось скачать media #{item.media_id}: {errors[-1]}"
+        )
+    raise RuntimeError(f"Telegram вернул пустой media #{item.media_id}.")
+
+
+def _list_block(title: str, values: object, emoji: str) -> list[str]:
+    if not isinstance(values, list) or not values:
+        return []
+    lines = ["", f"<b>{emoji} {escape(title)}</b>"]
+    for value in values[:8]:
+        lines.append(f"• {escape(str(value))}")
+    return lines
+
+
+def _format_report(
+    bundle: MediaSetBundle,
+    report_id: int,
+    report: dict[str, object],
+) -> str:
+    verdict = str(report.get("verdict") or "review")
+    label = {
+        "coherent": "целостный сет",
+        "review": "нужна ручная проверка",
+        "incoherent": "целостность нарушена",
+        "insufficient": "недостаточно данных",
+    }.get(verdict, verdict)
+    emoji = {
+        "coherent": "✅",
+        "review": "⚠️",
+        "incoherent": "🚨",
+        "insufficient": "🔎",
+    }.get(verdict, "⚠️")
+
+    lines = [
+        f"<b>{emoji} Qwen · целостность сета #{bundle.id}</b>",
+        "",
+        f"Название: <b>{escape(bundle.title)}</b>",
+        f"Отчёт: <b>#{report_id}</b>",
+        f"Кадров: <b>{len(bundle.items)}</b>",
+        f"Вердикт: <b>{escape(label)}</b>",
+        f"Общая целостность: <b>{int(report.get('overall_score') or 0)} / 100</b>",
+        f"Уверенность Qwen: <b>{int(report.get('confidence') or 0)}%</b>",
+        "",
+        f"Стиль: <b>{int(report.get('style_score') or 0)}</b> · "
+        f"свет: <b>{int(report.get('lighting_score') or 0)}</b> · "
+        f"палитра: <b>{int(report.get('palette_score') or 0)}</b>",
+        f"Окружение: <b>{int(report.get('environment_score') or 0)}</b> · "
+        f"композиция: <b>{int(report.get('composition_score') or 0)}</b>",
+        f"Нарратив: <b>{int(report.get('narrative_score') or 0)}</b> · "
+        f"персонажи: <b>{int(report.get('character_continuity_score') or 0)}</b> · "
+        f"техника: <b>{int(report.get('technical_score') or 0)}</b>",
+        "",
+        f"<b>Итог:</b> {escape(str(report.get('summary_ru') or '—'))}",
+    ]
+    lines.extend(_list_block("Общие признаки", report.get("shared_traits"), "✅"))
+    lines.extend(_list_block("Проблемы сета", report.get("set_issues"), "⚠️"))
+    lines.extend(_list_block("Недостаточно видно", report.get("uncertain_areas"), "🔎"))
+
+    raw_items = report.get("items")
+    if isinstance(raw_items, list) and raw_items:
+        lines.extend(["", "<b>Кадры:</b>"])
+        ordered = sorted(
+            (item for item in raw_items if isinstance(item, dict)),
+            key=lambda item: (
+                {"outlier": 0, "uncertain": 1, "core": 2}.get(
+                    str(item.get("status")), 3
+                ),
+                int(item.get("index") or 0),
+            ),
+        )
+        for item in ordered[:12]:
+            status = str(item.get("status") or "uncertain")
+            marker = {"core": "✅", "outlier": "🚨", "uncertain": "🔎"}.get(
+                status, "🔎"
+            )
+            media_id = int(item.get("media_id") or 0)
+            score = int(item.get("consistency_score") or 0)
+            reasons = item.get("reasons")
+            reason = ""
+            if isinstance(reasons, list) and reasons:
+                reason = " — " + escape(str(reasons[0]))
+            lines.append(f"• {marker} media <b>#{media_id}</b>: <b>{score}/100</b>{reason}")
+
+    return "\n".join(lines)[:4090]
+
+
+def _detail_keyboard(set_id: int, *, page: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🧠 Проверить заново",
+                    callback_data=quality_callback(
+                        "setanalyze", page=page, item_id=set_id
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🖼 Показать материалы",
+                    callback_data=quality_callback(
+                        "setphotos", page=page, item_id=set_id
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ К списку сетов",
+                    callback_data=quality_callback("setreports", page=page),
+                )
+            ],
+        ]
+    )
+
+
+async def _show_set_list(message: Message, database: Database, *, page: int) -> None:
+    result = await _list_sets(database, page=page)
+    lines = [
+        "<b>🧠 Qwen · целостность медиасетов</b>",
+        "",
+        f"Сетов с двумя и более изображениями: <b>{result.total_items}</b>",
+        f"Страница: <b>{result.page + 1}</b> из <b>{result.total_pages}</b>",
+        "",
+        "Qwen получает один компактный контакт-лист и проверяет стиль, свет, "
+        "палитру, окружение, композицию, сюжетную связность и выбивающиеся кадры.",
+    ]
+    rows: list[list[InlineKeyboardButton]] = []
+    for item in result.items:
+        marker = {
+            "coherent": "✅",
+            "review": "⚠️",
+            "incoherent": "🚨",
+            "insufficient": "🔎",
+        }.get(item.verdict, "🆕")
+        score = f"{item.overall_score}%" if item.overall_score is not None else "не проверен"
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=(
+                        f"{marker} #{item.set_id} · {score} · "
+                        f"{item.title[:30]} · {item.item_count} фото"
+                    )[:64],
+                    callback_data=quality_callback(
+                        "setaudit", page=result.page, item_id=item.set_id
+                    ),
+                )
+            ]
+        )
+    if result.total_pages > 1:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="◀️",
+                    callback_data=quality_callback(
+                        "setreports", page=(result.page - 1) % result.total_pages
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text=f"{result.page + 1} / {result.total_pages}",
+                    callback_data=quality_callback("noop"),
+                ),
+                InlineKeyboardButton(
+                    text="▶️",
+                    callback_data=quality_callback(
+                        "setreports", page=(result.page + 1) % result.total_pages
+                    ),
+                ),
+            ]
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="🔄 Обновить",
+                callback_data=quality_callback("setreports", page=result.page),
+            ),
+            InlineKeyboardButton(
+                text="↩️ К аудиту",
+                callback_data=quality_callback("menu"),
+            ),
+        ]
+    )
+    await _safe_edit(
+        message,
+        "\n".join(lines),
+        InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+async def _show_set_detail(
+    message: Message,
+    database: Database,
+    *,
+    set_id: int,
+    page: int,
+) -> None:
+    bundle = await _load_set(database, set_id)
+    if bundle is None:
+        await _safe_edit(
+            message,
+            "Сет больше не найден.",
+            InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="↩️ К списку",
+                            callback_data=quality_callback("setreports", page=page),
+                        )
+                    ]
+                ]
+            ),
+        )
+        return
+    latest = await _latest_report(database, set_id)
+    if latest is None:
+        text = "\n".join(
+            [
+                f"<b>🆕 Сет #{bundle.id} ещё не проверен Qwen</b>",
+                "",
+                f"Название: <b>{escape(bundle.title)}</b>",
+                f"Изображений: <b>{len(bundle.items)}</b>",
+                "",
+                "Проверка создаст контакт-лист и найдёт кадры, которые выбиваются "
+                "по стилю, свету, палитре, окружению или качеству.",
+            ]
+        )
+    else:
+        report_id, report = latest
+        text = _format_report(bundle, report_id, report)
+    await _safe_edit(message, text, _detail_keyboard(bundle.id, page=page))
+
+
+async def _analyze_set(
+    database: Database,
+    bot: Bot,
+    *,
+    set_id: int,
+    created_by: int | None,
+) -> tuple[MediaSetBundle, int, dict[str, object]]:
+    bundle = await _load_set(database, set_id)
+    if bundle is None:
+        raise ValueError("Сет не найден.")
+    if len(bundle.items) < 2:
+        raise ValueError("В сете меньше двух доступных изображений.")
+    if len(bundle.items) > 12:
+        raise ValueError("Qwen проверяет не более 12 изображений за один сет.")
+
+    settings = load_settings()
+    if not settings.ai_vision_enabled:
+        raise ValueError("Локальный Qwen отключён в настройках бота.")
+
+    sources = await asyncio.gather(*(_download_item(bot, item) for item in bundle.items))
+    inputs = tuple(
+        SetConsistencyInput(
+            media_id=item.media_id,
+            image=source,
+            characters=item.characters,
+        )
+        for item, source in zip(bundle.items, sources, strict=True)
+    )
+    client = SetConsistencyClient(
+        provider=settings.ai_vision_provider,
+        base_url=settings.ai_vision_base_url,
+        model=settings.ai_vision_model,
+        api_key=settings.ai_vision_api_key,
+        timeout_seconds=settings.ai_vision_timeout_seconds,
+    )
+    async with get_local_ai_lock():
+        report = await client.analyze_set(inputs)
+    report_id = await _save_report(
+        database,
+        set_id=bundle.id,
+        provider=client.provider,
+        model=client.model,
+        report=report,
+        created_by=created_by,
+    )
+    return bundle, report_id, report
+
+
+async def _send_set_media(bot: Bot, chat_id: int, bundle: MediaSetBundle) -> None:
+    for item in bundle.items:
+        caption = (
+            f"Сет #{bundle.id} · media #{item.media_id}\n"
+            f"Персонажи: {', '.join(item.characters) or '—'}"
+        )
+        try:
+            if item.media_type == "photo":
+                await bot.send_photo(
+                    chat_id=chat_id,
+                    photo=item.telegram_file_id,
+                    caption=caption,
+                    protect_content=False,
+                )
+            else:
+                await bot.send_document(
+                    chat_id=chat_id,
+                    document=item.telegram_file_id,
+                    caption=caption,
+                    protect_content=False,
+                )
+        except TelegramAPIError:
+            await bot.send_message(chat_id, f"{caption}\nФайл сейчас недоступен.")
+
+
+@router.callback_query(QualityCallback.filter(F.action == "setreports"))
+async def handle_set_report_list(
+    callback: CallbackQuery,
+    callback_data: QualityCallback,
+    database: Database,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    await _show_set_list(callback.message, database, page=callback_data.page)
+    await callback.answer()
+
+
+@router.callback_query(QualityCallback.filter(F.action == "setaudit"))
+async def handle_set_report_open(
+    callback: CallbackQuery,
+    callback_data: QualityCallback,
+    database: Database,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    await _show_set_detail(
+        callback.message,
+        database,
+        set_id=callback_data.item_id,
+        page=callback_data.page,
+    )
+    await callback.answer()
+
+
+@router.callback_query(QualityCallback.filter(F.action == "setanalyze"))
+async def handle_set_analyze(
+    callback: CallbackQuery,
+    callback_data: QualityCallback,
+    database: Database,
+    bot: Bot,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    await callback.answer("Запускаю Qwen. Проверка выполняется последовательно.")
+    await _safe_edit(
+        callback.message,
+        f"<b>🧠 Qwen проверяет сет #{callback_data.item_id}</b>\n\n"
+        "Собираю контакт-лист и сравниваю кадры. Другие локальные задачи Qwen "
+        "дождутся своей очереди.",
+    )
+    try:
+        bundle, report_id, report = await _analyze_set(
+            database,
+            bot,
+            set_id=callback_data.item_id,
+            created_by=callback.from_user.id,
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        logger.exception("Set consistency analysis failed set_id=%s", callback_data.item_id)
+        await _safe_edit(
+            callback.message,
+            f"<b>❌ Проверка сета #{callback_data.item_id} не завершена</b>\n\n"
+            f"<code>{escape(str(error))}</code>",
+            _detail_keyboard(callback_data.item_id, page=callback_data.page),
+        )
+        return
+    await _safe_edit(
+        callback.message,
+        _format_report(bundle, report_id, report),
+        _detail_keyboard(bundle.id, page=callback_data.page),
+    )
+
+
+@router.callback_query(QualityCallback.filter(F.action == "setphotos"))
+async def handle_set_photos(
+    callback: CallbackQuery,
+    callback_data: QualityCallback,
+    database: Database,
+    bot: Bot,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    bundle = await _load_set(database, callback_data.item_id)
+    if bundle is None:
+        await callback.answer("Сет больше не найден.", show_alert=True)
+        return
+    await callback.answer("Отправляю материалы отдельными сообщениями.")
+    await _send_set_media(bot, callback.message.chat.id, bundle)
+
+
+@router.message(Command("analyze_set", "qwen_set"))
+async def handle_set_analysis_command(
+    message: Message,
+    command: CommandObject,
+    database: Database,
+    bot: Bot,
+) -> None:
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("Проверка целостности сета доступна в личном чате с ботом.")
+        return
+    raw = " ".join((command.args or "").split()).strip()
+    try:
+        set_id = int(raw)
+    except ValueError:
+        await message.answer(
+            "Укажите числовой ID сета.\n\n"
+            "Пример: <code>/analyze_set 12</code>"
+        )
+        return
+    if set_id <= 0:
+        await message.answer("ID сета должен быть положительным числом.")
+        return
+
+    status = await message.answer(
+        f"<b>🧠 Qwen проверяет сет #{set_id}</b>\n\n"
+        "Собираю компактный контакт-лист и ищу выбивающиеся кадры."
+    )
+    try:
+        bundle, report_id, report = await _analyze_set(
+            database,
+            bot,
+            set_id=set_id,
+            created_by=message.from_user.id if message.from_user else None,
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        logger.exception("Set consistency command failed set_id=%s", set_id)
+        await status.edit_text(
+            f"<b>❌ Проверка сета #{set_id} не завершена</b>\n\n"
+            f"<code>{escape(str(error))}</code>"
+        )
+        return
+    await status.edit_text(
+        _format_report(bundle, report_id, report),
+        reply_markup=_detail_keyboard(bundle.id, page=0),
+    )
+
+
+__all__ = ("router",)
