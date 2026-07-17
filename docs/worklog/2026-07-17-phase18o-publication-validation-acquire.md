@@ -69,20 +69,29 @@
 
 ### Проверки
 
-Полный CI ещё не запущен. Добавленные тесты должны подтвердить две public acquire boundary, mapping контекста, единую транзакцию и оба SQL-вызова сохранения результата.
+Первый CI на head `a974db24fb9c43e1214dd2bed8a1f32a4f68dc8d`:
+
+- `project notes contract #47` — успешно;
+- `docker build #160` — успешно;
+- `tests #566` — один failure в release documentation contract;
+- все repository/inventory тесты прошли до итогового failure;
+- причина: при сокращении `docs/development_status.md` каноническая строка `Текущая стабильная версия: 1.3.0` была сокращена до `Стабильная версия`;
+- точная release-формулировка восстановлена, production-код не менялся.
 
 ### PR и commit
 
-Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
+- draft PR: #111 `Фаза 18O: PublicationValidationRepository и Database.acquire`;
+- первый CI head: `a974db24fb9c43e1214dd2bed8a1f32a4f68dc8d`;
+- исправление release documentation contract: `490977a1b8a92a78876ac1e24c0d223b324e97ad`;
+- финальный commit будет зафиксирован после повторного CI и merge.
 
 ### Незавершённое
 
-- открыть draft PR;
-- получить tests, Docker build и project notes contract;
-- при необходимости исправить только фактические регрессии;
-- закрыть worklog точными run;
+- получить зелёный повторный tests workflow;
+- закрыть worklog финальными run;
+- повторить CI на окончательном head;
 - слить Фазу 18O.
 
 ### Следующий шаг
 
-Открыть PR, прогнать полный CI и после merge начать Фазу 18P отдельной сессией.
+Повторить полный CI после восстановления канонической release-строки. После merge начать Фазу 18P отдельной сессией.
