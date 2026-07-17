@@ -349,7 +349,14 @@ class VelvetLogoExtension(Extension):
         y = int(self._axis(vertical, height, sample_height, margin))
         x = max(0, min(x, width - sample_width))
         y = max(0, min(y, height - sample_height))
-        raw = bytes(document.projectionPixelData(x, y, sample_width, sample_height))
+        pixel_reader = getattr(document, "projectionPixelData", None)
+        if not callable(pixel_reader):
+            pixel_reader = getattr(document, "pixelData", None)
+        if not callable(pixel_reader):
+            raise RuntimeError(
+                "Эта версия Krita не предоставляет API чтения пикселей документа."
+            )
+        raw = bytes(pixel_reader(x, y, sample_width, sample_height))
         if len(raw) < 4:
             return "#ffffff"
         step = max(4, (len(raw) // 1200 // 4) * 4)
