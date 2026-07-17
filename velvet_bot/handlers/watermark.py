@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from html import escape
@@ -10,12 +11,15 @@ from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import BaseFilter, Command
 from aiogram.types import CallbackQuery, FSInputFile, Message
+from PIL import Image, UnidentifiedImageError
 
 from velvet_bot.database import Database
 from velvet_bot.domains.watermark.models import WatermarkWorkItem
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
+from velvet_bot.krita_supervisor import build_krita_supervisor_client
+from velvet_bot.supervisor_client import SupervisorClientError
 from velvet_bot.watermark_ui import (
     WatermarkCallback,
     build_watermark_keyboard,
@@ -23,9 +27,26 @@ from velvet_bot.watermark_ui import (
     format_watermark_caption,
 )
 
+logger = logging.getLogger(__name__)
 router = Router(name=__name__)
 _INPUT_MARKER = "#watermark-input"
 _COLOR_MARKER = re.compile(r"#watermark-color:(\d+)")
+_SUPPORTED_IMAGE_SUFFIXES = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".tif",
+    ".tiff",
+    ".bmp",
+}
+_MIME_SUFFIXES = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/tiff": ".tiff",
+    "image/bmp": ".bmp",
+}
 
 
 def _watermark_enabled() -> bool:
@@ -44,6 +65,18 @@ def _build_service(bot: Bot, database: Database) -> WatermarkService:
         repository=WatermarkRepository(database),
         bridge=KritaBridge(default_krita_bridge_dir()),
     )
+
+
+async def _wake_krita() -> str | None:
+    client = build_krita_supervisor_client()
+    if client is None:
+        return None
+    try:
+        await client.ensure_krita()
+    except SupervisorClientError as error:
+        logger.warning("Could not wake Krita through Supervisor: %s", error)
+        return str(error)
+    return None
 
 
 class WatermarkInputReplyFilter(BaseFilter):
@@ -65,12 +98,19 @@ def _source_file(message: Message):
     if message.photo:
         photo = message.photo[-1]
         return photo.file_id, photo.file_unique_id, ".jpg"
+
     document = message.document
-    if document is None or not (document.mime_type or "").startswith("image/"):
+    if document is None:
         return None
-    suffix = Path(document.file_name or "image.png").suffix.lower()
-    if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"}:
-        suffix = ".png"
+
+    mime_type = (document.mime_type or "").strip().casefold()
+    filename_suffix = Path(document.file_name or "").suffix.lower()
+    if filename_suffix in _SUPPORTED_IMAGE_SUFFIXES:
+        suffix = filename_suffix
+    else:
+        suffix = _MIME_SUFFIXES.get(mime_type)
+    if suffix is None:
+        return None
     return document.file_id, document.file_unique_id, suffix
 
 
@@ -83,8 +123,20 @@ async def _create_job_from_message(
 ) -> WatermarkWorkItem | None:
     source = _source_file(source_message)
     if source is None:
-        await message.answer("Нужно изображение, отправленное как фото или image-документ.")
+        await message.answer(
+            "Нужно изображение, отправленное как фото или документ "
+            "PNG/JPG/JPEG/WEBP/TIFF/BMP."
+        )
         return None
+
+    wake_error = await _wake_krita()
+    if wake_error:
+        await message.answer(
+            "⚠️ Не удалось автоматически запустить Krita. "
+            "Задание будет создано, но Krita нужно открыть вручную.\n\n"
+            f"<code>{escape(wake_error[:800])}</code>"
+        )
+
     file_id, file_unique_id, suffix = source
     source_path = watermark_service.bridge.paths.sources / (
         f"tg-{message.chat.id}-{source_message.message_id}-{uuid4().hex}{suffix}"
@@ -94,6 +146,16 @@ async def _create_job_from_message(
         watermark_service.bridge.paths.sources,
     )
     await bot.download(file_id, destination=source_path)
+    try:
+        with Image.open(source_path) as image:
+            image.verify()
+    except (OSError, UnidentifiedImageError, ValueError):
+        source_path.unlink(missing_ok=True)
+        await message.answer(
+            "❌ Документ не является поддерживаемым изображением или повреждён."
+        )
+        return None
+
     item = await watermark_service.create_job(
         owner_user_id=message.from_user.id,
         chat_id=message.chat.id,
@@ -139,9 +201,16 @@ async def handle_watermark_command(
         return
     source = message.reply_to_message
     if source is None:
+        wake_error = await _wake_krita()
+        warning = (
+            f"\n\n⚠️ Автозапуск Krita: <code>{escape(wake_error[:500])}</code>"
+            if wake_error
+            else ""
+        )
         await message.answer(
             "Ответьте командой <code>/watermark</code> на изображение. "
             "Команда является аварийным резервом; обычный вход доступен из меню."
+            + warning
         )
         return
     await _create_job_from_message(
@@ -179,6 +248,7 @@ async def handle_watermark_custom_color(
     if not _watermark_enabled():
         await message.answer("Krita bridge выключен.")
         return
+    await _wake_krita()
     service = _build_service(bot, database)
     color = (message.text or "").strip()
     try:
@@ -209,13 +279,21 @@ async def handle_watermark_callback(
         await callback.answer("Krita bridge выключен.", show_alert=True)
         return
     if action in {"start", "help"}:
+        wake_error = await _wake_krita()
         await callback.answer()
         if isinstance(callback.message, Message):
+            warning = (
+                "\n\n⚠️ Krita не запустилась автоматически. Откройте её вручную.\n"
+                f"<code>{escape(wake_error[:800])}</code>"
+                if wake_error
+                else "\n\nKrita запущена автоматически и закроется после 10 минут простоя."
+            )
             await callback.message.answer(
                 "<b>Водяной знак Velvet Anatomy</b>\n\n"
                 "Ответьте изображением на это сообщение. Бот сохранит неизменяемый "
-                "исходник, а Krita будет строить отдельные preview.\n\n"
-                f"<code>{_INPUT_MARKER}</code>",
+                "исходник, а Krita будет строить отдельные preview."
+                + warning
+                + f"\n\n<code>{_INPUT_MARKER}</code>",
                 reply_markup=build_watermark_start_keyboard(),
             )
         return
@@ -228,6 +306,8 @@ async def handle_watermark_callback(
         return
 
     await callback.answer("Принято, готовлю новую версию…")
+    if action != "cancel":
+        await _wake_krita()
     service = _build_service(bot, database)
     owner_user_id = callback.from_user.id
     job_id = callback_data.job_id
@@ -289,12 +369,15 @@ async def handle_watermark_callback(
                 raise ValueError("Финальный путь задания не сохранён.")
             if isinstance(callback.message, Message):
                 await callback.message.answer_document(
-                    FSInputFile(final_path),
-                    caption=f"✅ Финальный файл задания <b>{job_id}</b>.",
+                    FSInputFile(
+                        final_path,
+                        filename=f"velvet-watermark-job-{job_id}.png",
+                    ),
+                    caption=f"✅ PNG без сжатия · задание <b>{job_id}</b>.",
                 )
             await _safe_edit(
                 callback,
-                format_watermark_caption(item, status_text="сохранено"),
+                format_watermark_caption(item, status_text="PNG отправлен"),
                 None,
             )
             return
