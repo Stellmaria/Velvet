@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18h-discussion-insight-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18H
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18h-discussion-insight-database-acquire`
 - Базовый commit: `ea23ae947db5d91463eb7fb37d4757db1b2c6d8a`
 
@@ -65,23 +65,25 @@
 
 ### Проверки
 
+- GitHub compare подтвердил изолированный diff из шести файлов;
 - production diff содержит одну симметричную замену private pool access на публичный API базы;
 - отдельный тест запрещает возврат `._require_pool()` в insight repository;
 - runtime-тест проверяет оба CTE-запроса, параметры chat/channel/since и все поля `DiscussionSummary`;
-- полный CI ещё не запущен.
+- `project notes contract #18` — успешно;
+- полный workflow `tests #529` с PostgreSQL 16 — успешно;
+- `docker build #135` — успешно;
+- после закрытия дневника workflows повторно запускаются на финальном head PR.
 
 ### PR и commit
 
-PR ещё не открыт. Текущий head будет записан после создания draft PR.
+- PR: #103 `Фаза 18H: перевести DiscussionInsightRepository на Database.acquire`;
+- проверенный head до закрытия дневника: `8a60e79fcf7ffcdb540a70c777967d150db3a682`;
+- итоговый squash commit фиксируется GitHub при слиянии PR #103.
 
 ### Незавершённое
 
-- сравнить ветку с `main`;
-- открыть draft PR;
-- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
-- исправить возможные регрессии;
-- закрыть дневник точными run и итоговым commit.
+Обязательных пунктов Фазы 18H не осталось. Живые Windows/Telegram-проверки Фазы 20 остаются отдельным эксплуатационным обязательством.
 
 ### Следующий шаг
 
-После успешного слияния начать отдельную Фазу 18I для `DiscussionRankingRepository`, не включая activity, post insight или relink repositories в тот же PR.
+Начать Фазу 18I отдельной веткой и worklog: перевести `DiscussionRankingRepository` на `Database.acquire()` без включения activity, post insight или relink repositories в тот же PR.
