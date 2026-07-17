@@ -5,7 +5,7 @@
 - Линия/фаза: стабилизация media/publication, отдельный Krita integration hardening
 - Статус: частично
 - Ветка: `agent/krita-watermark-hardening`
-- База: интеграционная основа `7543ed7807a41e38d47ca91d854bbb916547927c`, созданная поверх актуального `main` `9127a423184c48b753da28cb15d71ec132ec3e88`
+- Базовый commit: интеграционная основа `7543ed7807a41e38d47ca91d854bbb916547927c`, созданная поверх актуального `main` `9127a423184c48b753da28cb15d71ec132ec3e88`
 
 ## Перед началом
 
@@ -15,7 +15,7 @@
 
 ### Исходный контекст
 
-Старый draft PR `#117` содержит исходную реализацию watermark bridge, но его нельзя продолжать несвязанными изменениями. Интеграционная основа `7543ed…` содержит только новые watermark-модули и не изменяет общие файлы актуального `main`: в частности, регистрация `krita-watermark` отсутствует в `velvet_bot/app/workers.py`. Функция должна оставаться выключенной по умолчанию до живой проверки Krita на целевой Windows.
+Старый draft PR `#117` содержал исходную реализацию watermark bridge, но его нельзя продолжать несвязанными изменениями. Интеграционная основа `7543ed…` содержала только новые watermark-модули и не изменяла общие файлы актуального `main`: в частности, регистрация `krita-watermark` отсутствовала в `velvet_bot/app/workers.py`. Функция должна оставаться выключенной по умолчанию до живой проверки Krita на целевой Windows.
 
 ### Какую существующую функцию улучшает изменение
 
@@ -50,7 +50,7 @@ Watermark остаётся внутренним этапом уже сущест
 - stale `*.processing` восстанавливается, завершается готовым response либо переводится в контролируемую ошибку;
 - output вне `outputs/` или `previews/`, traversal, UNC и выход через symlink/reparse point отклоняются до чтения файла;
 - approve блокирует job и текущую revision через `FOR UPDATE`, принимает только `ready` и сохраняет путь именно этой revision;
-- повторный approve возвращает тот же approved результат либо ясный доменный ответ;
+- повторный approve возвращает ясный доменный ответ;
 - cancel изменяет только незавершённые статусы и не меняет approved job;
 - handler не содержит SQL, callbacks подтверждаются рано, callback data остаётся в лимите Telegram;
 - migration применяется на пустой PostgreSQL 16;
@@ -67,4 +67,49 @@ Watermark остаётся внутренним этапом уже сущест
 
 ## После завершения
 
-Заполняется после production-изменений и проверок.
+### Фактически сделано
+
+- создана отдельная ветка `agent/krita-watermark-hardening` от интеграционной основы, которая непосредственно основана на актуальном `main`;
+- общие файлы `.env.example`, `CHANGELOG.md`, integrity tests, `WorkerManager`, owner router и owner menu слиты вручную без замены актуального кода Фаз 18U–18V;
+- `krita-watermark` зарегистрирован в штатном `WorkerManager` только при `KRITA_WATERMARK_ENABLED=true`;
+- значение feature flag по умолчанию оставлено `false`, все stale callbacks кроме возврата в меню также блокируются при выключенной функции;
+- каждый Telegram source сохраняется под уникальным именем внутри `sources/` и не перезаписывается повторным запуском;
+- `claim_pending()` забирает только текущую revision активного job, исторические pending revisions не создают лишнюю очередь;
+- добавлен recovery stale `*.processing`: готовый response имеет приоритет, существующий request не дублируется, свежий processing ожидается, stale processing атомарно возвращается в очередь;
+- отсутствие request, processing и response после порога переводит revision в контролируемую ошибку и записывается в журнал;
+- response и final `output_path` повторно нормализуются и сверяются с ожидаемым путём; traversal, UNC, выход из разрешённых каталогов и symlink escape отклоняются до чтения или отправки файла;
+- approve выполняется в одной PostgreSQL-транзакции с `FOR UPDATE OF j, r`, подтверждает только текущую ready revision и сохраняет её output;
+- approved job нельзя отменить старым callback; повторные approve/cancel получают ясные доменные ответы без изменения результата;
+- callbacks подтверждаются до длительной работы, SQL в handler не добавлен;
+- расширены unit-тесты bridge path boundary/recovery и PostgreSQL integration tests transitions/locking guards;
+- обновлена эксплуатационная документация с полным Windows checklist из 15 пунктов.
+
+### Миграции и совместимость
+
+Используется новая миграция `900_krita_watermark_bridge.sql` с таблицами `watermark_jobs` и `watermark_revisions`. Старые применённые миграции не редактировались. Repository использует публичный `Database.acquire()`. Private pool baseline Фазы 18 остаётся `100 / 25`; Фаза 18W в этот PR не включена. При выключенном feature flag существующие worker и пользовательские сценарии продолжают работать без Krita.
+
+### Проверки
+
+- локальный `python -m py_compile` успешно выполнен для изменённых repository, service, bridge, handler и новых тестовых модулей;
+- добавлены unit-тесты request protocol, callback length, UNC/traversal/symlink boundary, exact output match и stale processing recovery;
+- добавлены PostgreSQL integration tests current revision claim, stale ready approve rejection, repeat approve, approved cancel guard и повторной отмены;
+- первый запуск `project notes contract #83` обнаружил незаполненный финальный блок этой записи; структура и обязательное поле `Базовый commit` исправлены в текущем commit;
+- tests, Docker build и backup restore drill запущены GitHub Actions для PR #120; их окончательные результаты фиксируются в PR после повторного запуска на финальном head;
+- живая Windows/Krita проверка не выполнялась и не объявляется пройденной.
+
+### PR и commit
+
+- новый чистый draft PR: `#120` — `Krita watermark bridge: чистая интеграция и hardening`;
+- старый draft PR `#117` закрыт как заменённый и снабжён ссылкой на `#120`;
+- интеграционная основа: `7543ed7807a41e38d47ca91d854bbb916547927c`;
+- последний production hardening head до финализации журнала: `814270c2cac2193e31c83248720dc369e3998ea4`.
+
+### Незавершённое
+
+- дождаться зелёного project notes contract, полного tests workflow с PostgreSQL 16, Docker build и backup restore drill на финальном head;
+- выполнить живую Windows-проверку реального Krita Python API, общего bridge-root, revisions, recovery, path rejection и stale callback;
+- до живой проверки не менять `KRITA_WATERMARK_ENABLED=false` и не переводить PR из draft в production-ready.
+
+### Следующий шаг
+
+После зелёного CI провести 15-пунктовую Windows-проверку из `docs/krita_watermark.md`. Только после её фактического результата можно завершить Krita integration PR. Следующий независимый архитектурный срез после Krita — Фаза 18W для `velvet_bot/ai_vision.py`, отдельная ветка, worklog и PR.
