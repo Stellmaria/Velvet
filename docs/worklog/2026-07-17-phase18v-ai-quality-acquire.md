@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18v-ai-quality-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18V
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18v-ai-quality-acquire`
 - Базовый commit: `cf83db5a98151e52a16dc601523763c03ca3585a`
 
@@ -58,24 +58,39 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- все восемь методов `AIQualityRepository` переведены на `Database.acquire()`;
+- production diff `ai_quality.py` содержит ровно 8 добавлений и 8 удалений;
+- prompts, schemas, `QualityVisionClient` и `AIQualityService` не менялись;
+- транзакционный claim сохранил seed, stale-processing recovery, locked fetch и batch processing update;
+- сохранены `FOR UPDATE OF q SKIP LOCKED`, attempt/limit clamps, provider/model limits и analysis version;
+- ready/error transitions, JSON report и permanent/attempt skip semantics сохранены;
+- summary aggregates, section conditions, safe pagination, ordering и item mapping не менялись;
+- owner decision validation/status guard и полный retry reset сохранены;
+- добавлены source/runtime regression-тесты всех групп операций;
+- private pool baseline уменьшен с 110/27 до 102/26;
+- следующим срезом назначена Фаза 18W: repository-контур `ai_vision.py`, 4 connection points;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменялись. SQL, транзакционная граница claim, lifecycle состояний, prompts, schemas, provider contracts и публичные модели сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить восемь public acquire boundary, claim transaction/locking, ready/error, summary, pagination, detail, owner decision и retry.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18V.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR и прогнать полный CI. После merge начать Фазу 18W отдельной сессией.
