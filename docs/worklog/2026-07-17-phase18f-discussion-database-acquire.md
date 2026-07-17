@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18f-discussion-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18F
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18f-discussion-database-acquire`
 - Базовый commit: `3ced5abb1782ede34526eed31b89e466b3c88eef`
 
@@ -53,24 +53,39 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- все шесть точек получения соединения в `DiscussionRepository` переведены на `self._database.acquire()`;
+- tracked discussion filters и parent channel lookup сохранены без изменения SQL;
+- `set_reaction_counts` сохраняет прежнюю нормализацию JSON и вычисление общего числа реакций;
+- `apply_reaction_delta` по-прежнему проверяет tracked chat, блокирует строку через `FOR UPDATE`, не допускает отрицательных значений и обновляет JSON в одной транзакции;
+- overview aggregates и participant statistics не изменены;
+- regression-тест Фазы 18 дополнен discussion repository;
+- добавлен runtime-тест public acquire, transaction context, tracked filter, `FOR UPDATE` и итогового reaction breakdown;
+- project memory, development status и changelog обновлены;
+- следующим отдельным срезом определён `DiscussionIngestRepository`.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции отсутствуют. Таблицы `tracked_channels`, `channel_posts`, `channel_post_hashtags`, JSONB-формат реакций, агрегаты и возвращаемые модели не изменялись. Изменён только способ получения соединения через публичный API базы.
 
 ### Проверки
 
-Заполняется после реализации.
+- production repository содержит шесть симметричных замен private pool access на `Database.acquire()`;
+- архитектурный тест контролирует восемь завершённых domain repositories;
+- runtime-тест reaction delta добавлен, полный CI ещё не запущен;
+- предметная граница archive/auction из Фазы 18E остаётся неизменной.
 
 ### PR и commit
 
-Заполняется после реализации.
+PR ещё не открыт. Текущий head будет записан после создания draft PR.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- сравнить ветку с `main`;
+- открыть draft PR;
+- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
+- исправить возможные регрессии;
+- закрыть дневник точными run и итоговым commit.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+После успешного слияния начать отдельную Фазу 18G для `DiscussionIngestRepository`, не включая insight, ranking, activity или relink repositories в тот же PR.
