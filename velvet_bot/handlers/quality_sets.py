@@ -3,7 +3,7 @@ from __future__ import annotations
 from html import escape
 
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.ai_vision import MediaAIRepository
@@ -20,6 +20,30 @@ from velvet_bot.media_sets import (
 from velvet_bot.quality_ui import QualityCallback, quality_callback
 
 router = Router(name=__name__)
+
+_STALE_CALLBACK_MARKERS = (
+    "query is too old",
+    "response timeout expired",
+    "query id is invalid",
+)
+
+
+async def _safe_callback_answer(
+    callback: CallbackQuery,
+    text: str | None = None,
+    *,
+    show_alert: bool = False,
+) -> bool:
+    """Answer a callback without escalating Telegram's expired-query response."""
+
+    try:
+        await callback.answer(text=text, show_alert=show_alert)
+    except TelegramBadRequest as error:
+        normalized = str(error).casefold()
+        if any(marker in normalized for marker in _STALE_CALLBACK_MARKERS):
+            return False
+        raise
+    return True
 
 
 async def _safe_edit(
@@ -317,14 +341,18 @@ async def handle_media_set_list(
     database: Database,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
+        await _safe_callback_answer(
+            callback,
+            "Меню больше недоступно.",
+            show_alert=True,
+        )
         return
+    await _safe_callback_answer(callback)
     await show_media_set_candidates(
         callback.message,
         database,
         page_number=callback_data.page,
     )
-    await callback.answer()
 
 
 @router.callback_query(QualityCallback.filter(F.action == "set"))
@@ -335,19 +363,27 @@ async def handle_media_set_open(
     bot: Bot,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
+        await _safe_callback_answer(
+            callback,
+            "Меню больше недоступно.",
+            show_alert=True,
+        )
         return
     candidate = await get_media_set_candidate(database, callback_data.item_id)
     if candidate is None or candidate.status != "pending":
-        await callback.answer("Предложение больше недоступно.", show_alert=True)
+        await _safe_callback_answer(
+            callback,
+            "Предложение больше недоступно.",
+            show_alert=True,
+        )
         return
+    await _safe_callback_answer(callback, "Открываю материалы…")
     await _send_candidate_previews(bot, callback.message.chat.id, candidate)
     await _safe_edit(
         callback.message,
         _candidate_text(candidate),
         _candidate_keyboard(candidate, list_page=callback_data.page),
     )
-    await callback.answer("Материалы отправлены выше.")
 
 
 @router.callback_query(QualityCallback.filter(F.action == "settoggle"))
@@ -357,7 +393,11 @@ async def handle_media_set_toggle(
     database: Database,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
+        await _safe_callback_answer(
+            callback,
+            "Меню больше недоступно.",
+            show_alert=True,
+        )
         return
     selected = await toggle_media_set_candidate_item(
         database,
@@ -366,14 +406,21 @@ async def handle_media_set_toggle(
     )
     candidate = await get_media_set_candidate(database, callback_data.item_id)
     if selected is None or candidate is None:
-        await callback.answer("Материал или предложение больше недоступны.", show_alert=True)
+        await _safe_callback_answer(
+            callback,
+            "Материал или предложение больше недоступны.",
+            show_alert=True,
+        )
         return
+    await _safe_callback_answer(
+        callback,
+        "Добавлен в сет." if selected else "Исключён из сета.",
+    )
     await _safe_edit(
         callback.message,
         _candidate_text(candidate),
         _candidate_keyboard(candidate, list_page=0),
     )
-    await callback.answer("Добавлен в сет." if selected else "Исключён из сета.")
 
 
 @router.callback_query(QualityCallback.filter(F.action == "setcreate"))
@@ -383,7 +430,11 @@ async def handle_media_set_create(
     database: Database,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
+        await _safe_callback_answer(
+            callback,
+            "Меню больше недоступно.",
+            show_alert=True,
+        )
         return
     try:
         created = await create_media_set(
@@ -392,9 +443,10 @@ async def handle_media_set_create(
             created_by=callback.from_user.id,
         )
     except ValueError as error:
-        await callback.answer(str(error), show_alert=True)
+        await _safe_callback_answer(callback, str(error), show_alert=True)
         return
-    await callback.answer(
+    await _safe_callback_answer(
+        callback,
         f"Сет создан: {len(created.media_ids)} материалов.",
         show_alert=True,
     )
@@ -412,7 +464,11 @@ async def handle_media_set_ignore(
     database: Database,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
+        await _safe_callback_answer(
+            callback,
+            "Меню больше недоступно.",
+            show_alert=True,
+        )
         return
     updated = await decide_media_set_candidate(
         database,
@@ -420,7 +476,8 @@ async def handle_media_set_ignore(
         status="ignored",
         decided_by=callback.from_user.id,
     )
-    await callback.answer(
+    await _safe_callback_answer(
+        callback,
         "Предложение отклонено." if updated else "Предложение больше не найдено.",
         show_alert=True,
     )
