@@ -184,9 +184,7 @@ async def handle_alias_action(
         await _edit(
             callback,
             f"Удалить алиас <code>#{escape(item.alias)}</code> у "
-            f"<b>{escape(name)}</b>?
-
-"
+            f"<b>{escape(name)}</b>?\n\n"
             "Совпадающие старые хэштеги снова станут нераспознанными.",
             keyboard,
         )
