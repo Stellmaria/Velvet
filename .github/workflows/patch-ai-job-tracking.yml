@@ -35,6 +35,13 @@ jobs:
       - name: Apply patch
         run: |
           set -o pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/_patch_ai_job_tracking.py")
+          source = path.read_text(encoding="utf-8")
+          source = source.replace("    old = '''", "    old = r'''", 3)
+          path.write_text(source, encoding="utf-8")
+          PY
           python scripts/_patch_ai_job_tracking.py 2>&1 | tee patch-ai-job-tracking.log
 
       - name: Upload patch diagnostics
