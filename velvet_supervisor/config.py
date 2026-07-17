@@ -87,6 +87,7 @@ class SupervisorSettings:
     codex_worktree_dir: Path
     codex_push_remote: str
     max_log_lines: int
+    codex_model: str | None = None
 
     @classmethod
     def load(cls) -> "SupervisorSettings":
@@ -253,6 +254,9 @@ class SupervisorSettings:
                 default=2000,
                 minimum=200,
                 maximum=20000,
+            ),
+            codex_model=(
+                os.getenv("CODEX_MODEL", "gpt-5.3-codex").strip() or None
             ),
         )
 
