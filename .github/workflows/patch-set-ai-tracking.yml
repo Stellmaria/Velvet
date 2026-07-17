@@ -1,0 +1,51 @@
+name: patch set ai tracking
+
+on:
+  push:
+    branches:
+      - agent/fix-ai-quality-operations-menu
+    paths:
+      - scripts/_patch_set_ai_tracking.py
+      - .github/workflows/patch-set-ai-tracking.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/_patch_set_ai_tracking.py
+      - .github/workflows/patch-set-ai-tracking.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-ai-quality-operations-menu
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Apply patch
+        run: python scripts/_patch_set_ai_tracking.py
+
+      - name: Validate syntax
+        run: python -m compileall -q velvet_bot
+
+      - name: Commit handler
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/handlers/quality_set_ai.py
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Отслеживать AI-проверку медиасетов"
+            git push origin HEAD:agent/fix-ai-quality-operations-menu
+          fi
