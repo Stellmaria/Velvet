@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "ea3f4eb65e9382c36c15c0dba0d1b3a2d4d339da",
-  "total_external_findings": 128,
-  "total_files": 34,
+  "generated_from_commit": "ffee8ebeeb308b34b8ac93ff9d5c3f4549c78ef4",
+  "total_external_findings": 126,
+  "total_files": 33,
   "next_slice": {
-    "phase": "18O",
-    "target": "velvet_bot/domains/publication/validation_repository.py"
+    "phase": "18P",
+    "target": "velvet_bot/domains/publication/draft_repository.py"
   },
   "files": [
     {"path":"velvet_bot/ai_quality.py","count":8,"identity_sha256":"48558fa7161b71e0a9ed1912be4b444e94658691310cca90dda591e86eaeda45","categories":["repository_in_module"]},
@@ -22,7 +22,6 @@
     {"path":"velvet_bot/discussion_dashboard_compat.py","count":1,"identity_sha256":"e78b103be7f9c5ee683a5bbfd8a3356fe97996154226352e5764169177e9afad","categories":["compatibility_facade"]},
     {"path":"velvet_bot/discussion_thread_links.py","count":1,"identity_sha256":"d33c7bf8a2eb94ea17a08e886d6b766922bdf89e6302b8f3b43f710669fb39bb","categories":["legacy_query_module"]},
     {"path":"velvet_bot/domains/publication/draft_repository.py","count":8,"identity_sha256":"4406152b4e0571055a23a87c15988c01ce5ddadb7775d592437ed3f3d9083623","categories":["domain_repository"]},
-    {"path":"velvet_bot/domains/publication/validation_repository.py","count":2,"identity_sha256":"b4011c32e1b28cc298d472ddaa705907e5c5fffc4bf7e0734553a739bcebaad8","categories":["domain_repository"]},
     {"path":"velvet_bot/error_center.py","count":8,"identity_sha256":"28ca4dec868e0830297b0542211e121138723a641530fb1308c07390d4a1b6f8","categories":["repository_in_module"]},
     {"path":"velvet_bot/handlers/quality_set_ai.py","count":4,"identity_sha256":"4ce6c7d9396d92565d2efd7403d0623247cc8dbc52caf9f8a97a3e1338141bf9","categories":["presentation_direct_database"]},
     {"path":"velvet_bot/handlers/quality_sets.py","count":2,"identity_sha256":"23b8796eb93b50b88c5828b81494c7ea2e143e236c772f56772185d115442752","categories":["presentation_direct_database"]},
