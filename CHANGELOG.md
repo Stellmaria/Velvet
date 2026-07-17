@@ -4,7 +4,10 @@
 
 ## [Unreleased]
 
-Пока нет изменений после выпуска `1.3.0`.
+### Changed
+
+- добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
+- character и story repositories больше не обращаются к приватному `_require_pool()`.
 
 ## [1.3.0] - 2026-07-17
 
