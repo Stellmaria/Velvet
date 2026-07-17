@@ -12,6 +12,10 @@ from velvet_bot.velvet_ai_ui import build_velvet_ai_menu
 
 ROOT = Path(__file__).resolve().parents[1]
 _ACTION_RE = re.compile(r"F\.action\s*==\s*[\"']([^\"']+)[\"']")
+_LITERAL_CALLBACK_RE = re.compile(
+    r"(?:quality_callback\(\s*|QualityCallback\(\s*action\s*=\s*)"
+    r"[\"']([^\"']+)[\"']"
+)
 
 
 def quality_actions(markup) -> set[str]:
@@ -31,6 +35,13 @@ def registered_quality_actions() -> set[str]:
     actions: set[str] = set()
     for path in (ROOT / "velvet_bot/handlers").glob("*.py"):
         actions.update(_ACTION_RE.findall(path.read_text(encoding="utf-8")))
+    return actions
+
+
+def literal_quality_actions() -> set[str]:
+    actions: set[str] = set()
+    for path in (ROOT / "velvet_bot").rglob("*.py"):
+        actions.update(_LITERAL_CALLBACK_RE.findall(path.read_text(encoding="utf-8")))
     return actions
 
 
@@ -107,6 +118,12 @@ class AIMenuCoverageTests(unittest.TestCase):
         actions = quality_actions(ai_markup) | quality_actions(operations_markup)
 
         self.assertEqual(set(), actions - registered_quality_actions())
+
+    def test_every_literal_quality_callback_has_a_handler(self) -> None:
+        self.assertEqual(
+            set(),
+            literal_quality_actions() - registered_quality_actions(),
+        )
 
     def test_new_routers_are_connected(self) -> None:
         source = (
