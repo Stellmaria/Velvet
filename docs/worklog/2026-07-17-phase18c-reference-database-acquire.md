@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18c-reference-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18C
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18c-reference-database-acquire`
 - Базовый commit: `4b365c2edb66fb61bd7eaba62c2b301773172b82`
 
@@ -43,3 +43,41 @@
 - нельзя менять старые миграции и ограничения уникальности;
 - этот PR не включает media quality, publication или analytics repositories;
 - найденные несвязанные дефекты фиксируются в дневнике как отдельный следующий срез, а не маскируются попутным рефакторингом.
+
+## После завершения
+
+### Фактически сделано
+
+- все пять точек получения соединения в `ReferenceRepository` переведены на `self._database.acquire()`;
+- SQL добавления, fallback-обновления `telegram_file_id`, удаления, count, list и get_page не изменён;
+- транзакционные границы add/delete сохранены;
+- архитектурный regression-тест Фазы 18 дополнен `ReferenceRepository`;
+- добавлен исполняемый runtime-тест, подтверждающий вызов public acquire, вход/выход из transaction context и прежний `AddReferenceResult`;
+- project memory и development status фиксируют завершение 18C;
+- следующий P2-срез определён как `MediaQualityRepository`;
+- changelog актуализирован.
+
+### Миграции и совместимость
+
+Миграции отсутствуют. Уникальность `(character_id, telegram_file_unique_id)`, порядок сортировки, лимиты и модели данных не изменялись. Telegram file IDs существующих референсов продолжают обновляться внутри прежней транзакции.
+
+### Проверки
+
+- GitHub compare подтвердил изолированный diff из шести файлов без временных patch/workflow-файлов;
+- новый runtime-тест добавлен, но полный CI ещё не запущен;
+- существующий workflow `tests` включает PostgreSQL 16 integration suite и composition root.
+
+### PR и commit
+
+PR ещё не открыт. Текущий head будет зафиксирован после создания draft PR.
+
+### Незавершённое
+
+- открыть PR;
+- получить результаты notes contract, tests и Docker;
+- исправить возможные регрессии;
+- закрыть запись статусом `завершено` с точными run и итоговым commit.
+
+### Следующий шаг
+
+Открыть draft PR Фазы 18C; после слияния начать отдельную Фазу 18D для `MediaQualityRepository`.
