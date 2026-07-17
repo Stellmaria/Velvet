@@ -2,6 +2,8 @@
 
 Дата актуализации: 17 июля 2026 года.
 
+Текущая стабильная версия: `1.3.0`.
+
 ## Завершённые функциональные направления
 
 - архив персонажей, медиа и референсов;
@@ -18,12 +20,6 @@
 - Velvet Supervisor и Codex workflow;
 - Velvet AI, фазы 1–8.
 
-## Архитектура
-
-Фазы 7A–7F и 7G1 завершили основной перенос application/domain/infrastructure/presentation. Проект больше не управляется монолитным `main.py`, а основные домены имеют repositories и services.
-
-Перенос ещё не считается окончательно завершённым. Compatibility-фасады сохраняются ради старых импортов и безопасного поэтапного перехода.
-
 ## Фаза 11: hardening и deployment
 
 Статус: завершена.
@@ -33,55 +29,61 @@
 - актуальные README, changelog и конфигурация;
 - единая матрица Python 3.13 / PostgreSQL 16;
 - Dockerfile и Compose для PostgreSQL, бота и Ollama;
-- container healthcheck;
+- container healthcheck и CI сборки образа;
 - автоматический restore drill;
 - регулярная CI-проверка восстановления;
 - release workflow;
-- версия `1.3.0-dev.1`.
+- документация deployment, backup и production checklist.
 
-## Фазы 12–16: архитектурная очистка
+## Фазы 12–17: архитектурная очистка P1
 
-Статус: выполняется небольшими изолированными срезами.
+Статус: завершена.
 
-Завершённые срезы:
+Реализованы:
 
 - единый presentation-контракт навигации аналитики;
 - удаление `handler → handler` импорта между аналитическими контроллерами;
-- перенос определения родительского канала обсуждения из Telegram-handler в discussion repository/service/query;
-- regression-тест, запрещающий возврат прямого SQL в discussion handler;
+- перенос parent-channel lookup обсуждений в repository/service/query;
+- удаление прямого SQL из discussion handler;
 - `PublicationActions` как transport-neutral application coordinator;
-- перевод операций публикаций на единый coordinator;
-- удаление зависимостей publication handler от старых compatibility facades;
-- разделение `analytics_management.py` на теги, алиасы, классификацию и общий presentation helper;
-- сокращение прежнего analytics management до тонкого action dispatcher;
-- перенос модели и операций нескольких историй в story domain repository;
+- перевод центра публикаций с compatibility-фасадов на coordinator и штатный service;
+- разделение analytics management на теги, алиасы, классификацию и общий presentation helper;
+- сокращение analytics management до тонкого action dispatcher;
+- перенос нескольких историй в штатные character/story repositories;
+- транзакционная синхронизация `character_story_links` и `characters.story_id`;
 - удаление runtime monkeypatch каталогов персонажей и историй;
-- поддержка `character_story_links` внутри штатных character/story repositories;
-- разделение владельческих reply-форм на media, profiles, references и data presentation-модули;
-- сокращение владельческого reply-controller до последовательного action dispatcher;
-- удаление бизнес-импортов и мёртвых форматтеров из `handlers/owner_actions.py`;
-- regression-тест полноты и непересечения всех 23 владельческих действий.
+- разделение владельческих reply-форм на media, profiles, references и data;
+- сокращение владельческого reply-controller до action dispatcher;
+- перенос ручной классификации на явно типизированный PostgreSQL SQL;
+- явное подключение safe analytics edit;
+- перенос архивного logging filter в штатный handler;
+- удаление вызова legacy compatibility installer из root router;
+- преобразование исторических installer-модулей в безопасные no-op фасады;
+- постоянные regression-тесты архитектурных границ и compatibility contracts.
+
+## Архитектурный результат версии 1.3.0
+
+Приоритетный P1-долг из аудита закрыт. Новые функции могут добавляться через application/domain/presentation слои без увеличения прежних монолитных контроллеров.
+
+Исторические compatibility-фасады частично остаются для старых импортов, но больше не подменяют функции во время запуска. Они удаляются только после подтверждения отсутствия внешних вызовов.
 
 ## Оставшийся долг
-
-### P1
-
-1. Удалить оставшиеся временные мосты из `presentation/telegram/compat.py` после переноса runtime hotfixes и safe analytics edit.
-2. При необходимости вынести статические тексты и клавиатуры владельческого меню в отдельный view-модуль, не меняя action dispatcher.
 
 ### P2
 
 1. Заменять прямой `Database._require_pool()` repositories по одному домену.
 2. Уменьшать широкие `except Exception` внутри бизнес-логики.
 3. Добавить автоматическую зашифрованную репликацию backup во внешнее хранилище.
-4. Подготовить отдельную staging-конфигурацию и Telegram-бота.
+4. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
 5. Добавить метрики времени AI-задач и стоимости внешнего provider при его подключении.
+6. Вынести статические тексты и клавиатуры крупных presentation-фасадов только там, где это реально уменьшает связанность.
 
 ### P3
 
-1. Автоматизировать release notes из changelog.
-2. Добавить статический анализ типов без блокировки текущей разработки.
-3. Постепенно удалить корневые compatibility-фасады после миграции всех импортов.
+1. Добавить статический анализ типов без блокировки текущей разработки.
+2. Постепенно удалить неиспользуемые корневые compatibility-фасады после миграции всех импортов.
+3. Добавить автоматическую публикацию контейнерного образа в закрытый registry.
+4. Расширить release notes ссылками на миграции и эксплуатационные изменения.
 
 ## Правила дальнейшей разработки
 
@@ -92,4 +94,5 @@
 - handler не выполняет SQL;
 - каждый перенос SQL сопровождается PostgreSQL integration test;
 - backup-функции считаются проверенными только после restore drill;
-- изменение deployment проходит CI до слияния.
+- изменение deployment проходит CI до слияния;
+- runtime monkeypatch не принимается как постоянная архитектура.

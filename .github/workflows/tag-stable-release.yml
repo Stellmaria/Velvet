@@ -1,0 +1,65 @@
+name: tag stable release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "velvet_bot/version.py"
+      - "CHANGELOG.md"
+      - ".github/workflows/tag-stable-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve stable application version
+        id: version
+        shell: bash
+        run: |
+          version="$(python -c 'from velvet_bot.version import APP_VERSION; print(APP_VERSION)')"
+          if [[ -z "$version" ]]; then
+            echo "APP_VERSION is empty"
+            exit 1
+          fi
+          if [[ "$version" == *dev* || "$version" == *alpha* || "$version" == *beta* || "$version" == *rc* ]]; then
+            echo "Version $version is not a stable release; no tag will be created."
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! grep -Fq "## [$version]" CHANGELOG.md; then
+            echo "CHANGELOG.md does not contain a release section for $version"
+            exit 1
+          fi
+          echo "stable=true" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Create annotated tag
+        if: steps.version.outputs.stable == 'true'
+        shell: bash
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          git fetch --force --tags
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            tagged_commit="$(git rev-list -n 1 "$tag")"
+            if [[ "$tagged_commit" != "$GITHUB_SHA" ]]; then
+              echo "Tag $tag already points to $tagged_commit, not $GITHUB_SHA"
+              exit 1
+            fi
+            echo "Tag $tag already exists on this commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Velvet ${{ steps.version.outputs.version }}"
+          git push origin "$tag"
