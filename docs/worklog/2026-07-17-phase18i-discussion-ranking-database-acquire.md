@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18i-discussion-ranking-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18I
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18i-discussion-ranking-database-acquire`
 - Базовый commit: `8860ca54d7ebca9d786a12f4579c09ba84f27bb6`
 
@@ -65,23 +65,25 @@
 
 ### Проверки
 
+- GitHub compare подтвердил изолированный diff из шести файлов;
 - production diff содержит одну симметричную замену private pool access на публичный API базы;
 - отдельный source-тест запрещает возврат `._require_pool()` в ranking repository;
 - runtime-тест проверяет total `25`, нормализацию запрошенной страницы `99` до страницы `3`, offset `24`, limit `8` и итоговый `DashboardRankItem`;
-- полный CI ещё не запущен.
+- `project notes contract #20` — успешно;
+- полный workflow `tests #532` с PostgreSQL 16 — успешно;
+- `docker build #138` — успешно;
+- после закрытия дневника workflows повторно запускаются на финальном head PR.
 
 ### PR и commit
 
-PR ещё не открыт. Текущий head будет записан после создания draft PR.
+- PR: #104 `Фаза 18I: перевести DiscussionRankingRepository на Database.acquire`;
+- проверенный head до закрытия дневника: `e3f3a4ac437854b53a2577ff7766e2d3f401830c`;
+- итоговый squash commit фиксируется GitHub при слиянии PR #104.
 
 ### Незавершённое
 
-- сравнить ветку с `main`;
-- открыть draft PR;
-- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
-- исправить возможные регрессии;
-- закрыть дневник точными run и итоговым commit.
+Обязательных пунктов Фазы 18I не осталось. Живые Windows/Telegram-проверки Фазы 20 остаются отдельным эксплуатационным обязательством.
 
 ### Следующий шаг
 
-После успешного слияния начать отдельную Фазу 18J для `DiscussionActivityRepository`, не включая post insight или relink repositories в тот же PR.
+Начать Фазу 18J отдельной веткой и worklog: перевести `DiscussionActivityRepository` на `Database.acquire()` без включения post insight или relink repositories в тот же PR.
