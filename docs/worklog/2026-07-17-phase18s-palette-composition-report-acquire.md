@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18s-palette-composition-report-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18S
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18s-palette-composition-report-acquire`
 - Базовый commit: `08c514842b8e113dbf7062799def723e4e366e8f`
 
@@ -53,24 +53,36 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- `PaletteCompositionReportRepository.save()` переведён на `Database.acquire()`;
+- SQL, `analysis_version = 1`, `RETURNING id` и порядок 18 параметров сохранены;
+- provider/model limits, width/height и `metrics.as_dict()` не менялись;
+- composition, balance, framing, hierarchy, depth, lighting, palette harmony, confidence и verdict сохранены;
+- оба JSON payload продолжают использовать `ensure_ascii=False`;
+- добавлен source/runtime regression-тест публичной границы, metrics, оценок и кириллического JSON;
+- private pool baseline уменьшен с 115/30 до 114/29;
+- следующим срезом назначена Фаза 18T: `VelvetFormattingReportRepository`;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменялись. Таблица, analysis version, SQL, типы параметров и публичный метод `save()` сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить одну public acquire boundary, SQL, 18 параметров, metrics/report JSON и ограничения provider/model.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18S.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR и прогнать полный CI. После merge начать Фазу 18T отдельной сессией.
