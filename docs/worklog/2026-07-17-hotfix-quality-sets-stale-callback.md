@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-hotfix-quality-sets-stale-callback`
 - Линия/фаза: production hotfix Velvet Archive
-- Статус: частично
+- Статус: завершено
 - Ветка: `hotfix/quality-sets-stale-callback`
 - Базовый commit: `80bc02439c7f75758841ab298d4da56c1f4594c0`
 
@@ -15,7 +15,7 @@
 
 ### Исходный контекст
 
-`handle_media_set_list()` сначала выполняет discovery, несколько PostgreSQL-запросов и редактирование сообщения, а затем вызывает `callback.answer()`. В production-логе обработка заняла 17,573 секунды, после чего Telegram отклонил просроченный callback.
+`handle_media_set_list()` сначала выполнял discovery, несколько PostgreSQL-запросов и редактирование сообщения, а затем вызывал `callback.answer()`. В production-логе обработка заняла 17,573 секунды, после чего Telegram отклонил просроченный callback.
 
 ### Планируемый объём
 
@@ -35,7 +35,7 @@
 - точная ошибка stale/invalid callback не создаёт ERROR;
 - другие Telegram Bad Request продолжают пробрасываться;
 - бизнес-операции медиасетов и SQL не меняются;
-- полный tests workflow, Docker build при срабатывании filters и project notes contract проходят.
+- полный tests workflow, Docker build и project notes contract проходят.
 
 ### Риски и ограничения
 
@@ -64,18 +64,21 @@
 
 ### Проверки
 
-Полный CI запускается в draft PR.
+- `project notes contract #43` — успешно;
+- полный workflow `tests #560` с PostgreSQL 16 — успешно;
+- `docker build #154` — успешно;
+- после этой финальной записи CI запускается повторно на окончательном head перед merge.
 
 ### PR и commit
 
-Будет заполнено после CI и слияния.
+- PR: #109 `Hotfix: подтверждать callback медиасетов до долгих операций`;
+- зелёный промежуточный head: `032b0272f9b69e4cb971bd0d98e06584d5e5cdcd`;
+- финальный squash commit фиксируется GitHub при слиянии PR #109.
 
 ### Незавершённое
 
-- получить зелёные tests и project notes;
-- проверить Docker workflow по path filters;
-- закрыть дневник и слить hotfix.
+Обязательных пунктов hotfix не осталось. Для фактического запуска на Windows потребуется обновить локальный `main` и перезапустить Velvet Bot через Supervisor.
 
 ### Следующий шаг
 
-После hotfix продолжить Фазу 18N из отдельной ветки.
+После слияния hotfix продолжить Фазу 18N из отдельной ветки, предварительно перебазировав её на обновлённый `main`.
