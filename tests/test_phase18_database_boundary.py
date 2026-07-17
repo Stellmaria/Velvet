@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 from velvet_bot.database import Database
+from velvet_bot.domains.discussions import DiscussionRepository
 from velvet_bot.domains.media_quality import MediaQualityRepository
 from velvet_bot.domains.publication import PublicationRepository
 from velvet_bot.domains.references import ReferenceMediaPayload, ReferenceRepository
@@ -56,6 +57,7 @@ class DatabaseAcquireBoundaryTests(unittest.TestCase):
             ROOT / "velvet_bot/domains/references/repository.py",
             ROOT / "velvet_bot/domains/media_quality/repository.py",
             ROOT / "velvet_bot/domains/publication/repository.py",
+            ROOT / "velvet_bot/domains/discussions/repository.py",
         )
         for path in paths:
             with self.subTest(path=path.relative_to(ROOT)):
@@ -186,6 +188,53 @@ class PublicationRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event_call.args[2], "published")
         self.assertEqual(event_call.args[3], 7)
         self.assertIn('"message_ids": [101, 102]', event_call.args[4])
+
+
+class DiscussionRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
+    async def test_reaction_delta_uses_public_acquire_and_locked_transaction(self) -> None:
+        connection = SimpleNamespace(
+            fetchval=AsyncMock(side_effect=[1, 1]),
+            fetchrow=AsyncMock(
+                return_value={"reaction_breakdown": '{"👍": 2, "🔥": 1}'}
+            ),
+            transaction=Mock(),
+        )
+        transaction_context = _AsyncContext(None)
+        connection.transaction.return_value = transaction_context
+        acquire_context = _AsyncContext(connection)
+        database = SimpleNamespace(acquire=Mock(return_value=acquire_context))
+        repository = DiscussionRepository(database)
+
+        updated = await repository.apply_reaction_delta(
+            discussion_chat_id=-10077,
+            discussion_message_id=55,
+            delta={"👍": -1, "🔥": 2, "❤️": 1, "ignored": 0},
+        )
+
+        self.assertTrue(updated)
+        database.acquire.assert_called_once_with()
+        connection.transaction.assert_called_once_with()
+        self.assertTrue(acquire_context.entered)
+        self.assertTrue(acquire_context.exited)
+        self.assertTrue(transaction_context.entered)
+        self.assertTrue(transaction_context.exited)
+
+        tracked_call = connection.fetchval.await_args_list[0]
+        self.assertIn("source_kind = 'discussion'", tracked_call.args[0])
+        self.assertEqual(tracked_call.args[1], -10077)
+
+        locked_sql = connection.fetchrow.await_args.args[0]
+        self.assertIn("FOR UPDATE", locked_sql)
+        self.assertEqual(connection.fetchrow.await_args.args[1:], (-10077, 55))
+
+        update_call = connection.fetchval.await_args_list[1]
+        self.assertIn("UPDATE channel_posts", update_call.args[0])
+        self.assertEqual(update_call.args[1], -10077)
+        self.assertEqual(update_call.args[2], 55)
+        self.assertEqual(update_call.args[3], 5)
+        self.assertIn('"👍": 1', update_call.args[4])
+        self.assertIn('"🔥": 3', update_call.args[4])
+        self.assertIn('"❤️": 1', update_call.args[4])
 
 
 if __name__ == "__main__":
