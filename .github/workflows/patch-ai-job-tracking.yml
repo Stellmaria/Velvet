@@ -35,6 +35,32 @@ jobs:
       - name: Apply patch
         run: |
           set -o pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/_patch_ai_job_tracking.py")
+          source = path.read_text(encoding="utf-8")
+          old = '''def replace_span(source: str, start: str, end: str, replacement: str, *, label: str) -> str:
+              if source.count(start) != 1:
+                  raise RuntimeError(f"{label}: неоднозначная начальная граница")
+              start_index = source.index(start)
+              end_index = source.find(end, start_index + len(start))
+              if end_index < 0:
+                  raise RuntimeError(f"{label}: не найдена конечная граница")
+              return source[:start_index] + replacement + source[end_index:]
+          '''.replace("          ", "")
+          new = '''def replace_span(source: str, start: str, end: str, replacement: str, *, label: str) -> str:
+              end_index = source.find(end)
+              if end_index < 0:
+                  raise RuntimeError(f"{label}: не найдена конечная граница")
+              start_index = source.rfind(start, 0, end_index)
+              if start_index < 0:
+                  raise RuntimeError(f"{label}: не найдена начальная граница")
+              return source[:start_index] + replacement + source[end_index:]
+          '''.replace("          ", "")
+          if old not in source:
+              raise SystemExit("replace_span source block not found")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
           python scripts/_patch_ai_job_tracking.py 2>&1 | tee patch-ai-job-tracking.log
 
       - name: Validate syntax
