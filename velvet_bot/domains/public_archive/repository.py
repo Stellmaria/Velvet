@@ -21,7 +21,7 @@ class PublicArchiveRepository:
         media_id: int,
         user_id: int,
     ) -> PublicMediaState:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
@@ -62,7 +62,7 @@ class PublicArchiveRepository:
         media_id: int,
         user_id: int,
     ) -> LikeToggleResult:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 deleted = await connection.fetchval(
                     """
@@ -115,7 +115,7 @@ class PublicArchiveRepository:
         character_id: int,
         user_id: int,
     ) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 deleted = await connection.fetchval(
                     """
@@ -147,7 +147,7 @@ class PublicArchiveRepository:
         *,
         exclude_user_id: int | None = None,
     ) -> list[int]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT user_id
@@ -167,7 +167,7 @@ class PublicArchiveRepository:
         character_id: int,
         user_id: int,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 DELETE FROM character_subscriptions
@@ -184,7 +184,7 @@ class PublicArchiveRepository:
         limit: int = 100,
     ) -> list[PendingPublicNotification]:
         safe_limit = max(1, min(int(limit), 500))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT
@@ -226,7 +226,7 @@ class PublicArchiveRepository:
         self,
         notification: PendingPublicNotification,
     ) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             status = await connection.execute(
                 """
                 INSERT INTO public_notification_deliveries (
