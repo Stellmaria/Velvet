@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "inventory_private_pool.py"
-SPEC = importlib.util.spec_from_file_location("inventory_private_pool", SCRIPT)
+MODULE_NAME = "inventory_private_pool"
+SPEC = importlib.util.spec_from_file_location(MODULE_NAME, SCRIPT)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError("Не удалось загрузить scripts/inventory_private_pool.py")
 inventory = importlib.util.module_from_spec(SPEC)
+sys.modules[MODULE_NAME] = inventory
 SPEC.loader.exec_module(inventory)
 
 
