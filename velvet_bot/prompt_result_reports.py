@@ -21,7 +21,7 @@ class PromptResultReportRepository:
         report: dict[str, Any],
         created_by: int | None,
     ) -> int:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 INSERT INTO prompt_result_comparison_reports (
