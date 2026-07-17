@@ -91,10 +91,11 @@ Watermark остаётся внутренним этапом уже сущест
 ### Проверки
 
 - локальный `python -m py_compile` успешно выполнен для изменённых repository, service, bridge, handler и новых тестовых модулей;
-- добавлены unit-тесты request protocol, callback length, UNC/traversal/symlink boundary, exact output match и stale processing recovery;
-- добавлены PostgreSQL integration tests current revision claim, stale ready approve rejection, repeat approve, approved cancel guard и повторной отмены;
-- первый запуск `project notes contract #83` обнаружил незаполненный финальный блок этой записи; структура и обязательное поле `Базовый commit` исправлены в текущем commit;
-- tests, Docker build и backup restore drill запущены GitHub Actions для PR #120; их окончательные результаты фиксируются в PR после повторного запуска на финальном head;
+- unit и PostgreSQL integration tests workflow `#611` — успешно;
+- project notes contract `#84` — успешно;
+- Docker build `#205` — успешно;
+- backup restore drill `#64` — успешно, включая создание dump и восстановление в отдельную свежую PostgreSQL-базу;
+- проверены request protocol, callback length, UNC/traversal/symlink boundary, exact output match, stale processing recovery, current revision claim, stale approve rejection, repeat approve и approved cancel guard;
 - живая Windows/Krita проверка не выполнялась и не объявляется пройденной.
 
 ### PR и commit
@@ -102,14 +103,13 @@ Watermark остаётся внутренним этапом уже сущест
 - новый чистый draft PR: `#120` — `Krita watermark bridge: чистая интеграция и hardening`;
 - старый draft PR `#117` закрыт как заменённый и снабжён ссылкой на `#120`;
 - интеграционная основа: `7543ed7807a41e38d47ca91d854bbb916547927c`;
-- последний production hardening head до финализации журнала: `814270c2cac2193e31c83248720dc369e3998ea4`.
+- полностью проверенный CI head до итогового обновления журнала: `21b69eeee0982912e6c5005acf9d242a1c5c98b8`.
 
 ### Незавершённое
 
-- дождаться зелёного project notes contract, полного tests workflow с PostgreSQL 16, Docker build и backup restore drill на финальном head;
 - выполнить живую Windows-проверку реального Krita Python API, общего bridge-root, revisions, recovery, path rejection и stale callback;
-- до живой проверки не менять `KRITA_WATERMARK_ENABLED=false` и не переводить PR из draft в production-ready.
+- до живой проверки не менять `KRITA_WATERMARK_ENABLED=false`, не переводить PR из draft в production-ready и не объявлять Krita production-ready.
 
 ### Следующий шаг
 
-После зелёного CI провести 15-пунктовую Windows-проверку из `docs/krita_watermark.md`. Только после её фактического результата можно завершить Krita integration PR. Следующий независимый архитектурный срез после Krita — Фаза 18W для `velvet_bot/ai_vision.py`, отдельная ветка, worklog и PR.
+Провести 15-пунктовую Windows-проверку из `docs/krita_watermark.md`. Только после её фактического результата можно завершить Krita integration PR. Следующий независимый архитектурный срез после Krita — Фаза 18W для `velvet_bot/ai_vision.py`, отдельная ветка, worklog и PR.
