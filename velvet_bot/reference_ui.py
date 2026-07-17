@@ -62,16 +62,16 @@ def build_reference_keyboard(page: ReferencePage) -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton(
-                text="🔎 Сравнить результат",
-                callback_data=_callback(page, "compare_help"),
+                text="🗑 Удалить референс",
+                callback_data=_callback(page, "delete_prompt"),
             )
         ]
     )
     rows.append(
         [
             InlineKeyboardButton(
-                text="🗑 Удалить референс",
-                callback_data=_callback(page, "delete_prompt"),
+                text="🔎 Сравнить результат",
+                callback_data=_callback(page, "compare_help"),
             )
         ]
     )
