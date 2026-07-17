@@ -49,7 +49,7 @@ class MediaQualityRepository:
 
     async def claim_pending_images(self, *, limit: int = 2) -> list[MediaScanTarget]:
         safe_limit = max(1, min(limit, 5))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 rows = await connection.fetch(
                     """
@@ -92,7 +92,7 @@ class MediaQualityRepository:
         ]
 
     async def load_other_fingerprints(self, media_id: int) -> list[StoredFingerprint]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT media_id, fingerprint_version, content_sha256,
@@ -111,7 +111,7 @@ class MediaQualityRepository:
         fingerprint: VisualFingerprint,
         comparisons: list[tuple[int, FingerprintComparison]],
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
                     """
@@ -212,7 +212,7 @@ class MediaQualityRepository:
         broken_file: bool,
     ) -> None:
         error_text = str(error)[:2000]
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE media_files
@@ -234,7 +234,7 @@ class MediaQualityRepository:
 
     async def claim_file_checks(self, *, limit: int = 4) -> list[MediaFileCheckTarget]:
         safe_limit = max(1, min(limit, 10))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT mf.id, mf.telegram_file_id
@@ -261,7 +261,7 @@ class MediaQualityRepository:
         status: str,
         error_text: str | None,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await self._record_file_check_on_connection(
                 connection,
                 media_id=media_id,
@@ -278,7 +278,7 @@ class MediaQualityRepository:
     ) -> DuplicatePage:
         safe_size = max(1, min(page_size, 8))
         safe_page = max(0, page)
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(
                 await connection.fetchval(
                     """
@@ -314,7 +314,7 @@ class MediaQualityRepository:
         self,
         candidate_id: int,
     ) -> DuplicateCandidate | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 _DUPLICATE_SELECT + " WHERE dc.id = $1::BIGINT",
                 candidate_id,
@@ -330,7 +330,7 @@ class MediaQualityRepository:
     ) -> bool:
         if status not in {"confirmed", "ignored", "pending"}:
             raise ValueError("Неизвестное решение по дублю.")
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 UPDATE media_duplicate_candidates
@@ -354,7 +354,7 @@ class MediaQualityRepository:
         return value is not None
 
     async def reset_failed_scans(self) -> int:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
                 UPDATE media_files
