@@ -73,6 +73,8 @@ FORM_COMMANDS = {
     "refdel",
     "compare_ref",
     "compare_reference",
+    "analyze_set",
+    "qwen_set",
     "aliasadd",
     "aliases",
     "aliasdel",
