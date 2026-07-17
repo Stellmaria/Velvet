@@ -1,0 +1,179 @@
+from __future__ import annotations
+
+import re
+
+from aiogram import F, Router
+from aiogram.filters import BaseFilter, Command
+from aiogram.types import CallbackQuery, ForceReply, Message
+
+from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.remote_views import (
+    console_keyboard,
+    console_preview_keyboard,
+    console_preview_text,
+    console_text,
+    operation_history_text,
+)
+from velvet_bot.presentation.telegram.supervisor.views import (
+    _answer_error,
+    _main_keyboard,
+    _operation_accepted,
+    _safe_edit,
+    _unavailable_text,
+)
+from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
+
+router = Router(name=__name__)
+_CONSOLE_MARKER_RE = re.compile(r"SUPERVISOR_INPUT:console")
+
+
+class ConsoleReplyMarkerFilter(BaseFilter):
+    async def __call__(self, message: Message) -> bool:
+        reply = message.reply_to_message
+        if reply is None:
+            return False
+        source = reply.text or reply.caption or ""
+        return _CONSOLE_MARKER_RE.search(source) is not None
+
+
+def _requested_by(message: Message) -> str:
+    if message.from_user is None:
+        return "telegram"
+    return f"{message.from_user.id}:@{message.from_user.username or 'без_username'}"
+
+
+async def _catalog(client: SupervisorClient) -> list[dict[str, object]]:
+    payload = await client.console_commands()
+    raw = payload.get("commands", [])
+    return [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
+
+
+async def _preview(
+    message: Message,
+    client: SupervisorClient,
+    *,
+    command: str = "",
+    command_key: str = "",
+) -> None:
+    payload = await client.preview_console_command(
+        command=command,
+        command_key=command_key,
+        requested_by=_requested_by(message),
+    )
+    request = payload.get("request", {})
+    if not isinstance(request, dict):
+        raise SupervisorClientError("Supervisor вернул некорректный preview команды.")
+    await message.answer(
+        console_preview_text(request),
+        reply_markup=console_preview_keyboard(str(request.get("id", ""))),
+    )
+
+
+@router.message(Command("console", "supervisor_console"))
+async def handle_console_command(
+    message: Message,
+    supervisor_client: SupervisorClient | None,
+) -> None:
+    if supervisor_client is None:
+        await message.answer(_unavailable_text())
+        return
+    value = (message.text or "").partition(" ")[2].strip()
+    try:
+        if value:
+            await _preview(message, supervisor_client, command=value)
+            return
+        commands = await _catalog(supervisor_client)
+        await message.answer(console_text(commands), reply_markup=console_keyboard(commands))
+    except SupervisorClientError as error:
+        await _answer_error(message, error)
+
+
+@router.message(ConsoleReplyMarkerFilter())
+async def handle_console_reply(
+    message: Message,
+    supervisor_client: SupervisorClient | None,
+) -> None:
+    if supervisor_client is None:
+        await message.answer(_unavailable_text())
+        return
+    value = (message.text or message.caption or "").strip()
+    if value.casefold() in {"отмена", "cancel", "/cancel"}:
+        commands = await _catalog(supervisor_client)
+        await message.answer(console_text(commands), reply_markup=console_keyboard(commands))
+        return
+    try:
+        await _preview(message, supervisor_client, command=value)
+    except SupervisorClientError as error:
+        await _answer_error(message, error)
+
+
+@router.callback_query(SupervisorCallback.filter(F.action.startswith("console.")))
+async def handle_console_callback(
+    callback: CallbackQuery,
+    callback_data: SupervisorCallback,
+    supervisor_client: SupervisorClient | None,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    if supervisor_client is None:
+        await callback.answer("Supervisor не подключён.", show_alert=True)
+        return
+    action = callback_data.action
+    try:
+        if action == "console.menu":
+            commands = await _catalog(supervisor_client)
+            await _safe_edit(callback.message, console_text(commands), console_keyboard(commands))
+            await callback.answer()
+            return
+        if action == "console.input":
+            await callback.message.answer(
+                "<b>Введите разрешённую команду ответом на это сообщение.</b>\n\n"
+                "Команда должна полностью совпасть с безопасным реестром. "
+                "Пайпы, перенаправления и shell-конструкции не принимаются.\n\n"
+                "<code>SUPERVISOR_INPUT:console</code>",
+                reply_markup=ForceReply(
+                    selective=True,
+                    input_field_placeholder="Например: git status --short",
+                ),
+            )
+            await callback.answer("Ожидаю команду.")
+            return
+        if action == "console.quick":
+            payload = await supervisor_client.preview_console_command(
+                command_key=callback_data.task_id,
+                requested_by=_requested_by(callback.message),
+            )
+            request = payload.get("request", {})
+            if not isinstance(request, dict):
+                raise SupervisorClientError("Некорректный preview команды.")
+            await _safe_edit(
+                callback.message,
+                console_preview_text(request),
+                console_preview_keyboard(str(request.get("id", ""))),
+            )
+            await callback.answer()
+            return
+        if action == "console.run":
+            await _operation_accepted(
+                callback,
+                await supervisor_client.run_console_command(callback_data.task_id),
+            )
+            return
+        if action == "console.history":
+            payload = await supervisor_client.operations(limit=20)
+            raw = payload.get("operations", [])
+            operations = [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
+            await _safe_edit(
+                callback.message,
+                operation_history_text(operations),
+                _main_keyboard(),
+            )
+            await callback.answer()
+            return
+        await callback.answer("Неизвестное действие консоли.", show_alert=True)
+    except SupervisorClientError as error:
+        await _answer_error(callback, error)
+
+
+__all__ = ("router",)
