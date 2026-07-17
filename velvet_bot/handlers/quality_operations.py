@@ -367,17 +367,26 @@ async def handle_quality_run(
     database: Database,
     worker_manager: WorkerManager,
 ) -> None:
+    await callback.answer("Запускаю цикл проверки качества.")
     try:
         ok = await worker_manager.run_now("ai-quality")
     except (RuntimeError, ValueError) as error:
-        await callback.answer(str(error)[:190], show_alert=True)
+        if isinstance(callback.message, Message):
+            await callback.message.answer(
+                "<b>❌ Проверка качества не запущена</b>\n\n"
+                f"<code>{escape(str(error))[:900]}</code>"
+            )
         return
     if isinstance(callback.message, Message):
         await _show_menu(callback.message, database, worker_manager)
-    await callback.answer(
-        "Цикл проверки завершён." if ok else "Цикл завершился ошибкой. Откройте очередь ошибок.",
-        show_alert=not ok,
-    )
+        await callback.message.answer(
+            "<b>✅ Цикл проверки качества завершён</b>"
+            if ok
+            else (
+                "<b>❌ Цикл проверки завершился ошибкой</b>\n\n"
+                "Подробности находятся в очереди ошибок и центре инцидентов."
+            )
+        )
 
 
 __all__ = (
