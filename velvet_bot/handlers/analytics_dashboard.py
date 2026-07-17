@@ -4,7 +4,6 @@ from html import escape
 
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.analytics_dashboard import (
@@ -23,30 +22,13 @@ from velvet_bot.analytics_dashboard import (
 from velvet_bot.character_directory import category_label, universe_label
 from velvet_bot.database import Database
 from velvet_bot.post_classification import POST_TYPE_LABELS
+from velvet_bot.presentation.telegram.analytics_navigation import (
+    AnalyticsCallback,
+    _cb,
+    _period_row,
+)
 
 router = Router(name=__name__)
-
-
-class AnalyticsCallback(CallbackData, prefix="dash"):
-    action: str
-    period: str = "all"
-    page: int = 0
-    source_id: int = 0
-
-
-def _cb(
-    action: str,
-    *,
-    period: str = "all",
-    page: int = 0,
-    source_id: int = 0,
-) -> str:
-    return AnalyticsCallback(
-        action=action,
-        period=normalize_period(period),
-        page=max(0, page),
-        source_id=source_id,
-    ).pack()
 
 
 def _primary_channel_id(analytics_channel_ids: frozenset[int]) -> int | None:
@@ -59,17 +41,6 @@ def _percent(part: int, total: int) -> str:
 
 def _date(value) -> str:
     return value.astimezone().strftime("%d.%m.%Y") if value else "—"
-
-
-def _period_row(action: str, period: str, *, source_id: int = 0) -> list[InlineKeyboardButton]:
-    labels = (("7d", "7 дней"), ("30d", "30 дней"), ("all", "Всё время"))
-    return [
-        InlineKeyboardButton(
-            text=("● " if key == period else "") + label,
-            callback_data=_cb(action, period=key, source_id=source_id),
-        )
-        for key, label in labels
-    ]
 
 
 def _main_keyboard(period: str) -> InlineKeyboardMarkup:

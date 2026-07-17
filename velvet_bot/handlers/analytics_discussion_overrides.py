@@ -31,7 +31,12 @@ from velvet_bot.discussion_insights import (
     list_reaction_leaders,
     rebuild_discussion_threads,
 )
-from velvet_bot.handlers.analytics_dashboard import AnalyticsCallback, _cb, _period_row
+from velvet_bot.discussion_queries import get_discussion_parent_channel_id
+from velvet_bot.presentation.telegram.analytics_navigation import (
+    AnalyticsCallback,
+    _cb,
+    _period_row,
+)
 from velvet_bot.safe_analytics_edit import safe_analytics_edit
 
 router = Router(name=__name__)
@@ -67,18 +72,7 @@ def _dcb(
 
 
 async def _resolve_parent_id(database: Database, chat_id: int) -> int | None:
-    async with database._require_pool().acquire() as connection:
-        value = await connection.fetchval(
-            """
-            SELECT parent_channel_id
-            FROM tracked_channels
-            WHERE chat_id = $1::BIGINT
-              AND source_kind = 'discussion'
-              AND enabled = TRUE
-            """,
-            int(chat_id),
-        )
-    return int(value) if value is not None else None
+    return await get_discussion_parent_channel_id(database, chat_id)
 
 
 def _dperiod_row(

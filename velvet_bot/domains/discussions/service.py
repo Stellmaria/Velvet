@@ -13,6 +13,9 @@ class DiscussionService:
     async def is_tracked(self, chat_id: int) -> bool:
         return await self._repository.is_tracked(chat_id)
 
+    async def get_parent_channel_id(self, chat_id: int) -> int | None:
+        return await self._repository.get_parent_channel_id(chat_id)
+
     async def set_reaction_counts(
         self,
         *,

@@ -9,6 +9,13 @@ async def is_tracked_discussion(database: Database, chat_id: int) -> bool:
     return await build_discussion_service(database).is_tracked(chat_id)
 
 
+async def get_discussion_parent_channel_id(
+    database: Database,
+    chat_id: int,
+) -> int | None:
+    return await build_discussion_service(database).get_parent_channel_id(chat_id)
+
+
 async def get_discussion_overview(
     database: Database,
     chat_id: int,
@@ -61,6 +68,7 @@ __all__ = (
     "ParticipantStat",
     "apply_discussion_reaction_delta",
     "get_discussion_overview",
+    "get_discussion_parent_channel_id",
     "is_tracked_discussion",
     "list_participant_stats",
     "set_discussion_reaction_counts",
