@@ -21,9 +21,21 @@ def patch_runtime() -> None:
     source = RUNTIME.read_text(encoding="utf-8")
     source = replace_once(
         source,
-        "            env=os.environ.copy(),\n",
-        "            env=_child_environment(),\n",
-        label="child environment call",
+        '''            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            env=os.environ.copy(),
+        )
+''',
+        '''            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            env=_child_environment(),
+        )
+''',
+        label="child Popen environment",
     )
     helper = '''def _child_environment() -> dict[str, str]:
     """Force one encoding contract between the Windows child and Supervisor."""
