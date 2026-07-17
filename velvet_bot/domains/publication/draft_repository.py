@@ -22,7 +22,7 @@ class PublicationDraftRepository:
     async def capture_inbox(self, payload: PublicationInboxPayload) -> None:
         if payload.telegram_file_id is None and not payload.text_content:
             return
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 INSERT INTO publication_inbox_items (
@@ -67,7 +67,7 @@ class PublicationDraftRepository:
         self,
         payload: PublicationInboxPayload,
     ) -> tuple[PublicationInboxItem, ...]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             if payload.media_group_id:
                 rows = await connection.fetch(
                     """
@@ -108,7 +108,7 @@ class PublicationDraftRepository:
         has_spoiler: bool,
         items: tuple[PublicationInboxItem, ...],
     ) -> PublicationDraft:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 draft_id = await connection.fetchval(
                     """
@@ -188,7 +188,7 @@ class PublicationDraftRepository:
         owner_id: int,
         enabled: bool,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 result = await connection.execute(
                     """
@@ -227,7 +227,7 @@ class PublicationDraftRepository:
         text: str,
         content_hash: str,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 result = await connection.execute(
                     """
@@ -261,7 +261,7 @@ class PublicationDraftRepository:
         owner_id: int,
         scheduled_at: datetime,
     ) -> PublicationDraft:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 result = await connection.execute(
                     """
@@ -288,7 +288,7 @@ class PublicationDraftRepository:
         return await self._require_draft(draft_id, owner_id=owner_id, missing="Запланированный черновик не найден.")
 
     async def cancel(self, draft_id: int, *, owner_id: int) -> PublicationDraft:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 result = await connection.execute(
                     """
@@ -315,7 +315,7 @@ class PublicationDraftRepository:
         return await self._require_draft(draft_id, owner_id=owner_id, missing="Отменённый черновик не найден.")
 
     async def retry(self, draft_id: int, *, owner_id: int) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
                 UPDATE publication_drafts
