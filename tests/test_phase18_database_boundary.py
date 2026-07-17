@@ -7,7 +7,11 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 from velvet_bot.database import Database
-from velvet_bot.domains.discussions import DiscussionRepository
+from velvet_bot.domains.discussions import (
+    DiscussionIngestRepository,
+    DiscussionMessageEvent,
+    DiscussionRepository,
+)
 from velvet_bot.domains.media_quality import MediaQualityRepository
 from velvet_bot.domains.publication import PublicationRepository
 from velvet_bot.domains.references import ReferenceMediaPayload, ReferenceRepository
@@ -58,6 +62,7 @@ class DatabaseAcquireBoundaryTests(unittest.TestCase):
             ROOT / "velvet_bot/domains/media_quality/repository.py",
             ROOT / "velvet_bot/domains/publication/repository.py",
             ROOT / "velvet_bot/domains/discussions/repository.py",
+            ROOT / "velvet_bot/domains/discussions/ingest_repository.py",
         )
         for path in paths:
             with self.subTest(path=path.relative_to(ROOT)):
@@ -235,6 +240,83 @@ class DiscussionRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('"👍": 1', update_call.args[4])
         self.assertIn('"🔥": 3', update_call.args[4])
         self.assertIn('"❤️": 1', update_call.args[4])
+
+
+class DiscussionIngestRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
+    async def test_store_message_uses_public_acquire_and_preserves_transaction(self) -> None:
+        posted_at = datetime(2026, 7, 17, 12, 0, tzinfo=UTC)
+        event = DiscussionMessageEvent(
+            chat_id=-10088,
+            chat_title="Velvet discussion",
+            chat_username="velvet_discussion",
+            message_id=71,
+            posted_at=posted_at,
+            edited_at=None,
+            sender_is_bot=False,
+            sender_id="42",
+            sender_name="Author",
+            text_content="Archive comment",
+            media_group_id=None,
+            media_type="text",
+            has_spoiler=False,
+            reply_to_message_id=None,
+            reply_text="",
+            reply_date=None,
+            reply_is_automatic_forward=False,
+            topic_id=None,
+            is_automatic_forward=False,
+            forward_channel_id=None,
+            forward_message_id=None,
+        )
+        connection = SimpleNamespace(
+            fetch=AsyncMock(return_value=[]),
+            fetchval=AsyncMock(return_value=31),
+            execute=AsyncMock(return_value="UPDATE 1"),
+            transaction=Mock(),
+        )
+        transaction_context = _AsyncContext(None)
+        connection.transaction.return_value = transaction_context
+        acquire_context = _AsyncContext(connection)
+        database = SimpleNamespace(acquire=Mock(return_value=acquire_context))
+        repository = DiscussionIngestRepository(database)
+
+        stored = await repository.store_message(
+            event,
+            parent_channel_id=-1001,
+            source_channel_message_id=None,
+            root_message_id=None,
+            is_root=False,
+            publication_key="discussion:-10088:71",
+            is_prompt=False,
+            prompt_score=0,
+            has_important=False,
+            has_strict=False,
+            has_negative=False,
+            has_technical=False,
+            has_palette=False,
+            hashtags=(),
+            links=(),
+        )
+
+        self.assertTrue(stored)
+        database.acquire.assert_called_once_with()
+        connection.transaction.assert_called_once_with()
+        self.assertTrue(acquire_context.entered)
+        self.assertTrue(acquire_context.exited)
+        self.assertTrue(transaction_context.entered)
+        self.assertTrue(transaction_context.exited)
+        connection.fetch.assert_awaited_once_with(
+            "SELECT id, normalized_name FROM characters"
+        )
+        insert_call = connection.fetchval.await_args
+        self.assertIn("INSERT INTO channel_posts", insert_call.args[0])
+        self.assertEqual(insert_call.args[1], -10088)
+        self.assertEqual(insert_call.args[2], 71)
+        self.assertEqual(insert_call.args[3], "discussion:-10088:71")
+        self.assertEqual(connection.execute.await_count, 3)
+        self.assertIn("UPDATE tracked_channels", connection.execute.await_args_list[0].args[0])
+        self.assertIn("DELETE FROM channel_post_hashtags", connection.execute.await_args_list[1].args[0])
+        self.assertIn("DELETE FROM channel_post_links", connection.execute.await_args_list[2].args[0])
 
 
 if __name__ == "__main__":

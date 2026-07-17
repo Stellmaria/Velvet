@@ -14,7 +14,7 @@ class DiscussionIngestRepository:
         self._database = database
 
     async def get_parent_channel_id(self, chat_id: int) -> int | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 SELECT parent_channel_id
@@ -37,7 +37,7 @@ class DiscussionIngestRepository:
             return int(event.message_id)
         if event.reply_to_message_id is None:
             return None
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT message_id, discussion_root_message_id, is_discussion_root
@@ -76,7 +76,7 @@ class DiscussionIngestRepository:
         hashtags: tuple[tuple[str, str], ...],
         links: tuple[tuple[str, str, bool], ...],
     ) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             character_rows = await connection.fetch(
                 "SELECT id, normalized_name FROM characters"
             )
