@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/_patch_quality_run_feedback.py
       - .github/workflows/patch-quality-run-feedback.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/_patch_quality_run_feedback.py
+      - .github/workflows/patch-quality-run-feedback.yml
 
 permissions:
   contents: write
