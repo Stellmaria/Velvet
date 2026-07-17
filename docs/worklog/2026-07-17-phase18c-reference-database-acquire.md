@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18c-reference-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18C
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18c-reference-database-acquire`
 - Базовый commit: `4b365c2edb66fb61bd7eaba62c2b301773172b82`
 
@@ -63,21 +63,22 @@
 
 ### Проверки
 
-- GitHub compare подтвердил изолированный diff из шести файлов без временных patch/workflow-файлов;
-- новый runtime-тест добавлен, но полный CI ещё не запущен;
-- существующий workflow `tests` включает PostgreSQL 16 integration suite и composition root.
+- GitHub compare подтвердил изолированный diff без временных patch/workflow-файлов;
+- `project notes contract #5` — успешно;
+- полный workflow `tests #511`, включая PostgreSQL 16 integration suite — успешно;
+- `docker build #117` — успешно;
+- после закрытия дневника workflows повторно запускаются на финальном head PR.
 
 ### PR и commit
 
-PR ещё не открыт. Текущий head будет зафиксирован после создания draft PR.
+- PR: #98 `Фаза 18C: перевести ReferenceRepository на Database.acquire`;
+- проверенный head до закрытия дневника: `df0a6007abc76b640f11d64f950742b382cc4002`;
+- итоговый squash commit фиксируется GitHub при слиянии PR #98.
 
 ### Незавершённое
 
-- открыть PR;
-- получить результаты notes contract, tests и Docker;
-- исправить возможные регрессии;
-- закрыть запись статусом `завершено` с точными run и итоговым commit.
+Обязательных пунктов Фазы 18C не осталось. Эксплуатационные проверки Фазы 20 остаются отдельным обязательством.
 
 ### Следующий шаг
 
-Открыть draft PR Фазы 18C; после слияния начать отдельную Фазу 18D для `MediaQualityRepository`.
+Начать Фазу 18D отдельной веткой и worklog: перевести `MediaQualityRepository` на `Database.acquire()` с сохранением claim locks, duplicate workflows и file-check transitions.
