@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18r-prompt-result-report-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18R
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18r-prompt-result-report-acquire`
 - Базовый commit: `10a1392ecc4aec5b45fa4751d2a7d95b6d9c5a9c`
 
@@ -57,7 +57,7 @@
 - ограничения provider до 64 символов и model до 160 символов сохранены;
 - оценки, verdict, `created_by` и JSON payload не менялись;
 - добавлен source/runtime regression-тест публичной границы, аргументов и кириллического JSON;
-- private pool baseline уменьшен с 116/31 до 115/30;
+- private pool baseline уменьшен с 116 обращений в 31 файле до 115 обращений в 30 файлах;
 - следующим срезом назначена Фаза 18S: `PaletteCompositionReportRepository`;
 - inventory, project memory, development status и changelog обновлены.
 
@@ -67,20 +67,24 @@
 
 ### Проверки
 
-Полный CI ещё не запущен. Добавленные тесты должны подтвердить одну public acquire boundary, SQL, 17 параметров, ограничения provider/model и JSON без ASCII-экранирования.
+На head `6c6277d7350a83cb76ad8c004f6015cf9614879d` успешно завершены:
+
+- `project notes contract #55`;
+- `docker build #171`;
+- полный workflow `tests #577` с PostgreSQL 16.
+
+После этой итоговой записи CI запускается повторно на финальном head перед merge.
 
 ### PR и commit
 
-Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
+- PR: #114 `Фаза 18R: PromptResultReportRepository и Database.acquire`;
+- зелёный промежуточный head: `6c6277d7350a83cb76ad8c004f6015cf9614879d`;
+- финальный squash commit фиксируется GitHub при слиянии PR #114.
 
 ### Незавершённое
 
-- открыть draft PR;
-- получить tests, Docker build и project notes contract;
-- исправить только фактические регрессии;
-- закрыть worklog точными run;
-- слить Фазу 18R.
+Обязательных пунктов Фазы 18R не осталось. Живые эксплуатационные проверки Supervisor, staging и независимый backup/restore drill остаются отдельными стабилизационными воротами.
 
 ### Следующий шаг
 
-Открыть PR и прогнать полный CI. После merge начать Фазу 18S отдельной сессией.
+Начать Фазу 18S: перевести `PaletteCompositionReportRepository` на `Database.acquire()` отдельным worklog/PR и уменьшить baseline с 115 до 114 обращений.
