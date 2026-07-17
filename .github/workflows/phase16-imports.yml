@@ -1,0 +1,31 @@
+name: phase16 owner facade imports
+
+on:
+  push:
+    branches:
+      - agent/phase16-owner-actions-split
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase16-owner-actions-split
+          fetch-depth: 0
+
+      - name: Clean owner facade imports
+        run: python scripts/_phase16_imports.py
+
+      - name: Commit cleaned facade
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Очистить импорты владельческого фасада"
+          git push origin HEAD:agent/phase16-owner-actions-split
