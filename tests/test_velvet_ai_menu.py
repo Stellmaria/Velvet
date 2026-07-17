@@ -19,23 +19,24 @@ class VelvetAIMenuTests(unittest.TestCase):
         text, keyboard = build_velvet_ai_menu(
             enabled=True,
             provider="ollama",
-            model="qwen3-vl:8b",
+            model="gemma3:4b",
         )
         labels = {button.text for row in keyboard.inline_keyboard for button in row}
 
         self.assertIn("Локальный анализ: <b>включён</b>", text)
+        self.assertIn("Модель: <code>gemma3:4b</code>", text)
         self.assertIn("🧠 Проверка качества", labels)
         self.assertIn("🔎 Сравнение с референсом", labels)
         self.assertIn("📝 Промт против результата", labels)
         self.assertIn("🎞 Целостность медиасетов", labels)
-        self.assertIn("🎛 Калибровка Qwen", labels)
+        self.assertIn("🎛 Калибровка модели", labels)
         self.assertIn("🧬 Архивный аудит", labels)
 
     def test_callback_data_fit_telegram_limit(self) -> None:
         _, keyboard = build_velvet_ai_menu(
             enabled=False,
             provider="ollama",
-            model="qwen3-vl:8b",
+            model="gemma3:4b",
         )
         for row in keyboard.inline_keyboard:
             for button in row:
