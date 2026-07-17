@@ -27,7 +27,7 @@ def build_velvet_ai_menu(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🔍 Проверка качества",
+                    text="🧠 Проверка качества",
                     callback_data=quality_callback("quality_ops"),
                 )
             ],
