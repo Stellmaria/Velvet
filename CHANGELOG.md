@@ -25,8 +25,8 @@
 ### Changed
 
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
-- character, story, archive, public archive, reference, media quality, publication, publication validation, publication draft, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight, discussion relink, archive preview и system repositories больше не обращаются к приватному `_require_pool()`;
-- private pool baseline уменьшен с 130 обращений в 35 production-файлах до 116 обращений в 31 файле;
+- character, story, archive, public archive, reference, media quality, publication, publication validation, publication draft, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight, discussion relink, archive preview, system и prompt/result report repositories больше не обращаются к приватному `_require_pool()`;
+- private pool baseline уменьшен с 130 обращений в 35 production-файлах до 115 обращений в 30 файлах;
 - явные domain и infrastructure repositories удалены из private pool baseline;
 - новые либо изменённые private pool access блокируются CI до отдельного review и обновления baseline;
 - `AGENTS.md` и карта проекта закрепляют Velvet Archive как отдельный owner-oriented архивный продукт без логики аукционного бота;
