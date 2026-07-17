@@ -4,22 +4,46 @@
 
 ## [Unreleased]
 
+Пока нет изменений после выпуска `1.3.0`.
+
+## [1.3.0] - 2026-07-17
+
 ### Added
 
 - Dockerfile для Velvet Bot на Python 3.13;
-- полный Docker Compose с PostgreSQL 16, ботом и опциональной Ollama;
-- контейнерный healthcheck PostgreSQL и схемы миграций;
+- Docker Compose с PostgreSQL 16, ботом и опциональной Ollama;
+- контейнерные healthcheck и отдельный CI workflow сборки Docker-образа;
 - автоматический restore drill: dump, новая база, полное восстановление, миграции и контроль данных;
-- еженедельный GitHub Actions workflow проверки восстановления;
-- актуальная документация функций, ролей, AI, Supervisor и deployment;
-- подготовка версии `1.3.0-dev.1`.
+- еженедельная GitHub Actions проверка восстановления backup;
+- release workflow с проверкой соответствия Git tag и `APP_VERSION`;
+- актуальная документация функций, ролей, AI, Supervisor, backup и deployment;
+- transport-neutral `PublicationActions`;
+- PostgreSQL integration tests для нескольких историй КР и восстановления backup.
 
 ### Changed
 
-- Docker и CI используют одну основную версию PostgreSQL 16;
-- `.env.example` содержит параметры Docker и `CODEX_MODEL`;
-- документация backup различает чтение архива и реальное восстановление;
-- README больше не описывает устаревший временный preview как текущую архитектуру.
+- Docker и CI используют PostgreSQL 16;
+- версия приложения переведена с `1.3.0-dev.1` на стабильную `1.3.0`;
+- analytics navigation вынесена в единый presentation-контракт;
+- parent-channel lookup обсуждений перенесён из Telegram handler в repository/service/query;
+- центр публикаций переведён с набора compatibility-фасадов на application coordinator;
+- управление аналитикой разделено на независимые модули тегов, алиасов и классификации;
+- владельческие reply-формы разделены на media, profiles, references и data presentation-модули;
+- несколько историй перенесены в штатные character/story repositories;
+- `character_story_links` используется для публичной готовности, фильтрации и статистики;
+- ручная классификация публикаций получила явно типизированные PostgreSQL-параметры;
+- safe analytics edit подключается явно, без runtime-подмены;
+- фильтр шумных архивных ошибок устанавливается в штатном модуле;
+- документация backup различает проверку списка архива и реальное восстановление.
+
+### Removed
+
+- прямой SQL из analytics discussion handler;
+- handler-to-handler импорт приватных helper-функций аналитики;
+- runtime monkeypatch нескольких историй;
+- runtime monkeypatch media-quality и ручной классификации;
+- вызов legacy compatibility installer из root router;
+- бизнес-ветки из монолитных `analytics_management.py` и `owner_actions.py`.
 
 ## [1.2.0-dev.1] - 2026-07-17
 
