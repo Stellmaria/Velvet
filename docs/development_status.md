@@ -26,29 +26,39 @@
 
 ## Фаза 11: hardening и deployment
 
-Статус: выполняется.
+Статус: завершена.
 
-### В этой фазе
+Реализованы:
 
-- синхронизация README, changelog и конфигурации;
+- актуальные README, changelog и конфигурация;
 - единая матрица Python 3.13 / PostgreSQL 16;
 - Dockerfile и Compose для PostgreSQL, бота и Ollama;
 - container healthcheck;
 - автоматический restore drill;
 - регулярная CI-проверка восстановления;
-- подготовка версии `1.3.0-dev.1`;
-- продолжение архитектурной очистки небольшими срезами.
+- release workflow;
+- версия `1.3.0-dev.1`.
+
+## Фаза 12: архитектурная очистка
+
+Статус: выполняется небольшими изолированными срезами.
+
+Первый срез:
+
+- единый presentation-контракт навигации аналитики;
+- удаление `handler → handler` импорта между аналитическими контроллерами;
+- перенос определения родительского канала обсуждения из Telegram-handler в discussion repository/service/query;
+- regression-тест, запрещающий возврат прямого SQL в handler.
 
 ## Оставшийся долг
 
 ### P1
 
-1. Убрать прямой SQL из `handlers/analytics_discussion_overrides.py`.
-2. Разделить `handlers/publication_center.py` на presentation controller и application actions.
-3. Разделить `handlers/analytics_management.py` по алиасам, тегам и классификации.
-4. Разделить `handlers/owner_actions.py` по предметным формам.
-5. Перенести multi-story runtime patch в обычный domain/application wiring.
-6. Удалить `presentation/telegram/compat.py` после исчезновения последних мостов.
+1. Разделить `handlers/publication_center.py` на presentation controller и application actions.
+2. Разделить `handlers/analytics_management.py` по алиасам, тегам и классификации.
+3. Разделить `handlers/owner_actions.py` по предметным формам.
+4. Перенести multi-story runtime patch в обычный domain/application wiring.
+5. Удалить `presentation/telegram/compat.py` после исчезновения последних мостов.
 
 ### P2
 

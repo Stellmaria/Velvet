@@ -43,6 +43,20 @@ class DiscussionRepository:
             )
         return value is not None
 
+    async def get_parent_channel_id(self, chat_id: int) -> int | None:
+        async with self._database._require_pool().acquire() as connection:
+            value = await connection.fetchval(
+                """
+                SELECT parent_channel_id
+                FROM tracked_channels
+                WHERE chat_id = $1::BIGINT
+                  AND source_kind = 'discussion'
+                  AND enabled = TRUE
+                """,
+                int(chat_id),
+            )
+        return int(value) if value is not None else None
+
     async def set_reaction_counts(
         self,
         *,
