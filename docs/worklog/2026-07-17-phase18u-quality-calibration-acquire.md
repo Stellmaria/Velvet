@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18u-quality-calibration-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18U
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18u-quality-calibration-acquire`
 - Базовый commit: `8384506bae9e23399dd540178728eca327805213`
 
@@ -55,24 +55,37 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- `profile()`, `list_cases()` и `get_case()` переведены на `Database.acquire()`;
+- provider/model filters и limit clamp 20..5000 сохранены;
+- outcome sections и ошибка неизвестного раздела не менялись;
+- count query, page size 1..10, page clamp, offset и rows query сохранены;
+- file-name fallback, JSON decode и mapping `CalibrationCase`/`CalibrationCasePage` не менялись;
+- формулы calibration profile и recommended decision не затрагивались;
+- добавлены source/runtime regression-тесты трёх методов и отсутствующего случая;
+- private pool baseline уменьшен с 113/28 до 110/27;
+- следующим срезом назначена Фаза 18V: repository-контур `ai_quality.py`, 8 connection points;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменялись. SQL, фильтры, outcome groups, pagination и публичные модели сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить три public acquire boundary, profile filters/limit, section pagination, mapping и `None` для отсутствующего случая.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18U.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR и прогнать полный CI. После merge начать Фазу 18V отдельной сессией.
