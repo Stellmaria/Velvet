@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/_phase18_apply.py
       - .github/workflows/phase18-apply.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/_phase18_apply.py
+      - .github/workflows/phase18-apply.yml
 
 permissions:
   contents: write
