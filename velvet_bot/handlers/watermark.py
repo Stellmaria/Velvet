@@ -4,6 +4,7 @@ import os
 import re
 from html import escape
 from pathlib import Path
+from uuid import uuid4
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -86,7 +87,7 @@ async def _create_job_from_message(
         return None
     file_id, file_unique_id, suffix = source
     source_path = watermark_service.bridge.paths.sources / (
-        f"tg-{message.chat.id}-{source_message.message_id}{suffix}"
+        f"tg-{message.chat.id}-{source_message.message_id}-{uuid4().hex}{suffix}"
     )
     source_path = watermark_service.bridge.paths.ensure_in(
         source_path,
@@ -175,6 +176,9 @@ async def handle_watermark_custom_color(
     bot: Bot,
     database: Database,
 ) -> None:
+    if not _watermark_enabled():
+        await message.answer("Krita bridge выключен.")
+        return
     service = _build_service(bot, database)
     color = (message.text or "").strip()
     try:
@@ -201,7 +205,7 @@ async def handle_watermark_callback(
     database: Database,
 ) -> None:
     action = callback_data.action
-    if action in {"start", "help"} and not _watermark_enabled():
+    if action != "menu" and not _watermark_enabled():
         await callback.answer("Krita bridge выключен.", show_alert=True)
         return
     if action in {"start", "help"}:
