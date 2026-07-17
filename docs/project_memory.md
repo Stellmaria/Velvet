@@ -97,7 +97,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## Фаза 18. Публичная граница PostgreSQL
 
-Статус: срезы 18A–18H реализованы, P2-перенос продолжается.
+Статус: срезы 18A–18I реализованы, P2-перенос продолжается.
 
 - 18A: добавлен `Database.acquire()`;
 - 18A: character и story repositories больше не используют приватный `_require_pool()`;
@@ -108,9 +108,10 @@ Owner-операции вынесены из Telegram handlers в application us
 - 18F: discussion repository переведён с сохранением tracked-channel filters, parent lookup, reaction transaction, overview и participant stats;
 - 18G: discussion ingest repository переведён с сохранением root resolution, alias lookup, транзакционного post/hashtag/link сохранения и thread matching;
 - 18H: discussion insight repository переведён с сохранением CTE, period filters и derived summary metrics;
+- 18I: discussion ranking repository переведён с сохранением общего `_rank_page`, нормализации пагинации и элементов `DashboardPage`;
 - SQL и транзакционные границы завершённых доменов сохранены;
 - добавлен автоматический контракт, не допускающий аукционные доменные зависимости в production package;
-- следующий изолированный срез: discussion ranking repository.
+- следующий изолированный срез: discussion activity repository.
 
 ## Фаза 19. Полный операционный контур Velvet AI
 
@@ -167,7 +168,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## P2
 
-1. Продолжить Фазу 18 с `DiscussionRankingRepository`; characters, stories, archive, public archive, references, media quality, publication, discussions, discussion ingest и discussion insight уже используют `Database.acquire()`.
+1. Продолжить Фазу 18 с `DiscussionActivityRepository`; characters, stories, archive, public archive, references, media quality, publication, discussions, discussion ingest, discussion insight и discussion ranking уже используют `Database.acquire()`.
 2. Сокращать широкие `except Exception` внутри бизнес-логики.
 3. Добавить зашифрованную репликацию backup во внешнее хранилище.
 4. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
