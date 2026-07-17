@@ -39,7 +39,7 @@
 - release workflow;
 - версия `1.3.0-dev.1`.
 
-## Фазы 12–15: архитектурная очистка
+## Фазы 12–16: архитектурная очистка
 
 Статус: выполняется небольшими изолированными срезами.
 
@@ -57,14 +57,17 @@
 - перенос модели и операций нескольких историй в story domain repository;
 - удаление runtime monkeypatch каталогов персонажей и историй;
 - поддержка `character_story_links` внутри штатных character/story repositories;
-- PostgreSQL integration test назначения двух историй, фильтрации, primary и очистки при смене вселенной.
+- разделение владельческих reply-форм на media, profiles, references и data presentation-модули;
+- сокращение владельческого reply-controller до последовательного action dispatcher;
+- удаление бизнес-импортов и мёртвых форматтеров из `handlers/owner_actions.py`;
+- regression-тест полноты и непересечения всех 23 владельческих действий.
 
 ## Оставшийся долг
 
 ### P1
 
-1. Разделить `handlers/owner_actions.py` по предметным формам.
-2. Удалить оставшиеся временные мосты из `presentation/telegram/compat.py` после переноса runtime hotfixes и safe analytics edit.
+1. Удалить оставшиеся временные мосты из `presentation/telegram/compat.py` после переноса runtime hotfixes и safe analytics edit.
+2. При необходимости вынести статические тексты и клавиатуры владельческого меню в отдельный view-модуль, не меняя action dispatcher.
 
 ### P2
 
