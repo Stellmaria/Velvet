@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-hotfix-quality-sets-stale-callback`
 - Линия/фаза: production hotfix Velvet Archive
-- Статус: в работе
+- Статус: частично
 - Ветка: `hotfix/quality-sets-stale-callback`
 - Базовый commit: `80bc02439c7f75758841ab298d4da56c1f4594c0`
 
@@ -46,4 +46,36 @@
 
 ## После завершения
 
-Заполняется после реализации.
+### Фактически сделано
+
+- добавлен `_safe_callback_answer()` с точечным подавлением только expired/invalid callback response Telegram;
+- другие `TelegramBadRequest` продолжают пробрасываться;
+- `handle_media_set_list()` подтверждает нажатие до discovery, SQL и редактирования сообщения;
+- `handle_media_set_open()` подтверждает нажатие до последовательной отправки preview;
+- соседние обработчики create, ignore, toggle и error branches используют единый safe-answer;
+- toggle подтверждает результат до редактирования сообщения;
+- бизнес-операции медиасетов, SQL и модели не изменялись;
+- добавлены regression-тесты фильтра исключения и порядка подтверждения;
+- changelog обновлён.
+
+### Миграции и совместимость
+
+Миграции, таблицы, SQL и callback payload не изменены. Изменён только порядок Telegram acknowledgment и обработка точного протухшего callback ответа.
+
+### Проверки
+
+Полный CI запускается в draft PR.
+
+### PR и commit
+
+Будет заполнено после CI и слияния.
+
+### Незавершённое
+
+- получить зелёные tests и project notes;
+- проверить Docker workflow по path filters;
+- закрыть дневник и слить hotfix.
+
+### Следующий шаг
+
+После hotfix продолжить Фазу 18N из отдельной ветки.
