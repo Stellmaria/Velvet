@@ -27,9 +27,20 @@ class Release130Tests(unittest.TestCase):
         workflow = (
             ROOT / ".github/workflows/release.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn('tags:', workflow)
-        self.assertIn('APP_VERSION', workflow)
-        self.assertIn('gh release create', workflow)
+        self.assertIn("tags:", workflow)
+        self.assertIn("APP_VERSION", workflow)
+        self.assertIn("gh release create", workflow)
+
+    def test_stable_tag_workflow_is_safe_and_annotated(self) -> None:
+        workflow = (
+            ROOT / ".github/workflows/tag-stable-release.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("permissions:", workflow)
+        self.assertIn("contents: write", workflow)
+        self.assertIn("CHANGELOG.md does not contain", workflow)
+        self.assertIn('git tag -a "$tag"', workflow)
+        self.assertIn('git push origin "$tag"', workflow)
+        self.assertIn("not a stable release", workflow)
 
 
 if __name__ == "__main__":
