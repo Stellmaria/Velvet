@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18p-publication-draft-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18P
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18p-publication-draft-acquire`
 - Базовый commit: `0b2a539962dd0aa056f581bc436107ae249bf406`
 
@@ -63,7 +63,7 @@
 - owner scope, event payload и reload draft не менялись;
 - добавлен source-контракт восьми acquire и пяти transactional methods;
 - добавлены runtime-тесты inbox capture, empty skip, source mapping, create draft и retry;
-- private pool baseline уменьшен с 126/33 до 118/32;
+- private pool baseline уменьшен с 126 обращений в 33 файлах до 118 обращений в 32 файлах;
 - явные domain repositories удалены из baseline;
 - следующим срезом назначена Фаза 18Q: `SystemRepository`;
 - inventory, project memory, development status и changelog обновлены.
@@ -74,20 +74,24 @@
 
 ### Проверки
 
-Полный CI ещё не запущен. Добавленные тесты должны подтвердить восемь public acquire, пять транзакционных методов, inbox semantics, создание черновика и retry guard.
+На head `71633744397bd76eb0d2dd0d2736028f25b89f8c` успешно завершены:
+
+- `project notes contract #51`;
+- `docker build #165`;
+- полный workflow `tests #571` с PostgreSQL 16.
+
+После этой итоговой записи CI запускается повторно на финальном head перед merge.
 
 ### PR и commit
 
-Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
+- PR: #112 `Фаза 18P: PublicationDraftRepository и Database.acquire`;
+- зелёный промежуточный head: `71633744397bd76eb0d2dd0d2736028f25b89f8c`;
+- финальный squash commit фиксируется GitHub при слиянии PR #112.
 
 ### Незавершённое
 
-- открыть draft PR;
-- получить tests, Docker build и project notes contract;
-- исправить только фактические регрессии;
-- закрыть worklog точными run;
-- слить Фазу 18P.
+Обязательных пунктов Фазы 18P не осталось. Живые эксплуатационные проверки Supervisor, staging и независимый backup/restore drill остаются отдельными стабилизационными воротами.
 
 ### Следующий шаг
 
-Открыть PR и прогнать полный CI. После merge начать Фазу 18Q отдельной сессией.
+Начать Фазу 18Q: перевести `SystemRepository` на `Database.acquire()` отдельным worklog/PR и уменьшить baseline с 118 до 116 обращений.
