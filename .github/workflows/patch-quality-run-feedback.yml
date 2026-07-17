@@ -35,6 +35,13 @@ jobs:
       - name: Apply patch
         run: |
           set -o pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/_patch_quality_run_feedback.py")
+          source = path.read_text(encoding="utf-8")
+          source = source.replace("NEW = '''", "NEW = r'''", 1)
+          path.write_text(source, encoding="utf-8")
+          PY
           python scripts/_patch_quality_run_feedback.py 2>&1 | tee patch-quality-run.log
 
       - name: Upload diagnostics
