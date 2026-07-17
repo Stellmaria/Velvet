@@ -33,6 +33,7 @@ class DatabaseAcquireBoundaryTests(unittest.TestCase):
             ROOT / "velvet_bot/domains/stories/repository.py",
             ROOT / "velvet_bot/domains/archive/repository.py",
             ROOT / "velvet_bot/domains/public_archive/repository.py",
+            ROOT / "velvet_bot/domains/references/repository.py",
         )
         for path in paths:
             with self.subTest(path=path.relative_to(ROOT)):
