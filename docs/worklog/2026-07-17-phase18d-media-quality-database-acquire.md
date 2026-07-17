@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18d-media-quality-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18D
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18d-media-quality-database-acquire`
 - Базовый commit: `f3a381bab81257a85b37ca5fe489c5afb4936b6c`
 
@@ -40,3 +40,40 @@
 - нельзя менять пороги сравнения и правила решений по дублям;
 - старые миграции не редактируются;
 - несвязанные функциональные изменения не включаются в этот срез.
+
+## После завершения
+
+### Фактически сделано
+
+- все десять точек получения соединения в `MediaQualityRepository` переведены на `self._database.acquire()`;
+- SQL и транзакции claim, fingerprint persistence, duplicate workflow, file checks и reset не изменены;
+- `FOR UPDATE SKIP LOCKED` сохранён внутри той же транзакции, а выбранные строки по-прежнему переводятся в processing до освобождения соединения;
+- regression-контракт Фазы 18 дополнен media quality repository;
+- добавлен исполняемый тест public acquire, transaction context, ограничения limit и сохранения блокирующего SQL;
+- project memory, development status и changelog обновлены;
+- следующим отдельным срезом определён `PublicationRepository`.
+
+### Миграции и совместимость
+
+Миграции отсутствуют. Пороги сравнения, схемы fingerprint, статусы кандидатов дублей, правила решений и контракты Telegram file checks не изменялись.
+
+### Проверки
+
+- GitHub compare подтвердил изолированный diff из шести файлов;
+- изменение repository состоит из десяти симметричных замен способа получения соединения;
+- новый runtime-тест добавлен, но полный CI ещё не запущен.
+
+### PR и commit
+
+PR ещё не открыт. Текущий head будет записан после создания draft PR.
+
+### Незавершённое
+
+- открыть PR;
+- получить результаты notes contract, tests и Docker;
+- исправить возможные регрессии;
+- закрыть дневник финальными run и commit.
+
+### Следующий шаг
+
+Открыть draft PR Фазы 18D; после слияния начать отдельную Фазу 18E для `PublicationRepository`.
