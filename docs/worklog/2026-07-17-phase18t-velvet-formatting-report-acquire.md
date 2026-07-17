@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18t-velvet-formatting-report-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18T
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18t-velvet-formatting-report-acquire`
 - Базовый commit: `3c6cf97e11cb39b76435e379eb6c501a212f2d2f`
 
@@ -52,24 +52,36 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- `VelvetFormattingReportRepository.save()` переведён на `Database.acquire()`;
+- SQL, `analysis_version = 1`, `RETURNING id` и порядок 7 параметров сохранены;
+- `FormattingMode`, исходный и отрендеренный текст не менялись;
+- provider/model limits, JSON payload и `created_by` сохранены;
+- добавлен source/runtime regression-тест публичной границы, параметров и кириллического JSON;
+- private pool baseline уменьшен с 114/29 до 113/28;
+- одиночные report repositories полностью удалены из baseline;
+- следующим срезом назначена Фаза 18U: `QualityCalibrationRepository`, 3 connection points;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменялись. Таблица, analysis version, SQL, типы параметров и публичный метод `save()` сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить одну public acquire boundary, SQL, 7 параметров, FormattingMode, text fields, JSON и provider/model limits.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18T.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR и прогнать полный CI. После merge начать Фазу 18U отдельной сессией.
