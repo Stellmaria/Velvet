@@ -30,7 +30,7 @@ class DiscussionRepository:
         }
 
     async def is_tracked(self, chat_id: int) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 SELECT 1
@@ -44,7 +44,7 @@ class DiscussionRepository:
         return value is not None
 
     async def get_parent_channel_id(self, chat_id: int) -> int | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 SELECT parent_channel_id
@@ -69,7 +69,7 @@ class DiscussionRepository:
             for key, value in reaction_breakdown.items()
             if int(value) > 0
         }
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             updated = await connection.fetchval(
                 """
                 UPDATE channel_posts AS post
@@ -108,7 +108,7 @@ class DiscussionRepository:
         }
         if not normalized_delta:
             return False
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 tracked = await connection.fetchval(
                     """
@@ -162,7 +162,7 @@ class DiscussionRepository:
         return updated is not None
 
     async def get_overview(self, chat_id: int) -> DiscussionOverview:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
@@ -219,7 +219,7 @@ class DiscussionRepository:
         limit: int = 20,
     ) -> list[ParticipantStat]:
         safe_limit = max(1, min(int(limit), 100))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 WITH message_stats AS (
