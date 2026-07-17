@@ -6,6 +6,11 @@
 
 ### Added
 
+- owner-only контур нанесения водяного знака через локальный Krita bridge;
+- PostgreSQL-задания и revisions для положения, цвета, прозрачности, размера, отступа, отката и финального результата;
+- кнопка `💧 Водяной знак` в центре управления и аварийная команда `/watermark`;
+- worker Krita без публичного сетевого порта, с восстановлением stale `*.processing` и контролируемыми ошибками;
+- исходники, сборщик ZIP и документация Python-плагина Krita с автоматической обработкой bridge-запросов;
 - постоянный журнал AI-заданий со статусами `pending`, `processing`, `ready` и `error`;
 - кнопка истории AI-запросов с сохранёнными результатами и причинами ошибок;
 - операционное меню проверки качества с ручным анализом изображения, управлением очередью, ошибками и worker;
@@ -24,6 +29,9 @@
 
 ### Changed
 
+- watermark worker обрабатывает только текущую revision; исторические pending revisions остаются историей, а не лишней очередью;
+- оригинал watermark-сценария никогда не перезаписывается, preview и финальный PNG создаются отдельными артефактами;
+- Krita bridge выключен по умолчанию до живой Windows-проверки;
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
 - character, story, archive, public archive, reference, media quality, publication, publication validation, publication draft, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight, discussion relink, archive preview, system, prompt/result report, palette/composition report, Velvet formatting report, quality calibration, AI quality repository и его schema compatibility facade больше не обращаются к приватному `_require_pool()`;
 - private pool baseline уменьшен с 130 обращений в 35 production-файлах до 100 обращений в 25 файлах;
@@ -39,6 +47,11 @@
 
 ### Fixed
 
+- stale `*.processing` Krita request безопасно возвращается в очередь только при отсутствии готового response и обычного request-файла;
+- `output_path` из response повторно нормализуется, сверяется с ожидаемым output и отклоняется при traversal, UNC или выходе через symlink;
+- approve блокирует job и текущую ready revision в одной PostgreSQL-транзакции, поэтому устаревший output нельзя подтвердить;
+- старый callback отмены не меняет approved watermark job и получает спокойный доменный ответ;
+- повторная настройка watermark удаляет прежний векторный слой и строит новую версию из исходника вместо наслаивания логотипов;
 - callback списка медиасетов подтверждается до discovery, PostgreSQL-запросов и редактирования сообщения;
 - открытие кандидата медиасета подтверждается до последовательной отправки Telegram preview;
 - точный ответ Telegram `query is too old / query ID is invalid` больше не создаёт ложный ERROR, остальные `TelegramBadRequest` не подавляются;

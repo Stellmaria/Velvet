@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from functools import partial
 from typing import Awaitable, Callable
 
@@ -14,7 +15,10 @@ from velvet_bot.calibrated_ai_quality import CalibratedAIQualityService
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
+from velvet_bot.domains.watermark.repository import WatermarkRepository
+from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.error_center import ErrorIncidentCenter
+from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.ollama_vision import ReliableVisionClient
 from velvet_bot.quality_calibration import QualityCalibrationRepository
@@ -33,6 +37,16 @@ async def _run_ai_locked(
     """Do not let two local vision requests compete for the same model memory."""
     async with lock:
         return await runner()
+
+
+def _env_enabled(name: str) -> bool:
+    return os.getenv(name, "false").strip().casefold() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+        "да",
+    }
 
 
 def build_worker_manager(
@@ -76,6 +90,20 @@ def build_worker_manager(
             runner=media_quality_service.process_once,
         )
     )
+    if _env_enabled("KRITA_WATERMARK_ENABLED"):
+        watermark_service = WatermarkService(
+            bot=bot,
+            repository=WatermarkRepository(database),
+            bridge=KritaBridge(default_krita_bridge_dir()),
+        )
+        manager.register(
+            PeriodicWorkerSpec(
+                name="krita-watermark",
+                description="Preview и экспорт водяного знака через Krita",
+                interval_seconds=2,
+                runner=watermark_service.process_once,
+            )
+        )
     if settings is not None and settings.ai_vision_enabled:
         ai_lock = get_local_ai_lock()
         ai_service = ResilientMediaAIVisionService(
