@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18l-discussion-relink-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18L
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18l-discussion-relink-database-acquire`
 - Базовый commit: `e9d9117f5ea65dbb7521cf47e021776313fea473`
 
@@ -49,24 +49,37 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- единственная connection point `DiscussionRelinkRepository.rebuild()` переведена с приватного `_require_pool().acquire()` на публичный `Database.acquire()`;
+- четыре SQL-этапа сохранены внутри одной транзакции;
+- сохранены маркировка корневых сообщений, recursive reply tree, exact-text matching и backfill `channel_post_id`;
+- сохранён разбор PostgreSQL command status в `RelinkResult`;
+- добавлены source-boundary и runtime regression-тесты публичной границы, единой транзакции, порядка четырёх запросов и счётчиков результата;
+- production-домен остаётся архивным и не содержит аукционных связей или таблиц.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и SQL не изменялись. Matching heuristics, unique constraints, сигнатура `rebuild()` и модель `RelinkResult` сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+- `docker build #147` — успешно;
+- `tests #541` выполнил 489 тестов; все функциональные и repository-тесты прошли, общий run завершился ошибкой только из-за статуса worklog `в работе`;
+- `project notes contract #26` завершился ошибкой по той же причине;
+- после этой промежуточной записи запускается повторный полный CI.
 
 ### PR и commit
 
-Заполняется после реализации.
+- draft PR: #107 `Фаза 18L: перевести DiscussionRelinkRepository на Database.acquire`;
+- проверенный head до обновления дневника: `982cc08b593d18fe0ba8485a29d52f264be20417`;
+- squash commit будет зафиксирован после зелёного финального CI и слияния.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- получить зелёные project notes, tests и Docker на обновлённом head;
+- обновить project memory, development status и changelog;
+- закрыть запись статусом `завершено`;
+- перевести PR из draft и слить в `main`.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Фаза 18M: автоматизированно проинвентаризировать оставшиеся production-вызовы `_require_pool()` и выбрать следующий repository по фактическому коду Velvet Archive.
