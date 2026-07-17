@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
 from velvet_bot.owner_callbacks import owner_callback
 from velvet_bot.quality_ui import quality_callback
 
@@ -19,23 +18,23 @@ def build_velvet_ai_menu(
         f"Локальный анализ: <b>{state}</b>\n"
         f"Провайдер: <code>{provider}</code>\n"
         f"Модель: <code>{model}</code>\n\n"
-        "Здесь собраны проверки изображения, референса, исходного промта, "
-        "палитры, композиции, оформление публикаций и целостность медиасетов. "
-        "Старые slash-команды сохранены как резервные, но нормальная работа "
-        "выполняется кнопками."
+        "Здесь собраны ручные и фоновые проверки изображения, референса, "
+        "исходного промта, палитры, композиции, оформление публикаций и "
+        "целостность медиасетов. Каждая долгая AI-задача получает номер, статус "
+        "и сохраняется в истории. Старые slash-команды остаются аварийным резервом."
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🧠 Проверка качества",
-                    callback_data=quality_callback("qchecks", section="review"),
+                    text="🔍 Проверка качества",
+                    callback_data=quality_callback("quality_ops"),
                 )
             ],
             [
                 InlineKeyboardButton(
                     text="🔎 Сравнение с референсом",
-                    callback_data=AdminDirectoryCallback(action="categories").pack(),
+                    callback_data=quality_callback("refcompare_start"),
                 )
             ],
             [
@@ -60,6 +59,12 @@ def build_velvet_ai_menu(
                 InlineKeyboardButton(
                     text="🎞 Целостность медиасетов",
                     callback_data=quality_callback("setreports"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📋 История AI-заданий",
+                    callback_data=quality_callback("aijobs"),
                 )
             ],
             [
