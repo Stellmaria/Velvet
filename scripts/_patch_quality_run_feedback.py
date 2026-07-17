@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "velvet_bot/handlers/quality_operations.py"
+# The callback must be acknowledged before the potentially long worker cycle.
 
 OLD = '''@router.callback_query(QualityCallback.filter(F.action == "quality_run"))
 async def handle_quality_run(
