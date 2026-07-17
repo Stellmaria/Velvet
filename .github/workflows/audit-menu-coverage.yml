@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/audit_menu_coverage.py
       - .github/workflows/audit-menu-coverage.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/audit_menu_coverage.py
+      - .github/workflows/audit-menu-coverage.yml
 
 permissions:
   contents: read
