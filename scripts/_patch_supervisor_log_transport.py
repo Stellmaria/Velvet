@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "velvet_supervisor/runtime.py"
 ERROR_CENTER = ROOT / "velvet_bot/error_center.py"
+# Patch is intentionally guarded by exact source contracts and AST validation.
 
 
 def replace_once(source: str, old: str, new: str, *, label: str) -> str:
