@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18p-publication-draft-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18P
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18p-publication-draft-acquire`
 - Базовый commit: `0b2a539962dd0aa056f581bc436107ae249bf406`
 
@@ -55,24 +55,39 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- все восемь методов repository переведены на `Database.acquire()`;
+- inbox upsert и group/single source queries сохранены;
+- создание draft/items/event остаётся в одной транзакции;
+- spoiler, text, schedule и cancel сохраняют отдельные транзакции;
+- retry сохраняет status guard `status = 'error'`;
+- owner scope, event payload и reload draft не менялись;
+- добавлен source-контракт восьми acquire и пяти transactional methods;
+- добавлены runtime-тесты inbox capture, empty skip, source mapping, create draft и retry;
+- private pool baseline уменьшен с 126/33 до 118/32;
+- явные domain repositories удалены из baseline;
+- следующим срезом назначена Фаза 18Q: `SystemRepository`;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменялись. SQL, параметры, status transitions, owner scope, event logging и публичные модели сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить восемь public acquire, пять транзакционных методов, inbox semantics, создание черновика и retry guard.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18P.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR и прогнать полный CI. После merge начать Фазу 18Q отдельной сессией.
