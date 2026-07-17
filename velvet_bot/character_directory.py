@@ -27,6 +27,17 @@ def _service(database: Database) -> CharacterDirectoryService:
     return CharacterDirectoryService(CharacterDirectoryRepository(database))
 
 
+def _row_to_directory_item(row) -> CharacterDirectoryItem:
+    """Compatibility bridge for stale pre-Phase-15 multi-story modules.
+
+    Current code maps rows inside ``CharacterDirectoryRepository``. A partially
+    updated deployment can still contain the old ``multi_story_support.py``
+    which imports this module-level helper directly. Keep the bridge until all
+    production installations have been fully synchronized.
+    """
+    return CharacterDirectoryRepository._row_to_directory_item(row)
+
+
 async def set_character_category(
     database: Database,
     *,
