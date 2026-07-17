@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18k-discussion-post-insight-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18K
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18k-discussion-post-insight-database-acquire`
 - Базовый commit: `6bf443a66d6b3c946556549f225dacea911dd4e9`
 
@@ -65,24 +65,26 @@
 
 ### Проверки
 
+- GitHub compare подтвердил изолированный diff из шести файлов;
 - production diff содержит две симметричные замены private pool access на публичный API базы;
 - source-тест проверяет отсутствие `._require_pool()` и наличие двух public acquire contexts;
 - runtime-тест списка проверяет total `13`, нормализацию страницы `99` до `2`, offset `12`, limit `6` и итоговый `DiscussedPost`;
 - runtime-тест detail проверяет параметры `discussion_chat_id/parent_channel_id/post_id/since` и сохранение nullable `first_comment_seconds`;
-- полный CI ещё не запущен.
+- `project notes contract #24` — успешно;
+- полный workflow `tests #538` с PostgreSQL 16 — успешно;
+- `docker build #144` — успешно;
+- после закрытия дневника workflows повторно запускаются на финальном head PR.
 
 ### PR и commit
 
-PR ещё не открыт. Текущий head будет записан после создания draft PR.
+- PR: #106 `Фаза 18K: перевести DiscussionPostInsightRepository на Database.acquire`;
+- проверенный head до закрытия дневника: `5d8fd324849b978e89430ed3605b2306d84df222`;
+- итоговый squash commit фиксируется GitHub при слиянии PR #106.
 
 ### Незавершённое
 
-- сравнить ветку с `main`;
-- открыть draft PR;
-- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
-- исправить возможные регрессии;
-- закрыть дневник точными run и итоговым commit.
+Обязательных пунктов Фазы 18K не осталось. Живые Windows/Telegram-проверки Фазы 20 остаются отдельным эксплуатационным обязательством.
 
 ### Следующий шаг
 
-После успешного слияния начать отдельную Фазу 18L для `DiscussionRelinkRepository`.
+Начать Фазу 18L отдельной веткой и worklog: перевести `DiscussionRelinkRepository` на `Database.acquire()`.
