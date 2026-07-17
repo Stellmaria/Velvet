@@ -6,6 +6,11 @@
 
 ### Added
 
+- owner-only контур нанесения водяного знака через локальный Krita bridge;
+- PostgreSQL-задания и revisions для положения, цвета, прозрачности, размера, отступа, отката и результата;
+- кнопка `💧 Водяной знак` в центре управления и аварийная команда `/watermark`;
+- локальный worker Krita без публичного сетевого порта, с проверкой рабочих путей и восстановлением processing-заданий;
+- исходники, сборщик ZIP и документация Python-плагина Krita с автоматической обработкой bridge-запросов;
 - постоянный журнал AI-заданий со статусами `pending`, `processing`, `ready` и `error`;
 - кнопка истории AI-запросов с сохранёнными результатами и причинами ошибок;
 - операционное меню проверки качества с ручным анализом изображения, управлением очередью, ошибками и worker;
@@ -24,6 +29,8 @@
 
 ### Changed
 
+- оригинал изображения в watermark-сценарии никогда не перезаписывается; preview и финальный PNG создаются отдельными артефактами;
+- устаревшая Krita revision не может заменить preview более новой настройки;
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
 - character, story, archive, public archive, reference, media quality, publication, publication validation, publication draft, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight, discussion relink, archive preview, system и prompt/result report repositories больше не обращаются к приватному `_require_pool()`;
 - private pool baseline уменьшен с 130 обращений в 35 production-файлах до 115 обращений в 30 файлах;
@@ -39,6 +46,7 @@
 
 ### Fixed
 
+- повторная настройка watermark удаляет старый векторный слой и строит новую версию из исходника вместо наслаивания логотипов;
 - callback списка медиасетов подтверждается до discovery, PostgreSQL-запросов и редактирования сообщения;
 - открытие кандидата медиасета подтверждается до последовательной отправки Telegram preview;
 - точный ответ Telegram `query is too old / query ID is invalid` больше не создаёт ложный ERROR, остальные `TelegramBadRequest` не подавляются;
