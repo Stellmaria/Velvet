@@ -6,7 +6,7 @@ from aiogram.filters import BaseFilter
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import Message
 
-_INPUT_MARKER_RE = re.compile(r"SUPERVISOR_INPUT:(codex|task)")
+_INPUT_MARKER_RE = re.compile(r"SUPERVISOR_INPUT:(codex|task|console)")
 
 
 class SupervisorCallback(CallbackData, prefix="sup"):
