@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import re
-from functools import partial
 from html import escape
 
 from aiogram import Bot, Router
-from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import BaseFilter
 from aiogram.types import (
@@ -16,57 +14,22 @@ from aiogram.types import (
     Message,
 )
 
-from velvet_bot.application.owner_analytics import (
-    DiscussionStats,
-    ImportResult,
-    load_discussion_stats,
-    load_hashtag_stats,
-    register_discussion,
-)
-from velvet_bot.application.owner_profiles import (
-    add_alias_from_text,
-    add_story_from_text,
-    bind_character_topic,
-    create_character_profile,
-    delete_alias_from_text,
-    list_aliases_from_text,
-    list_stories_from_text,
-    load_character_profile,
-    rebuild_alias_index,
-    set_category_from_text,
-    set_prompt_from_text,
-    set_story_from_text,
-    set_universe_from_text,
-)
-from velvet_bot.application.owner_references import (
-    delete_reference_by_index,
-    finish_reference_upload,
-    get_reference_page_by_name,
-    start_reference_upload,
-)
-from velvet_bot.archive_ui import build_character_archive_keyboard
+from velvet_bot.application.owner_profiles import rebuild_alias_index
+from velvet_bot.application.owner_references import finish_reference_upload
 from velvet_bot.audit import TelegramAuditLogger
-from velvet_bot.channel_analytics import HashtagStat
-from velvet_bot.character_directory import category_label, universe_label
-from velvet_bot.database import Character, Database
+from velvet_bot.database import Database
 from velvet_bot.owner_callbacks import (
     OwnerActionCallback,
     owner_action_callback,
     owner_callback,
 )
-from velvet_bot.reference_ui import build_reference_keyboard, format_reference_caption
-from velvet_bot.reference_uploads import ReferenceUploadSessions
-from velvet_bot.services.media_save import save_media_from_message
-from velvet_bot.services.telegram_exports import import_export_from_message
-from velvet_bot.services.telegram_publications import create_publication_draft
-from velvet_bot.services.telegram_topics import validate_topic_access
-from velvet_bot.story_catalog import format_story_release, universe_requires_story
 from velvet_bot.presentation.telegram.owner_actions import (
     handle_owner_data_action,
     handle_owner_media_action,
     handle_owner_profile_action,
     handle_owner_reference_action,
 )
+from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 router = Router(name=__name__)
 
