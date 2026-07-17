@@ -15,7 +15,7 @@ on:
       - .github/workflows/patch-ai-job-tracking.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   patch:
@@ -49,26 +49,21 @@ jobs:
           PY
           python scripts/_patch_ai_job_tracking.py 2>&1 | tee patch-ai-job-tracking.log
 
+      - name: Validate syntax
+        run: python -m compileall -q velvet_bot
+
+      - name: Upload patched handlers
+        uses: actions/upload-artifact@v4
+        with:
+          name: patched-ai-handlers
+          path: |
+            velvet_bot/handlers/velvet_ai.py
+            velvet_bot/handlers/velvet_ai_visual.py
+            velvet_bot/handlers/velvet_ai_formatting.py
+
       - name: Upload patch diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: patch-ai-job-tracking-log
           path: patch-ai-job-tracking.log
-
-      - name: Validate syntax
-        run: python -m compileall -q velvet_bot
-
-      - name: Commit patched handlers
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add velvet_bot/handlers/velvet_ai.py
-          git add velvet_bot/handlers/velvet_ai_visual.py
-          git add velvet_bot/handlers/velvet_ai_formatting.py
-          if git diff --cached --quiet; then
-            echo "No handler changes to commit"
-          else
-            git commit -m "Отслеживать интерактивные AI-задания"
-            git push origin HEAD:agent/fix-ai-quality-operations-menu
-          fi
