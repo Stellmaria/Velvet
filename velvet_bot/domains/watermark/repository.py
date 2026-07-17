@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, Literal
 
 from velvet_bot.database import Database
 from velvet_bot.domains.watermark.models import (
@@ -10,6 +10,8 @@ from velvet_bot.domains.watermark.models import (
     WatermarkSettings,
     WatermarkWorkItem,
 )
+
+CancelResult = Literal["cancelled", "already_cancelled", "approved"]
 
 
 class WatermarkRepository:
@@ -100,6 +102,8 @@ class WatermarkRepository:
                     job_id,
                     revision,
                 )
+        if job_row is None:
+            raise RuntimeError("Не удалось обновить задание водяного знака.")
         return WatermarkWorkItem(
             job=self._map_job(job_row),
             revision=self._map_revision(revision_row),
@@ -171,8 +175,8 @@ class WatermarkRepository:
                 await connection.execute(
                     """
                     UPDATE watermark_revisions
-                    SET status = 'processing'
-                    WHERE job_id = $1 AND revision = $2
+                    SET status = 'processing', error = NULL
+                    WHERE job_id = $1 AND revision = $2 AND status = 'pending'
                     """,
                     int(row["id"]),
                     int(row["r_revision"]),
@@ -180,7 +184,7 @@ class WatermarkRepository:
         item = self._map_work_item(row)
         return WatermarkWorkItem(
             job=item.job,
-            revision=replace(item.revision, status="processing"),
+            revision=replace(item.revision, status="processing", error=None),
         )
 
     async def set_dispatched_paths(
@@ -199,7 +203,7 @@ class WatermarkRepository:
                 SET request_path = $3,
                     output_path = $4,
                     response_path = $5
-                WHERE job_id = $1 AND revision = $2
+                WHERE job_id = $1 AND revision = $2 AND status = 'processing'
                 """,
                 job_id,
                 revision,
@@ -231,14 +235,16 @@ class WatermarkRepository:
     ) -> bool:
         async with self._database.acquire() as connection:
             async with connection.transaction():
-                await connection.execute(
+                result = await connection.execute(
                     """
                     UPDATE watermark_revisions
                     SET status = 'ready',
                         telegram_preview_file_id = $3,
                         error = NULL,
                         completed_at = NOW()
-                    WHERE job_id = $1 AND revision = $2
+                    WHERE job_id = $1
+                      AND revision = $2
+                      AND status = 'processing'
                     """,
                     job_id,
                     revision,
@@ -248,7 +254,8 @@ class WatermarkRepository:
                     "SELECT current_revision FROM watermark_jobs WHERE id = $1",
                     job_id,
                 )
-        return current is not None and int(current) == revision
+        updated = result.endswith("1")
+        return updated and current is not None and int(current) == revision
 
     async def mark_error(self, *, job_id: int, revision: int, error: str) -> None:
         async with self._database.acquire() as connection:
@@ -256,7 +263,9 @@ class WatermarkRepository:
                 """
                 UPDATE watermark_revisions
                 SET status = 'error', error = $3, completed_at = NOW()
-                WHERE job_id = $1 AND revision = $2
+                WHERE job_id = $1
+                  AND revision = $2
+                  AND status IN ('pending', 'processing')
                 """,
                 job_id,
                 revision,
@@ -264,34 +273,64 @@ class WatermarkRepository:
             )
 
     async def approve(self, job_id: int) -> WatermarkWorkItem:
-        item = await self.get_current(job_id)
-        if item is None:
-            raise ValueError("Задание не найдено.")
-        if item.revision.status != "ready" or not item.revision.output_path:
-            raise ValueError("Текущая версия ещё не готова.")
+        """Atomically approve the current ready revision and only that revision."""
         async with self._database.acquire() as connection:
-            row = await connection.fetchrow(
-                """
-                UPDATE watermark_jobs
-                SET status = 'approved', final_path = $2, updated_at = NOW()
-                WHERE id = $1
-                RETURNING *
-                """,
-                job_id,
-                item.revision.output_path,
-            )
-        return WatermarkWorkItem(job=self._map_job(row), revision=item.revision)
+            async with connection.transaction():
+                row = await connection.fetchrow(
+                    self._current_query(for_update=True),
+                    job_id,
+                )
+                if row is None:
+                    raise ValueError("Задание водяного знака не найдено.")
+                status = str(row["status"])
+                if status == "approved":
+                    raise ValueError("Финальный файл уже подтверждён.")
+                if status == "cancelled":
+                    raise ValueError("Отменённое задание нельзя подтвердить.")
+                if str(row["r_status"]) != "ready" or not row["r_output_path"]:
+                    raise ValueError("Текущая версия ещё не готова.")
 
-    async def cancel(self, job_id: int) -> None:
+                final_path = str(row["r_output_path"])
+                job_row = await connection.fetchrow(
+                    """
+                    UPDATE watermark_jobs
+                    SET status = 'approved', final_path = $2, updated_at = NOW()
+                    WHERE id = $1 AND status = 'active'
+                    RETURNING *
+                    """,
+                    job_id,
+                    final_path,
+                )
+                if job_row is None:
+                    raise ValueError("Состояние задания изменилось; обновите карточку.")
+
+        revision = self._map_revision_from_joined(row)
+        return WatermarkWorkItem(job=self._map_job(job_row), revision=revision)
+
+    async def cancel(self, job_id: int) -> CancelResult:
+        """Cancel only active work; approved jobs are immutable."""
         async with self._database.acquire() as connection:
-            await connection.execute(
-                """
-                UPDATE watermark_jobs
-                SET status = 'cancelled', updated_at = NOW()
-                WHERE id = $1
-                """,
-                job_id,
-            )
+            async with connection.transaction():
+                row = await connection.fetchrow(
+                    "SELECT status FROM watermark_jobs WHERE id = $1 FOR UPDATE",
+                    job_id,
+                )
+                if row is None:
+                    raise ValueError("Задание водяного знака не найдено.")
+                status = str(row["status"])
+                if status == "approved":
+                    return "approved"
+                if status == "cancelled":
+                    return "already_cancelled"
+                await connection.execute(
+                    """
+                    UPDATE watermark_jobs
+                    SET status = 'cancelled', updated_at = NOW()
+                    WHERE id = $1 AND status = 'active'
+                    """,
+                    job_id,
+                )
+        return "cancelled"
 
     async def _insert_revision(
         self,
@@ -350,10 +389,11 @@ class WatermarkRepository:
         """ + suffix
 
     @classmethod
-    def _current_query(cls) -> str:
-        return cls._joined_query(
-            " WHERE j.id = $1 AND r.revision = j.current_revision"
-        )
+    def _current_query(cls, *, for_update: bool = False) -> str:
+        suffix = " WHERE j.id = $1 AND r.revision = j.current_revision"
+        if for_update:
+            suffix += " FOR UPDATE OF j, r"
+        return cls._joined_query(suffix)
 
     @staticmethod
     def _map_job(row: Any) -> WatermarkJob:
@@ -407,7 +447,7 @@ class WatermarkRepository:
         )
 
     @classmethod
-    def _map_work_item(cls, row: Any) -> WatermarkWorkItem:
+    def _map_revision_from_joined(cls, row: Any) -> WatermarkRevision:
         revision_row = {
             "job_id": row["id"],
             "revision": row["r_revision"],
@@ -427,9 +467,13 @@ class WatermarkRepository:
             "created_at": row["r_created_at"],
             "completed_at": row["r_completed_at"],
         }
+        return cls._map_revision(revision_row)
+
+    @classmethod
+    def _map_work_item(cls, row: Any) -> WatermarkWorkItem:
         return WatermarkWorkItem(
             job=cls._map_job(row),
-            revision=cls._map_revision(revision_row),
+            revision=cls._map_revision_from_joined(row),
         )
 
     @staticmethod
@@ -445,4 +489,4 @@ class WatermarkRepository:
         ).normalized()
 
 
-__all__ = ("WatermarkRepository",)
+__all__ = ("CancelResult", "WatermarkRepository")
