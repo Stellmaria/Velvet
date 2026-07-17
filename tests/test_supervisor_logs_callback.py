@@ -37,7 +37,10 @@ class SupervisorLogsCallbackTests(unittest.IsolatedAsyncioTestCase):
         callback_data = SimpleNamespace(action="logs.150")
         supervisor_client = SimpleNamespace(logs=AsyncMock(side_effect=logs))
 
-        with patch("velvet_bot.handlers.supervisor_logs._safe_edit", new=AsyncMock(side_effect=edit)):
+        with patch(
+            "velvet_bot.handlers.supervisor_logs._safe_edit",
+            new=AsyncMock(side_effect=edit),
+        ):
             await handle_supervisor_logs_callback(
                 callback,
                 callback_data,
@@ -57,17 +60,23 @@ class SupervisorLogsCallbackTests(unittest.IsolatedAsyncioTestCase):
             events.append(f"logs:{lines}")
             return {"lines": ["line"]}
 
-        message = _message()
-        message.answer_document = AsyncMock(side_effect=lambda *args, **kwargs: events.append("file"))
-        callback = SimpleNamespace(message=message, answer=AsyncMock(side_effect=answer))
+        async def answer_document(*args, **kwargs) -> None:
+            events.append("file")
+
+        callback = SimpleNamespace(message=_message(), answer=AsyncMock(side_effect=answer))
         callback_data = SimpleNamespace(action="logs.file")
         supervisor_client = SimpleNamespace(logs=AsyncMock(side_effect=logs))
 
-        await handle_supervisor_logs_callback(
-            callback,
-            callback_data,
-            supervisor_client,
-        )
+        with patch.object(
+            Message,
+            "answer_document",
+            new=AsyncMock(side_effect=answer_document),
+        ):
+            await handle_supervisor_logs_callback(
+                callback,
+                callback_data,
+                supervisor_client,
+            )
 
         self.assertEqual(events, ["answer", "logs:2000", "file"])
         callback.answer.assert_awaited_once_with("Готовлю файл журнала…")
