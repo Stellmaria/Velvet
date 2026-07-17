@@ -34,11 +34,11 @@ class SystemRepository:
         self.database = database
 
     async def ping(self) -> None:
-        async with self.database._require_pool().acquire() as connection:
+        async with self.database.acquire() as connection:
             await connection.fetchval("SELECT 1")
 
     async def get_runtime_snapshot(self) -> RuntimeDatabaseSnapshot:
-        async with self.database._require_pool().acquire() as connection:
+        async with self.database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
