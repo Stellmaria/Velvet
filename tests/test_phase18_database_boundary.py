@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock
 
 from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository
+from velvet_bot.domains.publication import PublicationRepository
 from velvet_bot.domains.references import ReferenceMediaPayload, ReferenceRepository
 
 
@@ -54,6 +55,7 @@ class DatabaseAcquireBoundaryTests(unittest.TestCase):
             ROOT / "velvet_bot/domains/public_archive/repository.py",
             ROOT / "velvet_bot/domains/references/repository.py",
             ROOT / "velvet_bot/domains/media_quality/repository.py",
+            ROOT / "velvet_bot/domains/publication/repository.py",
         )
         for path in paths:
             with self.subTest(path=path.relative_to(ROOT)):
@@ -145,6 +147,45 @@ class MediaQualityRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([target.media_id for target in targets], [17, 19])
         self.assertEqual(targets[0].telegram_file_id, "preview-17")
         self.assertEqual(targets[1].display_name, "image-19.jpg")
+
+
+class PublicationRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
+    async def test_mark_published_uses_public_acquire_and_logs_in_transaction(self) -> None:
+        connection = SimpleNamespace(
+            execute=AsyncMock(return_value="UPDATE 1"),
+            transaction=Mock(),
+        )
+        transaction_context = _AsyncContext(None)
+        connection.transaction.return_value = transaction_context
+        acquire_context = _AsyncContext(connection)
+        database = SimpleNamespace(acquire=Mock(return_value=acquire_context))
+        repository = PublicationRepository(database)
+
+        await repository.mark_published(
+            23,
+            message_ids=[101, 102],
+            actor_id=7,
+        )
+
+        database.acquire.assert_called_once_with()
+        connection.transaction.assert_called_once_with()
+        self.assertTrue(acquire_context.entered)
+        self.assertTrue(acquire_context.exited)
+        self.assertTrue(transaction_context.entered)
+        self.assertTrue(transaction_context.exited)
+        self.assertEqual(connection.execute.await_count, 2)
+
+        update_call = connection.execute.await_args_list[0]
+        self.assertIn("status = 'published'", update_call.args[0])
+        self.assertEqual(update_call.args[1], 23)
+        self.assertEqual(update_call.args[2], [101, 102])
+
+        event_call = connection.execute.await_args_list[1]
+        self.assertIn("INSERT INTO publication_events", event_call.args[0])
+        self.assertEqual(event_call.args[1], 23)
+        self.assertEqual(event_call.args[2], "published")
+        self.assertEqual(event_call.args[3], 7)
+        self.assertIn('"message_ids": [101, 102]', event_call.args[4])
 
 
 if __name__ == "__main__":
