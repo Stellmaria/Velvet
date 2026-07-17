@@ -94,6 +94,7 @@ CONTEXT_COMMANDS = {
     "checkpost",
     "importchannel",
     "importdiscussion",
+    "watermark",
 }
 DIRECT_COMMANDS = {"refdone", "refcancel", "aliasreindex", "test_error_alert"}
 PUBLIC_COMMANDS = {"archive", "gallery"}
