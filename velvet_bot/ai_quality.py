@@ -267,7 +267,7 @@ class AIQualityRepository:
     ) -> tuple[VisionAnalysisTarget, ...]:
         safe_limit = max(1, min(int(limit), 2))
         safe_attempts = max(1, min(int(max_attempts), 10))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
                     """
@@ -336,7 +336,7 @@ class AIQualityRepository:
         )
 
     async def mark_ready(self, media_id: int, report: dict[str, Any]) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE media_ai_quality_checks
@@ -361,7 +361,7 @@ class AIQualityRepository:
         max_attempts: int,
         permanent: bool = False,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE media_ai_quality_checks
@@ -381,7 +381,7 @@ class AIQualityRepository:
             )
 
     async def summary(self) -> AIQualitySummary:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
@@ -426,7 +426,7 @@ class AIQualityRepository:
     ) -> AIQualityPage:
         condition = self._section_condition(section)
         safe_size = max(1, min(int(page_size), 10))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(
                 await connection.fetchval(
                     f"SELECT COUNT(*) FROM media_ai_quality_checks q WHERE {condition}"
@@ -463,7 +463,7 @@ class AIQualityRepository:
         )
 
     async def get_item(self, media_id: int) -> AIQualityItem | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT q.*, mf.file_name, mf.media_type, mf.telegram_file_id,
@@ -479,7 +479,7 @@ class AIQualityRepository:
     async def set_decision(self, media_id: int, decision: str, user_id: int) -> bool:
         if decision not in {"accepted", "fix_required"}:
             raise ValueError("Неизвестное решение проверки качества.")
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
                 UPDATE media_ai_quality_checks
@@ -494,7 +494,7 @@ class AIQualityRepository:
         return result.endswith("1")
 
     async def retry(self, media_id: int) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
                 UPDATE media_ai_quality_checks
