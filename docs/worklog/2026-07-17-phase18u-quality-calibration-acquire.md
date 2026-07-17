@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18u-quality-calibration-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18U
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18u-quality-calibration-acquire`
 - Базовый commit: `8384506bae9e23399dd540178728eca327805213`
 
@@ -62,7 +62,7 @@
 - file-name fallback, JSON decode и mapping `CalibrationCase`/`CalibrationCasePage` не менялись;
 - формулы calibration profile и recommended decision не затрагивались;
 - добавлены source/runtime regression-тесты трёх методов и отсутствующего случая;
-- private pool baseline уменьшен с 113/28 до 110/27;
+- private pool baseline уменьшен с 113 обращений в 28 файлах до 110 обращений в 27 файлах;
 - следующим срезом назначена Фаза 18V: repository-контур `ai_quality.py`, 8 connection points;
 - inventory, project memory, development status и changelog обновлены.
 
@@ -72,20 +72,24 @@
 
 ### Проверки
 
-Полный CI ещё не запущен. Добавленные тесты должны подтвердить три public acquire boundary, profile filters/limit, section pagination, mapping и `None` для отсутствующего случая.
+На head `4d16125ef00d465862404282ca39a1ab6ba3f3fa` успешно завершены:
+
+- `project notes contract #63`;
+- `docker build #182`;
+- полный workflow `tests #588` с PostgreSQL 16.
+
+После этой итоговой записи CI запускается повторно на финальном head перед merge.
 
 ### PR и commit
 
-Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
+- PR: #118 `Фаза 18U: QualityCalibrationRepository и Database.acquire`;
+- зелёный промежуточный head: `4d16125ef00d465862404282ca39a1ab6ba3f3fa`;
+- финальный squash commit фиксируется GitHub при слиянии PR #118.
 
 ### Незавершённое
 
-- открыть draft PR;
-- получить tests, Docker build и project notes contract;
-- исправить только фактические регрессии;
-- закрыть worklog точными run;
-- слить Фазу 18U.
+Обязательных пунктов Фазы 18U не осталось. Живые эксплуатационные проверки Supervisor, staging и независимый backup/restore drill остаются отдельными стабилизационными воротами.
 
 ### Следующий шаг
 
-Открыть PR и прогнать полный CI. После merge начать Фазу 18V отдельной сессией.
+Начать Фазу 18V: перевести repository-контур `ai_quality.py` на `Database.acquire()` отдельным worklog/PR и уменьшить baseline с 110 до 102 обращений.
