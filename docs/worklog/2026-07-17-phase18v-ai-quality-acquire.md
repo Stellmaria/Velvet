@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18v-ai-quality-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18V
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18v-ai-quality-acquire`
 - Базовый commit: `cf83db5a98151e52a16dc601523763c03ca3585a`
 
@@ -90,21 +90,24 @@
 - обнаруженные две runtime boundary переведены на `Database.acquire()`;
 - baseline скорректирован с 102/26 до фактических 100/25.
 
-Повторный полный CI ещё не завершён.
+Повторный CI на head `deb15c30031598471a977e0da8490239860d437d`:
+
+- `project notes contract #81` — успешно;
+- `docker build #201` — успешно;
+- `tests #607` с PostgreSQL 16 — успешно.
+
+После этой итоговой записи CI запускается повторно на финальном head перед merge.
 
 ### PR и commit
 
-- draft PR: #119 `Фаза 18V: AIQualityRepository и Database.acquire`;
-- первый CI head: `06d5f7fa1cc20f54a35c643b2b83fb902e06d874`;
-- финальный commit будет зафиксирован после повторного CI и merge.
+- PR: #119 `Фаза 18V: AIQualityRepository и Database.acquire`;
+- зелёный промежуточный head: `deb15c30031598471a977e0da8490239860d437d`;
+- финальный squash commit фиксируется GitHub при слиянии PR #119.
 
 ### Незавершённое
 
-- получить зелёный повторный tests workflow;
-- закрыть worklog точными run;
-- повторить CI на окончательном head;
-- слить Фазу 18V.
+Обязательных пунктов Фазы 18V не осталось. Живые эксплуатационные проверки Supervisor, staging и независимый backup/restore drill остаются отдельными стабилизационными воротами.
 
 ### Следующий шаг
 
-Повторить полный CI после перевода compatibility facade. После merge начать Фазу 18W отдельной сессией.
+После merge интегрировать соседнюю ветку Krita-плагина отдельным review/PR, затем начать Фазу 18W на уже полном актуальном коде.
