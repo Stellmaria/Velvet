@@ -52,6 +52,9 @@ PANEL_COMMANDS = {
     "rollback",
     "codex",
     "codex_status",
+    "console",
+    "supervisor_console",
+    "supervisor_self",
 }
 FORM_COMMANDS = {
     "create",
