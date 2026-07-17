@@ -4,7 +4,7 @@ import os
 import unittest
 
 from velvet_bot.database import Database
-from velvet_bot.domains.watermark.models import WatermarkSettings
+from velvet_bot.domains.watermark.models import WatermarkSettings, WatermarkWorkItem
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 
 
@@ -25,21 +25,57 @@ class WatermarkRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self) -> None:
         await self.database.close()
 
-    async def test_revisions_undo_ready_and_approve_use_real_schema(self) -> None:
-        first = await self.repository.create_job(
+    async def _create_job(self, *, source_message_id: int = 30) -> WatermarkWorkItem:
+        return await self.repository.create_job(
             owner_user_id=10,
             chat_id=20,
-            source_message_id=30,
-            source_file_id="telegram-file",
-            source_file_unique_id="telegram-unique",
-            source_path="/bridge/sources/source.png",
+            source_message_id=source_message_id,
+            source_file_id=f"telegram-file-{source_message_id}",
+            source_file_unique_id=f"telegram-unique-{source_message_id}",
+            source_path=f"/bridge/sources/source-{source_message_id}.png",
             settings=WatermarkSettings(),
         )
-        self.assertEqual((1, "bottom_right", "pending"), (
-            first.revision.revision,
-            first.revision.settings.position,
-            first.revision.status,
-        ))
+
+    async def _claim_and_ready(
+        self,
+        item: WatermarkWorkItem,
+        *,
+        output_path: str,
+    ) -> WatermarkWorkItem:
+        claimed = await self.repository.claim_pending()
+        self.assertIsNotNone(claimed)
+        assert claimed is not None
+        self.assertEqual(item.job.id, claimed.job.id)
+        self.assertEqual(item.revision.revision, claimed.revision.revision)
+        await self.repository.set_dispatched_paths(
+            job_id=item.job.id,
+            revision=item.revision.revision,
+            request_path=f"/bridge/requests/job-{item.job.id}-r{item.revision.revision}.json",
+            output_path=output_path,
+            response_path=f"/bridge/responses/job-{item.job.id}-r{item.revision.revision}.json",
+        )
+        self.assertTrue(
+            await self.repository.mark_ready(
+                job_id=item.job.id,
+                revision=item.revision.revision,
+                telegram_preview_file_id="preview-file",
+            )
+        )
+        current = await self.repository.get_current(item.job.id)
+        self.assertIsNotNone(current)
+        assert current is not None
+        return current
+
+    async def test_revisions_undo_ready_and_approve_use_real_schema(self) -> None:
+        first = await self._create_job()
+        self.assertEqual(
+            (1, "bottom_right", "pending"),
+            (
+                first.revision.revision,
+                first.revision.settings.position,
+                first.revision.status,
+            ),
+        )
 
         second = await self.repository.create_revision(
             first.job.id,
@@ -51,43 +87,86 @@ class WatermarkRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 margin=5.0,
             ),
         )
-        self.assertEqual((2, "top_left", "#d8c8b8"), (
-            second.revision.revision,
-            second.revision.settings.position,
-            second.revision.settings.color,
-        ))
+        self.assertEqual(
+            (2, "top_left", "#d8c8b8"),
+            (
+                second.revision.revision,
+                second.revision.settings.position,
+                second.revision.settings.color,
+            ),
+        )
 
         undone = await self.repository.undo(first.job.id)
-        self.assertEqual((3, "bottom_right", "#ffffff"), (
-            undone.revision.revision,
-            undone.revision.settings.position,
-            undone.revision.settings.color,
-        ))
+        self.assertEqual(
+            (3, "bottom_right", "#ffffff"),
+            (
+                undone.revision.revision,
+                undone.revision.settings.position,
+                undone.revision.settings.color,
+            ),
+        )
 
-        await self.repository.set_dispatched_paths(
-            job_id=first.job.id,
-            revision=undone.revision.revision,
-            request_path="/bridge/requests/job.json",
+        ready = await self._claim_and_ready(
+            undone,
             output_path="/bridge/outputs/job.png",
-            response_path="/bridge/responses/job.json",
         )
-        self.assertTrue(
-            await self.repository.mark_ready(
-                job_id=first.job.id,
-                revision=undone.revision.revision,
-                telegram_preview_file_id="preview-file",
-            )
-        )
+        self.assertEqual("ready", ready.revision.status)
         approved = await self.repository.approve(first.job.id)
         self.assertEqual("approved", approved.job.status)
         self.assertEqual("/bridge/outputs/job.png", approved.job.final_path)
+        self.assertEqual(3, approved.revision.revision)
+        self.assertEqual("ready", approved.revision.status)
+
+    async def test_stale_ready_revision_cannot_be_approved(self) -> None:
+        first = await self._create_job(source_message_id=31)
+        await self._claim_and_ready(
+            first,
+            output_path="/bridge/outputs/job-old.png",
+        )
+        current = await self.repository.create_revision(
+            first.job.id,
+            settings=WatermarkSettings(position="top_right"),
+        )
+        self.assertEqual(2, current.revision.revision)
+        self.assertEqual("pending", current.revision.status)
+
+        with self.assertRaisesRegex(ValueError, "Текущая версия ещё не готова"):
+            await self.repository.approve(first.job.id)
+
+        unchanged = await self.repository.get_current(first.job.id)
+        self.assertIsNotNone(unchanged)
+        assert unchanged is not None
+        self.assertEqual("active", unchanged.job.status)
+        self.assertIsNone(unchanged.job.final_path)
+        self.assertEqual(2, unchanged.revision.revision)
+
+    async def test_approved_job_is_idempotently_protected_from_cancel(self) -> None:
+        first = await self._create_job(source_message_id=32)
+        await self._claim_and_ready(
+            first,
+            output_path="/bridge/outputs/job-approved.png",
+        )
+        approved = await self.repository.approve(first.job.id)
+        self.assertEqual("approved", approved.job.status)
+
+        self.assertEqual("approved", await self.repository.cancel(first.job.id))
+        with self.assertRaisesRegex(ValueError, "уже подтверждён"):
+            await self.repository.approve(first.job.id)
 
         current = await self.repository.get_current(first.job.id)
         self.assertIsNotNone(current)
         assert current is not None
-        self.assertEqual(3, current.revision.revision)
-        self.assertEqual("ready", current.revision.status)
-        self.assertEqual("preview-file", current.revision.telegram_preview_file_id)
+        self.assertEqual("approved", current.job.status)
+        self.assertEqual("/bridge/outputs/job-approved.png", current.job.final_path)
+
+    async def test_cancel_is_guarded_and_repeatable(self) -> None:
+        first = await self._create_job(source_message_id=33)
+        self.assertEqual("cancelled", await self.repository.cancel(first.job.id))
+        self.assertEqual("already_cancelled", await self.repository.cancel(first.job.id))
+        current = await self.repository.get_current(first.job.id)
+        self.assertIsNotNone(current)
+        assert current is not None
+        self.assertEqual("cancelled", current.job.status)
 
 
 if __name__ == "__main__":
