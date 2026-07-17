@@ -144,7 +144,7 @@ def _report_text(report_id: int, report: dict[str, object]) -> str:
         f"Отчёт: <b>#{report_id}</b>",
         f"Вердикт: <b>{escape(label)}</b>",
         f"Соответствие: <b>{int(report.get('overall_score') or 0)} / 100</b>",
-        f"Уверенность Qwen: <b>{int(report.get('confidence') or 0)}%</b>",
+        f"Уверенность модели: <b>{int(report.get('confidence') or 0)}%</b>",
         "",
         f"Персонажи и детали: <b>{int(report.get('subject_score') or 0)}</b> · "
         f"композиция: <b>{int(report.get('composition_score') or 0)}</b>",
@@ -235,7 +235,7 @@ async def handle_prompt_check_start(callback: CallbackQuery) -> None:
     settings = load_settings()
     if not settings.ai_vision_enabled:
         await callback.answer(
-            "Локальный Qwen отключён в настройках бота.",
+            "Локальный анализ изображений отключён в настройках бота.",
             show_alert=True,
         )
         return
@@ -286,11 +286,11 @@ async def handle_prompt_check_reply(
 
     settings = load_settings()
     if not settings.ai_vision_enabled:
-        await message.answer("Локальный Qwen отключён в настройках бота.")
+        await message.answer("Локальный анализ изображений отключён в настройках бота.")
         return
 
     status = await message.answer(
-        "<b>🧠 Qwen сравнивает промт и результат</b>\n\n"
+        f"<b>🧠 {escape(settings.ai_vision_model)} сравнивает промт и результат</b>\n\n"
         "Проверяю персонажей, композицию, свет, палитру, окружение и стиль."
     )
     file_id, file_unique_id = result_file
