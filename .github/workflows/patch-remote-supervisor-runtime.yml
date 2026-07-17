@@ -1,5 +1,6 @@
 name: patch remote supervisor runtime
 
+# One-shot integration workflow; removed from the final PR diff.
 on:
   push:
     branches:
