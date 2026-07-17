@@ -38,6 +38,8 @@ PANEL_COMMANDS = {
     "backup",
     "quality",
     "auditarchive",
+    "qwen_calibration",
+    "qcalibration",
     "publish",
     "publishing",
     "publications",
