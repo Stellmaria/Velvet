@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 from velvet_bot.database import Database
+from velvet_bot.domains.media_quality import MediaQualityRepository
 from velvet_bot.domains.references import ReferenceMediaPayload, ReferenceRepository
 
 
@@ -52,6 +53,7 @@ class DatabaseAcquireBoundaryTests(unittest.TestCase):
             ROOT / "velvet_bot/domains/archive/repository.py",
             ROOT / "velvet_bot/domains/public_archive/repository.py",
             ROOT / "velvet_bot/domains/references/repository.py",
+            ROOT / "velvet_bot/domains/media_quality/repository.py",
         )
         for path in paths:
             with self.subTest(path=path.relative_to(ROOT)):
@@ -100,6 +102,49 @@ class ReferenceRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.reference.id, 13)
         self.assertEqual(result.reference.telegram_file_id, "file-new")
         self.assertEqual(result.reference.created_at, created_at)
+
+
+class MediaQualityRepositoryAcquireTests(unittest.IsolatedAsyncioTestCase):
+    async def test_claim_uses_public_acquire_and_keeps_locked_transaction(self) -> None:
+        rows = [
+            {
+                "id": 17,
+                "scan_file_id": "preview-17",
+                "display_name": "image-17.png",
+            },
+            {
+                "id": 19,
+                "scan_file_id": "file-19",
+                "display_name": "image-19.jpg",
+            },
+        ]
+        connection = SimpleNamespace(
+            fetch=AsyncMock(return_value=rows),
+            execute=AsyncMock(return_value="UPDATE 2"),
+            transaction=Mock(),
+        )
+        transaction_context = _AsyncContext(None)
+        connection.transaction.return_value = transaction_context
+        acquire_context = _AsyncContext(connection)
+        database = SimpleNamespace(acquire=Mock(return_value=acquire_context))
+        repository = MediaQualityRepository(database)
+
+        targets = await repository.claim_pending_images(limit=99)
+
+        database.acquire.assert_called_once_with()
+        connection.transaction.assert_called_once_with()
+        self.assertTrue(acquire_context.entered)
+        self.assertTrue(acquire_context.exited)
+        self.assertTrue(transaction_context.entered)
+        self.assertTrue(transaction_context.exited)
+        select_sql = connection.fetch.await_args.args[0]
+        self.assertIn("FOR UPDATE SKIP LOCKED", select_sql)
+        self.assertEqual(connection.fetch.await_args.args[1], 5)
+        connection.execute.assert_awaited_once()
+        self.assertEqual(connection.execute.await_args.args[1], [17, 19])
+        self.assertEqual([target.media_id for target in targets], [17, 19])
+        self.assertEqual(targets[0].telegram_file_id, "preview-17")
+        self.assertEqual(targets[1].display_name, "image-19.jpg")
 
 
 if __name__ == "__main__":
