@@ -22,6 +22,7 @@ from aiogram.types import (
     Message,
 )
 
+from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.local_ai_runtime import get_local_ai_lock
@@ -289,12 +290,22 @@ async def handle_prompt_check_reply(
         await message.answer("Локальный Qwen отключён в настройках бота.")
         return
 
-    status = await message.answer(
-        "<b>🧠 Qwen сравнивает промт и результат</b>\n\n"
-        "Проверяю персонажей, композицию, свет, палитру, окружение и стиль."
-    )
     file_id, file_unique_id = result_file
+    tracker = await AIJobTracker.create(
+        database=database,
+        source_message=message,
+        kind="prompt_result",
+        title="Промт против результата",
+        provider=settings.ai_vision_provider,
+        model=settings.ai_vision_model,
+        request_payload={
+            "result_file_id": file_id,
+            "result_file_unique_id": file_unique_id,
+            "prompt_length": len(session.prompt_text),
+        },
+    )
     try:
+        await tracker.stage("downloading")
         image = await _download_image(bot, file_id)
         client = PromptResultComparisonClient(
             provider=settings.ai_vision_provider,
@@ -303,8 +314,10 @@ async def handle_prompt_check_reply(
             api_key=settings.ai_vision_api_key,
             timeout_seconds=settings.ai_vision_timeout_seconds,
         )
+        await tracker.stage("analyzing")
         async with get_local_ai_lock():
             report = await client.compare(session.prompt_text, image)
+        await tracker.stage("saving")
         report_id = await PromptResultReportRepository(database).save(
             result_file_id=file_id,
             result_file_unique_id=file_unique_id,
@@ -314,22 +327,22 @@ async def handle_prompt_check_reply(
             report=report,
             created_by=message.from_user.id if message.from_user else None,
         )
+        rendered = _report_text(report_id, report)
+        await tracker.ready(
+            result_text=rendered,
+            result_payload=report,
+            reference_type="prompt_result_report",
+            reference_id=report_id,
+        )
     except asyncio.CancelledError:
+        await tracker.error("Задание прервано остановкой процесса.")
         raise
     except Exception as error:
-        logger.exception("Prompt/result comparison failed")
-        await status.edit_text(
-            "<b>❌ Проверка промта не завершена</b>\n\n"
-            f"<code>{escape(str(error))}</code>\n\n"
-            "Промт сохранён до истечения формы, поэтому изображение можно отправить повторно."
-        )
+        logger.exception("Prompt/result comparison failed job_id=%s", tracker.job_id)
+        await tracker.error(error)
         return
 
     _sessions.pop(key, None)
-    await status.edit_text(
-        _report_text(report_id, report),
-        reply_markup=_report_keyboard(),
-    )
 
 
 __all__ = ("PromptCheckReplyFilter", "router")

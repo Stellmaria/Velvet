@@ -39,6 +39,7 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.admin_universe_story_flow import (
         router as admin_universe_story_flow_router,
     )
+    from velvet_bot.handlers.ai_jobs import router as ai_jobs_router
     from velvet_bot.handlers.analytics_dashboard import router as analytics_dashboard_router
     from velvet_bot.handlers.analytics_dashboard_overrides import (
         router as analytics_dashboard_overrides_router,
@@ -77,6 +78,7 @@ def _build_root_router() -> Router:
     from velvet_bot.handlers.quality_calibration import router as quality_calibration_router
     from velvet_bot.handlers.quality_center import router as quality_center_router
     from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
+    from velvet_bot.handlers.quality_operations import router as quality_operations_router
     from velvet_bot.handlers.quality_set_ai import router as quality_set_ai_router
     from velvet_bot.handlers.quality_sets import router as quality_sets_router
     from velvet_bot.handlers.reference_albums import router as reference_albums_router
@@ -128,6 +130,8 @@ def _build_root_router() -> Router:
     root.include_router(analytics_management_router)
     root.include_router(analytics_dashboard_router)
     root.include_router(backup_center_router)
+    root.include_router(ai_jobs_router)
+    root.include_router(quality_operations_router)
     root.include_router(velvet_ai_formatting_router)
     root.include_router(velvet_ai_visual_router)
     root.include_router(velvet_ai_router)

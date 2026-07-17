@@ -21,6 +21,7 @@ from aiogram.types import (
     Message,
 )
 
+from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.local_ai_runtime import get_local_ai_lock
@@ -243,9 +244,14 @@ async def handle_formatting_reply(
         await message.answer("Локальный Qwen отключён в настройках бота.")
         return
 
-    status = await message.answer(
-        f"<b>🧠 Qwen · {_MODE_LABELS[mode]}</b>\n\n"
-        "Собираю фирменную структуру и проверяю лимит Telegram."
+    tracker = await AIJobTracker.create(
+        database=database,
+        source_message=message,
+        kind="velvet_formatting",
+        title=f"Оформление Velvet Anatomy · {_MODE_LABELS[mode]}",
+        provider=settings.ai_vision_provider,
+        model=settings.ai_vision_model,
+        request_payload={"mode": mode, "source_length": len(source)},
     )
     try:
         client = VelvetFormattingClient(
@@ -255,10 +261,12 @@ async def handle_formatting_reply(
             api_key=settings.ai_vision_api_key,
             timeout_seconds=settings.ai_vision_timeout_seconds,
         )
+        await tracker.stage("analyzing")
         async with get_local_ai_lock():
             payload = await client.format(mode, source)
+        await tracker.stage("saving")
         rendered = render_velvet_post(mode, source, payload)
-        await VelvetFormattingReportRepository(database).save(
+        report_id = await VelvetFormattingReportRepository(database).save(
             mode=mode,
             source_text=source,
             provider=client.provider,
@@ -267,17 +275,19 @@ async def handle_formatting_reply(
             rendered_text=rendered,
             created_by=message.from_user.id if message.from_user else None,
         )
+        await tracker.ready(
+            result_text=rendered,
+            result_payload=payload,
+            reference_type="velvet_formatting_report",
+            reference_id=report_id,
+        )
     except asyncio.CancelledError:
+        await tracker.error("Задание прервано остановкой процесса.")
         raise
     except Exception as error:
-        logger.exception("Velvet formatting failed mode=%s", mode)
-        await status.edit_text(
-            "<b>❌ Оформление не завершено</b>\n\n"
-            f"<code>{escape(str(error))}</code>"
-        )
+        logger.exception("Velvet formatting failed mode=%s job_id=%s", mode, tracker.job_id)
+        await tracker.error(error)
         return
-
-    await status.edit_text(rendered, reply_markup=_result_keyboard(mode))
 
 
 __all__ = ("FormattingReplyFilter", "router")

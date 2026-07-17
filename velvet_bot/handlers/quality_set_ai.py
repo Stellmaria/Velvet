@@ -17,6 +17,7 @@ from aiogram.exceptions import (
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.local_ai_runtime import get_local_ai_lock
@@ -577,6 +578,7 @@ async def _analyze_set(
     *,
     set_id: int,
     created_by: int | None,
+    tracker: AIJobTracker | None = None,
 ) -> tuple[MediaSetBundle, int, dict[str, object]]:
     bundle = await _load_set(database, set_id)
     if bundle is None:
@@ -590,6 +592,8 @@ async def _analyze_set(
     if not settings.ai_vision_enabled:
         raise ValueError("Локальный Qwen отключён в настройках бота.")
 
+    if tracker is not None:
+        await tracker.stage("downloading")
     sources = await asyncio.gather(*(_download_item(bot, item) for item in bundle.items))
     inputs = tuple(
         SetConsistencyInput(
@@ -606,8 +610,12 @@ async def _analyze_set(
         api_key=settings.ai_vision_api_key,
         timeout_seconds=settings.ai_vision_timeout_seconds,
     )
+    if tracker is not None:
+        await tracker.stage("analyzing")
     async with get_local_ai_lock():
         report = await client.analyze_set(inputs)
+    if tracker is not None:
+        await tracker.stage("saving")
     report_id = await _save_report(
         database,
         set_id=bundle.id,
@@ -685,34 +693,56 @@ async def handle_set_analyze(
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
-    await callback.answer("Запускаю Qwen. Проверка выполняется последовательно.")
-    await _safe_edit(
-        callback.message,
-        f"<b>🧠 Qwen проверяет сет #{callback_data.item_id}</b>\n\n"
-        "Собираю контакт-лист и сравниваю кадры. Другие локальные задачи Qwen "
-        "дождутся своей очереди.",
+    settings = load_settings()
+    if not settings.ai_vision_enabled:
+        await callback.answer("Локальный Qwen отключён в настройках бота.", show_alert=True)
+        return
+    tracker = await AIJobTracker.create(
+        database=database,
+        source_message=callback.message,
+        kind="media_set_consistency",
+        title=f"Целостность медиасета #{callback_data.item_id}",
+        provider=settings.ai_vision_provider,
+        model=settings.ai_vision_model,
+        request_payload={"set_id": callback_data.item_id},
     )
+    await callback.answer(f"AI-задание #{tracker.job_id} зарегистрировано.")
     try:
         bundle, report_id, report = await _analyze_set(
             database,
             bot,
             set_id=callback_data.item_id,
             created_by=callback.from_user.id,
+            tracker=tracker,
+        )
+        rendered = _format_report(bundle, report_id, report)
+        await tracker.ready(
+            result_text=rendered,
+            result_payload=report,
+            reference_type="media_set_consistency_report",
+            reference_id=report_id,
         )
     except asyncio.CancelledError:
+        await tracker.error("Задание прервано остановкой процесса.")
         raise
     except Exception as error:
-        logger.exception("Set consistency analysis failed set_id=%s", callback_data.item_id)
+        logger.exception(
+            "Set consistency analysis failed set_id=%s job_id=%s",
+            callback_data.item_id,
+            tracker.job_id,
+        )
+        await tracker.error(error)
         await _safe_edit(
             callback.message,
             f"<b>❌ Проверка сета #{callback_data.item_id} не завершена</b>\n\n"
-            f"<code>{escape(str(error))}</code>",
+            f"AI-задание: <b>#{tracker.job_id}</b>\n"
+            "Подробная причина сохранена в истории AI-заданий.",
             _detail_keyboard(callback_data.item_id, page=callback_data.page),
         )
         return
     await _safe_edit(
         callback.message,
-        _format_report(bundle, report_id, report),
+        rendered,
         _detail_keyboard(bundle.id, page=callback_data.page),
     )
 
@@ -757,10 +787,18 @@ async def handle_set_analysis_command(
     if set_id <= 0:
         await message.answer("ID сета должен быть положительным числом.")
         return
-
-    status = await message.answer(
-        f"<b>🧠 Qwen проверяет сет #{set_id}</b>\n\n"
-        "Собираю компактный контакт-лист и ищу выбивающиеся кадры."
+    settings = load_settings()
+    if not settings.ai_vision_enabled:
+        await message.answer("Локальный Qwen отключён в настройках бота.")
+        return
+    tracker = await AIJobTracker.create(
+        database=database,
+        source_message=message,
+        kind="media_set_consistency",
+        title=f"Целостность медиасета #{set_id}",
+        provider=settings.ai_vision_provider,
+        model=settings.ai_vision_model,
+        request_payload={"set_id": set_id, "source": "slash_command"},
     )
     try:
         bundle, report_id, report = await _analyze_set(
@@ -768,20 +806,21 @@ async def handle_set_analysis_command(
             bot,
             set_id=set_id,
             created_by=message.from_user.id if message.from_user else None,
+            tracker=tracker,
+        )
+        rendered = _format_report(bundle, report_id, report)
+        await tracker.ready(
+            result_text=rendered,
+            result_payload=report,
+            reference_type="media_set_consistency_report",
+            reference_id=report_id,
         )
     except asyncio.CancelledError:
+        await tracker.error("Задание прервано остановкой процесса.")
         raise
     except Exception as error:
-        logger.exception("Set consistency command failed set_id=%s", set_id)
-        await status.edit_text(
-            f"<b>❌ Проверка сета #{set_id} не завершена</b>\n\n"
-            f"<code>{escape(str(error))}</code>"
-        )
-        return
-    await status.edit_text(
-        _format_report(bundle, report_id, report),
-        reply_markup=_detail_keyboard(bundle.id, page=0),
-    )
+        logger.exception("Set consistency command failed set_id=%s job_id=%s", set_id, tracker.job_id)
+        await tracker.error(error)
 
 
 __all__ = ("router",)
