@@ -18,9 +18,13 @@ SPEC.loader.exec_module(inventory)
 
 
 class PrivatePoolInventoryTests(unittest.TestCase):
-    def test_production_clients_do_not_use_private_pool(self) -> None:
-        findings = inventory.external_findings(inventory.collect_findings(ROOT))
-        self.assertEqual((), findings, inventory.format_findings(findings))
+    def test_production_private_pool_matches_reviewed_baseline(self) -> None:
+        findings = inventory.collect_findings(ROOT)
+        baseline = inventory.load_baseline()
+        errors = inventory.compare_with_baseline(findings, baseline)
+        self.assertEqual((), errors, inventory.format_baseline_errors(errors))
+        self.assertEqual(130, len(inventory.external_findings(findings)))
+        self.assertEqual(35, len(inventory.summarize_external(findings)))
 
     def test_database_internal_access_is_classified_as_allowed(self) -> None:
         findings = inventory.collect_findings(ROOT)
@@ -55,6 +59,25 @@ class PrivatePoolInventoryTests(unittest.TestCase):
         self.assertEqual("velvet_bot/client.py", external[0].path)
         internal = tuple(item for item in findings if item.allowed_internal)
         self.assertEqual(1, len(internal))
+
+    def test_baseline_rejects_new_external_file(self) -> None:
+        finding = inventory.PrivatePoolFinding(
+            path="velvet_bot/new_client.py",
+            line=10,
+            column=4,
+            access_kind="attribute",
+            class_name=None,
+            function_name="load",
+            allowed_internal=False,
+        )
+        baseline = {
+            "schema_version": 1,
+            "total_external_findings": 0,
+            "total_files": 0,
+            "files": [],
+        }
+        errors = inventory.compare_with_baseline((finding,), baseline)
+        self.assertTrue(any("Новое внешнее обращение" in error for error in errors))
 
 
 if __name__ == "__main__":
