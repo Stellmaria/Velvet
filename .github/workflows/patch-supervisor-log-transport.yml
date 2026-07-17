@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/_patch_supervisor_log_transport.py
       - .github/workflows/patch-supervisor-log-transport.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/_patch_supervisor_log_transport.py
+      - .github/workflows/patch-supervisor-log-transport.yml
 
 permissions:
   contents: write
