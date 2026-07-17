@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18n-archive-preview-database-acquire-v2`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18N
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18n-archive-preview-acquire-v2`
 - Базовый commit: `ea3f4eb65e9382c36c15c0dba0d1b3a2d4d339da`
 
@@ -61,11 +61,12 @@
 - `ArchivePreviewRepository.load()` и `save()` переведены на `Database.acquire()`;
 - SQL, аргументы и mapping `PreviewRecord` не изменялись;
 - добавлен source/runtime regression-тест обоих методов;
-- private pool baseline уменьшен с 130/35 до 128/34;
+- private pool baseline уменьшен с 130 обращений в 35 файлах до 128 обращений в 34 файлах;
 - следующим срезом назначена Фаза 18O: `PublicationValidationRepository`;
 - добавлен `docs/stabilization_policy.md`;
 - `AGENTS.md` требует обоснования любого нового кода через улучшение существующей функции;
-- changelog обновлён.
+- project memory, development status и changelog синхронизированы;
+- лишний временный `.gitkeep` был удалён из итогового diff.
 
 ### Миграции и совместимость
 
@@ -73,22 +74,24 @@
 
 ### Проверки
 
-- source/runtime-тесты добавлены, полный CI ещё не запущен;
-- machine baseline обновлён и должен быть подтверждён inventory regression-тестом;
-- project notes contract будет запущен после открытия draft PR.
+На промежуточном head `a6298e1f1bb7db21e9d1a028d6d0e64cbb0742b2` успешно завершены:
+
+- `project notes contract #45`;
+- полный workflow `tests #563` с PostgreSQL 16;
+- `docker build #157`.
+
+После этой итоговой записи проверки запускаются повторно на финальном head перед merge.
 
 ### PR и commit
 
-Draft PR ещё не открыт. Текущий head ветки будет зафиксирован после синхронизации project memory/development status и первого CI.
+- PR: #110 `Фаза 18N: ArchivePreviewRepository и Database.acquire`;
+- зелёный промежуточный head: `a6298e1f1bb7db21e9d1a028d6d0e64cbb0742b2`;
+- финальный squash commit фиксируется GitHub при слиянии PR #110.
 
 ### Незавершённое
 
-- обновить `docs/project_memory.md` и `docs/development_status.md`;
-- открыть draft PR;
-- получить результаты tests, Docker build и project notes contract;
-- закрыть дневник точными run и merge commit;
-- слить Фазу 18N.
+Обязательных пунктов Фазы 18N не осталось. Эксплуатационные ворота стабилизации остаются отдельным планом: живая проверка Supervisor, staging и независимый backup/restore drill.
 
 ### Следующий шаг
 
-Синхронизировать статус проекта, открыть PR и прогнать полный CI. После слияния начать Фазу 18O для `PublicationValidationRepository` отдельным worklog/PR.
+Начать Фазу 18O: перевести `PublicationValidationRepository` на `Database.acquire()` отдельным worklog/PR и уменьшить baseline с 128 до 126 обращений.
