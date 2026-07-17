@@ -64,7 +64,7 @@ class AIMenuCoverageTests(unittest.TestCase):
 
         self.assertEqual(
             "quality_ops",
-            QualityCallback.unpack(by_label["🔍 Проверка качества"]).action,
+            QualityCallback.unpack(by_label["🧠 Проверка качества"]).action,
         )
         self.assertEqual(
             "aijobs",
