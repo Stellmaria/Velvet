@@ -220,6 +220,10 @@ def _main_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="🧠 Codex", callback_data=supervisor_callback("codex.menu")),
             ],
             [
+                InlineKeyboardButton(text="🖥 Консоль", callback_data=supervisor_callback("console.menu")),
+                InlineKeyboardButton(text="🧩 Сам Supervisor", callback_data=supervisor_callback("self.menu")),
+            ],
+            [
                 InlineKeyboardButton(text="🔄 Обновить", callback_data=supervisor_callback("status")),
                 InlineKeyboardButton(text="🏠 Главное меню", callback_data=_OWNER_MENU_CALLBACK),
             ],
