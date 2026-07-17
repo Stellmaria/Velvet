@@ -13,6 +13,43 @@ _POWERSHELL_NAMES = {
     "pwsh",
     "pwsh.exe",
 }
+_MODEL_FLAGS = {"-m", "--model"}
+
+
+def apply_codex_model(
+    command: tuple[str, ...],
+    model: str | None,
+) -> tuple[str, ...]:
+    """Override a user-level Codex model with a Supervisor-owned model.
+
+    Codex reads ``~/.codex/config.toml`` before starting a task. A model selected
+    there can belong to another provider, for example Amazon Bedrock, and then be
+    rejected when the CLI is authenticated through a ChatGPT account. The command
+    line model flag has higher priority and keeps Supervisor tasks independent from
+    unrelated desktop/CLI profiles.
+    """
+
+    selected = (model or "").strip()
+    if not command or not selected:
+        return command
+
+    values = list(command)
+    for index, value in enumerate(values[:-1]):
+        if value.casefold() in _MODEL_FLAGS:
+            values[index + 1] = selected
+            return tuple(values)
+
+    try:
+        exec_index = next(
+            index for index, value in enumerate(values) if value.casefold() == "exec"
+        )
+    except StopIteration:
+        # Supervisor only runs non-interactive ``codex exec`` tasks. Do not guess
+        # where a global option belongs for an unrelated custom command.
+        return command
+
+    values[exec_index:exec_index] = ["--model", selected]
+    return tuple(values)
 
 
 def _wrap_batch_command(script: Path, arguments: tuple[str, ...]) -> tuple[str, ...]:
@@ -85,4 +122,4 @@ def normalize_codex_command(
     return command
 
 
-__all__ = ("normalize_codex_command",)
+__all__ = ("apply_codex_model", "normalize_codex_command")
