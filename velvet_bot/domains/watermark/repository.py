@@ -164,6 +164,7 @@ class WatermarkRepository:
                         """
                         WHERE r.status = 'pending'
                           AND j.status = 'active'
+                          AND r.revision = j.current_revision
                         ORDER BY r.created_at, r.job_id, r.revision
                         FOR UPDATE OF r SKIP LOCKED
                         LIMIT 1
