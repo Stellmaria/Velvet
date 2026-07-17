@@ -78,7 +78,7 @@ Velvet Archive — owner-oriented архивный Telegram-бот. Его до�
 - palette/composition report repository;
 - Velvet formatting report repository;
 - quality calibration repository;
-- AI quality repository.
+- AI quality repository и его активный schema compatibility facade.
 
 Контракты сохранены:
 
@@ -89,7 +89,7 @@ Velvet Archive — owner-oriented архивный Telegram-бот. Его до�
 - транзакционный AI quality claim с seed, stale recovery и `FOR UPDATE SKIP LOCKED`;
 - provider/model limits, attempts, analysis version и target mapping;
 - ready/error transitions, JSON report и skip threshold;
-- summary aggregates, section filters, page clamp и item mapping;
+- schema-compatible summary/list/detail, page clamp и item mapping;
 - owner decision validation/status guard и полный retry reset.
 
 Private pool inventory:
@@ -103,12 +103,12 @@ Private pool inventory:
 - после 18S: 114 в 29 файлах;
 - после 18T: 113 в 28 файлах;
 - после 18U: 110 в 27 файлах;
-- после 18V: 102 в 26 файлах;
-- явные domain/infrastructure, одиночные report, calibration и AI quality repositories из baseline закрыты;
+- после 18V: 100 в 25 файлах;
+- явные domain/infrastructure, одиночные report, calibration и AI quality repositories вместе с активным compatibility facade из baseline закрыты;
 - baseline контролируется AST-тестом и SHA-256 identity методов;
 - новые неучтённые обращения блокируются CI.
 
-Следующий срез: **18W, repository-контур `ai_vision.py`**, 4 connection points. Ожидаемый baseline: 98 обращений в 25 файлах.
+Следующий срез: **18W, repository-контур `ai_vision.py`**, 4 connection points. Ожидаемый baseline: 96 обращений в 24 файлах.
 
 ## Фаза 19: Velvet AI
 
