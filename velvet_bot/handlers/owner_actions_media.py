@@ -3,11 +3,11 @@ from __future__ import annotations
 from html import escape
 
 from aiogram import Bot
-from aiogram.types import InlineKeyboardMarkup, Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Database
-from velvet_bot.owner_callbacks import owner_callback
+from velvet_bot.owner_callbacks import owner_action_callback, owner_callback
 from velvet_bot.services.media_save import save_media_from_message
 from velvet_bot.services.telegram_exports import import_export_from_message
 from velvet_bot.services.telegram_publications import create_publication_draft
@@ -25,12 +25,18 @@ MEDIA_ACTIONS = frozenset(
 
 
 def _main_back_markup() -> InlineKeyboardMarkup:
-    from aiogram.types import InlineKeyboardButton
-
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="↩️ Все действия", callback_data=owner_callback("actions"))],
-            [InlineKeyboardButton(text="🏠 Главное меню", callback_data=owner_callback("menu"))],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Все действия",
+                    callback_data=owner_action_callback("menu"),
+                ),
+                InlineKeyboardButton(
+                    text="🏠 Главное меню",
+                    callback_data=owner_callback("menu"),
+                ),
+            ]
         ]
     )
 
