@@ -456,6 +456,10 @@ class Database:
                         checksum,
                     )
 
+    def acquire(self):
+        """Return a public PostgreSQL connection acquisition context."""
+        return self._require_pool().acquire()
+
     def _require_pool(self) -> asyncpg.Pool:
         if self._pool is None:
             raise RuntimeError("Подключение к PostgreSQL ещё не инициализировано.")

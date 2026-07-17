@@ -26,7 +26,7 @@ class CharacterDirectoryRepository:
         self._database = database
 
     async def set_category(self, *, character_id: int, category: str | None) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             result = await connection.execute(
                 "UPDATE characters SET category = $2::VARCHAR WHERE id = $1::BIGINT",
                 int(character_id),
@@ -36,7 +36,7 @@ class CharacterDirectoryRepository:
             raise ValueError("Персонаж не найден.")
 
     async def set_universe(self, *, character_id: int, universe: str | None) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 current = await connection.fetchrow(
                     "SELECT universe FROM characters WHERE id = $1::BIGINT FOR UPDATE",
@@ -71,7 +71,7 @@ class CharacterDirectoryRepository:
         character_id: int,
         prompt_post_url: str | None,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
                 UPDATE characters
@@ -85,7 +85,7 @@ class CharacterDirectoryRepository:
             raise ValueError("Персонаж не найден.")
 
     async def get_item(self, character_id: int) -> CharacterDirectoryItem | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
@@ -115,7 +115,7 @@ class CharacterDirectoryRepository:
         if include_uncategorized:
             keys.append("uncategorized")
 
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 f"""
                 SELECT
@@ -167,7 +167,7 @@ class CharacterDirectoryRepository:
         if include_unassigned:
             keys.append("unassigned")
 
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 f"""
                 SELECT
@@ -251,7 +251,7 @@ class CharacterDirectoryRepository:
             )
         """
 
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(
                 await connection.fetchval(
                     f"""

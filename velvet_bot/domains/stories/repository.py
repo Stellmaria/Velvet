@@ -30,7 +30,7 @@ class StoryRepository:
         self._database = database
 
     async def get(self, story_id: int) -> CharacterStory | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 f"""
                 SELECT {_STORY_COLUMNS}
@@ -42,7 +42,7 @@ class StoryRepository:
         return self._row_to_story(row) if row is not None else None
 
     async def list(self, *, universe: str) -> list[CharacterStory]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 f"""
                 SELECT {_STORY_COLUMNS}
@@ -67,7 +67,7 @@ class StoryRepository:
     ) -> StoryPage:
         safe_page_size = max(1, min(int(page_size), 8))
         safe_page = max(0, int(page))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(
                 await connection.fetchval(
                     """
@@ -107,7 +107,7 @@ class StoryRepository:
         )
 
     async def find(self, *, universe: str, value: str) -> CharacterStory | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 f"""
                 SELECT {_STORY_COLUMNS}
@@ -136,7 +136,7 @@ class StoryRepository:
         released_on: date | None,
         release_precision: str,
     ) -> CharacterStory:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 f"""
                 INSERT INTO character_stories (
@@ -204,7 +204,7 @@ class StoryRepository:
         character_id: int,
         story_id: int | None,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 character = await connection.fetchrow(
                     "SELECT id, universe FROM characters WHERE id = $1::BIGINT FOR UPDATE",
@@ -245,7 +245,7 @@ class StoryRepository:
         *,
         character_id: int,
     ) -> list[AssignedCharacterStory]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT
@@ -279,7 +279,7 @@ class StoryRepository:
         story_id: int,
         assigned_by: int | None = None,
     ) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 character = await connection.fetchrow(
                     "SELECT id, universe, story_id FROM characters WHERE id = $1::BIGINT FOR UPDATE",
@@ -348,7 +348,7 @@ class StoryRepository:
                 return True
 
     async def clear_character_stories(self, *, character_id: int) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 character = await connection.fetchrow(
                     "SELECT id FROM characters WHERE id = $1::BIGINT FOR UPDATE",
@@ -410,7 +410,7 @@ class StoryRepository:
         universe: str,
         public_only: bool,
     ) -> list[StorySummary]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT
