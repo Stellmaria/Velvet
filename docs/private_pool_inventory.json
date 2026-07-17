@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "172390deef5ced4fe1527701524b034a8646c87e",
-  "total_external_findings": 130,
-  "total_files": 35,
+  "generated_from_commit": "80bc02439c7f75758841ab298d4da56c1f4594c0",
+  "total_external_findings": 128,
+  "total_files": 34,
   "next_slice": {
-    "phase": "18N",
-    "target": "velvet_bot/domains/archive/preview_repository.py"
+    "phase": "18O",
+    "target": "velvet_bot/domains/publication/validation_repository.py"
   },
   "files": [
     {"path":"velvet_bot/ai_quality.py","count":8,"identity_sha256":"48558fa7161b71e0a9ed1912be4b444e94658691310cca90dda591e86eaeda45","categories":["repository_in_module"]},
@@ -21,7 +21,6 @@
     {"path":"velvet_bot/character_aliases.py","count":5,"identity_sha256":"011f273c3771be460af5f0779ec41d4f6f7b77174640899762f3cbb6d6e171b2","categories":["legacy_query_module"]},
     {"path":"velvet_bot/discussion_dashboard_compat.py","count":1,"identity_sha256":"e78b103be7f9c5ee683a5bbfd8a3356fe97996154226352e5764169177e9afad","categories":["compatibility_facade"]},
     {"path":"velvet_bot/discussion_thread_links.py","count":1,"identity_sha256":"d33c7bf8a2eb94ea17a08e886d6b766922bdf89e6302b8f3b43f710669fb39bb","categories":["legacy_query_module"]},
-    {"path":"velvet_bot/domains/archive/preview_repository.py","count":2,"identity_sha256":"c79e95897fa17028e4122cbb898cf542c549e1796527f2fb5b122fe55f7bf8d9","categories":["domain_repository"]},
     {"path":"velvet_bot/domains/publication/draft_repository.py","count":8,"identity_sha256":"4406152b4e0571055a23a87c15988c01ce5ddadb7775d592437ed3f3d9083623","categories":["domain_repository"]},
     {"path":"velvet_bot/domains/publication/validation_repository.py","count":2,"identity_sha256":"b4011c32e1b28cc298d472ddaa705907e5c5fffc4bf7e0734553a739bcebaad8","categories":["domain_repository"]},
     {"path":"velvet_bot/error_center.py","count":8,"identity_sha256":"28ca4dec868e0830297b0542211e121138723a641530fb1308c07390d4a1b6f8","categories":["repository_in_module"]},
