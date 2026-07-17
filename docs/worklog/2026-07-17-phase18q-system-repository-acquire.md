@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18q-system-repository-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18Q
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18q-system-repository-acquire`
 - Базовый commit: `ee826c7689af8d8d29e6e02ec0092bdcdc90a94a`
 
@@ -51,24 +51,35 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- `ping()` и `get_runtime_snapshot()` переведены на `Database.acquire()`;
+- `SELECT 1` и read-only snapshot SQL сохранены;
+- mapping `RuntimeDatabaseSnapshot` и nullable backup/schema fields не менялись;
+- добавлены source/runtime-тесты ping, полного snapshot и отсутствующего row;
+- private pool baseline уменьшен с 118/32 до 116/31;
+- явный infrastructure repository удалён из baseline;
+- следующим срезом назначена Фаза 18R: `PromptResultReportRepository`;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменялись. Диагностические метрики, SQL, модели и публичные методы сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить две public acquire boundary, ping, SQL snapshot, mapping и error для отсутствующего row.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18Q.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR и прогнать полный CI. После merge начать Фазу 18R отдельной сессией.
