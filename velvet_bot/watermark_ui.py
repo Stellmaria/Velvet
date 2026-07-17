@@ -1,0 +1,94 @@
+from __future__ import annotations
+
+from html import escape
+
+from aiogram.filters.callback_data import CallbackData
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from velvet_bot.domains.watermark.models import WatermarkWorkItem
+
+
+class WatermarkCallback(CallbackData, prefix="wm"):
+    action: str
+    job_id: int = 0
+    value: str = ""
+
+
+def _button(text: str, action: str, job_id: int, value: str = "") -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        text=text,
+        callback_data=WatermarkCallback(action=action, job_id=job_id, value=value).pack(),
+    )
+
+
+def build_watermark_start_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [_button("📎 Как отправить изображение", "help", 0)],
+            [_button("↩️ Центр управления", "menu", 0)],
+        ]
+    )
+
+
+def build_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
+    job_id = item.job.id
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                _button("↖️", "position", job_id, "top_left"),
+                _button("↗️", "position", job_id, "top_right"),
+                _button("↙️", "position", job_id, "bottom_left"),
+                _button("↘️", "position", job_id, "bottom_right"),
+            ],
+            [
+                _button("⚪ Белый", "color", job_id, "#ffffff"),
+                _button("⚫ Чёрный", "color", job_id, "#000000"),
+                _button("◐ Авто", "color", job_id, "auto"),
+                _button("🎨 HEX", "custom_color", job_id),
+            ],
+            [
+                _button("Прозр. −", "opacity", job_id, "-10"),
+                _button("Прозр. +", "opacity", job_id, "10"),
+            ],
+            [
+                _button("Размер −", "size", job_id, "-1.5"),
+                _button("Размер +", "size", job_id, "1.5"),
+            ],
+            [
+                _button("Отступ −", "margin", job_id, "-0.5"),
+                _button("Отступ +", "margin", job_id, "0.5"),
+            ],
+            [
+                _button("↩️ Предыдущая версия", "undo", job_id),
+                _button("🚫 Без знака", "remove", job_id),
+            ],
+            [
+                _button("✅ Сохранить", "approve", job_id),
+                _button("✖ Отмена", "cancel", job_id),
+            ],
+        ]
+    )
+
+
+def format_watermark_caption(item: WatermarkWorkItem, *, status_text: str | None = None) -> str:
+    settings = item.revision.settings
+    color = settings.color.upper() if settings.enabled else "без знака"
+    status = status_text or item.revision.status
+    return (
+        f"<b>Водяной знак · задание {item.job.id}</b>\n\n"
+        f"Версия: <b>{item.revision.revision}</b>\n"
+        f"Положение: <code>{escape(settings.position)}</code>\n"
+        f"Цвет: <code>{escape(color)}</code>\n"
+        f"Непрозрачность: <b>{settings.opacity}%</b>\n"
+        f"Размер: <b>{settings.size:.1f}%</b>\n"
+        f"Отступ: <b>{settings.margin:.1f}%</b>\n"
+        f"Статус: <b>{escape(status)}</b>"
+    )
+
+
+__all__ = (
+    "WatermarkCallback",
+    "build_watermark_keyboard",
+    "build_watermark_start_keyboard",
+    "format_watermark_caption",
+)
