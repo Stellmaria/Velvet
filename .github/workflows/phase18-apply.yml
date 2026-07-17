@@ -1,0 +1,45 @@
+name: phase18 apply
+
+on:
+  push:
+    branches:
+      - agent/phase18-database-acquire-boundary
+    paths:
+      - scripts/_phase18_apply.py
+      - .github/workflows/phase18-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase18-database-acquire-boundary
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Apply phase
+        run: python scripts/_phase18_apply.py
+
+      - name: Validate focused tests
+        run: python -m unittest tests.test_phase18_database_boundary -v
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Фаза 18: добавить публичную границу Database.acquire"
+            git push origin HEAD:agent/phase18-database-acquire-boundary
+          fi
