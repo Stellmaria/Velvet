@@ -21,6 +21,7 @@ from aiogram.types import (
     Message,
 )
 
+from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.local_ai_runtime import get_local_ai_lock
@@ -262,13 +263,23 @@ async def handle_visual_analysis_reply(
         await message.answer("Локальный Qwen отключён в настройках бота.")
         return
 
-    status = await message.answer(
-        "<b>🧠 Qwen анализирует композицию</b>\n\n"
-        "Измеряю палитру и проверяю фокус, баланс, кадрирование, глубину и свет."
-    )
     file_id, file_unique_id = result_file
+    tracker = await AIJobTracker.create(
+        database=database,
+        source_message=message,
+        kind="palette_composition",
+        title="Палитра и композиция",
+        provider=settings.ai_vision_provider,
+        model=settings.ai_vision_model,
+        request_payload={
+            "result_file_id": file_id,
+            "result_file_unique_id": file_unique_id,
+        },
+    )
     try:
+        await tracker.stage("downloading")
         image = await _download_image(bot, file_id)
+        await tracker.stage("preparing")
         metrics = await asyncio.to_thread(extract_palette_metrics, image)
         client = CompositionAnalysisClient(
             provider=settings.ai_vision_provider,
@@ -277,8 +288,10 @@ async def handle_visual_analysis_reply(
             api_key=settings.ai_vision_api_key,
             timeout_seconds=settings.ai_vision_timeout_seconds,
         )
+        await tracker.stage("analyzing")
         async with get_local_ai_lock():
             report = await client.analyze_composition(image, metrics)
+        await tracker.stage("saving")
         report_id = await PaletteCompositionReportRepository(database).save(
             result_file_id=file_id,
             result_file_unique_id=file_unique_id,
@@ -289,20 +302,20 @@ async def handle_visual_analysis_reply(
             created_by=message.from_user.id if message.from_user else None,
         )
         palette_card = await asyncio.to_thread(build_palette_card, metrics)
+        rendered = _report_text(report_id, metrics, report)
+        await tracker.ready(
+            result_text=rendered,
+            result_payload=report,
+            reference_type="palette_composition_report",
+            reference_id=report_id,
+        )
     except asyncio.CancelledError:
+        await tracker.error("Задание прервано остановкой процесса.")
         raise
     except Exception as error:
-        logger.exception("Palette/composition analysis failed")
-        await status.edit_text(
-            "<b>❌ Анализ палитры и композиции не завершён</b>\n\n"
-            f"<code>{escape(str(error))}</code>"
-        )
+        logger.exception("Palette/composition analysis failed job_id=%s", tracker.job_id)
+        await tracker.error(error)
         return
-
-    await status.edit_text(
-        _report_text(report_id, metrics, report),
-        reply_markup=_report_keyboard(),
-    )
     await message.answer_photo(
         BufferedInputFile(palette_card, filename=f"palette-{report_id}.png"),
         caption=(
