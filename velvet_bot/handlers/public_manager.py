@@ -48,6 +48,20 @@ from velvet_bot.story_catalog import (
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
+
+
+class _ArchiveDeleteNoiseFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.getMessage() == "Could not delete archive topic message":
+            record.levelno = logging.INFO
+            record.levelname = "INFO"
+            record.msg = "Archive topic message was already absent or cannot be deleted"
+            record.args = ()
+        return True
+
+
+logger.addFilter(_ArchiveDeleteNoiseFilter())
+
 _ACTIONS = {
     "download", "pback", "psp", "pcats", "pcat", "punis", "puni",
     "psts", "pstp", "pst", "pdel", "pdelok", "pdelno", "pnoop",

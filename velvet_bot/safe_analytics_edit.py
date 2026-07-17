@@ -20,6 +20,4 @@ async def safe_analytics_edit(
 
 
 def install_safe_analytics_edit() -> None:
-    from velvet_bot.handlers import analytics_dashboard
-
-    analytics_dashboard._edit = safe_analytics_edit
+    """Compatibility no-op: handlers import the safe editor explicitly."""
