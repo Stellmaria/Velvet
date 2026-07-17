@@ -105,7 +105,7 @@ def _strings(value: Any, *, limit: int = 10, length: int = 320) -> list[str]:
 
 def normalize_prompt_result_comparison(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
-        raise VisionAnalysisError("Модель вернула проверку промта не в виде JSON-объекта.")
+        raise VisionAnalysisError("Qwen вернул проверку промта не в виде JSON-объекта.")
 
     scores = {field: _score(payload.get(field)) for field in _SCORE_FIELDS}
     lists = {field: _strings(payload.get(field)) for field in _LIST_FIELDS}
@@ -183,7 +183,7 @@ class PromptResultComparisonClient(VisionClient):
         if errors:
             diagnostic += "; " + "; ".join(errors)
         raise VisionAnalysisError(
-            f"Модель не вернула пригодную проверку промта ({diagnostic})."
+            f"Qwen не вернул пригодную проверку промта ({diagnostic})."
         )
 
     async def compare(self, source_prompt: str, result: bytes) -> dict[str, Any]:
@@ -230,7 +230,7 @@ class PromptResultComparisonClient(VisionClient):
                         f"{'schema' if use_schema else 'json'}: {error}"
                     )
             raise VisionAnalysisError(
-                "Модель не вернула проверку промта после двух режимов Ollama. "
+                "Qwen не вернул проверку промта после двух режимов Ollama. "
                 + " | ".join(diagnostics)
             )
 
