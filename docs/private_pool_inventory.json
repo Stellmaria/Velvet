@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "0b2a539962dd0aa056f581bc436107ae249bf406",
-  "total_external_findings": 118,
-  "total_files": 32,
+  "generated_from_commit": "ee826c7689af8d8d29e6e02ec0092bdcdc90a94a",
+  "total_external_findings": 116,
+  "total_files": 31,
   "next_slice": {
-    "phase": "18Q",
-    "target": "velvet_bot/repositories/system_repository.py"
+    "phase": "18R",
+    "target": "velvet_bot/prompt_result_reports.py"
   },
   "files": [
     {"path":"velvet_bot/ai_quality.py","count":8,"identity_sha256":"48558fa7161b71e0a9ed1912be4b444e94658691310cca90dda591e86eaeda45","categories":["repository_in_module"]},
@@ -36,7 +36,6 @@
     {"path":"velvet_bot/quality_audit.py","count":5,"identity_sha256":"ee169f6ea6ec23e51a5503513d5d5aa857dd2b1dcae194940516fd0459a62fa4","categories":["legacy_query_module"]},
     {"path":"velvet_bot/quality_calibration.py","count":3,"identity_sha256":"ea7f7514e2bc92aa239ffa2ee9a5efd588696892b01ff81c24ee1fd74ff8ebca","categories":["repository_in_module"]},
     {"path":"velvet_bot/quality_set_audit_compat.py","count":2,"identity_sha256":"046169312ebe3b0a6d5ede9834b21c55c636db4f0fe4595e27cbd12bd02379f3","categories":["compatibility_facade"]},
-    {"path":"velvet_bot/repositories/system_repository.py","count":2,"identity_sha256":"bff777de802c786549c252cdd3a1903aaadae2a8b0d579a43ac8e7bc0c78f189","categories":["infrastructure_repository"]},
     {"path":"velvet_bot/resilient_ai_vision.py","count":2,"identity_sha256":"79f7e90be36abd28307bf1ec822d3103342c943da3b8f1c5f9182a163313fb63","categories":["repository_in_module"]},
     {"path":"velvet_bot/telegram_export_import.py","count":4,"identity_sha256":"1e5d030ba2e117e8a019d29cfb5e1c35a32b86b45918934883505d34baf1400e","categories":["legacy_query_module"]},
     {"path":"velvet_bot/velvet_formatting_reports.py","count":1,"identity_sha256":"f28c016340db56cec22eec1ad3d793fff3bb498a0ab237133af4fa54ed36a3c6","categories":["repository_in_module"]}
