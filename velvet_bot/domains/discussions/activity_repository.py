@@ -89,7 +89,7 @@ class DiscussionActivityRepository:
             OFFSET $4::INTEGER
             LIMIT $5::INTEGER
         """
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             args = (
                 int(discussion_chat_id),
                 int(parent_channel_id),
@@ -126,7 +126,7 @@ class DiscussionActivityRepository:
         since: datetime | None,
         timezone_name: str,
     ) -> ActivityBreakdown:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             weekday_rows = await connection.fetch(
                 """
                 SELECT
@@ -187,7 +187,7 @@ class DiscussionActivityRepository:
         since: datetime | None,
         timezone_name: str,
     ) -> list[DailyActivityCount]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT
