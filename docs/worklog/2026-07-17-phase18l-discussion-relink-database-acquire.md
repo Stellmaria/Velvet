@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18l-discussion-relink-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18L
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18l-discussion-relink-database-acquire`
 - Базовый commit: `e9d9117f5ea65dbb7521cf47e021776313fea473`
 
@@ -54,6 +54,7 @@
 - сохранены маркировка корневых сообщений, recursive reply tree, exact-text matching и backfill `channel_post_id`;
 - сохранён разбор PostgreSQL command status в `RelinkResult`;
 - добавлены source-boundary и runtime regression-тесты публичной границы, единой транзакции, порядка четырёх запросов и счётчиков результата;
+- обновлены `CHANGELOG.md`, `docs/project_memory.md` и `docs/development_status.md`;
 - production-домен остаётся архивным и не содержит аукционных связей или таблиц.
 
 ### Миграции и совместимость
@@ -62,23 +63,21 @@
 
 ### Проверки
 
-- `docker build #147` — успешно;
-- `tests #541` выполнил 489 тестов; все функциональные и repository-тесты прошли, общий run завершился ошибкой только из-за статуса worklog `в работе`;
-- `project notes contract #26` завершился ошибкой по той же причине;
-- после этой промежуточной записи запускается повторный полный CI.
+- первый прогон: `docker build #147` — успешно; `tests #541` выполнил 489 тестов, функциональные тесты прошли, но workflow упал на статусе worklog `в работе`; `project notes contract #26` упал по той же причине;
+- повторный прогон после оформления записи: `project notes contract #30` — успешно;
+- полный workflow `tests #545` с PostgreSQL 16 — успешно;
+- `docker build #151` — успешно;
+- после этой финальной записи CI запускается ещё раз на окончательном head перед merge.
 
 ### PR и commit
 
-- draft PR: #107 `Фаза 18L: перевести DiscussionRelinkRepository на Database.acquire`;
-- проверенный head до обновления дневника: `982cc08b593d18fe0ba8485a29d52f264be20417`;
-- squash commit будет зафиксирован после зелёного финального CI и слияния.
+- PR: #107 `Фаза 18L: перевести DiscussionRelinkRepository на Database.acquire`;
+- зелёный промежуточный head: `997aa89a0decd7643252190419eb48600fe6acd1`;
+- финальный squash commit фиксируется GitHub при слиянии PR #107.
 
 ### Незавершённое
 
-- получить зелёные project notes, tests и Docker на обновлённом head;
-- обновить project memory, development status и changelog;
-- закрыть запись статусом `завершено`;
-- перевести PR из draft и слить в `main`.
+Обязательных пунктов Фазы 18L не осталось. Отдельной следующей работой остаётся инвентаризация Фазы 18M.
 
 ### Следующий шаг
 
