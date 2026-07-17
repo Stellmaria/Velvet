@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18h-discussion-insight-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18H
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18h-discussion-insight-database-acquire`
 - Базовый commit: `ea23ae947db5d91463eb7fb37d4757db1b2c6d8a`
 
@@ -51,24 +51,37 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- единственная точка получения соединения в `DiscussionInsightRepository` переведена на `self._database.acquire()`;
+- оба SQL-запроса выполняются в прежнем connection context;
+- CTE `linked_comments`, фильтр `since`, связь discussion thread с публикацией и publication aggregates не изменены;
+- преобразование PostgreSQL-агрегатов в `DiscussionSummary` сохранено;
+- добавлен отдельный regression-тест source boundary и runtime-тест двух запросов, параметров периода и derived metrics;
+- project memory, development status и changelog обновлены;
+- следующим отдельным срезом определён `DiscussionRankingRepository`.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции отсутствуют. SQL, параметры, определения метрик и модель `DiscussionSummary` не менялись. В отчёт не добавлялись аукционные показатели или экономические данные.
 
 ### Проверки
 
-Заполняется после реализации.
+- production diff содержит одну симметричную замену private pool access на публичный API базы;
+- отдельный тест запрещает возврат `._require_pool()` в insight repository;
+- runtime-тест проверяет оба CTE-запроса, параметры chat/channel/since и все поля `DiscussionSummary`;
+- полный CI ещё не запущен.
 
 ### PR и commit
 
-Заполняется после реализации.
+PR ещё не открыт. Текущий head будет записан после создания draft PR.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- сравнить ветку с `main`;
+- открыть draft PR;
+- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
+- исправить возможные регрессии;
+- закрыть дневник точными run и итоговым commit.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+После успешного слияния начать отдельную Фазу 18I для `DiscussionRankingRepository`, не включая activity, post insight или relink repositories в тот же PR.
