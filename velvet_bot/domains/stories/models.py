@@ -18,6 +18,12 @@ class CharacterStory:
 
 
 @dataclass(frozen=True, slots=True)
+class AssignedCharacterStory:
+    story: CharacterStory
+    is_primary: bool
+
+
+@dataclass(frozen=True, slots=True)
 class StorySummary:
     id: int
     universe: str
@@ -43,4 +49,4 @@ class StoryPage:
         return max(1, (self.total_stories + self.page_size - 1) // self.page_size)
 
 
-__all__ = ("CharacterStory", "StoryPage", "StorySummary")
+__all__ = ("AssignedCharacterStory", "CharacterStory", "StoryPage", "StorySummary")

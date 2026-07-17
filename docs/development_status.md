@@ -39,7 +39,7 @@
 - release workflow;
 - версия `1.3.0-dev.1`.
 
-## Фазы 12–14: архитектурная очистка
+## Фазы 12–15: архитектурная очистка
 
 Статус: выполняется небольшими изолированными срезами.
 
@@ -54,15 +54,17 @@
 - удаление зависимостей publication handler от старых compatibility facades;
 - разделение `analytics_management.py` на теги, алиасы, классификацию и общий presentation helper;
 - сокращение прежнего analytics management до тонкого action dispatcher;
-- regression-тест непересекающихся action sets и компактности facade.
+- перенос модели и операций нескольких историй в story domain repository;
+- удаление runtime monkeypatch каталогов персонажей и историй;
+- поддержка `character_story_links` внутри штатных character/story repositories;
+- PostgreSQL integration test назначения двух историй, фильтрации, primary и очистки при смене вселенной.
 
 ## Оставшийся долг
 
 ### P1
 
 1. Разделить `handlers/owner_actions.py` по предметным формам.
-2. Перенести multi-story runtime patch в обычный domain/application wiring.
-3. Удалить `presentation/telegram/compat.py` после исчезновения последних мостов.
+2. Удалить оставшиеся временные мосты из `presentation/telegram/compat.py` после переноса runtime hotfixes и safe analytics edit.
 
 ### P2
 
