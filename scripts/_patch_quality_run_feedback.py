@@ -6,28 +6,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "velvet_bot/handlers/quality_operations.py"
-# The callback must be acknowledged before the potentially long worker cycle.
+START = '@router.callback_query(QualityCallback.filter(F.action == "quality_run"))\n'
+END = '\n\n__all__ = (\n'
 
-OLD = '''@router.callback_query(QualityCallback.filter(F.action == "quality_run"))
-async def handle_quality_run(
-    callback: CallbackQuery,
-    database: Database,
-    worker_manager: WorkerManager,
-) -> None:
-    try:
-        ok = await worker_manager.run_now("ai-quality")
-    except (RuntimeError, ValueError) as error:
-        await callback.answer(str(error)[:190], show_alert=True)
-        return
-    if isinstance(callback.message, Message):
-        await _show_menu(callback.message, database, worker_manager)
-    await callback.answer(
-        "Цикл проверки завершён." if ok else "Цикл завершился ошибкой. Откройте очередь ошибок.",
-        show_alert=not ok,
-    )
-'''
-
-NEW = '''@router.callback_query(QualityCallback.filter(F.action == "quality_run"))
+NEW = r'''@router.callback_query(QualityCallback.filter(F.action == "quality_run"))
 async def handle_quality_run(
     callback: CallbackQuery,
     database: Database,
@@ -58,9 +40,13 @@ async def handle_quality_run(
 
 def main() -> None:
     source = PATH.read_text(encoding="utf-8")
-    if source.count(OLD) != 1:
-        raise RuntimeError("Не найден однозначный handler quality_run")
-    source = source.replace(OLD, NEW, 1)
+    start_index = source.find(START)
+    if start_index < 0:
+        raise RuntimeError("Не найден handler quality_run")
+    end_index = source.find(END, start_index)
+    if end_index < 0:
+        raise RuntimeError("Не найден конец handler quality_run")
+    source = source[:start_index] + NEW + source[end_index:]
     ast.parse(source, filename=str(PATH))
     PATH.write_text(source, encoding="utf-8")
 
