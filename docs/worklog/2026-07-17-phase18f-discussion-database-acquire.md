@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18f-discussion-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18F
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18f-discussion-database-acquire`
 - Базовый commit: `3ced5abb1782ede34526eed31b89e466b3c88eef`
 
@@ -69,23 +69,25 @@
 
 ### Проверки
 
+- GitHub compare подтвердил изолированный diff из шести файлов;
 - production repository содержит шесть симметричных замен private pool access на `Database.acquire()`;
 - архитектурный тест контролирует восемь завершённых domain repositories;
-- runtime-тест reaction delta добавлен, полный CI ещё не запущен;
-- предметная граница archive/auction из Фазы 18E остаётся неизменной.
+- runtime-тест reaction delta проверяет public acquire, transaction context, tracked filter, `FOR UPDATE`, нормализацию и итоговый JSON;
+- `project notes contract #14` — успешно;
+- полный workflow `tests #523` с PostgreSQL 16 — успешно;
+- `docker build #129` — успешно;
+- после закрытия дневника workflows повторно запускаются на финальном head PR.
 
 ### PR и commit
 
-PR ещё не открыт. Текущий head будет записан после создания draft PR.
+- PR: #101 `Фаза 18F: перевести DiscussionRepository на Database.acquire`;
+- проверенный head до закрытия дневника: `46c96621974d9a315f82cd68936625b674bc2b6f`;
+- итоговый squash commit фиксируется GitHub при слиянии PR #101.
 
 ### Незавершённое
 
-- сравнить ветку с `main`;
-- открыть draft PR;
-- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
-- исправить возможные регрессии;
-- закрыть дневник точными run и итоговым commit.
+Обязательных пунктов Фазы 18F не осталось. Живые Windows/Telegram-проверки Фазы 20 остаются отдельным эксплуатационным обязательством.
 
 ### Следующий шаг
 
-После успешного слияния начать отдельную Фазу 18G для `DiscussionIngestRepository`, не включая insight, ranking, activity или relink repositories в тот же PR.
+Начать Фазу 18G отдельной веткой и worklog: перевести `DiscussionIngestRepository` на `Database.acquire()` без включения insight, ranking, activity или relink repositories в тот же PR.
