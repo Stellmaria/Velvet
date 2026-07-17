@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 from velvet_bot.core.access import normalize_username
 
 
+DEFAULT_AI_VISION_MODEL = "gemma3:4b"
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     bot_token: str
@@ -24,7 +27,7 @@ class Settings:
     ai_vision_enabled: bool = False
     ai_vision_provider: str = "ollama"
     ai_vision_base_url: str = "http://127.0.0.1:11434"
-    ai_vision_model: str = "qwen3-vl:8b"
+    ai_vision_model: str = DEFAULT_AI_VISION_MODEL
     ai_vision_api_key: str | None = None
     ai_vision_timeout_seconds: int = 180
     ai_vision_max_attempts: int = 3
@@ -161,7 +164,7 @@ def load_settings() -> Settings:
     ).strip().rstrip("/")
     if not ai_base_url:
         raise RuntimeError("AI_VISION_BASE_URL не может быть пустым.")
-    ai_model = os.getenv("AI_VISION_MODEL", "qwen3-vl:8b").strip()
+    ai_model = os.getenv("AI_VISION_MODEL", DEFAULT_AI_VISION_MODEL).strip()
     if not ai_model:
         raise RuntimeError("AI_VISION_MODEL не может быть пустым.")
     ai_api_key = os.getenv("AI_VISION_API_KEY", "").strip() or None
@@ -220,6 +223,7 @@ def load_settings() -> Settings:
 
 
 __all__ = (
+    "DEFAULT_AI_VISION_MODEL",
     "Settings",
     "load_settings",
     "parse_allowed_user_ids",
