@@ -8,7 +8,6 @@ from aiogram.types import ErrorEvent
 from velvet_bot.ai_quality_schema_compat import install_ai_quality_schema_compatibility
 from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.owner_menu_compat import install_owner_menu_navigation
-from velvet_bot.presentation.telegram.compat import install_legacy_compatibility
 from velvet_bot.quality_calibration_dashboard import install_quality_calibration_dashboard
 from velvet_bot.quality_calibration_ui import install_quality_calibration_report_ui
 from velvet_bot.quality_set_ai_dashboard import install_set_consistency_dashboard
@@ -18,7 +17,6 @@ _ROOT_ROUTER: Router | None = None
 
 
 def _build_root_router() -> Router:
-    install_legacy_compatibility()
     install_ai_quality_schema_compatibility()
     install_set_consistency_dashboard()
     install_quality_calibration_dashboard()

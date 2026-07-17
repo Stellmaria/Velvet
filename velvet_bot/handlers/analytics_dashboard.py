@@ -27,6 +27,7 @@ from velvet_bot.presentation.telegram.analytics_navigation import (
     _cb,
     _period_row,
 )
+from velvet_bot.safe_analytics_edit import safe_analytics_edit as _edit
 
 router = Router(name=__name__)
 
@@ -195,13 +196,6 @@ def _rank_lines(page: DashboardPage, *, kind: str) -> str:
             f"{secondary_label} {item.secondary_count}{detail}"
         )
     return "\n".join(lines)
-
-
-async def _edit(callback: CallbackQuery, text: str, keyboard: InlineKeyboardMarkup) -> None:
-    if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
-        return
-    await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 @router.message(Command("analytics", "analyticsmenu"))

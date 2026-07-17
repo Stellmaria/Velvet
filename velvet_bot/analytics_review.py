@@ -501,14 +501,22 @@ async def set_manual_publication_type(
     item = await get_publication_review(database, token_id=token_id)
     if item is None:
         raise ValueError("Публикация больше не найдена.")
+
     async with database._require_pool().acquire() as connection:
         async with connection.transaction():
+            channel_id = int(
+                await connection.fetchval(
+                    """
+                    SELECT channel_id
+                    FROM analytics_review_items
+                    WHERE id = $1::BIGINT
+                    """,
+                    token_id,
+                )
+            )
             await _record_classification_change(
                 connection,
-                channel_id=await connection.fetchval(
-                    "SELECT channel_id FROM analytics_review_items WHERE id = $1",
-                    token_id,
-                ),
+                channel_id=channel_id,
                 publication_key=item.publication_key,
                 previous_type=item.post_type,
                 new_type=post_type,
@@ -519,26 +527,22 @@ async def set_manual_publication_type(
                 changed_by=changed_by,
                 reason="ручной выбор в аналитическом центре",
             )
-            channel_id = int(
-                await connection.fetchval(
-                    "SELECT channel_id FROM analytics_review_items WHERE id = $1",
-                    token_id,
-                )
-            )
             await connection.execute(
                 """
                 UPDATE channel_posts
-                SET post_type = $3,
+                SET post_type = $3::VARCHAR,
                     post_type_confidence = 100,
                     post_type_source = 'manual',
-                    is_prompt = ($3 = 'prompt'),
+                    is_prompt = ($3::VARCHAR = 'prompt'::VARCHAR),
                     updated_at = NOW()
-                WHERE channel_id = $1 AND publication_key = $2
+                WHERE channel_id = $1::BIGINT
+                  AND publication_key = $2::VARCHAR
                 """,
                 channel_id,
                 item.publication_key,
                 post_type,
             )
+
     refreshed = await get_publication_review(database, token_id=token_id)
     if refreshed is None:
         raise RuntimeError("Публикация исчезла после обновления.")
