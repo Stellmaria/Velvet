@@ -21,7 +21,7 @@
 ### Changed
 
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
-- character, story, archive, public archive, reference, media quality, publication, discussion, discussion ingest, discussion insight, discussion ranking и discussion activity repositories больше не обращаются к приватному `_require_pool()`;
+- character, story, archive, public archive, reference, media quality, publication, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity и discussion post insight repositories больше не обращаются к приватному `_require_pool()`;
 - `AGENTS.md` и карта проекта закрепляют Velvet Archive как отдельный owner-oriented архивный продукт без логики аукционного бота;
 - промт против результата, палитра и композиция, оформление, ручная проверка изображения, сравнение с референсом и анализ медиасета регистрируются до обращения к Qwen;
 - длинные AI-результаты отправляются отдельным сообщением и полностью сохраняются в истории;
