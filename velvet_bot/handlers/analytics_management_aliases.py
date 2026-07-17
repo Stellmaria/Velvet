@@ -133,14 +133,9 @@ async def handle_alias_action(
             return True
         marker = f"ALIAS_CHARACTER:{callback_data.character_id}"
         await callback.message.answer(
-            f"<b>Новый алиас: {escape(name)}</b>
-
-"
-            "Ответьте на это сообщение новым вариантом хэштега без обязательного символа #.
-"
-            "Пример: <code>KaelLang</code>
-
-"
+            f"<b>Новый алиас: {escape(name)}</b>\n\n"
+            "Ответьте на это сообщение новым вариантом хэштега без обязательного символа #.\n"
+            "Пример: <code>KaelLang</code>\n\n"
             f"<code>{marker}</code>",
             reply_markup=ForceReply(
                 selective=True,

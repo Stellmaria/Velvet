@@ -281,11 +281,8 @@ async def handle_publication_action(
         )
         if isinstance(callback.message, Message):
             await callback.message.answer(
-                f"<b>Классификация пересчитана.</b>
-
-"
-                f"Проверено публикаций: <b>{total}</b>
-"
+                f"<b>Классификация пересчитана.</b>\n\n"
+                f"Проверено публикаций: <b>{total}</b>\n"
                 f"Изменилось: <b>{changed}</b>."
             )
         return True
