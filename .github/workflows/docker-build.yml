@@ -1,0 +1,56 @@
+name: docker build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "requirements.txt"
+      - "main.py"
+      - "velvet_bot/**"
+      - "scripts/container_healthcheck.py"
+      - ".github/workflows/docker-build.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "requirements.txt"
+      - "main.py"
+      - "velvet_bot/**"
+      - "scripts/container_healthcheck.py"
+      - ".github/workflows/docker-build.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare minimal compose environment
+        run: |
+          cat > .env <<'EOF'
+          BOT_TOKEN=test_token
+          DATABASE_URL=postgresql://velvet:test_password@postgres:5432/velvet
+          POSTGRES_DB=velvet
+          POSTGRES_USER=velvet
+          POSTGRES_PASSWORD=test_password
+          ALLOWED_USER_IDS=1
+          LOG_CHAT_ID=-1001
+          ANALYTICS_CHANNEL_IDS=-1002
+          AI_VISION_ENABLED=false
+          EOF
+
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      - name: Build Velvet image
+        run: docker build --tag velvet-bot:ci .
