@@ -8,16 +8,16 @@ from typing import Any, Iterable, Sequence
 
 from velvet_bot.database import Database
 
-_OUTCOMES = {
+_OUTCOMES = (
     "correct_clean",
     "correct_fix",
     "useful_warning",
     "false_alarm",
     "missed_problem",
     "uncertain",
-}
-_USEFUL_OUTCOMES = {"correct_clean", "correct_fix", "useful_warning"}
-_ERROR_OUTCOMES = {"false_alarm", "missed_problem"}
+)
+_USEFUL_OUTCOMES = ("correct_clean", "correct_fix", "useful_warning")
+_ERROR_OUTCOMES = ("false_alarm", "missed_problem")
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,8 +170,6 @@ def build_calibration_profile(samples: Iterable[FeedbackSample]) -> CalibrationP
             85,
         ),
     )
-
-    # Preserve a manual-review band even when score distributions overlap.
     if fix_max_score >= ready_min_score - 7:
         center = round((fix_max_score + ready_min_score) / 2)
         fix_max_score = max(35, min(center - 4, 82))
@@ -277,20 +275,14 @@ class QualityCalibrationRepository:
         )
 
     @staticmethod
-    def _condition(section: str) -> tuple[str, tuple[str, ...]]:
-        sections = {
-            "all": ("TRUE", ()),
-            "errors": ("feedback.outcome = ANY($3::VARCHAR[])", tuple(_ERROR_OUTCOMES)),
-            "useful": ("feedback.outcome = ANY($3::VARCHAR[])", tuple(_USEFUL_OUTCOMES)),
-            "uncertain": ("feedback.outcome = ANY($3::VARCHAR[])", ("uncertain",)),
-            "false_alarm": (
-                "feedback.outcome = ANY($3::VARCHAR[])",
-                ("false_alarm",),
-            ),
-            "missed_problem": (
-                "feedback.outcome = ANY($3::VARCHAR[])",
-                ("missed_problem",),
-            ),
+    def _section_outcomes(section: str) -> tuple[str, ...] | None:
+        sections: dict[str, tuple[str, ...] | None] = {
+            "all": None,
+            "errors": _ERROR_OUTCOMES,
+            "useful": _USEFUL_OUTCOMES,
+            "uncertain": ("uncertain",),
+            "false_alarm": ("false_alarm",),
+            "missed_problem": ("missed_problem",),
         }
         if section not in sections:
             raise ValueError("Неизвестный раздел калибровки Qwen.")
@@ -305,28 +297,30 @@ class QualityCalibrationRepository:
         page: int = 0,
         page_size: int = 6,
     ) -> CalibrationCasePage:
-        condition, outcomes = self._condition(section)
+        outcomes = self._section_outcomes(section)
         safe_size = max(1, min(int(page_size), 10))
+        outcome_values = list(outcomes) if outcomes is not None else None
         async with self._database._require_pool().acquire() as connection:
             total = int(
                 await connection.fetchval(
-                    f"""
+                    """
                     SELECT COUNT(*)
                     FROM qwen_quality_feedback AS feedback
                     WHERE ($1::VARCHAR IS NULL OR feedback.provider = $1::VARCHAR)
                       AND ($2::VARCHAR IS NULL OR feedback.model = $2::VARCHAR)
-                      AND {condition}
+                      AND ($3::VARCHAR[] IS NULL
+                           OR feedback.outcome = ANY($3::VARCHAR[]))
                     """,
                     provider,
                     model,
-                    list(outcomes),
+                    outcome_values,
                 )
                 or 0
             )
             total_pages = max(1, (total + safe_size - 1) // safe_size)
             safe_page = min(max(0, int(page)), total_pages - 1)
             rows = await connection.fetch(
-                f"""
+                """
                 SELECT feedback.*,
                        COALESCE(
                            media.original_file_name,
@@ -337,13 +331,14 @@ class QualityCalibrationRepository:
                 JOIN media_files AS media ON media.id = feedback.media_id
                 WHERE ($1::VARCHAR IS NULL OR feedback.provider = $1::VARCHAR)
                   AND ($2::VARCHAR IS NULL OR feedback.model = $2::VARCHAR)
-                  AND {condition}
+                  AND ($3::VARCHAR[] IS NULL
+                       OR feedback.outcome = ANY($3::VARCHAR[]))
                 ORDER BY feedback.created_at DESC, feedback.id DESC
                 OFFSET $4::INTEGER LIMIT $5::INTEGER
                 """,
                 provider,
                 model,
-                list(outcomes),
+                outcome_values,
                 safe_page * safe_size,
                 safe_size,
             )
