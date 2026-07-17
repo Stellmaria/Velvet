@@ -24,7 +24,7 @@ class PublicationRepository:
         *,
         owner_id: int | None = None,
     ) -> PublicationDraft | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT *
@@ -58,7 +58,7 @@ class PublicationRepository:
     ) -> PublicationDraftPage:
         safe_size = max(1, min(int(page_size), 10))
         safe_page = max(0, int(page))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             total = int(
                 await connection.fetchval(
                     """
@@ -108,7 +108,7 @@ class PublicationRepository:
         )
 
     async def claim_for_publishing(self, draft_id: int) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             status = await connection.execute(
                 """
                 UPDATE publication_drafts
@@ -131,7 +131,7 @@ class PublicationRepository:
         actor_id: int | None,
     ) -> None:
         details = json.dumps({"message_ids": message_ids}, ensure_ascii=False)
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
                     """
@@ -164,7 +164,7 @@ class PublicationRepository:
     ) -> None:
         message = str(error)[:4000]
         details = json.dumps({"error": message}, ensure_ascii=False)
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
                     """
@@ -187,7 +187,7 @@ class PublicationRepository:
 
     async def list_due_draft_ids(self, *, limit: int = 5) -> list[int]:
         safe_limit = max(1, min(int(limit), 20))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
                     """
