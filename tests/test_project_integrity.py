@@ -71,6 +71,8 @@ FORM_COMMANDS = {
     "refs",
     "ref",
     "refdel",
+    "compare_ref",
+    "compare_reference",
     "aliasadd",
     "aliases",
     "aliasdel",
