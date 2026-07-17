@@ -32,11 +32,12 @@ class _FakeProcess:
 
 
 class KritaProcessManagerTests(unittest.TestCase):
-    def _manager(self, root: Path) -> KritaProcessManager:
+    def _manager(self, root: Path) -> tuple[KritaProcessManager, Path]:
         project = root / "project"
         runtime = project / "runtime"
         bridge = root / "bridge"
         executable = root / "krita.exe"
+        plugin_dir = root / "plugin"
         executable.write_bytes(b"exe")
         (project / "tools" / "krita" / "velvet_logo").mkdir(parents=True)
         (project / "tools" / "krita" / "velvet_logo.desktop").write_text(
@@ -52,18 +53,25 @@ class KritaProcessManagerTests(unittest.TestCase):
             "KRITA_EXECUTABLE": str(executable),
             "KRITA_BRIDGE_DIR": str(bridge),
             "KRITA_IDLE_TIMEOUT_SECONDS": "600",
-            "KRITA_PLUGIN_DIR": str(root / "plugin"),
         }
         with patch.dict("os.environ", environment, clear=False):
-            return KritaProcessManager(project_dir=project, runtime_dir=runtime)
+            manager = KritaProcessManager(project_dir=project, runtime_dir=runtime)
+        return manager, plugin_dir
 
     def test_ensure_starts_managed_process_and_stop_terminates_it(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            manager = self._manager(Path(directory))
+            manager, plugin_dir = self._manager(Path(directory))
             process = _FakeProcess()
-            with patch(
-                "velvet_supervisor.krita_process.subprocess.Popen",
-                return_value=process,
+            with (
+                patch.dict(
+                    "os.environ",
+                    {"KRITA_PLUGIN_DIR": str(plugin_dir)},
+                    clear=False,
+                ),
+                patch(
+                    "velvet_supervisor.krita_process.subprocess.Popen",
+                    return_value=process,
+                ),
             ):
                 status = manager.ensure()
             self.assertTrue(status["running"])
@@ -76,7 +84,7 @@ class KritaProcessManagerTests(unittest.TestCase):
 
     def test_external_krita_is_used_but_never_owned_or_stopped(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            manager = self._manager(Path(directory))
+            manager, _ = self._manager(Path(directory))
             manager._running_krita_pids = lambda: {7777}  # type: ignore[method-assign]
 
             status = manager.ensure()
@@ -90,11 +98,18 @@ class KritaProcessManagerTests(unittest.TestCase):
 
     def test_busy_bridge_defers_idle_stop(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            manager = self._manager(Path(directory))
+            manager, plugin_dir = self._manager(Path(directory))
             process = _FakeProcess()
-            with patch(
-                "velvet_supervisor.krita_process.subprocess.Popen",
-                return_value=process,
+            with (
+                patch.dict(
+                    "os.environ",
+                    {"KRITA_PLUGIN_DIR": str(plugin_dir)},
+                    clear=False,
+                ),
+                patch(
+                    "velvet_supervisor.krita_process.subprocess.Popen",
+                    return_value=process,
+                ),
             ):
                 manager.ensure()
             requests = manager.bridge_dir / "requests"
