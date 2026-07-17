@@ -112,7 +112,7 @@ class VelvetSupervisor:
             encoding="utf-8",
             errors="replace",
             bufsize=1,
-            env=os.environ.copy(),
+            env=_child_environment(),
         )
         self._process = process
         self._child_started_at = utc_now()
@@ -611,6 +611,27 @@ class VelvetSupervisor:
             return str(value) if value else None
 
 
+def _child_environment() -> dict[str, str]:
+    """Force one encoding contract between the Windows child and Supervisor."""
+    environment = os.environ.copy()
+    environment["PYTHONUTF8"] = "1"
+    environment["PYTHONIOENCODING"] = "utf-8"
+    return environment
+
+
+def _is_recoverable_polling_disconnect(line: str) -> bool:
+    lowered = line.casefold()
+    return (
+        "aiogram.dispatcher" in lowered
+        and "failed to fetch updates" in lowered
+        and "telegramnetworkerror" in lowered
+        and (
+            "serverdisconnectederror" in lowered
+            or "server disconnected" in lowered
+        )
+    )
+
+
 def _build_child_logger(logs_dir: Path) -> logging.Logger:
     child_logger = logging.getLogger("velvet_supervisor.child")
     child_logger.setLevel(logging.INFO)
@@ -630,6 +651,8 @@ def _build_child_logger(logs_dir: Path) -> logging.Logger:
 
 
 def _looks_like_error(line: str) -> bool:
+    if _is_recoverable_polling_disconnect(line):
+        return False
     lowered = line.casefold()
     return any(
         marker in lowered

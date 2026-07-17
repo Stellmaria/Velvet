@@ -329,6 +329,23 @@ class ErrorIncidentRepository:
             )
 
 
+def _is_recoverable_aiogram_polling_record(record: logging.LogRecord) -> bool:
+    if record.name != "aiogram.dispatcher":
+        return False
+    try:
+        message = record.getMessage().casefold()
+    except Exception:
+        message = str(record.msg).casefold()
+    return (
+        "failed to fetch updates" in message
+        and "telegramnetworkerror" in message
+        and (
+            "serverdisconnectederror" in message
+            or "server disconnected" in message
+        )
+    )
+
+
 class ErrorLoggingHandler(logging.Handler):
     def __init__(self, center: "ErrorIncidentCenter") -> None:
         super().__init__(level=logging.WARNING)
@@ -336,6 +353,8 @@ class ErrorLoggingHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         if record.levelno < logging.WARNING:
+            return
+        if _is_recoverable_aiogram_polling_record(record):
             return
         if record.name.startswith(_EXCLUDED_LOGGER_PREFIXES):
             return
