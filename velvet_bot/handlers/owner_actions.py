@@ -328,119 +328,6 @@ async def _send_media_form(message: Message, action: str) -> None:
     )
 
 
-def _topic_line(character: Character) -> str:
-    if not character.archive_topic_url:
-        return "Тема архива: <b>не назначена</b>"
-    return f'<a href="{escape(character.archive_topic_url, quote=True)}">Тема архива</a>'
-
-
-async def _answer_profile(message: Message, profile, *, heading: str = "Профиль персонажа") -> None:
-    character = profile.character
-    created_at = character.created_at.astimezone().strftime("%d.%m.%Y %H:%M:%S %Z")
-    await message.answer(
-        f"<b>{heading}</b>\n\n"
-        f"Имя: <b>{escape(character.name)}</b>\n"
-        f"ID: <code>{character.id}</code>\n"
-        f"Фото и видео в архиве: <b>{profile.media_count}</b>\n"
-        f"Референсов: <b>{profile.reference_count}</b>\n"
-        f"{_topic_line(character)}\n"
-        f"Создан: <code>{escape(created_at)}</code>",
-        reply_markup=build_character_archive_keyboard(character, profile.media_count),
-    )
-
-
-def _story_chunks(universe: str, stories) -> list[str]:
-    header = (
-        f"<b>Истории {escape(universe_label(universe))}</b>\n"
-        "Сортировка: <b>от новых к старым</b>.\n\n"
-    )
-    chunks: list[str] = []
-    current = header
-    for story in stories:
-        released = format_story_release(story.released_on, story.release_precision)
-        prefix = "" if released == "дата не указана" else f"{released} · "
-        line = f"• {prefix}<code>{escape(story.short_label)}</code> — {escape(story.title)}\n"
-        if len(current) + len(line) > 3800:
-            chunks.append(current.rstrip())
-            current = header + line
-        else:
-            current += line
-    chunks.append(current.rstrip())
-    return chunks
-
-
-def _format_date(value) -> str:
-    return value.astimezone().strftime("%d.%m.%Y") if value else "—"
-
-
-def _discussion_text(result: DiscussionStats) -> str:
-    overview = result.overview
-    participants = "\n".join(
-        f"• <b>{escape(item.sender_name)}</b> — {item.message_count} сообщений, "
-        f"ответов {item.reply_count}, медиа {item.media_count}"
-        for item in result.participants
-    ) or "• данных пока нет"
-    hashtags = "\n".join(
-        f"• <code>#{escape(item.hashtag)}</code> — {item.publication_count}"
-        for item in result.hashtags
-    ) or "• хэштегов пока нет"
-    return (
-        "<b>Статистика чата обсуждений</b>\n\n"
-        f"Chat ID: <code>{result.chat_id}</code>\n"
-        f"Период: <b>{_format_date(overview.first_message_at)}</b> — "
-        f"<b>{_format_date(overview.last_message_at)}</b>\n"
-        f"Сообщений: <b>{overview.total_messages}</b>\n"
-        f"Публикаций / альбомов: <b>{overview.total_publications}</b>\n"
-        f"Участников: <b>{overview.unique_participants}</b>\n"
-        f"Ответов: <b>{overview.reply_messages}</b>\n"
-        f"Медиа: <b>{overview.media_messages}</b>\n"
-        f"Реакций: <b>{overview.total_reactions}</b>\n\n"
-        f"<b>Активные участники</b>\n{participants}\n\n"
-        f"<b>Частые хэштеги</b>\n{hashtags}"
-    )
-
-
-def _hashtag_text(item: HashtagStat) -> str:
-    character = (
-        f"\nПерсонаж в архиве: <b>{escape(item.character_name)}</b>"
-        if item.character_name
-        else "\nС карточкой персонажа пока не сопоставлен."
-    )
-    return (
-        f"<b>#{escape(item.hashtag)}</b>\n\n"
-        f"Публикаций: <b>{item.publication_count}</b>\n"
-        f"Из них промтов: <b>{item.prompt_count}</b>\n"
-        f"Последнее использование: <b>{_format_date(item.last_used_at)}</b>"
-        f"{character}"
-    )
-
-
-def _import_text(result: ImportResult) -> str:
-    summary = result.summary
-    source_label = "канал" if summary.source_kind == "channel" else "обсуждение"
-    duplicate = "\n\n⚠️ Этот файл уже импортировался ранее." if summary.duplicate_import else ""
-    text = (
-        f"<b>Импорт завершён: {source_label}</b>\n\n"
-        f"Источник: <b>{escape(summary.source_name)}</b>\n"
-        f"Chat ID: <code>{summary.source_chat_id}</code>\n"
-        f"Записей: <b>{summary.total_records}</b>\n"
-        f"Импортировано: <b>{summary.imported_messages}</b>\n"
-        f"Публикаций / альбомов: <b>{summary.publication_count}</b>\n"
-        f"Промтов: <b>{summary.prompt_publications}</b>\n"
-        f"Хэштегов: <b>{summary.hashtag_count}</b>\n"
-        f"Персонажей сопоставлено: <b>{summary.character_matches}</b>"
-        f"{duplicate}"
-    )
-    if result.relink is not None:
-        text += (
-            "\n\n<b>Связка с публикациями</b>\n"
-            f"Корней найдено: <b>{result.relink.roots_marked}</b>\n"
-            f"Комментариев привязано: <b>{result.relink.comments_linked}</b>\n"
-            f"Веток сопоставлено: <b>{result.relink.threads_linked}</b>"
-        )
-    return text
-
-
 @router.callback_query(OwnerActionCallback.filter())
 async def handle_owner_action_callback(
     callback: CallbackQuery,
@@ -455,7 +342,11 @@ async def handle_owner_action_callback(
     if action == "menu":
         await _safe_edit(callback.message, _main_text(), _main_keyboard())
     elif action in {"characters", "media", "references", "aliases", "data"}:
-        await _safe_edit(callback.message, _section_text(action), _section_keyboard(action))
+        await _safe_edit(
+            callback.message,
+            _section_text(action),
+            _section_keyboard(action),
+        )
     elif action == "map":
         await _safe_edit(
             callback.message,
@@ -467,7 +358,10 @@ async def handle_owner_action_callback(
     elif action.startswith("media."):
         await _send_media_form(callback.message, action.removeprefix("media."))
     elif action in {"direct.refdone", "direct.refcancel"}:
-        session = finish_reference_upload(reference_uploads, user_id=callback.from_user.id)
+        session = finish_reference_upload(
+            reference_uploads,
+            user_id=callback.from_user.id,
+        )
         if session is None:
             text = "Активной загрузки референсов нет."
         elif action == "direct.refdone":
@@ -480,7 +374,9 @@ async def handle_owner_action_callback(
             text = "Загрузка референсов остановлена."
         await callback.message.answer(
             text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row("references")]),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[_back_row("references")]
+            ),
         )
     elif action == "ask.aliasreindex":
         await _safe_edit(
@@ -495,8 +391,16 @@ async def handle_owner_action_callback(
             f"Новых основных алиасов: <b>{result.created_name_aliases}</b>\n"
             f"Распознано связей: <b>{result.matched_links}</b> из "
             f"<b>{result.total_hashtags}</b>.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row("aliases")]),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[_back_row("aliases")]
+            ),
         )
+    else:
+        await callback.answer("Неизвестное действие.", show_alert=True)
+        return
+    await callback.answer()
+
+
 @router.message(OwnerActionReplyFilter())
 async def handle_owner_action_reply(
     message: Message,
@@ -557,12 +461,6 @@ async def handle_owner_action_reply(
             actor_id=actor_id,
         ):
             return
-        raise ValueError("Неизвестная форма действия.")
-    except (ValueError, RuntimeError) as error:
-        await message.answer(
-            escape(str(error)),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row()]),
-        )
         raise ValueError("Неизвестная форма действия.")
     except (ValueError, RuntimeError) as error:
         await message.answer(
