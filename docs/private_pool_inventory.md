@@ -2,14 +2,14 @@
 
 Дата среза: 17 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18V, `AIQualityRepository`.
+Последний завершённый срез: Фаза 18V, `AIQualityRepository` и его schema compatibility facade.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 102 внешних обращения к `Database._require_pool()`;
-- 26 production-файлов;
+- 100 внешних обращений к `Database._require_pool()`;
+- 25 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -24,10 +24,10 @@ AST-сканирование production package `velvet_bot/` фиксирует
 | Backup infrastructure | 17 | отдельный срез с сохранением restore/retention contracts |
 | Repository-классы внутри крупных модулей | 16 | переводить по одному repository с runtime-тестами |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
-| Compatibility-фасады | 5 | переводить после их штатных источников либо удалять после проверки импортов |
 | Application/application-service | 4 | вынести persistence в repository boundary |
+| Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 102.
+Всего: 100.
 
 ## Завершённые погашения baseline
 
@@ -39,7 +39,7 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18S: `PaletteCompositionReportRepository`, удалено 1 обращение и 1 production-файл.
 - Фаза 18T: `VelvetFormattingReportRepository`, удалено 1 обращение и 1 production-файл; одиночные report repositories закрыты.
 - Фаза 18U: `QualityCalibrationRepository`, удалены 3 обращения и 1 production-файл; profile, pagination и case lookup переведены вместе.
-- Фаза 18V: `AIQualityRepository`, удалены 8 обращений и 1 production-файл; claim, lifecycle, dashboard и owner decisions переведены вместе.
+- Фаза 18V: `AIQualityRepository` и его активный schema compatibility facade, удалены 10 обращений и 2 production-файла; claim, lifecycle, dashboard и owner decisions переведены вместе.
 
 ## Очередь
 
