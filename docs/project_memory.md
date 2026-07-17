@@ -97,7 +97,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## Фаза 18. Публичная граница PostgreSQL
 
-Статус: срезы 18A–18E реализованы, P2-перенос продолжается.
+Статус: срезы 18A–18F реализованы, P2-перенос продолжается.
 
 - 18A: добавлен `Database.acquire()`;
 - 18A: character и story repositories больше не используют приватный `_require_pool()`;
@@ -105,9 +105,10 @@ Owner-операции вынесены из Telegram handlers в application us
 - 18C: reference repository переведён с сохранением транзакций, пагинации и dedup по `file_unique_id`;
 - 18D: media quality repository переведён с сохранением claim locks, fingerprint workflow, duplicate decisions и file checks;
 - 18E: publication repository переведён с сохранением owner scope, пагинации, queue transitions, event logging и locked schedule query;
+- 18F: discussion repository переведён с сохранением tracked-channel filters, parent lookup, reaction transaction, overview и participant stats;
 - SQL и транзакционные границы завершённых доменов сохранены;
 - добавлен автоматический контракт, не допускающий аукционные доменные зависимости в production package;
-- следующий изолированный срез: discussion repository.
+- следующий изолированный срез: discussion ingest repository.
 
 ## Фаза 19. Полный операционный контур Velvet AI
 
@@ -164,7 +165,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## P2
 
-1. Продолжить Фазу 18 с `DiscussionRepository`; characters, stories, archive, public archive, references, media quality и publication уже используют `Database.acquire()`.
+1. Продолжить Фазу 18 с `DiscussionIngestRepository`; characters, stories, archive, public archive, references, media quality, publication и discussions уже используют `Database.acquire()`.
 2. Сокращать широкие `except Exception` внутри бизнес-логики.
 3. Добавить зашифрованную репликацию backup во внешнее хранилище.
 4. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
