@@ -18,22 +18,13 @@ from aiogram.types import (
     Message,
 )
 
+from velvet_bot.app.publication import build_publication_service
+from velvet_bot.application.publication_actions import build_publication_actions
 from velvet_bot.database import Database
+from velvet_bot.domains.publication import PublicationDraft
 from velvet_bot.post_classification import POST_TYPE_LABELS
-from velvet_bot.publication_worker import publish_publication_draft
-from velvet_bot.publication_workflow import (
-    PublicationDraft,
-    cancel_publication,
-    capture_publication_inbox,
-    create_draft_from_message,
-    get_publication_draft,
-    list_publication_drafts,
-    retry_publication,
-    schedule_publication,
-    set_publication_spoiler,
-    update_publication_text,
-    validate_publication_draft,
-)
+from velvet_bot.publication_drafts import capture_publication_inbox
+from velvet_bot.services.telegram_publications import create_publication_draft
 
 router = Router(name=__name__)
 
@@ -286,8 +277,7 @@ async def _show_draft(
     page: int,
     publication_timezone: str,
 ) -> None:
-    draft = await get_publication_draft(
-        database,
+    draft = await build_publication_actions(database).get_draft(
         draft_id,
         owner_id=callback.from_user.id,
     )
@@ -312,8 +302,7 @@ async def _show_list(
     page: int,
 ) -> None:
     statuses = _SECTION_STATUSES.get(section, _SECTION_STATUSES["drafts"])
-    result = await list_publication_drafts(
-        database,
+    result = await build_publication_actions(database).list_drafts(
         owner_id=callback.from_user.id,
         statuses=statuses,
         page=page,
@@ -394,12 +383,11 @@ async def handle_check_post(
     if not analytics_channel_ids:
         await message.answer("Основной канал публикаций не настроен.")
         return
-    target_chat_id = sorted(analytics_channel_ids)[0]
-    draft = await create_draft_from_message(
+    draft = await create_publication_draft(
         database,
         source,
+        analytics_channel_ids=analytics_channel_ids,
         owner_id=message.from_user.id,
-        target_chat_id=target_chat_id,
     )
     await message.answer(
         _draft_text(draft, publication_timezone),
@@ -468,8 +456,8 @@ async def handle_publication_callback(
         await callback.answer()
         return
 
-    draft = await get_publication_draft(
-        database,
+    actions = build_publication_actions(database)
+    draft = await actions.get_draft(
         callback_data.draft_id,
         owner_id=callback.from_user.id,
     )
@@ -478,8 +466,7 @@ async def handle_publication_callback(
         return
 
     if action == "recheck":
-        await validate_publication_draft(
-            database,
+        await actions.recheck(
             draft.id,
             owner_id=callback.from_user.id,
         )
@@ -494,8 +481,7 @@ async def handle_publication_callback(
         await callback.answer("Проверка обновлена.")
         return
     if action == "spoiler":
-        await set_publication_spoiler(
-            database,
+        await actions.set_spoiler(
             draft.id,
             owner_id=callback.from_user.id,
             enabled=not draft.has_spoiler,
@@ -540,9 +526,7 @@ async def handle_publication_callback(
             return
         await callback.answer("Публикую…")
         try:
-            result = await publish_publication_draft(
-                bot,
-                database,
+            result = await build_publication_service(bot, database).publish(
                 draft.id,
                 owner_id=callback.from_user.id,
                 actor_id=callback.from_user.id,
@@ -563,12 +547,12 @@ async def handle_publication_callback(
         )
         return
     if action == "cancel":
-        await cancel_publication(database, draft.id, owner_id=callback.from_user.id)
+        await actions.cancel(draft.id, owner_id=callback.from_user.id)
         await _show_list(callback, database, section="drafts", page=0)
         await callback.answer("Публикация отменена.")
         return
     if action == "retry":
-        await retry_publication(database, draft.id, owner_id=callback.from_user.id)
+        await actions.retry(draft.id, owner_id=callback.from_user.id)
         await _show_draft(
             callback,
             database,
@@ -612,8 +596,7 @@ async def handle_publication_reply(
         if local_value.astimezone(timezone.utc) <= datetime.now(timezone.utc):
             await message.answer("Дата публикации должна быть в будущем.")
             return
-        draft = await schedule_publication(
-            database,
+        draft = await build_publication_actions(database).schedule(
             draft_id,
             owner_id=message.from_user.id,
             scheduled_at=local_value.astimezone(timezone.utc),
@@ -625,8 +608,7 @@ async def handle_publication_reply(
         return
     if text_match:
         draft_id = int(text_match.group(1))
-        draft = await update_publication_text(
-            database,
+        draft = await build_publication_actions(database).update_text(
             draft_id,
             owner_id=message.from_user.id,
             text=message.text or message.caption or "",
