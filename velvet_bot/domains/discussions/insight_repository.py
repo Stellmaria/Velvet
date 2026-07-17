@@ -19,7 +19,7 @@ class DiscussionInsightRepository:
         parent_channel_id: int,
         since: datetime | None,
     ) -> DiscussionSummary:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             comment_row = await connection.fetchrow(
                 """
                 WITH linked_comments AS (
