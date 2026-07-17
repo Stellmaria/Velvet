@@ -16,7 +16,7 @@ class ArchivePreviewRepository:
         character_id: int,
         media_id: int,
     ) -> PreviewRecord:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
@@ -53,7 +53,7 @@ class ArchivePreviewRepository:
         )
 
     async def save(self, *, media_id: int, preview: PreviewPayload) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE media_files

@@ -19,14 +19,17 @@
 - AST-контракт, запрещающий аукционные доменные зависимости в production package Velvet Archive;
 - AST-инвентаризация обращений к `Database._require_pool()`, включая dynamic `getattr`;
 - машинный baseline private pool debt с count и SHA-256 identity для каждого production-файла;
-- документированная очередь погашения private pool debt по архитектурным слоям.
+- документированная очередь погашения private pool debt по архитектурным слоям;
+- документ `docs/stabilization_policy.md`, определяющий допустимый новый код и стабилизационные ворота проекта.
 
 ### Changed
 
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
-- character, story, archive, public archive, reference, media quality, publication, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight и discussion relink repositories больше не обращаются к приватному `_require_pool()`;
+- character, story, archive, public archive, reference, media quality, publication, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight, discussion relink и archive preview repositories больше не обращаются к приватному `_require_pool()`;
+- private pool baseline уменьшен с 130 обращений в 35 production-файлах до 128 обращений в 34 файлах;
 - новые либо изменённые private pool access блокируются CI до отдельного review и обновления baseline;
 - `AGENTS.md` и карта проекта закрепляют Velvet Archive как отдельный owner-oriented архивный продукт без логики аукционного бота;
+- в режиме стабилизации новый код допускается только для ускорения, упрощения, надёжности, контроля и удобства существующих функций;
 - промт против результата, палитра и композиция, оформление, ручная проверка изображения, сравнение с референсом и анализ медиасета регистрируются до обращения к Qwen;
 - длинные AI-результаты отправляются отдельным сообщением и полностью сохраняются в истории;
 - кнопка ручного запуска worker подтверждает нажатие до выполнения длительного цикла;
