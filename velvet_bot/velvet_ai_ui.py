@@ -64,7 +64,7 @@ def build_velvet_ai_menu(
             ],
             [
                 InlineKeyboardButton(
-                    text="🎛 Калибровка Qwen",
+                    text="🎛 Калибровка модели",
                     callback_data=quality_callback("qcal"),
                 ),
                 InlineKeyboardButton(
