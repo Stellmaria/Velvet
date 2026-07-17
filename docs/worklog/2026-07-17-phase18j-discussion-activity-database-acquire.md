@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18j-discussion-activity-database-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18J
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18j-discussion-activity-database-acquire`
 - Базовый commit: `77081a3fac526b5d1c38fc5fc8d316c6d123cc84`
 
@@ -49,24 +49,40 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- все три точки получения соединения в `DiscussionActivityRepository` переведены на `self._database.acquire()`;
+- CTE `publications/commented`, фильтры chat/channel/since, порядок `posted_at DESC` и пагинация публикаций без комментариев сохранены;
+- weekday/hour queries сохраняют timezone parameter и прежние допустимые диапазоны bucket;
+- invalid weekday/hour buckets по-прежнему игнорируются при построении фиксированных массивов 7/24;
+- daily activity query и преобразование строк в `DailyActivityCount` не изменены;
+- добавлен отдельный source-boundary и два runtime regression-теста;
+- тесты проверяют крайнюю страницу silent publications, weekday/hour bucket mapping и daily rows;
+- project memory, development status и changelog обновлены;
+- следующим отдельным срезом определён `DiscussionPostInsightRepository`.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции отсутствуют. SQL, определения публикаций без комментариев, временные зоны, activity buckets, `DashboardPage`, `ActivityBreakdown` и `DailyActivityCount` не менялись. Аукционные activity metrics не добавлялись.
 
 ### Проверки
 
-Заполняется после реализации.
+- production diff содержит три симметричные замены private pool access на публичный API базы;
+- source-тест проверяет отсутствие `._require_pool()` и наличие трёх public acquire contexts;
+- runtime-тест silent publications проверяет total `17`, нормализацию страницы `99` до `2`, offset `16`, limit `8` и итоговый dashboard item;
+- runtime-тест activity проверяет weekday buckets `1/7`, hour buckets `0/23`, игнорирование invalid buckets и две дневные строки;
+- полный CI ещё не запущен.
 
 ### PR и commit
 
-Заполняется после реализации.
+PR ещё не открыт. Текущий head будет записан после создания draft PR.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- сравнить ветку с `main`;
+- открыть draft PR;
+- получить project notes contract, полный tests workflow с PostgreSQL 16 и Docker build;
+- исправить возможные регрессии;
+- закрыть дневник точными run и итоговым commit.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+После успешного слияния начать отдельную Фазу 18K для `DiscussionPostInsightRepository`, не включая relink repository в тот же PR.
