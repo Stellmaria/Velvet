@@ -3,7 +3,12 @@ from __future__ import annotations
 from datetime import date
 
 from velvet_bot.database import Database
-from velvet_bot.domains.stories.models import CharacterStory, StoryPage, StorySummary
+from velvet_bot.domains.stories.models import (
+    AssignedCharacterStory,
+    CharacterStory,
+    StoryPage,
+    StorySummary,
+)
 
 _STORY_COLUMNS = """
     id,
@@ -200,32 +205,203 @@ class StoryRepository:
         story_id: int | None,
     ) -> None:
         async with self._database._require_pool().acquire() as connection:
-            if story_id is None:
-                result = await connection.execute(
-                    """
-                    UPDATE characters
-                    SET story_id = NULL
-                    WHERE id = $1::BIGINT
-                    """,
+            async with connection.transaction():
+                character = await connection.fetchrow(
+                    "SELECT id, universe FROM characters WHERE id = $1::BIGINT FOR UPDATE",
                     int(character_id),
                 )
-            else:
-                result = await connection.execute(
+                if character is None:
+                    raise ValueError("Персонаж не найден.")
+                if story_id is not None:
+                    story = await connection.fetchrow(
+                        "SELECT id, universe FROM character_stories WHERE id = $1::BIGINT",
+                        int(story_id),
+                    )
+                    if story is None or story["universe"] != character["universe"]:
+                        raise ValueError(
+                            "История относится к другой вселенной или больше не существует."
+                        )
+                await connection.execute(
+                    "DELETE FROM character_story_links WHERE character_id = $1::BIGINT",
+                    int(character_id),
+                )
+                if story_id is not None:
+                    await connection.execute(
+                        """
+                        INSERT INTO character_story_links (character_id, story_id, is_primary)
+                        VALUES ($1::BIGINT, $2::BIGINT, TRUE)
+                        """,
+                        int(character_id),
+                        int(story_id),
+                    )
+                await connection.execute(
+                    "UPDATE characters SET story_id = $2::BIGINT WHERE id = $1::BIGINT",
+                    int(character_id),
+                    int(story_id) if story_id is not None else None,
+                )
+
+    async def list_assigned_character_stories(
+        self,
+        *,
+        character_id: int,
+    ) -> list[AssignedCharacterStory]:
+        async with self._database._require_pool().acquire() as connection:
+            rows = await connection.fetch(
+                """
+                SELECT
+                    story.id, story.universe, story.key, story.short_label,
+                    story.title, story.sort_order, story.release_order,
+                    story.released_on, story.release_precision, link.is_primary
+                FROM character_story_links AS link
+                JOIN character_stories AS story ON story.id = link.story_id
+                WHERE link.character_id = $1::BIGINT
+                ORDER BY
+                    link.is_primary DESC,
+                    story.release_order DESC,
+                    story.released_on DESC NULLS LAST,
+                    story.title,
+                    story.id
+                """,
+                int(character_id),
+            )
+        return [
+            AssignedCharacterStory(
+                story=self._row_to_story(row),
+                is_primary=bool(row["is_primary"]),
+            )
+            for row in rows
+        ]
+
+    async def toggle_character_story(
+        self,
+        *,
+        character_id: int,
+        story_id: int,
+        assigned_by: int | None = None,
+    ) -> bool:
+        async with self._database._require_pool().acquire() as connection:
+            async with connection.transaction():
+                character = await connection.fetchrow(
+                    "SELECT id, universe, story_id FROM characters WHERE id = $1::BIGINT FOR UPDATE",
+                    int(character_id),
+                )
+                story = await connection.fetchrow(
+                    "SELECT id, universe FROM character_stories WHERE id = $1::BIGINT",
+                    int(story_id),
+                )
+                if character is None or story is None:
+                    raise ValueError("Персонаж или история больше не найдены.")
+                if character["universe"] != "kr" or story["universe"] != "kr":
+                    raise ValueError("Множественный выбор историй доступен только для КР.")
+
+                existing = await connection.fetchrow(
                     """
-                    UPDATE characters AS c
-                    SET story_id = s.id
-                    FROM character_stories AS s
-                    WHERE c.id = $1::BIGINT
-                      AND s.id = $2::BIGINT
-                      AND c.universe = s.universe
+                    SELECT is_primary
+                    FROM character_story_links
+                    WHERE character_id = $1::BIGINT AND story_id = $2::BIGINT
                     """,
                     int(character_id),
                     int(story_id),
                 )
-        if result == "UPDATE 0":
-            raise ValueError(
-                "Персонаж не найден или история относится к другой вселенной."
+                if existing is not None:
+                    await connection.execute(
+                        """
+                        DELETE FROM character_story_links
+                        WHERE character_id = $1::BIGINT AND story_id = $2::BIGINT
+                        """,
+                        int(character_id),
+                        int(story_id),
+                    )
+                    if bool(existing["is_primary"]):
+                        await self._select_new_primary(connection, int(character_id))
+                    return False
+
+                has_primary = bool(
+                    await connection.fetchval(
+                        """
+                        SELECT TRUE
+                        FROM character_story_links
+                        WHERE character_id = $1::BIGINT AND is_primary
+                        LIMIT 1
+                        """,
+                        int(character_id),
+                    )
+                )
+                await connection.execute(
+                    """
+                    INSERT INTO character_story_links (
+                        character_id, story_id, is_primary, assigned_by
+                    )
+                    VALUES ($1::BIGINT, $2::BIGINT, $3::BOOLEAN, $4::BIGINT)
+                    """,
+                    int(character_id),
+                    int(story_id),
+                    not has_primary,
+                    assigned_by,
+                )
+                if not has_primary:
+                    await connection.execute(
+                        "UPDATE characters SET story_id = $2::BIGINT WHERE id = $1::BIGINT",
+                        int(character_id),
+                        int(story_id),
+                    )
+                return True
+
+    async def clear_character_stories(self, *, character_id: int) -> None:
+        async with self._database._require_pool().acquire() as connection:
+            async with connection.transaction():
+                character = await connection.fetchrow(
+                    "SELECT id FROM characters WHERE id = $1::BIGINT FOR UPDATE",
+                    int(character_id),
+                )
+                if character is None:
+                    raise ValueError("Персонаж не найден.")
+                await connection.execute(
+                    "DELETE FROM character_story_links WHERE character_id = $1::BIGINT",
+                    int(character_id),
+                )
+                await connection.execute(
+                    "UPDATE characters SET story_id = NULL WHERE id = $1::BIGINT",
+                    int(character_id),
+                )
+
+    @staticmethod
+    async def _select_new_primary(connection, character_id: int) -> int | None:
+        story_id = await connection.fetchval(
+            """
+            SELECT link.story_id
+            FROM character_story_links AS link
+            JOIN character_stories AS story ON story.id = link.story_id
+            WHERE link.character_id = $1::BIGINT
+            ORDER BY
+                story.release_order DESC,
+                story.released_on DESC NULLS LAST,
+                story.title,
+                story.id
+            LIMIT 1
+            """,
+            int(character_id),
+        )
+        await connection.execute(
+            "UPDATE character_story_links SET is_primary = FALSE WHERE character_id = $1::BIGINT",
+            int(character_id),
+        )
+        if story_id is not None:
+            await connection.execute(
+                """
+                UPDATE character_story_links
+                SET is_primary = TRUE
+                WHERE character_id = $1::BIGINT AND story_id = $2::BIGINT
+                """,
+                int(character_id),
+                int(story_id),
             )
+        await connection.execute(
+            "UPDATE characters SET story_id = $2::BIGINT WHERE id = $1::BIGINT",
+            int(character_id),
+            int(story_id) if story_id is not None else None,
+        )
+        return int(story_id) if story_id is not None else None
 
     async def list_summaries(
         self,
@@ -255,7 +431,8 @@ class StoryRepository:
                               )
                     ) AS character_count
                 FROM character_stories AS s
-                LEFT JOIN characters AS c ON c.story_id = s.id
+                LEFT JOIN character_story_links AS link ON link.story_id = s.id
+                LEFT JOIN characters AS c ON c.id = link.character_id
                 LEFT JOIN character_media AS cm ON cm.character_id = c.id
                 WHERE s.universe = $2::VARCHAR
                 GROUP BY s.id

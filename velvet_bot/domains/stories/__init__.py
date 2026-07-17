@@ -10,7 +10,12 @@ from velvet_bot.domains.stories.constants import (
     RELEASE_PRECISIONS,
     STORY_REQUIRED_UNIVERSES,
 )
-from velvet_bot.domains.stories.models import CharacterStory, StoryPage, StorySummary
+from velvet_bot.domains.stories.models import (
+    AssignedCharacterStory,
+    CharacterStory,
+    StoryPage,
+    StorySummary,
+)
 from velvet_bot.domains.stories.repository import StoryRepository
 from velvet_bot.domains.stories.service import StoryService
 
@@ -18,6 +23,7 @@ __all__ = (
     "KNOWN_UNIVERSES",
     "RELEASE_PRECISIONS",
     "STORY_REQUIRED_UNIVERSES",
+    "AssignedCharacterStory",
     "CharacterStory",
     "StoryPage",
     "StoryRepository",

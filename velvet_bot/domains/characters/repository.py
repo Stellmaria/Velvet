@@ -37,21 +37,33 @@ class CharacterDirectoryRepository:
 
     async def set_universe(self, *, character_id: int, universe: str | None) -> None:
         async with self._database._require_pool().acquire() as connection:
-            result = await connection.execute(
-                """
-                UPDATE characters
-                SET story_id = CASE
-                        WHEN universe IS NOT DISTINCT FROM $2::VARCHAR THEN story_id
-                        ELSE NULL
-                    END,
-                    universe = $2::VARCHAR
-                WHERE id = $1::BIGINT
-                """,
-                int(character_id),
-                universe,
-            )
-        if result == "UPDATE 0":
-            raise ValueError("Персонаж не найден.")
+            async with connection.transaction():
+                current = await connection.fetchrow(
+                    "SELECT universe FROM characters WHERE id = $1::BIGINT FOR UPDATE",
+                    int(character_id),
+                )
+                if current is None:
+                    raise ValueError("Персонаж не найден.")
+                if current["universe"] != universe:
+                    await connection.execute(
+                        "DELETE FROM character_story_links WHERE character_id = $1::BIGINT",
+                        int(character_id),
+                    )
+                    await connection.execute(
+                        """
+                        UPDATE characters
+                        SET universe = $2::VARCHAR, story_id = NULL
+                        WHERE id = $1::BIGINT
+                        """,
+                        int(character_id),
+                        universe,
+                    )
+                else:
+                    await connection.execute(
+                        "UPDATE characters SET universe = $2::VARCHAR WHERE id = $1::BIGINT",
+                        int(character_id),
+                        universe,
+                    )
 
     async def set_prompt_url(
         self,
@@ -118,7 +130,11 @@ class CharacterDirectoryRepository:
                         AND c.universe IS NOT NULL
                         AND (
                             c.universe NOT IN {STORY_REQUIRED_SQL}
-                            OR c.story_id IS NOT NULL
+                            OR EXISTS (
+                                SELECT 1
+                                FROM character_story_links AS ready_link
+                                WHERE ready_link.character_id = c.id
+                            )
                         )
                     )
                 )
@@ -166,7 +182,11 @@ class CharacterDirectoryRepository:
                             cm.media_id IS NOT NULL
                             AND (
                                 c.universe NOT IN {STORY_REQUIRED_SQL}
-                                OR c.story_id IS NOT NULL
+                                OR EXISTS (
+                                SELECT 1
+                                FROM character_story_links AS ready_link
+                                WHERE ready_link.character_id = c.id
+                            )
                             )
                         )
                       )
@@ -205,7 +225,14 @@ class CharacterDirectoryRepository:
             (($1::TEXT = 'uncategorized' AND c.category IS NULL) OR c.category = $1)
         """
         universe_condition = "($3::TEXT IS NULL OR c.universe = $3)"
-        story_condition = "($4::BIGINT IS NULL OR c.story_id = $4)"
+        story_condition = """
+            ($4::BIGINT IS NULL OR EXISTS (
+                SELECT 1
+                FROM character_story_links AS selected_link
+                WHERE selected_link.character_id = c.id
+                  AND selected_link.story_id = $4::BIGINT
+            ))
+        """
         public_condition = f"""
             (
                 $2::BOOLEAN = FALSE
@@ -214,7 +241,11 @@ class CharacterDirectoryRepository:
                     AND c.universe IS NOT NULL
                     AND (
                         c.universe NOT IN {STORY_REQUIRED_SQL}
-                        OR c.story_id IS NOT NULL
+                        OR EXISTS (
+                                SELECT 1
+                                FROM character_story_links AS ready_link
+                                WHERE ready_link.character_id = c.id
+                            )
                     )
                 )
             )
