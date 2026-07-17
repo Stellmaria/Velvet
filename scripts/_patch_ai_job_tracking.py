@@ -7,66 +7,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def replace_once(source: str, old: str, new: str, *, label: str) -> str:
-    count = source.count(old)
-    if count != 1:
-        raise RuntimeError(f"{label}: ожидалось одно совпадение, найдено {count}")
-    return source.replace(old, new, 1)
+def ensure_import(source: str) -> str:
+    import_line = "from velvet_bot.ai_job_runtime import AIJobTracker\n"
+    if import_line in source:
+        return source
+    anchor = "from velvet_bot.core.config import load_settings\n"
+    if source.count(anchor) != 1:
+        raise RuntimeError("Не найдена однозначная точка импорта AIJobTracker.")
+    return source.replace(anchor, import_line + anchor, 1)
+
+
+def replace_span(source: str, start: str, end: str, replacement: str, *, label: str) -> str:
+    if source.count(start) != 1:
+        raise RuntimeError(f"{label}: неоднозначная начальная граница")
+    start_index = source.index(start)
+    end_index = source.find(end, start_index + len(start))
+    if end_index < 0:
+        raise RuntimeError(f"{label}: не найдена конечная граница")
+    return source[:start_index] + replacement + source[end_index:]
 
 
 def patch_prompt_result() -> None:
     path = ROOT / "velvet_bot/handlers/velvet_ai.py"
-    source = path.read_text(encoding="utf-8")
-    source = replace_once(
-        source,
-        "from velvet_bot.core.config import load_settings\n",
-        "from velvet_bot.ai_job_runtime import AIJobTracker\n"
-        "from velvet_bot.core.config import load_settings\n",
-        label="prompt import",
-    )
-    old = '''    status = await message.answer(
-        "<b>🧠 Qwen сравнивает промт и результат</b>\n\n"
-        "Проверяю персонажей, композицию, свет, палитру, окружение и стиль."
-    )
-    file_id, file_unique_id = result_file
-    try:
-        image = await _download_image(bot, file_id)
-        client = PromptResultComparisonClient(
-            provider=settings.ai_vision_provider,
-            base_url=settings.ai_vision_base_url,
-            model=settings.ai_vision_model,
-            api_key=settings.ai_vision_api_key,
-            timeout_seconds=settings.ai_vision_timeout_seconds,
-        )
-        async with get_local_ai_lock():
-            report = await client.compare(session.prompt_text, image)
-        report_id = await PromptResultReportRepository(database).save(
-            result_file_id=file_id,
-            result_file_unique_id=file_unique_id,
-            prompt_text=session.prompt_text,
-            provider=client.provider,
-            model=client.model,
-            report=report,
-            created_by=message.from_user.id if message.from_user else None,
-        )
-    except asyncio.CancelledError:
-        raise
-    except Exception as error:
-        logger.exception("Prompt/result comparison failed")
-        await status.edit_text(
-            "<b>❌ Проверка промта не завершена</b>\n\n"
-            f"<code>{escape(str(error))}</code>\n\n"
-            "Промт сохранён до истечения формы, поэтому изображение можно отправить повторно."
-        )
-        return
-
-    _sessions.pop(key, None)
-    await status.edit_text(
-        _report_text(report_id, report),
-        reply_markup=_report_keyboard(),
-    )
-'''
-    new = '''    file_id, file_unique_id = result_file
+    source = ensure_import(path.read_text(encoding="utf-8"))
+    replacement = '''    file_id, file_unique_id = result_file
     tracker = await AIJobTracker.create(
         database=database,
         source_message=message,
@@ -120,62 +84,20 @@ def patch_prompt_result() -> None:
 
     _sessions.pop(key, None)
 '''
-    source = replace_once(source, old, new, label="prompt flow")
+    source = replace_span(
+        source,
+        "    status = await message.answer(\n",
+        "\n\n\n__all__ = (\"PromptCheckReplyFilter\", \"router\")",
+        replacement,
+        label="prompt result flow",
+    )
     path.write_text(source, encoding="utf-8")
 
 
 def patch_palette() -> None:
     path = ROOT / "velvet_bot/handlers/velvet_ai_visual.py"
-    source = path.read_text(encoding="utf-8")
-    source = replace_once(
-        source,
-        "from velvet_bot.core.config import load_settings\n",
-        "from velvet_bot.ai_job_runtime import AIJobTracker\n"
-        "from velvet_bot.core.config import load_settings\n",
-        label="palette import",
-    )
-    old = '''    status = await message.answer(
-        "<b>🧠 Qwen анализирует композицию</b>\n\n"
-        "Измеряю палитру и проверяю фокус, баланс, кадрирование, глубину и свет."
-    )
-    file_id, file_unique_id = result_file
-    try:
-        image = await _download_image(bot, file_id)
-        metrics = await asyncio.to_thread(extract_palette_metrics, image)
-        client = CompositionAnalysisClient(
-            provider=settings.ai_vision_provider,
-            base_url=settings.ai_vision_base_url,
-            model=settings.ai_vision_model,
-            api_key=settings.ai_vision_api_key,
-            timeout_seconds=settings.ai_vision_timeout_seconds,
-        )
-        async with get_local_ai_lock():
-            report = await client.analyze_composition(image, metrics)
-        report_id = await PaletteCompositionReportRepository(database).save(
-            result_file_id=file_id,
-            result_file_unique_id=file_unique_id,
-            provider=client.provider,
-            model=client.model,
-            metrics=metrics,
-            report=report,
-            created_by=message.from_user.id if message.from_user else None,
-        )
-        palette_card = await asyncio.to_thread(build_palette_card, metrics)
-    except asyncio.CancelledError:
-        raise
-    except Exception as error:
-        logger.exception("Palette/composition analysis failed")
-        await status.edit_text(
-            "<b>❌ Анализ палитры и композиции не завершён</b>\n\n"
-            f"<code>{escape(str(error))}</code>"
-        )
-        return
-    await status.edit_text(
-        _report_text(report_id, metrics, report),
-        reply_markup=_report_keyboard(),
-    )
-'''
-    new = '''    file_id, file_unique_id = result_file
+    source = ensure_import(path.read_text(encoding="utf-8"))
+    replacement = '''    file_id, file_unique_id = result_file
     tracker = await AIJobTracker.create(
         database=database,
         source_message=message,
@@ -228,58 +150,22 @@ def patch_palette() -> None:
         logger.exception("Palette/composition analysis failed job_id=%s", tracker.job_id)
         await tracker.error(error)
         return
+
 '''
-    source = replace_once(source, old, new, label="palette flow")
+    source = replace_span(
+        source,
+        "    status = await message.answer(\n",
+        "    await message.answer_photo(\n",
+        replacement,
+        label="palette flow",
+    )
     path.write_text(source, encoding="utf-8")
 
 
 def patch_formatting() -> None:
     path = ROOT / "velvet_bot/handlers/velvet_ai_formatting.py"
-    source = path.read_text(encoding="utf-8")
-    source = replace_once(
-        source,
-        "from velvet_bot.core.config import load_settings\n",
-        "from velvet_bot.ai_job_runtime import AIJobTracker\n"
-        "from velvet_bot.core.config import load_settings\n",
-        label="format import",
-    )
-    old = '''    status = await message.answer(
-        f"<b>🧠 Qwen · {_MODE_LABELS[mode]}</b>\n\n"
-        "Собираю фирменную структуру и проверяю лимит Telegram."
-    )
-    try:
-        client = VelvetFormattingClient(
-            provider=settings.ai_vision_provider,
-            base_url=settings.ai_vision_base_url,
-            model=settings.ai_vision_model,
-            api_key=settings.ai_vision_api_key,
-            timeout_seconds=settings.ai_vision_timeout_seconds,
-        )
-        async with get_local_ai_lock():
-            payload = await client.format(mode, source)
-        rendered = render_velvet_post(mode, source, payload)
-        await VelvetFormattingReportRepository(database).save(
-            mode=mode,
-            source_text=source,
-            provider=client.provider,
-            model=client.model,
-            payload=payload,
-            rendered_text=rendered,
-            created_by=message.from_user.id if message.from_user else None,
-        )
-    except asyncio.CancelledError:
-        raise
-    except Exception as error:
-        logger.exception("Velvet formatting failed mode=%s", mode)
-        await status.edit_text(
-            "<b>❌ Оформление не завершено</b>\n\n"
-            f"<code>{escape(str(error))}</code>"
-        )
-        return
-
-    await status.edit_text(rendered, reply_markup=_result_keyboard(mode))
-'''
-    new = '''    tracker = await AIJobTracker.create(
+    source = ensure_import(path.read_text(encoding="utf-8"))
+    replacement = '''    tracker = await AIJobTracker.create(
         database=database,
         source_message=message,
         kind="velvet_formatting",
@@ -324,7 +210,13 @@ def patch_formatting() -> None:
         await tracker.error(error)
         return
 '''
-    source = replace_once(source, old, new, label="format flow")
+    source = replace_span(
+        source,
+        "    status = await message.answer(\n",
+        "\n\n\n__all__ = (\"FormattingReplyFilter\", \"router\")",
+        replacement,
+        label="formatting flow",
+    )
     path.write_text(source, encoding="utf-8")
 
 
