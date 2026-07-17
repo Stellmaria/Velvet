@@ -7,7 +7,11 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
 
 from velvet_bot.ai_jobs import AIJob, AIJobRepository
-from velvet_bot.ai_jobs_ui import build_job_detail_text, build_job_keyboard
+from velvet_bot.ai_jobs_ui import (
+    build_job_detail_text,
+    build_job_keyboard,
+    build_job_progress_text,
+)
 from velvet_bot.database import Database
 
 
@@ -43,10 +47,17 @@ class AIJobTracker:
         job = await repository.get(job_id, created_by=created_by)
         if job is None:
             raise RuntimeError("AI-задание создано, но не найдено в журнале.")
-        status_message = await source_message.answer(
-            build_job_detail_text(job),
-            reply_markup=build_job_keyboard(job),
-        )
+        try:
+            status_message = await source_message.answer(
+                build_job_detail_text(job),
+                reply_markup=build_job_keyboard(job),
+            )
+        except Exception as error:
+            await repository.mark_error(
+                job_id,
+                f"Не удалось создать сообщение статуса: {error}",
+            )
+            raise
         return cls(
             repository=repository,
             message=status_message,
@@ -60,15 +71,27 @@ class AIJobTracker:
             raise RuntimeError("AI-задание больше не найдено в журнале.")
         return job
 
-    async def _edit(self, job: AIJob) -> None:
+    async def _edit(self, job: AIJob, *, progress_only: bool = False) -> bool:
+        text = build_job_progress_text(job) if progress_only else build_job_detail_text(job)
+        keyboard = build_job_keyboard(job)
         try:
-            await self.message.edit_text(
-                build_job_detail_text(job),
-                reply_markup=build_job_keyboard(job),
-            )
+            await self.message.edit_text(text, reply_markup=keyboard)
+            return True
         except TelegramBadRequest as error:
-            if "message is not modified" not in str(error).casefold():
-                raise
+            normalized = str(error).casefold()
+            if "message is not modified" in normalized:
+                return True
+            if (
+                "message to edit not found" in normalized
+                or "message can't be edited" in normalized
+                or "message identifier is not specified" in normalized
+            ):
+                try:
+                    self.message = await self.message.answer(text, reply_markup=keyboard)
+                    return True
+                except TelegramBadRequest:
+                    return False
+            raise
 
     async def stage(self, stage: str) -> None:
         await self.repository.mark_stage(self.job_id, stage)
@@ -89,7 +112,20 @@ class AIJobTracker:
             reference_type=reference_type,
             reference_id=reference_id,
         )
-        await self._edit(await self._get())
+        job = await self._get()
+        if len(result_text) <= 3600:
+            await self._edit(job)
+            return
+
+        await self._edit(job, progress_only=True)
+        try:
+            self.message = await self.message.answer(
+                result_text[:4090],
+                reply_markup=build_job_keyboard(job),
+            )
+        except TelegramBadRequest:
+            # The complete result remains available from the persistent AI history.
+            return
 
     async def error(self, error: BaseException | str) -> None:
         await self.repository.mark_error(self.job_id, error)
