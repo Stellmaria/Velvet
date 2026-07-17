@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18o-publication-validation-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18O
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18o-publication-validation-acquire`
 - Базовый commit: `ffee8ebeeb308b34b8ac93ff9d5c3f4549c78ef4`
 
@@ -58,9 +58,9 @@
 - транзакция update draft + insert publication event сохранена;
 - owner scope, severity counts, validation status и JSON payload не менялись;
 - добавлены source/runtime regression-тесты чтения и сохранения;
-- private pool baseline уменьшен с 128/34 до 126/33;
+- private pool baseline уменьшен с 128 обращений в 34 файлах до 126 обращений в 33 файлах;
 - следующим срезом назначена Фаза 18P: `PublicationDraftRepository`;
-- project memory и development status упрощены без потери фаз, обязательств и product boundary;
+- project memory и development status сокращены без удаления фаз, обязательств и product boundary;
 - inventory и changelog обновлены.
 
 ### Миграции и совместимость
@@ -74,24 +74,27 @@
 - `project notes contract #47` — успешно;
 - `docker build #160` — успешно;
 - `tests #566` — один failure в release documentation contract;
-- все repository/inventory тесты прошли до итогового failure;
-- причина: при сокращении `docs/development_status.md` каноническая строка `Текущая стабильная версия: 1.3.0` была сокращена до `Стабильная версия`;
-- точная release-формулировка восстановлена, production-код не менялся.
+- все repository/inventory тесты прошли;
+- причина: каноническая строка стабильной версии была сокращена при редактировании документации.
+
+После восстановления release-формулировки на head `30202c8ffc692aa32ca26ab3f331ce101ac99dc3` успешно завершены:
+
+- `project notes contract #49`;
+- `docker build #162`;
+- полный workflow `tests #568` с PostgreSQL 16.
+
+После этой итоговой записи CI запускается ещё раз на финальном head перед merge.
 
 ### PR и commit
 
-- draft PR: #111 `Фаза 18O: PublicationValidationRepository и Database.acquire`;
-- первый CI head: `a974db24fb9c43e1214dd2bed8a1f32a4f68dc8d`;
-- исправление release documentation contract: `490977a1b8a92a78876ac1e24c0d223b324e97ad`;
-- финальный commit будет зафиксирован после повторного CI и merge.
+- PR: #111 `Фаза 18O: PublicationValidationRepository и Database.acquire`;
+- зелёный промежуточный head: `30202c8ffc692aa32ca26ab3f331ce101ac99dc3`;
+- финальный squash commit фиксируется GitHub при слиянии PR #111.
 
 ### Незавершённое
 
-- получить зелёный повторный tests workflow;
-- закрыть worklog финальными run;
-- повторить CI на окончательном head;
-- слить Фазу 18O.
+Обязательных пунктов Фазы 18O не осталось. Живые эксплуатационные проверки Supervisor, staging и независимый backup/restore drill остаются отдельными стабилизационными воротами.
 
 ### Следующий шаг
 
-Повторить полный CI после восстановления канонической release-строки. После merge начать Фазу 18P отдельной сессией.
+Начать Фазу 18P: перевести `PublicationDraftRepository` на `Database.acquire()` отдельным worklog/PR и уменьшить baseline с 126 до 118 обращений.
