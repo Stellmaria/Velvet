@@ -97,7 +97,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## Фаза 18. Публичная граница PostgreSQL
 
-Статус: срезы 18A–18K реализованы, P2-перенос продолжается.
+Статус: срезы 18A–18L реализованы, P2-перенос продолжается.
 
 - 18A: добавлен `Database.acquire()`;
 - 18A: character и story repositories больше не используют приватный `_require_pool()`;
@@ -111,9 +111,10 @@ Owner-операции вынесены из Telegram handlers в application us
 - 18I: discussion ranking repository переведён с сохранением общего `_rank_page`, нормализации пагинации и элементов `DashboardPage`;
 - 18J: discussion activity repository переведён с сохранением silent-publication pagination, weekday/hour buckets и daily activity rows;
 - 18K: discussion post insight repository переведён с сохранением count/detail CTE, page normalization и моделей `DiscussedPost`;
+- 18L: discussion relink repository переведён с сохранением единой транзакции, recursive reply tree, exact-text matching и `RelinkResult`;
 - SQL и транзакционные границы завершённых доменов сохранены;
 - добавлен автоматический контракт, не допускающий аукционные доменные зависимости в production package;
-- следующий изолированный срез: discussion relink repository.
+- следующий изолированный срез 18M: машинная инвентаризация оставшихся production-вызовов `_require_pool()` и формирование фактической очереди.
 
 ## Фаза 19. Полный операционный контур Velvet AI
 
@@ -170,7 +171,7 @@ Owner-операции вынесены из Telegram handlers в application us
 
 ## P2
 
-1. Продолжить Фазу 18 с `DiscussionRelinkRepository`; characters, stories, archive, public archive, references, media quality, publication, discussions, discussion ingest, discussion insight, discussion ranking, discussion activity и discussion post insight уже используют `Database.acquire()`.
+1. Выполнить Фазу 18M: автоматически проинвентаризировать оставшиеся production-вызовы `_require_pool()` и выбрать следующий repository по фактическому коду; discussion-контур полностью использует `Database.acquire()`.
 2. Сокращать широкие `except Exception` внутри бизнес-логики.
 3. Добавить зашифрованную репликацию backup во внешнее хранилище.
 4. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
