@@ -1,0 +1,40 @@
+name: patch bootstrap hardening
+
+on:
+  push:
+    branches:
+      - agent/remote-supervisor-console
+    paths:
+      - scripts/_patch_bootstrap_hardening.py
+      - .github/workflows/patch-bootstrap-hardening.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/_patch_bootstrap_hardening.py
+      - .github/workflows/patch-bootstrap-hardening.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/remote-supervisor-console
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python scripts/_patch_bootstrap_hardening.py
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest tests.test_supervisor_remote_runtime -v
+      - run: python -m compileall -q velvet_supervisor velvet_bot
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_supervisor/bootstrap.py tests/test_supervisor_remote_runtime.py
+          git commit -m "Укрепить self-restart Supervisor healthcheck и lock"
+          git push origin HEAD:agent/remote-supervisor-console
