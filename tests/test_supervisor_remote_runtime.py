@@ -87,8 +87,9 @@ class RuntimeRemoteControlTests(unittest.TestCase):
 class BootstrapLaunchTests(unittest.TestCase):
     def test_windows_launch_uses_independent_scheduled_task(self) -> None:
         settings = SimpleNamespace(
-            python_executable=r"E:\\python\\main\\velevt\\.venv\\Scripts\\python.exe",
+            python_executable=r".venv\\Scripts\\python.exe",
             project_dir=Path(r"E:\\python\\main\\velevt"),
+            runtime_dir=Path(r"E:\\python\\main\\velevt\\runtime\\supervisor"),
         )
         calls = []
 
@@ -98,6 +99,10 @@ class BootstrapLaunchTests(unittest.TestCase):
 
         with patch("velvet_supervisor.bootstrap.os.name", "nt"), patch(
             "velvet_supervisor.bootstrap._run", side_effect=fake_run
+        ), patch(
+            "velvet_supervisor.bootstrap._acquire_lock"
+        ) as acquire_lock, patch(
+            "velvet_supervisor.bootstrap._release_lock"
         ), patch.dict(os.environ, {"SUPERVISOR_TASK_NAME": "VelvetSupervisor"}, clear=False):
             launch = launch_bootstrap(
                 settings,  # type: ignore[arg-type]
@@ -108,12 +113,14 @@ class BootstrapLaunchTests(unittest.TestCase):
             )
 
         self.assertEqual("update", launch.action)
+        acquire_lock.assert_called_once_with(settings, "abc123def456")
         self.assertEqual(2, len(calls))
         create, run = calls
         self.assertEqual("schtasks.exe", create[0])
         self.assertIn("/Create", create)
         self.assertIn("VelvetSupervisorBootstrap-abc123def456", create)
         action_text = create[create.index("/TR") + 1]
+        self.assertIn(str(settings.project_dir), action_text)
         self.assertIn("velvet_supervisor.bootstrap", action_text)
         self.assertIn("--supervisor-pid 100", action_text)
         self.assertIn("--bot-pid 200", action_text)

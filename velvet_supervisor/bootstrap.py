@@ -6,12 +6,15 @@ import os
 import signal
 import subprocess
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Sequence
 
 from .config import SupervisorSettings
+from .models import JsonStateStore
 from .notifier import TelegramNotifier
 
 _ALLOWED_ACTIONS = {"restart", "update"}
@@ -60,6 +63,102 @@ def _run(
             f"{subprocess.list2cmdline(command)}\n{completed.stdout[-5000:]}"
         )
     return completed
+
+
+def _lock_path(settings: SupervisorSettings) -> Path:
+    return settings.runtime_dir / "bootstrap.lock"
+
+
+def _acquire_lock(settings: SupervisorSettings, operation_id: str) -> None:
+    path = _lock_path(settings)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        age = max(0.0, time.time() - path.stat().st_mtime)
+        if age < 15 * 60:
+            owner = path.read_text(encoding="utf-8", errors="replace").strip()
+            raise RuntimeError(
+                f"Уже выполняется bootstrap-операция {owner or 'unknown'}."
+            )
+        path.unlink(missing_ok=True)
+    try:
+        with path.open("x", encoding="utf-8") as stream:
+            stream.write(operation_id)
+    except FileExistsError as error:
+        raise RuntimeError("Bootstrap уже запущен другим запросом.") from error
+
+
+def _release_lock(settings: SupervisorSettings) -> None:
+    _lock_path(settings).unlink(missing_ok=True)
+
+
+def _resolved_python(settings: SupervisorSettings) -> str:
+    raw = settings.python_executable.strip()
+    candidate = Path(raw)
+    if candidate.is_absolute():
+        return str(candidate)
+    project_candidate = settings.project_dir / candidate
+    if project_candidate.exists() or any(separator in raw for separator in ("\\", "/")):
+        return str(project_candidate.resolve())
+    return raw
+
+
+def _update_operation_state(
+    settings: SupervisorSettings,
+    operation_id: str,
+    *,
+    status: str,
+    result: dict[str, object] | None = None,
+    error: str | None = None,
+) -> None:
+    store = JsonStateStore(settings.runtime_dir / "state.json")
+    payload = store.load()
+    raw_history = payload.get("operation_history", [])
+    history = [dict(item) for item in raw_history if isinstance(item, dict)] if isinstance(raw_history, list) else []
+    target = next((item for item in reversed(history) if str(item.get("id")) == operation_id), None)
+    if target is None:
+        target = {
+            "id": operation_id,
+            "kind": "supervisor-bootstrap",
+            "created_at": datetime.now().astimezone().isoformat(),
+            "message": "Bootstrap operation",
+            "result": {},
+            "error": None,
+        }
+        history.append(target)
+    target["status"] = status
+    if status == "running":
+        target["started_at"] = datetime.now().astimezone().isoformat()
+    if status in {"success", "error"}:
+        target["finished_at"] = datetime.now().astimezone().isoformat()
+    if result is not None:
+        target["result"] = result
+    if error is not None:
+        target["error"] = error[-10_000:]
+    payload["operation_history"] = history[-50:]
+    store.save(payload)
+
+
+def _health_url(settings: SupervisorSettings) -> str:
+    host = settings.host.strip().casefold()
+    if host in {"0.0.0.0", "::", "[::]"}:
+        host = "127.0.0.1"
+    elif host == "localhost":
+        host = "127.0.0.1"
+    return f"http://{host}:{settings.port}/health"
+
+
+def _wait_for_supervisor(settings: SupervisorSettings) -> None:
+    deadline = time.monotonic() + max(20, settings.startup_grace_seconds + 20)
+    last_error = "health endpoint did not answer"
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(_health_url(settings), timeout=3) as response:
+                if 200 <= int(response.status) < 300:
+                    return
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            last_error = str(error)
+        time.sleep(1.0)
+    raise RuntimeError(f"Новый Supervisor не прошёл healthcheck: {last_error}")
 
 
 def _result_path(settings: SupervisorSettings) -> Path:
@@ -213,7 +312,7 @@ def launch_bootstrap(
     main_task = os.getenv("SUPERVISOR_TASK_NAME", "VelvetSupervisor").strip() or "VelvetSupervisor"
     bootstrap_task = f"VelvetSupervisorBootstrap-{operation_id}"
     command = (
-        settings.python_executable,
+        _resolved_python(settings),
         "-m",
         "velvet_supervisor.bootstrap",
         "--action",
@@ -248,8 +347,9 @@ def launch_bootstrap(
         "LIMITED",
         "/F",
     )
-    _run(create, cwd=settings.project_dir, timeout=30)
+    _acquire_lock(settings, operation_id)
     try:
+        _run(create, cwd=settings.project_dir, timeout=30)
         _run(
             ("schtasks.exe", "/Run", "/TN", bootstrap_task),
             cwd=settings.project_dir,
@@ -257,6 +357,7 @@ def launch_bootstrap(
         )
     except Exception:
         _delete_task(bootstrap_task, cwd=settings.project_dir)
+        _release_lock(settings)
         raise
     return BootstrapLaunch(operation_id, action, bootstrap_task, command)
 
@@ -283,7 +384,8 @@ def execute_bootstrap(
         "started_at": started_at,
     }
     _write_result(settings, payload)
-    time.sleep(3.0)
+    _update_operation_state(settings, operation_id, status="running")
+    time.sleep(6.0)
 
     try:
         _end_task(main_task, cwd=settings.project_dir)
@@ -298,6 +400,7 @@ def execute_bootstrap(
             old_sha, new_sha, test_tail = _update_project(settings)
 
         _run_task(main_task, cwd=settings.project_dir)
+        _wait_for_supervisor(settings)
         payload.update(
             {
                 "status": "success",
@@ -308,6 +411,9 @@ def execute_bootstrap(
             }
         )
         _write_result(settings, payload)
+        _update_operation_state(
+            settings, operation_id, status="success", result=dict(payload)
+        )
         notifier.send(
             "Velvet Supervisor перезапущен" if action == "restart" else "Velvet Supervisor обновлён и перезапущен",
             (
@@ -331,9 +437,18 @@ def execute_bootstrap(
         # restored commit before reporting the incident.
         try:
             _run_task(main_task, cwd=settings.project_dir)
+            _wait_for_supervisor(settings)
+            payload["recovered"] = True
         except Exception as restart_error:
             payload["restart_error"] = str(restart_error)[-5000:]
-            _write_result(settings, payload)
+        _write_result(settings, payload)
+        _update_operation_state(
+            settings,
+            operation_id,
+            status="error",
+            result=dict(payload),
+            error=str(error),
+        )
         notifier.send(
             "Ошибка удалённого перезапуска Supervisor",
             f"Операция: {operation_id}\nЭтап: {action}\n{str(error)[-3000:]}",
@@ -342,6 +457,7 @@ def execute_bootstrap(
         return 1
     finally:
         _delete_task(bootstrap_task, cwd=settings.project_dir)
+        _release_lock(settings)
 
 
 def _parser() -> argparse.ArgumentParser:
