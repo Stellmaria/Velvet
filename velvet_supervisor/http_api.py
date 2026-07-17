@@ -75,6 +75,16 @@ class SupervisorRequestHandler(BaseHTTPRequestHandler):
             raise ValueError("JSON-запрос должен быть объектом.")
         return payload
 
+    @staticmethod
+    def _int_query(parsed, name: str, default: int, maximum: int) -> int:
+        query = parse_qs(parsed.query)
+        raw = query.get(name, [str(default)])[0]
+        try:
+            value = int(raw)
+        except ValueError:
+            value = default
+        return max(1, min(value, maximum))
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         if parsed.path == "/health":
@@ -90,28 +100,27 @@ class SupervisorRequestHandler(BaseHTTPRequestHandler):
                 )
                 return
             if parsed.path == "/v1/logs":
-                query = parse_qs(parsed.query)
-                raw_lines = query.get("lines", ["200"])[0]
-                try:
-                    lines = int(raw_lines)
-                except ValueError:
-                    lines = 200
+                lines = self._int_query(parsed, "lines", 200, 2000)
                 self._send(
                     HTTPStatus.OK,
-                    {
-                        "ok": True,
-                        "lines": self.server.runtime.log_tail(lines),
-                    },
+                    {"ok": True, "lines": self.server.runtime.log_tail(lines)},
+                )
+                return
+            if parsed.path == "/v1/console":
+                self._send(
+                    HTTPStatus.OK,
+                    {"ok": True, "commands": self.server.runtime.console_commands()},
+                )
+                return
+            if parsed.path == "/v1/operations":
+                limit = self._int_query(parsed, "limit", 20, 100)
+                self._send(
+                    HTTPStatus.OK,
+                    {"ok": True, "operations": self.server.runtime.operation_history(limit)},
                 )
                 return
             if parsed.path == "/v1/codex":
-                query = parse_qs(parsed.query)
-                raw_limit = query.get("limit", ["20"])[0]
-                try:
-                    limit = int(raw_limit)
-                except ValueError:
-                    limit = 20
-                limit = max(1, min(limit, 100))
+                limit = self._int_query(parsed, "limit", 20, 100)
                 self._send(
                     HTTPStatus.OK,
                     {
@@ -153,6 +162,14 @@ class SupervisorRequestHandler(BaseHTTPRequestHandler):
                 operation = self.server.runtime.schedule_restart()
                 self._accepted(operation.to_dict())
                 return
+            if parsed.path == "/v1/self/restart":
+                operation = self.server.runtime.schedule_supervisor_restart(update=False)
+                self._accepted(operation.to_dict())
+                return
+            if parsed.path == "/v1/self/update":
+                operation = self.server.runtime.schedule_supervisor_restart(update=True)
+                self._accepted(operation.to_dict())
+                return
             if parsed.path == "/v1/update":
                 operation = self.server.runtime.schedule_update()
                 self._accepted(operation.to_dict())
@@ -161,6 +178,20 @@ class SupervisorRequestHandler(BaseHTTPRequestHandler):
                 target = payload.get("target_sha")
                 operation = self.server.runtime.schedule_rollback(
                     str(target).strip() if target else None
+                )
+                self._accepted(operation.to_dict())
+                return
+            if parsed.path == "/v1/console/preview":
+                request = self.server.runtime.preview_console_command(
+                    command=str(payload.get("command", "")),
+                    command_key=str(payload.get("command_key", "")),
+                    requested_by=str(payload.get("requested_by", "telegram")),
+                )
+                self._send(HTTPStatus.OK, {"ok": True, "request": request})
+                return
+            if parsed.path == "/v1/console/run":
+                operation = self.server.runtime.schedule_console_command(
+                    str(payload.get("request_id", ""))
                 )
                 self._accepted(operation.to_dict())
                 return

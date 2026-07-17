@@ -10,12 +10,15 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Callable
+from uuid import uuid4
 
+from .bootstrap import launch_bootstrap, load_bootstrap_result
 from .codex import CodexTaskManager
 from .config import SupervisorSettings
 from .git_ops import GitRepository
 from .models import JsonStateStore, OperationState, iso_or_none, utc_now
 from .notifier import TelegramNotifier
+from .remote_console import RemoteCommandFailed, RemoteCommandRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +60,7 @@ class VelvetSupervisor:
             timeout_seconds=settings.command_timeout_seconds,
             test_command=settings.test_command,
         )
+        self._console = RemoteCommandRegistry(settings)
         self.codex = CodexTaskManager(
             settings=settings,
             repository=self._repository,
@@ -267,6 +271,7 @@ class VelvetSupervisor:
                 "started_at": iso_or_none(self._started_at),
                 "host": self.settings.host,
                 "port": self.settings.port,
+                "bootstrap": load_bootstrap_result(self.settings.runtime_dir),
             },
             "bot": {
                 "running": running,
@@ -340,6 +345,144 @@ class VelvetSupervisor:
             history.append(operation.to_dict())
             self._state["operation_history"] = history[-50:]
             self._state_store.save(self._state)
+
+    def operation_history(self, limit: int = 20) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(int(limit), 100))
+        with self._lock:
+            history = self._state.get("operation_history", [])
+            rows = [item for item in history if isinstance(item, dict)] if isinstance(history, list) else []
+            current = self._last_operation.to_dict() if self._last_operation else None
+        if current and (not rows or rows[-1].get("id") != current.get("id")):
+            rows.append(current)
+        return list(reversed(rows[-safe_limit:]))
+
+    def console_commands(self) -> list[dict[str, object]]:
+        return [spec.to_dict() for spec in self._console.catalog()]
+
+    def preview_console_command(
+        self,
+        *,
+        command: str,
+        command_key: str,
+        requested_by: str,
+    ) -> dict[str, object]:
+        spec = (
+            self._console.resolve(command_key, by_key=True)
+            if command_key.strip()
+            else self._console.resolve(command)
+        )
+        now = time.time()
+        request = {
+            "id": uuid4().hex[:12],
+            "command_key": spec.key,
+            "title": spec.title,
+            "command": subprocess.list2cmdline(spec.command),
+            "timeout_seconds": spec.timeout_seconds,
+            "requested_by": requested_by.strip()[:200] or "telegram",
+            "project_dir": str(self.settings.project_dir),
+            "created_at": now,
+            "expires_at": now + 600,
+        }
+        with self._lock:
+            raw = self._state.get("console_requests", {})
+            requests = dict(raw) if isinstance(raw, dict) else {}
+            requests = {
+                key: value
+                for key, value in requests.items()
+                if isinstance(value, dict)
+                and float(value.get("expires_at", 0)) >= now
+            }
+            requests[str(request["id"])] = request
+            self._state["console_requests"] = requests
+            self._state_store.save(self._state)
+        return dict(request)
+
+    def _consume_console_request(self, request_id: str) -> dict[str, object]:
+        cleaned = request_id.strip()
+        if not cleaned:
+            raise ValueError("ID команды не указан.")
+        with self._lock:
+            raw = self._state.get("console_requests", {})
+            requests = dict(raw) if isinstance(raw, dict) else {}
+            request = requests.pop(cleaned, None)
+            self._state["console_requests"] = requests
+            self._state_store.save(self._state)
+        if not isinstance(request, dict):
+            raise ValueError("Запрос команды не найден или уже был использован.")
+        if float(request.get("expires_at", 0)) < time.time():
+            raise ValueError("Подтверждение команды устарело. Создайте новый запрос.")
+        return request
+
+    def schedule_console_command(self, request_id: str) -> OperationState:
+        request = self._consume_console_request(request_id)
+        title = str(request.get("title", "Команда"))
+        return self._schedule(
+            "console-command",
+            lambda operation: self._console_operation(operation, request),
+            message=f"Команда принята: {title}",
+        )
+
+    def _console_operation(
+        self,
+        operation: OperationState,
+        request: dict[str, object],
+    ) -> dict[str, object]:
+        key = str(request.get("command_key", ""))
+        try:
+            result = self._console.execute(key)
+        except RemoteCommandFailed as error:
+            operation.result = dict(error.result)
+            raise RuntimeError(
+                f"{error}\n{str(error.result.get('output', ''))[-5000:]}"
+            ) from error
+        result["requested_by"] = str(request.get("requested_by", "telegram"))
+        output = str(result.get("output", ""))
+        self._notifier.send(
+            "Команда Supervisor завершена",
+            (
+                f"Операция: {operation.id}\n"
+                f"Команда: {result.get('command')}\n"
+                f"Код: {result.get('returncode')}\n\n"
+                f"{output[-2500:]}"
+            ),
+            level="SUCCESS",
+        )
+        return result
+
+    def schedule_supervisor_restart(self, *, update: bool) -> OperationState:
+        if not self._operation_lock.acquire(blocking=False):
+            raise OperationConflict("Уже выполняется другая системная операция.")
+        kind = "supervisor-update" if update else "supervisor-restart"
+        operation = OperationState.create(
+            kind,
+            "Self-update передан bootstrap-задаче."
+            if update
+            else "Перезапуск передан bootstrap-задаче.",
+        )
+        operation.status = "handed-off"
+        operation.started_at = utc_now()
+        with self._lock:
+            process = self._process
+            bot_pid = process.pid if process is not None and process.poll() is None else None
+            self._last_operation = operation
+        try:
+            launch = launch_bootstrap(
+                self.settings,
+                action="update" if update else "restart",
+                operation_id=operation.id,
+                supervisor_pid=os.getpid(),
+                bot_pid=bot_pid,
+            )
+            operation.result = launch.to_dict()
+            self._persist_operation(operation)
+            return operation
+        except Exception:
+            operation.status = "error"
+            operation.finished_at = utc_now()
+            self._persist_operation(operation)
+            raise
+        finally:
+            self._operation_lock.release()
 
     def schedule_restart(self) -> OperationState:
         return self._schedule(

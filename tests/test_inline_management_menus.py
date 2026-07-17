@@ -110,6 +110,8 @@ class InlineManagementKeyboardTests(unittest.TestCase):
             SupervisorCallback(action="git.menu").pack(),
             SupervisorCallback(action="logs.menu").pack(),
             SupervisorCallback(action="codex.menu").pack(),
+            SupervisorCallback(action="console.menu").pack(),
+            SupervisorCallback(action="self.menu").pack(),
             SupervisorCallback(action="status").pack(),
             SupervisorCallback(action="close").pack(),
             OwnerMenuCallback(action="menu").pack(),
@@ -238,6 +240,12 @@ class SupervisorReplyMarkerTests(unittest.TestCase):
                 caption="SUPERVISOR_INPUT:task",
             )
         )
+        console_message = SimpleNamespace(
+            reply_to_message=SimpleNamespace(
+                text="SUPERVISOR_INPUT:console",
+                caption=None,
+            )
+        )
         unrelated = SimpleNamespace(
             reply_to_message=SimpleNamespace(text="PUBLICATION_TEXT:12", caption=None)
         )
@@ -249,6 +257,10 @@ class SupervisorReplyMarkerTests(unittest.TestCase):
         self.assertEqual(
             asyncio.run(filter_(task_message)),
             {"supervisor_input_kind": "task"},
+        )
+        self.assertEqual(
+            asyncio.run(filter_(console_message)),
+            {"supervisor_input_kind": "console"},
         )
         self.assertFalse(asyncio.run(filter_(unrelated)))
 

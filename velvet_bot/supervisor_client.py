@@ -31,6 +31,12 @@ class SupervisorClient:
     async def restart(self) -> dict[str, Any]:
         return await self._request("POST", "/v1/restart", {})
 
+    async def restart_supervisor(self) -> dict[str, Any]:
+        return await self._request("POST", "/v1/self/restart", {})
+
+    async def update_supervisor(self) -> dict[str, Any]:
+        return await self._request("POST", "/v1/self/update", {})
+
     async def update(self) -> dict[str, Any]:
         return await self._request("POST", "/v1/update", {})
 
@@ -39,6 +45,38 @@ class SupervisorClient:
         if target_sha:
             payload["target_sha"] = target_sha
         return await self._request("POST", "/v1/rollback", payload)
+
+    async def console_commands(self) -> dict[str, Any]:
+        return await self._request("GET", "/v1/console")
+
+    async def preview_console_command(
+        self,
+        *,
+        requested_by: str,
+        command: str = "",
+        command_key: str = "",
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            "/v1/console/preview",
+            {
+                "command": command,
+                "command_key": command_key,
+                "requested_by": requested_by,
+            },
+        )
+
+    async def run_console_command(self, request_id: str) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            "/v1/console/run",
+            {"request_id": request_id},
+        )
+
+    async def operations(self, *, limit: int = 20) -> dict[str, Any]:
+        safe_limit = max(1, min(int(limit), 100))
+        query = urllib.parse.urlencode({"limit": safe_limit})
+        return await self._request("GET", f"/v1/operations?{query}")
 
     async def codex_tasks(self, *, limit: int = 20) -> dict[str, Any]:
         safe_limit = max(1, min(int(limit), 100))

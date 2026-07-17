@@ -17,6 +17,8 @@ Velvet Supervisor
         ├── ограничивает crash-loop
         ├── выполняет fetch/fast-forward/tests/restart
         ├── откатывает неудачное обновление
+        ├── запускает команды только из безопасного allowlist
+        ├── передаёт self-restart независимой задаче Windows
         └── запускает Codex в отдельном Git worktree
 ```
 
@@ -81,7 +83,7 @@ Supervisor сам запустит `main.py`.
 - аналитика;
 - публикации.
 
-В разделе `Supervisor и Codex` доступны четыре экрана:
+В разделе `Supervisor и Codex` доступны шесть экранов:
 
 ### Бот
 
@@ -116,6 +118,51 @@ Supervisor сам запустит `main.py`.
 можно получить отдельным текстовым файлом. Из экрана логов есть возврат в
 Supervisor и в общий центр управления.
 
+### Безопасная консоль
+
+Экран `🖥 Консоль` не является произвольным PowerShell. Текст пользователя
+сопоставляется с точным allowlist, а выполнение всегда происходит как argv с
+`shell=False` и фиксированным рабочим каталогом проекта.
+
+Перед запуском Supervisor показывает:
+
+- точную команду;
+- каталог проекта;
+- таймаут;
+- инициатора;
+- одноразовый ID подтверждения.
+
+Подтверждение действует десять минут и может быть использовано только один раз.
+Пайпы, перенаправления, разделители команд, command substitution и неизвестные
+команды отклоняются до запуска. Вывод ограничивается по размеру, а токены, URL
+базы и другие секреты маскируются.
+
+В реестр входят диагностические операции Git, Python, тестов, Ollama, процессов
+и Windows-задачи. Команды, изменяющие Git или жизненный цикл Supervisor,
+реализованы отдельными типизированными операциями, а не произвольным shell.
+
+### Сам Supervisor
+
+Экран `🧩 Сам Supervisor` умеет:
+
+- перезапустить Supervisor и дочерний бот;
+- выполнить безопасный self-update `main` и перезапуститься;
+- показать результат последней bootstrap-операции.
+
+Текущий процесс не пытается перезапустить сам себя. Он создаёт одноразовую задачу
+Windows `VelvetSupervisorBootstrap-<operation_id>`, отвечает Telegram и передаёт
+операцию внешнему helper. Helper завершает старые PID, при необходимости делает
+только fast-forward update, запускает полный набор тестов, восстанавливает
+предыдущий commit при ошибке и поднимает основную задачу `VelvetSupervisor`.
+Результат сохраняется в `runtime/supervisor/bootstrap-result.json` и отправляется
+в служебный Telegram-чат независимо от остановленного процесса.
+
+Настройка имени основной задачи:
+
+```env
+SUPERVISOR_TASK_NAME=VelvetSupervisor
+```
+
 ### Codex
 
 - список последних задач;
@@ -132,7 +179,8 @@ Supervisor и в общий центр управления.
 перестроения меню.
 
 Старые команды `/supervisor`, `/logs`, `/restart`, `/update`, `/rollback`,
-`/codex` и `/codex_status` сохранены в обработчиках только как аварийный резерв.
+`/codex`, `/codex_status`, `/console` и `/supervisor_self` сохранены в
+обработчиках только как аварийный резерв.
 В обычном меню BotFather они не показываются.
 
 ## Crash-loop защита
@@ -220,6 +268,7 @@ schtasks /Delete /TN VelvetSupervisor /F
 SUPERVISOR_AUTO_RESTART=true
 SUPERVISOR_STARTUP_GRACE_SECONDS=12
 SUPERVISOR_COMMAND_TIMEOUT_SECONDS=900
+SUPERVISOR_TASK_NAME=VelvetSupervisor
 SUPERVISOR_UPDATE_REMOTE=origin
 SUPERVISOR_UPDATE_BRANCH=main
 SUPERVISOR_LOG_DIR=logs
