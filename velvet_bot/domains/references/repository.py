@@ -33,7 +33,7 @@ class ReferenceRepository:
         media: ReferenceMediaPayload,
         added_by: int | None,
     ) -> AddReferenceResult:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 row = await connection.fetchrow(
                     f"""
@@ -91,7 +91,7 @@ class ReferenceRepository:
         character_id: int,
         reference_id: int,
     ) -> DeleteReferenceResult:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 row = await connection.fetchrow(
                     f"""
@@ -120,7 +120,7 @@ class ReferenceRepository:
         )
 
     async def count(self, character_id: int) -> int:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 SELECT COUNT(*)
@@ -138,7 +138,7 @@ class ReferenceRepository:
         limit: int = 50,
     ) -> list[CharacterReference]:
         safe_limit = max(1, min(int(limit), 50))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 f"""
                 SELECT {_REFERENCE_SELECT}
@@ -158,7 +158,7 @@ class ReferenceRepository:
         offset: int,
     ) -> ReferencePage | None:
         safe_offset = max(0, int(offset))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             character_row = await connection.fetchrow(
                 """
                 SELECT

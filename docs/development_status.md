@@ -70,7 +70,7 @@
 
 ## Фаза 18: публичная граница PostgreSQL
 
-Статус: срезы 18A–18B завершены; P2-перенос продолжается.
+Статус: срезы 18A–18C завершены; P2-перенос продолжается.
 
 Реализованы:
 
@@ -78,10 +78,11 @@
 - character repository переведён с приватного `_require_pool()`;
 - story repository переведён с приватного `_require_pool()`;
 - archive repository переведён на публичную границу без изменения SQL и транзакций;
-- public archive repository переведён на публичную границу без изменения лайков, подписок и notification delivery;
-- регрессионный тест запрещает возврат приватного pool access во всех четырёх завершённых доменах.
+- public archive repository переведён без изменения лайков, подписок и notification delivery;
+- reference repository переведён без изменения add/delete transactions, dedup по `file_unique_id`, count, list и пагинации;
+- регрессионный тест запрещает возврат приватного pool access во всех пяти завершённых доменах.
 
-Следующий срез: `ReferenceRepository` и его PostgreSQL-контракты.
+Следующий срез: `MediaQualityRepository`.
 
 ## Фаза 19: полный операционный контур Velvet AI
 
@@ -142,7 +143,7 @@
 
 ### P2
 
-1. Продолжить Фазу 18 с `ReferenceRepository`; characters, stories, archive и public archive завершены.
+1. Продолжить Фазу 18 с `MediaQualityRepository`; characters, stories, archive, public archive и references завершены.
 2. Уменьшать широкие `except Exception` внутри бизнес-логики.
 3. Добавить автоматическую зашифрованную репликацию backup во внешнее хранилище.
 4. Подготовить отдельную staging-конфигурацию и отдельного Telegram-бота.
