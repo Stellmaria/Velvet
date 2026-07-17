@@ -16,7 +16,7 @@ from velvet_bot.analytics_dashboard import (
     normalize_period,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.analytics_management import _show_unresolved_queue
+from velvet_bot.handlers.analytics_management_tags import _show_unresolved_queue
 from velvet_bot.post_classification import POST_TYPE_LABELS
 
 router = Router(name=__name__)

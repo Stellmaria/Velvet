@@ -39,7 +39,7 @@
 - release workflow;
 - версия `1.3.0-dev.1`.
 
-## Фаза 12–13: архитектурная очистка
+## Фазы 12–14: архитектурная очистка
 
 Статус: выполняется небольшими изолированными срезами.
 
@@ -50,17 +50,19 @@
 - перенос определения родительского канала обсуждения из Telegram-handler в discussion repository/service/query;
 - regression-тест, запрещающий возврат прямого SQL в discussion handler;
 - `PublicationActions` как transport-neutral application coordinator;
-- перевод чтения, проверки, спойлера, текста, расписания, отмены и повтора публикаций на единый coordinator;
-- удаление зависимостей publication handler от `publication_workflow` и `publication_worker` compatibility facades.
+- перевод операций публикаций на единый coordinator;
+- удаление зависимостей publication handler от старых compatibility facades;
+- разделение `analytics_management.py` на теги, алиасы, классификацию и общий presentation helper;
+- сокращение прежнего analytics management до тонкого action dispatcher;
+- regression-тест непересекающихся action sets и компактности facade.
 
 ## Оставшийся долг
 
 ### P1
 
-1. Разделить `handlers/analytics_management.py` по алиасам, тегам и классификации.
-2. Разделить `handlers/owner_actions.py` по предметным формам.
-3. Перенести multi-story runtime patch в обычный domain/application wiring.
-4. Удалить `presentation/telegram/compat.py` после исчезновения последних мостов.
+1. Разделить `handlers/owner_actions.py` по предметным формам.
+2. Перенести multi-story runtime patch в обычный domain/application wiring.
+3. Удалить `presentation/telegram/compat.py` после исчезновения последних мостов.
 
 ### P2
 
