@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_ROOT = ROOT / "velvet_bot"
+DEFAULT_BASELINE = ROOT / "docs" / "private_pool_inventory.json"
 _DATABASE_PATH = "velvet_bot/database.py"
 _PRIVATE_NAME = "_require_pool"
 
@@ -27,6 +30,10 @@ class PrivatePoolFinding:
     def scope(self) -> str:
         parts = [part for part in (self.class_name, self.function_name) if part]
         return ".".join(parts) or "<module>"
+
+    @property
+    def identity(self) -> str:
+        return f"{self.access_kind}|{self.scope}"
 
 
 class _PrivatePoolVisitor(ast.NodeVisitor):
@@ -123,6 +130,93 @@ def format_findings(findings: Iterable[PrivatePoolFinding]) -> str:
     return "\n".join(lines)
 
 
+def summarize_external(
+    findings: Iterable[PrivatePoolFinding],
+) -> dict[str, dict[str, object]]:
+    grouped: dict[str, list[PrivatePoolFinding]] = defaultdict(list)
+    for item in external_findings(findings):
+        grouped[item.path].append(item)
+
+    summary: dict[str, dict[str, object]] = {}
+    for path, items in sorted(grouped.items()):
+        identities = sorted(item.identity for item in items)
+        identity_payload = "\n".join(identities) + "\n"
+        summary[path] = {
+            "count": len(items),
+            "identity_sha256": hashlib.sha256(
+                identity_payload.encode("utf-8")
+            ).hexdigest(),
+        }
+    return summary
+
+
+def load_baseline(path: Path = DEFAULT_BASELINE) -> Mapping[str, object]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if int(payload.get("schema_version", 0)) != 1:
+        raise ValueError(f"Неподдерживаемая версия baseline: {payload.get('schema_version')!r}")
+    return payload
+
+
+def compare_with_baseline(
+    findings: Iterable[PrivatePoolFinding],
+    baseline: Mapping[str, object],
+) -> tuple[str, ...]:
+    current = summarize_external(findings)
+    raw_files = baseline.get("files")
+    if not isinstance(raw_files, list):
+        return ("Baseline не содержит список files.",)
+
+    expected: dict[str, dict[str, object]] = {}
+    for record in raw_files:
+        if not isinstance(record, dict) or not isinstance(record.get("path"), str):
+            return ("Baseline содержит некорректную запись files.",)
+        expected[str(record["path"])] = record
+
+    errors: list[str] = []
+    for path in sorted(set(current) - set(expected)):
+        errors.append(f"Новое внешнее обращение вне baseline: {path}")
+    for path in sorted(set(expected) - set(current)):
+        errors.append(
+            f"Baseline устарел: обращения удалены из {path}; обновите inventory после отдельного среза."
+        )
+    for path in sorted(set(current) & set(expected)):
+        current_record = current[path]
+        expected_record = expected[path]
+        expected_count = int(expected_record.get("count", -1))
+        expected_digest = str(expected_record.get("identity_sha256", ""))
+        if current_record["count"] != expected_count:
+            errors.append(
+                f"Изменилось число обращений {path}: "
+                f"ожидалось {expected_count}, найдено {current_record['count']}"
+            )
+        if current_record["identity_sha256"] != expected_digest:
+            errors.append(
+                f"Изменился набор методов с private pool access: {path}"
+            )
+
+    expected_total = int(baseline.get("total_external_findings", -1))
+    current_total = sum(int(record["count"]) for record in current.values())
+    if current_total != expected_total:
+        errors.append(
+            f"Изменилось общее число обращений: ожидалось {expected_total}, найдено {current_total}"
+        )
+    expected_files = int(baseline.get("total_files", -1))
+    if len(current) != expected_files:
+        errors.append(
+            f"Изменилось число production-файлов: ожидалось {expected_files}, найдено {len(current)}"
+        )
+    return tuple(errors)
+
+
+def format_baseline_errors(errors: Iterable[str]) -> str:
+    items = tuple(errors)
+    if not items:
+        return "Private pool baseline соответствует production-коду."
+    return "Private pool baseline нарушен:\n" + "\n".join(
+        f"- {item}" for item in items
+    )
+
+
 def _json_payload(findings: Iterable[PrivatePoolFinding]) -> str:
     return json.dumps(
         [asdict(item) | {"scope": item.scope} for item in findings],
@@ -146,11 +240,28 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Вернуть код 1, если найдены внешние production-обращения",
     )
+    parser.add_argument(
+        "--check-baseline",
+        action="store_true",
+        help="Сравнить production-код с docs/private_pool_inventory.json",
+    )
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=DEFAULT_BASELINE,
+        help="Путь к inventory baseline",
+    )
     args = parser.parse_args(argv)
 
     findings = collect_findings()
     selected = findings if args.all else external_findings(findings)
     print(_json_payload(selected) if args.json else format_findings(selected))
+
+    if args.check_baseline:
+        errors = compare_with_baseline(findings, load_baseline(args.baseline))
+        print(format_baseline_errors(errors))
+        if errors:
+            return 1
     if args.fail_on_external and external_findings(findings):
         return 1
     return 0
