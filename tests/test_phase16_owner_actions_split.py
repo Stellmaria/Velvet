@@ -24,13 +24,29 @@ class OwnerActionsSplitTests(unittest.TestCase):
         self.assertEqual(
             set().union(*groups),
             {
-                "save_media", "save_spoiler", "check_post",
-                "import_channel", "import_discussion",
-                "create", "topic", "character", "category", "universe",
-                "prompt", "story", "storyadd", "stories",
-                "refadd", "refs", "refdel",
-                "aliasadd", "aliases", "aliasdel", "tagstats",
-                "trackdiscussion", "discussionstats",
+                "save_media",
+                "save_spoiler",
+                "check_post",
+                "import_channel",
+                "import_discussion",
+                "create",
+                "topic",
+                "character",
+                "category",
+                "universe",
+                "prompt",
+                "story",
+                "storyadd",
+                "stories",
+                "refadd",
+                "refs",
+                "refdel",
+                "aliasadd",
+                "aliases",
+                "aliasdel",
+                "tagstats",
+                "trackdiscussion",
+                "discussionstats",
             },
         )
 
@@ -44,9 +60,10 @@ class OwnerActionsSplitTests(unittest.TestCase):
             if isinstance(node, ast.AsyncFunctionDef)
             and node.name == "handle_owner_action_reply"
         )
+        function_source = ast.get_source_segment(source, function) or ""
         self.assertLessEqual(function.end_lineno - function.lineno + 1, 80)
-        self.assertNotIn("if owner_action == "create"", ast.get_source_segment(source, function))
-        self.assertNotIn("if owner_action == "refadd"", ast.get_source_segment(source, function))
+        self.assertNotIn('if owner_action == "create"', function_source)
+        self.assertNotIn('if owner_action == "refadd"', function_source)
 
     def test_subject_modules_parse_and_do_not_import_handlers(self) -> None:
         package = ROOT / "velvet_bot/presentation/telegram/owner_actions"
