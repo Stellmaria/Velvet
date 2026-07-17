@@ -18,7 +18,7 @@ class DiscussionRelinkRepository:
         self._database = database
 
     async def rebuild(self, discussion_chat_id: int) -> RelinkResult:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 roots_status = await connection.execute(
                     """
