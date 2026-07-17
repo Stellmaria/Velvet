@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18r-prompt-result-report-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18R
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18r-prompt-result-report-acquire`
 - Базовый commit: `10a1392ecc4aec5b45fa4751d2a7d95b6d9c5a9c`
 
@@ -52,24 +52,35 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- `PromptResultReportRepository.save()` переведён на `Database.acquire()`;
+- SQL, `analysis_version = 1`, `RETURNING id` и порядок 17 параметров сохранены;
+- ограничения provider до 64 символов и model до 160 символов сохранены;
+- оценки, verdict, `created_by` и JSON payload не менялись;
+- добавлен source/runtime regression-тест публичной границы, аргументов и кириллического JSON;
+- private pool baseline уменьшен с 116/31 до 115/30;
+- следующим срезом назначена Фаза 18S: `PaletteCompositionReportRepository`;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменялись. Таблица, analysis version, SQL, типы параметров и публичный метод `save()` сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить одну public acquire boundary, SQL, 17 параметров, ограничения provider/model и JSON без ASCII-экранирования.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18R.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR и прогнать полный CI. После merge начать Фазу 18S отдельной сессией.
