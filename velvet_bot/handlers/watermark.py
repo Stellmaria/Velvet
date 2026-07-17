@@ -88,6 +88,10 @@ async def _create_job_from_message(
     source_path = watermark_service.bridge.paths.sources / (
         f"tg-{message.chat.id}-{source_message.message_id}{suffix}"
     )
+    source_path = watermark_service.bridge.paths.ensure_in(
+        source_path,
+        watermark_service.bridge.paths.sources,
+    )
     await bot.download(file_id, destination=source_path)
     item = await watermark_service.create_job(
         owner_user_id=message.from_user.id,
@@ -276,20 +280,29 @@ async def handle_watermark_callback(
             )
         elif action == "approve":
             item = await service.approve(job_id, owner_user_id=owner_user_id)
+            final_path = item.job.final_path
+            if not final_path:
+                raise ValueError("Финальный путь задания не сохранён.")
             if isinstance(callback.message, Message):
                 await callback.message.answer_document(
-                    FSInputFile(item.job.final_path),
+                    FSInputFile(final_path),
                     caption=f"✅ Финальный файл задания <b>{job_id}</b>.",
                 )
             await _safe_edit(
                 callback,
                 format_watermark_caption(item, status_text="сохранено"),
-                item,
+                None,
             )
             return
         elif action == "cancel":
-            await service.cancel(job_id, owner_user_id=owner_user_id)
-            await _safe_edit(callback, f"Задание <b>{job_id}</b> отменено.")
+            result = await service.cancel(job_id, owner_user_id=owner_user_id)
+            if result == "approved":
+                text = f"Задание <b>{job_id}</b> уже подтверждено. Отмена проигнорирована."
+            elif result == "already_cancelled":
+                text = f"Задание <b>{job_id}</b> уже отменено."
+            else:
+                text = f"Задание <b>{job_id}</b> отменено."
+            await _safe_edit(callback, text)
             return
         else:
             raise ValueError("Неизвестное действие водяного знака.")
