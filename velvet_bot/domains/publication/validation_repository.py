@@ -28,7 +28,7 @@ class PublicationValidationRepository:
         normalized_aliases: list[str],
         text: str,
     ) -> PublicationValidationContext:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             character_rows = []
             if normalized_aliases:
                 character_rows = await connection.fetch(
@@ -127,7 +127,7 @@ class PublicationValidationRepository:
         if status in {"draft", "checked", "error"}:
             status = "checked"
 
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 result = await connection.execute(
                     """

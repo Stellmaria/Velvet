@@ -2,14 +2,14 @@
 
 Дата среза: 17 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18N, `ArchivePreviewRepository`.
+Последний завершённый срез: Фаза 18O, `PublicationValidationRepository`.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 128 внешних обращений к `Database._require_pool()`;
-- 34 production-файла;
+- 126 внешних обращений к `Database._require_pool()`;
+- 33 production-файла;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -23,26 +23,26 @@ AST-сканирование production package `velvet_bot/` фиксирует
 | Legacy query-модули | 53 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
 | Repository-классы внутри крупных модулей | 30 | переводить по одному repository с runtime-тестами |
 | Backup infrastructure | 17 | отдельный срез с сохранением restore/retention contracts |
-| Domain repositories | 10 | первый приоритет, чистая замена boundary при сохранении SQL |
+| Domain repositories | 8 | первый приоритет, чистая замена boundary при сохранении SQL |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Compatibility-фасады | 5 | переводить после их штатных источников либо удалять после проверки импортов |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Infrastructure repository | 2 | отдельный малый срез |
 
-Всего: 128.
+Всего: 126.
 
 ## Завершённые погашения baseline
 
 - Фаза 18N: `ArchivePreviewRepository`, удалены 2 обращения и 1 production-файл из baseline.
+- Фаза 18O: `PublicationValidationRepository`, удалены 2 обращения и 1 production-файл из baseline.
 
 ## Очередь
 
 ### Волна A. Явные repositories
 
-1. **Фаза 18O:** `PublicationValidationRepository`, 2 connection points.
-2. `PublicationDraftRepository`, 8 connection points.
-3. `SystemRepository`, 2 connection points.
-4. AI quality, media AI, error center, calibration и report repositories отдельными срезами.
+1. **Фаза 18P:** `PublicationDraftRepository`, 8 connection points.
+2. `SystemRepository`, 2 connection points.
+3. AI quality, media AI, error center, calibration и report repositories отдельными срезами.
 
 ### Волна B. Infrastructure
 
