@@ -3,7 +3,7 @@
 - Дата: 2026-07-17
 - ID: `2026-07-17-phase18o-publication-validation-acquire`
 - Линия/фаза: основная линия Velvet Archive, Фаза 18O
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/phase18o-publication-validation-acquire`
 - Базовый commit: `ffee8ebeeb308b34b8ac93ff9d5c3f4549c78ef4`
 
@@ -53,24 +53,36 @@
 
 ### Фактически сделано
 
-Заполняется после реализации.
+- `load_context()` и `save_result()` переведены на `Database.acquire()`;
+- запросы персонажей, дубликатов и channel posts сохранены;
+- транзакция update draft + insert publication event сохранена;
+- owner scope, severity counts, validation status и JSON payload не менялись;
+- добавлены source/runtime regression-тесты чтения и сохранения;
+- private pool baseline уменьшен с 128/34 до 126/33;
+- следующим срезом назначена Фаза 18P: `PublicationDraftRepository`;
+- project memory и development status упрощены без потери фаз, обязательств и product boundary;
+- inventory и changelog обновлены.
 
 ### Миграции и совместимость
 
-Заполняется после реализации.
+Миграции и схема базы не изменены. Публичные модели, SQL, параметры, transaction scope и event payload сохранены.
 
 ### Проверки
 
-Заполняется после реализации.
+Полный CI ещё не запущен. Добавленные тесты должны подтвердить две public acquire boundary, mapping контекста, единую транзакцию и оба SQL-вызова сохранения результата.
 
 ### PR и commit
 
-Заполняется после реализации.
+Draft PR ещё не открыт. Head будет зафиксирован после открытия PR и первого CI.
 
 ### Незавершённое
 
-Заполняется после реализации.
+- открыть draft PR;
+- получить tests, Docker build и project notes contract;
+- при необходимости исправить только фактические регрессии;
+- закрыть worklog точными run;
+- слить Фазу 18O.
 
 ### Следующий шаг
 
-Заполняется после реализации.
+Открыть PR, прогнать полный CI и после merge начать Фазу 18P отдельной сессией.
