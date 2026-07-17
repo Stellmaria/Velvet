@@ -115,14 +115,20 @@ class WatermarkService:
         return await self._repository.undo(job_id)
 
     async def approve(self, job_id: int, *, owner_user_id: int) -> WatermarkWorkItem:
-        await self.get_current(job_id, owner_user_id=owner_user_id)
+        current = await self.get_current(job_id, owner_user_id=owner_user_id)
+        candidate = self._bridge.validate_response_output(
+            current.revision.output_path or "",
+            expected_path=current.revision.output_path,
+        )
+        if not candidate.is_file():
+            raise ValueError("Финальный файл не найден в разрешённом каталоге bridge.")
         item = await self._repository.approve(job_id)
-        final_path = self._bridge.validate_response_output(
+        approved = self._bridge.validate_response_output(
             item.job.final_path or "",
             expected_path=item.revision.output_path,
         )
-        if not final_path.is_file():
-            raise ValueError("Финальный файл не найден в разрешённом каталоге bridge.")
+        if approved != candidate:
+            raise ValueError("Подтверждённый output изменился; обновите карточку.")
         return item
 
     async def cancel(self, job_id: int, *, owner_user_id: int) -> CancelResult:
