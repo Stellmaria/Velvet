@@ -4,7 +4,9 @@ import logging
 import signal
 import sys
 import threading
+from dataclasses import replace
 
+from .codex_command import normalize_codex_command
 from .config import SupervisorSettings
 from .http_api import SupervisorHTTPServer
 from .runtime import VelvetSupervisor
@@ -26,7 +28,11 @@ def configure_logging(settings: SupervisorSettings) -> None:
 
 
 def main() -> int:
-    settings = SupervisorSettings.load()
+    loaded_settings = SupervisorSettings.load()
+    settings = replace(
+        loaded_settings,
+        codex_command=normalize_codex_command(loaded_settings.codex_command),
+    )
     configure_logging(settings)
     logger = logging.getLogger(__name__)
     runtime = VelvetSupervisor(settings)
