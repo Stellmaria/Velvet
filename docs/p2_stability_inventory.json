@@ -1,18 +1,18 @@
 {
-  "schema_version": 19,
-  "generated_from_commit": "p2q-channel-analytics-boundary",
+  "schema_version": 20,
+  "generated_from_commit": "p2r-character-topic-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 28,
-  "broad_exception_unresolved": 42,
-  "broad_exception_unresolved_files": 27,
+  "broad_exception_approved": 30,
+  "broad_exception_unresolved": 40,
+  "broad_exception_unresolved_files": 26,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/characters.py",
+    "target": "velvet_bot/handlers/error_center.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -243,18 +243,18 @@
     {
       "path": "velvet_bot/handlers/characters.py",
       "function": "handle_create_character",
-      "line": 55,
+      "line": 57,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-character-create-failure"
     },
     {
       "path": "velvet_bot/handlers/characters.py",
       "function": "handle_bind_character_topic",
-      "line": 105,
+      "line": 108,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-character-topic-failure"
     },
     {
       "path": "velvet_bot/handlers/error_center.py",
