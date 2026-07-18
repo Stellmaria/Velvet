@@ -473,7 +473,7 @@ async def handle_set_analyze(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: compensate-set-analysis-callback-job
         logger.exception(
             "Set consistency analysis failed set_id=%s job_id=%s",
             callback_data.item_id,
@@ -566,7 +566,7 @@ async def handle_set_analysis_command(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: compensate-set-analysis-command-job
         logger.exception("Set consistency command failed set_id=%s job_id=%s", set_id, tracker.job_id)
         await tracker.error(error)
 

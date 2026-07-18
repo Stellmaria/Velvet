@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **69** в **42** файлах;
-- approved boundaries: **45**;
-- unresolved broad exceptions: **24** в **18** файлах;
+- approved boundaries: **47**;
+- unresolved broad exceptions: **22** в **17** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -59,10 +59,11 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/public_manager.py:174` `handle_public_manager`: report-manager-download-failure.
 - `velvet_bot/handlers/publication_center.py:569` `handle_publication_callback`: report-publication-failure.
 - `velvet_bot/handlers/quality_operations.py:335` `handle_quality_upload_reply`: compensate-manual-quality-job.
+- `velvet_bot/handlers/quality_set_ai.py:476` `handle_set_analyze`: compensate-set-analysis-callback-job.
+- `velvet_bot/handlers/quality_set_ai.py:569` `handle_set_analysis_command`: compensate-set-analysis-command-job.
 
 ## Unresolved broad exceptions by file
 
-- `velvet_bot/handlers/quality_set_ai.py`: 2.
 - `velvet_bot/handlers/velvet_ai_formatting.py`: 2.
 - `velvet_bot/public_archive_display.py`: 2.
 - `velvet_bot/services/media_save.py`: 2.
@@ -83,7 +84,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/handlers/quality_set_ai.py`.
+- `velvet_bot/handlers/quality_sets.py`.
 
 ## Правило обновления
 
