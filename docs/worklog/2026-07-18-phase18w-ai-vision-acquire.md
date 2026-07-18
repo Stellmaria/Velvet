@@ -15,7 +15,8 @@
 - базовый commit: `bb6de424c35f0a5eb2a031599a43ab90e8143dea`;
 - ветка: `agent/phase18w-ai-vision-acquire`;
 - baseline до работы: 100 внешних обращений в 25 production-файлах;
-- целевой модуль: `velvet_bot/ai_vision.py`, 4 connection points.
+- целевой модуль: `velvet_bot/ai_vision.py`, 4 connection points;
+- техническое преобразование подготовлено отдельным одноразовым workflow, который удаляет себя из итогового diff.
 
 ### Планируемый объём
 
