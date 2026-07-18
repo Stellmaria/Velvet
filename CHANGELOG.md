@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2L: discussion middleware boundary
+
+- Added a persistent P2 inventory generator.
+- Unresolved broad baseline decreased from 52 to 51.
+
 ### P2K: backup service boundaries
 
 - Cancellation теперь завершает running backup как failed.
