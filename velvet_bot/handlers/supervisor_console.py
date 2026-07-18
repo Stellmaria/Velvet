@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import re
+from typing import Any
 
 from aiogram import F, Router
 from aiogram.filters import BaseFilter, Command
 from aiogram.types import CallbackQuery, ForceReply, Message
 
+from velvet_bot.presentation.telegram.supervisor.console_results import (
+    console_operation_finished,
+    console_operation_keyboard,
+    console_operation_missing_text,
+    console_operation_text,
+    console_operation_watch_timeout_text,
+)
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
 from velvet_bot.presentation.telegram.supervisor.remote_views import (
     console_keyboard,
@@ -17,7 +26,6 @@ from velvet_bot.presentation.telegram.supervisor.remote_views import (
 from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _main_keyboard,
-    _operation_accepted,
     _safe_edit,
     _unavailable_text,
 )
@@ -25,6 +33,9 @@ from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
 
 router = Router(name=__name__)
 _CONSOLE_MARKER_RE = re.compile(r"SUPERVISOR_INPUT:console")
+_CONSOLE_WATCH_INTERVAL_SECONDS = 1.0
+_CONSOLE_WATCH_TIMEOUT_SECONDS = 60 * 60
+_CONSOLE_WATCHERS: set[asyncio.Task[None]] = set()
 
 
 class ConsoleReplyMarkerFilter(BaseFilter):
@@ -46,6 +57,92 @@ async def _catalog(client: SupervisorClient) -> list[dict[str, object]]:
     payload = await client.console_commands()
     raw = payload.get("commands", [])
     return [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
+
+
+async def _operation(
+    client: SupervisorClient,
+    operation_id: str,
+) -> dict[str, Any] | None:
+    payload = await client.operations(limit=100)
+    raw = payload.get("operations", [])
+    if not isinstance(raw, list):
+        return None
+    for item in raw:
+        if isinstance(item, dict) and str(item.get("id", "")) == operation_id:
+            return item
+    return None
+
+
+async def _render_operation(
+    message: Message,
+    operation: dict[str, Any],
+) -> None:
+    operation_id = str(operation.get("id", ""))
+    finished = console_operation_finished(operation)
+    await _safe_edit(
+        message,
+        console_operation_text(operation),
+        console_operation_keyboard(operation_id, finished=finished),
+    )
+
+
+async def _watch_console_operation(
+    message: Message,
+    client: SupervisorClient,
+    operation_id: str,
+) -> None:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _CONSOLE_WATCH_TIMEOUT_SECONDS
+    last_rendered = ""
+
+    try:
+        while loop.time() < deadline:
+            try:
+                operation = await _operation(client, operation_id)
+            except SupervisorClientError:
+                await asyncio.sleep(2.0)
+                continue
+
+            if operation is not None:
+                rendered = console_operation_text(operation)
+                if rendered != last_rendered:
+                    await _safe_edit(
+                        message,
+                        rendered,
+                        console_operation_keyboard(
+                            operation_id,
+                            finished=console_operation_finished(operation),
+                        ),
+                    )
+                    last_rendered = rendered
+                if console_operation_finished(operation):
+                    return
+
+            await asyncio.sleep(_CONSOLE_WATCH_INTERVAL_SECONDS)
+
+        await _safe_edit(
+            message,
+            console_operation_watch_timeout_text(operation_id),
+            console_operation_keyboard(operation_id, finished=False),
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        # The command continues inside Supervisor even if Telegram editing fails.
+        return
+
+
+def _start_console_watcher(
+    message: Message,
+    client: SupervisorClient,
+    operation_id: str,
+) -> None:
+    task = asyncio.create_task(
+        _watch_console_operation(message, client, operation_id),
+        name=f"supervisor-console-watch:{operation_id}",
+    )
+    _CONSOLE_WATCHERS.add(task)
+    task.add_done_callback(_CONSOLE_WATCHERS.discard)
 
 
 async def _preview(
@@ -158,10 +255,31 @@ async def handle_console_callback(
             await callback.answer()
             return
         if action == "console.run":
-            await _operation_accepted(
-                callback,
-                await supervisor_client.run_console_command(callback_data.task_id),
-            )
+            payload = await supervisor_client.run_console_command(callback_data.task_id)
+            operation = payload.get("operation", {})
+            if not isinstance(operation, dict):
+                raise SupervisorClientError("Supervisor вернул некорректную операцию.")
+            operation_id = str(operation.get("id", ""))
+            if not operation_id:
+                raise SupervisorClientError("Supervisor не вернул ID операции.")
+            await _render_operation(callback.message, operation)
+            await callback.answer("Команда запущена.")
+            if not console_operation_finished(operation):
+                _start_console_watcher(callback.message, supervisor_client, operation_id)
+            return
+        if action == "console.operation":
+            operation_id = callback_data.task_id
+            operation = await _operation(supervisor_client, operation_id)
+            if operation is None:
+                await _safe_edit(
+                    callback.message,
+                    console_operation_missing_text(operation_id),
+                    console_operation_keyboard(operation_id, finished=False),
+                )
+                await callback.answer("Операция пока не найдена.")
+                return
+            await _render_operation(callback.message, operation)
+            await callback.answer("Статус обновлён.")
             return
         if action == "console.history":
             payload = await supervisor_client.operations(limit=20)
