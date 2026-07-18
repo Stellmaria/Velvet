@@ -1,15 +1,18 @@
 {
-  "schema_version": 4,
-  "generated_from_commit": "p2b-quality-callback-ack",
+  "schema_version": 5,
+  "generated_from_commit": "p2c-publication-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
+  "broad_exception_approved": 2,
+  "broad_exception_unresolved": 68,
+  "broad_exception_unresolved_files": 42,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/domains/publication/service.py",
+    "target": "velvet_bot/domains/media_quality/service.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -17,421 +20,561 @@
       "path": "velvet_bot/ai_job_runtime.py",
       "function": "create",
       "line": 55,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/ai_quality.py",
       "function": "process_once",
       "line": 703,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/ai_vision.py",
       "function": "process_once",
       "line": 725,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 85,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 91,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 99,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 105,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 110,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "run_application",
       "line": 249,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "run_application",
       "line": 258,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/audit.py",
       "function": "send",
       "line": 56,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/backup_runtime.py",
       "function": "_create_dump_file",
       "line": 159,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/backup_service.py",
       "function": "create_backup",
       "line": 526,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/backup_service.py",
       "function": "run_backup_worker",
       "line": 895,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/calibrated_ai_quality.py",
       "function": "process_once",
       "line": 111,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/discussion_analytics_middleware.py",
       "function": "__call__",
       "line": 36,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/domains/media_quality/service.py",
       "function": "scan_target",
       "line": 90,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/domains/publication/service.py",
       "function": "publish",
       "line": 68,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "compensate-claimed-publication"
     },
     {
       "path": "velvet_bot/domains/publication/service.py",
       "function": "process_due_once",
       "line": 89,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "isolate-scheduled-draft"
     },
     {
       "path": "velvet_bot/error_center.py",
       "function": "capture_log_record",
       "line": 99,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/error_center.py",
       "function": "_is_recoverable_aiogram_polling_record",
       "line": 337,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/error_center.py",
       "function": "emit",
       "line": 364,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/error_center.py",
       "function": "_consume",
       "line": 462,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/admin_media_display.py",
       "function": "build_admin_display_media",
       "line": 38,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/admin_media_display.py",
       "function": "send_admin_archive_page",
       "line": 88,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/archive.py",
       "function": "handle_new_archive_topic_media",
       "line": 238,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/backup_center.py",
       "function": "handle_backup_callback",
       "line": 391,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/channel_analytics.py",
       "function": "_capture_channel_post",
       "line": 166,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/characters.py",
       "function": "handle_create_character",
       "line": 55,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/characters.py",
       "function": "handle_bind_character_topic",
       "line": 105,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/error_center.py",
       "function": "acknowledge_all_errors_callback",
       "line": 56,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/guest_archive.py",
       "function": "_archive_guest_media",
       "line": 149,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/guest_archive.py",
       "function": "handle_guest_archive",
       "line": 244,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
       "function": "_build_display_input_media",
       "line": 66,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
       "function": "_send_archive_page",
       "line": 100,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
       "function": "handle_archive_media_callback",
       "line": 284,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
       "function": "handle_archive_media_callback",
       "line": 350,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/public_archive.py",
       "function": "_build_public_input_media",
       "line": 69,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/public_archive.py",
       "function": "_send_public_archive_page",
       "line": 114,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/public_archive.py",
       "function": "handle_public_archive_callback",
       "line": 550,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/public_archive.py",
       "function": "handle_public_archive_callback",
       "line": 580,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/public_archive.py",
       "function": "handle_public_archive_callback",
       "line": 594,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/public_manager.py",
       "function": "handle_public_manager",
       "line": 175,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/publication_center.py",
       "function": "handle_publication_callback",
       "line": 534,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/quality_duplicates.py",
       "function": "_safe_edit",
       "line": 35,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/quality_operations.py",
       "function": "handle_quality_upload_reply",
       "line": 335,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/quality_set_ai.py",
       "function": "handle_set_analyze",
       "line": 476,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/quality_set_ai.py",
       "function": "handle_set_analysis_command",
       "line": 569,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/quality_sets.py",
       "function": "_safe_edit",
       "line": 60,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/reference_comparison.py",
       "function": "handle_reference_comparison",
       "line": 278,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/reference_comparison_help.py",
       "function": "handle_reference_comparison_reply",
       "line": 253,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/supervisor_console.py",
       "function": "_watch_console_operation",
       "line": 174,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/velvet_ai.py",
       "function": "handle_prompt_check_reply",
       "line": 340,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/velvet_ai_formatting.py",
       "function": "handle_formatting_reply",
       "line": 232,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/velvet_ai_formatting.py",
       "function": "handle_formatting_reply",
       "line": 287,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/handlers/velvet_ai_visual.py",
       "function": "handle_visual_analysis_reply",
       "line": 315,
-      "handler_module": true
+      "handler_module": true,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/infrastructure/telegram/archive_previews.py",
       "function": "resolve",
       "line": 84,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/media_quality.py",
       "function": "run_media_quality_worker",
       "line": 103,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/presentation/telegram/public_notifications.py",
       "function": "process_once",
       "line": 80,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/public_archive_display.py",
       "function": "build_viewer_input_media",
       "line": 99,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/public_archive_display.py",
       "function": "send_viewer_archive_page",
       "line": 164,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/public_notifications.py",
       "function": "run_public_notification_worker",
       "line": 60,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/publication_inbox_middleware.py",
       "function": "_capture",
       "line": 60,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/publication_worker.py",
       "function": "run_publication_worker",
       "line": 65,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/services/media_save.py",
       "function": "save_media_from_message",
       "line": 40,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/services/media_save.py",
       "function": "_place_in_topic",
       "line": 228,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/services/system_health.py",
       "function": "check",
       "line": 123,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/services/system_health.py",
       "function": "check",
       "line": 133,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/workers/manager.py",
       "function": "_execute_once",
       "line": 182,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     },
     {
       "path": "velvet_bot/workers/manager.py",
       "function": "_run_periodic",
       "line": 219,
-      "handler_module": false
+      "handler_module": false,
+      "classification": "unresolved",
+      "reason": null
     }
   ],
   "callbacks": [

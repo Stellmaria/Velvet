@@ -65,7 +65,7 @@ class PublicationService:
                 message_ids=message_ids,
                 actor_id=actor_id,
             )
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: compensate-claimed-publication
             logger.exception("Publication failed draft_id=%s", draft_id)
             await self._repository.mark_error(
                 draft_id,
@@ -86,7 +86,7 @@ class PublicationService:
                 await self.publish(draft_id, actor_id=None)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # p2-approved-boundary: isolate-scheduled-draft
                 logger.exception("Scheduled publication failed draft_id=%s", draft_id)
             else:
                 published += 1
