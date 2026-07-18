@@ -8,11 +8,13 @@ from unittest.mock import AsyncMock, Mock
 import velvet_bot.quality_audit as quality_audit
 from velvet_bot.quality_audit import (
     STORY_REQUIRED_UNIVERSES,
-    get_quality_summary,
     list_character_issues,
-    list_media_issues,
     list_unresolved_hashtags,
     reset_broken_file_checks,
+)
+from velvet_bot.quality_set_audit_compat import (
+    _ORIGINAL_GET_QUALITY_SUMMARY as get_quality_summary,
+    _ORIGINAL_LIST_MEDIA_ISSUES as list_media_issues,
 )
 
 
