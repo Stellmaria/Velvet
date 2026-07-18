@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18x-error-center-acquire`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18X
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18x-error-center-acquire`
 - Базовый commit: `3880e119589543ead3d70f11e598f6cbee1c2562`
 
@@ -60,18 +60,19 @@
 ### Проверки
 
 - production commit `476d32fa695bbce96fbd58dbae50991a487a0759`: diff содержит только восемь замен private boundary на public boundary;
-- source/runtime tests добавлены в `tests/test_phase18x_error_center_boundary.py`;
-- полный PR CI ожидается.
+- PR CI `tests #630`, run `29638902963`: успешно;
+- PR CI `docker build #220`, run `29638902945`: успешно;
+- PR CI `project notes contract #96`, run `29638902954`: успешно.
 
 ### PR и commit
 
+- PR: #126 `Фаза 18X: ErrorIncidentRepository и Database.acquire`;
 - production commit: `476d32fa695bbce96fbd58dbae50991a487a0759`;
-- PR будет записан после открытия.
+- проверенный CI head: `7bb287ba217d6f2a6616f36e79bf034dee198b76`.
 
 ### Незавершённое
 
-- подтвердить tests, Docker и project notes contract;
-- завершить дневник и слить PR.
+В рамках Фазы 18X незавершённых изменений нет. Живая Telegram-проверка не требуется, потому что delivery и presentation не менялись.
 
 ### Следующий шаг
 
