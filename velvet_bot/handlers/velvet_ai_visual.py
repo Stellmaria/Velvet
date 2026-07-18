@@ -312,7 +312,7 @@ async def handle_visual_analysis_reply(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: compensate-palette-composition-job
         logger.exception("Palette/composition analysis failed job_id=%s", tracker.job_id)
         await tracker.error(error)
         return

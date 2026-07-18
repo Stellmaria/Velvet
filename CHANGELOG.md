@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### P2AH: visual analysis job boundary
+
+- Palette/composition AI job failure compensation and cancellation behavior are verified.
+- Palette-card delivery failures occur after the job is ready and do not rewrite its lifecycle.
+- Compensation persistence failures remain visible.
+- Unresolved broad baseline decreased from 15 to 14.
+
 ### P2AG: formatting boundaries
 
 - Formatting source parsing now handles only expected ValueError and RuntimeError failures.
