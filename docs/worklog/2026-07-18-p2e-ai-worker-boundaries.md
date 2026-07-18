@@ -53,7 +53,7 @@ Raw catches сохраняются, потому что target уже claimed и
 
 ### Проверки
 
-Финальный head перед merge проходит unit tests, Docker build и project notes contract.
+Финальный head после выравнивания marker convention проходит unit tests, Docker build и project notes contract.
 
 ### PR и commit
 
