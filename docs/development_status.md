@@ -1,6 +1,6 @@
 # Текущий статус разработки Velvet
 
-Дата актуализации: 17 июля 2026 года.
+Дата актуализации: 18 июля 2026 года.
 
 Текущая стабильная версия: `1.3.0`.
 
@@ -138,12 +138,41 @@ Private pool inventory:
 2. update-and-restart;
 3. success/error Telegram report после bootstrap.
 
+## Heavy Runtime orchestration
+
+Статус: HR-1 подготовлен как docs-only inventory; production lifecycle не менялся.
+
+Зафиксировано:
+
+- один основной Telegram-бот и одна PostgreSQL-база уже соответствуют целевой границе;
+- WorkerManager управляет periodic tasks только в памяти и не имеет общего владельца тяжёлого ресурса;
+- Qwen Vision и AI Quality сериализованы одним process-wide `asyncio.Lock`, но остаются постоянными polling workers;
+- Ollama vision requests используют `keep_alive="15m"`, явного unload runtime нет;
+- Krita уже запускается Supervisor по требованию и имеет managed PID/idle shutdown safety;
+- feature flags и idle timeouts распределены между `Settings` и прямыми `os.getenv`;
+- backup проверяется periodic worker каждые 300 секунд;
+- Telegram import выполняется одной большой transaction без checkpoint/resume/pause;
+- Supervisor пока не показывает Ollama/Qwen/import/backup как отдельные runtime/job cards.
+
+Документ: `docs/heavy_runtime_inventory.md`.
+
+Следующий срез HR-2:
+
+- единые типизированные feature flags;
+- единые runtime timeouts;
+- убрать прямое чтение Krita flag из `app.workers`;
+- сохранить текущее фактическое scheduling;
+- добавить unit-тесты defaults и validation.
+
+Фаза 18W и HR-2 выполняются отдельными PR и не смешиваются.
+
 ## Документация и контроль
 
 - `docs/project_memory.md` — долгосрочная карта;
 - `docs/development_status.md` — текущий статус;
 - `docs/stabilization_policy.md` — допустимый новый код и ворота;
 - `docs/private_pool_inventory.*` — измеримый PostgreSQL-долг;
+- `docs/heavy_runtime_inventory.md` — фактическая карта тяжёлых runtime;
 - `docs/worklog/` — дневники до/после работы;
 - `AGENTS.md` — обязательные правила;
 - `CHANGELOG.md` — заметные изменения;
@@ -152,14 +181,15 @@ Private pool inventory:
 ## Текущий P2-план
 
 1. Фаза 18W: repository-контур `ai_vision.py`.
-2. Error center и Ollama/resilient AI repositories отдельными срезами.
-3. Вынести DB access из handlers в application/domain services.
-4. Аудит долгих callback-сценариев.
-5. Сократить широкие `except Exception`.
-6. Создать staging-бота и staging-базу.
-7. Провести независимый backup/restore drill.
-8. Добавить encrypted offsite backup.
-9. Добавить AI duration/error/cost metrics.
+2. HR-2: единые feature flags и runtime timeouts без изменения scheduling.
+3. Error center и Ollama/resilient AI repositories отдельными срезами.
+4. Вынести DB access из handlers в application/domain services.
+5. Аудит долгих callback-сценариев.
+6. Сократить широкие `except Exception`.
+7. Создать staging-бота и staging-базу.
+8. Провести независимый backup/restore drill.
+9. Добавить encrypted offsite backup.
+10. Добавить AI duration/error/cost metrics.
 
 ## Правила дальнейшей разработки
 
