@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from typing import Any
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import BaseFilter, Command
-from aiogram.types import CallbackQuery, ForceReply, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, ForceReply, Message
 
 from velvet_bot.presentation.telegram.supervisor.console_results import (
+    console_operation_dm_text,
     console_operation_finished,
     console_operation_keyboard,
     console_operation_missing_text,
+    console_operation_output_attachment,
     console_operation_text,
     console_operation_watch_timeout_text,
 )
@@ -32,6 +36,7 @@ from velvet_bot.presentation.telegram.supervisor.views import (
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
 
 router = Router(name=__name__)
+logger = logging.getLogger(__name__)
 _CONSOLE_MARKER_RE = re.compile(r"SUPERVISOR_INPUT:console")
 _CONSOLE_WATCH_INTERVAL_SECONDS = 1.0
 _CONSOLE_WATCH_TIMEOUT_SECONDS = 60 * 60
@@ -86,10 +91,48 @@ async def _render_operation(
     )
 
 
+async def _notify_console_result(
+    bot: Bot,
+    recipient_id: int,
+    operation: dict[str, Any],
+) -> None:
+    if not console_operation_finished(operation):
+        return
+
+    operation_id = str(operation.get("id", ""))
+    try:
+        await bot.send_message(
+            chat_id=recipient_id,
+            text=console_operation_dm_text(operation),
+            reply_markup=console_operation_keyboard(operation_id, finished=True),
+        )
+        attachment = console_operation_output_attachment(operation)
+        if attachment is not None:
+            filename, payload = attachment
+            await bot.send_document(
+                chat_id=recipient_id,
+                document=BufferedInputFile(payload, filename=filename),
+                caption=(
+                    "📎 Полный вывод команды Supervisor\n"
+                    f"Операция: <code>{operation_id}</code>"
+                ),
+            )
+    except TelegramAPIError as error:
+        logger.warning(
+            "Could not deliver Supervisor console result in DM operation=%s recipient=%s: %s",
+            operation_id,
+            recipient_id,
+            error,
+        )
+
+
 async def _watch_console_operation(
     message: Message,
     client: SupervisorClient,
     operation_id: str,
+    *,
+    bot: Bot,
+    recipient_id: int,
 ) -> None:
     loop = asyncio.get_running_loop()
     deadline = loop.time() + _CONSOLE_WATCH_TIMEOUT_SECONDS
@@ -116,6 +159,7 @@ async def _watch_console_operation(
                     )
                     last_rendered = rendered
                 if console_operation_finished(operation):
+                    await _notify_console_result(bot, recipient_id, operation)
                     return
 
             await asyncio.sleep(_CONSOLE_WATCH_INTERVAL_SECONDS)
@@ -129,16 +173,29 @@ async def _watch_console_operation(
         raise
     except Exception:
         # The command continues inside Supervisor even if Telegram editing fails.
-        return
+        logger.exception(
+            "Supervisor console watcher failed operation=%s recipient=%s",
+            operation_id,
+            recipient_id,
+        )
 
 
 def _start_console_watcher(
     message: Message,
     client: SupervisorClient,
     operation_id: str,
+    *,
+    bot: Bot,
+    recipient_id: int,
 ) -> None:
     task = asyncio.create_task(
-        _watch_console_operation(message, client, operation_id),
+        _watch_console_operation(
+            message,
+            client,
+            operation_id,
+            bot=bot,
+            recipient_id=recipient_id,
+        ),
         name=f"supervisor-console-watch:{operation_id}",
     )
     _CONSOLE_WATCHERS.add(task)
@@ -263,9 +320,17 @@ async def handle_console_callback(
             if not operation_id:
                 raise SupervisorClientError("Supervisor не вернул ID операции.")
             await _render_operation(callback.message, operation)
-            await callback.answer("Команда запущена.")
-            if not console_operation_finished(operation):
-                _start_console_watcher(callback.message, supervisor_client, operation_id)
+            await callback.answer("Команда запущена. Итог придёт в ЛС.")
+            if console_operation_finished(operation):
+                await _notify_console_result(callback.bot, callback.from_user.id, operation)
+            else:
+                _start_console_watcher(
+                    callback.message,
+                    supervisor_client,
+                    operation_id,
+                    bot=callback.bot,
+                    recipient_id=callback.from_user.id,
+                )
             return
         if action == "console.operation":
             operation_id = callback_data.task_id
