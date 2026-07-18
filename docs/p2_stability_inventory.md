@@ -6,17 +6,13 @@ AST-инвентаризация широких исключений и callback
 
 - широких `except Exception`: **70** в **43** файлах;
 - callback handlers: **97**;
-- missing/late acknowledgment: **5** в **3** файлах;
-- guarded acknowledgment после одного lookup: **20**;
+- missing/late acknowledgment: **0**;
+- guarded acknowledgment после одной mutation/query: **25**;
 - delegated wrappers: **4**.
 
-## Наиболее рискованные callbacks
+## Risky callbacks
 
-- `velvet_bot/handlers/quality_ai.py:425` `handle_quality_ai_retry`: late_ack, awaits до ack: 2.
-- `velvet_bot/handlers/quality_center.py:208` `handle_retry_scans`: late_ack, awaits до ack: 2.
-- `velvet_bot/handlers/quality_center.py:224` `handle_retry_broken`: late_ack, awaits до ack: 2.
-- `velvet_bot/handlers/quality_operations.py:341` `handle_quality_recent`: late_ack, awaits до ack: 2.
-- `velvet_bot/handlers/quality_operations.py:353` `handle_quality_retry_errors`: late_ack, awaits до ack: 2.
+- Нет. Callback late/missing baseline закрыт.
 
 ## Guarded acknowledgment
 
@@ -35,9 +31,14 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/multi_story_kr.py:458` `handle_public_open_multi_story`.
 - `velvet_bot/handlers/public_media_display.py:31` `handle_spoiler_aware_open`.
 - `velvet_bot/handlers/public_media_display.py:96` `handle_like_and_subscription`.
+- `velvet_bot/handlers/quality_ai.py:425` `handle_quality_ai_retry`.
 - `velvet_bot/handlers/quality_center.py:168` `handle_quality_close`.
+- `velvet_bot/handlers/quality_center.py:208` `handle_retry_scans`.
+- `velvet_bot/handlers/quality_center.py:224` `handle_retry_broken`.
 - `velvet_bot/handlers/quality_center.py:240` `handle_orphan_info`.
 - `velvet_bot/handlers/quality_duplicates.py:153` `handle_duplicate_open`.
+- `velvet_bot/handlers/quality_operations.py:341` `handle_quality_recent`.
+- `velvet_bot/handlers/quality_operations.py:353` `handle_quality_retry_errors`.
 - `velvet_bot/handlers/reference_comparison_help.py:140` `handle_reference_compare_help`.
 - `velvet_bot/handlers/reference_management.py:383` `handle_reference_delete_callback`.
 
@@ -96,8 +97,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/handlers/quality_ai.py` · `handle_quality_ai_retry`.
+- `velvet_bot/domains/publication/service.py`: классифицировать broad exceptions и сузить бизнес-ошибки без потери incident reporting.
 
 ## Правило обновления
 
-Inventory проверяется AST-тестом. Guarded означает один lookup до acknowledgment; тяжёлая обработка должна выполняться после него.
+Inventory проверяется AST-тестом. Тяжёлый reload должен выполняться после callback acknowledgment.

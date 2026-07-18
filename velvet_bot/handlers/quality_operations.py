@@ -344,9 +344,9 @@ async def handle_quality_recent(
     worker_manager: WorkerManager,
 ) -> None:
     count = await QualityOperationsRepository(database).enqueue_recent(limit=24)
+    await callback.answer(f"Поставлено или возвращено в очередь: {count}.", show_alert=True)
     if isinstance(callback.message, Message):
         await _show_menu(callback.message, database, worker_manager)
-    await callback.answer(f"Поставлено или возвращено в очередь: {count}.", show_alert=True)
 
 
 @router.callback_query(QualityCallback.filter(F.action == "quality_retry_errors"))
@@ -356,9 +356,9 @@ async def handle_quality_retry_errors(
     worker_manager: WorkerManager,
 ) -> None:
     count = await QualityOperationsRepository(database).retry_errors()
+    await callback.answer(f"Возвращено в очередь: {count}.", show_alert=True)
     if isinstance(callback.message, Message):
         await _show_menu(callback.message, database, worker_manager)
-    await callback.answer(f"Возвращено в очередь: {count}.", show_alert=True)
 
 
 @router.callback_query(QualityCallback.filter(F.action == "quality_run"))

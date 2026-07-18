@@ -210,6 +210,7 @@ async def handle_retry_scans(
     database: Database,
 ) -> None:
     count = await reset_failed_scans(database)
+    await callback.answer(f"Возвращено в очередь: {count}.", show_alert=True)
     if isinstance(callback.message, Message):
         await _show_section(
             callback.message,
@@ -217,7 +218,6 @@ async def handle_retry_scans(
             section="scan_errors",
             page_number=0,
         )
-    await callback.answer(f"Возвращено в очередь: {count}.", show_alert=True)
 
 
 @router.callback_query(QualityCallback.filter(F.action == "retry_broken"))
@@ -226,6 +226,7 @@ async def handle_retry_broken(
     database: Database,
 ) -> None:
     count = await reset_broken_file_checks(database)
+    await callback.answer(f"На повторную проверку: {count}.", show_alert=True)
     if isinstance(callback.message, Message):
         await _show_section(
             callback.message,
@@ -233,7 +234,6 @@ async def handle_retry_broken(
             section="broken_files",
             page_number=0,
         )
-    await callback.answer(f"На повторную проверку: {count}.", show_alert=True)
 
 
 @router.callback_query(QualityCallback.filter(F.action == "orphan_info"))

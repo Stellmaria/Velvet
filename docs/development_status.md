@@ -201,7 +201,7 @@ Private pool inventory:
 ## Текущий P2-план
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
-2. Исправлять risky callbacks отдельными поведенческими срезами.
+2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
 3. Сокращать широкие исключения по доменам без потери incident reporting.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
