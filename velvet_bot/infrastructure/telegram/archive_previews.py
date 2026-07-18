@@ -81,7 +81,7 @@ class TelegramArchivePreviewResolver:
 
         try:
             return await build_image_document_preview(self._bot, page.media)
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: fallback-full-quality-archive-preview
             logger.info(
                 "Could not prepare full-quality image media_id=%s: %s",
                 page.media.id,
