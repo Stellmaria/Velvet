@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### P2AF: prompt/result job boundary
+
+- Prompt/result AI job failures now have a verified compensation boundary.
+- Prompt sessions remain available after failure or cancellation for a retry.
+- Compensation persistence failures are not silently swallowed.
+- Unresolved broad baseline decreased from 18 to 17.
+
 ### P2AE: watcher boundary
 
 - Background watcher failures are logged and isolated.
