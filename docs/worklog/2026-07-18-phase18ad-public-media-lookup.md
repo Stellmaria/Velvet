@@ -46,23 +46,35 @@
 
 ### Фактически сделано
 
-Ожидается реализация.
+- единственный connection point `get_character_media_offset()` переведён на `Database.acquire()`;
+- production diff содержит одну строку замены private boundary на public boundary;
+- сохранены `ROW_NUMBER()` ordering, character/media filters и `int | None` mapping;
+- добавлены regression-тесты source boundary, SQL arguments, integer mapping и missing-media result;
+- baseline уменьшен с 63/18 до 62/17;
+- inventory, project memory, development status и changelog синхронизированы;
+- self-cleaning workflow удалён из итогового diff.
 
 ### Миграции и совместимость
 
-Ожидается реализация.
+- миграции и SQL не изменялись;
+- public archive handlers, callbacks и presentation не изменялись;
+- публичный Python-контракт функции сохранён.
 
 ### Проверки
 
-Ожидается реализация и CI.
+- точный production diff подтверждает одну замену;
+- постоянные source/runtime regression-тесты добавлены;
+- требуется полный PR CI на connector head.
 
 ### PR и commit
 
-Ожидается открытие PR.
+- PR: #133 `Фаза 18AD: Public media lookup и Database.acquire`;
+- production commit: `804cabc3ff3213403f35919ddaed72067cfc3234`;
+- synchronized baseline head до connector-коммита: `5e6d06d151f95062c6862ddc1427f73f2d1cdbec`.
 
 ### Незавершённое
 
-Реализация и проверки.
+Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
 
 ### Следующий шаг
 
