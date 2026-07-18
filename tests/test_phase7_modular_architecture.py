@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from velvet_bot.app.commands import (
     build_admin_commands,
@@ -38,18 +39,44 @@ class CommandCatalogTests(unittest.TestCase):
 
 
 class WorkerRegistryTests(unittest.TestCase):
-    def test_application_registers_expected_workers(self) -> None:
-        manager = build_worker_manager(
+    def _build_manager(self):
+        return build_worker_manager(
             bot=object(),  # type: ignore[arg-type]
             database=object(),  # type: ignore[arg-type]
             backup_service=object(),  # type: ignore[arg-type]
         )
+
+    def test_application_registers_expected_workers(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"KRITA_WATERMARK_ENABLED": "false"},
+            clear=False,
+        ):
+            manager = self._build_manager()
         self.assertEqual(
             manager.registered_names(),
             (
                 "public-archive-notifications",
                 "publication-queue",
                 "media-quality",
+                "postgresql-backups",
+            ),
+        )
+
+    def test_krita_worker_is_registered_when_feature_flag_is_enabled(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"KRITA_WATERMARK_ENABLED": "true"},
+            clear=False,
+        ):
+            manager = self._build_manager()
+        self.assertEqual(
+            manager.registered_names(),
+            (
+                "public-archive-notifications",
+                "publication-queue",
+                "media-quality",
+                "krita-watermark",
                 "postgresql-backups",
             ),
         )
