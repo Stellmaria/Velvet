@@ -507,7 +507,7 @@ class MediaAIRepository:
     ) -> tuple[VisionAnalysisTarget, ...]:
         safe_limit = max(1, min(int(limit), 4))
         safe_attempts = max(1, min(int(max_attempts), 10))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
                     """
@@ -576,7 +576,7 @@ class MediaAIRepository:
         )
 
     async def mark_ready(self, media_id: int, profile: dict[str, Any]) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE media_ai_profiles
@@ -598,7 +598,7 @@ class MediaAIRepository:
         max_attempts: int,
         permanent: bool = False,
     ) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE media_ai_profiles
@@ -618,7 +618,7 @@ class MediaAIRepository:
             )
 
     async def summary(self) -> AIProfileSummary:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
