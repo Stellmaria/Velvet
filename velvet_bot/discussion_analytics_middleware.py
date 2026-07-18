@@ -33,7 +33,7 @@ class DiscussionAnalyticsMiddleware(BaseMiddleware):
                 if database is not None:
                     try:
                         await ingest_live_discussion_message(database, event)
-                    except Exception:
+                    except Exception:  # p2-approved-boundary: isolate-discussion-analytics-ingest
                         logger.exception(
                             "Failed to capture discussion message chat=%s message=%s",
                             event.chat.id,

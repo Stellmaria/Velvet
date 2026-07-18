@@ -1,11 +1,16 @@
 # P2 stability inventory
 
+AST-инвентаризация широких исключений и callback acknowledgment.
+
 ## Сводка
 
-- raw: **70** / **43** files;
-- approved: **18**;
-- unresolved: **52** / **33** files;
-- risky callbacks: **0**.
+- raw broad exceptions: **70** в **43** файлах;
+- approved boundaries: **19**;
+- unresolved broad exceptions: **51** в **32** файлах;
+- callback handlers: **97**;
+- late/missing callbacks: **0**;
+- guarded callbacks: **25**;
+- delegated callbacks: **4**.
 
 ## Approved broad boundaries
 
@@ -24,6 +29,7 @@
 - `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
 - `velvet_bot/backup_service.py:898` `run_backup_worker`: isolate-backup-worker-iteration.
 - `velvet_bot/calibrated_ai_quality.py:111` `process_once`: compensate-claimed-calibrated-quality.
+- `velvet_bot/discussion_analytics_middleware.py:36` `__call__`: isolate-discussion-analytics-ingest.
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
 - `velvet_bot/domains/publication/service.py:68` `publish`: compensate-claimed-publication.
 - `velvet_bot/domains/publication/service.py:89` `process_due_once`: isolate-scheduled-draft.
@@ -42,7 +48,6 @@
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
-- `velvet_bot/discussion_analytics_middleware.py`: 1.
 - `velvet_bot/handlers/archive.py`: 1.
 - `velvet_bot/handlers/backup_center.py`: 1.
 - `velvet_bot/handlers/channel_analytics.py`: 1.
@@ -66,4 +71,8 @@
 
 ## Следующий срез
 
-- первый unresolved entry из актуального AST inventory.
+- `velvet_bot/error_center.py`.
+
+## Правило обновления
+
+Запустите `python scripts/update_p2_stability_inventory.py --label <phase> --schema-version <n>` после изменения broad catches или callback acknowledgment.
