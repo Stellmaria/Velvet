@@ -62,7 +62,7 @@ async def run_publication_worker(
             await service.process_due_once()
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-publication-worker-iteration
             logger.exception("Publication queue loop failed")
         await asyncio.sleep(interval_seconds)
 
