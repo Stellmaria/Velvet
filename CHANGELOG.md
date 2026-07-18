@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### P2AD: reference form job boundary
+
+- Reference-comparison form jobs now have a verified failure-compensation boundary.
+- Cancellation records interruption and propagates unchanged.
+- Compensation persistence failures are not silently swallowed.
+- Unresolved broad baseline decreased from 20 to 19.
+
 ### P2AC: reference comparison audit
 
 - Reference-comparison failures now create a real Telegram audit incident with character, reference, result, and user context.

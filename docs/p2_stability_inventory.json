@@ -1,18 +1,18 @@
 {
-  "schema_version": 31,
-  "generated_from_commit": "p2ac-reference-comparison-audit",
+  "schema_version": 32,
+  "generated_from_commit": "p2ad-reference-form-job-boundary",
   "broad_exception_total": 68,
   "broad_exception_files": 41,
-  "broad_exception_approved": 48,
-  "broad_exception_unresolved": 20,
-  "broad_exception_unresolved_files": 15,
+  "broad_exception_approved": 49,
+  "broad_exception_unresolved": 19,
+  "broad_exception_unresolved_files": 14,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/reference_comparison_help.py",
+    "target": "velvet_bot/handlers/supervisor_console.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -405,8 +405,8 @@
       "function": "handle_reference_comparison_reply",
       "line": 253,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-reference-comparison-form-job"
     },
     {
       "path": "velvet_bot/handlers/supervisor_console.py",
