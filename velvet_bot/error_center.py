@@ -96,7 +96,7 @@ def _fingerprint(logger_name: str, severity: str, summary: str, exc_name: str) -
 def capture_log_record(record: logging.LogRecord) -> CapturedLog:
     try:
         summary = record.getMessage()
-    except Exception:
+    except Exception:  # p2-approved-boundary: fallback-log-record-message
         summary = str(record.msg)
     summary = (_redact(summary) or "Ошибка без текста")[:1200]
 
@@ -334,7 +334,7 @@ def _is_recoverable_aiogram_polling_record(record: logging.LogRecord) -> bool:
         return False
     try:
         message = record.getMessage().casefold()
-    except Exception:
+    except Exception:  # p2-approved-boundary: fallback-polling-record-message
         message = str(record.msg).casefold()
     return (
         "failed to fetch updates" in message
@@ -361,7 +361,7 @@ class ErrorLoggingHandler(logging.Handler):
         try:
             captured = capture_log_record(record)
             self._center.enqueue_threadsafe(captured)
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-error-logging-handler
             # A logging handler must never break the application it observes.
             return
 
@@ -459,7 +459,7 @@ class ErrorIncidentCenter:
                 await self._process(captured)
             except asyncio.CancelledError:
                 raise
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: isolate-error-incident-item
                 logger.warning("Error incident processing failed: %s", error)
             finally:
                 self._queue.task_done()
