@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - broad exceptions raw: **70** в **43** файлах;
-- approved orchestration boundaries: **2**;
-- unresolved broad exceptions: **68** в **42** файлах;
+- approved orchestration boundaries: **3**;
+- unresolved broad exceptions: **67** в **41** файлах;
 - callback handlers: **97**;
 - missing/late acknowledgment: **0**;
 - guarded acknowledgment: **25**;
@@ -14,6 +14,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Approved broad boundaries
 
+- `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
 - `velvet_bot/domains/publication/service.py:68` `publish`: compensate-claimed-publication.
 - `velvet_bot/domains/publication/service.py:89` `process_due_once`: isolate-scheduled-draft.
 
@@ -40,7 +41,6 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/backup_runtime.py`: 1.
 - `velvet_bot/calibrated_ai_quality.py`: 1.
 - `velvet_bot/discussion_analytics_middleware.py`: 1.
-- `velvet_bot/domains/media_quality/service.py`: 1.
 - `velvet_bot/handlers/archive.py`: 1.
 - `velvet_bot/handlers/backup_center.py`: 1.
 - `velvet_bot/handlers/channel_analytics.py`: 1.
@@ -68,7 +68,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/domains/media_quality/service.py`: broad-exception triage.
+- `velvet_bot/ai_quality.py`: broad-exception triage worker item boundary.
 
 ## Правило обновления
 

@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2D: media-quality scan boundary
+
+- Claimed media scan broad catch отмечен как approved compensation boundary.
+- Добавлены тесты записи scan error и cancellation propagation.
+- Unresolved broad-exception baseline уменьшен с 68 до 67.
+
 ### P2C: publication broad boundaries
 
 - Publication compensation и scheduled-item isolation отмечены как approved orchestration boundaries.
