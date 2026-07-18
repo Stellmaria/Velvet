@@ -108,7 +108,7 @@ class CalibratedAIQualityService(AIQualityService):
                     max_attempts=self._max_attempts,
                 )
                 break
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: compensate-claimed-calibrated-quality
                 logger.warning(
                     "Calibrated AI quality analysis failed media_id=%s: %s",
                     target.media_id,
