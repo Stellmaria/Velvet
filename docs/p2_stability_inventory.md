@@ -6,36 +6,40 @@ AST-инвентаризация широких исключений и callback
 
 - широких `except Exception`: **70** в **43** файлах;
 - callback handlers: **97**;
-- handlers с поздним или отсутствующим acknowledgment: **25** в **16** файлах;
-- одношаговых delegated wrappers для ручного контроля: **4**.
+- missing/late acknowledgment: **5** в **3** файлах;
+- guarded acknowledgment после одного lookup: **20**;
+- delegated wrappers: **4**.
 
 ## Наиболее рискованные callbacks
 
-- `velvet_bot/handlers/multi_story_kr.py:232` `handle_admin_open_multi_story`: late_ack, awaits до ack: 2.
-- `velvet_bot/handlers/multi_story_kr.py:458` `handle_public_open_multi_story`: late_ack, awaits до ack: 2.
 - `velvet_bot/handlers/quality_ai.py:425` `handle_quality_ai_retry`: late_ack, awaits до ack: 2.
 - `velvet_bot/handlers/quality_center.py:208` `handle_retry_scans`: late_ack, awaits до ack: 2.
 - `velvet_bot/handlers/quality_center.py:224` `handle_retry_broken`: late_ack, awaits до ack: 2.
 - `velvet_bot/handlers/quality_operations.py:341` `handle_quality_recent`: late_ack, awaits до ack: 2.
 - `velvet_bot/handlers/quality_operations.py:353` `handle_quality_retry_errors`: late_ack, awaits до ack: 2.
-- `velvet_bot/handlers/admin_large_media_preview.py:179` `handle_admin_large_media_preview`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/admin_media_display.py:125` `handle_admin_archive_display`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/admin_media_spoiler.py:18` `handle_admin_media_spoiler`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/admin_stories.py:335` `handle_story_picker`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/error_center.py:47` `acknowledge_all_errors_callback`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/kr_profile_overrides.py:85` `handle_kr_profile`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/kr_profile_overrides.py:103` `handle_kr_multi_story_done`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/kr_universe_entry.py:27` `handle_admin_set_kr`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/kr_universe_entry.py:66` `handle_public_set_kr`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/media_prompt_binding.py:110` `handle_prompt_button`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/media_prompt_binding.py:215` `handle_prompt_remove`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/public_media_display.py:31` `handle_spoiler_aware_open`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/public_media_display.py:96` `handle_like_and_subscription`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/quality_center.py:168` `handle_quality_close`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/quality_center.py:240` `handle_orphan_info`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/quality_duplicates.py:153` `handle_duplicate_open`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/reference_comparison_help.py:140` `handle_reference_compare_help`: late_ack, awaits до ack: 1.
-- `velvet_bot/handlers/reference_management.py:383` `handle_reference_delete_callback`: late_ack, awaits до ack: 1.
+
+## Guarded acknowledgment
+
+- `velvet_bot/handlers/admin_large_media_preview.py:179` `handle_admin_large_media_preview`.
+- `velvet_bot/handlers/admin_media_display.py:125` `handle_admin_archive_display`.
+- `velvet_bot/handlers/admin_media_spoiler.py:18` `handle_admin_media_spoiler`.
+- `velvet_bot/handlers/admin_stories.py:335` `handle_story_picker`.
+- `velvet_bot/handlers/error_center.py:47` `acknowledge_all_errors_callback`.
+- `velvet_bot/handlers/kr_profile_overrides.py:85` `handle_kr_profile`.
+- `velvet_bot/handlers/kr_profile_overrides.py:103` `handle_kr_multi_story_done`.
+- `velvet_bot/handlers/kr_universe_entry.py:27` `handle_admin_set_kr`.
+- `velvet_bot/handlers/kr_universe_entry.py:66` `handle_public_set_kr`.
+- `velvet_bot/handlers/media_prompt_binding.py:110` `handle_prompt_button`.
+- `velvet_bot/handlers/media_prompt_binding.py:215` `handle_prompt_remove`.
+- `velvet_bot/handlers/multi_story_kr.py:232` `handle_admin_open_multi_story`.
+- `velvet_bot/handlers/multi_story_kr.py:458` `handle_public_open_multi_story`.
+- `velvet_bot/handlers/public_media_display.py:31` `handle_spoiler_aware_open`.
+- `velvet_bot/handlers/public_media_display.py:96` `handle_like_and_subscription`.
+- `velvet_bot/handlers/quality_center.py:168` `handle_quality_close`.
+- `velvet_bot/handlers/quality_center.py:240` `handle_orphan_info`.
+- `velvet_bot/handlers/quality_duplicates.py:153` `handle_duplicate_open`.
+- `velvet_bot/handlers/reference_comparison_help.py:140` `handle_reference_compare_help`.
+- `velvet_bot/handlers/reference_management.py:383` `handle_reference_delete_callback`.
 
 ## Delegated wrappers
 
@@ -90,6 +94,10 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/publication_inbox_middleware.py`: 1.
 - `velvet_bot/publication_worker.py`: 1.
 
+## Следующий срез
+
+- `velvet_bot/handlers/quality_ai.py` · `handle_quality_ai_retry`.
+
 ## Правило обновления
 
-Inventory проверяется AST-тестом. Эвристика различает direct/helper acknowledgment и одношаговое delegation.
+Inventory проверяется AST-тестом. Guarded означает один lookup до acknowledgment; тяжёлая обработка должна выполняться после него.

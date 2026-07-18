@@ -200,7 +200,7 @@ Private pool inventory:
 
 ## Текущий P2-план
 
-1. P2A: измеримый аудит callback acknowledgment и широких `except Exception`.
+1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. Исправлять risky callbacks отдельными поведенческими срезами.
 3. Сокращать широкие исключения по доменам без потери incident reporting.
 4. Создать staging-бота и staging-базу.

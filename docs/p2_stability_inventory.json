@@ -1,13 +1,17 @@
 {
-  "schema_version": 2,
-  "generated_from_commit": "p2a-stability-audit",
+  "schema_version": 3,
+  "generated_from_commit": "p2a-multi-story-callback",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
   "callback_total": 97,
-  "risky_callback_total": 25,
-  "risky_callback_files": 16,
+  "risky_callback_total": 5,
+  "risky_callback_files": 3,
+  "guarded_callback_total": 20,
   "delegated_callback_total": 4,
-  "next_slice": null,
+  "next_slice": {
+    "target": "velvet_bot/handlers/quality_ai.py",
+    "function": "handle_quality_ai_retry"
+  },
   "broad_exceptions": [
     {
       "path": "velvet_bot/ai_job_runtime.py",
@@ -432,24 +436,6 @@
   ],
   "callbacks": [
     {
-      "path": "velvet_bot/handlers/multi_story_kr.py",
-      "function": "handle_admin_open_multi_story",
-      "line": 232,
-      "ack_line": 248,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
-      "risk": "late_ack"
-    },
-    {
-      "path": "velvet_bot/handlers/multi_story_kr.py",
-      "function": "handle_public_open_multi_story",
-      "line": 458,
-      "ack_line": 476,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
-      "risk": "late_ack"
-    },
-    {
       "path": "velvet_bot/handlers/quality_ai.py",
       "function": "handle_quality_ai_retry",
       "line": 425,
@@ -501,7 +487,7 @@
       "ack_line": 191,
       "pre_ack_awaits": 1,
       "total_awaits": 10,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/admin_media_display.py",
@@ -510,7 +496,7 @@
       "ack_line": 137,
       "pre_ack_awaits": 1,
       "total_awaits": 9,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/admin_media_spoiler.py",
@@ -519,7 +505,7 @@
       "ack_line": 30,
       "pre_ack_awaits": 1,
       "total_awaits": 5,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/admin_stories.py",
@@ -528,7 +514,7 @@
       "ack_line": 342,
       "pre_ack_awaits": 1,
       "total_awaits": 4,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/error_center.py",
@@ -537,7 +523,7 @@
       "ack_line": 52,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/kr_profile_overrides.py",
@@ -546,7 +532,7 @@
       "ack_line": 99,
       "pre_ack_awaits": 1,
       "total_awaits": 2,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/kr_profile_overrides.py",
@@ -555,7 +541,7 @@
       "ack_line": 117,
       "pre_ack_awaits": 1,
       "total_awaits": 2,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/kr_universe_entry.py",
@@ -564,7 +550,7 @@
       "ack_line": 34,
       "pre_ack_awaits": 1,
       "total_awaits": 7,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/kr_universe_entry.py",
@@ -573,7 +559,7 @@
       "ack_line": 76,
       "pre_ack_awaits": 1,
       "total_awaits": 5,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/media_prompt_binding.py",
@@ -582,7 +568,7 @@
       "ack_line": 121,
       "pre_ack_awaits": 1,
       "total_awaits": 6,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/media_prompt_binding.py",
@@ -591,7 +577,25 @@
       "ack_line": 226,
       "pre_ack_awaits": 1,
       "total_awaits": 8,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/handlers/multi_story_kr.py",
+      "function": "handle_admin_open_multi_story",
+      "line": 232,
+      "ack_line": 240,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/handlers/multi_story_kr.py",
+      "function": "handle_public_open_multi_story",
+      "line": 458,
+      "ack_line": 469,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/public_media_display.py",
@@ -600,7 +604,7 @@
       "ack_line": 46,
       "pre_ack_awaits": 1,
       "total_awaits": 9,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/public_media_display.py",
@@ -609,7 +613,7 @@
       "ack_line": 108,
       "pre_ack_awaits": 1,
       "total_awaits": 6,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/quality_center.py",
@@ -618,7 +622,7 @@
       "ack_line": 174,
       "pre_ack_awaits": 1,
       "total_awaits": 2,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/quality_center.py",
@@ -627,7 +631,7 @@
       "ack_line": 245,
       "pre_ack_awaits": 1,
       "total_awaits": 2,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/quality_duplicates.py",
@@ -636,7 +640,7 @@
       "ack_line": 161,
       "pre_ack_awaits": 1,
       "total_awaits": 6,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/reference_comparison_help.py",
@@ -645,7 +649,7 @@
       "ack_line": 155,
       "pre_ack_awaits": 1,
       "total_awaits": 5,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/reference_management.py",
@@ -654,7 +658,7 @@
       "ack_line": 396,
       "pre_ack_awaits": 1,
       "total_awaits": 14,
-      "risk": "late_ack"
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/handlers/admin_uncategorized.py",
