@@ -59,11 +59,13 @@ class BackupCenterBoundaryTests(unittest.IsolatedAsyncioTestCase):
     async def test_unexpected_error_remains_original_when_render_fails(self) -> None:
         callback = FakeCallback()
         original = RuntimeError("database connection lost")
+        rendered: list[str] = []
 
         async def fail_menu(callback, service, database) -> None:
             raise original
 
         async def fail_edit(callback, text, keyboard) -> None:
+            rendered.append(text)
             raise FakeBadRequest("message unavailable")
 
         module._show_menu = fail_menu
@@ -79,6 +81,8 @@ class BackupCenterBoundaryTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertIs(caught.exception, original)
+        self.assertEqual(len(rendered), 1)
+        self.assertIn("database connection lost", rendered[0])
         self.assertEqual(callback.answers, [])
 
     async def test_cancellation_is_not_rendered_or_swallowed(self) -> None:
