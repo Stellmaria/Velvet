@@ -1,18 +1,18 @@
 {
-  "schema_version": 24,
-  "generated_from_commit": "p2v-public-archive-boundaries",
+  "schema_version": 25,
+  "generated_from_commit": "p2w-public-manager-download-boundary",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 42,
-  "broad_exception_unresolved": 28,
-  "broad_exception_unresolved_files": 22,
+  "broad_exception_approved": 43,
+  "broad_exception_unresolved": 27,
+  "broad_exception_unresolved_files": 21,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/public_manager.py",
+    "target": "velvet_bot/handlers/publication_center.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -355,10 +355,10 @@
     {
       "path": "velvet_bot/handlers/public_manager.py",
       "function": "handle_public_manager",
-      "line": 175,
+      "line": 174,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-manager-download-failure"
     },
     {
       "path": "velvet_bot/handlers/publication_center.py",
