@@ -1,7 +1,7 @@
 diff --git a/velvet_bot/handlers/backup_center.py b/velvet_bot/handlers/backup_center.py
 --- a/velvet_bot/handlers/backup_center.py
 +++ b/velvet_bot/handlers/backup_center.py
-@@ -389,13 +389,17 @@ async def handle_backup_callback(
+@@ -389,13 +389,16 @@ async def handle_backup_callback(
              f"{escape(str(error))}",
              _main_keyboard(),
          )
