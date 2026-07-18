@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2W: manager download reporting is separated from callback acknowledgment; unresolved broad baseline 28 → 27.
+3. P2X: publication failure reporting uses source/private fallback and preserves the original error; unresolved broad baseline 27 → 26.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.

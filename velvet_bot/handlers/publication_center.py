@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timezone
 from html import escape
@@ -7,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
@@ -27,6 +28,7 @@ from velvet_bot.publication_drafts import capture_publication_inbox
 from velvet_bot.services.telegram_publications import create_publication_draft
 
 router = Router(name=__name__)
+logger = logging.getLogger(__name__)
 
 _SECTION_STATUSES = {
     "drafts": ("draft", "checked"),
@@ -395,6 +397,39 @@ async def handle_check_post(
     )
 
 
+async def _report_publication_failure(
+    *,
+    callback: CallbackQuery,
+    bot: Bot,
+    draft_id: int,
+    error: Exception,
+) -> None:
+    logger.error(
+        "Publication failed",
+        exc_info=(type(error), error, error.__traceback__),
+    )
+    text = (
+        f"<b>Ошибка публикации №{draft_id}</b>\n\n"
+        f"<code>{escape(str(error))}</code>"
+    )
+    if isinstance(callback.message, Message):
+        try:
+            await callback.message.answer(text)
+            return
+        except TelegramAPIError as report_error:
+            logger.warning(
+                "Failed to report publication error in source chat: %s",
+                report_error,
+            )
+    try:
+        await bot.send_message(chat_id=callback.from_user.id, text=text)
+    except TelegramAPIError as report_error:
+        logger.warning(
+            "Failed to report publication error privately: %s",
+            report_error,
+        )
+
+
 @router.callback_query(PublicationCallback.filter())
 async def handle_publication_callback(
     callback: CallbackQuery,
@@ -531,10 +566,12 @@ async def handle_publication_callback(
                 owner_id=callback.from_user.id,
                 actor_id=callback.from_user.id,
             )
-        except Exception as error:
-            await callback.message.answer(
-                f"<b>Ошибка публикации №{draft.id}</b>\n\n"
-                f"<code>{escape(str(error))}</code>"
+        except Exception as error:  # p2-approved-boundary: report-publication-failure
+            await _report_publication_failure(
+                callback=callback,
+                bot=bot,
+                draft_id=draft.id,
+                error=error,
             )
             return
         await _show_draft(
