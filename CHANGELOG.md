@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### P2AM: publication stability boundaries
+
+- Inbox capture failures no longer block the main Telegram handler.
+- Publication worker iteration failures are logged and followed by another cycle.
+- Cancellation remains terminal on both layers.
+- Unresolved broad baseline decreased from 8 to 6.
+
 ### P2AL: public archive display fallbacks
 
 - Viewer edit and send preview failures fall back to original documents.

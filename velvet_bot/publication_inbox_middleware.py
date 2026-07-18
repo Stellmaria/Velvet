@@ -57,7 +57,7 @@ class PublicationInboxMiddleware(BaseMiddleware):
                 message,
                 owner_id=message.from_user.id,
             )
-        except Exception:
+        except Exception:  # p2-approved-boundary: best-effort-publication-inbox-capture
             logger.exception(
                 "Failed to capture publication inbox item chat=%s message=%s",
                 message.chat.id,
