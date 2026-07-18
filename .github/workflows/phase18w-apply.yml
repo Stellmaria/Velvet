@@ -1,0 +1,357 @@
+name: Apply Phase 18W refactor
+
+on:
+  push:
+    branches:
+      - agent/phase18w-ai-vision-acquire
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/phase18w-ai-vision-acquire
+          fetch-depth: 0
+
+      - name: Apply reviewed Phase 18W transformation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          from pathlib import Path
+
+          root = Path.cwd()
+
+          ai_path = root / "velvet_bot" / "ai_vision.py"
+          ai_source = ai_path.read_text(encoding="utf-8")
+          private_call = "self._database._require_pool().acquire()"
+          public_call = "self._database.acquire()"
+          assert ai_source.count(private_call) == 4, ai_source.count(private_call)
+          ai_path.write_text(ai_source.replace(private_call, public_call), encoding="utf-8")
+
+          test_path = root / "tests" / "test_phase18w_ai_vision_boundary.py"
+          test_path.write_text(
+              '''from __future__ import annotations
+
+import inspect
+import json
+import unittest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
+
+from velvet_bot.ai_vision import MediaAIRepository
+
+
+class _AsyncContext:
+    def __init__(self, value) -> None:
+        self.value = value
+        self.entered = False
+        self.exited = False
+
+    async def __aenter__(self):
+        self.entered = True
+        return self.value
+
+    async def __aexit__(self, exc_type, exc, traceback) -> bool:
+        self.exited = True
+        return False
+
+
+class MediaAIVisionBoundaryTests(unittest.IsolatedAsyncioTestCase):
+    def test_repository_uses_public_database_boundary(self) -> None:
+        source = inspect.getsource(MediaAIRepository)
+
+        self.assertNotIn("._require_pool()", source)
+        self.assertEqual(source.count("self._database.acquire()"), 4)
+        for method_name in ("claim_targets", "mark_ready", "mark_error", "summary"):
+            self.assertIn(
+                "self._database.acquire()",
+                inspect.getsource(getattr(MediaAIRepository, method_name)),
+                method_name,
+            )
+
+    async def test_claim_targets_preserves_transaction_and_locked_batch_claim(self) -> None:
+        rows = [
+            {
+                "media_id": 41,
+                "telegram_file_id": "telegram-file",
+                "preview_file_id": "preview-file",
+                "mime_type": "image/jpeg",
+            }
+        ]
+        connection = SimpleNamespace(
+            execute=AsyncMock(side_effect=["INSERT 0 1", "UPDATE 1", "UPDATE 1"]),
+            fetch=AsyncMock(return_value=rows),
+            transaction=Mock(),
+        )
+        transaction_context = _AsyncContext(None)
+        connection.transaction.return_value = transaction_context
+        acquire_context = _AsyncContext(connection)
+        database = SimpleNamespace(acquire=Mock(return_value=acquire_context))
+        repository = MediaAIRepository(database)
+
+        result = await repository.claim_targets(
+            provider="ollama",
+            model="qwen2.5vl:" + ("x" * 200),
+            max_attempts=99,
+            limit=99,
+        )
+
+        database.acquire.assert_called_once_with()
+        connection.transaction.assert_called_once_with()
+        self.assertTrue(acquire_context.entered)
+        self.assertTrue(acquire_context.exited)
+        self.assertTrue(transaction_context.entered)
+        self.assertTrue(transaction_context.exited)
+        self.assertEqual(connection.execute.await_count, 3)
+        self.assertIn("INSERT INTO media_ai_profiles", connection.execute.await_args_list[0].args[0])
+        self.assertIn("status = 'pending'", connection.execute.await_args_list[1].args[0])
+        claim_sql, safe_attempts, safe_limit = connection.fetch.await_args.args
+        self.assertIn("FOR UPDATE OF p SKIP LOCKED", claim_sql)
+        self.assertEqual((safe_attempts, safe_limit), (10, 4))
+        batch_call = connection.execute.await_args_list[2]
+        self.assertIn("status = 'processing'", batch_call.args[0])
+        self.assertEqual(batch_call.args[1], [41])
+        self.assertEqual(batch_call.args[2], "ollama")
+        self.assertEqual(len(batch_call.args[3]), 160)
+        self.assertEqual(batch_call.args[4], 1)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].media_id, 41)
+        self.assertEqual(result[0].preview_file_id, "preview-file")
+
+    async def test_mark_ready_and_mark_error_preserve_payload_and_attempt_clamp(self) -> None:
+        ready_connection = SimpleNamespace(execute=AsyncMock(return_value="UPDATE 1"))
+        error_connection = SimpleNamespace(execute=AsyncMock(return_value="UPDATE 1"))
+        database = SimpleNamespace(
+            acquire=Mock(
+                side_effect=[
+                    _AsyncContext(ready_connection),
+                    _AsyncContext(error_connection),
+                ]
+            )
+        )
+        repository = MediaAIRepository(database)
+        profile = {
+            "series_title_ru": "Дикий Запад",
+            "summary_ru": "Общий художественный контекст.",
+            "series_keywords": ["western"],
+        }
+
+        await repository.mark_ready(41, profile)
+        await repository.mark_error(
+            42,
+            RuntimeError("ошибка" * 600),
+            max_attempts=99,
+            permanent=True,
+        )
+
+        ready_sql, *ready_arguments = ready_connection.execute.await_args.args
+        self.assertIn("SET status = 'ready'", ready_sql)
+        self.assertEqual(ready_arguments[0], 41)
+        self.assertEqual(json.loads(ready_arguments[1]), profile)
+        self.assertIn("Дикий Запад", ready_arguments[2])
+
+        error_sql, *error_arguments = error_connection.execute.await_args.args
+        self.assertIn("THEN 'skipped'", error_sql)
+        self.assertEqual(error_arguments[0], 42)
+        self.assertLessEqual(len(error_arguments[1]), 2000)
+        self.assertTrue(error_arguments[2])
+        self.assertEqual(error_arguments[3], 10)
+
+    async def test_summary_preserves_aggregate_mapping(self) -> None:
+        row = {
+            "pending": 1,
+            "processing": 2,
+            "ready": 3,
+            "errors": 4,
+            "skipped": 5,
+        }
+        connection = SimpleNamespace(fetchrow=AsyncMock(return_value=row))
+        acquire_context = _AsyncContext(connection)
+        database = SimpleNamespace(acquire=Mock(return_value=acquire_context))
+        repository = MediaAIRepository(database)
+
+        result = await repository.summary()
+
+        database.acquire.assert_called_once_with()
+        self.assertTrue(acquire_context.entered)
+        self.assertTrue(acquire_context.exited)
+        self.assertIn("COUNT(*) FILTER", connection.fetchrow.await_args.args[0])
+        self.assertEqual(result.pending, 1)
+        self.assertEqual(result.processing, 2)
+        self.assertEqual(result.ready, 3)
+        self.assertEqual(result.errors, 4)
+        self.assertEqual(result.skipped, 5)
+
+
+if __name__ == "__main__":
+    unittest.main()
+''',
+              encoding="utf-8",
+          )
+
+          inventory_test = root / "tests" / "test_phase18m_private_pool_inventory.py"
+          inventory_test_source = inventory_test.read_text(encoding="utf-8")
+          inventory_test_source = inventory_test_source.replace(
+              "self.assertEqual(100, len(inventory.external_findings(findings)))",
+              "self.assertEqual(96, len(inventory.external_findings(findings)))",
+          ).replace(
+              "self.assertEqual(25, len(inventory.summarize_external(findings)))",
+              "self.assertEqual(24, len(inventory.summarize_external(findings)))",
+          )
+          inventory_test.write_text(inventory_test_source, encoding="utf-8")
+
+          inventory_json = root / "docs" / "private_pool_inventory.json"
+          inventory = json.loads(inventory_json.read_text(encoding="utf-8"))
+          ai_entries = [item for item in inventory["files"] if item["path"] == "velvet_bot/ai_vision.py"]
+          assert len(ai_entries) == 1 and ai_entries[0]["count"] == 4, ai_entries
+          inventory["generated_from_commit"] = "bb6de424c35f0a5eb2a031599a43ab90e8143dea"
+          inventory["total_external_findings"] = 96
+          inventory["total_files"] = 24
+          inventory["next_slice"] = {
+              "phase": "18X",
+              "target": "velvet_bot/error_center.py",
+          }
+          inventory["files"] = [
+              item for item in inventory["files"] if item["path"] != "velvet_bot/ai_vision.py"
+          ]
+          inventory_json.write_text(
+              json.dumps(inventory, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          inventory_md = root / "docs" / "private_pool_inventory.md"
+          text = inventory_md.read_text(encoding="utf-8")
+          replacements = {
+              "Дата среза: 17 июля 2026 года.": "Дата среза: 18 июля 2026 года.",
+              "Последний завершённый срез: Фаза 18V, `AIQualityRepository` и его schema compatibility facade.": "Последний завершённый срез: Фаза 18W, `MediaAIRepository` в `ai_vision.py`.",
+              "- 100 внешних обращений к `Database._require_pool()`;": "- 96 внешних обращений к `Database._require_pool()`;",
+              "- 25 production-файлов;": "- 24 production-файла;",
+              "| Repository-классы внутри крупных модулей | 16 |": "| Repository-классы внутри крупных модулей | 12 |",
+              "Всего: 100.": "Всего: 96.",
+              "- Фаза 18V: `AIQualityRepository` и его активный schema compatibility facade, удалены 10 обращений и 2 production-файла; claim, lifecycle, dashboard и owner decisions переведены вместе.\n": "- Фаза 18V: `AIQualityRepository` и его активный schema compatibility facade, удалены 10 обращений и 2 production-файла; claim, lifecycle, dashboard и owner decisions переведены вместе.\n- Фаза 18W: `MediaAIRepository`, удалены 4 обращения и 1 production-файл; claim transaction, stale recovery, semantic profile persistence и aggregate summary сохранены.\n",
+              "1. **Фаза 18W:** repository-контур `ai_vision.py`, 4 connection points.\n2. Error center и Ollama/resilient AI repositories отдельными срезами.": "1. **Фаза 18X:** `ErrorCenterRepository` в `error_center.py`, 8 connection points.\n2. Ollama и resilient AI repositories отдельными срезами.",
+          }
+          for old, new in replacements.items():
+              assert old in text, old
+              text = text.replace(old, new)
+          inventory_md.write_text(text, encoding="utf-8")
+
+          project_memory = root / "docs" / "project_memory.md"
+          text = project_memory.read_text(encoding="utf-8")
+          replacements = {
+              "Дата актуализации: 17 июля 2026 года.": "Дата актуализации: 18 июля 2026 года.",
+              "Статус: срезы 18A–18V реализованы, baseline продолжает уменьшаться.": "Статус: срезы 18A–18W реализованы, baseline продолжает уменьшаться.",
+              "- 18V: `AIQualityRepository` и его активный schema compatibility facade.\n": "- 18V: `AIQualityRepository` и его активный schema compatibility facade;\n- 18W: `MediaAIRepository` в `ai_vision.py`.\n",
+              "- после 18V: 100 обращений в 25 файлах;": "- после 18V: 100 обращений в 25 файлах;\n- после 18W: 96 обращений в 24 файлах;",
+              "Следующий срез: **18W, repository-контур `ai_vision.py`**, 4 connection points.": "Следующий срез: **18X, `ErrorCenterRepository` в `error_center.py`**, 8 connection points.",
+              "1. Фаза 18W: repository-контур `ai_vision.py`, baseline 100 → 96.\n2. Переводить error center и Ollama/resilient AI repositories отдельными срезами.": "1. Фаза 18X: `ErrorCenterRepository`, baseline 96 → 88.\n2. Переводить Ollama/resilient AI repositories отдельными срезами.",
+          }
+          for old, new in replacements.items():
+              assert old in text, old
+              text = text.replace(old, new)
+          project_memory.write_text(text, encoding="utf-8")
+
+          development_status = root / "docs" / "development_status.md"
+          text = development_status.read_text(encoding="utf-8")
+          replacements = {
+              "Дата актуализации: 17 июля 2026 года.": "Дата актуализации: 18 июля 2026 года.",
+              "Статус: срезы 18A–18V реализованы, работа продолжается.": "Статус: срезы 18A–18W реализованы, работа продолжается.",
+              "- AI quality repository и его активный schema compatibility facade.\n": "- AI quality repository и его активный schema compatibility facade;\n- Media AI repository в `ai_vision.py`.\n",
+              "- после 18V: 100 в 25 файлах;": "- после 18V: 100 в 25 файлах;\n- после 18W: 96 в 24 файлах;",
+              "Следующий срез: **18W, repository-контур `ai_vision.py`**, 4 connection points. Ожидаемый baseline: 96 обращений в 24 файлах.": "Следующий срез: **18X, `ErrorCenterRepository` в `error_center.py`**, 8 connection points. Ожидаемый baseline: 88 обращений в 23 файлах.",
+              "1. Фаза 18W: repository-контур `ai_vision.py`.\n2. Error center и Ollama/resilient AI repositories отдельными срезами.": "1. Фаза 18X: `ErrorCenterRepository` в `error_center.py`.\n2. Ollama/resilient AI repositories отдельными срезами.",
+          }
+          for old, new in replacements.items():
+              assert old in text, old
+              text = text.replace(old, new)
+          development_status.write_text(text, encoding="utf-8")
+
+          changelog = root / "CHANGELOG.md"
+          text = changelog.read_text(encoding="utf-8")
+          replacements = {
+              "AI quality repository и его schema compatibility facade больше не обращаются": "AI quality repository, его schema compatibility facade и Media AI repository больше не обращаются",
+              "до 100 обращений в 25 файлах;": "до 96 обращений в 24 файлах;",
+              "calibration и AI quality repositories вместе с активным compatibility facade": "calibration, AI quality и Media AI repositories вместе с активным compatibility facade",
+          }
+          for old, new in replacements.items():
+              assert old in text, old
+              text = text.replace(old, new)
+          changelog.write_text(text, encoding="utf-8")
+
+          worklog = root / "docs" / "worklog" / "2026-07-18-phase18w-ai-vision-acquire.md"
+          text = worklog.read_text(encoding="utf-8")
+          text = text.replace(
+              "## После завершения\n\nБудет заполнено после реализации и CI.\n",
+              """## После завершения
+
+### Фактически сделано
+
+- четыре connection point `MediaAIRepository` переведены на `Database.acquire()`;
+- сохранены claim transaction, stale recovery, `FOR UPDATE OF p SKIP LOCKED` и batch transition в `processing`;
+- сохранены JSONB profile persistence, semantic text, error attempt clamp и aggregate summary;
+- добавлен source/runtime regression-тест;
+- private pool baseline уменьшен с 100/25 до 96/24.
+
+### Изменённые модули и контракты
+
+- `velvet_bot/ai_vision.py`;
+- `tests/test_phase18w_ai_vision_boundary.py`;
+- `tests/test_phase18m_private_pool_inventory.py`;
+- `docs/private_pool_inventory.*`;
+- `docs/project_memory.md`;
+- `docs/development_status.md`;
+- `CHANGELOG.md`.
+
+### Миграции и совместимость
+
+- миграции не изменялись;
+- SQL и публичные Python-контракты не изменялись;
+- provider/model lifecycle и Telegram/Ollama взаимодействие не изменялись.
+
+### Проверки
+
+- `python scripts/inventory_private_pool.py --check-baseline` — выполняется в техническом commit workflow;
+- `python -m compileall -q velvet_bot/ai_vision.py tests/test_phase18w_ai_vision_boundary.py` — выполняется в техническом commit workflow;
+- полный CI PR — ожидается.
+
+### PR и commit
+
+Будут записаны после открытия PR и завершения CI.
+
+### Незавершённое
+
+- подтвердить полный CI;
+- после слияния перейти к Фазе 18X, `ErrorCenterRepository`.
+
+### Следующий конкретный шаг
+
+Фаза 18X: перевести 8 connection points `ErrorCenterRepository` на `Database.acquire()` с сохранением error lifecycle, filters и pagination.
+""",
+          )
+          worklog.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Verify generated baseline and syntax
+        shell: bash
+        run: |
+          python scripts/inventory_private_pool.py --check-baseline
+          python -m compileall -q velvet_bot/ai_vision.py tests/test_phase18w_ai_vision_boundary.py
+          git diff --check
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm .github/workflows/phase18w-apply.yml
+          git config user.name "Velvet Phase Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Фаза 18W: MediaAIRepository и Database.acquire"
+          git push origin HEAD:agent/phase18w-ai-vision-acquire
