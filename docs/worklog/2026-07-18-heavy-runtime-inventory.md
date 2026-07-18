@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-heavy-runtime-inventory`
 - Линия/фаза: стабилизация тяжёлых runtime, HR-1
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/heavy-runtime-inventory`
 - Базовый commit: `bb6de424c35f0a5eb2a031599a43ab90e8143dea`
 
@@ -78,6 +78,8 @@ Velvet уже является одним owner-oriented Telegram-ботом с 
 - подтверждено, что Telegram import выполняется одной большой transaction без checkpoint/resume/pause;
 - зафиксирована текущая граница Supervisor: bot, git/operations, Codex и Krita, но без Ollama/Qwen/import/backup runtime cards;
 - создан `docs/heavy_runtime_inventory.md` с последовательностью HR-2…HR-10;
+- обновлены project memory и development status;
+- открыт draft PR #124;
 - production-код и миграции не изменялись.
 
 ### Архитектурное решение
@@ -99,26 +101,32 @@ Root router остаётся статически собранным. Feature fl
 
 ### Проверки
 
-На момент создания записи:
+Для head `c501847d74c4f007aa6172c4968913bebc6f3f37`:
 
-- выполнен source audit через подключённый GitHub repository;
-- production diff отсутствует;
-- применённые миграции не изменены;
-- локальные tests и Windows checks не выполнялись, поскольку HR-1 является docs-only inventory и среда не содержит локального checkout/`gh`;
-- GitHub CI требуется после открытия draft PR.
+- source audit через подключённый GitHub repository — выполнен;
+- compare `main...agent/heavy-runtime-inventory` — ветка впереди на 4 commits, не отстаёт, изменены только 4 документационных файла;
+- production diff — отсутствует;
+- применённые миграции — не изменены;
+- `project notes contract #91` — успешно;
+- `tests #624` — успешно.
+
+Локальные Windows/Ollama/Krita/Telegram checks не требуются для docs-only HR-1 и не выполнялись. Они остаются обязательными на соответствующих production-срезах.
 
 ### PR и commit
 
+- draft PR: #124 `HR-1: инвентаризация тяжёлых runtime-компонентов`;
 - ветка: `agent/heavy-runtime-inventory`;
 - первый commit inventory: `20a903e7c39eb1db6e6df5978397f52ff13b7750`;
-- номер draft PR фиксируется после создания.
+- зелёный CI head до финального закрытия worklog: `c501847d74c4f007aa6172c4968913bebc6f3f37`;
+- финальный documentation commit запускает повторную проверку PR перед merge.
 
 ### Незавершённое
 
-- обновить project memory и development status;
-- открыть draft PR;
-- проверить GitHub Actions;
-- после зелёного CI перевести статус записи в `завершено` и зафиксировать PR/head.
+Обязательных пунктов HR-1 не осталось. До merge необходимо дождаться повторного CI после финальной записи worklog. Живые runtime-проверки относятся к будущим HR-срезам и не блокируют завершение docs-only inventory.
+
+### Rollback-план
+
+Закрыть PR #124 без merge или revert его документационные commits. Production-код, база и runtime при этом не затрагиваются.
 
 ### Следующий шаг
 
