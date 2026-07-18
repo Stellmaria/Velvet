@@ -700,7 +700,7 @@ class AIQualityService(ResilientMediaAIVisionService):
                     max_attempts=self._max_attempts,
                 )
                 break
-            except Exception as error:  # broad-boundary: compensate-claimed-ai-quality
+            except Exception as error:  # p2-approved-boundary: compensate-claimed-ai-quality
                 logger.warning(
                     "AI quality analysis failed media_id=%s: %s",
                     target.media_id,
