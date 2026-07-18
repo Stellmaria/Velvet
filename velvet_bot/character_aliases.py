@@ -40,7 +40,7 @@ async def load_character_alias_map(connection) -> dict[str, tuple[int, str]]:
 
 
 async def ensure_name_aliases(database: Database) -> int:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch("SELECT id, name FROM characters ORDER BY id")
         created = 0
         for row in rows:
@@ -69,7 +69,7 @@ async def list_character_aliases(
     *,
     character_id: int,
 ) -> list[CharacterAlias]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT
@@ -113,7 +113,7 @@ async def add_character_alias(
     if len(cleaned) > 64:
         raise ValueError("Алиас не должен быть длиннее 64 символов.")
 
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         character = await connection.fetchrow(
             "SELECT id, name FROM characters WHERE id = $1",
             character_id,
@@ -193,7 +193,7 @@ async def delete_character_alias(
     normalized = normalize_character_alias(alias)
     if not normalized:
         return False
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             DELETE FROM character_aliases
@@ -233,7 +233,7 @@ async def delete_character_alias(
 
 
 async def rebuild_hashtag_character_links(database: Database) -> tuple[int, int]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         async with connection.transaction():
             await connection.execute(
                 "UPDATE channel_post_hashtags SET character_id = NULL, is_character = FALSE"
