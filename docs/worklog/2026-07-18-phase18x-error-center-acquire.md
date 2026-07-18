@@ -44,24 +44,35 @@
 
 ### Фактически сделано
 
-Ожидается реализация.
+- восемь connection point `ErrorIncidentRepository` переведены на `Database.acquire()`;
+- сохранены transaction/locking в `record()` и `acknowledge_all()`;
+- сохранены incident reopen, logger truncation, row mapping, acknowledgment, list/count clamps и digest cooldown;
+- добавлены source/runtime regression-тесты;
+- baseline уменьшен с 96/24 до 88/23;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Ожидается реализация.
+- миграции и схема не изменялись;
+- SQL и публичные Python-контракты не изменялись;
+- logging handler, Telegram delivery и owner digest presentation не изменялись.
 
 ### Проверки
 
-Ожидается реализация и CI.
+- production commit `476d32fa695bbce96fbd58dbae50991a487a0759`: diff содержит только восемь замен private boundary на public boundary;
+- source/runtime tests добавлены в `tests/test_phase18x_error_center_boundary.py`;
+- полный PR CI ожидается.
 
 ### PR и commit
 
-Ожидается открытие PR.
+- production commit: `476d32fa695bbce96fbd58dbae50991a487a0759`;
+- PR будет записан после открытия.
 
 ### Незавершённое
 
-Реализация и проверки.
+- подтвердить tests, Docker и project notes contract;
+- завершить дневник и слить PR.
 
 ### Следующий шаг
 
-После 18X перейти к Ollama/resilient AI repositories отдельными срезами.
+Фаза 18Y: перевести два connection point Ollama vision repository в `ollama_vision.py` на `Database.acquire()`.
