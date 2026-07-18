@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2AL: public archive display preview failures fall back to original documents while preserving metadata and cancellation; approved 57 → 59 and unresolved 10 → 8.
+3. P2AM: publication inbox capture and due-worker iteration failures are isolated while cancellation stays terminal; approved 59 → 61 and unresolved 8 → 6.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.
