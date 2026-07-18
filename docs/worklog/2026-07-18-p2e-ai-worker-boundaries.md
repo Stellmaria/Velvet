@@ -53,7 +53,7 @@ Raw catches сохраняются, потому что target уже claimed и
 
 ### Проверки
 
-Требуются unit tests, Docker build и project notes contract на финальном head.
+Финальный head перед merge проходит unit tests, Docker build и project notes contract.
 
 ### PR и commit
 
