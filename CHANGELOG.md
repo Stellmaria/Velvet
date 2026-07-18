@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2O: topic archive boundary
+
+- Classified automatic topic archive failure reporting boundary.
+- Unresolved broad baseline decreased from 45 to 44.
+
 ### P2N: admin media preview boundaries
 
 - Classified two administrative preview fallback boundaries.
