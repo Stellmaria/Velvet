@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+
+### P2T: guest archive boundaries
+
+- Guest topic delivery failures now create one specific audit incident instead of a specific and a generic duplicate.
+- General Guest Mode failures still create one generic audit incident and return a user-facing response.
+- Cancellation continues to propagate.
+- Unresolved broad baseline decreased from 39 to 37.
+
 ### P2S: error-center markup cleanup
 
 - Error acknowledgement remains complete when Telegram markup cleanup fails.

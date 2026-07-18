@@ -31,6 +31,10 @@ class GuestSource:
     source_thread_id: int | None
 
 
+class _GuestArchiveDeliveryReported(RuntimeError):
+    """Internal signal that the delivery failure already reached the audit log."""
+
+
 def _resolve_guest_source(message: Message) -> GuestSource | None:
     if message.reply_to_message is not None:
         source = message.reply_to_message
@@ -146,7 +150,7 @@ async def _archive_guest_media(
                 archive_thread_id=character.archive_thread_id,
                 archive_message_id=archived_message.message_id,
             )
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: report-guest-topic-delivery-failure
             await audit_logger.error(
                 "Ошибка отправки Guest-медиа в ветку",
                 error,
@@ -155,7 +159,7 @@ async def _archive_guest_media(
                 archive_chat_id=character.archive_chat_id,
                 archive_thread_id=character.archive_thread_id,
             )
-            raise
+            raise _GuestArchiveDeliveryReported(str(error)) from error
 
     if not result.character_link_created:
         status = "Этот файл уже был сохранён для персонажа."
@@ -241,17 +245,18 @@ async def handle_guest_archive(
             f"<b>{escape(status)}</b>\n"
             f"Персонаж: <b>{escape(character.name)}</b>",
         )
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: report-guest-request-failure
         logger.exception("Guest archive request failed")
-        await audit_logger.error(
-            "Ошибка Guest Mode",
-            error,
-            character=character_name,
-            caller_id=_caller_user_id(message),
-            guest_chat_id=message.chat.id,
-            source_chat_id=source.source_chat_id,
-            source_message_id=source.source_message_id,
-        )
+        if not isinstance(error, _GuestArchiveDeliveryReported):
+            await audit_logger.error(
+                "Ошибка Guest Mode",
+                error,
+                character=character_name,
+                caller_id=_caller_user_id(message),
+                guest_chat_id=message.chat.id,
+                source_chat_id=source.source_chat_id,
+                source_message_id=source.source_message_id,
+            )
         await _send_guest_answer(
             message,
             "Не удалось сохранить файл.\n"
