@@ -1,18 +1,18 @@
 {
-  "schema_version": 11,
-  "generated_from_commit": "p2i-audit-sink-boundary",
+  "schema_version": 12,
+  "generated_from_commit": "p2j-backup-runtime-cleanup",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 15,
-  "broad_exception_unresolved": 55,
-  "broad_exception_unresolved_files": 35,
+  "broad_exception_approved": 16,
+  "broad_exception_unresolved": 54,
+  "broad_exception_unresolved_files": 34,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/backup_runtime.py",
+    "target": "velvet_bot/backup_service.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -107,10 +107,10 @@
     {
       "path": "velvet_bot/backup_runtime.py",
       "function": "_create_dump_file",
-      "line": 159,
+      "line": 163,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "cleanup-invalid-backup-artifacts"
     },
     {
       "path": "velvet_bot/backup_service.py",

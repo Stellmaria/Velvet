@@ -156,7 +156,11 @@ class BackupService(BaseBackupService):
                 created_by=created_by,
                 extra=extra_manifest,
             )
-        except Exception:
+        except asyncio.CancelledError:
+            final_path.unlink(missing_ok=True)
+            self._manifest_path(final_path).unlink(missing_ok=True)
+            raise
+        except Exception:  # p2-approved-boundary: cleanup-invalid-backup-artifacts
             final_path.unlink(missing_ok=True)
             self._manifest_path(final_path).unlink(missing_ok=True)
             raise
