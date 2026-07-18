@@ -63,7 +63,7 @@ class QualityPage:
 
 
 async def get_quality_summary(database: Database) -> QualitySummary:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -140,7 +140,7 @@ async def list_character_issues(
     if condition is None:
         raise ValueError("Неизвестный раздел персонажей.")
     args_prefix = [list(STORY_REQUIRED_UNIVERSES)] if "$1" in condition else []
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 f"SELECT COUNT(*) FROM characters c WHERE {condition}",
@@ -202,7 +202,7 @@ async def list_media_issues(
     condition = conditions.get(section)
     if condition is None:
         raise ValueError("Неизвестный раздел медиа.")
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 f"""
@@ -271,7 +271,7 @@ async def list_unresolved_hashtags(
     page: int = 0,
     page_size: int = 8,
 ) -> QualityPage:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 "SELECT COUNT(DISTINCT normalized_hashtag) "
@@ -309,7 +309,7 @@ async def list_unresolved_hashtags(
 
 
 async def reset_broken_file_checks(database: Database) -> int:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         result = await connection.execute(
             """
             UPDATE media_file_checks
