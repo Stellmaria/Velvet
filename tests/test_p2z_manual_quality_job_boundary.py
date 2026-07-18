@@ -79,6 +79,7 @@ class ManualQualityJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(call["database"], database)
         self.assertIs(call["source_message"], message)
         self.assertEqual(call["kind"], "quality_image")
+        self.assertEqual(call["title"], "Проверка качества изображения")
         self.assertEqual(call["provider"], "ollama")
         self.assertEqual(call["model"], "qwen")
         self.assertEqual(
