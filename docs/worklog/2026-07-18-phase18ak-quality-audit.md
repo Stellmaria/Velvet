@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18ak-quality-audit`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AK
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18ak-quality-audit`
 - Базовый commit: `398f1d24399b2f7ddb155d471c8f4247c444fb4d`
 
@@ -81,18 +81,23 @@
 
 - source regression запрещает `._require_pool()` и требует пять `database.acquire()`;
 - runtime regression проверяет summary, character/media/unresolved pages и reset;
-- AST baseline ожидает 23 внешних обращения в 9 production-файлах;
-- требуется полный PR CI.
+- AST baseline подтверждает 23 внешних обращения в 9 production-файлах;
+- первый GitHub Actions `tests` run 684 выявил runtime-подмену quality audit compatibility-фасадом;
+- regression-тест переведён на сохранённые исходные функции фасада без изменения production scope;
+- GitHub Actions `tests` run 685: success;
+- GitHub Actions `docker build` run 270: success;
+- GitHub Actions `project notes contract` run 137: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
+- PR: #140 `Фаза 18AK: Quality audit и Database.acquire`;
 - production commit: `bbe424556aa8ecff172e75a687a363d065f1a6d4`;
-- test commit: `e382ad98b792f375a1ef7b14298e8146dd87ecd5`.
+- test commit: `e382ad98b792f375a1ef7b14298e8146dd87ecd5`;
+- compatibility-aware test fix: `22b79937c32d9f5aeaa74ba41e4dc4c671d04fb4`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Нет незавершённых задач внутри среза. Compatibility-фасад `quality_set_audit_compat.py` остаётся отдельным измеримым долгом и не включён в scope 18AK.
 
 ### Следующий шаг
 
