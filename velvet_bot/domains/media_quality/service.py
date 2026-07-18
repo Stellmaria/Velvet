@@ -87,7 +87,7 @@ class MediaQualityService:
             await self._handle_telegram_scan_error(target, error)
         except TelegramAPIError as error:
             await self._handle_telegram_scan_error(target, error)
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: compensate-claimed-media-scan
             logger.exception("Visual fingerprint failed media_id=%s", target.media_id)
             await self._repository.mark_scan_error(
                 media_id=target.media_id,
