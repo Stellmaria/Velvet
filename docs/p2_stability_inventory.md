@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **67** в **41** файлах;
-- approved boundaries: **52**;
-- unresolved broad exceptions: **15** в **11** файлах;
+- approved boundaries: **53**;
+- unresolved broad exceptions: **14** в **10** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -66,6 +66,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/supervisor_console.py:174` `_watch_console_operation`: isolate-supervisor-console-watcher.
 - `velvet_bot/handlers/velvet_ai.py:340` `handle_prompt_check_reply`: compensate-prompt-result-job.
 - `velvet_bot/handlers/velvet_ai_formatting.py:287` `handle_formatting_reply`: compensate-velvet-formatting-job.
+- `velvet_bot/handlers/velvet_ai_visual.py:315` `handle_visual_analysis_reply`: compensate-palette-composition-job.
 
 ## Unresolved broad exceptions by file
 
@@ -73,7 +74,6 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
-- `velvet_bot/handlers/velvet_ai_visual.py`: 1.
 - `velvet_bot/infrastructure/telegram/archive_previews.py`: 1.
 - `velvet_bot/media_quality.py`: 1.
 - `velvet_bot/presentation/telegram/public_notifications.py`: 1.
@@ -83,7 +83,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/handlers/velvet_ai_visual.py`.
+- `velvet_bot/infrastructure/telegram/archive_previews.py`.
 
 ## Правило обновления
 

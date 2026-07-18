@@ -1,18 +1,18 @@
 {
-  "schema_version": 35,
-  "generated_from_commit": "p2ag-formatting-boundaries",
+  "schema_version": 36,
+  "generated_from_commit": "p2ah-visual-analysis-job-boundary",
   "broad_exception_total": 67,
   "broad_exception_files": 41,
-  "broad_exception_approved": 52,
-  "broad_exception_unresolved": 15,
-  "broad_exception_unresolved_files": 11,
+  "broad_exception_approved": 53,
+  "broad_exception_unresolved": 14,
+  "broad_exception_unresolved_files": 10,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/velvet_ai_visual.py",
+    "target": "velvet_bot/infrastructure/telegram/archive_previews.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -437,8 +437,8 @@
       "function": "handle_visual_analysis_reply",
       "line": 315,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-palette-composition-job"
     },
     {
       "path": "velvet_bot/infrastructure/telegram/archive_previews.py",
