@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18ab-backup-service-acquire`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AB
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18ab-backup-service-acquire`
 - Базовый commit: `9ce6320d2bb70dae4c08be7ff94244ed9549a1e0`
 
@@ -46,24 +46,40 @@
 
 ### Фактически сделано
 
-Ожидается реализация.
+- все 15 connection point базового `BackupService` переведены на `Database.acquire()`;
+- сохранены running/completed/failed transitions, create/verify/history, settings, scheduled checks и retention cleanup;
+- добавлены regression-тесты публичной DB-границы, running run, validation payload, settings clamp и timezone/date check;
+- рассинхронизированный inventory-тест исправлен с 82/20 на фактические 67/19;
+- backup infrastructure полностью удалён из private pool baseline;
+- обновлены machine baseline, inventory, project memory, development status и changelog.
 
 ### Миграции и совместимость
 
-Ожидается реализация.
+- миграции не изменялись;
+- SQL, `pg_dump`, `pg_restore`, manifest и публичные Python-контракты не изменялись;
+- порядок backup lifecycle и rotation metadata сохранён;
+- Heavy Runtime ТЗ в срез не включалось.
 
 ### Проверки
 
-Ожидается реализация и CI.
+- production commit `b67631c28fa591a0cecd08a9f110052ea007c335`: diff содержит 15 точечных замен private boundary на public boundary;
+- первый CI `tests #642` обнаружил только устаревшие ожидаемые числа inventory 82/20;
+- inventory test синхронизирован commit `b8f249f6a006dc79eca7effc0e77ba03346962a3`;
+- CI head `dcb0bedd20729b3bd8f314fbac288eccb8e3dc17`:
+  - `tests #647`, run `29641048460`: успешно;
+  - `docker build #237`, run `29641048444`: успешно;
+  - `project notes contract #109`, run `29641048437`: успешно.
 
 ### PR и commit
 
-Ожидается открытие PR.
+- PR: #130 `Фаза 18AB: Backup service и Database.acquire`;
+- production commit: `b67631c28fa591a0cecd08a9f110052ea007c335`;
+- проверенный CI head до закрытия worklog: `dcb0bedd20729b3bd8f314fbac288eccb8e3dc17`.
 
 ### Незавершённое
 
-Реализация и проверки.
+В рамках Фазы 18AB незавершённых изменений нет. Живая проверка `pg_dump`/`pg_restore` не требуется для этого среза, потому что внешние процессы и их аргументы не менялись.
 
 ### Следующий шаг
 
-Фаза 18AC: Telegram import persistence, 4 connection points, с сохранением import transaction и dedup semantics.
+Фаза 18AC: Telegram import persistence, 4 connection points, с сохранением одной import transaction, SHA-256 dedup и существующего parser/mapping поведения.
