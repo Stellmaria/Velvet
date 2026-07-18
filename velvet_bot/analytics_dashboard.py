@@ -104,7 +104,7 @@ async def get_dashboard_overview(
     period: str,
 ) -> DashboardOverview:
     since = period_since(period)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -170,7 +170,7 @@ async def get_prompt_dashboard(
     period: str,
 ) -> PromptDashboard:
     since = period_since(period)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -223,7 +223,7 @@ async def list_hashtag_dashboard(
     safe_size = max(1, min(page_size, 10))
     safe_page = max(0, page)
     character_filter = "AND h.character_id IS NULL" if unresolved_only else ""
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 f"""
@@ -294,7 +294,7 @@ async def list_character_dashboard(
     since = period_since(period)
     safe_size = max(1, min(page_size, 10))
     safe_page = max(0, page)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 """
@@ -371,7 +371,7 @@ async def list_post_type_dashboard(
     period: str,
 ) -> list[DashboardRankItem]:
     since = period_since(period)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT
@@ -403,7 +403,7 @@ async def list_discussion_sources(
     *,
     parent_channel_id: int,
 ) -> list[DiscussionSource]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT chat_id, COALESCE(title, chat_id::TEXT) AS title
@@ -428,7 +428,7 @@ async def get_discussion_dashboard(
     period: str,
 ) -> DiscussionDashboard:
     since = period_since(period)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -480,7 +480,7 @@ async def list_discussion_participants(
     since = period_since(period)
     safe_size = max(1, min(page_size, 10))
     safe_page = max(0, page)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 """
