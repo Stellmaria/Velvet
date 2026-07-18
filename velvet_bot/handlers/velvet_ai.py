@@ -337,7 +337,7 @@ async def handle_prompt_check_reply(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: compensate-prompt-result-job
         logger.exception("Prompt/result comparison failed job_id=%s", tracker.job_id)
         await tracker.error(error)
         return
