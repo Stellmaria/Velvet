@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2AK: notification boundaries
+
+- Recipient and worker failures are isolated.
+- Delivery and cancellation contracts are verified.
+- Unresolved broad baseline decreased from 12 to 10.
+
 ### P2AJ: media quality worker boundary
 
 - A failed media-quality iteration is logged and the following cycle still runs.
