@@ -44,24 +44,36 @@
 
 ### Фактически сделано
 
-Ожидается реализация.
+- оба connection point `ResilientMediaAIRepository.claim_targets()` переведены на `Database.acquire()`;
+- сохранены transient Telegram failure requeue, parent claim и обновление `analysis_version = 3`;
+- `ResilientMediaAIVisionService` и download retry behavior не изменены;
+- добавлены source/runtime regression-тесты для успешного и пустого claim;
+- baseline уменьшен с 86/22 до 84/21;
+- repository-классы внутри крупных модулей полностью удалены из baseline;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Ожидается реализация.
+- миграции и SQL не изменялись;
+- Telegram download retry, timeout и error handling не изменялись;
+- публичные Python-контракты не изменялись.
 
 ### Проверки
 
-Ожидается реализация и CI.
+- production commit `d7a4677e1942f7c13aa065695d802002846641d5`: diff содержит только две замены private boundary на public boundary;
+- regression-тесты добавлены в `tests/test_phase18z_resilient_ai_boundary.py`;
+- полный PR CI ожидается.
 
 ### PR и commit
 
-Ожидается открытие PR.
+- production commit: `d7a4677e1942f7c13aa065695d802002846641d5`;
+- PR будет записан после открытия.
 
 ### Незавершённое
 
-Реализация и проверки.
+- подтвердить tests, Docker и project notes contract;
+- завершить дневник и слить PR.
 
 ### Следующий шаг
 
-Перейти к infrastructure-волне Фазы 18: backup service/runtime и Telegram import persistence отдельными срезами.
+Фаза 18AA: перевести два connection point backup runtime на `Database.acquire()`, затем отдельной Фазой 18AB обработать 15 connection points базового backup service.
