@@ -13,7 +13,7 @@
 Проверить best-effort markup cleanup.
 
 ### Исходный контекст
-39 unresolved.broad exceptions.
+40 unresolved broad exceptions.
 
 ### Планируемый объём
 Marker, logging, tests и inventory.
@@ -36,10 +36,10 @@ Cleanup логируется. Baseline 40 → 39.
 Финальный head проходит tests, Docker build и project notes contract.
 
 ### PR и commit
-PR создаётся после generation.
+PR #169. Merge выполняется после зелёного финального CI.
 
 ### Незавершённое
-39 unresolved.
+39 unresolved broad exceptions.
 
 ### Следующий шаг
-`Первый AST target.`.
+`velvet_bot/handlers/guest_archive.py`.
