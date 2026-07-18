@@ -42,8 +42,10 @@
 ### Фактически сделано
 
 - создан JSON/Markdown inventory;
-- baseline: 70 широких исключений в 43 файлах и машинный callback-рейтинг;
-- локальные acknowledgment helpers и delegated wrappers отделены от реальных рисков;
+- зафиксировано 70 широких `except Exception` в 43 production-файлах;
+- из 97 callback handlers осталось 5 реально late/missing callbacks в 3 файлах;
+- 20 callbacks классифицированы как guarded после одного lookup, 4 как delegated wrappers;
+- локальные acknowledgment helpers отделены от реальных рисков;
 - admin/public multi-story callbacks отвечают после universe guard и до picker render;
 - status и project memory больше не указывают на завершённую 18AN;
 - добавлен AST/source regression-контракт.
@@ -54,15 +56,15 @@
 
 ### Проверки
 
-Требуются полный unit-test workflow, Docker build и project notes contract на финальном head.
+Финальный head должен пройти полный unit-test workflow, Docker build и project notes contract.
 
 ### PR и commit
 
-PR #145. Финальный merge выполняется после зелёного CI.
+PR #147. Финальный merge выполняется после зелёного CI.
 
 ### Незавершённое
 
-Оставшиеся risky callbacks и broad exceptions ведутся в `docs/p2_stability_inventory.*`.
+Оставшиеся 5 risky callbacks и 70 broad exceptions ведутся в `docs/p2_stability_inventory.*`.
 
 ### Следующий шаг
 
