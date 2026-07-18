@@ -36,10 +36,10 @@ Broad catch удалён. Raw baseline 70 → 69; unresolved 26 → 25.
 Tests, Docker и notes contract.
 
 ### PR и commit
-PR после generation.
+PR #175; merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 25 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/handlers/quality_operations.py`.
