@@ -53,8 +53,8 @@ async def acknowledge_all_errors_callback(
     if callback.message is not None:
         try:
             await callback.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
+        except Exception as error:  # p2-approved-boundary: best-effort-error-markup-cleanup
+            logger.warning("Could not remove error-center markup: %s", error)
 
 
 __all__ = ("router",)
