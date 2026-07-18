@@ -36,10 +36,10 @@ Raw 68 → 67; approved 51 → 52; unresolved 17 → 15.
 Tests, Docker, notes.
 
 ### PR и commit
-PR после generation.
+PR #183; финальный commit после CI.
 
 ### Незавершённое
 15 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/handlers/velvet_ai_visual.py`.
