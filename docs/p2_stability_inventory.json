@@ -1,18 +1,18 @@
 {
-  "schema_version": 22,
-  "generated_from_commit": "p2t-guest-archive-boundaries",
+  "schema_version": 23,
+  "generated_from_commit": "p2u-media-browser-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 33,
-  "broad_exception_unresolved": 37,
-  "broad_exception_unresolved_files": 24,
+  "broad_exception_approved": 37,
+  "broad_exception_unresolved": 33,
+  "broad_exception_unresolved_files": 23,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/media_browser.py",
+    "target": "velvet_bot/handlers/public_archive.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -285,32 +285,32 @@
       "function": "_build_display_input_media",
       "line": 66,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "fallback-full-size-preview"
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
       "function": "_send_archive_page",
       "line": 100,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "fallback-document-preview"
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
       "function": "handle_archive_media_callback",
       "line": 284,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-archive-load-failure"
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
       "function": "handle_archive_media_callback",
       "line": 350,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-archive-delete-failure"
     },
     {
       "path": "velvet_bot/handlers/public_archive.py",
