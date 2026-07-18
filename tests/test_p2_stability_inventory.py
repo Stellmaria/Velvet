@@ -35,7 +35,8 @@ def _callback(node: ast.AsyncFunctionDef) -> bool:
 
 def _ack(node: ast.Await) -> bool:
     name = _dotted(node.value)
-    return name.endswith("callback.answer") or name.endswith("_safe_callback_answer") or name.endswith("safe_callback_answer")
+    leaf = name.rsplit(".", 1)[-1].casefold()
+    return name.endswith("callback.answer") or ("callback" in leaf and ("answer" in leaf or "acknowledge" in leaf))
 
 
 def _actual() -> tuple[int, int, int, int, int]:
@@ -54,7 +55,7 @@ def _actual() -> tuple[int, int, int, int, int]:
       ack = next((item for item in awaits if _ack(item)), None)
       pre = [item for item in awaits if ack is None or item.lineno < ack.lineno]
       callbacks.append((path.as_posix(), node.lineno, "missing_ack" if ack is None else ("late_ack" if pre else "early_ack")))
-    risky = [item for item in callbacks if item[2] != "early_ack"]
+    risky = [item for item in callbacks if item[2] in {"missing_ack", "late_ack"}]
     return len(broad), len({path for path, _ in broad}), len(callbacks), len(risky), len({path for path, _, _ in risky})
 
 

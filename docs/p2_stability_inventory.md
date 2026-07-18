@@ -6,15 +6,11 @@ AST-инвентаризация широких исключений и callback
 
 - широких `except Exception`: **70** в **43** файлах;
 - callback handlers: **97**;
-- handlers с поздним или отсутствующим acknowledgment: **30** в **19** файлах.
+- handlers с поздним или отсутствующим acknowledgment: **25** в **16** файлах;
+- одношаговых delegated wrappers для ручного контроля: **4**.
 
 ## Наиболее рискованные callbacks
 
-- `velvet_bot/handlers/supervisor_logs.py:61` `handle_supervisor_logs_callback`: missing_ack, awaits до ack: 8.
-- `velvet_bot/handlers/admin_uncategorized.py:280` `handle_uncategorized_menu`: missing_ack, awaits до ack: 1.
-- `velvet_bot/handlers/publication_center_safe.py:55` `safe_publication_callback`: missing_ack, awaits до ack: 1.
-- `velvet_bot/handlers/quality_ai.py:407` `handle_quality_ai_accept`: missing_ack, awaits до ack: 1.
-- `velvet_bot/handlers/quality_ai.py:416` `handle_quality_ai_fix`: missing_ack, awaits до ack: 1.
 - `velvet_bot/handlers/multi_story_kr.py:232` `handle_admin_open_multi_story`: late_ack, awaits до ack: 2.
 - `velvet_bot/handlers/multi_story_kr.py:458` `handle_public_open_multi_story`: late_ack, awaits до ack: 2.
 - `velvet_bot/handlers/quality_ai.py:425` `handle_quality_ai_retry`: late_ack, awaits до ack: 2.
@@ -40,6 +36,13 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/quality_duplicates.py:153` `handle_duplicate_open`: late_ack, awaits до ack: 1.
 - `velvet_bot/handlers/reference_comparison_help.py:140` `handle_reference_compare_help`: late_ack, awaits до ack: 1.
 - `velvet_bot/handlers/reference_management.py:383` `handle_reference_delete_callback`: late_ack, awaits до ack: 1.
+
+## Delegated wrappers
+
+- `velvet_bot/handlers/admin_uncategorized.py:280` `handle_uncategorized_menu`.
+- `velvet_bot/handlers/publication_center_safe.py:55` `safe_publication_callback`.
+- `velvet_bot/handlers/quality_ai.py:407` `handle_quality_ai_accept`.
+- `velvet_bot/handlers/quality_ai.py:416` `handle_quality_ai_fix`.
 
 ## Широкие исключения по файлам
 
@@ -89,4 +92,4 @@ AST-инвентаризация широких исключений и callback
 
 ## Правило обновления
 
-Inventory проверяется AST-тестом. Любое изменение соответствующего кода обязано обновить этот файл.
+Inventory проверяется AST-тестом. Эвристика различает direct/helper acknowledgment и одношаговое delegation.
