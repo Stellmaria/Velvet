@@ -222,6 +222,10 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ready['reference_type'], 'palette_composition_report')
         self.assertEqual(ready['reference_id'], 91)
         self.assertEqual(len(message.photo_calls), 1)
+        photo_call = message.photo_calls[0]
+        self.assertEqual(photo_call['protect_content'], False)
+        self.assertIn('отчёт #91', photo_call['caption'])
+        self.assertEqual(photo_call['args'][0].filename, 'palette-91.png')
 
 
 if __name__ == '__main__':
