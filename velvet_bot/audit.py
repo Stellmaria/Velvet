@@ -53,7 +53,7 @@ class TelegramAuditLogger:
                 text=text,
                 disable_web_page_preview=True,
             )
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-telegram-audit-sink
             # Never let a broken log destination break the archive itself.
             logger.exception("Failed to send Telegram audit event: %s", event_title)
 
