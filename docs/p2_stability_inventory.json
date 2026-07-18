@@ -1,18 +1,18 @@
 {
-  "schema_version": 18,
-  "generated_from_commit": "p2p-backup-center-boundary",
+  "schema_version": 19,
+  "generated_from_commit": "p2q-channel-analytics-boundary",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 27,
-  "broad_exception_unresolved": 43,
-  "broad_exception_unresolved_files": 28,
+  "broad_exception_approved": 28,
+  "broad_exception_unresolved": 42,
+  "broad_exception_unresolved_files": 27,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/channel_analytics.py",
+    "target": "velvet_bot/handlers/characters.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -237,8 +237,8 @@
       "function": "_capture_channel_post",
       "line": 166,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-channel-ingest-failure"
     },
     {
       "path": "velvet_bot/handlers/characters.py",
