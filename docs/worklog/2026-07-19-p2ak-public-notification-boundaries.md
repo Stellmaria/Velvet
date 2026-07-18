@@ -36,10 +36,10 @@ Approved 55 → 57; unresolved 12 → 10.
 Tests, Docker, notes.
 
 ### PR и commit
-PR после generation.
+PR #187; финальный commit после CI.
 
 ### Незавершённое
 10 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/public_archive_display.py`.
