@@ -36,10 +36,10 @@ Reporting helper добавлен. Baseline 27 → 26.
 Tests, Docker и notes contract.
 
 ### PR и commit
-PR после generation.
+PR #174; merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 26 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/handlers/quality_duplicates.py`.
