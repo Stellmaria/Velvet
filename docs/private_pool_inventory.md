@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AL, media sets.
+Последний завершённый срез: Фаза 18AM, media-set AI discovery repository boundary.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 14 внешних обращений к `Database._require_pool()`;
-- 8 production-файлов;
+- 12 внешних обращений к `Database._require_pool()`;
+- 7 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -21,12 +21,12 @@ AST-сканирование production package `velvet_bot/` фиксирует
 | Категория | Обращений | Подход |
 |---|---:|---|
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
-| Application/application-service | 4 | вынести persistence в repository boundary |
+| Application | 2 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 14.
+Всего: 12.
 
-Legacy query-модули полностью удалены из baseline.
+Legacy query-модули и application-service direct DB access полностью удалены из baseline.
 
 ## Завершённые погашения baseline
 
@@ -55,13 +55,14 @@ Legacy query-модули полностью удалены из baseline.
 - Фаза 18AJ: channel analytics, удалены 8 обращений и 1 production-файл; ingest transaction, post/hashtag/link replacement, overview aggregates, stat mappings и limit clamps сохранены.
 - Фаза 18AK: quality audit, удалены 5 обращений и 1 production-файл; summary counters, dynamic pagination placeholders, media offsets, unresolved numbering и reset affected-row mapping сохранены.
 - Фаза 18AL: media sets, удалены 9 обращений и 1 production-файл; discovery с двумя соединениями, candidate pagination/detail, item decisions, set creation, duplicate conversion и каскадное удаление сохранены.
+- Фаза 18AM: `MediaSetAIRepository`, удалены 2 обращения и 1 production-файл; semantic grouping/title/reason/score остались в application service, profile loading и candidate transaction перенесены в repository boundary.
 
 ## Очередь
 
 ### Волна D. Нарушения application/presentation слоёв
 
-1. **Фаза 18AM:** `media_set_ai_discovery.py`, 2 connection points. Persistence переносится в repository boundary. Ожидаемый baseline: 12 обращений в 7 файлах.
-2. `media_set_actions.py` и `media_set_duplicate_actions.py` отдельными срезами.
+1. **Фаза 18AN:** `media_set_actions.py`, 1 connection point. Persistence переносится в repository boundary. Ожидаемый baseline: 11 обращений в 6 файлах.
+2. `media_set_duplicate_actions.py` отдельным срезом.
 3. SQL и DB access из `handlers/quality_set_ai.py`, `handlers/quality_sets.py` и `handlers/reference_comparison.py` переносится в application/domain services.
 
 Handler должен остаться Telegram-адаптером и не владеть SQL.
