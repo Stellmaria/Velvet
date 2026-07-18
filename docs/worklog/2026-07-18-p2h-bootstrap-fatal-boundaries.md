@@ -33,10 +33,10 @@ Fatal reporting вынесен в helper, baseline 58 → 56.
 Миграции и dispatcher lifecycle не менялись.
 
 ### Проверки
-Unit tests, Docker build и project notes contract.
+Финальный head проходит unit tests, Docker build и project notes contract.
 
 ### PR и commit
-PR создаётся после runner.
+PR #156. Merge после зелёного CI.
 
 ### Незавершённое
 56 unresolved broad exceptions.
