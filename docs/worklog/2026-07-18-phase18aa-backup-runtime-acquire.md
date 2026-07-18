@@ -45,23 +45,34 @@
 
 ### Фактически сделано
 
-Ожидается реализация.
+- `_expected_tables_for_record()` и `_ran_kind_today()` переведены на `Database.acquire()`;
+- сохранены JSON decode, backup id filter, backup-kind filter и timezone/local-date semantics;
+- dump creation, validation, cleanup и missing-pg_dump fallback не изменялись;
+- добавлены source/runtime regression-тесты;
+- baseline уменьшен с 84/21 до 82/20;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Ожидается реализация.
+- миграции не изменялись;
+- `pg_dump`/`pg_restore`, manifest и retention contracts не изменялись;
+- публичные Python-контракты не изменялись.
 
 ### Проверки
 
-Ожидается реализация и CI.
+- production commit `1c52e952368585945a0b70204bad9bb9c6afd25c`: diff содержит только две замены private boundary на public boundary;
+- regression-тесты добавлены в `tests/test_phase18aa_backup_runtime_boundary.py`;
+- полный PR CI ожидается.
 
 ### PR и commit
 
-Ожидается открытие PR.
+- production commit: `1c52e952368585945a0b70204bad9bb9c6afd25c`;
+- PR будет записан после открытия.
 
 ### Незавершённое
 
-Реализация и проверки.
+- подтвердить tests, Docker и project notes contract;
+- завершить дневник и слить PR.
 
 ### Следующий шаг
 
