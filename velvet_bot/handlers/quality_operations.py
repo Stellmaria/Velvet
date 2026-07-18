@@ -332,7 +332,7 @@ async def handle_quality_upload_reply(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: compensate-manual-quality-job
         logger.exception("Manual quality analysis failed job_id=%s", tracker.job_id)
         await tracker.error(error)
 
