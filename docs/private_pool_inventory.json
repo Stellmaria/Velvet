@@ -1,21 +1,13 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "6448dd79eeb1b8ad7a9371b7f9a9967f859f5c9d",
-  "total_external_findings": 53,
-  "total_files": 13,
+  "generated_from_commit": "4715c7398e19435deb483b5ffbcc3a024128bc5f",
+  "total_external_findings": 45,
+  "total_files": 12,
   "next_slice": {
-    "phase": "18AH",
-    "target": "velvet_bot/analytics_dashboard.py"
+    "phase": "18AI",
+    "target": "velvet_bot/analytics_review.py"
   },
   "files": [
-    {
-      "path": "velvet_bot/analytics_dashboard.py",
-      "count": 8,
-      "identity_sha256": "ba40ab30c832435146ee0c7d7a26dc7d987af5903015b972b60709bb93d79284",
-      "categories": [
-        "legacy_query_module"
-      ]
-    },
     {
       "path": "velvet_bot/analytics_review.py",
       "count": 9,
