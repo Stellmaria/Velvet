@@ -13,7 +13,7 @@ async def get_character_alias_by_id(
     *,
     alias_id: int,
 ) -> CharacterAlias | None:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -62,7 +62,7 @@ async def get_character_alias_summary(
     *,
     character_id: int,
 ) -> tuple[str | None, list[CharacterAlias]]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         name = await connection.fetchval(
             "SELECT name FROM characters WHERE id = $1",
             character_id,
