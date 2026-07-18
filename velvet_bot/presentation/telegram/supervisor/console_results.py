@@ -14,6 +14,7 @@ _STATUS_LABELS = {
     "success": "✅ завершено",
     "error": "❌ ошибка",
 }
+_CONSOLE_OUTPUT_INLINE_LIMIT = 2600
 
 
 def console_operation_finished(operation: dict[str, Any]) -> bool:
@@ -58,9 +59,9 @@ def console_operation_text(operation: dict[str, Any]) -> str:
         lines.append(f"Время выполнения: <b>{escape(str(duration))} сек.</b>")
 
     if output:
-        shown = output[-2600:]
+        shown = output[-_CONSOLE_OUTPUT_INLINE_LIMIT:]
         if len(output) > len(shown):
-            lines.extend(["", "<i>Показан конец длинного вывода.</i>"])
+            lines.extend(["", "<i>Показан конец длинного вывода. Полный вывод приложен файлом в ЛС.</i>"])
         lines.extend(["", "<b>Вывод</b>", f"<pre>{escape(shown)}</pre>"])
     elif status == "success":
         lines.extend(
@@ -74,6 +75,50 @@ def console_operation_text(operation: dict[str, Any]) -> str:
         lines.extend(["", "<b>Ошибка</b>", f"<code>{escape(error[-1200:])}</code>"])
 
     return "\n".join(lines)
+
+
+def console_operation_dm_text(operation: dict[str, Any]) -> str:
+    text = console_operation_text(operation)
+    return text.replace(
+        "<b>🖥 Команда Supervisor</b>",
+        "<b>📬 Итог команды Supervisor</b>",
+        1,
+    )
+
+
+def console_operation_output_attachment(
+    operation: dict[str, Any],
+) -> tuple[str, bytes] | None:
+    result = operation.get("result") if isinstance(operation.get("result"), dict) else {}
+    output = str(result.get("output") or "")
+    if len(output) <= _CONSOLE_OUTPUT_INLINE_LIMIT:
+        return None
+
+    operation_id = str(operation.get("id", "result"))
+    safe_id = "".join(
+        character
+        for character in operation_id
+        if character.isascii() and (character.isalnum() or character in {"-", "_"})
+    )[:48] or "result"
+    title = str(result.get("title") or operation.get("message") or "Команда Supervisor")
+    command = str(result.get("command") or "")
+    returncode = result.get("returncode")
+    duration = result.get("duration_seconds")
+    error = str(operation.get("error") or "").strip()
+
+    lines = [
+        "Velvet Supervisor console result",
+        f"Operation ID: {operation_id}",
+        f"Title: {title}",
+        f"Command: {command}",
+        f"Return code: {returncode}",
+        f"Duration seconds: {duration}",
+    ]
+    if error:
+        lines.append(f"Error: {error}")
+    lines.extend(["", "OUTPUT", "------", output])
+    payload = "\n".join(lines).encode("utf-8")
+    return f"supervisor-console-{safe_id}.txt", payload
 
 
 def console_operation_keyboard(
@@ -139,9 +184,11 @@ def console_operation_watch_timeout_text(operation_id: str) -> str:
 
 
 __all__ = (
+    "console_operation_dm_text",
     "console_operation_finished",
     "console_operation_keyboard",
     "console_operation_missing_text",
+    "console_operation_output_attachment",
     "console_operation_text",
     "console_operation_watch_timeout_text",
 )
