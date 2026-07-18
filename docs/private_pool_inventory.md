@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AK, quality audit.
+Последний завершённый срез: Фаза 18AL, media sets.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 23 внешних обращения к `Database._require_pool()`;
-- 9 production-файлов;
+- 14 внешних обращений к `Database._require_pool()`;
+- 8 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -20,12 +20,13 @@ AST-сканирование production package `velvet_bot/` фиксирует
 
 | Категория | Обращений | Подход |
 |---|---:|---|
-| Legacy query-модули | 9 | закрыть `media_sets.py` отдельным последним срезом волны |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 23.
+Всего: 14.
+
+Legacy query-модули полностью удалены из baseline.
 
 ## Завершённые погашения baseline
 
@@ -53,20 +54,17 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18AI: analytics review, удалены 9 обращений и 1 production-файл; review tokens, page clamps, detail mapping, ручная и автоматическая классификация, audit trail и пакетный reclassify сохранены.
 - Фаза 18AJ: channel analytics, удалены 8 обращений и 1 production-файл; ingest transaction, post/hashtag/link replacement, overview aggregates, stat mappings и limit clamps сохранены.
 - Фаза 18AK: quality audit, удалены 5 обращений и 1 production-файл; summary counters, dynamic pagination placeholders, media offsets, unresolved numbering и reset affected-row mapping сохранены.
+- Фаза 18AL: media sets, удалены 9 обращений и 1 production-файл; discovery с двумя соединениями, candidate pagination/detail, item decisions, set creation, duplicate conversion и каскадное удаление сохранены.
 
 ## Очередь
 
-### Волна C. Старые query-модули
+### Волна D. Нарушения application/presentation слоёв
 
-1. **Фаза 18AL:** media sets, 9 connection points. Ожидаемый baseline: 14 обращений в 8 файлах.
+1. **Фаза 18AM:** `media_set_ai_discovery.py`, 2 connection points. Persistence переносится в repository boundary. Ожидаемый baseline: 12 обращений в 7 файлах.
+2. `media_set_actions.py` и `media_set_duplicate_actions.py` отдельными срезами.
+3. SQL и DB access из `handlers/quality_set_ai.py`, `handlers/quality_sets.py` и `handlers/reference_comparison.py` переносится в application/domain services.
 
-- media sets.
-
-После 18AL legacy query-модули должны полностью исчезнуть из baseline.
-
-### Волна D. Нарушения слоёв
-
-Прямой DB access из `handlers/quality_set_ai.py`, `handlers/quality_sets.py` и `handlers/reference_comparison.py` переносится в application/domain services. Handler должен остаться Telegram-адаптером и не владеть SQL.
+Handler должен остаться Telegram-адаптером и не владеть SQL.
 
 ### Волна E. Compatibility cleanup
 
