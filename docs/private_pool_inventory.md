@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18X, `ErrorIncidentRepository` в `error_center.py`.
+Последний завершённый срез: Фаза 18Y, `ReliableMediaAIRepository` в `ollama_vision.py`.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 88 внешних обращений к `Database._require_pool()`;
-- 23 production-файла;
+- 86 внешних обращений к `Database._require_pool()`;
+- 22 production-файла;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -22,12 +22,12 @@ AST-сканирование production package `velvet_bot/` фиксирует
 |---|---:|---|
 | Legacy query-модули | 53 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
 | Backup infrastructure | 17 | отдельный срез с сохранением restore/retention contracts |
-| Repository-классы внутри крупных модулей | 4 | переводить по одному repository с runtime-тестами |
+| Repository-классы внутри крупных модулей | 2 | завершить resilient AI repository с runtime-тестами |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 88.
+Всего: 86.
 
 ## Завершённые погашения baseline
 
@@ -42,13 +42,13 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18V: `AIQualityRepository` и его активный schema compatibility facade, удалены 10 обращений и 2 production-файла; claim, lifecycle, dashboard и owner decisions переведены вместе.
 - Фаза 18W: `MediaAIRepository`, удалены 4 обращения и 1 production-файл; claim transaction, stale recovery, semantic profile persistence и aggregate summary сохранены.
 - Фаза 18X: `ErrorIncidentRepository`, удалены 8 обращений и 1 production-файл; transaction/locking, reopen, acknowledgment и digest cooldown сохранены.
+- Фаза 18Y: `ReliableMediaAIRepository`, удалены 2 обращения и 1 production-файл; legacy JSON-error requeue, parent claim и response-version update сохранены.
 
 ## Очередь
 
 ### Волна A. Repository-классы внутри модулей
 
-1. **Фаза 18Y:** Ollama vision repository в `ollama_vision.py`, 2 connection points.
-2. **Фаза 18Z:** resilient AI vision repository, 2 connection points.
+1. **Фаза 18Z:** resilient AI vision repository, 2 connection points.
 
 ### Волна B. Infrastructure
 

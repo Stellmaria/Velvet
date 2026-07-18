@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "3880e119589543ead3d70f11e598f6cbee1c2562",
-  "total_external_findings": 88,
-  "total_files": 23,
+  "generated_from_commit": "4b7a5933c8cd4202e86f6989af7d73cbdd9cbaef",
+  "total_external_findings": 86,
+  "total_files": 22,
   "next_slice": {
-    "phase": "18Y",
-    "target": "velvet_bot/ollama_vision.py"
+    "phase": "18Z",
+    "target": "velvet_bot/resilient_ai_vision.py"
   },
   "files": [
     {"path":"velvet_bot/alias_management.py","count":2,"identity_sha256":"c1f3260d87c753b5e0f6220fb2d1ca242486c056b1bebf9d28cf79bd3993e987","categories":["legacy_query_module"]},
@@ -25,7 +25,6 @@
     {"path":"velvet_bot/media_set_ai_discovery.py","count":2,"identity_sha256":"810a72804741fe29654d810aceae758ae0313a871506e51e5986d98ca83a856c","categories":["application_service_direct_database"]},
     {"path":"velvet_bot/media_set_duplicate_actions.py","count":1,"identity_sha256":"f36767ab3230344d45bab5849ed1c0ed47186a34f423068815002b45e0efcdd2","categories":["application_direct_database"]},
     {"path":"velvet_bot/media_sets.py","count":9,"identity_sha256":"8325c411f50bd4d76a5f1dae895333d54a950c1057fff50ad565d0916eda6376","categories":["legacy_query_module"]},
-    {"path":"velvet_bot/ollama_vision.py","count":2,"identity_sha256":"f883b3f60016150b3045b42e404bbe8f1b10693a4bd53bb5319d4a632a139703","categories":["repository_in_module"]},
     {"path":"velvet_bot/public_media_lookup.py","count":1,"identity_sha256":"2a2722ba12e97b7fc4bd3ceb5c5da6eda45de6a1e0c80b00b13b7db49ca8afc1","categories":["legacy_query_module"]},
     {"path":"velvet_bot/quality_audit.py","count":5,"identity_sha256":"ee169f6ea6ec23e51a5503513d5d5aa857dd2b1dcae194940516fd0459a62fa4","categories":["legacy_query_module"]},
     {"path":"velvet_bot/quality_set_audit_compat.py","count":2,"identity_sha256":"046169312ebe3b0a6d5ede9834b21c55c636db4f0fe4595e27cbd12bd02379f3","categories":["compatibility_facade"]},
