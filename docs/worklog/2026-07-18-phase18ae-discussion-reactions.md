@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18ae-discussion-reactions`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AE
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18ae-discussion-reactions`
 - Базовый commit: `d4d3edabef67d849f5b57630afc3d66fd542e156`
 
@@ -53,7 +53,9 @@
 - сохранены фильтрация неположительных реакций, Unicode JSONB payload, total sum и boolean mapping;
 - добавлены source/runtime regression-тесты для обеих функций и отрицательных результатов;
 - baseline уменьшен с 62/17 до 60/15;
-- inventory, project memory, development status и changelog синхронизированы.
+- inventory, project memory, development status и changelog синхронизированы;
+- первый CI выявил некорректную тестовую фикстуру `None` для строкового PostgreSQL command status;
+- тест исправлен на строку `UPDATE nope`, чтобы проверять существующий fallback `ValueError -> 0` без изменения production-контракта.
 
 ### Миграции и совместимость
 
@@ -65,17 +67,20 @@
 
 - source regression запрещает `._require_pool()` и требует один `database.acquire()` на функцию;
 - runtime regression проверяет контекстный менеджер, SQL-маркеры, аргументы и mapping результатов;
-- AST baseline ожидает 60 внешних обращений в 15 production-файлах;
-- требуется полный PR CI на connector head.
+- AST baseline подтверждает 60 внешних обращений в 15 production-файлах;
+- GitHub Actions `tests` run 666: success;
+- GitHub Actions `docker build` run 251: success;
+- GitHub Actions `project notes contract` run 124: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
-- production commits: `0ab222fe3beb158d0798c800a5252dceb9460743`, `c5011e77df4d26ee25ab2761251a7fb842944d5c`.
+- PR: #134 `Фаза 18AE: Discussion thread links и analytics reactions`;
+- production commits: `0ab222fe3beb158d0798c800a5252dceb9460743`, `c5011e77df4d26ee25ab2761251a7fb842944d5c`;
+- CI fix commit: `aa326a0ddb7fef310cb1c5acd12e081add32879c`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Внутри среза незавершённых задач нет. После merge продолжить Фазой 18AF.
 
 ### Следующий шаг
 
