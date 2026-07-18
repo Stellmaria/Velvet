@@ -31,6 +31,19 @@ class _FakeProcess:
         return self.returncode
 
 
+def _bind_fake_running_pids(
+    manager: KritaProcessManager,
+    process: _FakeProcess,
+) -> None:
+    def current_running_pids() -> set[int]:
+        managed = manager._process  # noqa: SLF001 - test controls process ownership
+        if managed is process and process.poll() is None:
+            return {int(process.pid)}
+        return set()
+
+    manager._running_krita_pids = current_running_pids  # type: ignore[method-assign]
+
+
 class KritaProcessManagerTests(unittest.TestCase):
     def _manager(self, root: Path) -> tuple[KritaProcessManager, Path]:
         project = root / "project"
@@ -62,6 +75,7 @@ class KritaProcessManagerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             manager, plugin_dir = self._manager(Path(directory))
             process = _FakeProcess()
+            _bind_fake_running_pids(manager, process)
             with (
                 patch.dict(
                     "os.environ",
@@ -100,6 +114,7 @@ class KritaProcessManagerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             manager, plugin_dir = self._manager(Path(directory))
             process = _FakeProcess()
+            _bind_fake_running_pids(manager, process)
             with (
                 patch.dict(
                     "os.environ",
