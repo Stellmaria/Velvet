@@ -47,24 +47,37 @@
 
 ### Фактически сделано
 
-Ожидается реализация.
+- четыре connection point `telegram_export_import.py` переведены на `Database.acquire()`;
+- production diff содержит только четыре точечные замены;
+- сохранены tracked-source upsert, discussion existence/list filters, duplicate lookup и одна import transaction;
+- добавлены regression-тесты source boundary, upsert arguments, discussion mapping, duplicate short-circuit и transaction/history write;
+- private pool baseline уменьшен с 67/19 до 63/18;
+- machine inventory, human inventory, project memory, development status и changelog синхронизированы;
+- временные generator/workflow файлы полностью удалены из итогового diff.
 
 ### Миграции и совместимость
 
-Ожидается реализация.
+- миграции не изменялись;
+- JSON/ZIP parser, publication grouping, hashtag/link extraction, analytics mapping и SQL не изменялись;
+- checkpoint/resume/pause не добавлялись и остаются в Heavy Runtime ТЗ.
 
 ### Проверки
 
-Ожидается реализация и CI.
+- точный production diff подтверждает четыре замены private boundary на public boundary;
+- локальная проверка сгенерированной копии: 604 строки, 0 private calls, 4 public calls;
+- постоянные unit/regression tests добавлены;
+- требуется нормальный PR CI после connector-коммита, потому что workflow-generated head получил GitHub `action_required`.
 
 ### PR и commit
 
-Ожидается открытие PR.
+- PR: #131 `Фаза 18AC: Telegram import persistence и Database.acquire`;
+- production commit из self-cleaning workflow: `ed3ee9bfcc2e33909eb7df275d6f39203b7265bd`;
+- synchronized baseline head до connector-коммита: `720fe1f0109052a470078a83ba638bcc9a34ee3e`.
 
 ### Незавершённое
 
-Реализация и проверки.
+Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
 
 ### Следующий шаг
 
-Перейти к старым query-модулям Фазы 18 отдельными архитектурными срезами.
+Фаза 18AD: public media lookup query boundary, 1 connection point, ожидаемый baseline 62/17.
