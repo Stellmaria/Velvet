@@ -171,7 +171,7 @@ async def _watch_console_operation(
         )
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception:  # p2-approved-boundary: isolate-supervisor-console-watcher
         # The command continues inside Supervisor even if Telegram editing fails.
         logger.exception(
             "Supervisor console watcher failed operation=%s recipient=%s",
