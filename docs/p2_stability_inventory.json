@@ -1,18 +1,18 @@
 {
-  "schema_version": 21,
-  "generated_from_commit": "p2s-error-center-markup-boundary",
+  "schema_version": 22,
+  "generated_from_commit": "p2t-guest-archive-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 31,
-  "broad_exception_unresolved": 39,
-  "broad_exception_unresolved_files": 25,
+  "broad_exception_approved": 33,
+  "broad_exception_unresolved": 37,
+  "broad_exception_unresolved_files": 24,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/guest_archive.py",
+    "target": "velvet_bot/handlers/media_browser.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -267,18 +267,18 @@
     {
       "path": "velvet_bot/handlers/guest_archive.py",
       "function": "_archive_guest_media",
-      "line": 149,
+      "line": 153,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-guest-topic-delivery-failure"
     },
     {
       "path": "velvet_bot/handlers/guest_archive.py",
       "function": "handle_guest_archive",
-      "line": 244,
+      "line": 248,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-guest-request-failure"
     },
     {
       "path": "velvet_bot/handlers/media_browser.py",
