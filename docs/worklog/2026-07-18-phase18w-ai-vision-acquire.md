@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18w-ai-vision-acquire`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18W
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18w-ai-vision-acquire`
 - Базовый commit: `bb6de424c35f0a5eb2a031599a43ab90e8143dea`
 
@@ -69,22 +69,21 @@
 ### Проверки
 
 - production commit `29bc41a45f25e7ffa4179d0c03c303cf8bd398e4`: diff содержит только четыре замены private boundary на public boundary;
-- PR CI `tests #626`: выполнено 563 теста; 562 прошли, единственный failure был в `test_project_notes_contract` из-за отсутствующих обязательных metadata/headings в этой записи;
-- PR CI `docker build #216`: успешно;
-- структура worklog исправлена по `docs/worklog/README.md` и `scripts/check_project_notes.py`;
-- повторный полный CI после исправления ожидается.
+- PR CI `tests #627`, run `29638587006`: успешно;
+- PR CI `docker build #217`, run `29638587021`: успешно;
+- PR CI `project notes contract #94`, run `29638587031`: успешно;
+- предыдущий `tests #626` подтвердил 562 прикладных теста и выявил только неполный формат worklog; структура исправлена и повторный полный CI прошёл.
 
 ### PR и commit
 
 - PR: #125 `Фаза 18W: MediaAIRepository и Database.acquire`;
 - production commit: `29bc41a45f25e7ffa4179d0c03c303cf8bd398e4`;
-- итоговый commit будет записан после зелёного повторного CI.
+- проверенный CI head: `fcd380eff8f8d33c25c5e7ad82455a6346f85ffd`.
 
 ### Незавершённое
 
-- подтвердить повторный `tests`, `docker build` и `project notes contract`;
-- после зелёного CI изменить статус на `завершено` и слить PR #125.
+В рамках Фазы 18W незавершённых изменений нет. Живая Ollama/Telegram-проверка не требовалась, потому что provider lifecycle и transport не менялись.
 
 ### Следующий шаг
 
-Фаза 18X: перевести 8 connection points `ErrorCenterRepository` на `Database.acquire()` с сохранением error lifecycle, filters и pagination.
+Фаза 18X: перевести 8 connection points `ErrorIncidentRepository` на `Database.acquire()` с сохранением error lifecycle, filters и pagination.
