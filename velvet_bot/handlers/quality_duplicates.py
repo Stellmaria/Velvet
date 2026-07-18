@@ -3,7 +3,7 @@ from __future__ import annotations
 from html import escape
 
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.database import Database
@@ -32,7 +32,7 @@ async def _safe_edit(
 ) -> None:
     try:
         await message.edit_text(text, reply_markup=keyboard)
-    except Exception as error:
+    except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             raise
 

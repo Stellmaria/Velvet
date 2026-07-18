@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2Y: quality duplicate safe edit
+
+- Duplicate list edits now catch only TelegramBadRequest.
+- Runtime failures and cancellation are no longer swallowed by a Telegram-specific fallback.
+- Raw broad baseline decreased from 70 to 69; unresolved decreased from 26 to 25.
+
 ### P2X: publication report boundary
 
 - Publication failures retain a local traceback and use source-chat or private fallback reporting.
