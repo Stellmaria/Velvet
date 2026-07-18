@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - broad exceptions raw: **70** в **43** файлах;
-- approved orchestration boundaries: **7**;
-- unresolved broad exceptions: **63** в **37** файлах;
+- approved orchestration boundaries: **12**;
+- unresolved broad exceptions: **58** в **37** файлах;
 - callback handlers: **97**;
 - missing/late acknowledgment: **0**;
 - guarded acknowledgment: **25**;
@@ -17,6 +17,11 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/ai_job_runtime.py:55` `create`: compensate-created-ai-job.
 - `velvet_bot/ai_quality.py:703` `process_once`: compensate-claimed-ai-quality.
 - `velvet_bot/ai_vision.py:725` `process_once`: compensate-claimed-ai-profile.
+- `velvet_bot/app/bootstrap.py:85` `_close_application_resources`: isolate-worker-shutdown.
+- `velvet_bot/app/bootstrap.py:91` `_close_application_resources`: best-effort-shutdown-audit.
+- `velvet_bot/app/bootstrap.py:99` `_close_application_resources`: isolate-error-center-shutdown.
+- `velvet_bot/app/bootstrap.py:105` `_close_application_resources`: isolate-bot-session-shutdown.
+- `velvet_bot/app/bootstrap.py:110` `_close_application_resources`: isolate-database-shutdown.
 - `velvet_bot/calibrated_ai_quality.py:111` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
 - `velvet_bot/domains/publication/service.py:68` `publish`: compensate-claimed-publication.
@@ -24,10 +29,10 @@ AST-инвентаризация широких исключений и callback
 
 ## Unresolved broad exceptions by file
 
-- `velvet_bot/app/bootstrap.py`: 7.
 - `velvet_bot/handlers/public_archive.py`: 5.
 - `velvet_bot/error_center.py`: 4.
 - `velvet_bot/handlers/media_browser.py`: 4.
+- `velvet_bot/app/bootstrap.py`: 2.
 - `velvet_bot/backup_service.py`: 2.
 - `velvet_bot/handlers/admin_media_display.py`: 2.
 - `velvet_bot/handlers/characters.py`: 2.
@@ -68,7 +73,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/app/bootstrap.py`: broad-exception triage shutdown/startup boundaries.
+- `velvet_bot/app/bootstrap.py`: fatal reporting boundaries в `run_application()`.
 
 ## Правило обновления
 

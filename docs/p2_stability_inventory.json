@@ -1,10 +1,10 @@
 {
-  "schema_version": 8,
-  "generated_from_commit": "p2f-ai-job-tracker-boundary",
+  "schema_version": 9,
+  "generated_from_commit": "p2g-bootstrap-cleanup-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 7,
-  "broad_exception_unresolved": 63,
+  "broad_exception_approved": 12,
+  "broad_exception_unresolved": 58,
   "broad_exception_unresolved_files": 37,
   "callback_total": 97,
   "risky_callback_total": 0,
@@ -13,7 +13,7 @@
   "delegated_callback_total": 4,
   "next_slice": {
     "target": "velvet_bot/app/bootstrap.py",
-    "kind": "broad_exception_triage"
+    "kind": "fatal_boundary_triage"
   },
   "broad_exceptions": [
     {
@@ -45,40 +45,40 @@
       "function": "_close_application_resources",
       "line": 85,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "isolate-worker-shutdown"
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 91,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "best-effort-shutdown-audit"
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 99,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "isolate-error-center-shutdown"
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 105,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "isolate-bot-session-shutdown"
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
       "line": 110,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "isolate-database-shutdown"
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
