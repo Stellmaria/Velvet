@@ -25,7 +25,8 @@
 - AST-инвентаризация обращений к `Database._require_pool()`, включая dynamic `getattr`;
 - машинный baseline private pool debt с count и SHA-256 identity для каждого production-файла;
 - документированная очередь погашения private pool debt по архитектурным слоям;
-- документ `docs/stabilization_policy.md`, определяющий допустимый новый код и стабилизационные ворота проекта.
+- документ `docs/stabilization_policy.md`, определяющий допустимый новый код и стабилизационные ворота проекта;
+- `MediaSetAIRepository` для изолированной загрузки semantic profiles и транзакционного сохранения AI-кандидатов медиасетов.
 
 ### Changed
 
@@ -33,10 +34,11 @@
 - оригинал watermark-сценария никогда не перезаписывается, preview и финальный PNG создаются отдельными артефактами;
 - Krita bridge выключен по умолчанию до живой Windows-проверки;
 - добавлена публичная граница `Database.acquire()` для PostgreSQL repositories;
-- character, story, archive, public archive, reference, media quality, publication, publication validation, publication draft, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight, discussion relink, archive preview, system, prompt/result report, palette/composition report, Velvet formatting report, quality calibration, AI quality repository, его schema compatibility facade, Media AI repository, Error Incident repository, Reliable Ollama vision repository, Resilient AI vision repository, runtime Backup Service, базовый Backup Service, Telegram import persistence, public media lookup, discussion thread links, analytics reactions, alias management, character aliases, analytics dashboard, analytics review, channel analytics, quality audit и media sets больше не обращаются к приватному `_require_pool()`;
-- private pool baseline уменьшен с 130 обращений в 35 production-файлах до 14 обращений в 8 файлах;
-- legacy query-модули полностью удалены из private pool baseline;
-- repository-классы внутри крупных модулей, весь backup infrastructure, Telegram import persistence, public media lookup, discussion thread links, analytics reactions, alias management, character aliases, analytics dashboard, analytics review, channel analytics, quality audit и media sets удалены из private pool baseline;
+- character, story, archive, public archive, reference, media quality, publication, publication validation, publication draft, discussion, discussion ingest, discussion insight, discussion ranking, discussion activity, discussion post insight, discussion relink, archive preview, system, prompt/result report, palette/composition report, Velvet formatting report, quality calibration, AI quality repository, его schema compatibility facade, Media AI repository, Error Incident repository, Reliable Ollama vision repository, Resilient AI vision repository, runtime Backup Service, базовый Backup Service, Telegram import persistence, public media lookup, discussion thread links, analytics reactions, alias management, character aliases, analytics dashboard, analytics review, channel analytics, quality audit, media sets и media-set AI discovery больше не обращаются к приватному `_require_pool()`;
+- semantic grouping, названия, причины и оценки AI-медиасетов остаются в application service, а profile loading и candidate persistence перенесены в `MediaSetAIRepository`;
+- private pool baseline уменьшен с 130 обращений в 35 production-файлах до 12 обращений в 7 файлах;
+- legacy query-модули и application-service direct DB access полностью удалены из private pool baseline;
+- repository-классы внутри крупных модулей, весь backup infrastructure, Telegram import persistence, public media lookup, discussion thread links, analytics reactions, alias management, character aliases, analytics dashboard, analytics review, channel analytics, quality audit, media sets и media-set AI discovery удалены из private pool baseline;
 - новые либо изменённые private pool access блокируются CI до отдельного review и обновления baseline;
 - `AGENTS.md` и карта проекта закрепляют Velvet Archive как отдельный owner-oriented архивный продукт без логики аукционного бота;
 - в режиме стабилизации новый код допускается только для ускорения, упрощения, надёжности, контроля и удобства существующих функций;
