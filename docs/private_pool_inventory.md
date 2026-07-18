@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AA, runtime-hardened `BackupService` в `backup_runtime.py`.
+Последний завершённый срез: Фаза 18AB, базовый `BackupService` в `backup_service.py`.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 82 внешних обращения к `Database._require_pool()`;
-- 20 production-файлов;
+- 67 внешних обращений к `Database._require_pool()`;
+- 19 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -21,12 +21,11 @@ AST-сканирование production package `velvet_bot/` фиксирует
 | Категория | Обращений | Подход |
 |---|---:|---|
 | Legacy query-модули | 53 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
-| Backup infrastructure | 15 | перевести базовый backup service единым срезом с сохранением restore/retention contracts |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 82.
+Всего: 67.
 
 ## Завершённые погашения baseline
 
@@ -44,13 +43,13 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18Y: `ReliableMediaAIRepository`, удалены 2 обращения и 1 production-файл; legacy JSON-error requeue, parent claim и response-version update сохранены.
 - Фаза 18Z: `ResilientMediaAIRepository`, удалены 2 обращения и 1 production-файл; transient Telegram failure requeue, parent claim и response-version update сохранены.
 - Фаза 18AA: runtime-hardened `BackupService`, удалены 2 обращения и 1 production-файл; expected-table decode и timezone/date schedule check сохранены.
+- Фаза 18AB: базовый `BackupService`, удалены 15 обращений и 1 production-файл; running/completed/failed lifecycle, create/verify/history, settings, validation, retention и scheduled checks сохранены.
 
 ## Очередь
 
 ### Волна B. Infrastructure
 
-1. **Фаза 18AB:** backup service, 15 connection points.
-2. Telegram import persistence, 4 connection points.
+1. **Фаза 18AC:** Telegram import persistence, 4 connection points.
 
 ### Волна C. Старые query-модули
 

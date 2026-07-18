@@ -432,7 +432,7 @@ class BackupService:
         backup_kind: str,
         created_by: int | None,
     ) -> int:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             return int(
                 await connection.fetchval(
                     """
@@ -458,7 +458,7 @@ class BackupService:
         details = self._validation_dict(validation)
         if validation_extra:
             details.update(validation_extra)
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             return int(
                 await connection.fetchval(
                     """
@@ -507,7 +507,7 @@ class BackupService:
                 created_by=created_by,
             )
             try:
-                async with database._require_pool().acquire() as connection:
+                async with database.acquire() as connection:
                     schema_version = await self._schema_version(connection)
                     expected_tables = await self._public_tables(connection)
                 path, validation = await self._create_dump_file(
@@ -539,7 +539,7 @@ class BackupService:
         path: Path,
         validation: BackupValidation,
     ) -> None:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE backup_runs
@@ -576,7 +576,7 @@ class BackupService:
         run_id: int,
         error: Exception,
     ) -> None:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE backup_runs
@@ -599,7 +599,7 @@ class BackupService:
         database: Database,
         backup_id: int,
     ) -> BackupRecord | None:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             row = await connection.fetchrow(
                 "SELECT * FROM backup_runs WHERE id = $1::BIGINT",
                 int(backup_id),
@@ -612,7 +612,7 @@ class BackupService:
         *,
         limit: int = 12,
     ) -> list[BackupRecord]:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT *
@@ -657,7 +657,7 @@ class BackupService:
         if not record.file_path:
             raise BackupError("Файл этой копии уже удалён ротацией.")
         path = Path(record.file_path)
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             current_schema = await self._schema_version(connection)
         expected = tuple(
             str(value)
@@ -687,7 +687,7 @@ class BackupService:
         database: Database,
         backup_id: int,
     ) -> tuple[str, ...]:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             value = await connection.fetchval(
                 "SELECT expected_tables FROM backup_runs WHERE id = $1::BIGINT",
                 int(backup_id),
@@ -695,7 +695,7 @@ class BackupService:
         return tuple(str(item) for item in (value or []))
 
     async def verify_latest(self, database: Database) -> BackupRecord:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             backup_id = await connection.fetchval(
                 """
                 SELECT id
@@ -711,7 +711,7 @@ class BackupService:
         return await self.verify_backup(database, int(backup_id))
 
     async def get_settings(self, database: Database) -> BackupSettings:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             row = await connection.fetchrow(
                 "SELECT * FROM backup_settings WHERE id = 1"
             )
@@ -741,7 +741,7 @@ class BackupService:
             ZoneInfo(timezone_name)
         if retention_count is not None:
             retention_count = max(3, min(int(retention_count), 100))
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE backup_settings
@@ -769,7 +769,7 @@ class BackupService:
     ) -> CleanupResult:
         settings = await self.get_settings(database)
         keep_count = retention_count or settings.retention_count
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT id, file_path, size_bytes
@@ -793,7 +793,7 @@ class BackupService:
             self._manifest_path(path).unlink(missing_ok=True)
             freed += size
             deleted_files += 1
-            async with database._require_pool().acquire() as connection:
+            async with database.acquire() as connection:
                 await connection.execute(
                     """
                     UPDATE backup_runs
@@ -820,7 +820,7 @@ class BackupService:
         timezone_name: str,
         backup_kind: str,
     ) -> bool:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             return bool(
                 await connection.fetchval(
                     """
