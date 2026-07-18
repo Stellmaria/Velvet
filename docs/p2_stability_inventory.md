@@ -4,9 +4,9 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **68** в **41** файлах;
-- approved boundaries: **51**;
-- unresolved broad exceptions: **17** в **12** файлах;
+- raw broad exceptions: **67** в **41** файлах;
+- approved boundaries: **52**;
+- unresolved broad exceptions: **15** в **11** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -65,10 +65,10 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/reference_comparison_help.py:253` `handle_reference_comparison_reply`: compensate-reference-comparison-form-job.
 - `velvet_bot/handlers/supervisor_console.py:174` `_watch_console_operation`: isolate-supervisor-console-watcher.
 - `velvet_bot/handlers/velvet_ai.py:340` `handle_prompt_check_reply`: compensate-prompt-result-job.
+- `velvet_bot/handlers/velvet_ai_formatting.py:287` `handle_formatting_reply`: compensate-velvet-formatting-job.
 
 ## Unresolved broad exceptions by file
 
-- `velvet_bot/handlers/velvet_ai_formatting.py`: 2.
 - `velvet_bot/public_archive_display.py`: 2.
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
@@ -83,7 +83,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/handlers/velvet_ai_formatting.py`.
+- `velvet_bot/handlers/velvet_ai_visual.py`.
 
 ## Правило обновления
 

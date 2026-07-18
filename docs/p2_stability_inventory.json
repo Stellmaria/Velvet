@@ -1,18 +1,18 @@
 {
-  "schema_version": 34,
-  "generated_from_commit": "p2af-prompt-result-job-boundary",
-  "broad_exception_total": 68,
+  "schema_version": 35,
+  "generated_from_commit": "p2ag-formatting-boundaries",
+  "broad_exception_total": 67,
   "broad_exception_files": 41,
-  "broad_exception_approved": 51,
-  "broad_exception_unresolved": 17,
-  "broad_exception_unresolved_files": 12,
+  "broad_exception_approved": 52,
+  "broad_exception_unresolved": 15,
+  "broad_exception_unresolved_files": 11,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/velvet_ai_formatting.py",
+    "target": "velvet_bot/handlers/velvet_ai_visual.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -427,18 +427,10 @@
     {
       "path": "velvet_bot/handlers/velvet_ai_formatting.py",
       "function": "handle_formatting_reply",
-      "line": 232,
-      "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
-    },
-    {
-      "path": "velvet_bot/handlers/velvet_ai_formatting.py",
-      "function": "handle_formatting_reply",
       "line": 287,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-velvet-formatting-job"
     },
     {
       "path": "velvet_bot/handlers/velvet_ai_visual.py",
