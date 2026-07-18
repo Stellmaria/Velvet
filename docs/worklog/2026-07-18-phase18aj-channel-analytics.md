@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18aj-channel-analytics`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AJ
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18aj-channel-analytics`
 - Базовый commit: `521b8cc9d4af6f2621e596054433a471c5030268`
 
@@ -79,18 +79,21 @@
 
 - source regression запрещает `._require_pool()` и требует восемь `database.acquire()`;
 - runtime regression проверяет ingest transaction, overview, hashtag list/detail, character usage, prompt structure и named-count queries;
-- AST baseline ожидает 28 внешних обращений в 10 production-файлах;
-- требуется полный PR CI.
+- AST baseline подтверждает 28 внешних обращений в 10 production-файлах;
+- GitHub Actions `tests` run 681: success;
+- GitHub Actions `docker build` run 266: success;
+- GitHub Actions `project notes contract` run 134: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
+- PR: #139 `Фаза 18AJ: Channel analytics и Database.acquire`;
 - production commit: `82738a8f79c299862d9fc67b142860643bd9e66a`;
-- test commit: `2026e082d079c7c920ae8dc090790bb873576c40`.
+- test commit: `2026e082d079c7c920ae8dc090790bb873576c40`;
+- synchronized branch head до финального worklog: `118a2434d7994776541c9da389ecd5ea646b4aff`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Нет незавершённых задач внутри среза. Живая проверка ingestion и аналитических экранов остаётся частью общего эксплуатационного smoke test.
 
 ### Следующий шаг
 
