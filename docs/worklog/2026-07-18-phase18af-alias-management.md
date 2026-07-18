@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18af-alias-management`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AF
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18af-alias-management`
 - Базовый commit: `09eb91046cd1c7daa9e6a7dd468ddbd181e884ed`
 
@@ -64,17 +64,20 @@
 
 - source regression запрещает `._require_pool()` и требует два `database.acquire()`;
 - runtime regression проверяет SQL-маркеры, аргументы, row mapping и short-circuit;
-- AST baseline ожидает 58 внешних обращений в 14 production-файлах;
-- требуется полный PR CI.
+- AST baseline подтверждает 58 внешних обращений в 14 production-файлах;
+- GitHub Actions `tests` run 669: success;
+- GitHub Actions `docker build` run 254: success;
+- GitHub Actions `project notes contract` run 126: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
-- production commit: `19a7567fc1c77d34f7a5c979f7ff98a402a7d894`.
+- PR: #135 `Фаза 18AF: Alias management и Database.acquire`;
+- production commit: `19a7567fc1c77d34f7a5c979f7ff98a402a7d894`;
+- проверенный connector head до финального закрытия worklog: `8d7b5fdfe24956e456adf04925cae873640969a8`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Внутри среза незавершённых задач нет. После merge продолжить Фазой 18AG.
 
 ### Следующий шаг
 
