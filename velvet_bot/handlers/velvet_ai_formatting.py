@@ -229,7 +229,7 @@ async def handle_formatting_reply(
     mode: FormattingMode = formatting_mode  # type: ignore[assignment]
     try:
         source = await _source_text(message, bot)
-    except Exception as error:
+    except (ValueError, RuntimeError) as error:
         await message.answer(f"Не удалось прочитать материал: <code>{escape(str(error))}</code>")
         return
     if len(source) < 10:
@@ -284,7 +284,7 @@ async def handle_formatting_reply(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: compensate-velvet-formatting-job
         logger.exception("Velvet formatting failed mode=%s job_id=%s", mode, tracker.job_id)
         await tracker.error(error)
         return

@@ -137,8 +137,16 @@ class DiscussionActivityIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     )
                     VALUES (
                         $1::BIGINT, $2::BIGINT, $3::TEXT,
-                        NOW() - INTERVAL '1 day'
-                            + ($4::INTEGER * INTERVAL '1 minute'),
+                        timezone(
+                            'Europe/Berlin',
+                            date_trunc(
+                                'day',
+                                timezone('Europe/Berlin', NOW())
+                            )
+                            - INTERVAL '1 day'
+                            + INTERVAL '12 hours'
+                            + ($4::INTEGER * INTERVAL '1 minute')
+                        ),
                         'Комментарий всплеска', 19, 'text',
                         'user-spike', 'Активный участник', 700, 700, FALSE
                     )

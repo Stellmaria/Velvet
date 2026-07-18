@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### P2AG: formatting boundaries
+
+- Formatting source parsing now handles only expected ValueError and RuntimeError failures.
+- Unexpected parsing failures and cancellation propagate unchanged.
+- Formatting AI job failure compensation is verified.
+- Raw broad baseline decreased from 68 to 67; unresolved decreased from 17 to 15.
+
 ### P2AF: prompt/result job boundary
 
 - Prompt/result AI job failures now have a verified compensation boundary.
