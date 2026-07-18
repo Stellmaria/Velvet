@@ -235,7 +235,7 @@ async def handle_new_archive_topic_media(
                 archive_thread_id=message.message_thread_id,
                 archive_message_id=message.message_id,
             )
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: report-topic-auto-archive-failure
         logger.exception(
             "Failed to automatically archive topic media for character %s",
             character.id,
