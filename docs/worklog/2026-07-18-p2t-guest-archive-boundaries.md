@@ -36,10 +36,10 @@ Guest command parsing, сохранение media, Telegram file IDs и успе
 Tests, Docker build и project notes contract.
 
 ### PR и commit
-PR создаётся после генерации inventory.
+PR #170. Финальный commit фиксируется после зелёного CI.
 
 ### Незавершённое
 37 unresolved broad exceptions.
 
 ### Следующий шаг
-Первый target из актуального AST inventory.
+`velvet_bot/handlers/media_browser.py`.
