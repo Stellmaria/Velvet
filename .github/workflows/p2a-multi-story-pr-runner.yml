@@ -1,0 +1,51 @@
+name: p2a multi story PR runner
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  run-slice:
+    if: github.head_ref == 'agent/p2-stability-inventory'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-stability-inventory
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Execute embedded callback slice
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/p2a-multi-story-callback.yml').read_text(encoding='utf-8')
+          start_marker = "          python - <<'PY'\n"
+          end_marker = "\n          PY\n\n      - name: Commit callback slice"
+          start = source.index(start_marker) + len(start_marker)
+          end = source.index(end_marker, start)
+          code = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in source[start:end].splitlines()
+          )
+          exec(compile(code, '<p2a-multi-story>', 'exec'), {'__name__': '__main__'})
+          PY
+
+      - name: Commit callback slice
+        run: |
+          rm -f .github/workflows/p2a-multi-story-callback.yml
+          rm -f .github/workflows/p2a-multi-story-pr-runner.yml
+          rm -f .github/p2a-callback-trigger.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "P2A: подтвердить multi-story callbacks до рендера"
+          git push origin HEAD:agent/p2-stability-inventory
