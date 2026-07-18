@@ -5,6 +5,13 @@
 ## [Unreleased]
 
 
+### P2W: public manager download boundary
+
+- Manager original delivery is separated from callback success reporting.
+- Callback-answer failure no longer turns a completed delivery into a false send failure.
+- Unresolved broad baseline decreased from 28 to 27.
+
+
 ### P2V: public archive boundaries
 
 - Classified five public archive failure boundaries and added behavior tests.

@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **70** в **43** файлах;
-- approved boundaries: **42**;
-- unresolved broad exceptions: **28** в **22** файлах;
+- approved boundaries: **43**;
+- unresolved broad exceptions: **27** в **21** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -56,6 +56,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/public_archive.py:535` `handle_public_archive_callback`: report-public-like-failure.
 - `velvet_bot/handlers/public_archive.py:577` `handle_public_archive_callback`: report-public-subscription-failure.
 - `velvet_bot/handlers/public_archive.py:620` `handle_public_archive_callback`: report-public-download-failure.
+- `velvet_bot/handlers/public_manager.py:174` `handle_public_manager`: report-manager-download-failure.
 
 ## Unresolved broad exceptions by file
 
@@ -65,7 +66,6 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
-- `velvet_bot/handlers/public_manager.py`: 1.
 - `velvet_bot/handlers/publication_center.py`: 1.
 - `velvet_bot/handlers/quality_duplicates.py`: 1.
 - `velvet_bot/handlers/quality_operations.py`: 1.
@@ -84,7 +84,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/handlers/public_manager.py`.
+- `velvet_bot/handlers/publication_center.py`.
 
 ## Правило обновления
 

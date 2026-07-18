@@ -171,10 +171,11 @@ async def handle_public_manager(
                 media=page.media,
                 chat_id=viewer_user_id,
             )
-            await callback.answer("Оригинал отправлен в личный чат.")
-        except Exception:
+        except Exception:  # p2-approved-boundary: report-manager-download-failure
             logger.exception("Failed to send archive original to manager")
             await callback.answer("Не удалось отправить оригинал.", show_alert=True)
+            return
+        await callback.answer("Оригинал отправлен в личный чат.")
         return
 
     if action in {"pback", "pdelno"}:
