@@ -1,40 +1,45 @@
-# P2Q channel analytics ingest boundary
+# Сессия: P2Q — channel analytics ingest boundary
 
-- Date: 2026-07-18
-- Status: complete
-- Branch: `agent/p2q-channel-analytics-boundary`
-- Base: `c2b82a3f053d3e324c9f15f43c60904c96aa2341`
+- Дата: 2026-07-18
+- ID: `2026-07-18-p2q-channel-analytics-boundary`
+- Линия/фаза: Velvet Archive, P2Q
+- Статус: завершено
+- Ветка: `agent/p2q-channel-analytics-boundary`
+- Базовый commit: `c2b82a3f053d3e324c9f15f43c60904c96aa2341`
 
-## Before
+## Перед началом
 
-### Goal
-Isolate channel analytics ingest failures from the Telegram update.
+### Цель
+Изолировать сбой channel analytics ingest от основного Telegram update.
 
-### Baseline
-43 unresolved broad exceptions.
+### Исходный контекст
+Baseline: 43 unresolved broad exceptions.
 
-### Scope
-One approved marker, behavior tests, inventory, and project notes.
+### Планируемый объём
+Один marker, behavior tests, inventory и документы.
 
-### Completion criteria
-Ingest failures are reported with channel context, cancellation propagates, untracked channels skip ingest, and CI passes.
+### Критерии готовности
+Ошибка передаётся в audit с контекстом, cancellation выходит наружу, чужой канал пропускается, CI зелёный.
 
-## After
+### Риски и ограничения
+Analytics queries и routing не меняются.
 
-### Completed
-The channel ingest boundary is classified. Baseline changed from 43 to 42.
+## После завершения
 
-### Compatibility
-No migration, analytics query, or routing changes.
+### Фактически сделано
+Boundary классифицирована, baseline 43 → 42.
 
-### Checks
-Tests, Docker build, and project notes contract.
+### Миграции и совместимость
+Миграции не менялись.
 
-### PR
-PR is created after inventory generation.
+### Проверки
+Финальный head проходит tests, Docker build и project notes contract.
 
-### Remaining
+### PR и commit
+PR #166. Merge выполняется после зелёного CI.
+
+### Незавершённое
 42 unresolved broad exceptions.
 
-### Next
-First target from the current AST inventory.
+### Следующий шаг
+`velvet_bot/handlers/characters.py`.
