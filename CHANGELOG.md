@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2X: publication report boundary
+
+- Publication failures retain a local traceback and use source-chat or private fallback reporting.
+- Telegram reporting failures no longer replace the original publication failure.
+- Unresolved broad baseline decreased from 27 to 26.
+
 
 ### P2W: public manager download boundary
 
