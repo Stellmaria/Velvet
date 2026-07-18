@@ -50,7 +50,7 @@ class Phase18CompletionTests(unittest.TestCase):
         for module, count in expected.items():
             source = inspect.getsource(module)
             self.assertNotIn("_require_pool", source)
-            self.assertEqual(count, source.count("database.acquire()") + source.count("self._database.acquire()"))
+            self.assertEqual(count, source.count("database.acquire()"))
 
     def test_discussion_compat_delegates_to_canonical_query(self) -> None:
         source = inspect.getsource(discussion_compat)
