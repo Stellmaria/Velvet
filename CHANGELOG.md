@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2S: error-center markup cleanup
+
+- Error acknowledgement remains complete when Telegram markup cleanup fails.
+- Cleanup failures are now logged and cancellation still propagates.
+- Unresolved broad baseline decreased from 40 to 39.
+
 ### P2R: character topic boundaries
 
 - Unexpected character create and topic binding failures now retain local tracebacks.
