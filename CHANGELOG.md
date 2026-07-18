@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2N: admin media preview boundaries
+
+- Classified two administrative preview fallback boundaries.
+- Unresolved broad baseline decreased from 47 to 45.
+
 ### P2M: error center boundaries
 
 - Classified four logging and consumer isolation boundaries.

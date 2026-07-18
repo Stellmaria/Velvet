@@ -1,18 +1,18 @@
 {
-  "schema_version": 15,
-  "generated_from_commit": "p2m-error-center-boundaries",
+  "schema_version": 16,
+  "generated_from_commit": "p2n-admin-media-preview-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 23,
-  "broad_exception_unresolved": 47,
-  "broad_exception_unresolved_files": 31,
+  "broad_exception_approved": 25,
+  "broad_exception_unresolved": 45,
+  "broad_exception_unresolved_files": 30,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/admin_media_display.py",
+    "target": "velvet_bot/handlers/archive.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -205,16 +205,16 @@
       "function": "build_admin_display_media",
       "line": 38,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "fallback-admin-edit-preview"
     },
     {
       "path": "velvet_bot/handlers/admin_media_display.py",
       "function": "send_admin_archive_page",
       "line": 88,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "fallback-admin-send-preview"
     },
     {
       "path": "velvet_bot/handlers/archive.py",

@@ -35,7 +35,7 @@ async def build_admin_display_media(bot: Bot, page: ArchivePage):
                 parse_mode=ParseMode.HTML,
                 has_spoiler=page.media.is_spoiler,
             )
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-admin-edit-preview
             logger.exception("Failed to prepare compressed admin image preview")
 
     return build_input_media(page.media, caption)
@@ -85,7 +85,7 @@ async def send_admin_archive_page(
             )
         except TelegramAPIError as error:
             logger.info("Compressed admin preview fallback to document: %s", error)
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-admin-send-preview
             logger.exception("Compressed admin preview generation failed")
 
     return await bot.send_document(document=media.telegram_file_id, **common)
