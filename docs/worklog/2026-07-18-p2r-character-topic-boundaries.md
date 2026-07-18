@@ -2,8 +2,10 @@
 
 - Дата: 2026-07-18
 - ID: `2026-07-18-p2r-character-topic-boundaries`
+- Линия/фаза: Velvet Archive, P2R
 - Статус: завершено
 - Ветка: `agent/p2r-character-topic-boundaries`
+- Базовый commit: `eb017417f0a632fc9da12872dc855857fde5bcf2`
 
 ## Перед началом
 
@@ -31,13 +33,13 @@ Use cases и success responses не меняются.
 Миграции и команды не менялись.
 
 ### Проверки
-Tests, Docker и notes contract.
+Финальный head проходит tests, Docker build и project notes contract.
 
 ### PR и commit
-PR после generation.
+PR #168. Merge выполняется после зелёного финального CI.
 
 ### Незавершённое
 40 unresolved.
 
 ### Следующий шаг
-Первый target из AST inventory.
+`velvet_bot/handlers/error_center.py`.
