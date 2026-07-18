@@ -1,21 +1,13 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "0a9af3b7b8a8930f446456726b94055947aef71b",
-  "total_external_findings": 36,
-  "total_files": 11,
+  "generated_from_commit": "521b8cc9d4af6f2621e596054433a471c5030268",
+  "total_external_findings": 28,
+  "total_files": 10,
   "next_slice": {
-    "phase": "18AJ",
-    "target": "velvet_bot/channel_analytics.py"
+    "phase": "18AK",
+    "target": "velvet_bot/quality_audit.py"
   },
   "files": [
-    {
-      "path": "velvet_bot/channel_analytics.py",
-      "count": 8,
-      "identity_sha256": "f6733bc560adec7e7a95d4f87fb72436017ea7a8fd59f7e7ec5df66156d22043",
-      "categories": [
-        "legacy_query_module"
-      ]
-    },
     {
       "path": "velvet_bot/discussion_dashboard_compat.py",
       "count": 1,
