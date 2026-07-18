@@ -2,7 +2,7 @@ name: p2ab runner
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
     branches: [main]
 
 permissions:
@@ -20,11 +20,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Apply P2AB
+      - name: Apply production update
+        run: python .github/scripts/p2ab_apply.py
+      - name: Update P2AB documents
+        run: python .github/scripts/p2ab_docs.py
+      - name: Regenerate stability inventory
+        run: python scripts/update_p2_stability_inventory.py --generated-from p2ab-quality-sets-safe-edit --schema-version 30
+      - name: Remove temporary files
         run: |
-          python .github/scripts/p2ab_apply.py
-          python .github/scripts/p2ab_docs.py
-          python scripts/update_p2_stability_inventory.py --generated-from p2ab-quality-sets-safe-edit --schema-version 30
           rm .github/scripts/p2ab_apply.py
           rm .github/scripts/p2ab_docs.py
           rm .github/workflows/p2ab-runner.yml
