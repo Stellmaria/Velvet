@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2K: backup service boundaries
+
+- Cancellation теперь завершает running backup как failed.
+- Worker iteration boundary классифицирован.
+- Unresolved broad baseline уменьшен с 54 до 52.
+
 ### P2J: backup runtime cleanup
 
 - Cancellation теперь удаляет созданные backup artifacts.
