@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18ah-analytics-dashboard`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AH
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18ah-analytics-dashboard`
 - Базовый commit: `4715c7398e19435deb483b5ffbcc3a024128bc5f`
 
@@ -75,18 +75,21 @@
 
 - source regression запрещает `._require_pool()` и требует восемь `database.acquire()`;
 - runtime regression проверяет overview, prompt, hashtag, character, post type, sources, dashboard fallback и participants;
-- AST baseline ожидает 45 внешних обращений в 12 production-файлах;
-- требуется полный PR CI.
+- AST baseline подтверждает 45 внешних обращений в 12 production-файлах;
+- GitHub Actions `tests` run 675: success;
+- GitHub Actions `docker build` run 260: success;
+- GitHub Actions `project notes contract` run 130: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
+- PR: #137 `Фаза 18AH: Analytics dashboard и Database.acquire`;
 - production commit: `1c4a7608aa01f8743f7ee4ea3c4aae83dbefcfea`;
-- test commit: `bb943aa31737c7eaae0f05de7dc1d5fbf4a157ad`.
+- test commit: `bb943aa31737c7eaae0f05de7dc1d5fbf4a157ad`;
+- проверенный connector head до финального закрытия worklog: `f30f5ac63ede7287056a1c1649602979c8a2e965`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Внутри среза незавершённых задач нет. После merge продолжить Фазой 18AI.
 
 ### Следующий шаг
 
