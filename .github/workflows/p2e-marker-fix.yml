@@ -1,0 +1,30 @@
+name: p2e marker fix
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/p2e-ai-worker-boundaries'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2e-ai-worker-boundaries
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python .github/scripts/p2e_fix.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          rm .github/scripts/p2e_fix.py .github/workflows/p2e-marker-fix.yml .github/p2e-marker-trigger.txt
+          git add -A
+          git commit -m "P2E: align marker convention"
+          git push origin HEAD:agent/p2e-ai-worker-boundaries
