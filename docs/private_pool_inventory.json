@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "09eb91046cd1c7daa9e6a7dd468ddbd181e884ed",
-  "total_external_findings": 58,
-  "total_files": 14,
+  "generated_from_commit": "6448dd79eeb1b8ad7a9371b7f9a9967f859f5c9d",
+  "total_external_findings": 53,
+  "total_files": 13,
   "next_slice": {
-    "phase": "18AG",
-    "target": "velvet_bot/character_aliases.py"
+    "phase": "18AH",
+    "target": "velvet_bot/analytics_dashboard.py"
   },
   "files": [
     {
       "path": "velvet_bot/analytics_dashboard.py",
       "count": 8,
-      "identity_sha256": "ba40ab30c832435146ee0c7d7a26dc7d987af5903015b972b60709bb93d79284",
+      "identity_sha256": "ba40ab30c832435146ee0a7d26dc7d987af5903015b972b60709bb93d79284",
       "categories": [
         "legacy_query_module"
       ]
@@ -28,14 +28,6 @@
       "path": "velvet_bot/channel_analytics.py",
       "count": 8,
       "identity_sha256": "f6733bc560adec7e7a95d4f87fb72436017ea7a8fd59f7e7ec5df66156d22043",
-      "categories": [
-        "legacy_query_module"
-      ]
-    },
-    {
-      "path": "velvet_bot/character_aliases.py",
-      "count": 5,
-      "identity_sha256": "011f273c3771be460af5f0779ec41d4f6f7b77174640899762f3cbb6d6e171b2",
       "categories": [
         "legacy_query_module"
       ]
