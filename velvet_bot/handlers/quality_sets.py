@@ -57,7 +57,7 @@ async def _safe_edit(
 ) -> None:
     try:
         await message.edit_text(text, reply_markup=keyboard)
-    except Exception as error:
+    except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             raise
 
