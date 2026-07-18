@@ -40,7 +40,7 @@ class ResilientMediaAIRepository(ReliableMediaAIRepository):
         max_attempts: int,
         limit: int = 1,
     ) -> tuple[VisionAnalysisTarget, ...]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE media_ai_profiles
@@ -67,7 +67,7 @@ class ResilientMediaAIRepository(ReliableMediaAIRepository):
             limit=limit,
         )
         if targets:
-            async with self._database._require_pool().acquire() as connection:
+            async with self._database.acquire() as connection:
                 await connection.execute(
                     """
                     UPDATE media_ai_profiles
