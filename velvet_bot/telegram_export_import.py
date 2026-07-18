@@ -277,7 +277,7 @@ async def register_tracked_source(
 ) -> None:
     if source_kind not in _ALLOWED_SOURCE_KINDS:
         raise ValueError("Неизвестный тип источника аналитики.")
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         await connection.execute(
             """
             INSERT INTO tracked_channels (
@@ -302,7 +302,7 @@ async def register_tracked_source(
 
 
 async def is_tracked_discussion(database: Database, chat_id: int) -> bool:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         return bool(
             await connection.fetchval(
                 """
@@ -323,7 +323,7 @@ async def list_tracked_discussions(
     *,
     parent_channel_id: int | None = None,
 ) -> list[tuple[int, str | None]]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT chat_id, title
@@ -357,7 +357,7 @@ async def import_telegram_export(
     records = parse_export_records(payload)
     digest = hashlib.sha256(raw).hexdigest()
 
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         duplicate = await connection.fetchrow(
             """
             SELECT imported_messages, publication_count, metadata
