@@ -77,7 +77,7 @@ class TelegramPublicNotificationDispatcher:
                 )
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # p2-approved-boundary: isolate-public-notification-delivery
                 logger.exception(
                     "Failed to deliver notification to %s for character %s/media %s",
                     notification.user_id,
