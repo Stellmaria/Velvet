@@ -1,0 +1,35 @@
+name: p2aa runner
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/p2aa-set-analysis-job-boundaries'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Apply P2AA
+        run: |
+          python scripts/_p2aa_apply.py
+          python scripts/update_p2_stability_inventory.py --label p2aa-set-analysis-job-boundaries --schema-version 29
+          python scripts/_p2aa_docs.py
+          rm scripts/_p2aa_apply.py scripts/_p2aa_docs.py .github/workflows/p2aa-runner.yml
+      - name: Commit generated result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "test(p2aa): verify set analysis compensation"
+          git push origin HEAD:${{ github.head_ref }}
