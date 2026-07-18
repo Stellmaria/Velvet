@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2AL: public archive display fallbacks
+
+- Viewer edit and send preview failures fall back to original documents.
+- Caption, keyboard, spoiler, and cancellation contracts are verified.
+- Unresolved broad baseline decreased from 10 to 8.
+
 ### P2AK: notification boundaries
 
 - Recipient and worker failures are isolated.
