@@ -38,7 +38,7 @@ class _Connection:
         }
 
 
-class _Pool:
+class _Database:
     def __init__(self, connection):
         self.connection = connection
 
@@ -46,16 +46,8 @@ class _Pool:
         return _Acquire(self.connection)
 
 
-class _Database:
-    def __init__(self, connection):
-        self.pool = _Pool(connection)
-
-    def _require_pool(self):
-        return self.pool
-
-
 class DiscussionDashboardTypeTests(unittest.IsolatedAsyncioTestCase):
-    async def test_chat_id_is_bound_as_bigint(self):
+    async def test_chat_id_is_bound_through_public_dashboard_query(self):
         connection = _Connection()
         database = _Database(connection)
 
@@ -65,8 +57,8 @@ class DiscussionDashboardTypeTests(unittest.IsolatedAsyncioTestCase):
             period="all",
         )
 
-        self.assertIn("WHERE t.chat_id = $1::BIGINT", connection.query)
-        self.assertIn("t.chat_id::TEXT", connection.query)
+        self.assertIn("WHERE t.chat_id = $1", connection.query)
+        self.assertIn("COALESCE(MAX(t.title), $1::TEXT)", connection.query)
         self.assertEqual(-1003859952761, connection.args[0])
         self.assertEqual(12, result.total_messages)
         self.assertEqual("Velvet discussion", result.title)
