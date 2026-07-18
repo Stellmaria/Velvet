@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2B: quality callback acknowledgment
+
+- Retry/reset/enqueue callbacks отвечают после mutation result и до тяжёлого UI reload.
+- Late/missing callback baseline уменьшен с 5 до 0.
+
 ### P2A: stability inventory
 
 - Добавлена AST-инвентаризация callback acknowledgment и широких исключений.

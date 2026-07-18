@@ -428,6 +428,10 @@ async def handle_quality_ai_retry(
     database: Database,
 ) -> None:
     changed = await AIQualityRepository(database).retry(callback_data.item_id)
+    await callback.answer(
+        "Изображение возвращено в очередь." if changed else "Проверка не найдена.",
+        show_alert=True,
+    )
     if isinstance(callback.message, Message):
         await _show_list(
             callback.message,
@@ -435,10 +439,6 @@ async def handle_quality_ai_retry(
             section=callback_data.section or "review",
             page_number=callback_data.page,
         )
-    await callback.answer(
-        "Изображение возвращено в очередь." if changed else "Проверка не найдена.",
-        show_alert=True,
-    )
 
 
 __all__ = ("router",)

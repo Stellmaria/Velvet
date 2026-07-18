@@ -1,16 +1,16 @@
 {
-  "schema_version": 3,
-  "generated_from_commit": "p2a-multi-story-callback",
+  "schema_version": 4,
+  "generated_from_commit": "p2b-quality-callback-ack",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
   "callback_total": 97,
-  "risky_callback_total": 5,
-  "risky_callback_files": 3,
-  "guarded_callback_total": 20,
+  "risky_callback_total": 0,
+  "risky_callback_files": 0,
+  "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/quality_ai.py",
-    "function": "handle_quality_ai_retry"
+    "target": "velvet_bot/domains/publication/service.py",
+    "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
     {
@@ -436,51 +436,6 @@
   ],
   "callbacks": [
     {
-      "path": "velvet_bot/handlers/quality_ai.py",
-      "function": "handle_quality_ai_retry",
-      "line": 425,
-      "ack_line": 438,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
-      "risk": "late_ack"
-    },
-    {
-      "path": "velvet_bot/handlers/quality_center.py",
-      "function": "handle_retry_scans",
-      "line": 208,
-      "ack_line": 220,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
-      "risk": "late_ack"
-    },
-    {
-      "path": "velvet_bot/handlers/quality_center.py",
-      "function": "handle_retry_broken",
-      "line": 224,
-      "ack_line": 236,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
-      "risk": "late_ack"
-    },
-    {
-      "path": "velvet_bot/handlers/quality_operations.py",
-      "function": "handle_quality_recent",
-      "line": 341,
-      "ack_line": 349,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
-      "risk": "late_ack"
-    },
-    {
-      "path": "velvet_bot/handlers/quality_operations.py",
-      "function": "handle_quality_retry_errors",
-      "line": 353,
-      "ack_line": 361,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
-      "risk": "late_ack"
-    },
-    {
       "path": "velvet_bot/handlers/admin_large_media_preview.py",
       "function": "handle_admin_large_media_preview",
       "line": 179,
@@ -616,12 +571,39 @@
       "risk": "guarded_ack"
     },
     {
+      "path": "velvet_bot/handlers/quality_ai.py",
+      "function": "handle_quality_ai_retry",
+      "line": 425,
+      "ack_line": 431,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
+      "risk": "guarded_ack"
+    },
+    {
       "path": "velvet_bot/handlers/quality_center.py",
       "function": "handle_quality_close",
       "line": 168,
       "ack_line": 174,
       "pre_ack_awaits": 1,
       "total_awaits": 2,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/handlers/quality_center.py",
+      "function": "handle_retry_scans",
+      "line": 208,
+      "ack_line": 213,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/handlers/quality_center.py",
+      "function": "handle_retry_broken",
+      "line": 224,
+      "ack_line": 229,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
       "risk": "guarded_ack"
     },
     {
@@ -640,6 +622,24 @@
       "ack_line": 161,
       "pre_ack_awaits": 1,
       "total_awaits": 6,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/handlers/quality_operations.py",
+      "function": "handle_quality_recent",
+      "line": 341,
+      "ack_line": 347,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/handlers/quality_operations.py",
+      "function": "handle_quality_retry_errors",
+      "line": 353,
+      "ack_line": 359,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
       "risk": "guarded_ack"
     },
     {
