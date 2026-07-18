@@ -33,10 +33,10 @@ Cleanup усилен, baseline 55 → 54.
 Миграции не менялись.
 
 ### Проверки
-Tests, Docker и notes contract.
+Финальный head проходит tests, Docker и notes contract.
 
 ### PR и commit
-PR создаётся после runner.
+PR #158. Merge после зелёного CI.
 
 ### Незавершённое
 54 unresolved.
