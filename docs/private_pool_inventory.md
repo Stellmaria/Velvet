@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AD, public media lookup в `public_media_lookup.py`.
+Последний завершённый срез: Фаза 18AE, discussion thread links и analytics reactions.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 62 внешних обращения к `Database._require_pool()`;
-- 17 production-файлов;
+- 60 внешних обращений к `Database._require_pool()`;
+- 15 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -20,12 +20,12 @@ AST-сканирование production package `velvet_bot/` фиксирует
 
 | Категория | Обращений | Подход |
 |---|---:|---|
-| Legacy query-модули | 48 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
+| Legacy query-модули | 46 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 62.
+Всего: 60.
 
 ## Завершённые погашения baseline
 
@@ -46,20 +46,20 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18AB: базовый `BackupService`, удалены 15 обращений и 1 production-файл; running/completed/failed lifecycle, create/verify/history, settings, validation, retention и scheduled checks сохранены.
 - Фаза 18AC: Telegram import persistence, удалены 4 обращения и 1 production-файл; source registration, discussion filters, SHA-256 duplicate short-circuit и единая import transaction сохранены.
 - Фаза 18AD: public media lookup, удалено 1 обращение и 1 production-файл; newest-first `ROW_NUMBER()` offset query и `int | None` mapping сохранены.
+- Фаза 18AE: discussion thread links и analytics reactions, удалены 2 обращения и 2 production-файла; pending-thread update semantics, affected-row mapping, reaction cleanup, JSONB payload и boolean result сохранены.
 
 ## Очередь
 
 ### Волна C. Старые query-модули
 
-1. **Фаза 18AE:** discussion thread linking и analytics reactions, 2 connection points.
-2. Alias management и character aliases последующими срезами.
+1. **Фаза 18AF:** alias management, 2 connection points. Ожидаемый baseline: 58 обращений в 14 файлах.
+2. Character aliases последующим отдельным срезом.
 
-- analytics dashboard/review/reactions;
+- analytics dashboard/review;
 - channel analytics;
 - character aliases;
 - quality audit;
-- media sets;
-- discussion thread linking.
+- media sets.
 
 В этой волне сначала создаётся типизированная repository/query-граница. Механическая замена `_require_pool()` на `acquire()` без структурного переноса не считается завершением архитектурного долга.
 

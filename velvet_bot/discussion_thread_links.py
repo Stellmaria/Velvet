@@ -10,7 +10,7 @@ async def link_pending_threads_for_channel_post(
     message_id: int,
 ) -> int:
     """Attach discussion roots that arrived before the matching channel post."""
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         status = await connection.execute(
             """
             UPDATE discussion_threads AS thread

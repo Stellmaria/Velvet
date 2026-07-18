@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "e0f0c98ff852733b40680e0a56aec16fe2b04c36",
-  "total_external_findings": 62,
-  "total_files": 17,
+  "generated_from_commit": "d4d3edabef67d849f5b57630afc3d66fd542e156",
+  "total_external_findings": 60,
+  "total_files": 15,
   "next_slice": {
-    "phase": "18AE",
-    "target": "velvet_bot/discussion_thread_links.py"
+    "phase": "18AF",
+    "target": "velvet_bot/alias_management.py"
   },
   "files": [
     {
@@ -20,14 +20,6 @@
       "path": "velvet_bot/analytics_dashboard.py",
       "count": 8,
       "identity_sha256": "ba40ab30c832435146ee0c7d7a26dc7d987af5903015b972b60709bb93d79284",
-      "categories": [
-        "legacy_query_module"
-      ]
-    },
-    {
-      "path": "velvet_bot/analytics_reactions.py",
-      "count": 1,
-      "identity_sha256": "ad9f7f43632693b54ff8d75903cba61d1831ab46196b11c20e0dc543e9352ca4",
       "categories": [
         "legacy_query_module"
       ]
@@ -62,14 +54,6 @@
       "identity_sha256": "e78b103be7f9c5ee683a5bbfd8a3356fe97996154226352e5764169177e9afad",
       "categories": [
         "compatibility_facade"
-      ]
-    },
-    {
-      "path": "velvet_bot/discussion_thread_links.py",
-      "count": 1,
-      "identity_sha256": "d33c7bf8a2eb94ea17a08e886d6b766922bdf89e6302b8f3b43f710669fb39bb",
-      "categories": [
-        "legacy_query_module"
       ]
     },
     {
