@@ -33,13 +33,13 @@ Repository и Telegram delivery не меняются.
 Миграции не менялись.
 
 ### Проверки
-Tests, Docker и notes contract.
+Финальный head проходит tests, Docker build и project notes contract.
 
 ### PR и commit
-PR создаётся после генерации.
+PR #161. Merge выполняется после зелёного финального CI.
 
 ### Незавершённое
 47 unresolved.
 
 ### Следующий шаг
-Первый target из inventory.
+`velvet_bot/handlers/admin_media_display.py`.
