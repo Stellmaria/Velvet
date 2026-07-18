@@ -95,7 +95,7 @@ async def list_unresolved_tag_reviews(
     since = period_since(normalize_period(period))
     safe_size = max(1, min(page_size, 8))
     safe_page = max(0, page)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 """
@@ -162,7 +162,7 @@ async def get_unresolved_tag_review(
     *,
     token_id: int,
 ) -> UnresolvedTagReview | None:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         token = await connection.fetchrow(
             """
             SELECT channel_id, item_key
@@ -212,7 +212,7 @@ async def list_character_picker(
 ) -> ReviewPage:
     safe_size = max(1, min(page_size, 10))
     safe_page = max(0, page)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(await connection.fetchval("SELECT COUNT(*) FROM characters") or 0)
         total_pages = max(1, (total + safe_size - 1) // safe_size)
         normalized_page = min(safe_page, total_pages - 1)
@@ -286,7 +286,7 @@ async def list_publication_reviews(
         if low_confidence_only
         else ""
     )
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 f"""
@@ -373,7 +373,7 @@ async def get_publication_review(
     *,
     token_id: int,
 ) -> PublicationReview | None:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         token = await connection.fetchrow(
             """
             SELECT channel_id, item_key
@@ -502,7 +502,7 @@ async def set_manual_publication_type(
     if item is None:
         raise ValueError("Публикация больше не найдена.")
 
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         async with connection.transaction():
             channel_id = int(
                 await connection.fetchval(
@@ -564,7 +564,7 @@ async def reset_publication_type_to_automatic(
         is_prompt=item.is_prompt,
         media_type=item.media_type,
     )
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         channel_id = int(
             await connection.fetchval(
                 "SELECT channel_id FROM analytics_review_items WHERE id = $1",
@@ -623,7 +623,7 @@ async def reclassify_automatic_publications(
     channel_id: int,
     changed_by: int | None,
 ) -> tuple[int, int]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         keys = await connection.fetch(
             """
             SELECT DISTINCT publication_key
@@ -636,7 +636,7 @@ async def reclassify_automatic_publications(
     changed = 0
     for key_row in keys:
         publication_key = str(key_row["publication_key"])
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             token_id = await _ensure_review_token(
                 connection,
                 channel_id=channel_id,

@@ -1,21 +1,13 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "4715c7398e19435deb483b5ffbcc3a024128bc5f",
-  "total_external_findings": 45,
-  "total_files": 12,
+  "generated_from_commit": "0a9af3b7b8a8930f446456726b94055947aef71b",
+  "total_external_findings": 36,
+  "total_files": 11,
   "next_slice": {
-    "phase": "18AI",
-    "target": "velvet_bot/analytics_review.py"
+    "phase": "18AJ",
+    "target": "velvet_bot/channel_analytics.py"
   },
   "files": [
-    {
-      "path": "velvet_bot/analytics_review.py",
-      "count": 9,
-      "identity_sha256": "a601aeffa7b7e8fe09250095bfcb97a689f8ae06569f6563dd6f95818986e45a",
-      "categories": [
-        "legacy_query_module"
-      ]
-    },
     {
       "path": "velvet_bot/channel_analytics.py",
       "count": 8,
