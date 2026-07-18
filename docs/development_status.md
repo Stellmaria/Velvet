@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2G: bootstrap cleanup boundaries классифицированы; unresolved broad baseline 63 → 58.
+3. P2H: bootstrap fatal-reporting boundaries классифицированы; unresolved broad baseline 58 → 56.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.

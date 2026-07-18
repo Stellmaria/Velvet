@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2H: bootstrap fatal boundaries
+
+- Fatal reporting вынесен в отдельный helper и покрыт тестами.
+- Unresolved broad baseline уменьшен с 58 до 56.
+
 ### P2G: bootstrap cleanup boundaries
 
 - Классифицированы пять независимых shutdown cleanup boundaries.

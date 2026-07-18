@@ -1,19 +1,19 @@
 {
-  "schema_version": 9,
-  "generated_from_commit": "p2g-bootstrap-cleanup-boundaries",
+  "schema_version": 10,
+  "generated_from_commit": "p2h-bootstrap-fatal-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 12,
-  "broad_exception_unresolved": 58,
-  "broad_exception_unresolved_files": 37,
+  "broad_exception_approved": 14,
+  "broad_exception_unresolved": 56,
+  "broad_exception_unresolved_files": 36,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/app/bootstrap.py",
-    "kind": "fatal_boundary_triage"
+    "target": "velvet_bot/audit.py",
+    "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
     {
@@ -82,19 +82,19 @@
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
-      "function": "run_application",
-      "line": 249,
+      "function": "_report_fatal_application_error",
+      "line": 127,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "preserve-original-fatal-error"
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "run_application",
-      "line": 258,
+      "line": 266,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-fatal-application-error"
     },
     {
       "path": "velvet_bot/audit.py",
