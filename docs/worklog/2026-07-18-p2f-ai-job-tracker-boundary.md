@@ -33,7 +33,7 @@ Boundary классифицирован, baseline 64 → 63.
 Миграции и API не менялись.
 
 ### Проверки
-Unit tests, Docker build и project notes contract.
+Финальный head проходит unit tests, Docker build и project notes contract.
 
 ### PR и commit
 PR #154. Merge после зелёного CI.
