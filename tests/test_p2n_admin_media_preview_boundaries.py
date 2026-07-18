@@ -82,6 +82,8 @@ class AdminMediaPreviewBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(bot.document_calls), 1)
         self.assertEqual(bot.document_calls[0]["document"], "original-document")
         self.assertEqual(bot.document_calls[0]["chat_id"], 17)
+        self.assertEqual(bot.document_calls[0]["caption"], "caption")
+        self.assertEqual(bot.document_calls[0]["reply_markup"], "keyboard")
 
     async def test_send_preview_cancellation_is_not_swallowed(self) -> None:
         async def cancel_preview(bot, media):
