@@ -56,7 +56,7 @@ class DiscussionReactionBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, 2)
 
     async def test_thread_link_invalid_status_returns_zero(self) -> None:
-        connection = SimpleNamespace(execute=AsyncMock(return_value=None))
+        connection = SimpleNamespace(execute=AsyncMock(return_value="UPDATE nope"))
         database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
 
         result = await link_pending_threads_for_channel_post(
