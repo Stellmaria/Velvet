@@ -1,18 +1,18 @@
 {
-  "schema_version": 27,
-  "generated_from_commit": "p2y-quality-duplicate-safe-edit",
+  "schema_version": 28,
+  "generated_from_commit": "p2z-manual-quality-job-boundary",
   "broad_exception_total": 69,
   "broad_exception_files": 42,
-  "broad_exception_approved": 44,
-  "broad_exception_unresolved": 25,
-  "broad_exception_unresolved_files": 19,
+  "broad_exception_approved": 45,
+  "broad_exception_unresolved": 24,
+  "broad_exception_unresolved_files": 18,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/quality_operations.py",
+    "target": "velvet_bot/handlers/quality_set_ai.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -373,8 +373,8 @@
       "function": "handle_quality_upload_reply",
       "line": 335,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-manual-quality-job"
     },
     {
       "path": "velvet_bot/handlers/quality_set_ai.py",

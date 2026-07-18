@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2Z: manual quality job boundary
+
+- Manual quality failures compensate the created AI job with an error state.
+- Cancellation records an interrupted job and continues to propagate.
+- Unresolved broad baseline decreased from 25 to 24.
+
 ### P2Y: quality duplicate safe edit
 
 - Duplicate list edits now catch only TelegramBadRequest.

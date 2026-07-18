@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2Y: quality duplicate safe edit catches only TelegramBadRequest; raw broad baseline 70 → 69 and unresolved 26 → 25.
+3. P2Z: manual quality jobs compensate failures and preserve cancellation; unresolved broad baseline 25 → 24.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.
