@@ -63,7 +63,7 @@ async def _build_display_input_media(
                 caption=caption,
                 parse_mode=ParseMode.HTML,
             )
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-full-size-preview
             logger.exception("Failed to prepare full-size image preview")
 
     return build_input_media(media, caption)
@@ -97,7 +97,7 @@ async def _send_archive_page(
             return await bot.send_photo(photo=upload, **common)
         except TelegramAPIError as error:
             logger.info("Image preview fallback to document: %s", error)
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-document-preview
             logger.exception("Image preview download failed; using document")
     return await bot.send_document(document=page.media.telegram_file_id, **common)
 
@@ -281,7 +281,7 @@ async def handle_archive_media_callback(
             callback_data.character_id,
             callback_data.offset,
         )
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: report-archive-load-failure
         logger.exception("Failed to load character archive page")
         await audit_logger.error(
             "Ошибка загрузки архива",
@@ -347,7 +347,7 @@ async def handle_archive_media_callback(
                 audit_logger,
                 page,
             )
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: report-archive-delete-failure
             logger.exception("Failed to delete archive media")
             await audit_logger.error(
                 "Ошибка удаления медиа",

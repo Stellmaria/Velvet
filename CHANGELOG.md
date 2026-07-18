@@ -5,6 +5,15 @@
 ## [Unreleased]
 
 
+### P2U: media browser boundaries
+
+- Full-size image preview failures fall back to the original archived media.
+- Image-document send failures fall back to the original document with caption and navigation preserved.
+- Archive page load and delete failures retain audit context and user-facing alerts.
+- Cancellation continues to propagate through all four boundaries.
+- Unresolved broad baseline decreased from 37 to 33.
+
+
 ### P2T: guest archive boundaries
 
 - Guest topic delivery failures now create one specific audit incident instead of a specific and a generic duplicate.
