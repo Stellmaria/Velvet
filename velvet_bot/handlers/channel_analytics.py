@@ -163,7 +163,7 @@ async def _capture_channel_post(
             parsed.prompt.is_prompt,
             len(parsed.hashtags),
         )
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: report-channel-ingest-failure
         logger.exception("Failed to capture channel analytics post")
         if audit_logger is not None:
             await audit_logger.error(

@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2Q: channel analytics ingest boundary
+
+- Classified channel post analytics ingest failure reporting.
+- Added tracked-channel, audit-context and cancellation tests.
+- Unresolved broad baseline decreased from 43 to 42.
+
 ### P2P: backup center callback boundary
 
 - Preserved the original unexpected backup error when Telegram cannot render the error message.
