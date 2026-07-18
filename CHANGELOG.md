@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2C: publication broad boundaries
+
+- Publication compensation и scheduled-item isolation отмечены как approved orchestration boundaries.
+- Добавлены тесты mark-error compensation, queue isolation и cancellation propagation.
+- Unresolved broad-exception baseline уменьшен с 70 до 68.
+
 ### P2B: quality callback acknowledgment
 
 - Retry/reset/enqueue callbacks отвечают после mutation result и до тяжёлого UI reload.

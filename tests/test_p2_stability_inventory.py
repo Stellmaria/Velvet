@@ -54,14 +54,15 @@ def _passes_callback(node: ast.Await) -> bool:
     return any(isinstance(item, ast.Name) and item.id == "callback" for item in args)
 
 
-def _actual() -> tuple[int, int, int, int, int, int, int]:
-    broad: list[tuple[str, int]] = []
+def _actual() -> tuple[int, int, int, int, int, int, int, int, int, int]:
+    broad: list[tuple[str, int, bool]] = []
     callbacks: list[tuple[str, int, str]] = []
     for path in sorted(PACKAGE.rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler) and _broad(node):
-                broad.append((path.as_posix(), node.lineno))
+                line = path.read_text(encoding="utf-8").splitlines()[node.lineno - 1]
+                broad.append((path.as_posix(), node.lineno, "p2-approved-boundary:" in line))
             if isinstance(node, ast.AsyncFunctionDef) and _callback(node):
                 awaits = sorted(
                     (
@@ -98,9 +99,14 @@ def _actual() -> tuple[int, int, int, int, int, int, int]:
     ]
     guarded = [item for item in callbacks if item[2] == "guarded_ack"]
     delegated = [item for item in callbacks if item[2] == "delegated"]
+    approved = [item for item in broad if item[2]]
+    unresolved = [item for item in broad if not item[2]]
     return (
         len(broad),
-        len({path for path, _ in broad}),
+        len({path for path, _, _ in broad}),
+        len(approved),
+        len(unresolved),
+        len({path for path, _, _ in unresolved}),
         len(callbacks),
         len(risky),
         len({path for path, _, _ in risky}),
@@ -121,6 +127,9 @@ class P2StabilityInventoryTests(unittest.TestCase):
             (
                 data["broad_exception_total"],
                 data["broad_exception_files"],
+                data["broad_exception_approved"],
+                data["broad_exception_unresolved"],
+                data["broad_exception_unresolved_files"],
                 data["callback_total"],
                 data["risky_callback_total"],
                 data["risky_callback_files"],
