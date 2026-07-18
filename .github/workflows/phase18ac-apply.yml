@@ -1,0 +1,51 @@
+name: phase18ac apply patch
+
+on:
+  push:
+    branches:
+      - agent/phase18ac-telegram-import-acquire
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase18ac-telegram-import-acquire
+          fetch-depth: 0
+
+      - name: Apply exact source replacement and remove temporary files
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('velvet_bot/telegram_export_import.py')
+          source = path.read_text(encoding='utf-8')
+          old = 'database._require_pool().acquire()'
+          new = 'database.acquire()'
+          count = source.count(old)
+          if count != 4:
+              raise SystemExit(f'Expected 4 private calls, found {count}')
+          updated = source.replace(old, new)
+          if updated.count(old) != 0 or updated.count(new) != 4:
+              raise SystemExit('Replacement contract failed')
+          path.write_text(updated, encoding='utf-8')
+
+          Path('tests/test__phase18ac_source_export.py').unlink()
+          Path('.github/workflows/phase18ac-apply.yml').unlink()
+          PY
+
+      - name: Commit exact patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/telegram_export_import.py tests/test__phase18ac_source_export.py .github/workflows/phase18ac-apply.yml
+          git commit -m "Фаза 18AC: перевести Telegram import на Database.acquire"
+          git push origin HEAD:agent/phase18ac-telegram-import-acquire
