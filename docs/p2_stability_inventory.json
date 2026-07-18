@@ -1,18 +1,18 @@
 {
-  "schema_version": 29,
-  "generated_from_commit": "p2aa-set-analysis-job-boundaries",
-  "broad_exception_total": 69,
-  "broad_exception_files": 42,
+  "schema_version": 30,
+  "generated_from_commit": "p2ab-quality-sets-safe-edit",
+  "broad_exception_total": 68,
+  "broad_exception_files": 41,
   "broad_exception_approved": 47,
-  "broad_exception_unresolved": 22,
-  "broad_exception_unresolved_files": 17,
+  "broad_exception_unresolved": 21,
+  "broad_exception_unresolved_files": 16,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/quality_sets.py",
+    "target": "velvet_bot/handlers/reference_comparison.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -391,14 +391,6 @@
       "handler_module": true,
       "classification": "approved_boundary",
       "reason": "compensate-set-analysis-command-job"
-    },
-    {
-      "path": "velvet_bot/handlers/quality_sets.py",
-      "function": "_safe_edit",
-      "line": 60,
-      "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
     },
     {
       "path": "velvet_bot/handlers/reference_comparison.py",

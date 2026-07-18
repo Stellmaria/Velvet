@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2AB: quality sets safe edit
+
+- Narrowed quality-set message editing to TelegramBadRequest.
+- Non-Telegram failures and cancellation now propagate unchanged.
+- Raw broad baseline decreased from 69 to 68; unresolved decreased from 22 to 21.
+
 ### P2AA: set analysis job boundaries
 
 - Callback and slash-command set analysis failures compensate their AI jobs.
