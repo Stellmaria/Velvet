@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2G: bootstrap cleanup boundaries
+
+- Классифицированы пять независимых shutdown cleanup boundaries.
+- Unresolved broad baseline уменьшен с 63 до 58.
+
 ### P2F: AI job tracker boundary
 
 - Классифицирована компенсационная граница создания status message для AI job.

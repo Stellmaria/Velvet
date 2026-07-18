@@ -82,13 +82,13 @@ async def _close_application_resources(
     if worker_manager is not None:
         try:
             await worker_manager.stop_all()
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-worker-shutdown
             logger.exception("Could not stop all background workers")
 
     if audit_logger is not None:
         try:
             await audit_logger.send("Velvet Archive остановлен", level="WARNING")
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: best-effort-shutdown-audit
             logger.warning("Could not send shutdown audit message: %s", error)
 
     # Stop the incident center only after all other components have finished so
@@ -96,18 +96,18 @@ async def _close_application_resources(
     if error_center is not None:
         try:
             await error_center.stop()
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-error-center-shutdown
             logger.exception("Could not stop error incident center")
 
     if bot is not None:
         try:
             await bot.session.close()
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-bot-session-shutdown
             logger.exception("Could not close Telegram bot session")
 
     try:
         await database.close()
-    except Exception:
+    except Exception:  # p2-approved-boundary: isolate-database-shutdown
         logger.exception("Could not close PostgreSQL pool")
 
 
