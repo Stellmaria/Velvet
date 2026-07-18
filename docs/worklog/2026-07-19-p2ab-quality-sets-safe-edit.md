@@ -13,7 +13,7 @@
 Сузить обработку ошибки редактирования.
 
 ### Исходный контекст
-69 raw, 21 unresolved.
+69 raw, 22 unresolved.
 
 ### Планируемый объём
 Код, tests, inventory, документы.
@@ -36,10 +36,10 @@ Broad catch удалён. Raw 69 → 68; unresolved 22 → 21.
 Tests, Docker, notes.
 
 ### PR и commit
-PR после generation.
+PR #178; финальный commit после CI.
 
 ### Незавершённое
 21 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/handlers/reference_comparison.py`.
