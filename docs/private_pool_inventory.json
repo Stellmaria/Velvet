@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "398f1d24399b2f7ddb155d471c8f4247c444fb4d",
-  "total_external_findings": 23,
-  "total_files": 9,
+  "generated_from_commit": "16559e825eeb4de2901895f75393225518ce7a54",
+  "total_external_findings": 14,
+  "total_files": 8,
   "next_slice": {
-    "phase": "18AL",
-    "target": "velvet_bot/media_sets.py"
+    "phase": "18AM",
+    "target": "velvet_bot/media_set_ai_discovery.py"
   },
   "files": [
     {
@@ -62,14 +62,6 @@
       "identity_sha256": "f36767ab3230344d45bab5849ed1c0ed47186a34f423068815002b45e0efcdd2",
       "categories": [
         "application_direct_database"
-      ]
-    },
-    {
-      "path": "velvet_bot/media_sets.py",
-      "count": 9,
-      "identity_sha256": "8325c411f50bd4d76a5f1dae895333d54a950c1057fff50ad565d0916eda6376",
-      "categories": [
-        "legacy_query_module"
       ]
     },
     {

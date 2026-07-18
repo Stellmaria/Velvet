@@ -294,7 +294,7 @@ def _drafts_from_contexts(items: tuple[_MediaContext, ...]) -> tuple[_CandidateD
 
 async def discover_media_set_candidates(database: Database, *, limit: int = 300) -> int:
     safe_limit = max(20, min(int(limit), 600))
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT
@@ -349,7 +349,7 @@ async def discover_media_set_candidates(database: Database, *, limit: int = 300)
     )
     drafts = _drafts_from_contexts(contexts)
     created = 0
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         async with connection.transaction():
             for draft in drafts:
                 candidate_row = await connection.fetchrow(
@@ -414,7 +414,7 @@ async def list_media_set_candidates(
 ) -> MediaSetCandidatePage:
     safe_size = max(1, min(int(page_size), 8))
     safe_page = max(0, int(page))
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 "SELECT COUNT(*) FROM media_set_candidates WHERE status = $1::VARCHAR",
@@ -453,7 +453,7 @@ async def get_media_set_candidate(
     database: Database,
     candidate_id: int,
 ) -> MediaSetCandidate | None:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT id, suggested_title, reason, score, prompt_post_url, status
@@ -516,7 +516,7 @@ async def toggle_media_set_candidate_item(
     candidate_id: int,
     media_id: int,
 ) -> bool | None:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         value = await connection.fetchval(
             """
             UPDATE media_set_candidate_items AS item
@@ -543,7 +543,7 @@ async def decide_media_set_candidate(
 ) -> bool:
     if status not in {"ignored", "pending"}:
         raise ValueError("Неизвестное решение по предложению сета.")
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         value = await connection.fetchval(
             """
             UPDATE media_set_candidates
@@ -567,7 +567,7 @@ async def create_media_set(
     candidate_id: int,
     created_by: int,
 ) -> CreatedMediaSet:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         async with connection.transaction():
             candidate = await connection.fetchrow(
                 """
@@ -659,7 +659,7 @@ async def create_set_candidate_from_duplicate(
     duplicate_candidate_id: int,
     decided_by: int,
 ) -> int:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         async with connection.transaction():
             row = await connection.fetchrow(
                 """
@@ -754,7 +754,7 @@ async def delete_duplicate_media(
     media_id: int,
     decided_by: int,
 ) -> DeletedDuplicateMedia:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         async with connection.transaction():
             candidate = await connection.fetchrow(
                 """
