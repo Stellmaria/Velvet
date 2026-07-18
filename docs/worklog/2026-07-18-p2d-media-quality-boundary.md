@@ -43,8 +43,10 @@ Raw catch сохраняется намеренно: target уже claimed, по
 - scan broad catch отмечен approved boundary;
 - unexpected failure записывает исходный error с `broken_file=False`;
 - cancellation не вызывает compensation и не подавляется;
+- raw baseline остаётся 70 в 43 файлах;
 - approved baseline увеличен 2 → 3;
-- unresolved baseline уменьшен 68 → 67;
+- unresolved baseline уменьшен 68 → 67 в 41 файле;
+- callback late/missing baseline остаётся 0;
 - inventory, changelog, status и memory синхронизированы.
 
 ### Миграции и совместимость
@@ -53,15 +55,15 @@ Raw catch сохраняется намеренно: target уже claimed, по
 
 ### Проверки
 
-Требуются unit tests, Docker build и project notes contract на финальном head.
+Финальный head должен пройти unit tests, Docker build и project notes contract.
 
 ### PR и commit
 
-PR создаётся после runner; номер фиксируется финальным connector-коммитом.
+PR #150. Финальный merge выполняется после зелёного CI.
 
 ### Незавершённое
 
-Остаётся 67 unresolved broad exceptions.
+Остаётся 67 unresolved broad exceptions в 41 production-файле.
 
 ### Следующий шаг
 
