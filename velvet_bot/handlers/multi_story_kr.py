@@ -237,6 +237,7 @@ async def handle_admin_open_multi_story(
     item = await get_character_directory_item(database, callback_data.character_id)
     if item is None or item.universe != "kr":
         raise SkipHandler
+    await callback.answer()
     await _render_admin_picker(
         callback,
         database,
@@ -245,7 +246,6 @@ async def handle_admin_open_multi_story(
         directory_page=callback_data.page,
         story_page_number=0,
     )
-    await callback.answer()
 
 
 @router.callback_query(
@@ -466,6 +466,7 @@ async def handle_public_open_multi_story(
     item = await get_character_directory_item(database, callback_data.character_id)
     if item is None or item.universe != "kr":
         raise SkipHandler
+    await callback.answer()
     await _render_public_picker(
         callback,
         database,
@@ -473,7 +474,6 @@ async def handle_public_open_multi_story(
         offset=callback_data.offset,
         page_number=callback_data.page,
     )
-    await callback.answer()
 
 
 @router.callback_query(
