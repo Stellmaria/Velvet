@@ -17,7 +17,7 @@ async def set_analytics_reaction_counts(
         for key, value in breakdown.items()
         if int(value) > 0
     }
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         updated = await connection.fetchval(
             """
             UPDATE channel_posts
