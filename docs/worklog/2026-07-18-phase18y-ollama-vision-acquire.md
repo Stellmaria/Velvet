@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18y-ollama-vision-acquire`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18Y
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18y-ollama-vision-acquire`
 - Базовый commit: `4b7a5933c8cd4202e86f6989af7d73cbdd9cbaef`
 
@@ -57,18 +57,19 @@
 ### Проверки
 
 - production commit `1bc7aed23985a98086724c997d03addd91168f56`: diff содержит только две замены private boundary на public boundary;
-- regression-тесты добавлены в `tests/test_phase18y_ollama_vision_boundary.py`;
-- полный PR CI ожидается.
+- PR CI `tests #633`, run `29639168654`: успешно;
+- PR CI `docker build #223`, run `29639168658`: успешно;
+- PR CI `project notes contract #98`, run `29639168663`: успешно.
 
 ### PR и commit
 
+- PR: #127 `Фаза 18Y: Ollama vision repository и Database.acquire`;
 - production commit: `1bc7aed23985a98086724c997d03addd91168f56`;
-- PR будет записан после открытия.
+- проверенный CI head: `6d1d76b99b23dcc3d1eaeb9407e376b2e26a1bdf`.
 
 ### Незавершённое
 
-- подтвердить tests, Docker и project notes contract;
-- завершить дневник и слить PR.
+В рамках Фазы 18Y незавершённых изменений нет. Живая Ollama-проверка не требовалась, потому что HTTP/client/model lifecycle не менялся.
 
 ### Следующий шаг
 
