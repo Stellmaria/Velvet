@@ -100,7 +100,7 @@ async def run_media_quality_worker(
             await service.process_once()
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-media-quality-worker-iteration
             logger.exception("Media quality worker failed")
         await asyncio.sleep(interval_seconds)
 
