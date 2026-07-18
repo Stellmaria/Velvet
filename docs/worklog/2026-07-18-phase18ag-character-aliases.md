@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18ag-character-aliases`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AG
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18ag-character-aliases`
 - Базовый commit: `6448dd79eeb1b8ad7a9371b7f9a9967f859f5c9d`
 
@@ -60,7 +60,8 @@
 - сохранён полный rebuild внутри одной транзакции с matched/total mapping;
 - добавлены source/runtime regression-тесты для каждого persistence-сценария;
 - baseline уменьшен с 58/14 до 53/13;
-- inventory, project memory, development status и changelog синхронизированы.
+- inventory, project memory, development status и changelog синхронизированы;
+- ошибочная ручная запись SHA identity для `analytics_dashboard.py` обнаружена и исправлена до запуска CI.
 
 ### Миграции и совместимость
 
@@ -72,18 +73,21 @@
 
 - source regression запрещает `._require_pool()` и требует пять `database.acquire()`;
 - runtime regression проверяет seeding, listing, add, delete и transactional rebuild;
-- AST baseline ожидает 53 внешних обращения в 13 production-файлах;
-- требуется полный PR CI.
+- AST baseline подтверждает 53 внешних обращения в 13 production-файлах;
+- GitHub Actions `tests` run 672: success;
+- GitHub Actions `docker build` run 257: success;
+- GitHub Actions `project notes contract` run 128: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
+- PR: #136 `Фаза 18AG: Character aliases и Database.acquire`;
 - production commit: `0d7ce7b521074dc1d313b0a99b7b089091be83ac`;
-- test commit: `5d396880c3e32e2d5216948bdb786b207cb39746`.
+- test commit: `5d396880c3e32e2d5216948bdb786b207cb39746`;
+- проверенный connector head до финального закрытия worklog: `e2e8c644d014958996a349dd8c8f166b083987b5`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Внутри среза незавершённых задач нет. После merge продолжить Фазой 18AH.
 
 ### Следующий шаг
 
