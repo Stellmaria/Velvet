@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18aa-backup-runtime-acquire`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AA
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18aa-backup-runtime-acquire`
 - Базовый commit: `9b2b5d10067448181db0b21b49d34637a0f49b50`
 
@@ -61,18 +61,19 @@
 ### Проверки
 
 - production commit `1c52e952368585945a0b70204bad9bb9c6afd25c`: diff содержит только две замены private boundary на public boundary;
-- regression-тесты добавлены в `tests/test_phase18aa_backup_runtime_boundary.py`;
-- полный PR CI ожидается.
+- PR CI `tests #639`, run `29639684982`: успешно;
+- PR CI `docker build #229`, run `29639684961`: успешно;
+- PR CI `project notes contract #102`, run `29639684974`: успешно.
 
 ### PR и commit
 
+- PR: #129 `Фаза 18AA: Backup runtime и Database.acquire`;
 - production commit: `1c52e952368585945a0b70204bad9bb9c6afd25c`;
-- PR будет записан после открытия.
+- проверенный CI head: `0d8800d5bcb84677696c05f31e87956e8989940d`.
 
 ### Незавершённое
 
-- подтвердить tests, Docker и project notes contract;
-- завершить дневник и слить PR.
+В рамках Фазы 18AA незавершённых изменений нет. Живая проверка `pg_dump` не требуется, потому что внешние процессы не менялись.
 
 ### Следующий шаг
 
