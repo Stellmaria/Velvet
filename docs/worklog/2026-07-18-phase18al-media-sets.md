@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18al-media-sets`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AL
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18al-media-sets`
 - Базовый commit: `16559e825eeb4de2901895f75393225518ce7a54`
 
@@ -84,18 +84,23 @@
 
 - source regression запрещает `._require_pool()` и требует девять `database.acquire()`;
 - runtime regression проверяет discovery, page/detail, toggle/decision, create set, duplicate conversion и deletion cascade;
-- AST baseline ожидает 14 внешних обращений в 8 production-файлах;
-- требуется полный PR CI.
+- AST baseline подтверждает 14 внешних обращений в 8 production-файлах;
+- первый GitHub Actions `tests` run 688 выявил runtime-подмены discovery и create-set application-модулями следующей волны;
+- regression-тест переведён на свежую изолированную загрузку исходного `media_sets.py` без изменения production scope;
+- GitHub Actions `tests` run 689: success;
+- GitHub Actions `docker build` run 274: success;
+- GitHub Actions `project notes contract` run 140: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
+- PR: #141 `Фаза 18AL: Media sets и Database.acquire`;
 - production commit: `687b3b64cfad3e570087c5f0632a3e280008a6b4`;
-- test commit: `0e287f5e14ead6c0fe88dd179088ba6220f18f99`.
+- test commit: `0e287f5e14ead6c0fe88dd179088ba6220f18f99`;
+- compatibility-aware test fix: `98fddd86b760d991fbccec5c538e3864355d415f`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Нет незавершённых задач внутри среза. Application-модули `media_set_ai_discovery.py` и `media_set_actions.py` остаются отдельным измеримым долгом следующей волны.
 
 ### Следующий шаг
 
