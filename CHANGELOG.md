@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2R: character topic boundaries
+
+- Unexpected character create and topic binding failures now retain local tracebacks.
+- Classified two user-facing handler boundaries.
+- Unresolved broad baseline decreased from 42 to 40.
+
 ### P2Q: channel analytics ingest boundary
 
 - Classified channel post analytics ingest failure reporting.
