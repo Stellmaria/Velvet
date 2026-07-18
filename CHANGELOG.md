@@ -5,6 +5,13 @@
 ## [Unreleased]
 
 
+### P2V: public archive boundaries
+
+- Classified five public archive failure boundaries and added behavior tests.
+- Successful like, subscription, and download operations are no longer reported as failed when Telegram presentation fails afterwards.
+- Unresolved broad baseline decreased from 33 to 28.
+
+
 ### P2U: media browser boundaries
 
 - Full-size image preview failures fall back to the original archived media.
