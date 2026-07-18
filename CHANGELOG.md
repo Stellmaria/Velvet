@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2I: audit sink boundary
+
+- Классифицирован best-effort Telegram audit sink.
+- Unresolved broad baseline уменьшен с 56 до 55.
+
 ### P2H: bootstrap fatal boundaries
 
 - Fatal reporting вынесен в отдельный helper и покрыт тестами.

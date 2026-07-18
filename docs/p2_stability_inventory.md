@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - broad exceptions raw: **70** в **43** файлах;
-- approved orchestration boundaries: **14**;
-- unresolved broad exceptions: **56** в **36** файлах;
+- approved orchestration boundaries: **15**;
+- unresolved broad exceptions: **55** в **35** файлах;
 - callback handlers: **97**;
 - missing/late acknowledgment: **0**;
 - guarded acknowledgment: **25**;
@@ -24,6 +24,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/app/bootstrap.py:110` `_close_application_resources`: isolate-database-shutdown.
 - `velvet_bot/app/bootstrap.py:127` `_report_fatal_application_error`: preserve-original-fatal-error.
 - `velvet_bot/app/bootstrap.py:266` `run_application`: report-fatal-application-error.
+- `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/calibrated_ai_quality.py:111` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
 - `velvet_bot/domains/publication/service.py:68` `publish`: compensate-claimed-publication.
@@ -44,7 +45,6 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
-- `velvet_bot/audit.py`: 1.
 - `velvet_bot/backup_runtime.py`: 1.
 - `velvet_bot/discussion_analytics_middleware.py`: 1.
 - `velvet_bot/handlers/archive.py`: 1.
@@ -74,4 +74,4 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/audit.py`.
+- `velvet_bot/backup_runtime.py`.
