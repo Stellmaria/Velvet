@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2AJ: media quality worker boundary
+
+- A failed media-quality iteration is logged and the following cycle still runs.
+- Cancellation remains terminal and is not logged as an iteration failure.
+- Unresolved broad baseline decreased from 13 to 12.
+
 ### P2AI: archive preview fallback
 
 - Full-quality archive preview failures now have a verified document fallback boundary.

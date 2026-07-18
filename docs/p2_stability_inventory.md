@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **67** в **41** файлах;
-- approved boundaries: **54**;
-- unresolved broad exceptions: **13** в **9** файлах;
+- approved boundaries: **55**;
+- unresolved broad exceptions: **12** в **8** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -68,6 +68,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/velvet_ai_formatting.py:287` `handle_formatting_reply`: compensate-velvet-formatting-job.
 - `velvet_bot/handlers/velvet_ai_visual.py:315` `handle_visual_analysis_reply`: compensate-palette-composition-job.
 - `velvet_bot/infrastructure/telegram/archive_previews.py:84` `resolve`: fallback-full-quality-archive-preview.
+- `velvet_bot/media_quality.py:103` `run_media_quality_worker`: isolate-media-quality-worker-iteration.
 
 ## Unresolved broad exceptions by file
 
@@ -75,7 +76,6 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
-- `velvet_bot/media_quality.py`: 1.
 - `velvet_bot/presentation/telegram/public_notifications.py`: 1.
 - `velvet_bot/public_notifications.py`: 1.
 - `velvet_bot/publication_inbox_middleware.py`: 1.
@@ -83,7 +83,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/media_quality.py`.
+- `velvet_bot/presentation/telegram/public_notifications.py`.
 
 ## Правило обновления
 
