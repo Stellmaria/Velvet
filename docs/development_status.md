@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2E: AI worker boundaries классифицированы; unresolved broad baseline 67 → 64.
+3. P2F: AI job tracker compensation boundary классифицирован; unresolved broad baseline 64 → 63.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.

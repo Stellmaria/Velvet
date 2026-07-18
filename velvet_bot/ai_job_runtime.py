@@ -52,7 +52,7 @@ class AIJobTracker:
                 build_job_detail_text(job),
                 reply_markup=build_job_keyboard(job),
             )
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: compensate-created-ai-job
             await repository.mark_error(
                 job_id,
                 f"Не удалось создать сообщение статуса: {error}",

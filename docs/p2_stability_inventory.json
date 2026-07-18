@@ -1,18 +1,18 @@
 {
-  "schema_version": 7,
-  "generated_from_commit": "p2e-ai-worker-boundaries",
+  "schema_version": 8,
+  "generated_from_commit": "p2f-ai-job-tracker-boundary",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 6,
-  "broad_exception_unresolved": 64,
-  "broad_exception_unresolved_files": 38,
+  "broad_exception_approved": 7,
+  "broad_exception_unresolved": 63,
+  "broad_exception_unresolved_files": 37,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/ai_job_runtime.py",
+    "target": "velvet_bot/app/bootstrap.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -21,8 +21,8 @@
       "function": "create",
       "line": 55,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-created-ai-job"
     },
     {
       "path": "velvet_bot/ai_quality.py",
