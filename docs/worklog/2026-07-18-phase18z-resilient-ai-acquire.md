@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18z-resilient-ai-acquire`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18Z
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18z-resilient-ai-acquire`
 - Базовый commit: `9ed31953c31a98cd22fd9e07c46cd658c9d304ab`
 
@@ -61,18 +61,19 @@
 ### Проверки
 
 - production commit `d7a4677e1942f7c13aa065695d802002846641d5`: diff содержит только две замены private boundary на public boundary;
-- regression-тесты добавлены в `tests/test_phase18z_resilient_ai_boundary.py`;
-- полный PR CI ожидается.
+- PR CI `tests #636`, run `29639400374`: успешно;
+- PR CI `docker build #226`, run `29639400340`: успешно;
+- PR CI `project notes contract #100`, run `29639400342`: успешно.
 
 ### PR и commit
 
+- PR: #128 `Фаза 18Z: Resilient AI repository и Database.acquire`;
 - production commit: `d7a4677e1942f7c13aa065695d802002846641d5`;
-- PR будет записан после открытия.
+- проверенный CI head: `3e0e3104b94af43662fffdd03fdef864faadfad4`.
 
 ### Незавершённое
 
-- подтвердить tests, Docker и project notes contract;
-- завершить дневник и слить PR.
+В рамках Фазы 18Z незавершённых изменений нет. Живая Telegram-проверка не требуется, потому что retry service не менялся.
 
 ### Следующий шаг
 
