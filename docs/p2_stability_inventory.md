@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - broad exceptions raw: **70** в **43** файлах;
-- approved orchestration boundaries: **6**;
-- unresolved broad exceptions: **64** в **38** файлах;
+- approved orchestration boundaries: **7**;
+- unresolved broad exceptions: **63** в **37** файлах;
 - callback handlers: **97**;
 - missing/late acknowledgment: **0**;
 - guarded acknowledgment: **25**;
@@ -14,6 +14,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Approved broad boundaries
 
+- `velvet_bot/ai_job_runtime.py:55` `create`: compensate-created-ai-job.
 - `velvet_bot/ai_quality.py:703` `process_once`: compensate-claimed-ai-quality.
 - `velvet_bot/ai_vision.py:725` `process_once`: compensate-claimed-ai-profile.
 - `velvet_bot/calibrated_ai_quality.py:111` `process_once`: compensate-claimed-calibrated-quality.
@@ -37,7 +38,6 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
-- `velvet_bot/ai_job_runtime.py`: 1.
 - `velvet_bot/audit.py`: 1.
 - `velvet_bot/backup_runtime.py`: 1.
 - `velvet_bot/discussion_analytics_middleware.py`: 1.
@@ -68,7 +68,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/ai_job_runtime.py`: broad-exception triage runtime creation boundary.
+- `velvet_bot/app/bootstrap.py`: broad-exception triage shutdown/startup boundaries.
 
 ## Правило обновления
 

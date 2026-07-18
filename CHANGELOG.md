@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2F: AI job tracker boundary
+
+- Классифицирована компенсационная граница создания status message для AI job.
+- Unresolved broad baseline уменьшен с 64 до 63.
+
 ### P2E: AI worker boundaries
 
 - Классифицированы claimed-target compensation boundaries в AI quality, semantic vision и calibrated quality workers.
