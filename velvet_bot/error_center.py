@@ -158,7 +158,7 @@ class ErrorIncidentRepository:
         )
 
     async def record(self, captured: CapturedLog) -> RecordedIncident:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 existing = await connection.fetchrow(
                     """
@@ -214,7 +214,7 @@ class ErrorIncidentRepository:
                 return RecordedIncident(self._from_row(row), opened=reopened)
 
     async def set_log_message_id(self, incident_id: int, message_id: int) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE error_incidents
@@ -227,7 +227,7 @@ class ErrorIncidentRepository:
             )
 
     async def acknowledge(self, incident_id: int, user_id: int) -> ErrorIncident | None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 UPDATE error_incidents
@@ -243,7 +243,7 @@ class ErrorIncidentRepository:
 
     async def acknowledge_all(self, user_id: int, *, limit: int = 50) -> tuple[ErrorIncident, ...]:
         safe_limit = max(1, min(int(limit), 100))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             async with connection.transaction():
                 rows = await connection.fetch(
                     """
@@ -268,7 +268,7 @@ class ErrorIncidentRepository:
 
     async def unacknowledged(self, *, limit: int = 5) -> tuple[ErrorIncident, ...]:
         safe_limit = max(1, min(int(limit), 20))
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT *
@@ -288,7 +288,7 @@ class ErrorIncidentRepository:
         return tuple(self._from_row(row) for row in rows)
 
     async def unacknowledged_counts(self) -> dict[str, int]:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
@@ -308,7 +308,7 @@ class ErrorIncidentRepository:
         }
 
     async def digest_due(self, *, cooldown_seconds: int) -> bool:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 "SELECT last_owner_digest_at FROM error_alert_state WHERE id = 1"
             )
@@ -317,7 +317,7 @@ class ErrorIncidentRepository:
         return datetime.now(UTC) - value >= timedelta(seconds=max(1, cooldown_seconds))
 
     async def mark_digest_sent(self) -> None:
-        async with self._database._require_pool().acquire() as connection:
+        async with self._database.acquire() as connection:
             await connection.execute(
                 """
                 INSERT INTO error_alert_state (id, last_owner_digest_at, updated_at)
