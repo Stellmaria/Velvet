@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2AD: reference-form AI jobs compensate failures and preserve cancellation; approved 48 → 49 and unresolved 20 → 19.
+3. P2AE: Supervisor console watcher failure boundary verified; approved 49 → 50 and unresolved 19 → 18.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.

@@ -1,18 +1,18 @@
 {
-  "schema_version": 32,
-  "generated_from_commit": "p2ad-reference-form-job-boundary",
+  "schema_version": 33,
+  "generated_from_commit": "p2ae-supervisor-console-watcher",
   "broad_exception_total": 68,
   "broad_exception_files": 41,
-  "broad_exception_approved": 49,
-  "broad_exception_unresolved": 19,
-  "broad_exception_unresolved_files": 14,
+  "broad_exception_approved": 50,
+  "broad_exception_unresolved": 18,
+  "broad_exception_unresolved_files": 13,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/supervisor_console.py",
+    "target": "velvet_bot/handlers/velvet_ai.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -413,8 +413,8 @@
       "function": "_watch_console_operation",
       "line": 174,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "isolate-supervisor-console-watcher"
     },
     {
       "path": "velvet_bot/handlers/velvet_ai.py",

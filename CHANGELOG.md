@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2AE: watcher boundary
+
+- Background watcher failures are logged and isolated.
+- Cancellation propagates unchanged.
+- Unresolved broad baseline decreased from 19 to 18.
+
 ### P2AD: reference form job boundary
 
 - Reference-comparison form jobs now have a verified failure-compensation boundary.
