@@ -1,0 +1,51 @@
+name: p2 stability PR runner
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  run-audit:
+    if: github.head_ref == 'agent/p2-stability-inventory'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-stability-inventory
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Execute embedded audit
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/p2-stability-audit-runner.yml').read_text(encoding='utf-8')
+          start_marker = "          python - <<'PY'\n"
+          end_marker = "\n          PY\n\n      - name: Commit audit output"
+          start = source.index(start_marker) + len(start_marker)
+          end = source.index(end_marker, start)
+          code = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in source[start:end].splitlines()
+          )
+          exec(compile(code, '<p2-stability-audit>', 'exec'), {'__name__': '__main__'})
+          PY
+
+      - name: Commit audit output
+        run: |
+          rm -f .github/workflows/p2-stability-audit-runner.yml
+          rm -f .github/workflows/p2-stability-pr-runner.yml
+          rm -f .github/p2-audit-trigger.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "P2A: создать stability inventory"
+          git push origin HEAD:agent/p2-stability-inventory
