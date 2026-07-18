@@ -1,13 +1,13 @@
 diff --git a/velvet_bot/handlers/characters.py b/velvet_bot/handlers/characters.py
 --- a/velvet_bot/handlers/characters.py
 +++ b/velvet_bot/handlers/characters.py
-@@ -1,5 +1,6 @@
+@@ -1,4 +1,5 @@
 +import logging
  from functools import partial
  from html import escape
  
  from aiogram import Bot, Router
-@@ -20,6 +21,7 @@ from velvet_bot.services.telegram_topics import validate_topic_access
+@@ -20,5 +21,6 @@ from velvet_bot.services.telegram_topics import validate_topic_access
  
  router = Router(name=__name__)
 +logger = logging.getLogger(__name__)
