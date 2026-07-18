@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AE, discussion thread links и analytics reactions.
+Последний завершённый срез: Фаза 18AF, alias management.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 60 внешних обращений к `Database._require_pool()`;
-- 15 production-файлов;
+- 58 внешних обращений к `Database._require_pool()`;
+- 14 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -20,12 +20,12 @@ AST-сканирование production package `velvet_bot/` фиксирует
 
 | Категория | Обращений | Подход |
 |---|---:|---|
-| Legacy query-модули | 46 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
+| Legacy query-модули | 44 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 60.
+Всего: 58.
 
 ## Завершённые погашения baseline
 
@@ -47,13 +47,14 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18AC: Telegram import persistence, удалены 4 обращения и 1 production-файл; source registration, discussion filters, SHA-256 duplicate short-circuit и единая import transaction сохранены.
 - Фаза 18AD: public media lookup, удалено 1 обращение и 1 production-файл; newest-first `ROW_NUMBER()` offset query и `int | None` mapping сохранены.
 - Фаза 18AE: discussion thread links и analytics reactions, удалены 2 обращения и 2 production-файла; pending-thread update semantics, affected-row mapping, reaction cleanup, JSONB payload и boolean result сохранены.
+- Фаза 18AF: alias management, удалены 2 обращения и 1 production-файл; alias lookup mapping, protected name aliases, delete delegation и character summary short-circuit сохранены.
 
 ## Очередь
 
 ### Волна C. Старые query-модули
 
-1. **Фаза 18AF:** alias management, 2 connection points. Ожидаемый baseline: 58 обращений в 14 файлах.
-2. Character aliases последующим отдельным срезом.
+1. **Фаза 18AG:** character aliases, 5 connection points. Ожидаемый baseline: 53 обращения в 13 файлах.
+2. Analytics dashboard/review и channel analytics последующими срезами.
 
 - analytics dashboard/review;
 - channel analytics;

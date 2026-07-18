@@ -1,21 +1,13 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "d4d3edabef67d849f5b57630afc3d66fd542e156",
-  "total_external_findings": 60,
-  "total_files": 15,
+  "generated_from_commit": "09eb91046cd1c7daa9e6a7dd468ddbd181e884ed",
+  "total_external_findings": 58,
+  "total_files": 14,
   "next_slice": {
-    "phase": "18AF",
-    "target": "velvet_bot/alias_management.py"
+    "phase": "18AG",
+    "target": "velvet_bot/character_aliases.py"
   },
   "files": [
-    {
-      "path": "velvet_bot/alias_management.py",
-      "count": 2,
-      "identity_sha256": "c1f3260d87c753b5e0f6220fb2d1ca242486c056b1bebf9d28cf79bd3993e987",
-      "categories": [
-        "legacy_query_module"
-      ]
-    },
     {
       "path": "velvet_bot/analytics_dashboard.py",
       "count": 8,
