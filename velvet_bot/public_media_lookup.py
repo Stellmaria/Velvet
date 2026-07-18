@@ -10,7 +10,7 @@ async def get_character_media_offset(
     media_id: int,
 ) -> int | None:
     """Return the current newest-first offset of one character-media link."""
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         value = await connection.fetchval(
             """
             WITH ordered_media AS (
