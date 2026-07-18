@@ -43,9 +43,10 @@ Broad catch внутри claim lifecycle сохраняется намеренн
 
 - два publication catches отмечены approved boundary markers;
 - inventory schema разделяет raw, approved и unresolved debt;
-- raw baseline остаётся 70/43;
+- raw baseline остаётся 70 в 43 файлах;
 - approved baseline равен 2;
-- unresolved baseline уменьшен до 68;
+- unresolved baseline уменьшен до 68 в 42 файлах;
+- callback late/missing baseline остаётся 0;
 - добавлены tests delivery failure compensation, mark-published compensation, scheduled isolation и cancellation propagation.
 
 ### Миграции и совместимость
@@ -54,15 +55,15 @@ Broad catch внутри claim lifecycle сохраняется намеренн
 
 ### Проверки
 
-Требуются unit tests, Docker build и project notes contract на финальном head.
+Финальный head должен пройти unit tests, Docker build и project notes contract.
 
 ### PR и commit
 
-PR создаётся после runner; номер фиксируется финальным connector-коммитом.
+PR #149. Финальный merge выполняется после зелёного CI.
 
 ### Незавершённое
 
-Остаётся 68 unresolved broad exceptions.
+Остаётся 68 unresolved broad exceptions в 42 production-файлах.
 
 ### Следующий шаг
 
