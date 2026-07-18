@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2P: backup center callback boundary
+
+- Preserved the original unexpected backup error when Telegram cannot render the error message.
+- Classified the backup callback reporting boundary.
+- Unresolved broad baseline decreased from 44 to 43.
+
 ### P2O: topic archive boundary
 
 - Classified automatic topic archive failure reporting boundary.

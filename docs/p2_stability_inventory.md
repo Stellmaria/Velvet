@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **70** в **43** файлах;
-- approved boundaries: **26**;
-- unresolved broad exceptions: **44** в **29** файлах;
+- approved boundaries: **27**;
+- unresolved broad exceptions: **43** в **28** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -40,6 +40,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/admin_media_display.py:38` `build_admin_display_media`: fallback-admin-edit-preview.
 - `velvet_bot/handlers/admin_media_display.py:88` `send_admin_archive_page`: fallback-admin-send-preview.
 - `velvet_bot/handlers/archive.py:238` `handle_new_archive_topic_media`: report-topic-auto-archive-failure.
+- `velvet_bot/handlers/backup_center.py:391` `handle_backup_callback`: report-backup-callback-failure.
 
 ## Unresolved broad exceptions by file
 
@@ -53,7 +54,6 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
-- `velvet_bot/handlers/backup_center.py`: 1.
 - `velvet_bot/handlers/channel_analytics.py`: 1.
 - `velvet_bot/handlers/error_center.py`: 1.
 - `velvet_bot/handlers/public_manager.py`: 1.
@@ -75,7 +75,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/handlers/backup_center.py`.
+- `velvet_bot/handlers/channel_analytics.py`.
 
 ## Правило обновления
 

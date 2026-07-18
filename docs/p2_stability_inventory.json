@@ -1,18 +1,18 @@
 {
-  "schema_version": 17,
-  "generated_from_commit": "p2o-topic-archive-boundary",
+  "schema_version": 18,
+  "generated_from_commit": "p2p-backup-center-boundary",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 26,
-  "broad_exception_unresolved": 44,
-  "broad_exception_unresolved_files": 29,
+  "broad_exception_approved": 27,
+  "broad_exception_unresolved": 43,
+  "broad_exception_unresolved_files": 28,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/backup_center.py",
+    "target": "velvet_bot/handlers/channel_analytics.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -229,8 +229,8 @@
       "function": "handle_backup_callback",
       "line": 391,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "report-backup-callback-failure"
     },
     {
       "path": "velvet_bot/handlers/channel_analytics.py",

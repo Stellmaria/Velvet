@@ -388,13 +388,16 @@ async def handle_backup_callback(
             f"{escape(str(error))}",
             _main_keyboard(),
         )
-    except Exception as error:
-        await _edit(
-            callback,
-            "<b>Операция завершилась ошибкой</b>\n\n"
-            f"{escape(str(error))}",
-            _main_keyboard(),
-        )
+    except Exception as error:  # p2-approved-boundary: report-backup-callback-failure
+        try:
+            await _edit(
+                callback,
+                "<b>Операция завершилась ошибкой</b>\n\n"
+                f"{escape(str(error))}",
+                _main_keyboard(),
+            )
+        except TelegramBadRequest:
+            pass
         raise
 
     await callback.answer()
