@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2J: backup runtime cleanup
+
+- Cancellation теперь удаляет созданные backup artifacts.
+- Unresolved broad baseline уменьшен с 55 до 54.
+
 ### P2I: audit sink boundary
 
 - Классифицирован best-effort Telegram audit sink.
