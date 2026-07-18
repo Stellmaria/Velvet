@@ -1,120 +1,82 @@
 from __future__ import annotations
 
+import re
+
+import velvet_bot.media_sets as media_sets
 from velvet_bot.database import Database
+from velvet_bot.media_set_actions_repository import MediaSetActionsRepository
 from velvet_bot.media_sets import CreatedMediaSet
 
+_PROMPT_POST_URL_RE = re.compile(
+    r"^https://t\.me/(?:c/\d+|[A-Za-z0-9_]+)/\d+$",
+    re.IGNORECASE,
+)
+_ORIGINAL_CREATE_MEDIA_SET = media_sets.create_media_set
+_INSTALLED = False
 
-async def create_media_set(
+
+def normalize_prompt_post_url(value: str) -> str:
+    normalized = " ".join(str(value).split()).strip()
+    if not _PROMPT_POST_URL_RE.fullmatch(normalized):
+        raise ValueError(
+            "Нужна ссылка на пост Telegram вида https://t.me/channel/123."
+        )
+    return normalized
+
+
+async def set_media_set_prompt(
+    database: Database,
+    *,
+    media_set_id: int,
+    prompt_post_url: str,
+) -> str:
+    normalized = normalize_prompt_post_url(prompt_post_url)
+    updated = await MediaSetActionsRepository(database).set_prompt_post_url(
+        media_set_id=int(media_set_id),
+        prompt_post_url=normalized,
+    )
+    if not updated:
+        raise ValueError("Сет больше не найден.")
+    return normalized
+
+
+async def create_media_set_with_prompt(
     database: Database,
     *,
     candidate_id: int,
     created_by: int,
 ) -> CreatedMediaSet:
-    """Create a set whose prompt is stored once in ``media_sets``."""
-    async with database._require_pool().acquire() as connection:
-        async with connection.transaction():
-            candidate = await connection.fetchrow(
-                """
-                SELECT id, suggested_title, prompt_post_url, status
-                FROM media_set_candidates
-                WHERE id = $1::BIGINT
-                FOR UPDATE
-                """,
-                int(candidate_id),
-            )
-            if candidate is None:
-                raise ValueError("Предложение сета больше не найдено.")
-            if candidate["status"] != "pending":
-                raise ValueError("Это предложение уже обработано.")
-
-            item_rows = await connection.fetch(
-                """
-                SELECT item.media_id
-                FROM media_set_candidate_items AS item
-                JOIN media_files AS mf ON mf.id = item.media_id
-                WHERE item.candidate_id = $1::BIGINT
-                  AND item.selected = TRUE
-                  AND mf.media_set_id IS NULL
-                ORDER BY item.media_id
-                FOR UPDATE OF mf
-                """,
-                int(candidate_id),
-            )
-            media_ids = tuple(int(row["media_id"]) for row in item_rows)
-            if len(media_ids) < 2:
-                raise ValueError("Для сета нужно выбрать минимум два материала.")
-
-            set_id = int(
-                await connection.fetchval(
-                    """
-                    INSERT INTO media_sets (title, prompt_post_url, created_by)
-                    VALUES ($1::VARCHAR, $2::TEXT, $3::BIGINT)
-                    RETURNING id
-                    """,
-                    str(candidate["suggested_title"])[:160],
-                    candidate["prompt_post_url"],
-                    int(created_by),
-                )
-            )
-            update_result = await connection.execute(
-                """
-                UPDATE media_files
-                SET media_set_id = $1::BIGINT
-                WHERE id = ANY($2::BIGINT[])
-                  AND media_set_id IS NULL
-                """,
-                set_id,
-                list(media_ids),
-            )
-            updated_count = int(update_result.rsplit(" ", 1)[-1])
-            if updated_count != len(media_ids):
-                raise ValueError(
-                    "Часть выбранных материалов уже была добавлена в другой сет."
-                )
-
-            await connection.execute(
-                """
-                UPDATE media_set_candidates
-                SET status = 'accepted',
-                    decided_by = $2::BIGINT,
-                    decided_at = NOW(),
-                    created_set_id = $3::BIGINT,
-                    updated_at = NOW()
-                WHERE id = $1::BIGINT
-                """,
-                int(candidate_id),
-                int(created_by),
-                set_id,
-            )
-            await connection.execute(
-                """
-                UPDATE media_duplicate_candidates
-                SET status = 'ignored',
-                    decided_by = $2::BIGINT,
-                    decided_at = NOW(),
-                    updated_at = NOW()
-                WHERE status = 'pending'
-                  AND first_media_id = ANY($1::BIGINT[])
-                  AND second_media_id = ANY($1::BIGINT[])
-                """,
-                list(media_ids),
-                int(created_by),
-            )
-
-    return CreatedMediaSet(
-        id=set_id,
-        title=str(candidate["suggested_title"]),
-        media_ids=media_ids,
-        prompt_post_url=candidate["prompt_post_url"],
+    created = await _ORIGINAL_CREATE_MEDIA_SET(
+        database,
+        candidate_id=int(candidate_id),
+        created_by=int(created_by),
     )
+    if created.prompt_post_url:
+        await set_media_set_prompt(
+            database,
+            media_set_id=created.id,
+            prompt_post_url=created.prompt_post_url,
+        )
+    return created
+
+
+create_media_set = create_media_set_with_prompt
 
 
 def install_media_set_actions() -> None:
-    import velvet_bot.media_sets as media_sets
-
-    media_sets.create_media_set = create_media_set
+    global _INSTALLED
+    if _INSTALLED:
+        return
+    media_sets.create_media_set = create_media_set_with_prompt
+    _INSTALLED = True
 
 
 install_media_set_actions()
 
-__all__ = ("create_media_set", "install_media_set_actions")
+__all__ = (
+    "create_media_set",
+    "create_media_set_with_prompt",
+    "install_media_set_actions",
+    "normalize_prompt_post_url",
+    "set_media_set_prompt",
+)

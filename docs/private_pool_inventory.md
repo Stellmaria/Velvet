@@ -1,94 +1,30 @@
 # Инвентаризация приватной PostgreSQL-границы
 
-Дата среза: 18 июля 2026 года.
-Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AM, media-set AI discovery repository boundary.
+Дата закрытия: 18 июля 2026 года.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 12 внешних обращений к `Database._require_pool()`;
-- 7 production-файлов;
-- внутреннее определение и использование внутри класса `Database` исключено из долга;
-- tests, migrations и docs не входят в production-инвентаризацию;
-- динамический `getattr(..., "_require_pool")` также контролируется.
+- 0 внешних обращений к `Database._require_pool()`;
+- 0 production-файлов в baseline;
+- внутреннее использование внутри класса `Database` остаётся разрешённой реализационной деталью;
+- новые внешние обращения по-прежнему блокируются CI.
 
-Точный машинный baseline находится в `docs/private_pool_inventory.json`. Для каждого файла сохраняются число обращений и SHA-256 набора `access_kind + scope`. Номера строк выводятся сканером, но не входят в identity, чтобы обычное форматирование файла не требовало бессмысленного обновления baseline.
+Фаза 18 завершена. Legacy query-модули, application services, Telegram handlers и активные compatibility-фасады больше не используют приватную PostgreSQL-границу.
 
-## Категории долга
+## Архитектурный итог
 
-| Категория | Обращений | Подход |
-|---|---:|---|
-| Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
-| Application | 2 | вынести persistence в repository boundary |
-| Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
+- media-set AI, prompt actions и duplicate actions используют repository boundaries;
+- SQL медиасетной AI-проверки и сравнения референсов вынесен из Telegram handlers;
+- старый discussion dashboard делегирует каноническому query;
+- quality-set compatibility использует публичный `Database.acquire()`;
+- baseline равен `0/0`.
 
-Всего: 12.
-
-Legacy query-модули и application-service direct DB access полностью удалены из baseline.
-
-## Завершённые погашения baseline
-
-- Фаза 18N: `ArchivePreviewRepository`, удалены 2 обращения и 1 production-файл.
-- Фаза 18O: `PublicationValidationRepository`, удалены 2 обращения и 1 production-файл.
-- Фаза 18P: `PublicationDraftRepository`, удалены 8 обращений и 1 production-файл; явные domain repositories закрыты.
-- Фаза 18Q: `SystemRepository`, удалены 2 обращения и 1 production-файл; отдельный infrastructure repository закрыт.
-- Фаза 18R: `PromptResultReportRepository`, удалено 1 обращение и 1 production-файл.
-- Фаза 18S: `PaletteCompositionReportRepository`, удалено 1 обращение и 1 production-файл.
-- Фаза 18T: `VelvetFormattingReportRepository`, удалено 1 обращение и 1 production-файл; одиночные report repositories закрыты.
-- Фаза 18U: `QualityCalibrationRepository`, удалены 3 обращения и 1 production-файл; profile, pagination и case lookup переведены вместе.
-- Фаза 18V: `AIQualityRepository` и его активный schema compatibility facade, удалены 10 обращений и 2 production-файла; claim, lifecycle, dashboard и owner decisions переведены вместе.
-- Фаза 18W: `MediaAIRepository`, удалены 4 обращения и 1 production-файл; claim transaction, stale recovery, semantic profile persistence и aggregate summary сохранены.
-- Фаза 18X: `ErrorIncidentRepository`, удалены 8 обращений и 1 production-файл; transaction/locking, reopen, acknowledgment и digest cooldown сохранены.
-- Фаза 18Y: `ReliableMediaAIRepository`, удалены 2 обращения и 1 production-файл; legacy JSON-error requeue, parent claim и response-version update сохранены.
-- Фаза 18Z: `ResilientMediaAIRepository`, удалены 2 обращения и 1 production-файл; transient Telegram failure requeue, parent claim и response-version update сохранены.
-- Фаза 18AA: runtime-hardened `BackupService`, удалены 2 обращения и 1 production-файл; expected-table decode и timezone/date schedule check сохранены.
-- Фаза 18AB: базовый `BackupService`, удалены 15 обращений и 1 production-файл; running/completed/failed lifecycle, create/verify/history, settings, validation, retention и scheduled checks сохранены.
-- Фаза 18AC: Telegram import persistence, удалены 4 обращения и 1 production-файл; source registration, discussion filters, SHA-256 duplicate short-circuit и единая import transaction сохранены.
-- Фаза 18AD: public media lookup, удалено 1 обращение и 1 production-файл; newest-first `ROW_NUMBER()` offset query и `int | None` mapping сохранены.
-- Фаза 18AE: discussion thread links и analytics reactions, удалены 2 обращения и 2 production-файла; pending-thread update semantics, affected-row mapping, reaction cleanup, JSONB payload и boolean result сохранены.
-- Фаза 18AF: alias management, удалены 2 обращения и 1 production-файл; alias lookup mapping, protected name aliases, delete delegation и character summary short-circuit сохранены.
-- Фаза 18AG: character aliases, удалены 5 обращений и 1 production-файл; name-alias seeding, ordered listing, validation/conflict handling, hashtag link/unlink и транзакционный rebuild сохранены.
-- Фаза 18AH: analytics dashboard, удалены 8 обращений и 1 production-файл; period filters, overview/prompt aggregates, hashtag/character/participant pagination, source lists и discussion fallback сохранены.
-- Фаза 18AI: analytics review, удалены 9 обращений и 1 production-файл; review tokens, page clamps, detail mapping, ручная и автоматическая классификация, audit trail и пакетный reclassify сохранены.
-- Фаза 18AJ: channel analytics, удалены 8 обращений и 1 production-файл; ingest transaction, post/hashtag/link replacement, overview aggregates, stat mappings и limit clamps сохранены.
-- Фаза 18AK: quality audit, удалены 5 обращений и 1 production-файл; summary counters, dynamic pagination placeholders, media offsets, unresolved numbering и reset affected-row mapping сохранены.
-- Фаза 18AL: media sets, удалены 9 обращений и 1 production-файл; discovery с двумя соединениями, candidate pagination/detail, item decisions, set creation, duplicate conversion и каскадное удаление сохранены.
-- Фаза 18AM: `MediaSetAIRepository`, удалены 2 обращения и 1 production-файл; semantic grouping/title/reason/score остались в application service, profile loading и candidate transaction перенесены в repository boundary.
-
-## Очередь
-
-### Волна D. Нарушения application/presentation слоёв
-
-1. **Фаза 18AN:** `media_set_actions.py`, 1 connection point. Persistence переносится в repository boundary. Ожидаемый baseline: 11 обращений в 6 файлах.
-2. `media_set_duplicate_actions.py` отдельным срезом.
-3. SQL и DB access из `handlers/quality_set_ai.py`, `handlers/quality_sets.py` и `handlers/reference_comparison.py` переносится в application/domain services.
-
-Handler должен остаться Telegram-адаптером и не владеть SQL.
-
-### Волна E. Compatibility cleanup
-
-Compatibility-фасады переводятся после штатных модулей. Если фактических импортов больше нет, фасад удаляется отдельным безопасным PR.
-
-## Команды
-
-Полный отчёт с актуальными строками:
-
-```bash
-python scripts/inventory_private_pool.py
-```
-
-JSON-отчёт:
-
-```bash
-python scripts/inventory_private_pool.py --json
-```
-
-Проверка соответствия baseline:
+## Контроль
 
 ```bash
 python scripts/inventory_private_pool.py --check-baseline
 ```
 
-Любое изменение известного набора должно происходить в отдельной фазе вместе с обновлением baseline, дневника и regression-тестов.
+Фаза 18 закрыта. Дальнейшие задачи относятся к общему P2/P3, а не к private-pool debt.
