@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2AN: media save boundaries
+
+- Save failures are isolated and recorded.
+- Cancellation propagates unchanged.
+- Unresolved broad baseline decreased from 6 to 4.
+
 ### P2AM: publication stability boundaries
 
 - Inbox capture failures no longer block the main Telegram handler.

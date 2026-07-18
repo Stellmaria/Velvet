@@ -37,7 +37,7 @@ async def save_media_from_message(
             actor_id=actor_id,
             spoiler=spoiler,
         )
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: report-media-save-failure
         logger.exception("Media save failed")
         await audit_logger.error(
             "Ошибка сохранения медиа",
@@ -225,7 +225,7 @@ async def _place_in_topic(
             archive_thread_id=character.archive_thread_id,
             archive_message_id=archived_message.message_id,
         )
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: isolate-media-topic-delivery
         logger.exception("Failed to send media to archive topic")
         await audit_logger.error(
             "Ошибка отправки медиа в ветку",

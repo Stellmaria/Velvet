@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **67** в **41** файлах;
-- approved boundaries: **61**;
-- unresolved broad exceptions: **6** в **3** файлах;
+- approved boundaries: **63**;
+- unresolved broad exceptions: **4** в **2** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -75,16 +75,17 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/public_notifications.py:60` `run_public_notification_worker`: isolate-public-notification-worker-iteration.
 - `velvet_bot/publication_inbox_middleware.py:60` `_capture`: best-effort-publication-inbox-capture.
 - `velvet_bot/publication_worker.py:65` `run_publication_worker`: isolate-publication-worker-iteration.
+- `velvet_bot/services/media_save.py:40` `save_media_from_message`: report-media-save-failure.
+- `velvet_bot/services/media_save.py:228` `_place_in_topic`: isolate-media-topic-delivery.
 
 ## Unresolved broad exceptions by file
 
-- `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
 
 ## Следующий срез
 
-- `velvet_bot/services/media_save.py`.
+- `velvet_bot/services/system_health.py`.
 
 ## Правило обновления
 
