@@ -1,0 +1,67 @@
+# Сессия: Фаза 18X — ErrorIncidentRepository и Database.acquire
+
+- Дата: 2026-07-18
+- ID: `2026-07-18-phase18x-error-center-acquire`
+- Линия/фаза: основное развитие Velvet Archive, Фаза 18X
+- Статус: частично
+- Ветка: `agent/phase18x-error-center-acquire`
+- Базовый commit: `3880e119589543ead3d70f11e598f6cbee1c2562`
+
+## Перед началом
+
+### Цель
+
+Перевести восемь connection point `ErrorIncidentRepository` в `velvet_bot/error_center.py` с приватного `Database._require_pool()` на публичный `Database.acquire()` без изменения error lifecycle и Telegram presentation.
+
+### Исходный контекст
+
+- baseline до работы: 96 внешних обращений в 24 production-файлах;
+- целевой модуль: `velvet_bot/error_center.py`, 8 connection points;
+- методы: record, set log message, acknowledge, acknowledge all, unacknowledged list/counts, digest due и digest sent.
+
+### Планируемый объём
+
+1. Перевести все восемь repository connection point на `Database.acquire()`.
+2. Сохранить transaction/locking, incident reopen, acknowledgment, pagination clamps и digest cooldown.
+3. Добавить source/runtime regression-тесты.
+4. Уменьшить baseline до 88 обращений в 23 файлах и обновить проектные документы.
+
+### Критерии готовности
+
+- `ErrorIncidentRepository` не содержит `._require_pool()`;
+- восемь методов используют публичную границу;
+- SQL, mapping и транзакции сохранены;
+- baseline равен 88/23;
+- полный PR CI зелёный.
+
+### Риски и ограничения
+
+- logging handler и Telegram delivery не изменяются;
+- схема и миграции не изменяются;
+- Heavy Runtime ТЗ не смешивается с Фазой 18.
+
+## После завершения
+
+### Фактически сделано
+
+Ожидается реализация.
+
+### Миграции и совместимость
+
+Ожидается реализация.
+
+### Проверки
+
+Ожидается реализация и CI.
+
+### PR и commit
+
+Ожидается открытие PR.
+
+### Незавершённое
+
+Реализация и проверки.
+
+### Следующий шаг
+
+После 18X перейти к Ollama/resilient AI repositories отдельными срезами.
