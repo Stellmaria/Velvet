@@ -92,7 +92,7 @@ class BackupService(BaseBackupService):
         database: Database,
         backup_id: int,
     ) -> tuple[str, ...]:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             value = await connection.fetchval(
                 "SELECT expected_tables FROM backup_runs WHERE id = $1::BIGINT",
                 int(backup_id),
@@ -170,7 +170,7 @@ class BackupService(BaseBackupService):
         timezone_name: str,
         backup_kinds: tuple[str, ...],
     ) -> bool:
-        async with database._require_pool().acquire() as connection:
+        async with database.acquire() as connection:
             return bool(
                 await connection.fetchval(
                     """
