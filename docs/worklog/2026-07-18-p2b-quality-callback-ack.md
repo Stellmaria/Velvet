@@ -42,7 +42,9 @@ Mutation/query остаётся до acknowledgment, чтобы сохранит
 
 - пять callbacks переведены из late в guarded;
 - callback late/missing baseline уменьшен с 5 до 0;
-- общий callback count и payload не изменены;
+- общий callback count остался 97;
+- guarded baseline увеличился с 20 до 25, delegated остался 4;
+- alert text, show_alert и repository results сохранены;
 - добавлены source-order tests;
 - inventory, status, memory и changelog синхронизированы.
 
@@ -52,11 +54,11 @@ Mutation/query остаётся до acknowledgment, чтобы сохранит
 
 ### Проверки
 
-Требуются unit tests, Docker build и project notes contract на финальном head.
+Финальный head должен пройти unit tests, Docker build и project notes contract.
 
 ### PR и commit
 
-PR создаётся после выполнения подготовительного runner; номер фиксируется финальным connector-коммитом.
+PR #148. Финальный merge выполняется после зелёного CI.
 
 ### Незавершённое
 
