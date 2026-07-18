@@ -250,7 +250,7 @@ async def ingest_channel_post(
     message: Message,
 ) -> ParsedChannelPost:
     parsed = parse_channel_post(message)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         async with connection.transaction():
             await connection.execute(
                 """
@@ -402,7 +402,7 @@ async def get_channel_overview(
     database: Database,
     channel_id: int,
 ) -> ChannelOverview:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -478,7 +478,7 @@ async def list_hashtag_stats(
     limit: int = 20,
     prompt_only: bool = False,
 ) -> list[HashtagStat]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT
@@ -521,7 +521,7 @@ async def get_hashtag_stat(
     hashtag: str,
 ) -> HashtagStat | None:
     normalized = normalize_hashtag(hashtag)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -560,7 +560,7 @@ async def list_character_usage_stats(
     *,
     limit: int = 20,
 ) -> list[CharacterUsageStat]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT
@@ -606,7 +606,7 @@ async def get_prompt_structure_stats(
     database: Database,
     channel_id: int,
 ) -> PromptStructureStats:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         row = await connection.fetchrow(
             """
             SELECT
@@ -649,7 +649,7 @@ async def list_media_type_stats(
     database: Database,
     channel_id: int,
 ) -> list[NamedCount]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT media_type AS name, COUNT(*) AS count
@@ -669,7 +669,7 @@ async def list_link_domain_stats(
     *,
     limit: int = 10,
 ) -> list[NamedCount]:
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT l.domain AS name, COUNT(*) AS count
