@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### P2AC: reference comparison audit
+
+- Reference-comparison failures now create a real Telegram audit incident with character, reference, result, and user context.
+- User-facing failure status remains available when the audit logger is disabled.
+- Cancellation continues to propagate without creating a false incident.
+- Unresolved broad baseline decreased from 21 to 20.
+
 ### P2AB: quality sets safe edit
 
 - Narrowed quality-set message editing to TelegramBadRequest.

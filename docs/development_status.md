@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2AB: quality-set safe edit handles only TelegramBadRequest; raw broad baseline 69 → 68 and unresolved 22 → 21.
+3. P2AC: reference-comparison failures create a real audit incident; approved 47 → 48 and unresolved 21 → 20.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.
