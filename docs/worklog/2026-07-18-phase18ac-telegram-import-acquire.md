@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18ac-telegram-import-acquire`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AC
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18ac-telegram-import-acquire`
 - Базовый commit: `d3a3633aad512a44ee19f74711099eb9826a8480`
 
@@ -65,18 +65,20 @@
 
 - точный production diff подтверждает четыре замены private boundary на public boundary;
 - локальная проверка сгенерированной копии: 604 строки, 0 private calls, 4 public calls;
-- постоянные unit/regression tests добавлены;
-- требуется нормальный PR CI после connector-коммита, потому что workflow-generated head получил GitHub `action_required`.
+- PR CI head `5c95c8bba70365c96b12727acf1a828220ecb54f`:
+  - `tests #659`, run `29641586886`: успешно;
+  - `docker build #244`, run `29641586888`: успешно;
+  - `project notes contract #119`, run `29641586894`: успешно.
 
 ### PR и commit
 
 - PR: #131 `Фаза 18AC: Telegram import persistence и Database.acquire`;
 - production commit из self-cleaning workflow: `ed3ee9bfcc2e33909eb7df275d6f39203b7265bd`;
-- synchronized baseline head до connector-коммита: `720fe1f0109052a470078a83ba638bcc9a34ee3e`.
+- проверенный CI head до финального worklog: `5c95c8bba70365c96b12727acf1a828220ecb54f`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+В рамках Фазы 18AC незавершённых изменений нет. Живая Telegram-проверка не требуется, потому что parser, handler и presentation не изменялись.
 
 ### Следующий шаг
 
