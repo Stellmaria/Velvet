@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### P2AI: archive preview fallback
+
+- Full-quality archive preview failures now have a verified document fallback boundary.
+- New cache records are reused while legacy thumbnail records rebuild themselves.
+- Oversized documents skip Bot API download and cancellation propagates unchanged.
+- Unresolved broad baseline decreased from 14 to 13.
+
 ### P2AH: visual analysis job boundary
 
 - Palette/composition AI job failure compensation and cancellation behavior are verified.

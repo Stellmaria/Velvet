@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2AH: palette/composition AI jobs compensate failures without reopening ready jobs on delivery errors; approved 52 → 53 and unresolved 15 → 14.
+3. P2AI: archive full-quality preview failures fall back safely while cache and cancellation contracts remain intact; approved 53 → 54 and unresolved 14 → 13.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.
