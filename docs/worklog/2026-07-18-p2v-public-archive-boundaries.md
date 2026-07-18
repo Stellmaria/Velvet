@@ -36,10 +36,10 @@ Preview fallback сохраняет документ; DB failure даёт user-f
 Tests, Docker build и project notes contract.
 
 ### PR и commit
-PR создаётся после генерации inventory.
+PR #172; итоговый merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 28 unresolved broad exceptions.
 
 ### Следующий шаг
-Первый target из актуального AST inventory.
+`velvet_bot/handlers/public_manager.py`.
