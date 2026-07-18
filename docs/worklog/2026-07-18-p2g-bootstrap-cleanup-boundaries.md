@@ -33,10 +33,10 @@ Fatal-reporting catches `run_application()` не входят в этот сре
 Миграции и lifecycle API не менялись.
 
 ### Проверки
-Unit tests, Docker build и project notes contract.
+Финальный head проходит unit tests, Docker build и project notes contract.
 
 ### PR и commit
-PR создаётся после runner.
+PR #155. Merge после зелёного CI.
 
 ### Незавершённое
 58 unresolved broad exceptions.
