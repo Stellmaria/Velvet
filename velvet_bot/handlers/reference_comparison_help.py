@@ -250,7 +250,7 @@ async def handle_reference_comparison_reply(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: compensate-reference-comparison-form-job
         logger.exception(
             "Reference comparison form failed character_id=%s reference_id=%s job_id=%s",
             page.character.id,

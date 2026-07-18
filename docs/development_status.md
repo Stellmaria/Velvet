@@ -202,7 +202,7 @@ Private pool inventory:
 
 1. P2A: stability inventory создан; multi-story callbacks подтверждаются до тяжёлого рендера.
 2. P2B: late/missing callback baseline закрыт 0; quality retry/reset/enqueue подтверждаются до reload UI.
-3. P2AC: reference-comparison failures create a real audit incident; approved 47 → 48 and unresolved 21 → 20.
+3. P2AD: reference-form AI jobs compensate failures and preserve cancellation; approved 48 → 49 and unresolved 20 → 19.
 4. Создать staging-бота и staging-базу.
 5. Провести независимый backup/restore drill.
 6. Добавить encrypted offsite backup.
