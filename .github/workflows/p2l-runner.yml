@@ -1,0 +1,54 @@
+name: p2l runner
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/p2l-discussion-middleware-boundary'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2l-discussion-middleware-boundary
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python scripts/update_p2_stability_inventory.py --label p2l-discussion-middleware-boundary --schema-version 14
+      - name: Update project notes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          replacement = "3. P2L: discussion middleware boundary and persistent inventory generator completed; unresolved broad baseline 52 → 51."
+          for name in ("development_status.md", "project_memory.md"):
+              path = Path("docs") / name
+              lines = path.read_text(encoding="utf-8").splitlines()
+              found = False
+              for index, line in enumerate(lines):
+                  if line.startswith("3. P2K:"):
+                      lines[index] = replacement
+                      found = True
+                      break
+              if not found:
+                  raise SystemExit(name)
+              path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          path = Path("CHANGELOG.md")
+          text = path.read_text(encoding="utf-8")
+          entry = "\n### P2L: discussion middleware boundary\n\n- Added a persistent P2 inventory generator.\n- Unresolved broad baseline decreased from 52 to 51.\n"
+          if entry.strip() not in text:
+              text = text.replace("## [Unreleased]\n", "## [Unreleased]\n" + entry, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          rm .github/workflows/p2l-runner.yml
+          git add -A
+          git commit -m "P2L update"
+          git push origin HEAD:agent/p2l-discussion-middleware-boundary
