@@ -42,24 +42,34 @@
 
 ### Фактически сделано
 
-Ожидается реализация.
+- оба connection point `ReliableMediaAIRepository.claim_targets()` переведены на `Database.acquire()`;
+- сохранены переоткрытие старых JSON-ошибок, parent claim и обновление `analysis_version = 2` для выбранных targets;
+- добавлены source/runtime regression-тесты для успешного и пустого claim;
+- baseline уменьшен с 88/23 до 86/22;
+- inventory, project memory, development status и changelog обновлены.
 
 ### Миграции и совместимость
 
-Ожидается реализация.
+- миграции и SQL не изменялись;
+- Ollama HTTP request, schema/json fallback и model lifecycle не изменялись;
+- публичные Python-контракты не изменялись.
 
 ### Проверки
 
-Ожидается реализация и CI.
+- production commit `1bc7aed23985a98086724c997d03addd91168f56`: diff содержит только две замены private boundary на public boundary;
+- regression-тесты добавлены в `tests/test_phase18y_ollama_vision_boundary.py`;
+- полный PR CI ожидается.
 
 ### PR и commit
 
-Ожидается открытие PR.
+- production commit: `1bc7aed23985a98086724c997d03addd91168f56`;
+- PR будет записан после открытия.
 
 ### Незавершённое
 
-Реализация и проверки.
+- подтвердить tests, Docker и project notes contract;
+- завершить дневник и слить PR.
 
 ### Следующий шаг
 
-Фаза 18Z: resilient AI vision repository.
+Фаза 18Z: перевести два connection point resilient AI vision repository в `resilient_ai_vision.py` на `Database.acquire()`.
