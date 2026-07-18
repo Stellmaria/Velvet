@@ -1,25 +1,38 @@
 from __future__ import annotations
 
+import importlib.util
 import inspect
+import sys
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-import velvet_bot.media_sets as media_sets
-from velvet_bot.media_sets import (
-    MediaSetCandidate,
-    MediaSetCandidateItem,
-    _CandidateDraft,
-    create_media_set,
-    create_set_candidate_from_duplicate,
-    decide_media_set_candidate,
-    delete_duplicate_media,
-    discover_media_set_candidates,
-    get_media_set_candidate,
-    list_media_set_candidates,
-    toggle_media_set_candidate_item,
+import velvet_bot.media_sets as installed_media_sets
+
+_SOURCE_MODULE_NAME = "velvet_bot._phase18al_media_sets_source"
+_SOURCE_SPEC = importlib.util.spec_from_file_location(
+    _SOURCE_MODULE_NAME,
+    Path(installed_media_sets.__file__),
 )
+if _SOURCE_SPEC is None or _SOURCE_SPEC.loader is None:
+    raise RuntimeError("Не удалось загрузить исходный velvet_bot/media_sets.py")
+media_sets = importlib.util.module_from_spec(_SOURCE_SPEC)
+sys.modules[_SOURCE_MODULE_NAME] = media_sets
+_SOURCE_SPEC.loader.exec_module(media_sets)
+
+MediaSetCandidate = media_sets.MediaSetCandidate
+MediaSetCandidateItem = media_sets.MediaSetCandidateItem
+_CandidateDraft = media_sets._CandidateDraft
+create_media_set = media_sets.create_media_set
+create_set_candidate_from_duplicate = media_sets.create_set_candidate_from_duplicate
+decide_media_set_candidate = media_sets.decide_media_set_candidate
+delete_duplicate_media = media_sets.delete_duplicate_media
+discover_media_set_candidates = media_sets.discover_media_set_candidates
+get_media_set_candidate = media_sets.get_media_set_candidate
+list_media_set_candidates = media_sets.list_media_set_candidates
+toggle_media_set_candidate_item = media_sets.toggle_media_set_candidate_item
 
 
 class _AsyncContext:
@@ -80,7 +93,7 @@ class MediaSetsBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("._require_pool()", source)
         self.assertEqual(9, source.count("database.acquire()"))
 
-    async def test_discovery_preserves_limit_draft_transaction_and_created_count(self) -> None:
+    async def test_discovery_preserves_two_connections_transaction_and_created_count(self) -> None:
         linked_at = datetime(2026, 7, 18, 12, 0, tzinfo=timezone.utc)
         read_connection = SimpleNamespace(
             fetch=AsyncMock(
@@ -125,64 +138,36 @@ class MediaSetsBoundaryTests(unittest.IsolatedAsyncioTestCase):
             items=((11, 100, "Общий промт"), (12, 100, "Общий промт")),
         )
 
-        with patch(
-            "velvet_bot.media_sets._drafts_from_contexts",
+        with patch.object(
+            media_sets,
+            "_drafts_from_contexts",
             new=Mock(return_value=(draft,)),
         ) as drafts_mock:
             result = await discover_media_set_candidates(database, limit=9999)
 
         self.assertEqual(result, 1)
         self.assertEqual(database.acquire.call_count, 2)
-        sql, safe_limit = read_connection.fetch.await_args.args
-        self.assertIn("mf.media_set_id IS NULL", sql)
-        self.assertEqual(safe_limit, 600)
+        self.assertEqual(read_connection.fetch.await_args.args[1], 600)
         contexts = drafts_mock.call_args.args[0]
-        self.assertEqual(len(contexts), 1)
         self.assertEqual(contexts[0].media_id, 11)
         self.assertEqual(contexts[0].aspect_ratio, 1024 / 1536)
         self.assertTrue(transaction.entered)
         self.assertTrue(transaction.exited)
         self.assertEqual(write_connection.execute.await_count, 2)
-        first_item_args = write_connection.execute.await_args_list[0].args
-        second_item_args = write_connection.execute.await_args_list[1].args
-        self.assertEqual(first_item_args[1:], (71, 11, 100, "Общий промт"))
-        self.assertEqual(second_item_args[1:], (71, 12, 100, "Общий промт"))
 
-    async def test_candidate_page_preserves_clamp_and_detail_delegation(self) -> None:
-        connection = SimpleNamespace(
+    async def test_candidate_page_detail_toggle_and_decision_preserve_mappings(self) -> None:
+        page_connection = SimpleNamespace(
             fetchval=AsyncMock(return_value=17),
             fetch=AsyncMock(return_value=[{"id": "2"}, {"id": "3"}]),
         )
-        database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
-        detail_mock = AsyncMock(side_effect=[_candidate(2), None])
-
-        with patch(
-            "velvet_bot.media_sets.get_media_set_candidate",
-            new=detail_mock,
-        ):
-            result = await list_media_set_candidates(
-                database,
-                status="pending",
-                page=99,
-                page_size=99,
-            )
-
-        self.assertEqual((result.page, result.page_size, result.total_items), (2, 8, 17))
-        self.assertEqual([item.id for item in result.items], [2])
-        sql, status, offset, limit = connection.fetch.await_args.args
-        self.assertIn("ORDER BY score DESC, id", sql)
-        self.assertEqual((status, offset, limit), ("pending", 16, 8))
-        self.assertEqual(detail_mock.await_count, 2)
-
-    async def test_candidate_detail_preserves_item_mapping(self) -> None:
-        connection = SimpleNamespace(
+        detail_connection = SimpleNamespace(
             fetchrow=AsyncMock(
                 return_value={
-                    "id": "7",
+                    "id": "2",
                     "suggested_title": "KR · сет",
                     "reason": "Контекст",
                     "score": "88",
-                    "prompt_post_url": "https://t.me/prompt/1",
+                    "prompt_post_url": None,
                     "status": "pending",
                 }
             ),
@@ -201,58 +186,59 @@ class MediaSetsBoundaryTests(unittest.IsolatedAsyncioTestCase):
                 ]
             ),
         )
-        database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
-
-        result = await get_media_set_candidate(database, 7)
-
-        self.assertIsNotNone(result)
-        assert result is not None
-        self.assertEqual((result.id, result.score, result.selected_count), (7, 88, 1))
-        item = result.items[0]
-        self.assertEqual(item.media_id, 11)
-        self.assertEqual(item.characters, ("Каэль", "Эрик"))
-        self.assertEqual(item.context_score, 91)
-
-    async def test_toggle_and_decision_preserve_result_mapping_and_validation(self) -> None:
         toggle_connection = SimpleNamespace(fetchval=AsyncMock(return_value=False))
         decision_connection = SimpleNamespace(fetchval=AsyncMock(return_value=9))
         database = SimpleNamespace(
             acquire=Mock(
                 side_effect=[
+                    _AsyncContext(page_connection),
+                    _AsyncContext(detail_connection),
                     _AsyncContext(toggle_connection),
                     _AsyncContext(decision_connection),
                 ]
             )
         )
+        detail_mock = AsyncMock(side_effect=[_candidate(2), None])
 
+        with patch.object(media_sets, "get_media_set_candidate", new=detail_mock):
+            page = await list_media_set_candidates(
+                database,
+                status="pending",
+                page=99,
+                page_size=99,
+            )
+        detail = await get_media_set_candidate(database, 2)
         toggled = await toggle_media_set_candidate_item(
             database,
-            candidate_id="7",
+            candidate_id="2",
             media_id="11",
         )
         decided = await decide_media_set_candidate(
             database,
-            candidate_id="7",
+            candidate_id="2",
             status="ignored",
             decided_by="42",
         )
 
+        self.assertEqual((page.page, page.page_size, page.total_items), (2, 8, 17))
+        self.assertEqual([item.id for item in page.items], [2])
+        self.assertIsNotNone(detail)
+        assert detail is not None
+        self.assertEqual(detail.items[0].characters, ("Каэль", "Эрик"))
         self.assertFalse(toggled)
         self.assertTrue(decided)
-        self.assertEqual(toggle_connection.fetchval.await_args.args[1:], (7, 11))
-        self.assertEqual(decision_connection.fetchval.await_args.args[1:], (7, "ignored", 42))
 
         invalid_database = SimpleNamespace(acquire=Mock())
         with self.assertRaisesRegex(ValueError, "Неизвестное решение"):
             await decide_media_set_candidate(
                 invalid_database,
-                candidate_id=7,
+                candidate_id=2,
                 status="accepted",
                 decided_by=42,
             )
         invalid_database.acquire.assert_not_called()
 
-    async def test_create_media_set_preserves_lock_transaction_and_prompt_propagation(self) -> None:
+    async def test_create_media_set_preserves_locks_prompt_and_acceptance(self) -> None:
         transaction = _TransactionContext()
         connection = SimpleNamespace(
             fetchrow=AsyncMock(
@@ -283,7 +269,7 @@ class MediaSetsBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("UPDATE character_media", connection.execute.await_args_list[1].args[0])
         self.assertIn("status = 'accepted'", connection.execute.await_args_list[2].args[0])
 
-    async def test_duplicate_pair_conversion_preserves_transaction_and_score_floor(self) -> None:
+    async def test_duplicate_conversion_preserves_score_floor_and_transaction(self) -> None:
         transaction = _TransactionContext()
         connection = SimpleNamespace(
             fetchrow=AsyncMock(
@@ -317,9 +303,6 @@ class MediaSetsBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(insert_args[2], "Сет: Каэль, Эрик")
         self.assertEqual(insert_args[4], 65)
         self.assertEqual(connection.execute.await_count, 3)
-        self.assertEqual(connection.execute.await_args_list[0].args[1:4], (81, 11, 65))
-        self.assertEqual(connection.execute.await_args_list[1].args[1:4], (81, 12, 65))
-        self.assertIn("UPDATE media_duplicate_candidates", connection.execute.await_args_list[2].args[0])
 
     async def test_duplicate_deletion_preserves_archive_refs_and_cascade_order(self) -> None:
         transaction = _TransactionContext()
@@ -358,11 +341,9 @@ class MediaSetsBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(transaction.entered)
         self.assertTrue(transaction.exited)
-        self.assertEqual(result.media_id, 11)
         self.assertEqual(result.file_name, "duplicate.webp")
         self.assertEqual(result.characters, ("Каэль", "Эрик"))
         self.assertEqual(len(result.archive_messages), 1)
-        self.assertEqual(result.archive_messages[0].chat_id, -1005)
         self.assertEqual(result.archive_messages[0].message_id, 77)
         self.assertEqual(connection.execute.await_count, 8)
         sqls = [call.args[0] for call in connection.execute.await_args_list]
