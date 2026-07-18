@@ -157,7 +157,7 @@ Private pool inventory:
 - baseline контролируется AST-тестом и SHA-256 identity методов;
 - новые неучтённые обращения блокируются CI.
 
-Следующий срез: **18AN, repository boundary для `media_set_actions.py`**, 1 connection point. Ожидаемый baseline: 11 обращений в 6 файлах.
+Фаза 18 закрыта полностью; следующий архитектурный долг ведётся отдельной P2 stability inventory.
 
 ## Фаза 19: Velvet AI
 
@@ -200,14 +200,13 @@ Private pool inventory:
 
 ## Текущий P2-план
 
-1. Фаза 18AN: вынести persistence из `media_set_actions.py` в repository boundary.
-2. Перенести остальные application/presentation DB access отдельными архитектурными срезами.
-3. Аудит долгих callback-сценариев.
-4. Сократить широкие `except Exception`.
-5. Создать staging-бота и staging-базу.
-6. Провести независимый backup/restore drill.
-7. Добавить encrypted offsite backup.
-8. Добавить AI duration/error/cost metrics.
+1. P2A: измеримый аудит callback acknowledgment и широких `except Exception`.
+2. Исправлять risky callbacks отдельными поведенческими срезами.
+3. Сокращать широкие исключения по доменам без потери incident reporting.
+4. Создать staging-бота и staging-базу.
+5. Провести независимый backup/restore drill.
+6. Добавить encrypted offsite backup.
+7. Добавить AI duration/error/cost metrics.
 
 ## Правила дальнейшей разработки
 

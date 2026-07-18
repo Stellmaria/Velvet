@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2A: stability inventory
+
+- Добавлена AST-инвентаризация callback acknowledgment и широких исключений.
+- Удалены устаревшие ссылки на незавершённую Фазу 18AN из текущего плана.
+
 ### Added
 
 - owner-only контур нанесения водяного знака через локальный Krita bridge;
