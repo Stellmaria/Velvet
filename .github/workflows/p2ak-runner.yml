@@ -1,0 +1,35 @@
+name: p2ak runner
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/p2ak-public-notification-boundaries'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Apply P2AK
+        run: |
+          python .github/scripts/p2ak_docs.py
+          python scripts/update_p2_stability_inventory.py --label p2ak-public-notification-boundaries --schema-version 39
+          rm .github/scripts/p2ak_docs.py
+          rm .github/workflows/p2ak-runner.yml
+      - name: Commit generated result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Complete P2AK notification boundaries"
+          git push origin HEAD:${{ github.head_ref }}
