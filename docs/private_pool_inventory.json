@@ -1,68 +1,8 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "643c97b5d58c88d5bae29646ac31c9957696c60c",
-  "total_external_findings": 12,
-  "total_files": 7,
-  "next_slice": {
-    "phase": "18AN",
-    "target": "velvet_bot/media_set_actions.py"
-  },
-  "files": [
-    {
-      "path": "velvet_bot/discussion_dashboard_compat.py",
-      "count": 1,
-      "identity_sha256": "e78b103be7f9c5ee683a5bbfd8a3356fe97996154226352e5764169177e9afad",
-      "categories": [
-        "compatibility_facade"
-      ]
-    },
-    {
-      "path": "velvet_bot/handlers/quality_set_ai.py",
-      "count": 4,
-      "identity_sha256": "4ce6c7d9396d92565d2efd7403d0623247cc8dbc52caf9f8a97a3e1338141bf9",
-      "categories": [
-        "presentation_direct_database"
-      ]
-    },
-    {
-      "path": "velvet_bot/handlers/quality_sets.py",
-      "count": 2,
-      "identity_sha256": "23b8796eb93b50b88c5828b81494c7ea2e143e236c772f56772185d115442752",
-      "categories": [
-        "presentation_direct_database"
-      ]
-    },
-    {
-      "path": "velvet_bot/handlers/reference_comparison.py",
-      "count": 1,
-      "identity_sha256": "6dc4db6c01868667fe64d553b4a970601b698b04e0349537c239399d5c2a4a95",
-      "categories": [
-        "presentation_direct_database"
-      ]
-    },
-    {
-      "path": "velvet_bot/media_set_actions.py",
-      "count": 1,
-      "identity_sha256": "f4bafcadedfec51a77fb55ee2718edad1e1dc4e4ced6af2c194cf14f937e5773",
-      "categories": [
-        "application_direct_database"
-      ]
-    },
-    {
-      "path": "velvet_bot/media_set_duplicate_actions.py",
-      "count": 1,
-      "identity_sha256": "f36767ab3230344d45bab5849ed1c0ed47186a34f423068815002b45e0efcdd2",
-      "categories": [
-        "application_direct_database"
-      ]
-    },
-    {
-      "path": "velvet_bot/quality_set_audit_compat.py",
-      "count": 2,
-      "identity_sha256": "046169312ebe3b0a6d5ede9834b21c55c636db4f0fe4595e27cbd12bd02379f3",
-      "categories": [
-        "compatibility_facade"
-      ]
-    }
-  ]
+  "generated_from_commit": "phase18-completion",
+  "total_external_findings": 0,
+  "total_files": 0,
+  "next_slice": null,
+  "files": []
 }

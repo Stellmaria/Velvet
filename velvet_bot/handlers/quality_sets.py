@@ -8,6 +8,10 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from velvet_bot.ai_vision import MediaAIRepository
 from velvet_bot.database import Database
+from velvet_bot.quality_sets_repository import (
+    _latest_ai_error,
+    _retire_weak_fallback_candidates,
+)
 from velvet_bot.media_sets import (
     MediaSetCandidate,
     create_media_set,
@@ -56,46 +60,6 @@ async def _safe_edit(
     except Exception as error:
         if "message is not modified" not in str(error).casefold():
             raise
-
-
-async def _retire_weak_fallback_candidates(database: Database) -> None:
-    """Hide filename/time guesses once the archive is queued for AI analysis."""
-    async with database._require_pool().acquire() as connection:
-        await connection.execute(
-            """
-            UPDATE media_set_candidates
-            SET status = 'ignored',
-                decided_at = COALESCE(decided_at, NOW()),
-                updated_at = NOW(),
-                reason = CASE
-                    WHEN reason LIKE '%Скрыто после включения Qwen.%'
-                        THEN reason
-                    ELSE reason || ' Скрыто после включения Qwen.'
-                END
-            WHERE status = 'pending'
-              AND (
-                    candidate_key LIKE 'filename:%'
-                    OR candidate_key LIKE 'context:%'
-                  )
-            """
-        )
-
-
-async def _latest_ai_error(database: Database) -> str | None:
-    async with database._require_pool().acquire() as connection:
-        value = await connection.fetchval(
-            """
-            SELECT error_message
-            FROM media_ai_profiles
-            WHERE status IN ('error', 'skipped')
-              AND NULLIF(BTRIM(error_message), '') IS NOT NULL
-            ORDER BY updated_at DESC, media_id DESC
-            LIMIT 1
-            """
-        )
-    if value is None:
-        return None
-    return " ".join(str(value).split())[:600]
 
 
 def _candidate_text(candidate: MediaSetCandidate) -> str:

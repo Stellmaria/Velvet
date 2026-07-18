@@ -12,7 +12,7 @@ _ORIGINAL_LIST_MEDIA_ISSUES = quality_audit.list_media_issues
 
 async def get_quality_summary_with_sets(database: Database) -> QualitySummary:
     summary = await _ORIGINAL_GET_QUALITY_SUMMARY(database)
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         without_prompt = int(
             await connection.fetchval(
                 """
@@ -47,7 +47,7 @@ async def list_media_issues_with_sets(
             page_size=page_size,
         )
 
-    async with database._require_pool().acquire() as connection:
+    async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
                 """

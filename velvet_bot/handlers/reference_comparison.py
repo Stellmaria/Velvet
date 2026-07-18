@@ -22,6 +22,7 @@ from velvet_bot.handlers.reference_albums import parse_reference_selector
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.reference_catalog import CharacterReference, list_character_references
 from velvet_bot.reference_comparison import ReferenceComparisonClient
+from velvet_bot.reference_comparison_repository import _save_report
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -190,53 +191,6 @@ def _format_report(
         ]
     )
     return "\n".join(lines)[:4090]
-
-
-async def _save_report(
-    database: Database,
-    *,
-    character_id: int,
-    reference_id: int,
-    result_file_id: str,
-    result_file_unique_id: str | None,
-    provider: str,
-    model: str,
-    report: dict[str, object],
-    created_by: int | None,
-) -> int:
-    async with database._require_pool().acquire() as connection:
-        value = await connection.fetchval(
-            """
-            INSERT INTO reference_comparison_reports (
-                character_id, reference_id, result_file_id, result_file_unique_id,
-                provider, model, overall_score, face_score, hair_score, body_score,
-                unique_traits_score, confidence, verdict, report, created_by
-            )
-            VALUES (
-                $1::BIGINT, $2::BIGINT, $3::TEXT, $4::TEXT,
-                $5::VARCHAR, $6::VARCHAR, $7::SMALLINT, $8::SMALLINT,
-                $9::SMALLINT, $10::SMALLINT, $11::SMALLINT, $12::SMALLINT,
-                $13::VARCHAR, $14::JSONB, $15::BIGINT
-            )
-            RETURNING id
-            """,
-            int(character_id),
-            int(reference_id),
-            result_file_id,
-            result_file_unique_id,
-            provider[:64],
-            model[:160],
-            int(report["overall_score"]),
-            int(report["face_score"]),
-            int(report["hair_score"]),
-            int(report["body_score"]),
-            int(report["unique_traits_score"]),
-            int(report["confidence"]),
-            str(report["verdict"]),
-            json.dumps(report, ensure_ascii=False),
-            created_by,
-        )
-    return int(value)
 
 
 @router.message(Command("compare_ref", "compare_reference"))

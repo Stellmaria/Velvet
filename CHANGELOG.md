@@ -30,6 +30,8 @@
 
 ### Changed
 
+- Фаза 18 завершена: private-pool baseline уменьшен с 130/35 до 0/0; media-set persistence вынесен в repositories, SQL удалён из AI/set/reference handlers, compatibility dashboard делегирует каноническому query.
+
 - watermark worker обрабатывает только текущую revision; исторические pending revisions остаются историей, а не лишней очередью;
 - оригинал watermark-сценария никогда не перезаписывается, preview и финальный PNG создаются отдельными артефактами;
 - Krita bridge выключен по умолчанию до живой Windows-проверки;
