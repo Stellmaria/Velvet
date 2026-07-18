@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from_commit": "521b8cc9d4af6f2621e596054433a471c5030268",
-  "total_external_findings": 28,
-  "total_files": 10,
+  "generated_from_commit": "398f1d24399b2f7ddb155d471c8f4247c444fb4d",
+  "total_external_findings": 23,
+  "total_files": 9,
   "next_slice": {
-    "phase": "18AK",
-    "target": "velvet_bot/quality_audit.py"
+    "phase": "18AL",
+    "target": "velvet_bot/media_sets.py"
   },
   "files": [
     {
@@ -68,14 +68,6 @@
       "path": "velvet_bot/media_sets.py",
       "count": 9,
       "identity_sha256": "8325c411f50bd4d76a5f1dae895333d54a950c1057fff50ad565d0916eda6376",
-      "categories": [
-        "legacy_query_module"
-      ]
-    },
-    {
-      "path": "velvet_bot/quality_audit.py",
-      "count": 5,
-      "identity_sha256": "ee169f6ea6ec23e51a5503513d5d5aa857dd2b1dcae194940516fd0459a62fa4",
       "categories": [
         "legacy_query_module"
       ]

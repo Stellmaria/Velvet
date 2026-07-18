@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AJ, channel analytics.
+Последний завершённый срез: Фаза 18AK, quality audit.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 28 внешних обращений к `Database._require_pool()`;
-- 10 production-файлов;
+- 23 внешних обращения к `Database._require_pool()`;
+- 9 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -20,12 +20,12 @@ AST-сканирование production package `velvet_bot/` фиксирует
 
 | Категория | Обращений | Подход |
 |---|---:|---|
-| Legacy query-модули | 14 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
+| Legacy query-модули | 9 | закрыть `media_sets.py` отдельным последним срезом волны |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 28.
+Всего: 23.
 
 ## Завершённые погашения baseline
 
@@ -52,18 +52,17 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18AH: analytics dashboard, удалены 8 обращений и 1 production-файл; period filters, overview/prompt aggregates, hashtag/character/participant pagination, source lists и discussion fallback сохранены.
 - Фаза 18AI: analytics review, удалены 9 обращений и 1 production-файл; review tokens, page clamps, detail mapping, ручная и автоматическая классификация, audit trail и пакетный reclassify сохранены.
 - Фаза 18AJ: channel analytics, удалены 8 обращений и 1 production-файл; ingest transaction, post/hashtag/link replacement, overview aggregates, stat mappings и limit clamps сохранены.
+- Фаза 18AK: quality audit, удалены 5 обращений и 1 production-файл; summary counters, dynamic pagination placeholders, media offsets, unresolved numbering и reset affected-row mapping сохранены.
 
 ## Очередь
 
 ### Волна C. Старые query-модули
 
-1. **Фаза 18AK:** quality audit, 5 connection points. Ожидаемый baseline: 23 обращения в 9 файлах.
-2. Media sets последующим отдельным срезом.
+1. **Фаза 18AL:** media sets, 9 connection points. Ожидаемый baseline: 14 обращений в 8 файлах.
 
-- quality audit;
 - media sets.
 
-В этой волне сначала создаётся типизированная repository/query-граница. Механическая замена `_require_pool()` на `acquire()` без структурного переноса не считается завершением архитектурного долга.
+После 18AL legacy query-модули должны полностью исчезнуть из baseline.
 
 ### Волна D. Нарушения слоёв
 
