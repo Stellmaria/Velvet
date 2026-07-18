@@ -33,13 +33,13 @@ Run помечается failed, worker продолжает после обыч
 Миграции не менялись.
 
 ### Проверки
-Tests, Docker и notes contract.
+Финальный head проходит tests, Docker и notes contract.
 
 ### PR и commit
-PR создаётся после runner.
+PR #159. Merge после зелёного CI.
 
 ### Незавершённое
 52 unresolved.
 
 ### Следующий шаг
-Первый unresolved entry из AST inventory.
+`velvet_bot/discussion_analytics_middleware.py`.
