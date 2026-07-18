@@ -96,7 +96,7 @@ async def build_viewer_input_media(
                 parse_mode=ParseMode.HTML,
                 has_spoiler=page.media.is_spoiler,
             )
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-viewer-edit-preview
             logger.exception("Failed to prepare compressed public image preview")
     return build_input_media(page.media, caption)
 
@@ -161,7 +161,7 @@ async def send_viewer_archive_page(
             )
         except TelegramAPIError as error:
             logger.info("Compressed public preview fallback to document: %s", error)
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-viewer-send-preview
             logger.exception("Compressed public preview generation failed")
     return await bot.send_document(document=page.media.telegram_file_id, **common)
 

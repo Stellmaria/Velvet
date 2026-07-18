@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **67** в **41** файлах;
-- approved boundaries: **57**;
-- unresolved broad exceptions: **10** в **6** файлах;
+- approved boundaries: **59**;
+- unresolved broad exceptions: **8** в **5** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -70,11 +70,12 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/infrastructure/telegram/archive_previews.py:84` `resolve`: fallback-full-quality-archive-preview.
 - `velvet_bot/media_quality.py:103` `run_media_quality_worker`: isolate-media-quality-worker-iteration.
 - `velvet_bot/presentation/telegram/public_notifications.py:80` `process_once`: isolate-public-notification-delivery.
+- `velvet_bot/public_archive_display.py:99` `build_viewer_input_media`: fallback-viewer-edit-preview.
+- `velvet_bot/public_archive_display.py:164` `send_viewer_archive_page`: fallback-viewer-send-preview.
 - `velvet_bot/public_notifications.py:60` `run_public_notification_worker`: isolate-public-notification-worker-iteration.
 
 ## Unresolved broad exceptions by file
 
-- `velvet_bot/public_archive_display.py`: 2.
 - `velvet_bot/services/media_save.py`: 2.
 - `velvet_bot/services/system_health.py`: 2.
 - `velvet_bot/workers/manager.py`: 2.
@@ -83,7 +84,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/public_archive_display.py`.
+- `velvet_bot/publication_inbox_middleware.py`.
 
 ## Правило обновления
 
