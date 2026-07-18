@@ -33,10 +33,10 @@ Boundary классифицирован, baseline 56 → 55.
 Миграции не менялись.
 
 ### Проверки
-Tests, Docker и notes contract.
+Финальный head проходит tests, Docker и notes contract.
 
 ### PR и commit
-PR создаётся после runner.
+PR #157. Merge после зелёного CI.
 
 ### Незавершённое
 55 unresolved.
