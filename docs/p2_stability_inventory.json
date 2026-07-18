@@ -1,18 +1,18 @@
 {
-  "schema_version": 20,
-  "generated_from_commit": "p2r-character-topic-boundaries",
+  "schema_version": 21,
+  "generated_from_commit": "p2s-error-center-markup-boundary",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 30,
-  "broad_exception_unresolved": 40,
-  "broad_exception_unresolved_files": 26,
+  "broad_exception_approved": 31,
+  "broad_exception_unresolved": 39,
+  "broad_exception_unresolved_files": 25,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/handlers/error_center.py",
+    "target": "velvet_bot/handlers/guest_archive.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -261,8 +261,8 @@
       "function": "acknowledge_all_errors_callback",
       "line": 56,
       "handler_module": true,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "best-effort-error-markup-cleanup"
     },
     {
       "path": "velvet_bot/handlers/guest_archive.py",
