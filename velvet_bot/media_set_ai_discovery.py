@@ -12,6 +12,11 @@ from velvet_bot.ai_vision import (
     compare_semantic_profiles,
 )
 from velvet_bot.database import Database
+from velvet_bot.media_set_ai_repository import (
+    MediaSetAICandidateDraft,
+    MediaSetAICandidateItemDraft,
+    MediaSetAIRepository,
+)
 
 _MIN_AI_SIMILARITY = 55
 _MAX_SET_ITEMS = 12
@@ -134,143 +139,73 @@ def _common_prompt(items: tuple[_AIContext, ...]) -> str | None:
 
 
 async def _load_ai_contexts(database: Database, *, limit: int) -> tuple[_AIContext, ...]:
-    safe_limit = max(20, min(int(limit), 1000))
-    async with database._require_pool().acquire() as connection:
-        rows = await connection.fetch(
-            """
-            SELECT
-                mf.id AS media_id,
-                profile.analysis,
-                MAX(cm.prompt_post_url) FILTER (WHERE cm.prompt_post_url IS NOT NULL)
-                    AS prompt_post_url,
-                COALESCE(
-                    ARRAY_AGG(DISTINCT c.name ORDER BY c.name)
-                        FILTER (WHERE c.id IS NOT NULL),
-                    ARRAY[]::VARCHAR[]
-                ) AS characters
-            FROM media_files AS mf
-            JOIN media_ai_profiles AS profile
-              ON profile.media_id = mf.id
-             AND profile.status = 'ready'
-            JOIN character_media AS cm ON cm.media_id = mf.id
-            LEFT JOIN characters AS c ON c.id = cm.character_id
-            WHERE mf.media_set_id IS NULL
-              AND (
-                    mf.media_type = 'photo'
-                    OR (mf.media_type = 'document'
-                        AND COALESCE(mf.mime_type, '') LIKE 'image/%')
-                  )
-            GROUP BY mf.id, profile.analysis, profile.analyzed_at
-            ORDER BY profile.analyzed_at DESC NULLS LAST, mf.id DESC
-            LIMIT $1::INTEGER
-            """,
-            safe_limit,
-        )
+    rows = await MediaSetAIRepository(database).load_context_rows(limit=limit)
     contexts: list[_AIContext] = []
     for row in rows:
-        profile = _decode_profile(row["analysis"])
+        profile = _decode_profile(row.analysis)
         if profile is None:
             continue
         contexts.append(
             _AIContext(
-                media_id=int(row["media_id"]),
-                characters=tuple(str(value) for value in row["characters"] if value),
+                media_id=row.media_id,
+                characters=row.characters,
                 profile=profile,
-                prompt_post_url=row["prompt_post_url"],
+                prompt_post_url=row.prompt_post_url,
             )
         )
     return tuple(contexts)
+
+
+def _candidate_drafts(
+    groups: tuple[tuple[_AIContext, ...], ...],
+) -> tuple[MediaSetAICandidateDraft, ...]:
+    drafts: list[MediaSetAICandidateDraft] = []
+    for items in groups:
+        profiles = [item.profile for item in items]
+        item_drafts: list[MediaSetAICandidateItemDraft] = []
+        for item in items:
+            match_terms: set[str] = set()
+            for other in items:
+                if other.media_id == item.media_id:
+                    continue
+                match_terms.update(
+                    compare_semantic_profiles(
+                        item.profile,
+                        other.profile,
+                    ).common_terms
+                )
+            reason = (
+                "ИИ-контекст: " + ", ".join(sorted(match_terms)[:6])
+                if match_terms
+                else "Совпадение смыслового профиля"
+            )
+            item_drafts.append(
+                MediaSetAICandidateItemDraft(
+                    media_id=item.media_id,
+                    context_score=_item_score(item, items),
+                    reason=reason[:500],
+                )
+            )
+        drafts.append(
+            MediaSetAICandidateDraft(
+                candidate_key=_stable_candidate_key(items),
+                suggested_title=build_semantic_set_title(profiles)[:160],
+                reason=build_semantic_reason(profiles),
+                score=_group_score(items),
+                prompt_post_url=_common_prompt(items),
+                items=tuple(item_drafts),
+            )
+        )
+    return tuple(drafts)
 
 
 async def _store_ai_candidates(
     database: Database,
     groups: tuple[tuple[_AIContext, ...], ...],
 ) -> int:
-    created = 0
-    async with database._require_pool().acquire() as connection:
-        async with connection.transaction():
-            if groups:
-                await connection.execute(
-                    """
-                    UPDATE media_set_candidates
-                    SET status = 'ignored', decided_at = NOW(), updated_at = NOW(),
-                        reason = reason || ' Заменено глубоким ИИ-анализом.'
-                    WHERE status = 'pending'
-                      AND (
-                            candidate_key LIKE 'filename:%'
-                            OR candidate_key LIKE 'context:%'
-                          )
-                    """
-                )
-            for items in groups:
-                profiles = [item.profile for item in items]
-                score = _group_score(items)
-                candidate_row = await connection.fetchrow(
-                    """
-                    INSERT INTO media_set_candidates (
-                        candidate_key, suggested_title, reason, score,
-                        prompt_post_url, status, updated_at
-                    )
-                    VALUES ($1::TEXT, $2::VARCHAR, $3::TEXT, $4::SMALLINT,
-                            $5::TEXT, 'pending', NOW())
-                    ON CONFLICT (candidate_key) DO UPDATE
-                    SET suggested_title = EXCLUDED.suggested_title,
-                        reason = EXCLUDED.reason,
-                        score = EXCLUDED.score,
-                        prompt_post_url = COALESCE(
-                            media_set_candidates.prompt_post_url,
-                            EXCLUDED.prompt_post_url
-                        ),
-                        updated_at = NOW()
-                    WHERE media_set_candidates.status = 'pending'
-                    RETURNING id, (xmax = 0) AS inserted
-                    """,
-                    _stable_candidate_key(items),
-                    build_semantic_set_title(profiles)[:160],
-                    build_semantic_reason(profiles),
-                    score,
-                    _common_prompt(items),
-                )
-                if candidate_row is None:
-                    continue
-                candidate_id = int(candidate_row["id"])
-                created += int(bool(candidate_row["inserted"]))
-                for item in items:
-                    match_terms: set[str] = set()
-                    for other in items:
-                        if other.media_id == item.media_id:
-                            continue
-                        match_terms.update(
-                            compare_semantic_profiles(
-                                item.profile,
-                                other.profile,
-                            ).common_terms
-                        )
-                    reason = (
-                        "ИИ-контекст: " + ", ".join(sorted(match_terms)[:6])
-                        if match_terms
-                        else "Совпадение смыслового профиля"
-                    )
-                    await connection.execute(
-                        """
-                        INSERT INTO media_set_candidate_items (
-                            candidate_id, media_id, selected, context_score, reason
-                        )
-                        SELECT $1::BIGINT, $2::BIGINT, TRUE, $3::SMALLINT, $4::TEXT
-                        WHERE EXISTS (
-                            SELECT 1 FROM media_files
-                            WHERE id = $2::BIGINT AND media_set_id IS NULL
-                        )
-                        ON CONFLICT (candidate_id, media_id) DO UPDATE
-                        SET context_score = EXCLUDED.context_score,
-                            reason = EXCLUDED.reason
-                        """,
-                        candidate_id,
-                        item.media_id,
-                        _item_score(item, items),
-                        reason[:500],
-                    )
-    return created
+    return await MediaSetAIRepository(database).store_candidates(
+        _candidate_drafts(groups)
+    )
 
 
 async def discover_media_set_candidates_with_ai(
