@@ -3,8 +3,8 @@
 ## Сводка
 
 - raw: **70** / **43** files;
-- approved: **16**;
-- unresolved: **54** / **34** files;
+- approved: **18**;
+- unresolved: **52** / **33** files;
 - risky callbacks: **0**.
 
 ## Approved broad boundaries
@@ -21,6 +21,8 @@
 - `velvet_bot/app/bootstrap.py:266` `run_application`: report-fatal-application-error.
 - `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/backup_runtime.py:163` `_create_dump_file`: cleanup-invalid-backup-artifacts.
+- `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
+- `velvet_bot/backup_service.py:898` `run_backup_worker`: isolate-backup-worker-iteration.
 - `velvet_bot/calibrated_ai_quality.py:111` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
 - `velvet_bot/domains/publication/service.py:68` `publish`: compensate-claimed-publication.
@@ -31,7 +33,6 @@
 - `velvet_bot/handlers/public_archive.py`: 5.
 - `velvet_bot/error_center.py`: 4.
 - `velvet_bot/handlers/media_browser.py`: 4.
-- `velvet_bot/backup_service.py`: 2.
 - `velvet_bot/handlers/admin_media_display.py`: 2.
 - `velvet_bot/handlers/characters.py`: 2.
 - `velvet_bot/handlers/guest_archive.py`: 2.
@@ -65,4 +66,4 @@
 
 ## Следующий срез
 
-- `velvet_bot/backup_service.py`.
+- первый unresolved entry из актуального AST inventory.

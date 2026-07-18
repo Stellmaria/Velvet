@@ -523,7 +523,10 @@ class BackupService:
                     path=path,
                     validation=validation,
                 )
-            except Exception as error:
+            except asyncio.CancelledError as error:
+                await self._fail_run(database, run_id=run_id, error=error)
+                raise
+            except Exception as error:  # p2-approved-boundary: compensate-running-backup
                 await self._fail_run(database, run_id=run_id, error=error)
                 raise
         record = await self.get_backup(database, run_id)
@@ -892,6 +895,6 @@ async def run_backup_worker(
                 )
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-backup-worker-iteration
             logger.exception("Scheduled backup worker failed")
         await asyncio.sleep(max(60, int(interval_seconds)))
