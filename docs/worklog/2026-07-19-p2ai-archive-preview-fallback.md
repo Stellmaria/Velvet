@@ -36,10 +36,10 @@ Approved 53 → 54; unresolved 14 → 13.
 Tests, Docker, notes.
 
 ### PR и commit
-PR после generation.
+PR #185; финальный commit после CI.
 
 ### Незавершённое
 13 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/media_quality.py`.
