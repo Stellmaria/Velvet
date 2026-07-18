@@ -1,18 +1,18 @@
 {
-  "schema_version": 6,
-  "generated_from_commit": "p2d-media-quality-boundary",
+  "schema_version": 7,
+  "generated_from_commit": "p2e-ai-worker-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 3,
-  "broad_exception_unresolved": 67,
-  "broad_exception_unresolved_files": 41,
+  "broad_exception_approved": 6,
+  "broad_exception_unresolved": 64,
+  "broad_exception_unresolved_files": 38,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/ai_quality.py",
+    "target": "velvet_bot/ai_job_runtime.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -29,16 +29,16 @@
       "function": "process_once",
       "line": 703,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-claimed-ai-quality"
     },
     {
       "path": "velvet_bot/ai_vision.py",
       "function": "process_once",
       "line": 725,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-claimed-ai-profile"
     },
     {
       "path": "velvet_bot/app/bootstrap.py",
@@ -133,8 +133,8 @@
       "function": "process_once",
       "line": 111,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "compensate-claimed-calibrated-quality"
     },
     {
       "path": "velvet_bot/discussion_analytics_middleware.py",

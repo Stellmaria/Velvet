@@ -722,7 +722,7 @@ class MediaAIVisionService:
                     max_attempts=self._max_attempts,
                 )
                 break
-            except Exception as error:
+            except Exception as error:  # broad-boundary: compensate-claimed-ai-profile
                 logger.warning(
                     "AI semantic analysis failed media_id=%s: %s",
                     target.media_id,

@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2E: AI worker boundaries
+
+- Классифицированы claimed-target compensation boundaries в AI quality, semantic vision и calibrated quality workers.
+- Unresolved broad baseline уменьшен с 67 до 64.
+
 ### P2D: media-quality scan boundary
 
 - Claimed media scan broad catch отмечен как approved compensation boundary.
