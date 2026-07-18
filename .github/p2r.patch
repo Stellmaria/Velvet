@@ -1,0 +1,36 @@
+diff --git a/velvet_bot/handlers/characters.py b/velvet_bot/handlers/characters.py
+--- a/velvet_bot/handlers/characters.py
++++ b/velvet_bot/handlers/characters.py
+@@ -1,5 +1,6 @@
++import logging
+ from functools import partial
+ from html import escape
+ 
+ from aiogram import Bot, Router
+@@ -20,6 +21,7 @@ from velvet_bot.services.telegram_topics import validate_topic_access
+ 
+ router = Router(name=__name__)
++logger = logging.getLogger(__name__)
+ 
+ 
+ def _topic_line(character: Character) -> str:
+@@ -54,7 +56,8 @@ async def handle_create_character(
+     except ValueError as error:
+         await message.answer(escape(str(error)))
+         return
+-    except Exception as error:
++    except Exception as error:  # p2-approved-boundary: report-character-create-failure
++        logger.exception("Failed to create character profile")
+         await message.answer(
+             "Не удалось проверить или привязать тему Telegram.\n"
+             f"<code>{escape(str(error))}</code>"
+@@ -104,7 +107,8 @@ async def handle_bind_character_topic(
+     except ValueError as error:
+         await message.answer(escape(str(error)))
+         return
+-    except Exception as error:
++    except Exception as error:  # p2-approved-boundary: report-character-topic-failure
++        logger.exception("Failed to bind character topic")
+         await message.answer(
+             "Не удалось проверить или привязать тему Telegram.\n"
+             f"<code>{escape(str(error))}</code>"
