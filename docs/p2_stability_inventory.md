@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **70** в **43** файлах;
-- approved boundaries: **37**;
-- unresolved broad exceptions: **33** в **23** файлах;
+- approved boundaries: **42**;
+- unresolved broad exceptions: **28** в **22** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -51,10 +51,14 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/handlers/media_browser.py:100` `_send_archive_page`: fallback-document-preview.
 - `velvet_bot/handlers/media_browser.py:284` `handle_archive_media_callback`: report-archive-load-failure.
 - `velvet_bot/handlers/media_browser.py:350` `handle_archive_media_callback`: report-archive-delete-failure.
+- `velvet_bot/handlers/public_archive.py:70` `_build_public_input_media`: fallback-public-edit-preview.
+- `velvet_bot/handlers/public_archive.py:115` `_send_public_archive_page`: fallback-public-send-preview.
+- `velvet_bot/handlers/public_archive.py:535` `handle_public_archive_callback`: report-public-like-failure.
+- `velvet_bot/handlers/public_archive.py:577` `handle_public_archive_callback`: report-public-subscription-failure.
+- `velvet_bot/handlers/public_archive.py:620` `handle_public_archive_callback`: report-public-download-failure.
 
 ## Unresolved broad exceptions by file
 
-- `velvet_bot/handlers/public_archive.py`: 5.
 - `velvet_bot/handlers/quality_set_ai.py`: 2.
 - `velvet_bot/handlers/velvet_ai_formatting.py`: 2.
 - `velvet_bot/public_archive_display.py`: 2.
@@ -80,7 +84,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/handlers/public_archive.py`.
+- `velvet_bot/handlers/public_manager.py`.
 
 ## Правило обновления
 

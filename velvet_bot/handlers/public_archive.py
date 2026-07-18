@@ -13,6 +13,7 @@ from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia, get_archive_p
 from velvet_bot.archive_ui import build_input_media
 from velvet_bot.database import Database
 from velvet_bot.public_catalog import (
+    PublicMediaState,
     get_public_media_state,
     list_public_categories,
     list_public_characters,
@@ -66,7 +67,7 @@ async def _build_public_input_media(bot: Bot, page: ArchivePage, state):
         try:
             upload = await _download_image_for_preview(bot, page.media)
             return InputMediaPhoto(media=upload, caption=caption, parse_mode=ParseMode.HTML)
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-public-edit-preview
             logger.exception("Failed to build public image-document preview")
     return build_input_media(page.media, caption)
 
@@ -111,7 +112,7 @@ async def _send_public_archive_page(
             return await bot.send_photo(photo=upload, **common)
         except TelegramAPIError as error:
             logger.info("Public image preview fallback to document: %s", error)
-        except Exception:
+        except Exception:  # p2-approved-boundary: fallback-public-send-preview
             logger.exception("Public image preview download failed")
     return await bot.send_document(document=page.media.telegram_file_id, **common)
 
@@ -524,62 +525,88 @@ async def handle_public_archive_callback(
 
     if action == "like":
         try:
-            liked, _ = await toggle_public_like(
+            state_before = await _load_state(database, page, callback.from_user.id)
+            liked, like_count = await toggle_public_like(
                 database,
                 character_id=page.character.id,
                 media_id=page.media.id,
                 user_id=callback.from_user.id,
             )
-            state = await _load_state(database, page, callback.from_user.id)
-            keyboard = build_public_archive_keyboard(
-                page,
-                state,
-                viewer_user_id=callback.from_user.id,
-                menu_page=callback_data.page,
-                category=callback_data.category,
-                universe=callback_data.universe,
-                story_id=callback_data.story_id,
-            )
-            if isinstance(callback.message, Message):
+        except Exception:  # p2-approved-boundary: report-public-like-failure
+            logger.exception("Failed to toggle public archive like")
+            await callback.answer("Не удалось изменить отметку.", show_alert=True)
+            return
+
+        await callback.answer("Отметка поставлена." if liked else "Отметка снята.")
+        state = PublicMediaState(
+            like_count=like_count,
+            liked_by_user=liked,
+            subscribed=state_before.subscribed,
+        )
+        keyboard = build_public_archive_keyboard(
+            page,
+            state,
+            viewer_user_id=callback.from_user.id,
+            menu_page=callback_data.page,
+            category=callback_data.category,
+            universe=callback_data.universe,
+            story_id=callback_data.story_id,
+        )
+        if isinstance(callback.message, Message):
+            try:
                 await callback.message.edit_caption(
                     caption=format_public_archive_caption(page, state),
                     parse_mode=ParseMode.HTML,
                     reply_markup=keyboard,
                 )
-            await callback.answer("Отметка поставлена." if liked else "Отметка снята.")
-        except Exception:
-            logger.exception("Failed to toggle public archive like")
-            await callback.answer("Не удалось изменить отметку.", show_alert=True)
+            except TelegramAPIError as error:
+                logger.warning(
+                    "Public archive like changed but UI refresh failed: %s",
+                    error,
+                )
         return
 
     if action == "sub":
         try:
+            state_before = await _load_state(database, page, callback.from_user.id)
             subscribed = await toggle_character_subscription(
                 database,
                 character_id=page.character.id,
                 user_id=callback.from_user.id,
             )
-            state = await _load_state(database, page, callback.from_user.id)
-            keyboard = build_public_archive_keyboard(
-                page,
-                state,
-                viewer_user_id=callback.from_user.id,
-                menu_page=callback_data.page,
-                category=callback_data.category,
-                universe=callback_data.universe,
-                story_id=callback_data.story_id,
-            )
-            if isinstance(callback.message, Message):
-                await callback.message.edit_reply_markup(reply_markup=keyboard)
-            await callback.answer(
-                "Подписка включена. Новые материалы придут сюда."
-                if subscribed
-                else "Подписка отключена.",
-                show_alert=True,
-            )
-        except Exception:
+        except Exception:  # p2-approved-boundary: report-public-subscription-failure
             logger.exception("Failed to toggle character subscription")
             await callback.answer("Не удалось изменить подписку.", show_alert=True)
+            return
+
+        await callback.answer(
+            "Подписка включена. Новые материалы придут сюда."
+            if subscribed
+            else "Подписка отключена.",
+            show_alert=True,
+        )
+        state = PublicMediaState(
+            like_count=state_before.like_count,
+            liked_by_user=state_before.liked_by_user,
+            subscribed=subscribed,
+        )
+        keyboard = build_public_archive_keyboard(
+            page,
+            state,
+            viewer_user_id=callback.from_user.id,
+            menu_page=callback_data.page,
+            category=callback_data.category,
+            universe=callback_data.universe,
+            story_id=callback_data.story_id,
+        )
+        if isinstance(callback.message, Message):
+            try:
+                await callback.message.edit_reply_markup(reply_markup=keyboard)
+            except TelegramAPIError as error:
+                logger.warning(
+                    "Character subscription changed but UI refresh failed: %s",
+                    error,
+                )
         return
 
     if action == "download":
@@ -590,10 +617,11 @@ async def handle_public_archive_callback(
             await _send_as_document(
                 bot=bot, media=page.media, chat_id=PUBLIC_DOWNLOAD_USER_ID
             )
-            await callback.answer("Файл отправлен в личный чат.")
-        except Exception:
+        except Exception:  # p2-approved-boundary: report-public-download-failure
             logger.exception("Failed to send public archive download")
             await callback.answer("Не удалось отправить файл.", show_alert=True)
+            return
+        await callback.answer("Файл отправлен в личный чат.")
         return
 
     await callback.answer("Неизвестное действие.", show_alert=True)
