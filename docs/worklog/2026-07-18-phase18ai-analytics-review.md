@@ -3,7 +3,7 @@
 - Дата: 2026-07-18
 - ID: `2026-07-18-phase18ai-analytics-review`
 - Линия/фаза: основное развитие Velvet Archive, Фаза 18AI
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/phase18ai-analytics-review`
 - Базовый commit: `0a9af3b7b8a8930f446456726b94055947aef71b`
 
@@ -78,18 +78,21 @@
 
 - source regression запрещает `._require_pool()` и требует девять `database.acquire()`;
 - runtime regression проверяет unresolved reviews, character picker, publication list/detail, manual/automatic transactions и batch reclassify;
-- AST baseline ожидает 36 внешних обращений в 11 production-файлах;
-- требуется полный PR CI.
+- AST baseline подтверждает 36 внешних обращений в 11 production-файлах;
+- GitHub Actions `tests` run 678: success;
+- GitHub Actions `docker build` run 263: success;
+- GitHub Actions `project notes contract` run 132: success.
 
 ### PR и commit
 
-- PR будет создан после синхронизации документации;
+- PR: #138 `Фаза 18AI: Analytics review и Database.acquire`;
 - production commit: `6aa699257892ac62ec922124b2cf0d3b7924734f`;
-- test commit: `83ee78bf7475bf78a4479837b0cb8bc5c5fc5451`.
+- test commit: `83ee78bf7475bf78a4479837b0cb8bc5c5fc5451`;
+- synchronized branch head до финального worklog: `344de7983b7f18cc78723b1dc095bc83c37ed761`.
 
 ### Незавершённое
 
-Требуется полный зелёный PR CI и финальное закрытие записи перед merge.
+Нет незавершённых задач внутри среза. Живая функциональная проверка аналитического центра остаётся частью общего эксплуатационного smoke test.
 
 ### Следующий шаг
 
