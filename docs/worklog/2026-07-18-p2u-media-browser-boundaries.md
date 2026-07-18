@@ -36,10 +36,10 @@ Preview fallback сохраняет исходный документ; load/dele
 Tests, Docker build и project notes contract.
 
 ### PR и commit
-PR создаётся после генерации inventory.
+PR #171. Финальный commit фиксируется после зелёного CI.
 
 ### Незавершённое
 33 unresolved broad exceptions.
 
 ### Следующий шаг
-Первый target из актуального AST inventory.
+`velvet_bot/handlers/public_archive.py`.
