@@ -2,14 +2,14 @@
 
 Дата среза: 18 июля 2026 года.
 Базовый commit первоначальной инвентаризации: `172390deef5ced4fe1527701524b034a8646c87e`.
-Последний завершённый срез: Фаза 18AF, alias management.
+Последний завершённый срез: Фаза 18AG, character aliases.
 
 ## Результат
 
 AST-сканирование production package `velvet_bot/` фиксирует:
 
-- 58 внешних обращений к `Database._require_pool()`;
-- 14 production-файлов;
+- 53 внешних обращения к `Database._require_pool()`;
+- 13 production-файлов;
 - внутреннее определение и использование внутри класса `Database` исключено из долга;
 - tests, migrations и docs не входят в production-инвентаризацию;
 - динамический `getattr(..., "_require_pool")` также контролируется.
@@ -20,12 +20,12 @@ AST-сканирование production package `velvet_bot/` фиксирует
 
 | Категория | Обращений | Подход |
 |---|---:|---|
-| Legacy query-модули | 44 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
+| Legacy query-модули | 39 | постепенно превращать в repositories/queries, не ограничиваться заменой метода |
 | Presentation handlers | 7 | вынести SQL и DB access из handlers в use case/repository |
 | Application/application-service | 4 | вынести persistence в repository boundary |
 | Compatibility-фасады | 3 | переводить после их штатных источников либо удалять после проверки импортов |
 
-Всего: 58.
+Всего: 53.
 
 ## Завершённые погашения baseline
 
@@ -48,17 +48,17 @@ AST-сканирование production package `velvet_bot/` фиксирует
 - Фаза 18AD: public media lookup, удалено 1 обращение и 1 production-файл; newest-first `ROW_NUMBER()` offset query и `int | None` mapping сохранены.
 - Фаза 18AE: discussion thread links и analytics reactions, удалены 2 обращения и 2 production-файла; pending-thread update semantics, affected-row mapping, reaction cleanup, JSONB payload и boolean result сохранены.
 - Фаза 18AF: alias management, удалены 2 обращения и 1 production-файл; alias lookup mapping, protected name aliases, delete delegation и character summary short-circuit сохранены.
+- Фаза 18AG: character aliases, удалены 5 обращений и 1 production-файл; name-alias seeding, ordered listing, validation/conflict handling, hashtag link/unlink и транзакционный rebuild сохранены.
 
 ## Очередь
 
 ### Волна C. Старые query-модули
 
-1. **Фаза 18AG:** character aliases, 5 connection points. Ожидаемый baseline: 53 обращения в 13 файлах.
-2. Analytics dashboard/review и channel analytics последующими срезами.
+1. **Фаза 18AH:** analytics dashboard, 8 connection points. Ожидаемый baseline: 45 обращений в 12 файлах.
+2. Analytics review и channel analytics последующими отдельными срезами.
 
 - analytics dashboard/review;
 - channel analytics;
-- character aliases;
 - quality audit;
 - media sets.
 
