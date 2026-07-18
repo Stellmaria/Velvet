@@ -36,10 +36,10 @@ Boundary ограничена отправкой. Baseline 28 → 27.
 Tests, Docker и notes contract.
 
 ### PR и commit
-PR после generation.
+PR #173; merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 27 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/handlers/publication_center.py`.
