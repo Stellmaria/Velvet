@@ -36,10 +36,10 @@ Approved 59 → 61; unresolved 8 → 6.
 Tests, Docker, notes.
 
 ### PR и commit
-PR после generation.
+PR #189; финальный commit после CI.
 
 ### Незавершённое
 6 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/services/media_save.py`.
