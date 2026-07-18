@@ -16,6 +16,7 @@ from aiogram.exceptions import (
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
+from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Character, Database
 from velvet_bot.handlers.reference_albums import parse_reference_selector
@@ -199,6 +200,7 @@ async def handle_reference_comparison(
     command: CommandObject,
     database: Database,
     bot: Bot,
+    audit_logger: TelegramAuditLogger | None = None,
 ) -> None:
     if message.chat.type != ChatType.PRIVATE:
         await message.answer("Сравнение внешности доступно в личном чате с ботом.")
@@ -275,12 +277,22 @@ async def handle_reference_comparison(
         )
     except asyncio.CancelledError:
         raise
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: report-reference-comparison-failure
         logger.exception(
             "Reference comparison failed character_id=%s reference_id=%s",
             character.id,
             reference.id,
         )
+        if audit_logger is not None:
+            await audit_logger.error(
+                "Ошибка сравнения с референсом",
+                error,
+                character_id=character.id,
+                reference_id=reference.id,
+                result_file_id=result_file_id,
+                result_file_unique_id=result_unique_id,
+                user_id=message.from_user.id if message.from_user else None,
+            )
         await status.edit_text(
             "❌ Сравнение не завершено. Ошибка отправлена в центр инцидентов.\n\n"
             f"<code>{escape(str(error))[:900]}</code>"
