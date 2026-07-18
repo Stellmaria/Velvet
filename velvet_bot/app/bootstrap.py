@@ -111,6 +111,23 @@ async def _close_application_resources(
         logger.exception("Could not close PostgreSQL pool")
 
 
+async def _report_fatal_application_error(
+    error_center: ErrorIncidentCenter | None,
+    error: Exception,
+) -> None:
+    if error_center is None:
+        return
+    try:
+        await error_center.report_exception(
+            "Критическое завершение приложения",
+            error,
+            severity="CRITICAL",
+            logger_name=__name__,
+        )
+    except Exception:  # p2-approved-boundary: preserve-original-fatal-error
+        logger.exception("Could not report fatal application error")
+
+
 async def run_application() -> None:
     """Create all application dependencies and own their complete lifecycle."""
     settings = load_settings()
@@ -246,17 +263,8 @@ async def run_application() -> None:
             system_service=system_service,
             worker_manager=worker_manager,
         )
-    except Exception as error:
-        if error_center is not None:
-            try:
-                await error_center.report_exception(
-                    "Критическое завершение приложения",
-                    error,
-                    severity="CRITICAL",
-                    logger_name=__name__,
-                )
-            except Exception:
-                logger.exception("Could not report fatal application error")
+    except Exception as error:  # p2-approved-boundary: report-fatal-application-error
+        await _report_fatal_application_error(error_center, error)
         raise
     finally:
         await _close_application_resources(
