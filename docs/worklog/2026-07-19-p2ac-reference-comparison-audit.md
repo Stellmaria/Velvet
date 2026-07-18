@@ -1,4 +1,4 @@
-# Сессия: P2AC — reference comparison audit
+# Сессия: P2AC
 
 - Дата: 2026-07-19
 - ID: `2026-07-19-p2ac-reference-comparison-audit`
@@ -10,36 +10,36 @@
 ## Перед началом
 
 ### Цель
-Добавить реальный incident audit для ошибки сравнения.
+Добавить настоящий audit для ошибки сравнения.
 
 ### Исходный контекст
-68 raw, 20 unresolved.
+68 raw, 21 unresolved.
 
 ### Планируемый объём
-Audit boundary, tests, inventory, документы.
+Код, tests, inventory, документы.
 
 ### Критерии готовности
-Ошибка аудируется; status обновляется; cancellation пробрасывается; CI зелёный.
+Ошибка фиксируется; cancellation пробрасывается; CI зелёный.
 
 ### Риски и ограничения
-Успешное сравнение и формат отчёта не меняются.
+Успешный путь не меняется.
 
 ## После завершения
 
 ### Фактически сделано
-Boundary аудирована. Approved 47 → 48; unresolved 21 → 20.
+Approved 47 → 48; unresolved 21 → 20.
 
 ### Миграции и совместимость
-Миграции не менялись.
+Без миграций.
 
 ### Проверки
 Tests, Docker, notes.
 
 ### PR и commit
-PR после generation.
+PR #179; финальный commit после CI.
 
 ### Незавершённое
 20 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/handlers/reference_comparison_help.py`.
