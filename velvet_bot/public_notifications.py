@@ -57,7 +57,7 @@ async def run_public_notification_worker(
             await dispatcher.process_once()
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-public-notification-worker-iteration
             logger.exception("Public notification worker iteration failed")
         await asyncio.sleep(max(1.0, interval_seconds))
 
