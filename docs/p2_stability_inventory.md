@@ -5,8 +5,8 @@ AST-инвентаризация широких исключений и callback
 ## Сводка
 
 - raw broad exceptions: **70** в **43** файлах;
-- approved boundaries: **19**;
-- unresolved broad exceptions: **51** в **32** файлах;
+- approved boundaries: **23**;
+- unresolved broad exceptions: **47** в **31** файлах;
 - callback handlers: **97**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
@@ -33,11 +33,14 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
 - `velvet_bot/domains/publication/service.py:68` `publish`: compensate-claimed-publication.
 - `velvet_bot/domains/publication/service.py:89` `process_due_once`: isolate-scheduled-draft.
+- `velvet_bot/error_center.py:99` `capture_log_record`: fallback-log-record-message.
+- `velvet_bot/error_center.py:337` `_is_recoverable_aiogram_polling_record`: fallback-polling-record-message.
+- `velvet_bot/error_center.py:364` `emit`: isolate-error-logging-handler.
+- `velvet_bot/error_center.py:462` `_consume`: isolate-error-incident-item.
 
 ## Unresolved broad exceptions by file
 
 - `velvet_bot/handlers/public_archive.py`: 5.
-- `velvet_bot/error_center.py`: 4.
 - `velvet_bot/handlers/media_browser.py`: 4.
 - `velvet_bot/handlers/admin_media_display.py`: 2.
 - `velvet_bot/handlers/characters.py`: 2.
@@ -71,7 +74,7 @@ AST-инвентаризация широких исключений и callback
 
 ## Следующий срез
 
-- `velvet_bot/error_center.py`.
+- `velvet_bot/handlers/admin_media_display.py`.
 
 ## Правило обновления
 

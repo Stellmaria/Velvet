@@ -1,18 +1,18 @@
 {
-  "schema_version": 14,
-  "generated_from_commit": "p2l-discussion-middleware-boundary",
+  "schema_version": 15,
+  "generated_from_commit": "p2m-error-center-boundaries",
   "broad_exception_total": 70,
   "broad_exception_files": 43,
-  "broad_exception_approved": 19,
-  "broad_exception_unresolved": 51,
-  "broad_exception_unresolved_files": 32,
+  "broad_exception_approved": 23,
+  "broad_exception_unresolved": 47,
+  "broad_exception_unresolved_files": 31,
   "callback_total": 97,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
   "delegated_callback_total": 4,
   "next_slice": {
-    "target": "velvet_bot/error_center.py",
+    "target": "velvet_bot/handlers/admin_media_display.py",
     "kind": "broad_exception_triage"
   },
   "broad_exceptions": [
@@ -173,32 +173,32 @@
       "function": "capture_log_record",
       "line": 99,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "fallback-log-record-message"
     },
     {
       "path": "velvet_bot/error_center.py",
       "function": "_is_recoverable_aiogram_polling_record",
       "line": 337,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "fallback-polling-record-message"
     },
     {
       "path": "velvet_bot/error_center.py",
       "function": "emit",
       "line": 364,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "isolate-error-logging-handler"
     },
     {
       "path": "velvet_bot/error_center.py",
       "function": "_consume",
       "line": 462,
       "handler_module": false,
-      "classification": "unresolved",
-      "reason": null
+      "classification": "approved_boundary",
+      "reason": "isolate-error-incident-item"
     },
     {
       "path": "velvet_bot/handlers/admin_media_display.py",

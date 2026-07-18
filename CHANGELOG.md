@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### P2M: error center boundaries
+
+- Classified four logging and consumer isolation boundaries.
+- Unresolved broad baseline decreased from 51 to 47.
+
 ### P2L: discussion middleware boundary
 
 - Added a persistent P2 inventory generator.
