@@ -36,10 +36,10 @@ Approved 48 → 49; unresolved 20 → 19.
 Tests, Docker, notes.
 
 ### PR и commit
-PR после generation.
+PR #180; финальный commit после CI.
 
 ### Незавершённое
 19 unresolved.
 
 ### Следующий шаг
-Первый AST target.
+`velvet_bot/handlers/supervisor_console.py`.
