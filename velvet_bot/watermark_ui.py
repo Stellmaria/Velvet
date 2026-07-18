@@ -62,10 +62,8 @@ def build_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
                 _button("↩️ Предыдущая версия", "undo", job_id),
                 _button("🚫 Без знака", "remove", job_id),
             ],
-            [
-                _button("✅ Сохранить", "approve", job_id),
-                _button("✖ Отмена", "cancel", job_id),
-            ],
+            [_button("✅ Скачать PNG без сжатия", "approve", job_id)],
+            [_button("✖ Отмена", "cancel", job_id)],
         ]
     )
 

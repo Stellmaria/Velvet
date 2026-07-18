@@ -8,8 +8,8 @@ from dataclasses import replace
 
 from .codex_command import apply_codex_model, normalize_codex_command
 from .config import SupervisorSettings
-from .http_api import SupervisorHTTPServer
-from .runtime import VelvetSupervisor
+from .http_api_extended import SupervisorHTTPServer
+from .runtime_extended import VelvetSupervisor
 
 
 def configure_logging(settings: SupervisorSettings) -> None:
