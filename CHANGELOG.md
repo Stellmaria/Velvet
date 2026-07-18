@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### P2AA: set analysis job boundaries
+
+- Callback and slash-command set analysis failures compensate their AI jobs.
+- Cancellation records interruption and continues to propagate in both paths.
+- Unresolved broad baseline decreased from 24 to 22.
+
 ### P2Z: manual quality job boundary
 
 - Manual quality failures compensate the created AI job with an error state.
