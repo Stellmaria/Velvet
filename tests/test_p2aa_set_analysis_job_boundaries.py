@@ -104,6 +104,10 @@ class SetAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Проверка сета #12 не завершена", self.edit_calls[0][0][1])
         call = FakeTrackerFactory.create_calls[0]
         self.assertEqual(call["kind"], "media_set_consistency")
+        self.assertEqual(call["title"], "Целостность медиасета #12")
+        self.assertEqual(call["provider"], "ollama")
+        self.assertEqual(call["model"], "qwen")
+        self.assertIs(call["source_message"], callback.message)
         self.assertEqual(call["request_payload"], {"set_id": 12})
 
     async def test_callback_cancellation_marks_interruption_and_propagates(self) -> None:
@@ -138,6 +142,9 @@ class SetAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tracker.errors, [error])
         self.assertEqual(tracker.ready_calls, [])
         call = FakeTrackerFactory.create_calls[0]
+        self.assertEqual(call["title"], "Целостность медиасета #12")
+        self.assertEqual(call["provider"], "ollama")
+        self.assertEqual(call["model"], "qwen")
         self.assertEqual(call["request_payload"], {"set_id": 12, "source": "slash_command"})
         self.assertIs(call["source_message"], message)
 
