@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3c-core-operations-controllers",
+  "generated_from": "p3c-quality-operations-controllers",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -23,18 +23,20 @@
   "active_bundle_router_count": 56,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 68,
-  "legacy_handler_implementation_count": 27,
-  "handler_compatibility_facade_count": 41,
+  "legacy_handler_implementation_count": 14,
+  "handler_compatibility_facade_count": 54,
   "handler_compatibility_facades": [
     "velvet_bot/handlers/admin_directory.py",
     "velvet_bot/handlers/admin_stories.py",
     "velvet_bot/handlers/admin_uncategorized.py",
     "velvet_bot/handlers/admin_universe_story_flow.py",
+    "velvet_bot/handlers/ai_jobs.py",
     "velvet_bot/handlers/analytics_dashboard.py",
     "velvet_bot/handlers/analytics_dashboard_overrides.py",
     "velvet_bot/handlers/analytics_discussion_overrides.py",
     "velvet_bot/handlers/analytics_management.py",
     "velvet_bot/handlers/archive.py",
+    "velvet_bot/handlers/backup_center.py",
     "velvet_bot/handlers/channel_analytics.py",
     "velvet_bot/handlers/character_aliases.py",
     "velvet_bot/handlers/characters.py",
@@ -51,6 +53,14 @@
     "velvet_bot/handlers/public_notification_open.py",
     "velvet_bot/handlers/publication_center.py",
     "velvet_bot/handlers/publication_center_safe.py",
+    "velvet_bot/handlers/quality_ai.py",
+    "velvet_bot/handlers/quality_ai_preview.py",
+    "velvet_bot/handlers/quality_calibration.py",
+    "velvet_bot/handlers/quality_center.py",
+    "velvet_bot/handlers/quality_duplicates.py",
+    "velvet_bot/handlers/quality_operations.py",
+    "velvet_bot/handlers/quality_set_ai.py",
+    "velvet_bot/handlers/quality_sets.py",
     "velvet_bot/handlers/reference_albums.py",
     "velvet_bot/handlers/reference_comparison.py",
     "velvet_bot/handlers/reference_comparison_help.py",
@@ -66,7 +76,10 @@
     "velvet_bot/handlers/supervisor_process.py",
     "velvet_bot/handlers/supervisor_self.py",
     "velvet_bot/handlers/supervisor_status.py",
-    "velvet_bot/handlers/system_center.py"
+    "velvet_bot/handlers/system_center.py",
+    "velvet_bot/handlers/velvet_ai.py",
+    "velvet_bot/handlers/velvet_ai_formatting.py",
+    "velvet_bot/handlers/velvet_ai_visual.py"
   ],
   "root_level_module_count": 114,
   "compatibility_file_count": 5,
@@ -85,7 +98,7 @@
   "active_compatibility_component_count": 8,
   "next_slice": {
     "phase": "P3C",
-    "target": "quality operations presentation controllers",
+    "target": "remaining archive-and-public presentation controllers",
     "strategy": "canonical presentation modules plus temporary handler module aliases"
   }
 }
