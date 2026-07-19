@@ -22,27 +22,34 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import traceback
 
-          workflow = Path('.github/workflows/public-hardening-apply.yml').read_text(
-              encoding='utf-8'
-          )
-          marker_start = "          python - <<'PY'\n"
-          marker_end = "\n          PY\n\n      - name: Commit generated hardening changes"
-          embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
-          script = '\n'.join(
-              line[10:] if line.startswith('          ') else line
-              for line in embedded.splitlines()
-          )
-          exec(compile(script, 'public-hardening-embedded.py', 'exec'), {})
+          error_path = Path('public-hardening-error.txt')
+          try:
+              workflow = Path('.github/workflows/public-hardening-apply.yml').read_text(
+                  encoding='utf-8'
+              )
+              marker_start = "          python - <<'PY'\n"
+              marker_end = "\n          PY\n\n      - name: Commit generated hardening changes"
+              embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
+              script = '\n'.join(
+                  line[10:] if line.startswith('          ') else line
+                  for line in embedded.splitlines()
+              )
+              exec(compile(script, 'public-hardening-embedded.py', 'exec'), {})
+          except Exception:
+              error_path.write_text(traceback.format_exc(), encoding='utf-8')
+          else:
+              error_path.unlink(missing_ok=True)
           PY
 
-      - name: Commit generated changes
+      - name: Commit generated changes or diagnostic
         run: |
           if git diff --quiet; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .env.example README.md docs scripts tests velvet_bot
-          git commit -m "Remove personal defaults from public repository"
+          git add .env.example README.md docs scripts tests velvet_bot public-hardening-error.txt || true
+          git commit -m "Apply public repository hardening patch"
           git push origin HEAD:${{ github.head_ref }}
