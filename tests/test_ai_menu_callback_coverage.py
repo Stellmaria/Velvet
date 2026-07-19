@@ -5,7 +5,9 @@ import unittest
 from pathlib import Path
 
 from velvet_bot.ai_quality import AIQualitySummary
-from velvet_bot.handlers.quality_operations import build_quality_operations_menu
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations import (
+    build_quality_operations_menu,
+)
 from velvet_bot.quality_ui import QualityCallback
 from velvet_bot.velvet_ai_ui import build_velvet_ai_menu
 
@@ -170,16 +172,20 @@ class AIMenuCoverageTests(unittest.TestCase):
         )
 
     def test_each_interactive_ai_flow_creates_a_job(self) -> None:
+        quality_root = (
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/quality_operations_controllers"
+        )
         paths = {
-            "prompt_result": ROOT / "velvet_bot/handlers/velvet_ai.py",
-            "palette_composition": ROOT / "velvet_bot/handlers/velvet_ai_visual.py",
-            "velvet_formatting": ROOT / "velvet_bot/handlers/velvet_ai_formatting.py",
-            "quality_image": ROOT / "velvet_bot/handlers/quality_operations.py",
+            "prompt_result": quality_root / "velvet_ai.py",
+            "palette_composition": quality_root / "velvet_ai_visual.py",
+            "velvet_formatting": quality_root / "velvet_ai_formatting.py",
+            "quality_image": quality_root / "quality_operations.py",
             "reference_comparison": (
                 ROOT
                 / "velvet_bot/presentation/telegram/routers/references/comparison_help.py"
             ),
-            "media_set_consistency": ROOT / "velvet_bot/handlers/quality_set_ai.py",
+            "media_set_consistency": quality_root / "quality_set_ai.py",
         }
         for kind, path in paths.items():
             source = path.read_text(encoding="utf-8")
