@@ -42,6 +42,9 @@ from velvet_bot.presentation.telegram.routers.stories.universe_flow import (
 from velvet_bot.presentation.telegram.routers.characters.uncategorized import (
     router as admin_uncategorized_router,
 )
+from velvet_bot.presentation.telegram.routers.characters.rename import (
+    router as character_rename_router,
+)
 from velvet_bot.presentation.telegram.routers.characters.directory import (
     router as admin_directory_router,
 )
@@ -98,6 +101,7 @@ router.include_router(admin_media_display_router)
 router.include_router(admin_stories_router)
 router.include_router(admin_universe_story_flow_router)
 router.include_router(admin_uncategorized_router)
+router.include_router(character_rename_router)
 router.include_router(admin_directory_router)
 router.include_router(characters_router)
 router.include_router(media_browser_router)
