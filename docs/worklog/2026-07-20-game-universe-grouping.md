@@ -60,17 +60,17 @@
 
 ### Проверки
 
-- tests #1092: 934 теста; функциональный код прошёл, единственный failure был ожидаемым до финализации worklog;
-- Docker build #625: success;
-- backup restore drill #102: success;
-- project notes contract #471: ожидаемый failure до финализации worklog;
-- после этой записи запускается повторный полный CI.
+- tests #1093: success, 934 теста;
+- Docker build #626: success;
+- backup restore drill #103: success;
+- project notes contract #472: success;
+- после этой записи запускается финальный CI документационного head.
 
 ### PR и commit
 
 - PR: #218 `Add Games universe group with BG3 and RE`;
 - ветка: `agent/game-universe-grouping`;
-- проверенный кодовый head: `fe8a4155a717646412ca9e1bdc8a6594a90d7dd1`.
+- проверенный кодовый head: `286f71b3d9e14699c203bd3a0fc0700fd734c352`.
 
 ### Незавершённое
 
@@ -78,4 +78,4 @@
 
 ### Следующий шаг
 
-После зелёного повторного CI слить PR #218 и продолжить P3D canonical import cleanup.
+После зелёного финального CI слить PR #218 и продолжить P3D canonical import cleanup.
