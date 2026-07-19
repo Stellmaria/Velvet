@@ -7,7 +7,7 @@ from aiogram.filters import BaseFilter, Command
 from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.database import Database
-from velvet_bot.handlers.publication_center import (
+from velvet_bot.presentation.telegram.routers.publication.center import (
     PublicationCallback,
     handle_check_post,
     handle_publication_callback,
