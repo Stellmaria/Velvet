@@ -7,6 +7,7 @@ from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
+from velvet_bot.archive_topic_links import list_characters_by_archive_topic
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Database
 from velvet_bot.media import MediaDescriptor, extract_media
@@ -195,56 +196,60 @@ async def handle_new_archive_topic_media(
     media = extract_media(message)
     if media is None:
         return
-    character = await database.get_character_by_archive_topic(
-        message.chat.id,
-        message.message_thread_id,
+    characters = await list_characters_by_archive_topic(
+        database,
+        archive_chat_id=message.chat.id,
+        archive_thread_id=message.message_thread_id,
     )
-    if character is None:
+    if not characters:
         return
-    try:
-        result = await database.save_character_media(
-            character,
-            media,
-            saved_by=message.from_user.id if message.from_user else None,
-            saved_in_chat=message.chat.id,
-            source_chat_id=message.chat.id,
-            source_message_id=message.message_id,
-            source_thread_id=message.message_thread_id,
-            command_message_id=None,
-            archive_message_id=message.message_id,
-        )
-        await _persist_descriptor_preview(
-            database,
-            media_id=result.media_id,
-            media=media,
-        )
-        logger.info(
-            "Automatically archived topic media for character %s from %s/%s",
-            character.id,
-            message.chat.id,
-            message.message_thread_id,
-        )
-        if result.character_link_created:
-            await audit_logger.send(
-                "Новое медиа принято из ветки",
-                level="SUCCESS",
+
+    for character in characters:
+        try:
+            result = await database.save_character_media(
+                character,
+                media,
+                saved_by=message.from_user.id if message.from_user else None,
+                saved_in_chat=message.chat.id,
+                source_chat_id=message.chat.id,
+                source_message_id=message.message_id,
+                source_thread_id=message.message_thread_id,
+                command_message_id=None,
+                archive_message_id=message.message_id,
+            )
+            await _persist_descriptor_preview(
+                database,
+                media_id=result.media_id,
+                media=media,
+            )
+            logger.info(
+                "Automatically archived topic media for character %s from %s/%s",
+                character.id,
+                message.chat.id,
+                message.message_thread_id,
+            )
+            if result.character_link_created:
+                await audit_logger.send(
+                    "Новое медиа принято из общей ветки",
+                    level="SUCCESS",
+                    character=character.name,
+                    file=result.storage_file_name,
+                    media_type=media.media_type,
+                    archive_chat_id=message.chat.id,
+                    archive_thread_id=message.message_thread_id,
+                    archive_message_id=message.message_id,
+                    linked_characters=len(characters),
+                )
+        except Exception as error:  # p2-approved-boundary: report-topic-auto-archive-failure
+            logger.exception(
+                "Failed to automatically archive topic media for character %s",
+                character.id,
+            )
+            await audit_logger.error(
+                "Ошибка автоматического архива общей ветки",
+                error,
                 character=character.name,
-                file=result.storage_file_name,
-                media_type=media.media_type,
                 archive_chat_id=message.chat.id,
                 archive_thread_id=message.message_thread_id,
                 archive_message_id=message.message_id,
             )
-    except Exception as error:  # p2-approved-boundary: report-topic-auto-archive-failure
-        logger.exception(
-            "Failed to automatically archive topic media for character %s",
-            character.id,
-        )
-        await audit_logger.error(
-            "Ошибка автоматического архива ветки",
-            error,
-            character=character.name,
-            archive_chat_id=message.chat.id,
-            archive_thread_id=message.message_thread_id,
-            archive_message_id=message.message_id,
-        )
