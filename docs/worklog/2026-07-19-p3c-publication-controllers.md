@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-publication-controllers`
 - Линия/фаза: Velvet Archive, P3C
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3c-publication-controllers`
 - Базовый commit: `8a91f196e54ed92cbfe91173b15f4b01bc20b2fc`
 
@@ -61,18 +61,23 @@
 
 ### Проверки
 
-Статическая сверка router order, module aliases и layout inventory выполнена. Обязательные GitHub Actions будут зафиксированы после открытия PR.
+- tests #977: 867 тестов, success;
+- docker build #513: success;
+- project notes contract #373: success;
+- architecture inventory: root imports 0, active routers 55, archive/public bundle 32, duplicates 0, implementations 35, aliases 33;
+- отдельные исправления после первого CI не потребовались.
 
 ### PR и commit
 
+- PR: #200 `Move publication controllers into presentation`;
 - ветка: `agent/p3c-publication-controllers`;
-- PR: будет создан после фиксации worklog и inventory;
-- canonical modules созданы точным переносом исходных blob-объектов с отдельной заменой import boundary.
+- canonical modules созданы точным переносом исходных blob-объектов с отдельной заменой import boundary;
+- финальная документационная фиксация выполнена после зелёного CI.
 
 ### Незавершённое
 
-До завершения среза требуется получить зелёные tests, Docker build и project notes contract, затем обновить эту запись финальными номерами прогонов. Внешние imports legacy publication paths остаются совместимыми aliases и будут очищаться в P3D.
+Внешние imports legacy publication paths остаются совместимыми aliases. Это контролируемый остаток P3D и не влияет на runtime semantics. Очистка выполняется отдельным срезом после завершения физических переносов.
 
 ### Следующий шаг
 
-После зелёного CI слить publication PR и продолжить отдельным P3C-срезом переноса analytics presentation controllers.
+Слить PR #200 после зелёного финального CI. Затем продолжить отдельным P3C-срезом переноса analytics presentation controllers.
