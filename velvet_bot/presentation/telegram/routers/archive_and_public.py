@@ -5,7 +5,9 @@ from aiogram import Router
 from velvet_bot.handlers.telegram_analytics_import import router as telegram_analytics_import_router
 from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
 from velvet_bot.handlers.start import router as start_router
-from velvet_bot.handlers.public_media_display import router as public_media_display_router
+from velvet_bot.presentation.telegram.routers.public_archive.media_display import (
+    router as public_media_display_router,
+)
 from velvet_bot.presentation.telegram.routers.characters.aliases import (
     router as character_aliases_router,
 )
@@ -18,9 +20,15 @@ from velvet_bot.presentation.telegram.routers.characters.kr_profile_overrides im
 from velvet_bot.presentation.telegram.routers.stories.multi_story_kr import (
     router as multi_story_kr_router,
 )
-from velvet_bot.handlers.public_manager import router as public_manager_router
-from velvet_bot.handlers.public_notification_open import router as public_notification_open_router
-from velvet_bot.handlers.public_archive import router as public_archive_router
+from velvet_bot.presentation.telegram.routers.public_archive.manager import (
+    router as public_manager_router,
+)
+from velvet_bot.presentation.telegram.routers.public_archive.notification_open import (
+    router as public_notification_open_router,
+)
+from velvet_bot.presentation.telegram.routers.public_archive.catalog import (
+    router as public_archive_router,
+)
 from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
 from velvet_bot.handlers.admin_media_spoiler import router as admin_media_spoiler_router
 from velvet_bot.handlers.admin_large_media_preview import router as admin_large_media_preview_router
@@ -60,10 +68,14 @@ from velvet_bot.presentation.telegram.routers.references.catalog import (
     router as references_router,
 )
 from velvet_bot.handlers.inline_help import router as inline_help_router
-from velvet_bot.handlers.guest_archive import router as guest_archive_router
-from velvet_bot.handlers.spoiler_save import router as spoiler_save_router
+from velvet_bot.presentation.telegram.routers.archive.guest import (
+    router as guest_archive_router,
+)
+from velvet_bot.presentation.telegram.routers.archive.spoiler import (
+    router as spoiler_save_router,
+)
 from velvet_bot.handlers.publication_center_safe import router as publication_center_router
-from velvet_bot.handlers.archive import router as archive_router
+from velvet_bot.presentation.telegram.routers.archive.save import router as archive_router
 
 router = Router(name=__name__)
 router.include_router(character_aliases_router)
