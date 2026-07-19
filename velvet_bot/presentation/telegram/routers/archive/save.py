@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import logging
 import re
+from html import escape
 
 from aiogram import Bot, F, Router
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.types import Message
 
+from velvet_bot.app.save_sessions import SaveUploadSession, SaveUploadSessions
 from velvet_bot.archive_topic_links import list_characters_by_archive_topic
 from velvet_bot.audit import TelegramAuditLogger
+from velvet_bot.character_resolution import resolve_character
 from velvet_bot.database import Database
 from velvet_bot.media import MediaDescriptor, extract_media
 from velvet_bot.media_preview_persistence import set_media_preview
@@ -76,6 +79,21 @@ def _caller_user_id(message: Message) -> int | None:
     return caller.id if caller else None
 
 
+class PendingSaveUploadFilter(BaseFilter):
+    async def __call__(
+        self,
+        message: Message,
+        save_upload_sessions: SaveUploadSessions,
+    ) -> dict[str, SaveUploadSession] | bool:
+        user_id = _caller_user_id(message)
+        if user_id is None:
+            return False
+        session = save_upload_sessions.get(chat_id=message.chat.id, user_id=user_id)
+        if session is None:
+            return False
+        return {"save_upload_session": session}
+
+
 async def _persist_descriptor_preview(
     database: Database,
     *,
@@ -104,6 +122,8 @@ async def _build_save_response(
     audit_logger: TelegramAuditLogger,
 ) -> str:
     source_message = message.reply_to_message
+    if source_message is None and extract_media(message) is not None:
+        source_message = message
     if source_message is None:
         return (
             "Команда должна быть отправлена ответом на фото или видео.\n\n"
@@ -138,6 +158,66 @@ async def _handle_normal_save(
     )
 
 
+async def _start_save_session(
+    message: Message,
+    character_name: str,
+    database: Database,
+    save_upload_sessions: SaveUploadSessions,
+) -> None:
+    user_id = _caller_user_id(message)
+    if user_id is None:
+        await message.answer("Не удалось определить пользователя для режима сохранения.")
+        return
+    try:
+        character = await resolve_character(database, character_name)
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
+    if character is None:
+        await message.answer(
+            "Такой персонаж или быстрый тег не найден. Сначала создайте его профиль."
+        )
+        return
+
+    save_upload_sessions.start(
+        chat_id=message.chat.id,
+        user_id=user_id,
+        character_name=character.name,
+        command_message_id=message.message_id,
+    )
+    await message.answer(
+        f"<b>Ожидаю файл для {escape(character.name)}.</b>\n\n"
+        "Теперь отправьте или перешлите одно фото, видео, анимацию либо "
+        "изображение/видео как файл. Оно автоматически сохранится в архив.\n\n"
+        "Ожидание действует 10 минут. Отмена: <code>/savecancel</code>."
+    )
+
+
+def _has_context_media(message: Message) -> bool:
+    return bool(
+        (message.reply_to_message and extract_media(message.reply_to_message) is not None)
+        or extract_media(message) is not None
+    )
+
+
+@router.message(Command("savecancel"))
+async def handle_save_cancel(
+    message: Message,
+    save_upload_sessions: SaveUploadSessions,
+) -> None:
+    user_id = _caller_user_id(message)
+    if user_id is None:
+        await message.answer("Не удалось определить пользователя.")
+        return
+    stopped = save_upload_sessions.stop(chat_id=message.chat.id, user_id=user_id)
+    if stopped is None:
+        await message.answer("Активного ожидания файла нет.")
+        return
+    await message.answer(
+        f"Ожидание файла для <b>{escape(stopped.character_name)}</b> отменено."
+    )
+
+
 @router.message(Command("save"))
 async def handle_save_media(
     message: Message,
@@ -145,19 +225,30 @@ async def handle_save_media(
     database: Database,
     bot: Bot,
     audit_logger: TelegramAuditLogger,
+    save_upload_sessions: SaveUploadSessions,
 ) -> None:
     if not command.args:
         await message.answer(
             "Укажите имя персонажа после команды.\n\n"
-            "Ответьте на фото или видео командой <code>/save Аид</code>."
+            "Вариант 1: ответьте на медиа командой <code>/save Аид</code>.\n"
+            "Вариант 2: отправьте <code>/save Аид</code>, затем пришлите или "
+            "перешлите файл."
         )
         return
-    await _handle_normal_save(
+    if _has_context_media(message):
+        await _handle_normal_save(
+            message,
+            command.args,
+            database,
+            bot,
+            audit_logger,
+        )
+        return
+    await _start_save_session(
         message,
         command.args,
         database,
-        bot,
-        audit_logger,
+        save_upload_sessions,
     )
 
 
@@ -168,16 +259,69 @@ async def handle_mention_save_media(
     bot_username: str,
     bot: Bot,
     audit_logger: TelegramAuditLogger,
+    save_upload_sessions: SaveUploadSessions,
 ) -> None:
     character_name = parse_guest_save_character(message.text or "", bot_username)
     if character_name is None:
         return
-    await _handle_normal_save(
+    if _has_context_media(message):
+        await _handle_normal_save(
+            message,
+            character_name,
+            database,
+            bot,
+            audit_logger,
+        )
+        return
+    await _start_save_session(
         message,
         character_name,
         database,
-        bot,
-        audit_logger,
+        save_upload_sessions,
+    )
+
+
+@router.message(
+    F.photo | F.video | F.animation | F.document,
+    PendingSaveUploadFilter(),
+)
+async def handle_pending_save_upload(
+    message: Message,
+    save_upload_session: SaveUploadSession,
+    save_upload_sessions: SaveUploadSessions,
+    database: Database,
+    bot: Bot,
+    audit_logger: TelegramAuditLogger,
+) -> None:
+    media = extract_media(message)
+    if media is None:
+        await message.answer(
+            "Этот файл не поддерживается. Пришлите фото, видео, анимацию либо "
+            "изображение/видео как документ. Ожидание остаётся активным."
+        )
+        return
+
+    user_id = _caller_user_id(message)
+    if user_id is None:
+        await message.answer("Не удалось определить пользователя.")
+        return
+    active = save_upload_sessions.stop(chat_id=message.chat.id, user_id=user_id)
+    if active is None:
+        await message.answer(
+            "Ожидание файла уже истекло. Повторите команду <code>/save Имя</code>."
+        )
+        return
+
+    await message.answer(
+        await save_media_from_message(
+            database,
+            bot,
+            audit_logger,
+            request_message=message,
+            source_message=message,
+            character_name=save_upload_session.character_name,
+            actor_id=user_id,
+        )
     )
 
 
@@ -253,3 +397,13 @@ async def handle_new_archive_topic_media(
                 archive_thread_id=message.message_thread_id,
                 archive_message_id=message.message_id,
             )
+
+
+__all__ = (
+    "PendingSaveUploadFilter",
+    "handle_pending_save_upload",
+    "handle_save_cancel",
+    "handle_save_media",
+    "parse_guest_save_character",
+    "router",
+)
