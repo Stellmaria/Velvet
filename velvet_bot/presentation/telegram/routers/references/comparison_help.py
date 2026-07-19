@@ -24,7 +24,9 @@ from aiogram.types import (
 from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
+from velvet_bot.presentation.telegram.routers.characters.contracts import (
+    AdminDirectoryCallback,
+)
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.quality_ui import QualityCallback, quality_callback
 from velvet_bot.reference_catalog import get_reference_page

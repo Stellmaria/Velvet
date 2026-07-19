@@ -13,7 +13,7 @@ from velvet_bot.analytics_review import (
     list_unresolved_tag_reviews,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.analytics_management_common import (
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_common import (
     _edit,
     _pager,
     _short,

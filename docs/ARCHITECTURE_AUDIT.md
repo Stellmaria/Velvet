@@ -21,7 +21,7 @@
 
 Логический рефакторинг основных бизнес- и persistence-границ завершён. Проект использует composition root, application use cases, repositories/services, централизованный WorkerManager и проверенные Telegram/error boundaries.
 
-Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, но 68 старых handler paths сохраняются как module aliases, часть repositories и services расположена в исторических корневых модулях, а несколько runtime compatibility adapters всё ещё нужны до завершения очистки consumers.
+Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, production imports больше не используют старые handler paths, но 68 aliases сохраняются для тестовой и внешней совместимости. Часть repositories и services всё ещё расположена в исторических корневых модулях, а runtime compatibility adapters удаляются отдельными проверяемыми срезами.
 
 ## Закрытые архитектурные долги
 
@@ -132,7 +132,7 @@ Root composition не должен импортировать отдельные
 
 ## P3D: compatibility retirement
 
-Статус: выполняется. Legacy-consumer inventory после второго cleanup-среза фиксирует 19 production-файлов, 28 references и 17 старых handler modules. Compatibility должен быть явным, перечисленным и стадийным.
+Статус: production cleanup завершён. Legacy-consumer inventory фиксирует 0 production-файлов, 0 references и 0 legacy modules. Остаётся стадийно мигрировать compatibility-тесты и удалить 68 старых handler aliases без изменения внешних callback/command contracts.
 
 Допустимы временные категории:
 

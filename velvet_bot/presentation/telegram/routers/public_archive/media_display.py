@@ -21,7 +21,6 @@ from velvet_bot.public_catalog import (
     toggle_public_like,
 )
 from velvet_bot.public_manager_access import has_public_manager_access
-from velvet_bot.public_manager_preview_bridge import connect_public_manager_preview
 from velvet_bot.public_media_lookup import get_character_media_offset
 from velvet_bot.public_preview_overrides import (
     replace_viewer_archive_page as replace_preview_archive_page,
@@ -29,7 +28,6 @@ from velvet_bot.public_preview_overrides import (
 )
 from velvet_bot.public_ui import PublicArchiveCallback
 
-connect_public_manager_preview()
 router = Router(name=__name__)
 
 

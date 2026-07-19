@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "p3d-residual-handler-classification",
+                "p3d-production-legacy-zero",
             ],
             check=True,
         )

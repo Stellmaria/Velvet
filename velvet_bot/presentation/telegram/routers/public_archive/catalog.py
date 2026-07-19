@@ -73,7 +73,7 @@ async def _build_public_input_media(bot: Bot, page: ArchivePage, state):
     return build_input_media(page.media, caption)
 
 
-async def _send_public_archive_page(
+async def send_public_archive_page(
     *,
     bot: Bot,
     database: Database,
@@ -118,6 +118,9 @@ async def _send_public_archive_page(
     return await bot.send_document(document=page.media.telegram_file_id, **common)
 
 
+_send_public_archive_page = send_public_archive_page
+
+
 async def _replace_public_archive_page(
     *,
     callback: CallbackQuery,
@@ -148,7 +151,7 @@ async def _replace_public_archive_page(
         await callback.message.edit_media(media=media, reply_markup=keyboard)
     except TelegramBadRequest as error:
         logger.info("Public archive edit fallback: %s", error)
-        await _send_public_archive_page(
+        await send_public_archive_page(
             bot=bot,
             database=database,
             chat_id=callback.message.chat.id,
@@ -486,7 +489,7 @@ async def handle_public_archive_callback(
             await callback.answer("Не удалось определить чат.", show_alert=True)
             return
         try:
-            await _send_public_archive_page(
+            await send_public_archive_page(
                 bot=bot,
                 database=database,
                 chat_id=callback.message.chat.id,

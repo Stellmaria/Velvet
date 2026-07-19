@@ -10,6 +10,8 @@
 - Added a generated inventory for production consumers of legacy `velvet_bot.handlers.*` paths.
 - The first cleanup slice reduced the baseline to 20 consumer files, 30 references and 18 legacy modules.
 - The next P3D slice moved multi-story KR callbacks/profile rendering to public contracts and reduced the baseline to 19 consumer files, 28 references and 17 legacy modules.
+- Production imports no longer depend on `velvet_bot.handlers.*`: the generated baseline is now 0 consumer files, 0 references and 0 legacy modules.
+- Archive and reference command parsing now lives in public parsing modules; remaining cross-domain menu, quality, supervisor and public archive links use canonical presentation imports.
 - Archive topic deletion is now idempotent: Telegram `message to delete not found` is recorded as already absent instead of producing a warning and Error Center event.
 - Character profile text and keyboard rendering moved to a public presentation contract used by character and story controllers.
 - Callback prefixes, commands, SQL and user-visible behavior remain unchanged.

@@ -47,11 +47,19 @@ def install_owner_menu_navigation() -> None:
     if _INSTALLED:
         return
 
-    import velvet_bot.handlers.admin_directory as admin_directory
-    import velvet_bot.handlers.analytics_dashboard as analytics_dashboard
-    import velvet_bot.handlers.backup_center as backup_center
-    import velvet_bot.handlers.publication_center as publication_center
-    import velvet_bot.handlers.system_center as system_center
+    from velvet_bot.presentation.telegram.routers.analytics_controllers import (
+        dashboard as analytics_dashboard,
+    )
+    from velvet_bot.presentation.telegram.routers.characters import (
+        directory as admin_directory,
+    )
+    from velvet_bot.presentation.telegram.routers.publication import (
+        center as publication_center,
+    )
+    from velvet_bot.presentation.telegram.routers.quality_operations_controllers import (
+        backup_center,
+    )
+    from velvet_bot.presentation.telegram.routers import system as system_center
     import velvet_bot.quality_ui as quality_ui
 
     _patch_keyboard_factory(admin_directory, "_category_keyboard")
@@ -72,7 +80,9 @@ def install_owner_menu_navigation() -> None:
         quality_ui.build_quality_dashboard = wrapped_dashboard
 
         # quality_center imports the function directly, so update its bound name too.
-        import velvet_bot.handlers.quality_center as quality_center
+        from velvet_bot.presentation.telegram.routers.quality_operations_controllers import (
+            quality_center,
+        )
 
         quality_center.build_quality_dashboard = wrapped_dashboard
 

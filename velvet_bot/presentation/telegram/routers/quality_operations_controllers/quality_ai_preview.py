@@ -8,7 +8,9 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from velvet_bot.ai_quality import AIQualityItem, AIQualityRepository
 from velvet_bot.database import Database
-from velvet_bot.handlers import quality_ai as quality_ai_module
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers import (
+    quality_ai as quality_ai_module,
+)
 from velvet_bot.quality_ui import QualityCallback, quality_callback
 
 logger = logging.getLogger(__name__)

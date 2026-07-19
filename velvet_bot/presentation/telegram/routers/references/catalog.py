@@ -38,27 +38,13 @@ from velvet_bot.reference_ui import (
     format_reference_caption,
 )
 from velvet_bot.reference_uploads import ReferenceUploadSessions
+from velvet_bot.presentation.telegram.routers.references.parsing import (
+    parse_reference_character,
+)
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
-_REF_COMMAND_PATTERN = re.compile(
-    r"^/refs?(?:@(?P<bot>[A-Za-z0-9_]+))?\s+(?P<name>.+)$",
-    re.IGNORECASE,
-)
-_REF_MENTION_PREFIX_PATTERN = re.compile(
-    r"^@(?P<bot>[A-Za-z0-9_]+)\s+/?refs?\s+(?P<name>.+)$",
-    re.IGNORECASE,
-)
-_REF_MENTION_AFTER_PATTERN = re.compile(
-    r"^/?refs?\s+@(?P<bot>[A-Za-z0-9_]+)\s+(?P<name>.+)$",
-    re.IGNORECASE,
-)
-_REF_MENTION_SUFFIX_PATTERN = re.compile(
-    r"^/?refs?\s+(?P<name>.+?)\s+@(?P<bot>[A-Za-z0-9_]+)$",
-    re.IGNORECASE,
-)
-_REF_PLAIN_PATTERN = re.compile(r"^/?refs?\s+(?P<name>.+)$", re.IGNORECASE)
 _REF_GUEST_FILTER = re.compile(
     r"^(?:"
     r"/refs?(?:@[A-Za-z0-9_]+)?\s+.+|"
@@ -76,33 +62,6 @@ _REF_MENTION_FILTER = re.compile(
     r")$",
     re.IGNORECASE,
 )
-
-
-def parse_reference_character(text: str, bot_username: str) -> str | None:
-    cleaned = " ".join(text.split())
-    if not cleaned:
-        return None
-    expected_username = bot_username.lstrip("@").casefold()
-    for pattern in (
-        _REF_COMMAND_PATTERN,
-        _REF_MENTION_PREFIX_PATTERN,
-        _REF_MENTION_AFTER_PATTERN,
-        _REF_MENTION_SUFFIX_PATTERN,
-        _REF_PLAIN_PATTERN,
-    ):
-        match = pattern.fullmatch(cleaned)
-        if match is None:
-            continue
-        addressed_bot = match.groupdict().get("bot")
-        if (
-            addressed_bot
-            and expected_username
-            and addressed_bot.casefold() != expected_username
-        ):
-            return None
-        character_name = match.group("name").strip()
-        return character_name or None
-    return None
 
 
 async def _resolve_page_by_name(

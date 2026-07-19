@@ -22,7 +22,9 @@ def install_quality_calibration_report_ui() -> None:
     if _INSTALLED:
         return
 
-    import velvet_bot.handlers.quality_ai as quality_ai
+    from velvet_bot.presentation.telegram.routers.quality_operations_controllers import (
+        quality_ai,
+    )
 
     original = quality_ai._report_text
 

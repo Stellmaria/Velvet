@@ -18,7 +18,7 @@ from velvet_bot.alias_management import (
 from velvet_bot.analytics_callbacks import AnalyticsManageCallback, management_link
 from velvet_bot.character_aliases import add_character_alias
 from velvet_bot.database import Database
-from velvet_bot.handlers.analytics_management_common import (
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_common import (
     _edit,
     _short,
     _show_character_picker,

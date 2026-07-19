@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
-from velvet_bot.handlers.analytics_dashboard import AnalyticsCallback
-from velvet_bot.handlers.backup_center import BackupCallback
-from velvet_bot.handlers.publication_center import PublicationCallback
+from velvet_bot.presentation.telegram.analytics_navigation import AnalyticsCallback
+from velvet_bot.presentation.telegram.routers.characters.contracts import (
+    AdminDirectoryCallback,
+)
+from velvet_bot.presentation.telegram.routers.publication.center import (
+    PublicationCallback,
+)
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center import (
+    BackupCallback,
+)
 from velvet_bot.owner_callbacks import (
     OwnerMenuCallback,
     owner_action_callback,

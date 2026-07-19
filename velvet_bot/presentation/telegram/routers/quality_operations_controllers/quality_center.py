@@ -8,8 +8,10 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from velvet_bot.ai_quality import AIQualityRepository
 from velvet_bot.archive_ui import ArchiveMediaCallback
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
-from velvet_bot.handlers.analytics_dashboard import AnalyticsCallback
+from velvet_bot.presentation.telegram.analytics_navigation import AnalyticsCallback
+from velvet_bot.presentation.telegram.routers.characters.contracts import (
+    AdminDirectoryCallback,
+)
 from velvet_bot.media_quality import reset_failed_scans
 from velvet_bot.quality_audit import (
     get_quality_summary,

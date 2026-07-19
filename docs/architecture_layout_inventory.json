@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3d-residual-handler-classification",
+  "generated_from": "p3d-production-legacy-zero",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -95,7 +95,7 @@
     "velvet_bot/handlers/velvet_ai_visual.py",
     "velvet_bot/handlers/watermark.py"
   ],
-  "root_level_module_count": 115,
+  "root_level_module_count": 114,
   "compatibility_file_count": 5,
   "pre_import_compatibility_components": [
     "ai-quality-schema",
