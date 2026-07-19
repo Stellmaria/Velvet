@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from velvet_bot.handlers.error_center import router as error_center_router
-from velvet_bot.handlers.owner_actions import router as owner_actions_router
-from velvet_bot.handlers.owner_menu import router as owner_menu_router
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center import (
+    router as error_center_router,
+)
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions import (
+    router as owner_actions_router,
+)
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu import (
+    router as owner_menu_router,
+)
 from velvet_bot.presentation.telegram.routers.supervisor.control import (
     router as supervisor_control_router,
 )

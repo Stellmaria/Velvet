@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "p3c-analytics-controllers",
+                "p3c-core-operations-controllers",
             ],
             check=True,
         )
