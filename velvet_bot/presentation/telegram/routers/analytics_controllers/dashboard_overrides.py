@@ -16,8 +16,10 @@ from velvet_bot.analytics_dashboard import (
     normalize_period,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.analytics_management_tags import _show_unresolved_queue
 from velvet_bot.post_classification import POST_TYPE_LABELS
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags import (
+    _show_unresolved_queue,
+)
 
 router = Router(name=__name__)
 
@@ -84,20 +86,6 @@ async def handle_managed_dashboard_sections(
             ],
             [
                 InlineKeyboardButton(
-                    text="📚 Все публикации",
-                    callback_data=management_link(
-                        "review",
-                        period=period,
-                        value="all",
-                    ),
-                ),
-                InlineKeyboardButton(
-                    text="🔤 Алиасы",
-                    callback_data=management_link("aliases", period=period),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
                     text="🤖 Пересчитать автоматические",
                     callback_data=management_link("reclassify", period=period),
                 )
@@ -106,23 +94,17 @@ async def handle_managed_dashboard_sections(
                 InlineKeyboardButton(
                     text="↩️ Аналитика",
                     callback_data=dashboard_link("menu", period=period),
-                ),
-                InlineKeyboardButton(
-                    text="🔄 Обновить",
-                    callback_data=dashboard_link("types", period=period),
-                ),
+                )
             ],
         ]
     )
-    text = (
-        "<b>Классификация публикаций</b>\n\n"
+    await callback.message.edit_text(
+        "<b>Типы публикаций</b>\n\n"
         f"Период: <b>{PERIOD_LABELS[period]}</b>\n\n"
-        + "\n".join(lines)
-        + "\n\nАвтоматические результаты ниже 75% попадают в очередь проверки. "
-        "Ручной тип имеет приоритет и не перезаписывается новым анализом."
+        + "\n".join(lines),
+        reply_markup=keyboard,
     )
-    if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
-        return
-    await callback.message.edit_text(text, reply_markup=keyboard)
     await callback.answer()
+
+
+__all__ = ("router",)

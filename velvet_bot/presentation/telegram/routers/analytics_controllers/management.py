@@ -6,19 +6,25 @@ from aiogram.types import CallbackQuery, Message
 from velvet_bot.analytics_callbacks import AnalyticsManageCallback
 from velvet_bot.analytics_dashboard import normalize_period
 from velvet_bot.database import Database
-from velvet_bot.handlers.analytics_management_aliases import (
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_aliases import (
     ALIAS_ACTIONS,
     _ALIAS_REPLY_RE,
     handle_alias_action,
     handle_alias_reply_message,
 )
-from velvet_bot.handlers.analytics_management_common import _primary_channel_id, _short
-from velvet_bot.handlers.analytics_management_publications import (
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_common import (
+    _primary_channel_id,
+    _short,
+)
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications import (
     PUBLICATION_ACTIONS,
     _TYPE_BUTTON_LABELS,
     handle_publication_action,
 )
-from velvet_bot.handlers.analytics_management_tags import TAG_ACTIONS, handle_tag_action
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags import (
+    TAG_ACTIONS,
+    handle_tag_action,
+)
 
 router = Router(name=__name__)
 
