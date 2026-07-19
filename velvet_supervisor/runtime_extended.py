@@ -6,7 +6,10 @@ from typing import Any
 from .bootstrap_launcher import launch_bootstrap_short
 from .krita_process import KritaProcessManager
 from .models import OperationState, utc_now
+from .polling_log_filter import install_supervisor_polling_filter
 from .runtime import OperationConflict, VelvetSupervisor as BaseVelvetSupervisor
+
+install_supervisor_polling_filter()
 
 
 class VelvetSupervisor(BaseVelvetSupervisor):
