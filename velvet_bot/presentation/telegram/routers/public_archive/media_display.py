@@ -158,6 +158,12 @@ async def handle_like_and_subscription(
     if page is None or page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
+    if callback_data.media_id and callback_data.media_id != page.media.id:
+        await callback.answer(
+            "Архив изменился. Откройте материал заново.",
+            show_alert=True,
+        )
+        return
     if not await _check_media_access(
         callback,
         bot,
@@ -197,9 +203,6 @@ async def handle_like_and_subscription(
     await callback.answer(alert)
 
 
-@router.callback_query(
-    PublicArchiveCallback.filter(F.action.in_({"ppub", "p18"}))
-)
 async def handle_manager_access_flags(
     callback: CallbackQuery,
     callback_data: PublicArchiveCallback,
@@ -218,6 +221,12 @@ async def handle_manager_access_flags(
     )
     if page is None or page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
+        return
+    if callback_data.media_id and callback_data.media_id != page.media.id:
+        await callback.answer(
+            "Архив изменился. Откройте материал заново.",
+            show_alert=True,
+        )
         return
 
     if callback_data.action == "ppub":
@@ -260,3 +269,9 @@ async def handle_manager_access_flags(
         manager_access=True,
     )
     await callback.answer(alert, show_alert=True)
+
+
+router.callback_query.register(
+    handle_manager_access_flags,
+    PublicArchiveCallback.filter(F.action.in_({"ppub", "p18"})),
+)
