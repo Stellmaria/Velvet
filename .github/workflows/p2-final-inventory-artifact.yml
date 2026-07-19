@@ -5,18 +5,30 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - name: Generate final P2 inventory
         run: python scripts/update_p2_stability_inventory.py --label p2ap-final-stability --schema-version 43
+      - name: Commit generated inventory
+        run: |
+          if git diff --quiet -- docs/p2_stability_inventory.json docs/p2_stability_inventory.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/p2_stability_inventory.json docs/p2_stability_inventory.md
+          git commit -m "Complete final P2 stability inventory"
+          git push origin HEAD:${{ github.head_ref }}
       - name: Upload generated inventory
         uses: actions/upload-artifact@v4
         with:
