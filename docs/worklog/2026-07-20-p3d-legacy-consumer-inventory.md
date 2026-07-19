@@ -49,7 +49,7 @@ Module aliases нельзя удалять до нулевого consumer invent
 - profile text и keyboard вынесены в `characters/profile_views.py`;
 - старые `_profile_text` и `_profile_keyboard` оставлены в `directory.py` только как временные wrappers для ещё не перенесённых consumers;
 - обновлены project memory, development status, architecture audit и changelog;
-- временный source snapshot workflow удалён до финализации ветки.
+- временный source snapshot workflow и patch payload удалены до финализации ветки.
 
 ### Миграции и совместимость
 
@@ -60,13 +60,14 @@ Module aliases нельзя удалять до нулевого consumer invent
 - target regression suite: 29 tests, success;
 - полный локальный suite без PostgreSQL: 938 tests, 24 integration skips, единственный промежуточный failure был ожидаемым из-за статуса worklog `в работе`;
 - `compileall`, inventory `--check` и `git diff --check`: success;
-- финальные GitHub Actions фиксируются на head PR #220.
+- финальные GitHub Actions запускаются на пользовательском documentation head PR #220.
 
 ### PR и commit
 
 - PR: #220 `P3D: inventory legacy handler consumers`;
 - ветка: `agent/p3d-legacy-consumer-inventory`;
-- production head будет создан единым tree commit после локальных проверок.
+- проверенный кодовый commit: `6f7379e372da27f1eb832f02855e7cbc15162b25`;
+- финальный documentation head создаётся этой записью для штатного запуска GitHub Actions.
 
 ### Незавершённое
 
