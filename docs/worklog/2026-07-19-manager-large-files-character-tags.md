@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-manager-large-files-character-tags`
 - Линия/фаза: Velvet Archive, функциональное улучшение после P3C
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/manager-large-files-character-tags`
 - Базовый commit: `01158e01c0af36326ff0eb098e08065811c20985`
 
@@ -43,7 +43,7 @@
 
 ### Риски и ограничения
 
-Ручные алиасы глобально идентифицируют персонажа; конфликтующий тег должен отклоняться существующим уникальным ограничением. Публичным пользователям исходный крупный документ автоматически не раскрывается: fallback доступен только manager-доступу. Команда `/save` сохраняет существующую матрицу ролей; этот срез меняет разрешение имени, а не расширяет право сохранения.
+Ручные алиасы глобально идентифицируют персонажа; конфликтующий тег отклоняется существующим уникальным ограничением. Публичным пользователям исходный крупный документ автоматически не раскрывается: fallback доступен только manager-доступу. Команда `/save` сохраняет существующую матрицу ролей; этот срез меняет разрешение имени, а не расширяет право сохранения.
 
 ## После завершения
 
@@ -55,8 +55,11 @@
 - `/save`, profile/topic flows и основные reference commands используют общий resolver;
 - в карточке персонажа добавлена кнопка `🏷 Быстрые теги`;
 - добавлены кнопочный список, добавление, удаление и ForceReply flow;
-- добавлены команды `/tagadd`, `/tags`, `/tagdel` с legacy-синонимами `/aliasadd`, `/aliases`, `/aliasdel`;
+- добавлены команды `/tagadd`, `/tags`, `/tagdel`, `/tagreindex` с legacy-синонимами `/aliasadd`, `/aliases`, `/aliasdel`, `/aliasreindex`;
+- tag permissions вынесены в отдельные moderator contracts, не расширяющие legacy `MODERATOR_COMMANDS`;
 - policy и middleware разрешают tag commands, `ctag` callbacks и tag reply marker модераторам;
+- P2 callback baseline сохранён через явную регистрацию callback handler;
+- обновлены command coverage и architecture inventory;
 - добавлены regression-тесты для manager file fallback и character quick tags.
 
 ### Миграции и совместимость
@@ -65,22 +68,26 @@
 
 ### Проверки
 
-- локальные contracts подготовлены;
-- полный CI будет зафиксирован после создания PR;
-- проверяется manager/public split, alias SQL lookup, кнопка карточки, callback length и moderator access.
+- первый CI: Docker build #566 и project notes contract #417 прошли; tests #1030 выявил пять устаревших inventory/access/command contracts;
+- callback registration переведена на явную без изменения runtime behavior;
+- moderator tag permissions отделены от legacy editor contract;
+- command coverage и architecture inventory обновлены;
+- повторный CI: tests #1039, Docker build #575, project notes contract #426 — success;
+- manager/public split, alias SQL lookup, кнопка карточки, callback length и moderator access подтверждены.
 
 ### PR и commit
 
+- PR: #209 `Allow manager file fallback and character quick tags`;
 - рабочая ветка: `agent/manager-large-files-character-tags`;
 - первый manager fallback commit: `806fc4fe100cff59fcd1ef3dde9d6d84b21c19af`;
 - общий resolver commit: `d93bdd18230fe924457ce270fb2e80e909103083`;
 - кнопочный tag controller commit: `93bef6b64db377ad26faa2af2fc07b9193748c58`;
-- PR и проверенный финальный head будут добавлены после CI.
+- проверенный runtime head: `c816d3222dd68cebb5a82167a340b863bb5b619e`.
 
 ### Незавершённое
 
-До зелёного CI срез считается частично завершённым. После CI могут потребоваться обновления старых mocks, которые ожидают только exact-name lookup через `database.get_character`.
+Функциональный срез завершён. После развёртывания остаётся живая проверка на реальном Telegram-документе больше 20 МБ и создание тестового тега через карточку. Это эксплуатационная проверка, а не блокировка merge.
 
 ### Следующий шаг
 
-Открыть PR, пройти полный CI, исправить только подтверждённые regressions и после зелёного результата слить функциональный срез в `main`.
+Слить PR #209 после зелёного CI финального documentation head. Затем продолжить P3D: классификацию пяти standalone handler implementations и контролируемое удаление временных aliases.
