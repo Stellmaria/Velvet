@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from time import monotonic
+from typing import Callable
+
+
+DEFAULT_SAVE_SESSION_TTL_SECONDS = 10 * 60
+
+
+@dataclass(frozen=True, slots=True)
+class SaveUploadSession:
+    chat_id: int
+    user_id: int
+    character_name: str
+    command_message_id: int
+    expires_at: float
+
+
+class SaveUploadSessions:
+    """Keep short-lived one-shot media save sessions in application memory."""
+
+    def __init__(
+        self,
+        *,
+        ttl_seconds: float = DEFAULT_SAVE_SESSION_TTL_SECONDS,
+        clock: Callable[[], float] = monotonic,
+    ) -> None:
+        if ttl_seconds <= 0:
+            raise ValueError("Save session TTL must be positive.")
+        self._ttl_seconds = float(ttl_seconds)
+        self._clock = clock
+        self._sessions: dict[tuple[int, int], SaveUploadSession] = {}
+
+    @staticmethod
+    def _key(chat_id: int, user_id: int) -> tuple[int, int]:
+        return int(chat_id), int(user_id)
+
+    def start(
+        self,
+        *,
+        chat_id: int,
+        user_id: int,
+        character_name: str,
+        command_message_id: int,
+    ) -> SaveUploadSession:
+        cleaned_name = character_name.strip()
+        if not cleaned_name:
+            raise ValueError("Character name cannot be empty.")
+        session = SaveUploadSession(
+            chat_id=int(chat_id),
+            user_id=int(user_id),
+            character_name=cleaned_name,
+            command_message_id=int(command_message_id),
+            expires_at=self._clock() + self._ttl_seconds,
+        )
+        self._sessions[self._key(chat_id, user_id)] = session
+        return session
+
+    def get(self, *, chat_id: int, user_id: int) -> SaveUploadSession | None:
+        key = self._key(chat_id, user_id)
+        session = self._sessions.get(key)
+        if session is None:
+            return None
+        if session.expires_at <= self._clock():
+            self._sessions.pop(key, None)
+            return None
+        return session
+
+    def stop(self, *, chat_id: int, user_id: int) -> SaveUploadSession | None:
+        return self._sessions.pop(self._key(chat_id, user_id), None)
+
+
+__all__ = (
+    "DEFAULT_SAVE_SESSION_TTL_SECONDS",
+    "SaveUploadSession",
+    "SaveUploadSessions",
+)
