@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-core-operations-controllers`
 - Линия/фаза: Velvet Archive, P3C
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3c-core-operations-controllers`
 - Базовый commit: `f8898970ced75d561914e044c6041c2d0b2739cc`
 
@@ -52,7 +52,7 @@
 - три implementations перенесены через повторное использование исходных Git blob SHA без переписывания кода;
 - `error_center`, `owner_actions` и `owner_menu` в legacy handlers заменены module aliases;
 - `core_operations.py` переключён на canonical imports с прежним include order;
-- P3 router contract направлен на canonical paths;
+- P3, Phase 16 и project integrity contracts направлены на canonical paths;
 - добавлен `tests/test_p3c_core_operations_controllers.py`;
 - architecture inventory обновлён до 27 implementations и 41 alias;
 - следующим P3C-срезом назначены quality operations presentation controllers.
@@ -63,21 +63,23 @@
 
 ### Проверки
 
-- architecture inventory подготовлен: root handler imports 0, active routers 56, duplicates 0, implementations 27, aliases 41;
-- source-level и module-identity regression contracts добавлены;
-- полный CI будет зафиксирован после создания PR.
+- tests #1009: success, 883 tests;
+- Docker build #545: success;
+- project notes contract #400: success;
+- architecture inventory: root handler imports 0, active routers 56, duplicates 0, implementations 27, aliases 41;
+- первый tests run #1007 выявил только два устаревших source-path контракта в Phase 16 и project integrity; оба переведены на canonical paths, функциональных регрессий не найдено.
 
 ### PR и commit
 
+- PR: #205 `Move core operations controllers into presentation`;
 - рабочая ветка: `agent/p3c-core-operations-controllers`;
 - runtime move commit: `f90c44089ccbefa5c41109b0c5a4ebeebcc94392`;
-- основной PR будет создан после фиксации worklog;
-- финальный head и CI runs будут добавлены после проверки.
+- проверенный runtime head: `cf7d2bf6826c0282cbc27f3cb9306fa95e46c5eb`.
 
 ### Незавершённое
 
-До зелёного полного CI срез считается частично завершённым. `watermark.py` остаётся активным legacy controller внутри owner menu и требует отдельного переноса с проверкой Krita workflow. Временные aliases остаются контролируемым остатком P3D.
+`watermark.py` остаётся активным legacy controller внутри owner menu и требует отдельного переноса с проверкой Krita workflow. Временные aliases остаются контролируемым остатком P3D и не меняют runtime semantics.
 
 ### Следующий шаг
 
-Создать PR, пройти полный CI, зафиксировать результаты в worklog и после слияния начать P3C перенос quality operations presentation controllers.
+После merge PR #205 начать отдельный P3C-срез переноса quality operations presentation controllers с актуального `main`.
