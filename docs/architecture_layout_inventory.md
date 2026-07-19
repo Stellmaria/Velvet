@@ -9,8 +9,8 @@
 - активных router imports в bundles: **55**;
 - дублирующих регистраций между bundles: **0**;
 - физических legacy handler-файлов: **68**;
-- активных legacy handler implementations: **50**;
-- временных handler module aliases: **18**;
+- активных legacy handler implementations: **44**;
+- временных handler module aliases: **24**;
 - корневых Python-модулей `velvet_bot/*.py`: **110**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -33,6 +33,12 @@
 - `velvet_bot/handlers/kr_profile_overrides.py`.
 - `velvet_bot/handlers/kr_universe_entry.py`.
 - `velvet_bot/handlers/multi_story_kr.py`.
+- `velvet_bot/handlers/reference_albums.py`.
+- `velvet_bot/handlers/reference_comparison.py`.
+- `velvet_bot/handlers/reference_comparison_help.py`.
+- `velvet_bot/handlers/reference_documents.py`.
+- `velvet_bot/handlers/reference_management.py`.
+- `velvet_bot/handlers/references.py`.
 - `velvet_bot/handlers/supervisor_codex.py`.
 - `velvet_bot/handlers/supervisor_console.py`.
 - `velvet_bot/handlers/supervisor_control.py`.
@@ -62,7 +68,7 @@
 ## Следующий срез
 
 - фаза: **P3C**;
-- цель: **reference presentation controllers**;
+- цель: **archive and public archive presentation controllers**;
 - стратегия: canonical presentation modules plus temporary handler module aliases.
 
 ## Правило обновления

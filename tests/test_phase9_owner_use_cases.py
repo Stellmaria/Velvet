@@ -72,8 +72,10 @@ class Phase9ArchitectureTests(unittest.TestCase):
             "velvet_bot/presentation/telegram/routers/characters/aliases.py": (
                 "velvet_bot.application.owner_profiles"
             ),
-            "velvet_bot/handlers/references.py": "velvet_bot.application.owner_references",
-            "velvet_bot/handlers/reference_management.py": (
+            "velvet_bot/presentation/telegram/routers/references/catalog.py": (
+                "velvet_bot.application.owner_references"
+            ),
+            "velvet_bot/presentation/telegram/routers/references/management.py": (
                 "velvet_bot.application.owner_references"
             ),
             "velvet_bot/handlers/channel_analytics.py": (

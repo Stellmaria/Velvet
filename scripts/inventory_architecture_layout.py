@@ -122,7 +122,7 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "active_compatibility_component_count": len(pre_components) + len(post_components),
         "next_slice": {
             "phase": "P3C",
-            "target": "reference presentation controllers",
+            "target": "archive and public archive presentation controllers",
             "strategy": "canonical presentation modules plus temporary handler module aliases",
         },
     }
