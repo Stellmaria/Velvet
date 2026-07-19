@@ -20,6 +20,9 @@ from velvet_bot.presentation.telegram.routers.characters.directory import (
     _profile_keyboard,
     _profile_text,
 )
+from velvet_bot.presentation.telegram.routers.characters.navigation import (
+    resolve_directory_category,
+)
 
 router = Router(name=__name__)
 
@@ -29,24 +32,37 @@ _RENAME_MARKER_RE = re.compile(
 
 
 def _keyboard_with_rename(item, *, category: str, page: int) -> InlineKeyboardMarkup:
-    base = _profile_keyboard(item, category=category, page=page)
+    directory_category = resolve_directory_category(category, item.category)
+    base = _profile_keyboard(item, category=directory_category, page=page)
     rows = [list(row) for row in base.inline_keyboard]
-    final_row = rows.pop() if rows else []
+    if rows:
+        rows.pop()
     rows.append(
         [
             InlineKeyboardButton(
                 text="✏️ Переименовать",
                 callback_data=AdminDirectoryCallback(
                     action="rename",
-                    category=category,
+                    category=directory_category,
                     page=page,
                     character_id=item.character.id,
                 ).pack(),
             )
         ]
     )
-    if final_row:
-        rows.append(final_row)
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="↩️ К списку",
+                callback_data=AdminDirectoryCallback(
+                    action="menu",
+                    category=directory_category,
+                    page=page,
+                    character_id=item.character.id,
+                ).pack(),
+            )
+        ]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -85,9 +101,13 @@ async def handle_rename_request(
     if item is None:
         await callback.answer("Персонаж больше не найден.", show_alert=True)
         return
+    directory_category = resolve_directory_category(
+        callback_data.category,
+        item.category,
+    )
     marker = (
         f"RENAME_CHARACTER:{item.character.id}:"
-        f"{callback_data.category}:{callback_data.page}"
+        f"{directory_category}:{callback_data.page}"
     )
     await callback.message.answer(
         f"{marker}\n\n"
@@ -133,7 +153,7 @@ async def handle_rename_reply(message: Message, database: Database) -> None:
         f"{_profile_text(item)}",
         reply_markup=_keyboard_with_rename(
             item,
-            category=category or item.category or "uncategorized",
+            category=resolve_directory_category(category, item.category),
             page=page,
         ),
     )
