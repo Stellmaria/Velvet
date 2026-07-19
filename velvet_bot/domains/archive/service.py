@@ -11,10 +11,17 @@ class ArchiveService:
     def __init__(self, repository: ArchiveRepository) -> None:
         self._repository = repository
 
-    async def get_page(self, character_id: int, offset: int) -> ArchivePage | None:
+    async def get_page(
+        self,
+        character_id: int,
+        offset: int,
+        *,
+        public_only: bool = False,
+    ) -> ArchivePage | None:
         return await self._repository.get_page(
             character_id=character_id,
             offset=offset,
+            public_only=public_only,
         )
 
     async def set_prompt(
@@ -55,6 +62,28 @@ class ArchiveService:
         media_id: int,
     ) -> bool | None:
         return await self._repository.toggle_spoiler(
+            character_id=character_id,
+            media_id=media_id,
+        )
+
+    async def toggle_public_visibility(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+    ) -> bool | None:
+        return await self._repository.toggle_public_visibility(
+            character_id=character_id,
+            media_id=media_id,
+        )
+
+    async def toggle_adult_requirement(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+    ) -> bool | None:
+        return await self._repository.toggle_adult_requirement(
             character_id=character_id,
             media_id=media_id,
         )
