@@ -59,16 +59,17 @@
 
 ### Проверки
 
-- первый PR head запустил tests #1057 и Docker #592;
-- project notes #441 выявил незавершённый статус worklog, документ приведён к обязательному завершённому формату;
-- финальный CI запускается повторно на обновлённом head.
+- первый head: Docker #592 — success; tests #1057 выполнил 913 тестов и выявил только незавершённый формат worklog; project notes #441 — ожидаемый failure;
+- исправленный runtime/documentation head: tests #1058 — success; Docker #593 — success; project notes #442 — success;
+- regression-набор подтвердил canonical fallback, payload `К списку`, stale callback filter и canonical imports.
 
 ### PR и commit
 
 - PR: #212 `Fix character directory back navigation and start P3D cleanup`;
 - ветка: `agent/fix-directory-back-navigation-p3d`;
 - основной runtime commit: `2766304d142b49c361c1946eeab3a56be7da6bbd`;
-- regression tests commit: `f426058e57039628268a00972d06f8073b3d4eae`.
+- regression tests commit: `f426058e57039628268a00972d06f8073b3d4eae`;
+- проверенный runtime head: `367e4ae1fb849baaadb523b9368cee3e16361ec1`.
 
 ### Незавершённое
 
@@ -78,4 +79,4 @@
 
 ### Следующий шаг
 
-Дождаться зелёного финального CI, слить PR #212 и продолжить P3D canonical import cleanup следующей связной группой consumers без изменения пользовательского поведения.
+Слить PR #212 после зелёного CI финального documentation head и продолжить P3D canonical import cleanup следующей связной группой consumers без изменения пользовательского поведения.
