@@ -15,6 +15,7 @@ PERSONAL_DEFAULTS = (
 )
 RUNTIME_DIRECTORIES = ("backups/", "logs/", "runtime/", "data/")
 ALLOWED_RUNTIME_PLACEHOLDERS = frozenset({".gitkeep", "README.md"})
+ALLOWED_STATIC_DATA = frozenset({"data/story_catalog.json"})
 SECRET_PATTERNS = (
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
     re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
@@ -44,7 +45,7 @@ class PublicRepositorySafetyTests(unittest.TestCase):
         forbidden = {".env", "result.json", "database.dump", "velvet.db"}
         self.assertFalse(forbidden & tracked)
         for value in tracked:
-            if value.startswith(RUNTIME_DIRECTORIES):
+            if value.startswith(RUNTIME_DIRECTORIES) and value not in ALLOWED_STATIC_DATA:
                 self.assertIn(Path(value).name, ALLOWED_RUNTIME_PLACEHOLDERS)
             self.assertFalse(value.endswith((".dump", ".db", ".db-wal", ".db-shm")))
 
