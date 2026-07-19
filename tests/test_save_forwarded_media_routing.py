@@ -5,7 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from velvet_bot.media import extract_media
-from velvet_bot.presentation.telegram.routers.archive import pending_save, save
+from velvet_bot.presentation.telegram.routers import archive_and_public as archive_bundle
+from velvet_bot.presentation.telegram.routers.archive import save
 
 
 def _document_message(*, file_name: str, mime_type: str | None):
@@ -58,17 +59,17 @@ class ForwardedMediaExtractionTests(unittest.TestCase):
 
 
 class PendingSaveRoutingTests(unittest.TestCase):
-    def test_priority_router_reuses_canonical_pending_handler(self) -> None:
-        callbacks = [handler.callback for handler in pending_save.router.message.handlers]
+    def test_bundle_reuses_canonical_pending_handler(self) -> None:
+        callbacks = [handler.callback for handler in archive_bundle.router.message.handlers]
 
         self.assertIn(save.handle_pending_save_upload, callbacks)
 
-    def test_priority_router_precedes_reference_media_routers(self) -> None:
+    def test_pending_registration_precedes_reference_media_routers(self) -> None:
         source = Path(
             "velvet_bot/presentation/telegram/routers/archive_and_public.py"
         ).read_text(encoding="utf-8")
 
-        pending_index = source.index("router.include_router(pending_save_router)")
+        pending_index = source.index("router.message.register(")
         documents_index = source.index("router.include_router(reference_documents_router)")
         references_index = source.index("router.include_router(references_router)")
 
