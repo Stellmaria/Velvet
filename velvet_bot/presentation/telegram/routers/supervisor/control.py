@@ -8,13 +8,21 @@ from velvet_bot.application.supervisor import (
     load_supervisor_status,
     load_supervisor_tasks,
 )
-from velvet_bot.handlers.supervisor_console import router as console_router
-from velvet_bot.handlers.supervisor_self import router as self_router
-from velvet_bot.handlers.supervisor_codex import router as codex_router
-from velvet_bot.handlers.supervisor_git import router as git_router
-from velvet_bot.handlers.supervisor_logs import router as logs_router
-from velvet_bot.handlers.supervisor_process import router as process_router
-from velvet_bot.handlers.supervisor_status import (
+from velvet_bot.presentation.telegram.routers.supervisor.codex import (
+    router as codex_router,
+)
+from velvet_bot.presentation.telegram.routers.supervisor.console import (
+    router as console_router,
+)
+from velvet_bot.presentation.telegram.routers.supervisor.git import router as git_router
+from velvet_bot.presentation.telegram.routers.supervisor.logs import router as logs_router
+from velvet_bot.presentation.telegram.routers.supervisor.process import (
+    router as process_router,
+)
+from velvet_bot.presentation.telegram.routers.supervisor.self_control import (
+    router as self_router,
+)
+from velvet_bot.presentation.telegram.routers.supervisor.status import (
     router as status_router,
     show_supervisor_menu,
 )
@@ -52,7 +60,7 @@ router.include_router(process_router)
 router.include_router(git_router)
 router.include_router(logs_router)
 # Console must be registered before the historical broad reply-marker handler in
-# supervisor_codex so SUPERVISOR_INPUT:console is consumed by its focused route.
+# codex so SUPERVISOR_INPUT:console is consumed by its focused route.
 router.include_router(console_router)
 router.include_router(self_router)
 router.include_router(codex_router)
