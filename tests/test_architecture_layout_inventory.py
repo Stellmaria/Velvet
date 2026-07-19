@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "p3c-supervisor-system-presentation",
+                "p3c-characters-stories-presentation",
             ],
             check=True,
         )

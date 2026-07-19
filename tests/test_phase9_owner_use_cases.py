@@ -60,14 +60,28 @@ class Phase9ArchitectureTests(unittest.TestCase):
 
     def test_reserve_adapters_use_shared_application_or_boundary_services(self) -> None:
         expected_imports = {
-            "velvet_bot/handlers/characters.py": "velvet_bot.application.owner_profiles",
-            "velvet_bot/handlers/admin_directory.py": "velvet_bot.application.owner_profiles",
-            "velvet_bot/handlers/admin_stories.py": "velvet_bot.application.owner_profiles",
-            "velvet_bot/handlers/character_aliases.py": "velvet_bot.application.owner_profiles",
+            "velvet_bot/presentation/telegram/routers/characters/profiles.py": (
+                "velvet_bot.application.owner_profiles"
+            ),
+            "velvet_bot/presentation/telegram/routers/characters/directory.py": (
+                "velvet_bot.application.owner_profiles"
+            ),
+            "velvet_bot/presentation/telegram/routers/stories/management.py": (
+                "velvet_bot.application.owner_profiles"
+            ),
+            "velvet_bot/presentation/telegram/routers/characters/aliases.py": (
+                "velvet_bot.application.owner_profiles"
+            ),
             "velvet_bot/handlers/references.py": "velvet_bot.application.owner_references",
-            "velvet_bot/handlers/reference_management.py": "velvet_bot.application.owner_references",
-            "velvet_bot/handlers/channel_analytics.py": "velvet_bot.application.owner_analytics",
-            "velvet_bot/handlers/telegram_analytics_import.py": "velvet_bot.application.owner_analytics",
+            "velvet_bot/handlers/reference_management.py": (
+                "velvet_bot.application.owner_references"
+            ),
+            "velvet_bot/handlers/channel_analytics.py": (
+                "velvet_bot.application.owner_analytics"
+            ),
+            "velvet_bot/handlers/telegram_analytics_import.py": (
+                "velvet_bot.application.owner_analytics"
+            ),
             "velvet_bot/handlers/archive.py": "velvet_bot.services.media_save",
             "velvet_bot/handlers/spoiler_save.py": "velvet_bot.services.media_save",
         }
