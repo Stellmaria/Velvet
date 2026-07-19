@@ -19,7 +19,9 @@ from aiogram.types import Message
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Character, Database
-from velvet_bot.handlers.reference_albums import parse_reference_selector
+from velvet_bot.presentation.telegram.routers.references.parsing import (
+    parse_reference_selector,
+)
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.reference_catalog import CharacterReference, list_character_references
 from velvet_bot.reference_comparison import ReferenceComparisonClient

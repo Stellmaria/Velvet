@@ -300,7 +300,9 @@ async def handle_watermark_callback(
     if action == "menu":
         await callback.answer()
         if isinstance(callback.message, Message):
-            from velvet_bot.handlers.owner_menu import show_owner_menu
+            from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu import (
+                show_owner_menu,
+            )
 
             await show_owner_menu(callback.message)
         return

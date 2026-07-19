@@ -31,10 +31,8 @@ from velvet_bot.presentation.telegram.message_deletion import (
     delete_message_idempotently,
 )
 from velvet_bot.protected_bot import ProtectedMediaBot
-from velvet_bot.public_archive_display import (
-    refresh_viewer_archive_caption,
-    replace_viewer_archive_page,
-)
+from velvet_bot.public_archive_display import refresh_viewer_archive_caption
+from velvet_bot.public_preview_overrides import replace_viewer_archive_page
 from velvet_bot.public_manager_access import has_public_manager_access
 from velvet_bot.public_manager_ui import (
     build_manager_category_picker,

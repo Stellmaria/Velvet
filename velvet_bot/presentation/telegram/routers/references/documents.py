@@ -17,7 +17,9 @@ from aiogram.types import (
 from velvet_bot.access import get_caller_user
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Character, Database
-from velvet_bot.handlers.reference_management import parse_reference_add_character
+from velvet_bot.presentation.telegram.routers.references.parsing import (
+    parse_reference_add_character,
+)
 from velvet_bot.reference_catalog import add_character_reference
 from velvet_bot.reference_media import prepare_reference_source, validate_reference_document
 from velvet_bot.reference_uploads import ReferenceUploadSessions

@@ -31,6 +31,9 @@ from velvet_bot.reference_catalog import (
     delete_character_reference,
     get_reference_page,
 )
+from velvet_bot.presentation.telegram.routers.references.parsing import (
+    parse_reference_add_character,
+)
 from velvet_bot.reference_ui import (
     ReferenceCallback,
     build_reference_delete_keyboard,
@@ -58,46 +61,6 @@ _REFADD_MENTION_FILTER = re.compile(
     r")$",
     re.IGNORECASE,
 )
-
-
-def parse_reference_add_character(text: str, bot_username: str) -> str | None:
-    cleaned = " ".join(text.split())
-    if not cleaned:
-        return None
-    expected_username = bot_username.lstrip("@").casefold()
-    patterns = (
-        re.compile(
-            r"^/refadd(?:@(?P<bot>[A-Za-z0-9_]+))?\s+(?P<name>.+)$",
-            re.IGNORECASE,
-        ),
-        re.compile(
-            r"^@(?P<bot>[A-Za-z0-9_]+)\s+/?refadd\s+(?P<name>.+)$",
-            re.IGNORECASE,
-        ),
-        re.compile(
-            r"^/?refadd\s+@(?P<bot>[A-Za-z0-9_]+)\s+(?P<name>.+)$",
-            re.IGNORECASE,
-        ),
-        re.compile(
-            r"^/?refadd\s+(?P<name>.+?)\s+@(?P<bot>[A-Za-z0-9_]+)$",
-            re.IGNORECASE,
-        ),
-        re.compile(r"^/?refadd\s+(?P<name>.+)$", re.IGNORECASE),
-    )
-    for pattern in patterns:
-        match = pattern.fullmatch(cleaned)
-        if match is None:
-            continue
-        addressed_bot = match.groupdict().get("bot")
-        if (
-            addressed_bot
-            and expected_username
-            and addressed_bot.casefold() != expected_username
-        ):
-            return None
-        character_name = match.group("name").strip()
-        return character_name or None
-    return None
 
 
 def parse_reference_delete_args(value: str) -> tuple[str, int] | None:

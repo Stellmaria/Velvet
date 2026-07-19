@@ -18,13 +18,16 @@ from aiogram.types import (
 )
 
 from velvet_bot.database import Character, Database
-from velvet_bot.handlers.references import parse_reference_character
 from velvet_bot.reference_catalog import (
     CharacterReference,
     ReferencePage,
     list_character_references,
 )
 from velvet_bot.reference_ui import build_reference_keyboard, format_reference_caption
+from velvet_bot.presentation.telegram.routers.references.parsing import (
+    parse_reference_character,
+    parse_reference_selector,
+)
 
 router = Router(name=__name__)
 
@@ -52,27 +55,6 @@ _T = TypeVar("_T")
 def chunk_references(items: list[_T], size: int = 10) -> list[list[_T]]:
     safe_size = max(2, min(size, 10))
     return [items[index : index + safe_size] for index in range(0, len(items), safe_size)]
-
-
-def parse_reference_selector(value: str) -> tuple[str, int | None]:
-    """Split ``character name [number]`` while preserving names with spaces.
-
-    A leading ``#`` before the number is also accepted. Character lookup first
-    tries the complete value, so a real character named, for example,
-    ``Agent 47`` is not accidentally treated as reference number 47.
-    """
-    cleaned = " ".join(value.split())
-    if not cleaned:
-        return "", None
-
-    for pattern in (
-        r"^(?P<name>.+?)\s+#(?P<index>\d+)$",
-        r"^(?P<name>.+?)\s+(?P<index>\d+)$",
-    ):
-        match = re.fullmatch(pattern, cleaned)
-        if match is not None:
-            return match.group("name").strip(), int(match.group("index"))
-    return cleaned, None
 
 
 def _album_caption(

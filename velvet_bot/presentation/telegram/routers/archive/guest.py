@@ -16,7 +16,9 @@ from aiogram.types import (
 
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Character, Database
-from velvet_bot.handlers.archive import parse_guest_save_character
+from velvet_bot.presentation.telegram.routers.archive.parsing import (
+    parse_guest_save_character,
+)
 from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
 
 router = Router(name=__name__)

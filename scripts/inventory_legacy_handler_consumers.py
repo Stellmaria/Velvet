@@ -14,9 +14,29 @@ JSON_PATH = ROOT / "docs" / "legacy_handler_consumer_inventory.json"
 MARKDOWN_PATH = ROOT / "docs" / "legacy_handler_consumer_inventory.md"
 CLEANED_PATHS = frozenset(
     {
+        "velvet_bot/analytics_callbacks.py",
+        "velvet_bot/owner_menu.py",
+        "velvet_bot/owner_menu_compat.py",
+        "velvet_bot/presentation/telegram/routers/analytics_controllers/management_aliases.py",
+        "velvet_bot/presentation/telegram/routers/analytics_controllers/management_publications.py",
+        "velvet_bot/presentation/telegram/routers/analytics_controllers/management_tags.py",
+        "velvet_bot/presentation/telegram/routers/archive/guest.py",
+        "velvet_bot/presentation/telegram/routers/archive_and_public_controllers/admin_media_spoiler.py",
         "velvet_bot/presentation/telegram/routers/characters/uncategorized.py",
+        "velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py",
+        "velvet_bot/presentation/telegram/routers/public_archive/notification_open.py",
+        "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai_preview.py",
+        "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_center.py",
+        "velvet_bot/presentation/telegram/routers/references/albums.py",
+        "velvet_bot/presentation/telegram/routers/references/comparison.py",
+        "velvet_bot/presentation/telegram/routers/references/comparison_help.py",
+        "velvet_bot/presentation/telegram/routers/references/documents.py",
         "velvet_bot/presentation/telegram/routers/stories/management.py",
         "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
+        "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
+        "velvet_bot/presentation/telegram/routers/public_archive/manager.py",
+        "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
+        "velvet_bot/quality_calibration_ui.py",
     }
 )
 
@@ -132,8 +152,8 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "cleaned_paths": sorted(CLEANED_PATHS),
         "next_slice": {
             "phase": "P3D",
-            "target": "retire the next reviewed legacy consumer group",
-            "strategy": "move shared helpers to public contracts before deleting aliases",
+            "target": "migrate compatibility tests and retire zero-consumer aliases",
+            "strategy": "delete an alias only after canonical imports replace its tests and external contracts",
         },
     }
 

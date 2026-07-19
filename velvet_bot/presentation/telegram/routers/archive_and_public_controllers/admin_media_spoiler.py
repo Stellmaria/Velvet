@@ -9,7 +9,9 @@ from velvet_bot.archive_catalog import (
 )
 from velvet_bot.archive_ui import ArchiveMediaCallback
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_media_display import replace_admin_archive_page
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_display import (
+    replace_admin_archive_page,
+)
 
 router = Router(name=__name__)
 

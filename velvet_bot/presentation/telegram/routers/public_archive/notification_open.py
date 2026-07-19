@@ -8,7 +8,9 @@ from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.archive_catalog import get_archive_page
 from velvet_bot.database import Database
-from velvet_bot.handlers.public_archive import _send_public_archive_page
+from velvet_bot.presentation.telegram.routers.public_archive.catalog import (
+    send_public_archive_page,
+)
 from velvet_bot.public_adult_access import has_adult_channel_access
 from velvet_bot.public_media_lookup import get_character_media_offset
 from velvet_bot.public_ui import PublicArchiveCallback
@@ -67,7 +69,7 @@ async def handle_exact_notification_media(
         return
 
     try:
-        await _send_public_archive_page(
+        await send_public_archive_page(
             bot=bot,
             database=database,
             chat_id=callback.message.chat.id,

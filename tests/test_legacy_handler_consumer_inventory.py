@@ -28,10 +28,19 @@ class LegacyHandlerConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_legacy_handler_consumers.py",
                 "--check",
                 "--label",
-                "p3d-multi-story-cleanup",
+                "p3d-production-legacy-zero",
             ],
             check=True,
         )
+
+
+    def test_production_tree_has_no_legacy_handler_consumers(self) -> None:
+        source = Path("docs/legacy_handler_consumer_inventory.json").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"consumer_file_count": 0', source)
+        self.assertIn('"legacy_reference_count": 0', source)
+        self.assertIn('"legacy_module_count": 0', source)
 
     def test_cleaned_character_story_controllers_use_public_contracts(self) -> None:
         for relative in (

@@ -15,7 +15,12 @@ from velvet_bot.analytics_review import (
     set_manual_publication_type,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.analytics_management_common import _date, _edit, _pager, _short
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_common import (
+    _date,
+    _edit,
+    _pager,
+    _short,
+)
 from velvet_bot.post_classification import POST_TYPE_LABELS
 
 _TYPE_BUTTON_LABELS = {

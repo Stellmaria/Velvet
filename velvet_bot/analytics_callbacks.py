@@ -3,7 +3,9 @@ from __future__ import annotations
 from aiogram.filters.callback_data import CallbackData
 
 from velvet_bot.analytics_dashboard import normalize_period
-from velvet_bot.handlers.analytics_dashboard import AnalyticsCallback as DashboardLinkCallback
+from velvet_bot.presentation.telegram.analytics_navigation import (
+    AnalyticsCallback as DashboardLinkCallback,
+)
 
 
 class AnalyticsManageCallback(CallbackData, prefix="dashm"):

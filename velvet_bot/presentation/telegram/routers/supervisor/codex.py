@@ -9,7 +9,9 @@ from velvet_bot.application.supervisor import (
     load_supervisor_task,
     load_supervisor_tasks,
 )
-from velvet_bot.handlers.supervisor_status import show_supervisor_menu
+from velvet_bot.presentation.telegram.routers.supervisor.status import (
+    show_supervisor_menu,
+)
 from velvet_bot.presentation.telegram.supervisor.contract import (
     SupervisorCallback,
     SupervisorReplyMarkerFilter,
