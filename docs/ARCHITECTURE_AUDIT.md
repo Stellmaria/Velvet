@@ -1,174 +1,208 @@
-# Аудит архитектуры Velvet
+# Актуальный аудит архитектуры Velvet
 
-Дата аудита: 16 июля 2026 года.
+Дата актуализации: 19 июля 2026 года.
 
 ## Объём проверки
 
-Проверены Python-модули, SQL-миграции, composition root, middleware доступа,
-порядок Telegram-роутеров, классы `CallbackData`, реальные декораторы
-`Command(...)`, кнопочные формы владельца, жизненный цикл PostgreSQL/Telegram/
-фоновых процессов и полный набор тестов.
+Проверены:
 
-## Исправленные дефекты
+- composition root и lifecycle;
+- application/use-case слой;
+- domain repositories и services;
+- PostgreSQL boundaries;
+- Telegram Router composition и порядок обработчиков;
+- callback acknowledgment;
+- широкие exception boundaries;
+- compatibility installers и package side effects;
+- Supervisor, backup и CI contracts;
+- источники истины проекта.
 
-### 1. Конфликт callback-префикса аналитики
+## Итог
 
-Два отдельных класса использовали префикс `dash` и одинаковый формат данных.
-Оставлена единая схема callback. Это исключает расхождение формата и неоднозначный
-разбор кнопок после будущих изменений одного из классов.
+Логический рефакторинг основных бизнес- и persistence-границ завершён. Проект использует composition root, application use cases, repositories/services, централизованный WorkerManager и проверенные Telegram/error boundaries.
 
-### 2. Два разных значения команды `/menu`
+Физическая структура пакетов остаётся переходной: активные Telegram controllers ещё находятся в `velvet_bot/handlers`, часть repositories и services расположена в исторических корневых модулях, а несколько runtime compatibility adapters всё ещё нужны до завершения переноса.
 
-`/menu` одновременно регистрировалась как центр владельца и как публичный архив.
-Команда закреплена за центром управления. Публичный архив открывается через
-`/archive`, `/gallery` и кнопки.
+## Закрытые архитектурные долги
 
-### 3. Разделённая обработка кнопок референсов
+### Composition root
 
-Завершение и отмена загрузки перехватывались отдельным роутером, а в основном
-роутере оставались недостижимые ветки. Логика объединена в одном обработчике;
-для сессии используется `callback.from_user`, а не автор сообщения-бота.
+- `main.py` является короткой точкой входа;
+- сборка приложения, ресурсов и workers находится в `velvet_bot/app`;
+- root Router создаётся централизованно;
+- частично собранные ресурсы безопасно закрываются при ошибках запуска.
 
-### 4. Неполное кнопочное покрытие
+### Application layer
 
-В прежнем ручном списке не учитывались `save18`, `refcancel`, `health` и
-`auditarchive`. Добавлена форма сохранения медиа сразу со спойлером. Постоянный
-тест теперь извлекает команды из AST реальных декораторов и требует явный
-кнопочный, формовый, контекстный или резервный маршрут для каждой команды.
+- основные owner operations вынесены из Telegram handlers;
+- application layer не импортирует aiogram;
+- резервные slash-команды используют те же use cases/boundary services, что и кнопки;
+- handler-to-handler вызовы через искусственные Telegram objects удалены.
 
-### 5. Утечки ресурсов при ошибке запуска
+### PostgreSQL boundary
 
-Пул PostgreSQL создавался до внешнего `try/finally`. Ошибка миграции или сборки
-зависимостей могла оставить открытые ресурсы. Очистка теперь выполняется для
-частично собранного приложения, а сбой одного шага завершения не блокирует
-закрытие остальных ресурсов.
+Фаза 18 закрыта:
 
-### 6. Целостность SQL-миграций
+- исходный baseline: 130 внешних `_require_pool()` в 35 production-файлах;
+- текущий baseline: 0/0;
+- новые внешние обращения блокируются CI;
+- SQL и транзакции основных доменов находятся в repository/query boundaries.
 
-Введены SHA-256 отпечатки применённых SQL-файлов. Изменение уже применённой
-миграции останавливает запуск с понятной ошибкой. Старая пара миграций с номером
-`003` сохранена как явно разрешённое историческое исключение; любые новые
-дубли номеров запрещены.
+### P2 stability
 
-## Фаза 9: application use cases владельца
+P2 закрыта:
 
-Завершён первый вертикальный перенос бизнес-операций из Telegram handlers.
+- 67 broad exception boundaries;
+- 67 approved;
+- 0 unresolved;
+- 97 callback handlers;
+- 0 late/missing acknowledgments.
 
-Созданы application-модули для:
+### Telegram contracts
 
-- профилей персонажей, тем, категорий, вселенных и промтов;
-- историй и их назначения;
-- алиасов и пересборки связей хэштегов;
-- сессий, просмотра и удаления референсов;
-- статистики хэштегов и обсуждений;
-- регистрации обсуждений и импорта Telegram-экспортов.
+CI контролирует:
 
-Контекстные операции, которым действительно нужны Telegram-объекты, вынесены в
-отдельные boundary services: проверка доступа к теме, загрузка экспортного файла,
-создание публикационного черновика и сохранение медиа.
-
-`handlers/owner_actions.py` больше не импортирует другие handlers, не создаёт
-поддельные `CommandObject` и не копирует `Message` ради вызова чужого обработчика.
-
-## Фаза 10: Supervisor и границы ролей
-
-`handlers/supervisor_control.py` превращён в компактный composition facade.
-Операции разделены на независимые контроллеры:
-
-- `supervisor_status.py` — состояние Supervisor и дочернего процесса;
-- `supervisor_process.py` — перезапуск бота;
-- `supervisor_git.py` — обновление и rollback;
-- `supervisor_logs.py` — просмотр и выгрузка журнала;
-- `supervisor_codex.py` — задачи Codex, применение, отклонение и push.
-
-Единый тип `SupervisorCallback` хранится в presentation contract, а форматирование
-и клавиатуры вынесены в общий Telegram view-модуль. Загрузка статуса и задач Codex
-проходит через transport-neutral application use cases.
-
-### Матрица доступа
-
-| Роль | Доступ |
-|---|---|
-| Публичный пользователь | `/start`, `/archive`, `/gallery`; навигация по архиву; лайки материалов; подписка и отписка от новых публикаций персонажа |
-| Модератор `8179531132` | публичные функции; `/characters`, `/prompt`, `/setprompt`; разрешённые действия карточек, историй и архивных медиа; скачивание файла из публичного viewer |
-| Владелец | все остальные команды и кнопки, включая публикации, аналитику, backup, Supervisor, Git и Codex |
-
-Публичными действиями считаются только явно перечисленные навигационные callback,
-`pub:like` и `pub:sub`. Скачивание `pub:download` разрешено только указанному
-модератору, а неизвестные будущие `pub:*` не получают публичный доступ автоматически.
-
-`/menu` больше не входит в публичный список: это центр владельца. Callback `sup:*`
-не относится ни к публичным, ни к модераторским и всегда проходит проверку владельца.
-Модераторские callback проверяются по точной паре `prefix + action`, поэтому новая
-операция внутри `adir`, `astory`, `arc` или `pub` не наследует доступ автоматически.
-Отдельная широкая роль администратора без явно заданного Telegram ID не создаётся.
-
-## Постоянные защитные тесты
-
-CI проверяет:
-
-- синтаксический разбор каждого Python-файла;
-- уникальность callback-префиксов;
-- фактический каталог `Command(...)` и его UI-покрытие;
-- отсутствие неожиданных дублирующих обработчиков команд;
+- уникальность callback prefixes;
+- фактический каталог команд и UI-покрытие;
+- отсутствие неожиданных command duplicates;
 - единственное владельческое значение `/menu`;
-- допустимость только исторической пары миграций `003`;
-- отсутствие сырой ручной сборки `own:` и `oact:` callback;
-- порядок owner-форм перед catch-all обработчиками;
-- закрытие ресурсов после частичной инициализации и ошибок cleanup;
-- изменение контрольной суммы SQL-миграции;
-- отсутствие импортов `handler → handler` в owner action controller;
-- отсутствие прямых импортов aiogram в application-слое;
-- использование общих application или boundary services резервными командами;
-- строгий публичный, модераторский и владельческий набор разрешений;
-- наличие публичных лайков и подписок при закрытом скачивании;
-- запрет автоматического наследования неизвестных public и moderator actions;
-- то, что Supervisor facade не содержит командных handlers;
-- принадлежность каждой Supervisor-команды ровно одному контроллеру;
-- единственное определение callback-префикса `sup`.
+- точную матрицу public/editor/owner;
+- порядок catch-all-sensitive routers;
+- отсутствие нового SQL в handlers;
+- отсутствие внешнего private pool access;
+- P2 exception/callback inventory.
 
-## Архитектурный долг
+### Миграции
 
-### P1: разнести UI-контроллер владельца
+- применённые SQL-файлы защищены SHA-256;
+- новые дубли номеров запрещены;
+- историческая пара `003` остаётся явным исключением;
+- старые применённые миграции не редактируются.
 
-После фаз 9–10 бизнес-решения из `owner_actions.py` вынесены, но файл остаётся
-крупным presentation-контроллером. Следующий безопасный шаг — разделить его на
-формы персонажей, референсов, аналитики, импорта и медиа без изменения use cases.
+## Текущая структура
 
-Далее идут:
+```text
+velvet_bot/
+  app/                         composition root и lifecycle
+  application/                 transport-neutral owner/use cases
+  core/                        config, access и общие contracts
+  domains/                     часть канонических domain boundaries
+  infrastructure/              Telegram/filesystem/Krita adapters
+  presentation/telegram/       root Router, views, contracts и bundles
+  repositories/                часть исторических repository implementations
+  services/                    application/integration services
+  workers/                     WorkerManager и worker boundaries
+  handlers/                    активные legacy presentation controllers
+  *.py                         compatibility и исторические domain modules
+```
 
-1. `handlers/publication_center.py`;
-2. `handlers/analytics_management.py`;
-3. `handlers/analytics_discussion_overrides.py`.
+Это рабочая переходная архитектура. Она безопасна по границам, но ещё не соответствует физическому критерию `docs/architecture_target.md`, согласно которому корень должен содержать только общие точки входа и тонкие compatibility facades.
 
-### P1: завершить очистку старых handler → handler зависимостей
+## P3A: источники истины
 
-Старые зависимости всё ещё встречаются между picker-контроллерами персонажей,
-историй и отображения медиа. Их следует заменять общими render helpers или
-application coordinators по одному, не смешивая с изменением поведения.
+Необходимо поддерживать согласованность:
 
-### P2: репозитории вместо `Database._require_pool()`
+- `docs/project_memory.md`;
+- `docs/development_status.md`;
+- этого аудита;
+- `CHANGELOG.md`;
+- architecture/stability inventories.
 
-Большая часть доменных модулей напрямую получает внутренний пул `Database`.
-Следует постепенно вводить репозитории по доменам: characters, media, analytics,
-references, publications, backups. Массовая механическая замена запрещена;
-каждый перенос должен сопровождаться интеграционными тестами запросов.
+P2 не должна продолжать числиться незавершённой после inventory `67/67`.
 
-### P2: удалить compatibility monkeypatch-слои
+## P3B: Telegram Router composition
 
-Оставшиеся мосты следует удалять по одному после переноса вызывающего кода.
-Приоритет: аналитика обсуждений, owner navigation, media-set UI и multi-story.
+Корневой Router должен подключать крупные последовательные bundles:
 
-### P3: ограничить широкие `except Exception`
+1. core owner/operations;
+2. analytics;
+3. backup/quality/Velvet AI;
+4. archive/public/publication.
 
-На внешних границах Telegram, файловой системы, Supervisor и AI широкое
-перехватывание допустимо с обязательным логированием. Внутри доменной логики
-следует переходить на конкретные исключения и не скрывать ошибки данных.
+Root composition не должен импортировать отдельные `velvet_bot.handlers.*`. Каждый активный handler должен быть зарегистрирован ровно один раз. Publication Router должен оставаться перед archive catch-all.
+
+## P3C: физический перенос presentation
+
+Открытый долг:
+
+- перенести controllers из `velvet_bot/handlers` в `velvet_bot/presentation/telegram/routers/<domain>/`;
+- сохранить старые import paths через временные re-export facades;
+- не менять callback prefixes, команды и use cases во время физического переноса;
+- переносить один связный домен за PR.
+
+Приоритет:
+
+1. Supervisor и system;
+2. characters/stories;
+3. references;
+4. archive/public archive;
+5. publication;
+6. analytics;
+7. quality/Velvet AI.
+
+## P3D: compatibility retirement
+
+Compatibility должен быть явным, перечисленным и стадийным.
+
+Допустимы временные категории:
+
+- schema adapters;
+- UI formatting adapters;
+- import-order adapters;
+- старые import facades.
+
+Недопустимы:
+
+- скрытые package-level assignments без потребителя;
+- неинвентаризированные monkeypatches;
+- installer, который невозможно связать с regression-тестом;
+- no-op bridge, существующий только потому, что старый тест проверяет его наличие.
+
+Неиспользуемый discussion dashboard package bridge удалён. Оставшиеся active components перечисляются в `velvet_bot/presentation/telegram/compat.py`.
+
+## P3E: repository layout
+
+Сейчас одновременно существуют:
+
+- `velvet_bot/domains/<domain>/repository.py`;
+- `velvet_bot/repositories/*.py`;
+- корневые `*_repository.py`.
+
+Целевое правило:
+
+- domain interface/operations находятся внутри домена;
+- PostgreSQL-specific implementation может находиться в `infrastructure/postgres`;
+- старый путь становится re-export facade и затем удаляется;
+- новый repository не создаёт ещё один вариант размещения.
+
+## P3F: статическая типизация
+
+Открытый долг:
+
+- начать с transport-neutral core/application/domains/services/workers;
+- использовать ограниченный baseline;
+- расширять scope только после зелёного CI;
+- не включать strict-mode на весь repository одним PR.
+
+## Эксплуатационные ворота
+
+Кодовая архитектура не может заменить внешнюю проверку. Остаются:
+
+1. живой Supervisor self-restart на Windows;
+2. update-and-restart и Telegram bootstrap report;
+3. отдельный staging bot/database;
+4. независимый restore drill в целевом окружении;
+5. encrypted offsite backup;
+6. AI duration/error/cost metrics;
+7. smoke test основных owner-сценариев после обновления.
 
 ## Правило следующих изменений
 
-Новая команда не принимается без кнопочного маршрута или явной отметки как
-аварийная/публичная. Новый callback получает уникальный типизированный префикс.
-Новая миграция получает следующий свободный номер, а старые SQL-файлы после
-применения не редактируются. Новая owner-операция сначала создаётся как use case,
-а Telegram-кнопка и slash-команда подключаются к нему как отдельные адаптеры.
+- новый Telegram handler не получает SQL;
+- новая business operation сначала создаётся как use case/domain service;
+- новая команда получает кнопку либо явный аварийный статус;
+- новый callback получает уникальный typed prefix;
+- старый applied SQL не редактируется;
+- физический перенос не смешивается с изменением поведения;
+- compatibility removal получает regression-тест;
+- инфраструктурная возможность не называется production-ready без доступной живой проверки.
