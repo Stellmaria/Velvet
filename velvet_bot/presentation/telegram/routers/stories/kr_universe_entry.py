@@ -10,8 +10,10 @@ from velvet_bot.character_directory import (
     set_character_universe,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
-from velvet_bot.handlers.multi_story_kr import (
+from velvet_bot.presentation.telegram.routers.characters.directory import (
+    AdminDirectoryCallback,
+)
+from velvet_bot.presentation.telegram.routers.stories.multi_story_kr import (
     _render_admin_picker,
     _render_public_picker,
 )
