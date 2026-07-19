@@ -24,10 +24,10 @@ PUBLIC_CALLBACK_ACTIONS = frozenset(
 )
 PUBLIC_CALLBACK_PREFIX = "pub:"
 
-# One explicitly trusted moderator may maintain character cards and archive
-# metadata. This role must never inherit owner-only system, publication,
-# analytics, backup, Supervisor, Git, or Codex operations.
-MODERATOR_USER_IDS = frozenset({8179531132})
+# A configured moderator may maintain character cards and archive metadata. This
+# role must never inherit owner-only system, publication, analytics, backup,
+# Supervisor, Git, or Codex operations. Real IDs are loaded through Settings.
+MODERATOR_USER_IDS: frozenset[int] = frozenset()
 MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
 MODERATOR_CALLBACK_ACTIONS = {
     "adir": frozenset(
@@ -70,15 +70,15 @@ MODERATOR_CALLBACK_ACTIONS = {
             "close",
         }
     ),
-    # Download is shown only to this moderator in the public viewer. It is not a
-    # public archive action and must not become available through the pub prefix.
+    # Download is shown only to configured moderators in the public viewer. It is
+    # not a public archive action and must not become available through pub prefix.
     "pub": frozenset({"download"}),
 }
 MODERATOR_CALLBACK_PREFIXES = tuple(
     f"{prefix}:" for prefix in MODERATOR_CALLBACK_ACTIONS
 )
 
-# Compatibility aliases for older imports. New code should use MODERATOR_*.
+# Compatibility aliases for older imports. New runtime code uses Settings.
 CHARACTER_EDITOR_USER_IDS = MODERATOR_USER_IDS
 CHARACTER_EDITOR_COMMANDS = MODERATOR_COMMANDS
 
@@ -192,6 +192,7 @@ def is_save_mention_text(text: str, bot_username: str) -> bool:
 class AccessPolicy:
     allowed_user_ids: frozenset[int]
     allowed_usernames: frozenset[str]
+    moderator_user_ids: frozenset[int] = frozenset()
 
     def allows(self, *, user_id: int | None, username: str | None) -> bool:
         if user_id is not None and user_id in self.allowed_user_ids:
@@ -206,6 +207,14 @@ class AccessPolicy:
             user_id=getattr(user, "id", None),
             username=getattr(user, "username", None),
         )
+
+    def allows_moderator(self, *, user_id: int | None) -> bool:
+        return bool(user_id is not None and user_id in self.moderator_user_ids)
+
+    def allows_moderator_user(self, user: Any | None) -> bool:
+        if user is None:
+            return False
+        return self.allows_moderator(user_id=getattr(user, "id", None))
 
 
 __all__ = (
