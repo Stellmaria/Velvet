@@ -4,6 +4,8 @@ import asyncio
 import logging
 from typing import Any
 
+import asyncpg
+
 logger = logging.getLogger(__name__)
 
 _INSTALLED = False
@@ -29,7 +31,7 @@ _BACKOFF_MARKERS = (
 def _record_message(record: logging.LogRecord) -> str:
     try:
         return record.getMessage().casefold()
-    except Exception:  # p2-approved-boundary: fallback-runtime-polling-record-message
+    except (TypeError, ValueError, RuntimeError):
         return str(record.msg).casefold()
 
 
@@ -114,7 +116,13 @@ def install_runtime_stability() -> None:
                 )
         except asyncio.CancelledError:
             raise
-        except Exception as error:  # p2-approved-boundary: isolate-legacy-polling-cleanup
+        except (
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,
+            OSError,
+            RuntimeError,
+            TimeoutError,
+        ) as error:
             logger.warning(
                 "Could not acknowledge legacy Telegram polling incidents: %s",
                 error,
