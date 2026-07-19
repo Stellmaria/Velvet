@@ -47,6 +47,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.characters.directory",
     "velvet_bot.presentation.telegram.routers.characters.kr_profile_overrides",
     "velvet_bot.presentation.telegram.routers.characters.profiles",
+    "velvet_bot.presentation.telegram.routers.characters.rename",
     "velvet_bot.presentation.telegram.routers.characters.uncategorized",
     "velvet_bot.presentation.telegram.routers.public_archive.catalog",
     "velvet_bot.presentation.telegram.routers.public_archive.manager",
