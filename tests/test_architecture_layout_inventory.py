@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "manager-large-files-character-tags",
+                "p3d-residual-handler-classification",
             ],
             check=True,
         )

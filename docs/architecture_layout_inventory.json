@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "manager-large-files-character-tags",
+  "generated_from": "p3d-residual-handler-classification",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -23,8 +23,8 @@
   "active_bundle_router_count": 56,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 68,
-  "legacy_handler_implementation_count": 5,
-  "handler_compatibility_facade_count": 63,
+  "legacy_handler_implementation_count": 0,
+  "handler_compatibility_facade_count": 68,
   "handler_compatibility_facades": [
     "velvet_bot/handlers/admin_directory.py",
     "velvet_bot/handlers/admin_large_media_preview.py",
@@ -38,6 +38,10 @@
     "velvet_bot/handlers/analytics_dashboard_overrides.py",
     "velvet_bot/handlers/analytics_discussion_overrides.py",
     "velvet_bot/handlers/analytics_management.py",
+    "velvet_bot/handlers/analytics_management_aliases.py",
+    "velvet_bot/handlers/analytics_management_common.py",
+    "velvet_bot/handlers/analytics_management_publications.py",
+    "velvet_bot/handlers/analytics_management_tags.py",
     "velvet_bot/handlers/archive.py",
     "velvet_bot/handlers/backup_center.py",
     "velvet_bot/handlers/channel_analytics.py",
@@ -88,7 +92,8 @@
     "velvet_bot/handlers/telegram_analytics_import.py",
     "velvet_bot/handlers/velvet_ai.py",
     "velvet_bot/handlers/velvet_ai_formatting.py",
-    "velvet_bot/handlers/velvet_ai_visual.py"
+    "velvet_bot/handlers/velvet_ai_visual.py",
+    "velvet_bot/handlers/watermark.py"
   ],
   "root_level_module_count": 115,
   "compatibility_file_count": 5,
@@ -107,7 +112,7 @@
   "active_compatibility_component_count": 8,
   "next_slice": {
     "phase": "P3D",
-    "target": "remaining standalone handler implementations and compatibility retirement",
-    "strategy": "classify five residual implementations before removing temporary aliases"
+    "target": "compatibility alias retirement and canonical import cleanup",
+    "strategy": "remove temporary handler aliases in reviewed consumer groups"
   }
 }

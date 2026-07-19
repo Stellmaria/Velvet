@@ -5,9 +5,15 @@ import importlib
 import unittest
 from pathlib import Path
 
-from velvet_bot.handlers.analytics_management_aliases import ALIAS_ACTIONS
-from velvet_bot.handlers.analytics_management_publications import PUBLICATION_ACTIONS
-from velvet_bot.handlers.analytics_management_tags import TAG_ACTIONS
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_aliases import (
+    ALIAS_ACTIONS,
+)
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications import (
+    PUBLICATION_ACTIONS,
+)
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags import (
+    TAG_ACTIONS,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,13 +56,17 @@ class AnalyticsManagementSplitTests(unittest.TestCase):
         self.assertNotIn("get_character_alias_summary", source)
 
     def test_domain_modules_are_separate_and_parse(self) -> None:
+        root = (
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/analytics_controllers"
+        )
         for name in (
-            "analytics_management_tags.py",
-            "analytics_management_aliases.py",
-            "analytics_management_publications.py",
-            "analytics_management_common.py",
+            "management_tags.py",
+            "management_aliases.py",
+            "management_publications.py",
+            "management_common.py",
         ):
-            path = ROOT / "velvet_bot/handlers" / name
+            path = root / name
             self.assertTrue(path.is_file())
             ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
@@ -65,11 +75,12 @@ class AnalyticsManagementSplitTests(unittest.TestCase):
             ROOT
             / "velvet_bot/presentation/telegram/routers/analytics_controllers/dashboard_overrides.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("analytics_management_tags import _show_unresolved_queue", source)
+        self.assertIn("management_tags import", source)
         self.assertNotIn(
             "analytics_management import _show_unresolved_queue",
             source,
         )
+        self.assertNotIn("velvet_bot.handlers", source)
 
 
 if __name__ == "__main__":

@@ -5,13 +5,15 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
-from velvet_bot.handlers.watermark import router as watermark_router
 from velvet_bot.owner_menu import (
     OwnerMenuCallback,
     build_owner_back_keyboard,
     build_owner_main_keyboard,
     owner_help_text,
     owner_menu_text,
+)
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark import (
+    router as watermark_router,
 )
 
 router = Router(name=__name__)
