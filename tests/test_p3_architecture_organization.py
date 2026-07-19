@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROUTER_ROOT = ROOT / "velvet_bot/presentation/telegram/router.py"
 BUNDLE_DIR = ROOT / "velvet_bot/presentation/telegram/routers"
 
-EXPECTED_HANDLER_MODULES = {
+EXPECTED_ROUTER_MODULES = {
     "velvet_bot.handlers.admin_directory",
     "velvet_bot.handlers.admin_large_media_preview",
     "velvet_bot.handlers.admin_media_display",
@@ -59,13 +59,19 @@ EXPECTED_HANDLER_MODULES = {
     "velvet_bot.handlers.references",
     "velvet_bot.handlers.spoiler_save",
     "velvet_bot.handlers.start",
-    "velvet_bot.handlers.supervisor_control",
-    "velvet_bot.handlers.system_center",
+    "velvet_bot.presentation.telegram.routers.supervisor.control",
+    "velvet_bot.presentation.telegram.routers.system",
     "velvet_bot.handlers.telegram_analytics_import",
     "velvet_bot.handlers.velvet_ai",
     "velvet_bot.handlers.velvet_ai_formatting",
     "velvet_bot.handlers.velvet_ai_visual",
 }
+
+
+def _active_router_module(module: str) -> bool:
+    return module.startswith("velvet_bot.handlers.") or module.startswith(
+        "velvet_bot.presentation.telegram.routers."
+    )
 
 
 class P3RouterOrganizationTests(unittest.TestCase):
@@ -82,7 +88,7 @@ class P3RouterOrganizationTests(unittest.TestCase):
         self.assertEqual([], handler_imports)
         self.assertEqual(4, source.count("root.include_router("))
 
-    def test_router_bundles_cover_each_active_handler_once(self) -> None:
+    def test_router_bundles_cover_each_active_router_once(self) -> None:
         modules: list[str] = []
         for path in sorted(BUNDLE_DIR.glob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -91,10 +97,10 @@ class P3RouterOrganizationTests(unittest.TestCase):
                 for node in ast.walk(tree)
                 if isinstance(node, ast.ImportFrom)
                 and node.module
-                and node.module.startswith("velvet_bot.handlers.")
+                and _active_router_module(node.module)
             )
         self.assertEqual(len(modules), len(set(modules)))
-        self.assertEqual(EXPECTED_HANDLER_MODULES, set(modules))
+        self.assertEqual(EXPECTED_ROUTER_MODULES, set(modules))
 
     def test_publication_router_precedes_archive_catch_all(self) -> None:
         source = (BUNDLE_DIR / "archive_and_public.py").read_text(encoding="utf-8")
@@ -132,8 +138,14 @@ class P3RouterOrganizationTests(unittest.TestCase):
             ("quality-calibration-report-ui",),
             assignments["POST_IMPORT_COMPONENTS"],
         )
-        self.assertIn("install_pre_router_compatibility()", ROUTER_ROOT.read_text(encoding="utf-8"))
-        self.assertIn("install_post_router_compatibility()", ROUTER_ROOT.read_text(encoding="utf-8"))
+        self.assertIn(
+            "install_pre_router_compatibility()",
+            ROUTER_ROOT.read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "install_post_router_compatibility()",
+            ROUTER_ROOT.read_text(encoding="utf-8"),
+        )
 
 
 if __name__ == "__main__":
