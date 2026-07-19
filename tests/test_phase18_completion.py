@@ -5,7 +5,7 @@ import json
 import unittest
 from pathlib import Path
 
-import velvet_bot.discussion_dashboard_compat as discussion_compat
+import velvet_bot.analytics_dashboard as analytics_dashboard
 import velvet_bot.handlers.quality_set_ai as quality_set_ai
 import velvet_bot.handlers.quality_sets as quality_sets
 import velvet_bot.handlers.reference_comparison as reference_comparison
@@ -52,10 +52,11 @@ class Phase18CompletionTests(unittest.TestCase):
             self.assertNotIn("_require_pool", source)
             self.assertEqual(count, source.count("database.acquire()"))
 
-    def test_discussion_compat_delegates_to_canonical_query(self) -> None:
-        source = inspect.getsource(discussion_compat)
-        self.assertIn("get_discussion_dashboard(", source)
-        self.assertNotIn("SELECT", source)
+    def test_discussion_dashboard_uses_canonical_public_boundary(self) -> None:
+        source = inspect.getsource(analytics_dashboard.get_discussion_dashboard)
+        self.assertIn("database.acquire()", source)
+        self.assertNotIn("_require_pool", source)
+        self.assertFalse((ROOT / "velvet_bot/discussion_dashboard_compat.py").exists())
 
 
 if __name__ == "__main__":
