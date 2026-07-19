@@ -1,0 +1,144 @@
+from __future__ import annotations
+
+import re
+from html import escape
+
+from aiogram import F, Router
+from aiogram.types import (
+    CallbackQuery,
+    ForceReply,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
+
+from velvet_bot.character_directory import get_character_directory_item
+from velvet_bot.character_renaming import rename_character
+from velvet_bot.database import Database
+from velvet_bot.presentation.telegram.routers.characters.directory import (
+    AdminDirectoryCallback,
+    _profile_keyboard,
+    _profile_text,
+)
+
+router = Router(name=__name__)
+
+_RENAME_MARKER_RE = re.compile(
+    r"^RENAME_CHARACTER:(?P<character_id>\d+):(?P<category>[a-z0-9_-]*):(?P<page>\d+)"
+)
+
+
+def _keyboard_with_rename(item, *, category: str, page: int) -> InlineKeyboardMarkup:
+    base = _profile_keyboard(item, category=category, page=page)
+    rows = [list(row) for row in base.inline_keyboard]
+    final_row = rows.pop() if rows else []
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="✏️ Переименовать",
+                callback_data=AdminDirectoryCallback(
+                    action="rename",
+                    category=category,
+                    page=page,
+                    character_id=item.character.id,
+                ).pack(),
+            )
+        ]
+    )
+    if final_row:
+        rows.append(final_row)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(AdminDirectoryCallback.filter(F.action == "profile"))
+async def handle_profile_with_rename(
+    callback: CallbackQuery,
+    callback_data: AdminDirectoryCallback,
+    database: Database,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    item = await get_character_directory_item(database, callback_data.character_id)
+    if item is None:
+        await callback.answer("Персонаж больше не найден.", show_alert=True)
+        return
+    await callback.message.edit_text(
+        _profile_text(item),
+        reply_markup=_keyboard_with_rename(
+            item,
+            category=callback_data.category,
+            page=callback_data.page,
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(AdminDirectoryCallback.filter(F.action == "rename"))
+async def handle_rename_request(
+    callback: CallbackQuery,
+    callback_data: AdminDirectoryCallback,
+    database: Database,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    item = await get_character_directory_item(database, callback_data.character_id)
+    if item is None:
+        await callback.answer("Персонаж больше не найден.", show_alert=True)
+        return
+    marker = (
+        f"RENAME_CHARACTER:{item.character.id}:"
+        f"{callback_data.category}:{callback_data.page}"
+    )
+    await callback.message.answer(
+        f"{marker}\n\n"
+        f"<b>Переименовать персонажа</b>\n"
+        f"Текущее имя: <b>{escape(item.character.name)}</b>\n\n"
+        "Ответьте на это сообщение новым именем.",
+        reply_markup=ForceReply(
+            selective=True,
+            input_field_placeholder="Новое имя персонажа",
+        ),
+    )
+    await callback.answer()
+
+
+@router.message(F.reply_to_message.text.regexp(r"^RENAME_CHARACTER:"))
+async def handle_rename_reply(message: Message, database: Database) -> None:
+    source = message.reply_to_message.text if message.reply_to_message else ""
+    match = _RENAME_MARKER_RE.match(source or "")
+    if match is None:
+        return
+    new_name = (message.text or "").strip()
+    if not new_name:
+        await message.answer("Новое имя не может быть пустым.")
+        return
+    character_id = int(match.group("character_id"))
+    category = match.group("category")
+    page = int(match.group("page"))
+    try:
+        character = await rename_character(
+            database,
+            character_id=character_id,
+            new_name=new_name,
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
+    item = await get_character_directory_item(database, character.id)
+    if item is None:
+        await message.answer("Имя изменено, но карточка больше не найдена.")
+        return
+    await message.answer(
+        f"✅ Персонаж переименован в <b>{escape(character.name)}</b>.\n\n"
+        f"{_profile_text(item)}",
+        reply_markup=_keyboard_with_rename(
+            item,
+            category=category or item.category or "uncategorized",
+            page=page,
+        ),
+    )
+
+
+__all__ = ("router",)
