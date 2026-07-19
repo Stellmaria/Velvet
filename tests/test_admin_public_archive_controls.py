@@ -96,9 +96,9 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
 
     def test_migrations_keep_visibility_and_shared_topics_separate(self) -> None:
         visibility = Path(
-            "migrations/025_public_archive_visibility_and_adult_access.sql"
+            "migrations/026_public_archive_visibility_and_adult_access.sql"
         ).read_text(encoding="utf-8")
-        topics = Path("migrations/026_multi_character_archive_topics.sql").read_text(
+        topics = Path("migrations/027_multi_character_archive_topics.sql").read_text(
             encoding="utf-8"
         )
         self.assertIn("is_public BOOLEAN", visibility)
@@ -130,6 +130,7 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("character_rename_router", bundle)
         self.assertIn("✏️ Переименовать", rename)
+        self.assertIn("router.callback_query.register", rename)
         self.assertIn("for character in characters:", archive_save)
         self.assertIn("list_characters_by_archive_topic", archive_save)
 
