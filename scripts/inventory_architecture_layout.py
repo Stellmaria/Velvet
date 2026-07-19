@@ -122,8 +122,8 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "active_compatibility_component_count": len(pre_components) + len(post_components),
         "next_slice": {
             "phase": "P3D",
-            "target": "remaining standalone handler implementations and compatibility retirement",
-            "strategy": "classify five residual implementations before removing temporary aliases",
+            "target": "compatibility alias retirement and canonical import cleanup",
+            "strategy": "remove temporary handler aliases in reviewed consumer groups",
         },
     }
 
