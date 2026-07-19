@@ -19,7 +19,9 @@ jobs:
           cat .github/pr223/part* > /tmp/pr223.patch.gz.b64
           echo "e02ff2afee9f0e2dcdf75fc007438eeaa2169a8061d0a90988cae5fa87112fe8  /tmp/pr223.patch.gz.b64" | sha256sum -c -
           base64 -d /tmp/pr223.patch.gz.b64 | gzip -d > /tmp/pr223.patch
-          git apply --index /tmp/pr223.patch
+          git apply --index \
+            --exclude=docs/worklog/2026-07-20-p3d-archive-reference-alias-retirement.md \
+            /tmp/pr223.patch
           rm -rf .github/pr223
           rm -f .github/workflows/p3d-alias-retirement-apply.yml
           git add -A
