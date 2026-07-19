@@ -73,7 +73,7 @@ class AdminUncategorizedUiTests(unittest.TestCase):
         self.assertIn("👨‍👩‍👨 МЖМ", {button.text for button in buttons})
         self.assertTrue(all(callback.character_id == self.character.id for callback in callbacks))
 
-    def test_universe_picker_contains_all_requested_values(self) -> None:
+    def test_universe_picker_contains_top_level_values(self) -> None:
         keyboard = build_universe_picker(
             self.item,
             page=0,
@@ -87,9 +87,11 @@ class AdminUncategorizedUiTests(unittest.TestCase):
             and AdminDirectoryCallback.unpack(button.callback_data).action == "setuni"
         ]
         self.assertEqual(
-            {"shs", "kr", "lm", "idm", "bg3", "lagerta", "original"},
+            {"shs", "kr", "lm", "idm", "games", "lagerta", "original", "other"},
             {callback.universe for callback in callbacks},
         )
+        self.assertNotIn("bg3", {callback.universe for callback in callbacks})
+        self.assertNotIn("re", {callback.universe for callback in callbacks})
         self.assertTrue(all(callback.return_category == "male" for callback in callbacks))
 
 
