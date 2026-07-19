@@ -8,6 +8,7 @@ from aiogram.types import Message
 
 from velvet_bot.archive_catalog import set_archive_media_spoiler
 from velvet_bot.audit import TelegramAuditLogger
+from velvet_bot.character_resolution import resolve_character
 from velvet_bot.database import Character, Database, SaveMediaResult
 from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
 from velvet_bot.media_preview_persistence import set_media_preview
@@ -67,9 +68,9 @@ async def _save_media_from_message(
             "В сообщении нет поддерживаемого медиафайла. "
             "Принимаются фото, видео, анимации и изображения/видео как файл."
         )
-    character = await database.get_character(character_name)
+    character = await resolve_character(database, character_name)
     if character is None:
-        return "Такой персонаж не найден. Сначала создайте его профиль."
+        return "Такой персонаж или быстрый тег не найден. Сначала создайте его профиль."
 
     source_is_archive = _is_character_archive_source(source_message, character)
     result = await database.save_character_media(
