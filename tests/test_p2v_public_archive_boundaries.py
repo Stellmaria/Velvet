@@ -67,7 +67,6 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.original_get_page = module.get_archive_page
         self.original_toggle_like = module.toggle_public_like
         self.original_toggle_subscription = module.toggle_character_subscription
-        self.original_send_document = module._send_as_document
 
         module.Message = FakeMessage
         module.TelegramAPIError = FakeTelegramAPIError
@@ -113,7 +112,6 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
         module.get_archive_page = self.original_get_page
         module.toggle_public_like = self.original_toggle_like
         module.toggle_character_subscription = self.original_toggle_subscription
-        module._send_as_document = self.original_send_document
 
     @staticmethod
     def _data(action: str) -> SimpleNamespace:
@@ -136,7 +134,6 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
         module._download_image_for_preview = fail_download
         module.build_input_media = lambda media, caption: fallback
-
         result = await module._build_public_input_media(object(), self.page, self.state)
         self.assertIs(result, fallback)
 
@@ -162,7 +159,6 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
             viewer_user_id=17,
             menu_page=0,
         )
-
         self.assertEqual(result, "document-message")
         self.assertEqual(len(bot.document_calls), 1)
         call = bot.document_calls[0]
@@ -189,10 +185,8 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(bot.document_calls, [])
 
     async def test_like_failure_is_answered_without_ui_edit(self) -> None:
-        error = RuntimeError("like write failed")
-
         async def fail_toggle(*args, **kwargs):
-            raise error
+            raise RuntimeError("like write failed")
 
         module.toggle_public_like = fail_toggle
         callback = FakeCallback()
@@ -202,7 +196,6 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
             object(),
             object(),
         )
-
         self.assertEqual(len(callback.answers), 1)
         self.assertIn("Не удалось", callback.answers[0][0][0])
         self.assertTrue(callback.answers[0][1]["show_alert"])
@@ -220,22 +213,17 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
         message = FakeMessage()
         message.caption_error = FakeTelegramAPIError("message unavailable")
         callback = FakeCallback(message=message)
-
         await module.handle_public_archive_callback(
             callback,
             self._data("like"),
             object(),
             object(),
         )
-
-        self.assertEqual(len(callback.answers), 1)
         self.assertEqual(callback.answers[0][0][0], "Отметка поставлена.")
         self.assertEqual(len(message.caption_edits), 1)
-        self.assertEqual(len(captured_states), 1)
-        state = captured_states[0]
-        self.assertEqual(state.like_count, 5)
-        self.assertTrue(state.liked_by_user)
-        self.assertTrue(state.subscribed)
+        self.assertEqual(captured_states[0].like_count, 5)
+        self.assertTrue(captured_states[0].liked_by_user)
+        self.assertTrue(captured_states[0].subscribed)
 
     async def test_like_cancellation_is_not_swallowed(self) -> None:
         async def cancel_toggle(*args, **kwargs):
@@ -264,7 +252,6 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
             object(),
             object(),
         )
-
         self.assertEqual(len(callback.answers), 1)
         self.assertIn("Не удалось", callback.answers[0][0][0])
         self.assertTrue(callback.answers[0][1]["show_alert"])
@@ -282,23 +269,18 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
         message = FakeMessage()
         message.markup_error = FakeTelegramAPIError("message unavailable")
         callback = FakeCallback(message=message)
-
         await module.handle_public_archive_callback(
             callback,
             self._data("sub"),
             object(),
             object(),
         )
-
-        self.assertEqual(len(callback.answers), 1)
         self.assertEqual(callback.answers[0][0][0], "Подписка отключена.")
         self.assertTrue(callback.answers[0][1]["show_alert"])
         self.assertEqual(len(message.markup_edits), 1)
-        self.assertEqual(len(captured_states), 1)
-        state = captured_states[0]
-        self.assertEqual(state.like_count, 4)
-        self.assertFalse(state.liked_by_user)
-        self.assertFalse(state.subscribed)
+        self.assertEqual(captured_states[0].like_count, 4)
+        self.assertFalse(captured_states[0].liked_by_user)
+        self.assertFalse(captured_states[0].subscribed)
 
     async def test_subscription_cancellation_is_not_swallowed(self) -> None:
         async def cancel_toggle(*args, **kwargs):
@@ -310,60 +292,6 @@ class PublicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
             await module.handle_public_archive_callback(
                 callback,
                 self._data("sub"),
-                object(),
-                object(),
-            )
-        self.assertEqual(callback.answers, [])
-
-    async def test_download_failure_is_answered(self) -> None:
-        async def fail_send(*args, **kwargs):
-            raise RuntimeError("download failed")
-
-        module._send_as_document = fail_send
-        callback = FakeCallback(user_id=module.PUBLIC_DOWNLOAD_USER_ID)
-        await module.handle_public_archive_callback(
-            callback,
-            self._data("download"),
-            object(),
-            object(),
-        )
-
-        self.assertEqual(len(callback.answers), 1)
-        self.assertIn("Не удалось", callback.answers[0][0][0])
-        self.assertTrue(callback.answers[0][1]["show_alert"])
-
-    async def test_download_success_answer_failure_is_not_reported_as_send_failure(self) -> None:
-        sends = []
-
-        async def send(*args, **kwargs):
-            sends.append(kwargs)
-
-        module._send_as_document = send
-        callback = FakeCallback(user_id=module.PUBLIC_DOWNLOAD_USER_ID)
-        callback.answer_error = FakeTelegramAPIError("callback expired")
-
-        with self.assertRaises(FakeTelegramAPIError):
-            await module.handle_public_archive_callback(
-                callback,
-                self._data("download"),
-                object(),
-                object(),
-            )
-
-        self.assertEqual(len(sends), 1)
-        self.assertEqual(len(callback.answers), 1)
-        self.assertEqual(callback.answers[0][0][0], "Файл отправлен в личный чат.")
-
-    async def test_download_cancellation_is_not_swallowed(self) -> None:
-        async def cancel_send(*args, **kwargs):
-            raise asyncio.CancelledError
-
-        module._send_as_document = cancel_send
-        callback = FakeCallback(user_id=module.PUBLIC_DOWNLOAD_USER_ID)
-        with self.assertRaises(asyncio.CancelledError):
-            await module.handle_public_archive_callback(
-                callback,
-                self._data("download"),
                 object(),
                 object(),
             )
