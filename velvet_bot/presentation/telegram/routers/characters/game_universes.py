@@ -172,11 +172,6 @@ async def _public_game_summaries(
     return summaries
 
 
-@router.callback_query(
-    AdminDirectoryCallback.filter(
-        (F.action == "setuni") & (F.universe == "games")
-    )
-)
 async def handle_admin_game_group(
     callback: CallbackQuery,
     callback_data: AdminDirectoryCallback,
@@ -198,12 +193,6 @@ async def handle_admin_game_group(
     await callback.answer()
 
 
-@router.callback_query(
-    AdminDirectoryCallback.filter(
-        F.action.in_({"setgame", "setuni"})
-        & F.universe.in_(GAME_UNIVERSE_ORDER)
-    )
-)
 async def handle_admin_game_assignment(
     callback: CallbackQuery,
     callback_data: AdminDirectoryCallback,
@@ -247,11 +236,6 @@ async def handle_admin_game_assignment(
     )
 
 
-@router.callback_query(
-    PublicArchiveCallback.filter(
-        (F.action == "puni") & (F.universe == "games")
-    )
-)
 async def handle_manager_game_group(
     callback: CallbackQuery,
     callback_data: PublicArchiveCallback,
@@ -284,12 +268,6 @@ async def handle_manager_game_group(
     await callback.answer()
 
 
-@router.callback_query(
-    PublicArchiveCallback.filter(
-        F.action.in_({"pgame", "puni"})
-        & F.universe.in_(GAME_UNIVERSE_ORDER)
-    )
-)
 async def handle_manager_game_assignment(
     callback: CallbackQuery,
     callback_data: PublicArchiveCallback,
@@ -325,11 +303,6 @@ async def handle_manager_game_assignment(
     )
 
 
-@router.callback_query(
-    PublicArchiveCallback.filter(
-        (F.action == "menu") & (F.universe == "games")
-    )
-)
 async def handle_public_game_group(
     callback: CallbackQuery,
     callback_data: PublicArchiveCallback,
@@ -358,5 +331,38 @@ async def handle_public_game_group(
             raise
     await callback.answer()
 
+
+router.callback_query.register(
+    handle_admin_game_group,
+    AdminDirectoryCallback.filter(
+        (F.action == "setuni") & (F.universe == "games")
+    ),
+)
+router.callback_query.register(
+    handle_admin_game_assignment,
+    AdminDirectoryCallback.filter(
+        F.action.in_({"setgame", "setuni"})
+        & F.universe.in_(GAME_UNIVERSE_ORDER)
+    ),
+)
+router.callback_query.register(
+    handle_manager_game_group,
+    PublicArchiveCallback.filter(
+        (F.action == "puni") & (F.universe == "games")
+    ),
+)
+router.callback_query.register(
+    handle_manager_game_assignment,
+    PublicArchiveCallback.filter(
+        F.action.in_({"pgame", "puni"})
+        & F.universe.in_(GAME_UNIVERSE_ORDER)
+    ),
+)
+router.callback_query.register(
+    handle_public_game_group,
+    PublicArchiveCallback.filter(
+        (F.action == "menu") & (F.universe == "games")
+    ),
+)
 
 __all__ = ("router",)
