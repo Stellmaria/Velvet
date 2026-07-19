@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "p3b-router-bundles",
+                "p3c-supervisor-system-presentation",
             ],
             check=True,
         )
