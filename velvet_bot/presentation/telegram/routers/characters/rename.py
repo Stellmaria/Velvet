@@ -50,7 +50,6 @@ def _keyboard_with_rename(item, *, category: str, page: int) -> InlineKeyboardMa
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-@router.callback_query(AdminDirectoryCallback.filter(F.action == "profile"))
 async def handle_profile_with_rename(
     callback: CallbackQuery,
     callback_data: AdminDirectoryCallback,
@@ -74,7 +73,6 @@ async def handle_profile_with_rename(
     await callback.answer()
 
 
-@router.callback_query(AdminDirectoryCallback.filter(F.action == "rename"))
 async def handle_rename_request(
     callback: CallbackQuery,
     callback_data: AdminDirectoryCallback,
@@ -140,5 +138,14 @@ async def handle_rename_reply(message: Message, database: Database) -> None:
         ),
     )
 
+
+router.callback_query.register(
+    handle_profile_with_rename,
+    AdminDirectoryCallback.filter(F.action == "profile"),
+)
+router.callback_query.register(
+    handle_rename_request,
+    AdminDirectoryCallback.filter(F.action == "rename"),
+)
 
 __all__ = ("router",)
