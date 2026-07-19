@@ -39,7 +39,6 @@
 
 Импорт controller-to-controller заменяется публичным contract/helper module, а не новым универсальным `utils.py`. Handler alias удаляется только при нулевом production consumer count и наличии regression-проверки.
 
-
 ## После завершения
 
 ### Фактически сделано
@@ -68,7 +67,7 @@
 
 - PR: #222 `P3D: clean archive and reference contracts`;
 - ветка: `agent/p3d-archive-reference-contracts`;
-- production commit создаётся после полного локального прогона.
+- проверенный production tree создан commit `911c1e876278839524ef01fa916e541a7126fa98`; финальный documentation commit запускает штатный CI.
 
 ### Незавершённое
 
