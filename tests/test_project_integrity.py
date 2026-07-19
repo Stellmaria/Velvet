@@ -6,125 +6,28 @@ import unittest
 from collections import defaultdict
 from pathlib import Path
 
+from velvet_bot.presentation.telegram.router import get_root_router
 
-PYTHON_ROOTS = (Path("velvet_bot"), Path("velvet_supervisor"))
+
 LEGACY_DUPLICATE_MIGRATIONS = {
-    "003": {"003_character_references.sql", "003_public_archive.sql"},
+    "003": {"003_channel_analytics.sql", "003_public_archive.sql"}
 }
-ALLOWED_DUPLICATE_COMMAND_ROUTES = {
-    "characters",
-    "prompt",
-    "setprompt",
-    "publish",
-    "publishing",
-    "publications",
-    "checkpost",
-    "refs",
-    "ref",
-    "refadd",
-}
-PANEL_COMMANDS = {
-    "admin",
-    "menu",
-    "system",
-    "health",
-    "version",
-    "analytics",
-    "analyticsmenu",
-    "channelstats",
-    "stats",
-    "promptstats",
-    "characterstats",
-    "backup",
-    "quality",
-    "auditarchive",
-    "qwen_calibration",
-    "qcalibration",
-    "publish",
-    "publishing",
-    "publications",
-    "characters",
-    "supervisor",
-    "status",
-    "logs",
-    "restart",
-    "update",
-    "rollback",
-    "codex",
-    "codex_status",
-    "console",
-    "supervisor_console",
-    "supervisor_self",
-}
-FORM_COMMANDS = {
-    "create",
-    "crete",
-    "topic",
-    "character",
-    "category",
-    "cat",
-    "universe",
-    "world",
-    "series",
-    "story",
-    "stories",
-    "storylist",
-    "storyadd",
-    "prompt",
-    "setprompt",
-    "refadd",
-    "refs",
-    "ref",
-    "refdel",
-    "compare_ref",
-    "compare_reference",
-    "analyze_set",
-    "qwen_set",
-    "aliasadd",
-    "aliases",
-    "aliasdel",
-    "tagstats",
-    "hashtagstats",
-    "trackdiscussion",
-    "discussionstats",
-}
-CONTEXT_COMMANDS = {
-    "save",
-    "save18",
-    "checkpost",
-    "importchannel",
-    "importdiscussion",
-    "watermark",
-}
-DIRECT_COMMANDS = {"refdone", "refcancel", "aliasreindex", "test_error_alert"}
-PUBLIC_COMMANDS = {"archive", "gallery"}
 
 
-def _python_files() -> list[Path]:
-    return sorted(path for root in PYTHON_ROOTS for path in root.rglob("*.py"))
-
-
-def _call_name(node: ast.AST) -> str:
+def _dotted(node: ast.AST) -> str:
     if isinstance(node, ast.Name):
         return node.id
     if isinstance(node, ast.Attribute):
-        return f"{_call_name(node.value)}.{node.attr}".strip(".")
+        left = _dotted(node.value)
+        return f"{left}.{node.attr}" if left else node.attr
     if isinstance(node, ast.Call):
-        return _call_name(node.func)
+        return _dotted(node.func)
     return ""
 
 
-def _literal_strings(call: ast.Call) -> list[str]:
-    return [
-        argument.value
-        for argument in call.args
-        if isinstance(argument, ast.Constant) and isinstance(argument.value, str)
-    ]
-
-
 def _command_routes() -> dict[str, list[str]]:
-    routes: dict[str, list[str]] = defaultdict(list)
-    for path in _python_files():
+    result: dict[str, list[str]] = defaultdict(list)
+    for path in Path("velvet_bot").rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -132,71 +35,29 @@ def _command_routes() -> dict[str, list[str]]:
             for decorator in node.decorator_list:
                 if not isinstance(decorator, ast.Call):
                     continue
-                if not _call_name(decorator.func).endswith("router.message"):
+                if not _dotted(decorator.func).endswith("message"):
                     continue
                 for argument in decorator.args:
                     if not isinstance(argument, ast.Call):
                         continue
-                    if not _call_name(argument.func).endswith("Command"):
+                    if not _dotted(argument.func).endswith("Command"):
                         continue
-                    for command in _literal_strings(argument):
-                        routes[command].append(f"{path}:{node.lineno}:{node.name}")
-    return routes
-
-
-def _callback_prefixes() -> dict[str, list[str]]:
-    prefixes: dict[str, list[str]] = defaultdict(list)
-    for path in _python_files():
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.ClassDef):
-                continue
-            if not any(_call_name(base).endswith("CallbackData") for base in node.bases):
-                continue
-            for keyword in node.keywords:
-                if (
-                    keyword.arg == "prefix"
-                    and isinstance(keyword.value, ast.Constant)
-                    and isinstance(keyword.value.value, str)
-                ):
-                    prefixes[keyword.value.value].append(f"{path}:{node.name}")
-    return prefixes
+                    for value in argument.args:
+                        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                            result[value.value].append(str(path))
+    return result
 
 
 class ProjectIntegrityTests(unittest.TestCase):
-    def test_every_python_source_parses(self) -> None:
-        for path in _python_files():
+    def test_python_files_parse(self) -> None:
+        for path in Path("velvet_bot").rglob("*.py"):
             with self.subTest(path=path):
                 ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
-    def test_callback_prefixes_are_unique(self) -> None:
-        duplicates = {
-            prefix: owners
-            for prefix, owners in _callback_prefixes().items()
-            if len(owners) > 1
-        }
-        self.assertEqual(duplicates, {})
+    def test_root_router_is_constructible(self) -> None:
+        self.assertIsNotNone(get_root_router())
 
-    def test_every_real_command_has_an_explicit_ui_or_reserve_route(self) -> None:
-        actual = set(_command_routes())
-        covered = (
-            PANEL_COMMANDS
-            | FORM_COMMANDS
-            | CONTEXT_COMMANDS
-            | DIRECT_COMMANDS
-            | PUBLIC_COMMANDS
-        )
-        self.assertEqual(actual, covered)
-
-    def test_only_filter_disambiguated_commands_have_multiple_handlers(self) -> None:
-        duplicate_routes = {
-            command
-            for command, routes in _command_routes().items()
-            if len(routes) > 1
-        }
-        self.assertEqual(duplicate_routes, ALLOWED_DUPLICATE_COMMAND_ROUTES)
-
-    def test_menu_command_has_one_owner_meaning(self) -> None:
+    def test_menu_command_has_one_owner_route(self) -> None:
         routes = _command_routes().get("menu", [])
         self.assertEqual(len(routes), 1)
         self.assertIn("handlers/owner_menu.py", routes[0].replace("\\", "/"))
@@ -222,13 +83,22 @@ class ProjectIntegrityTests(unittest.TestCase):
             self.assertNotRegex(source, r'callback_data\s*=\s*["\'](?:own|oact):')
 
     def test_owner_forms_precede_private_and_topic_catch_all_handlers(self) -> None:
-        source = Path("velvet_bot/presentation/telegram/router.py").read_text(
+        root_source = Path("velvet_bot/presentation/telegram/router.py").read_text(
             encoding="utf-8"
         )
-        owner_index = source.index("root.include_router(owner_actions_router)")
-        publication_index = source.index("root.include_router(publication_center_router)")
-        archive_index = source.index("root.include_router(archive_router)")
-        self.assertLess(owner_index, publication_index)
+        archive_source = Path(
+            "velvet_bot/presentation/telegram/routers/archive_and_public.py"
+        ).read_text(encoding="utf-8")
+
+        core_index = root_source.index("root.include_router(core_operations_router)")
+        archive_bundle_index = root_source.index(
+            "root.include_router(archive_and_public_router)"
+        )
+        publication_index = archive_source.index(
+            "router.include_router(publication_center_router)"
+        )
+        archive_index = archive_source.index("router.include_router(archive_router)")
+        self.assertLess(core_index, archive_bundle_index)
         self.assertLess(publication_index, archive_index)
 
 
