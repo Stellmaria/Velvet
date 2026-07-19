@@ -25,6 +25,16 @@ router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
 
+def _open_image_document_as_file(page: ArchivePage) -> bool:
+    media = page.media
+    return bool(
+        media is not None
+        and media.is_image_document
+        and media.file_size is not None
+        and media.file_size > BOT_API_DOWNLOAD_MAX_BYTES
+    )
+
+
 def _image_display_error(page: ArchivePage) -> ImagePreviewError:
     media = page.media
     if media is not None and media.file_size is not None:
@@ -49,6 +59,8 @@ async def _build_display_media(
 
     caption = format_archive_caption(page)
     if page.media.is_image_document:
+        if _open_image_document_as_file(page):
+            return build_input_media(page.media, caption)
         photo = await resolve_archive_image_preview(
             bot,
             database,
@@ -103,6 +115,11 @@ async def _send_page(
             **common,
         )
     if media.is_image_document:
+        if _open_image_document_as_file(page):
+            return await bot.send_document(
+                document=media.telegram_file_id,
+                **common,
+            )
         photo = await resolve_archive_image_preview(
             bot,
             database,
@@ -122,7 +139,6 @@ async def _send_page(
             message=sent,
         )
         return sent
-
     return await bot.send_document(
         document=media.telegram_file_id,
         **common,
@@ -151,7 +167,7 @@ async def _replace_page(
             media=media,
             reply_markup=keyboard,
         )
-        if page.media.is_image_document:
+        if page.media.is_image_document and not _open_image_document_as_file(page):
             await persist_preview_from_sent_message(
                 database,
                 media_id=page.media.id,
@@ -207,7 +223,6 @@ async def handle_admin_large_media_preview(
             )
             await callback.answer()
             return
-
         await _replace_page(callback, bot, database, page)
         await callback.answer()
     except ImagePreviewError as error:
