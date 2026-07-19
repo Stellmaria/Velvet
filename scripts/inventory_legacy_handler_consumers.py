@@ -16,6 +16,7 @@ CLEANED_PATHS = frozenset(
     {
         "velvet_bot/presentation/telegram/routers/characters/uncategorized.py",
         "velvet_bot/presentation/telegram/routers/stories/management.py",
+        "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
     }
 )
 

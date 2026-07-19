@@ -19,7 +19,7 @@ from velvet_bot.presentation.telegram.routers.characters.directory import (
 from velvet_bot.presentation.telegram.routers.characters.rename import (
     _keyboard_with_rename,
 )
-from velvet_bot.presentation.telegram.routers.stories.management import (
+from velvet_bot.presentation.telegram.routers.stories.contracts import (
     AdminStoryCallback,
 )
 from velvet_bot.safe_analytics_edit import safe_analytics_edit
