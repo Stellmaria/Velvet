@@ -2,14 +2,22 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from velvet_bot.handlers.character_aliases import router as character_aliases_router
 from velvet_bot.handlers.telegram_analytics_import import router as telegram_analytics_import_router
 from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
 from velvet_bot.handlers.start import router as start_router
 from velvet_bot.handlers.public_media_display import router as public_media_display_router
-from velvet_bot.handlers.kr_universe_entry import router as kr_universe_entry_router
-from velvet_bot.handlers.kr_profile_overrides import router as kr_profile_overrides_router
-from velvet_bot.handlers.multi_story_kr import router as multi_story_kr_router
+from velvet_bot.presentation.telegram.routers.characters.aliases import (
+    router as character_aliases_router,
+)
+from velvet_bot.presentation.telegram.routers.stories.kr_universe_entry import (
+    router as kr_universe_entry_router,
+)
+from velvet_bot.presentation.telegram.routers.characters.kr_profile_overrides import (
+    router as kr_profile_overrides_router,
+)
+from velvet_bot.presentation.telegram.routers.stories.multi_story_kr import (
+    router as multi_story_kr_router,
+)
 from velvet_bot.handlers.public_manager import router as public_manager_router
 from velvet_bot.handlers.public_notification_open import router as public_notification_open_router
 from velvet_bot.handlers.public_archive import router as public_archive_router
@@ -17,11 +25,21 @@ from velvet_bot.handlers.media_prompt_binding import router as media_prompt_bind
 from velvet_bot.handlers.admin_media_spoiler import router as admin_media_spoiler_router
 from velvet_bot.handlers.admin_large_media_preview import router as admin_large_media_preview_router
 from velvet_bot.handlers.admin_media_display import router as admin_media_display_router
-from velvet_bot.handlers.admin_stories import router as admin_stories_router
-from velvet_bot.handlers.admin_universe_story_flow import router as admin_universe_story_flow_router
-from velvet_bot.handlers.admin_uncategorized import router as admin_uncategorized_router
-from velvet_bot.handlers.admin_directory import router as admin_directory_router
-from velvet_bot.handlers.characters import router as characters_router
+from velvet_bot.presentation.telegram.routers.stories.management import (
+    router as admin_stories_router,
+)
+from velvet_bot.presentation.telegram.routers.stories.universe_flow import (
+    router as admin_universe_story_flow_router,
+)
+from velvet_bot.presentation.telegram.routers.characters.uncategorized import (
+    router as admin_uncategorized_router,
+)
+from velvet_bot.presentation.telegram.routers.characters.directory import (
+    router as admin_directory_router,
+)
+from velvet_bot.presentation.telegram.routers.characters.profiles import (
+    router as characters_router,
+)
 from velvet_bot.handlers.media_browser import router as media_browser_router
 from velvet_bot.handlers.reference_comparison_help import router as reference_comparison_help_router
 from velvet_bot.handlers.reference_comparison import router as reference_comparison_router
