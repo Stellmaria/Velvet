@@ -51,7 +51,8 @@ P3A–P3B создали ordered router bundles и машинный layout inven
 - phase 10 architecture contracts переведены на канонические пути;
 - layout inventory разделяет физические legacy-файлы, активные implementations и временные aliases;
 - активные legacy handler implementations уменьшены с 68 до 59;
-- временный move-workflow удалён после pre-execution failure, перенос выполнен атомарным Git tree commit.
+- временный move-workflow удалён после pre-execution failure, перенос выполнен атомарным Git tree commit;
+- отдельный Windows smoke workflow был создан для проверки целевой ОС и удалён после того, как Windows job также завершился до checkout.
 
 ### Миграции и совместимость
 
@@ -63,7 +64,9 @@ P3A–P3B создали ordered router bundles и машинный layout inven
 - architecture inventory: root imports 0, active routers 55, duplicates 0, implementations 59, aliases 9;
 - GitHub Actions tests #933, Docker #469 и notes #334, а также последующие попытки, завершились до первого workflow step с `steps=None`, `logs_url=None` и без checkout;
 - повторный запуск unit-tests также завершился до первого шага и не создал log blob;
-- точная причина pre-execution failure недоступна подключённому GitHub integration API, поэтому обязательный реальный CI пока не выполнен.
+- Windows smoke run #1 завершился аналогично: `steps=None`, `logs_url=None`, checkout не выполнялся;
+- Linux и Windows pre-execution failures показывают, что проблема не относится к коду конкретного runner workflow, но точная причина недоступна подключённому GitHub integration API;
+- обязательный реальный CI пока не выполнен.
 
 ### PR и commit
 
