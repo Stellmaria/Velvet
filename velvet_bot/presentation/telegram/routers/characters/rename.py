@@ -4,6 +4,7 @@ import re
 from html import escape
 
 from aiogram import F, Router
+from aiogram.filters import BaseFilter
 from aiogram.types import (
     CallbackQuery,
     ForceReply,
@@ -12,11 +13,17 @@ from aiogram.types import (
     Message,
 )
 
-from velvet_bot.character_directory import get_character_directory_item
+from velvet_bot.character_directory import (
+    get_character_directory_item,
+    list_category_summaries,
+)
 from velvet_bot.character_renaming import rename_character
 from velvet_bot.database import Database
+from velvet_bot.domains.characters.catalog import normalize_category
 from velvet_bot.presentation.telegram.routers.characters.directory import (
     AdminDirectoryCallback,
+    _category_keyboard,
+    _category_text,
     _profile_keyboard,
     _profile_text,
 )
@@ -29,6 +36,23 @@ router = Router(name=__name__)
 _RENAME_MARKER_RE = re.compile(
     r"^RENAME_CHARACTER:(?P<character_id>\d+):(?P<category>[a-z0-9_-]*):(?P<page>\d+)"
 )
+
+
+class InvalidDirectoryCategoryFilter(BaseFilter):
+    async def __call__(
+        self,
+        callback: CallbackQuery,
+        callback_data: AdminDirectoryCallback,
+    ) -> bool:
+        del callback
+        try:
+            normalize_category(
+                callback_data.category,
+                allow_uncategorized=True,
+            )
+        except ValueError:
+            return True
+        return False
 
 
 def _keyboard_with_rename(item, *, category: str, page: int) -> InlineKeyboardMarkup:
@@ -64,6 +88,31 @@ def _keyboard_with_rename(item, *, category: str, page: int) -> InlineKeyboardMa
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def handle_invalid_directory_menu(
+    callback: CallbackQuery,
+    callback_data: AdminDirectoryCallback,
+    database: Database,
+) -> None:
+    del callback_data
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+
+    summaries = await list_category_summaries(
+        database,
+        public_only=False,
+        include_uncategorized=True,
+    )
+    await callback.message.edit_text(
+        _category_text(sum(item.character_count for item in summaries)),
+        reply_markup=_category_keyboard(summaries),
+    )
+    await callback.answer(
+        "Категория в старой карточке устарела. Открыт список категорий.",
+        show_alert=True,
+    )
 
 
 async def handle_profile_with_rename(
@@ -160,6 +209,11 @@ async def handle_rename_reply(message: Message, database: Database) -> None:
 
 
 router.callback_query.register(
+    handle_invalid_directory_menu,
+    AdminDirectoryCallback.filter(F.action == "menu"),
+    InvalidDirectoryCategoryFilter(),
+)
+router.callback_query.register(
     handle_profile_with_rename,
     AdminDirectoryCallback.filter(F.action == "profile"),
 )
@@ -168,4 +222,4 @@ router.callback_query.register(
     AdminDirectoryCallback.filter(F.action == "rename"),
 )
 
-__all__ = ("router",)
+__all__ = ("InvalidDirectoryCategoryFilter", "router")
