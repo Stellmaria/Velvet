@@ -1,0 +1,81 @@
+name: p3 architecture generated files
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Generate architecture inventory
+        run: python scripts/inventory_architecture_layout.py --write --label p3b-router-bundles
+      - name: Synchronize changelog and README
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          changelog = Path("CHANGELOG.md")
+          text = changelog.read_text(encoding="utf-8")
+          section = """### P3A–P3B: architecture organization
+
+          - Root Telegram Router now includes four ordered domain bundles instead of importing 55 handlers directly.
+          - Active compatibility installers are centralized into explicit pre-import and post-import stages.
+          - The unused discussion-dashboard package bridge was removed.
+          - A generated architecture-layout inventory and regression contracts now measure remaining physical debt.
+          - Project status, memory and architecture audit were synchronized with current `main`.
+
+          ### P2AO–P2AP: final stability closure
+
+          - System health and WorkerManager boundaries were verified with cancellation/error regression tests.
+          - P2 inventory reached 67 approved broad boundaries, 0 unresolved boundaries and 0 late/missing callbacks.
+          - P2 stability has no remaining code slice.
+
+          """
+          marker = "## [Unreleased]\n\n"
+          if "### P3A–P3B: architecture organization" not in text:
+              if marker not in text:
+                  raise SystemExit("CHANGELOG Unreleased marker not found")
+              text = text.replace(marker, marker + section, 1)
+              changelog.write_text(text, encoding="utf-8")
+
+          readme = Path("README.md")
+          text = readme.read_text(encoding="utf-8")
+          heading = "## Архитектура\n"
+          if heading not in text:
+              raise SystemExit("README architecture heading not found")
+          prefix = text.split(heading, 1)[0]
+          architecture = """## Архитектура
+
+          - `velvet_bot/app` — composition root, lifecycle и workers;
+          - `velvet_bot/application` — transport-neutral use cases владельца;
+          - `velvet_bot/domains` — доменные модели, repositories и services;
+          - `velvet_bot/infrastructure` — PostgreSQL, Telegram, filesystem и Krita adapters;
+          - `velvet_bot/presentation/telegram` — root Router, contracts, views и ordered router bundles;
+          - `velvet_bot/handlers` — временный legacy presentation layout, переносимый по доменам в P3C;
+          - `velvet_bot/presentation/telegram/compat.py` — единый реестр временных pre/post-import adapters.
+
+          Private PostgreSQL boundary и P2 stability закрыты. Текущий физический долг измеряется в `docs/architecture_layout_inventory.*`, актуальный статус — в `docs/development_status.md` и `docs/ARCHITECTURE_AUDIT.md`.
+          """
+          architecture = "\n".join(line[10:] if line.startswith("          ") else line for line in architecture.splitlines()) + "\n"
+          readme.write_text(prefix + architecture, encoding="utf-8")
+          PY
+      - name: Commit generated files
+        run: |
+          if git diff --quiet -- docs/architecture_layout_inventory.json docs/architecture_layout_inventory.md CHANGELOG.md README.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/architecture_layout_inventory.json docs/architecture_layout_inventory.md CHANGELOG.md README.md
+          git commit -m "Generate P3 architecture inventory and sync docs"
+          git push origin HEAD:${{ github.head_ref }}
