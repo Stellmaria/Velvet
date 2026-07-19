@@ -17,6 +17,21 @@ from velvet_bot.image_preview import BOT_API_DOWNLOAD_MAX_BYTES, ImagePreviewErr
 _INSTALLED = False
 
 
+def _open_image_document_as_file(
+    page: ArchivePage,
+    *,
+    manager_access: bool,
+) -> bool:
+    media = page.media
+    return bool(
+        manager_access
+        and media is not None
+        and media.is_image_document
+        and media.file_size is not None
+        and media.file_size > BOT_API_DOWNLOAD_MAX_BYTES
+    )
+
+
 def _image_display_error(page: ArchivePage) -> ImagePreviewError:
     media = page.media
     if media is not None and media.file_size is not None:
@@ -88,6 +103,11 @@ async def send_viewer_archive_page(
             **common,
         )
     if media.is_image_document:
+        if _open_image_document_as_file(page, manager_access=manager_access):
+            return await bot.send_document(
+                document=media.telegram_file_id,
+                **common,
+            )
         photo = await resolve_archive_image_preview(
             bot,
             database,
@@ -145,8 +165,12 @@ async def replace_viewer_archive_page(
         state,
         manager_access=manager_access,
     )
+    file_mode = _open_image_document_as_file(
+        page,
+        manager_access=manager_access,
+    )
 
-    if page.media.is_image_document:
+    if page.media.is_image_document and not file_mode:
         photo = await resolve_archive_image_preview(
             bot,
             database,
@@ -173,7 +197,7 @@ async def replace_viewer_archive_page(
             media=input_media,
             reply_markup=keyboard,
         )
-        if page.media.is_image_document:
+        if page.media.is_image_document and not file_mode:
             await persist_preview_from_sent_message(
                 database,
                 media_id=page.media.id,
