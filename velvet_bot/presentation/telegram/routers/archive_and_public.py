@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aiogram import Router
+from aiogram import F, Router
 
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
     router as telegram_analytics_import_router,
@@ -98,9 +98,20 @@ from velvet_bot.presentation.telegram.routers.archive.spoiler import (
 from velvet_bot.presentation.telegram.routers.publication.safe import (
     router as publication_center_router,
 )
-from velvet_bot.presentation.telegram.routers.archive.save import router as archive_router
+from velvet_bot.presentation.telegram.routers.archive.save import (
+    PendingSaveUploadFilter,
+    handle_pending_save_upload,
+    router as archive_router,
+)
 
 router = Router(name=__name__)
+# Bundle-level handlers run before child routers. An active `/save` session must
+# therefore win before broad reference photo/document handlers.
+router.message.register(
+    handle_pending_save_upload,
+    F.photo | F.video | F.animation | F.document,
+    PendingSaveUploadFilter(),
+)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)

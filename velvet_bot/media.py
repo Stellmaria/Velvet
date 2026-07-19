@@ -12,6 +12,30 @@ from aiogram import Bot
 from aiogram.types import ExternalReplyInfo, Message
 
 _INVALID_FILE_NAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+_IMAGE_DOCUMENT_EXTENSIONS = {
+    ".avif",
+    ".bmp",
+    ".gif",
+    ".heic",
+    ".heif",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".tif",
+    ".tiff",
+    ".webp",
+}
+_VIDEO_DOCUMENT_EXTENSIONS = {
+    ".avi",
+    ".m4v",
+    ".mkv",
+    ".mov",
+    ".mp4",
+    ".mpeg",
+    ".mpg",
+    ".webm",
+}
+_GENERIC_DOCUMENT_MIME_TYPES = {None, "", "application/octet-stream"}
 
 MediaSource: TypeAlias = Message | ExternalReplyInfo
 
@@ -127,35 +151,52 @@ def extract_media(source: MediaSource) -> MediaDescriptor | None:
         )
 
     document = source.document
-    mime_type = document.mime_type if document else None
-    if document and (
-        (mime_type or "").startswith("image/")
-        or (mime_type or "").startswith("video/")
-    ):
-        guessed_extension = mimetypes.guess_extension(mime_type or "") or ".bin"
-        default_stem = (
-            "video" if (mime_type or "").startswith("video/") else "image"
+    if document:
+        file_name = document.file_name
+        suffix = Path(file_name or "").suffix.casefold()
+        declared_mime_type = document.mime_type
+        guessed_mime_type = mimetypes.guess_type(file_name or "")[0]
+        mime_type = (
+            guessed_mime_type
+            if declared_mime_type in _GENERIC_DOCUMENT_MIME_TYPES
+            and guessed_mime_type is not None
+            else declared_mime_type
         )
-        thumbnail = getattr(document, "thumbnail", None)
-        return MediaDescriptor(
-            telegram_file_id=document.file_id,
-            telegram_file_unique_id=document.file_unique_id,
-            original_file_name=document.file_name,
-            storage_file_name=build_storage_file_name(
-                document.file_name,
-                document.file_unique_id,
-                default_extension=guessed_extension,
-                default_stem=default_stem,
-            ),
-            media_type="document",
-            mime_type=mime_type,
-            file_size=document.file_size,
-            preview_file_id=thumbnail.file_id if thumbnail else None,
-            preview_file_unique_id=(thumbnail.file_unique_id if thumbnail else None),
-            preview_width=thumbnail.width if thumbnail else None,
-            preview_height=thumbnail.height if thumbnail else None,
-            preview_source="source_thumbnail" if thumbnail else None,
+        is_image = (mime_type or "").startswith("image/") or (
+            suffix in _IMAGE_DOCUMENT_EXTENSIONS
         )
+        is_video = (mime_type or "").startswith("video/") or (
+            suffix in _VIDEO_DOCUMENT_EXTENSIONS
+        )
+        if is_image or is_video:
+            guessed_extension = (
+                suffix
+                or mimetypes.guess_extension(mime_type or "")
+                or ".bin"
+            )
+            default_stem = "video" if is_video else "image"
+            thumbnail = getattr(document, "thumbnail", None)
+            return MediaDescriptor(
+                telegram_file_id=document.file_id,
+                telegram_file_unique_id=document.file_unique_id,
+                original_file_name=file_name,
+                storage_file_name=build_storage_file_name(
+                    file_name,
+                    document.file_unique_id,
+                    default_extension=guessed_extension,
+                    default_stem=default_stem,
+                ),
+                media_type="document",
+                mime_type=mime_type,
+                file_size=document.file_size,
+                preview_file_id=thumbnail.file_id if thumbnail else None,
+                preview_file_unique_id=(
+                    thumbnail.file_unique_id if thumbnail else None
+                ),
+                preview_width=thumbnail.width if thumbnail else None,
+                preview_height=thumbnail.height if thumbnail else None,
+                preview_source="source_thumbnail" if thumbnail else None,
+            )
 
     return None
 
