@@ -1,0 +1,118 @@
+name: p3c move supervisor system
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Move Supervisor and System controllers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          mapping = {
+              "velvet_bot/handlers/supervisor_control.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/control.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.control",
+              ),
+              "velvet_bot/handlers/supervisor_status.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/status.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.status",
+              ),
+              "velvet_bot/handlers/supervisor_process.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/process.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.process",
+              ),
+              "velvet_bot/handlers/supervisor_git.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/git.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.git",
+              ),
+              "velvet_bot/handlers/supervisor_logs.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/logs.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.logs",
+              ),
+              "velvet_bot/handlers/supervisor_console.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/console.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.console",
+              ),
+              "velvet_bot/handlers/supervisor_self.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/self_control.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.self_control",
+              ),
+              "velvet_bot/handlers/supervisor_codex.py": (
+                  "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
+                  "velvet_bot.presentation.telegram.routers.supervisor.codex",
+              ),
+              "velvet_bot/handlers/system_center.py": (
+                  "velvet_bot/presentation/telegram/routers/system.py",
+                  "velvet_bot.presentation.telegram.routers.system",
+              ),
+          }
+          module_mapping = {
+              old[:-3].replace("/", "."): module
+              for old, (_, module) in mapping.items()
+          }
+
+          for old_raw, (new_raw, _) in mapping.items():
+              old = Path(old_raw)
+              new = Path(new_raw)
+              new.parent.mkdir(parents=True, exist_ok=True)
+              source = old.read_text(encoding="utf-8")
+              for old_module, new_module in module_mapping.items():
+                  source = source.replace(old_module, new_module)
+              new.write_text(source, encoding="utf-8")
+
+          supervisor_package = Path(
+              "velvet_bot/presentation/telegram/routers/supervisor/__init__.py"
+          )
+          supervisor_package.write_text(
+              "from __future__ import annotations\n\n__all__ = ()\n",
+              encoding="utf-8",
+          )
+
+          old_paths = {Path(path) for path in mapping}
+          for path in Path("velvet_bot").rglob("*.py"):
+              if path in old_paths:
+                  continue
+              source = path.read_text(encoding="utf-8")
+              updated = source
+              for old_module, new_module in module_mapping.items():
+                  updated = updated.replace(old_module, new_module)
+              if updated != source:
+                  path.write_text(updated, encoding="utf-8")
+
+          for old_raw, (_, target_module) in mapping.items():
+              Path(old_raw).write_text(
+                  "from __future__ import annotations\n\n"
+                  "import importlib as _importlib\n"
+                  "import sys as _sys\n\n"
+                  f'P3_COMPAT_MODULE_ALIAS = "{target_module}"\n'
+                  "_target = _importlib.import_module(P3_COMPAT_MODULE_ALIAS)\n"
+                  "_sys.modules[__name__] = _target\n",
+                  encoding="utf-8",
+              )
+          PY
+      - name: Generate architecture inventory
+        run: python scripts/inventory_architecture_layout.py --write --label p3c-supervisor-system-presentation
+      - name: Commit generated move
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot tests docs scripts
+          git commit -m "Move Supervisor and System controllers to presentation"
+          git push origin HEAD:${{ github.head_ref }}
