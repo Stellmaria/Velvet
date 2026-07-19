@@ -27,6 +27,7 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
+from velvet_bot.presentation.telegram.routers.characters.aliases import CharacterTagCallback
 from velvet_bot.story_catalog import universe_requires_story
 
 router = Router(name=__name__)
@@ -229,6 +230,19 @@ def _profile_keyboard(
                 )
             ]
         )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="🏷 Быстрые теги",
+                callback_data=CharacterTagCallback(
+                    action="menu",
+                    character_id=item.character.id,
+                    category=category,
+                    page=page,
+                ).pack(),
+            )
+        ]
+    )
     if item.media_count:
         rows.append(
             [
