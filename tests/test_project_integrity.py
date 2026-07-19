@@ -199,7 +199,10 @@ class ProjectIntegrityTests(unittest.TestCase):
     def test_menu_command_has_one_owner_meaning(self) -> None:
         routes = _command_routes().get("menu", [])
         self.assertEqual(len(routes), 1)
-        self.assertIn("handlers/owner_menu.py", routes[0].replace("\\", "/"))
+        self.assertIn(
+            "presentation/telegram/routers/core_operations_controllers/owner_menu.py",
+            routes[0].replace("\\", "/"),
+        )
 
     def test_migration_numbers_are_unambiguous_except_legacy_pair(self) -> None:
         by_number: dict[str, set[str]] = defaultdict(set)
@@ -216,7 +219,10 @@ class ProjectIntegrityTests(unittest.TestCase):
         self.assertFalse(Path("velvet_bot/handlers/owner_action_callback_fix.py").exists())
         for path in (
             Path("velvet_bot/owner_menu.py"),
-            Path("velvet_bot/handlers/owner_actions.py"),
+            Path(
+                "velvet_bot/presentation/telegram/routers/"
+                "core_operations_controllers/owner_actions.py"
+            ),
         ):
             source = path.read_text(encoding="utf-8")
             self.assertNotRegex(source, r'callback_data\s*=\s*["\'](?:own|oact):')
