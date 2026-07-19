@@ -256,7 +256,6 @@ async def handle_alias_reindex(message: Message, database: Database) -> None:
     )
 
 
-@router.callback_query(CharacterTagCallback.filter())
 async def handle_character_tag_callback(
     callback: CallbackQuery,
     callback_data: CharacterTagCallback,
@@ -393,6 +392,11 @@ async def handle_character_tag_reply(
         ),
     )
 
+
+router.callback_query.register(
+    handle_character_tag_callback,
+    CharacterTagCallback.filter(),
+)
 
 __all__ = (
     "CHARACTER_TAG_REPLY_MARKER",
