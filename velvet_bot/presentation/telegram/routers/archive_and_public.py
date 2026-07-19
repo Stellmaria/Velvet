@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from aiogram import Router
 
+from velvet_bot.presentation.telegram.routers.archive.pending_save import (
+    router as pending_save_router,
+)
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
     router as telegram_analytics_import_router,
 )
@@ -101,6 +104,8 @@ from velvet_bot.presentation.telegram.routers.publication.safe import (
 from velvet_bot.presentation.telegram.routers.archive.save import router as archive_router
 
 router = Router(name=__name__)
+# An active `/save` session must win before broad reference media handlers.
+router.include_router(pending_save_router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
