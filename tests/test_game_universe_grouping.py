@@ -55,7 +55,7 @@ class GameUniverseGroupingTests(unittest.TestCase):
         self.assertTrue(all(item.return_category == "male" for item in unpacked))
 
     def test_migration_allows_leaf_values_not_virtual_group(self) -> None:
-        migration = Path("migrations/024_game_universe_grouping.sql").read_text(
+        migration = Path("migrations/025_game_universe_grouping.sql").read_text(
             encoding="utf-8"
         )
         self.assertIn("'bg3'", migration)
