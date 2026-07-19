@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import shutil
@@ -120,7 +121,9 @@ class SystemHealthService:
         try:
             await self.repository.ping()
             database_snapshot = await self.repository.get_runtime_snapshot()
-        except Exception as error:
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:  # p2-approved-boundary: isolate-database-health-probe
             database_ok = False
             database_error = str(error)[:2000]
 
@@ -130,7 +133,9 @@ class SystemHealthService:
         try:
             info = await bot.get_me()
             bot_username = info.username
-        except Exception as error:
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:  # p2-approved-boundary: isolate-telegram-health-probe
             telegram_ok = False
             telegram_error = str(error)[:2000]
 

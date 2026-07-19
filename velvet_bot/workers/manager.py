@@ -179,7 +179,7 @@ class WorkerManager:
                 await spec.runner()
             except asyncio.CancelledError:
                 raise
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: isolate-worker-iteration-failure
                 failed_at = datetime.now(UTC)
                 current = self._snapshots[spec.name]
                 self._snapshots[spec.name] = replace(
@@ -216,7 +216,7 @@ class WorkerManager:
                 await asyncio.sleep(spec.interval_seconds)
         except asyncio.CancelledError:
             raise
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: isolate-worker-loop-failure
             failed_at = datetime.now(UTC)
             current = self._snapshots[spec.name]
             self._snapshots[spec.name] = replace(
