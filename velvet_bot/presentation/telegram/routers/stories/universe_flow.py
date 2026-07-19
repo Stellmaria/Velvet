@@ -11,8 +11,12 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
-from velvet_bot.handlers.admin_stories import build_story_picker
+from velvet_bot.presentation.telegram.routers.characters.directory import (
+    AdminDirectoryCallback,
+)
+from velvet_bot.presentation.telegram.routers.stories.management import (
+    build_story_picker,
+)
 from velvet_bot.story_catalog import list_story_page, universe_requires_story
 
 router = Router(name=__name__)
