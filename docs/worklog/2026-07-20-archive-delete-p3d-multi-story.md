@@ -71,7 +71,7 @@
 
 - PR: #221 `Fix archive topic deletion and clean multi-story imports`;
 - ветка: `agent/archive-delete-p3d-multi-story`;
-- production commit будет создан после полного локального прогона.
+- production commit: `f3b104a83122680acd5844789393587ae4c150ec`.
 
 ### Незавершённое
 
