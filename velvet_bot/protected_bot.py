@@ -6,7 +6,9 @@ from contextvars import ContextVar
 from typing import Any
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import (
+    AnswerCallbackQuery,
     SendAnimation,
     SendDocument,
     SendMediaGroup,
@@ -20,6 +22,11 @@ _PROTECTED_MEDIA_METHODS = (
     SendMediaGroup,
     SendPhoto,
     SendVideo,
+)
+_STALE_CALLBACK_MARKERS = (
+    "query is too old",
+    "response timeout expired",
+    "query id is invalid",
 )
 
 
@@ -43,6 +50,14 @@ def protect_private_media_method(
     changed = method.protect_content is not True
     method.protect_content = True
     return changed
+
+
+def is_expired_callback_answer(method: Any, error: TelegramBadRequest) -> bool:
+    """Return whether Telegram rejected only an already-expired callback query."""
+    if not isinstance(method, AnswerCallbackQuery):
+        return False
+    normalized = str(error).casefold()
+    return any(marker in normalized for marker in _STALE_CALLBACK_MARKERS)
 
 
 class ProtectedMediaBot(Bot):
@@ -102,4 +117,9 @@ class ProtectedMediaBot(Bot):
             method,
             unprotected_private_user_ids=unprotected_ids,
         )
-        return await super().__call__(method, request_timeout=request_timeout)
+        try:
+            return await super().__call__(method, request_timeout=request_timeout)
+        except TelegramBadRequest as error:
+            if is_expired_callback_answer(method, error):
+                return True
+            raise

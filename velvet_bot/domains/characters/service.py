@@ -114,10 +114,15 @@ class CharacterDirectoryService:
         public_only: bool,
         include_unassigned: bool = False,
     ) -> tuple[UniverseSummary, ...]:
-        if category not in CATEGORY_ORDER:
-            raise ValueError("Неизвестная категория архива.")
+        try:
+            normalized_category = normalize_category(
+                category,
+                allow_uncategorized=False,
+            )
+        except ValueError as error:
+            raise ValueError("Неизвестная категория архива.") from error
         return await self._repository.list_universe_summaries(
-            category=category,
+            category=normalized_category,
             public_only=public_only,
             include_unassigned=include_unassigned,
         )
@@ -132,18 +137,23 @@ class CharacterDirectoryService:
         universe: str | None = None,
         story_id: int | None = None,
     ) -> CharacterDirectoryPage:
-        if category not in {*CATEGORY_ORDER, "uncategorized"}:
-            raise ValueError("Неизвестная категория архива.")
+        try:
+            normalized_category = normalize_category(
+                category,
+                allow_uncategorized=True,
+            )
+        except ValueError as error:
+            raise ValueError("Неизвестная категория архива.") from error
         if universe is not None and universe not in UNIVERSE_ORDER:
             raise ValueError("Неизвестная вселенная архива.")
-        if category == "uncategorized" and universe is not None:
+        if normalized_category == "uncategorized" and universe is not None:
             raise ValueError(
                 "Для раздела без категории фильтр вселенной недоступен."
             )
         if story_id is not None and universe is None:
             raise ValueError("Для фильтра по истории сначала нужна вселенная.")
         return await self._repository.list_directory(
-            category=category,
+            category=normalized_category,
             page=page,
             page_size=page_size,
             public_only=public_only,
