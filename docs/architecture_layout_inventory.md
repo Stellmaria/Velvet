@@ -9,8 +9,8 @@
 - активных router imports в bundles: **56**;
 - дублирующих регистраций между bundles: **0**;
 - физических legacy handler-файлов: **68**;
-- активных legacy handler implementations: **5**;
-- временных handler module aliases: **63**;
+- активных legacy handler implementations: **0**;
+- временных handler module aliases: **68**;
 - корневых Python-модулей `velvet_bot/*.py`: **115**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -36,6 +36,10 @@
 - `velvet_bot/handlers/analytics_dashboard_overrides.py`.
 - `velvet_bot/handlers/analytics_discussion_overrides.py`.
 - `velvet_bot/handlers/analytics_management.py`.
+- `velvet_bot/handlers/analytics_management_aliases.py`.
+- `velvet_bot/handlers/analytics_management_common.py`.
+- `velvet_bot/handlers/analytics_management_publications.py`.
+- `velvet_bot/handlers/analytics_management_tags.py`.
 - `velvet_bot/handlers/archive.py`.
 - `velvet_bot/handlers/backup_center.py`.
 - `velvet_bot/handlers/channel_analytics.py`.
@@ -87,6 +91,7 @@
 - `velvet_bot/handlers/velvet_ai.py`.
 - `velvet_bot/handlers/velvet_ai_formatting.py`.
 - `velvet_bot/handlers/velvet_ai_visual.py`.
+- `velvet_bot/handlers/watermark.py`.
 
 ## Активная compatibility-граница
 
@@ -107,8 +112,8 @@
 ## Следующий срез
 
 - фаза: **P3D**;
-- цель: **remaining standalone handler implementations and compatibility retirement**;
-- стратегия: classify five residual implementations before removing temporary aliases.
+- цель: **compatibility alias retirement and canonical import cleanup**;
+- стратегия: remove temporary handler aliases in reviewed consumer groups.
 
 ## Правило обновления
 
