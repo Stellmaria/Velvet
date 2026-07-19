@@ -31,9 +31,17 @@ def quality_actions(markup) -> set[str]:
     return actions
 
 
+def _active_controller_paths() -> tuple[Path, ...]:
+    legacy = tuple((ROOT / "velvet_bot/handlers").glob("*.py"))
+    canonical = tuple(
+        (ROOT / "velvet_bot/presentation/telegram/routers").rglob("*.py")
+    )
+    return legacy + canonical
+
+
 def registered_quality_actions() -> set[str]:
     actions: set[str] = set()
-    for path in (ROOT / "velvet_bot/handlers").glob("*.py"):
+    for path in _active_controller_paths():
         actions.update(_ACTION_RE.findall(path.read_text(encoding="utf-8")))
     return actions
 
@@ -167,7 +175,10 @@ class AIMenuCoverageTests(unittest.TestCase):
             "palette_composition": ROOT / "velvet_bot/handlers/velvet_ai_visual.py",
             "velvet_formatting": ROOT / "velvet_bot/handlers/velvet_ai_formatting.py",
             "quality_image": ROOT / "velvet_bot/handlers/quality_operations.py",
-            "reference_comparison": ROOT / "velvet_bot/handlers/reference_comparison_help.py",
+            "reference_comparison": (
+                ROOT
+                / "velvet_bot/presentation/telegram/routers/references/comparison_help.py"
+            ),
             "media_set_consistency": ROOT / "velvet_bot/handlers/quality_set_ai.py",
         }
         for kind, path in paths.items():
