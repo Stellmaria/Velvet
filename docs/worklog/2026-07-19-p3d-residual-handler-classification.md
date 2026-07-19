@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3d-residual-handler-classification`
 - Линия/фаза: Velvet Archive, P3D
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3d-residual-handler-classification`
 - Базовый commit: `64d318bc2cd30556faa7f01a1e821ba7b844f3c8`
 
@@ -15,7 +15,7 @@
 
 ### Исходный контекст
 
-P3C завершён: root Router и domain bundles не импортируют `velvet_bot.handlers.*`, активных bundle routers 56, дублирующих регистраций 0. В handlers остаются 68 файлов, из которых 63 являются module aliases, а пять всё ещё содержат реальный код. Поисковый индекс GitHub показывает старые версии файлов, поэтому остаток должен определяться непосредственно текущим деревом в CI.
+P3C завершён: root Router и domain bundles не импортируют `velvet_bot.handlers.*`, активных bundle routers 56, дублирующих регистраций 0. В handlers оставались 68 файлов, из которых 63 являлись module aliases, а пять всё ещё содержали реальный код. Поисковый индекс GitHub показывал старые версии файлов, поэтому остаток определялся непосредственно текущим деревом в CI.
 
 ### Планируемый объём
 
@@ -38,35 +38,49 @@ P3C завершён: root Router и domain bundles не импортируют 
 
 ### Риски и ограничения
 
-Один из известных кандидатов, `watermark.py`, является большим nested controller с файловым и Krita workflow. Его нельзя переносить или удалять без проверки порядка router inclusion и monkeypatch contracts. Первый CI этого PR используется как детерминированная инвентаризация, а не как доказательство готовности merge.
+`watermark.py` является большим nested controller с файловым и Krita workflow. Его перенос выполнялся без переписывания исходного blob и с сохранением порядка inclusion в owner menu. Четыре analytics management helper-модуля являются частью canonical analytics controller, хотя сами не объявляют отдельные routers.
 
 ## После завершения
 
 ### Фактически сделано
 
-- добавлен `tests/test_p3d_residual_handler_classification.py`;
-- тест вычисляет implementations как handler-файлы без `P3_COMPAT_MODULE_ALIAS`;
-- первый запуск намеренно использует discovery sentinel, чтобы CI напечатал точный остаток текущего дерева.
+- discovery CI #1042 подтвердил точный residual set: `watermark.py`, `analytics_management_common.py`, `analytics_management_tags.py`, `analytics_management_aliases.py`, `analytics_management_publications.py`;
+- `watermark.py` перенесён в `core_operations_controllers/watermark.py`;
+- четыре analytics helper-модуля перенесены в `analytics_controllers/management_*`;
+- runtime owners `owner_menu.py`, `management.py` и `dashboard_overrides.py` переключены на canonical imports;
+- пять legacy handler-файлов заменены module aliases;
+- discovery sentinel заменён постоянным контрактом нулевого остатка и module identity;
+- Phase 14, P3C analytics и P3C core contracts переведены на canonical paths;
+- architecture inventory обновлён: 68 handler files, 0 implementations, 68 aliases;
+- следующим P3D-срезом назначено controlled compatibility alias retirement.
 
 ### Миграции и совместимость
 
-Миграции не требуются. Runtime code на этапе discovery не изменяется.
+Миграции PostgreSQL не требуются. Команда `/watermark`, Watermark callbacks, Krita bridge, analytics management actions, alias ForceReply, publication review и unresolved hashtag flows не изменены. Старые imports продолжают возвращать те же canonical module objects.
 
 ### Проверки
 
-- полный CI будет запущен через draft PR;
-- ожидается один контролируемый failure discovery-контракта с точным набором файлов.
+- discovery run: tests #1042 завершился единственным ожидаемым failure sentinel и напечатал точный набор пяти файлов; остальные 900 тестов прошли;
+- runtime/finalized tree: tests #1051 — success, 901 tests;
+- Docker build #586 — success;
+- project notes contract #437 — success;
+- active bundle routers: 56;
+- duplicate registrations: 0;
+- active legacy implementations: 0;
+- handler aliases: 68.
 
 ### PR и commit
 
+- PR: #210 `Classify residual handler implementations`;
 - рабочая ветка: `agent/p3d-residual-handler-classification`;
 - discovery contract commit: `bb019b885f5208205b4f9a7a2e72c5a08e7aaa18`;
-- PR будет добавлен после запуска CI.
+- residual move commit: `0627e496f3e97f3dd5b3e90b264e3cd98d3976b9`;
+- проверенный runtime head: `e52cc2460d01dc9356292fba4c77a84f6dbc2668`.
 
 ### Незавершённое
 
-Точный набор файлов ещё не извлечён из CI. Перенос и compatibility retirement не начаты.
+Реальных implementations в `velvet_bot/handlers` больше нет. Остаются 68 временных module aliases. Их нельзя удалять одним массовым commit, пока tests, compatibility modules или внешние scripts могут импортировать старые paths.
 
 ### Следующий шаг
 
-Открыть draft PR, прочитать фактический residual set из test output, затем заменить sentinel на reviewed classification и продолжить перенос.
+Слить PR #210 после зелёного CI финального documentation head. Затем начать P3D compatibility retirement: найти consumers старых paths, перевести их на canonical imports и удалять aliases небольшими проверяемыми группами.
