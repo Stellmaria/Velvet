@@ -84,8 +84,12 @@ class Phase9ArchitectureTests(unittest.TestCase):
             "velvet_bot/handlers/telegram_analytics_import.py": (
                 "velvet_bot.application.owner_analytics"
             ),
-            "velvet_bot/handlers/archive.py": "velvet_bot.services.media_save",
-            "velvet_bot/handlers/spoiler_save.py": "velvet_bot.services.media_save",
+            "velvet_bot/presentation/telegram/routers/archive/save.py": (
+                "velvet_bot.services.media_save"
+            ),
+            "velvet_bot/presentation/telegram/routers/archive/spoiler.py": (
+                "velvet_bot.services.media_save"
+            ),
         }
         for raw_path, expected in expected_imports.items():
             with self.subTest(path=raw_path):
