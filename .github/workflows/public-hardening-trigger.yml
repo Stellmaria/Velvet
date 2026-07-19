@@ -1,0 +1,48 @@
+name: trigger public hardening patch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/public-repo-security-hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Extract and run deterministic patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/public-hardening-apply.yml').read_text(
+              encoding='utf-8'
+          )
+          marker_start = "          python - <<'PY'\n"
+          marker_end = "\n          PY\n\n      - name: Commit generated hardening changes"
+          embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
+          script = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in embedded.splitlines()
+          )
+          exec(compile(script, 'public-hardening-embedded.py', 'exec'), {})
+          PY
+
+      - name: Commit generated changes
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .env.example README.md docs scripts tests velvet_bot
+          git commit -m "Remove personal defaults from public repository"
+          git push origin HEAD:${{ github.head_ref }}
