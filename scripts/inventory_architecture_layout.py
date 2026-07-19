@@ -48,8 +48,7 @@ def _literal_assignment(path: Path, name: str) -> tuple[str, ...]:
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id == name
         ):
-            value = ast.literal_eval(node.value)
-            return tuple(str(item) for item in value)
+            return tuple(str(item) for item in ast.literal_eval(node.value))
     raise RuntimeError(f"Не найдено literal assignment {name!r} в {path}")
 
 
@@ -68,13 +67,13 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         bundle_rows.append(
             {
                 "path": path.relative_to(ROOT).as_posix(),
-                "router_imports": imports,
                 "router_count": len(imports),
             }
         )
 
-    counts = Counter(bundle_imports)
-    duplicate_imports = sorted(name for name, count in counts.items() if count > 1)
+    duplicate_imports = sorted(
+        name for name, count in Counter(bundle_imports).items() if count > 1
+    )
     handler_paths = sorted(
         path for path in HANDLERS.glob("*.py") if path.name != "__init__.py"
     )
@@ -83,46 +82,30 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         for path in handler_paths
         if MODULE_ALIAS_MARKER in path.read_text(encoding="utf-8")
     )
-    handler_implementations = sorted(set(handler_paths) - set(handler_facades))
-    root_modules = sorted(
-        path.relative_to(ROOT).as_posix()
-        for path in PACKAGE.glob("*.py")
-        if path.name != "__init__.py"
-    )
-    compatibility_files = sorted(
-        path.relative_to(ROOT).as_posix()
-        for path in PACKAGE.rglob("*.py")
-        if "compat" in path.stem.casefold()
-    )
+    root_modules = [
+        path for path in PACKAGE.glob("*.py") if path.name != "__init__.py"
+    ]
+    compatibility_files = [
+        path for path in PACKAGE.rglob("*.py") if "compat" in path.stem.casefold()
+    ]
     pre_components = _literal_assignment(COMPAT_PATH, "PRE_IMPORT_COMPONENTS")
     post_components = _literal_assignment(COMPAT_PATH, "POST_IMPORT_COMPONENTS")
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_from": label,
-        "root_direct_handler_imports": root_handler_imports,
         "root_direct_handler_import_count": len(root_handler_imports),
         "router_bundles": bundle_rows,
-        "active_bundle_router_imports": sorted(bundle_imports),
         "active_bundle_router_count": len(bundle_imports),
-        "duplicate_bundle_router_imports": duplicate_imports,
         "duplicate_bundle_router_import_count": len(duplicate_imports),
         "legacy_handler_file_count": len(handler_paths),
-        "legacy_handler_files": [
-            path.relative_to(ROOT).as_posix() for path in handler_paths
-        ],
-        "legacy_handler_implementation_count": len(handler_implementations),
-        "legacy_handler_implementations": [
-            path.relative_to(ROOT).as_posix() for path in handler_implementations
-        ],
+        "legacy_handler_implementation_count": len(handler_paths) - len(handler_facades),
         "handler_compatibility_facade_count": len(handler_facades),
         "handler_compatibility_facades": [
             path.relative_to(ROOT).as_posix() for path in handler_facades
         ],
         "root_level_module_count": len(root_modules),
-        "root_level_modules": root_modules,
         "compatibility_file_count": len(compatibility_files),
-        "compatibility_files": compatibility_files,
         "pre_import_compatibility_components": list(pre_components),
         "post_import_compatibility_components": list(post_components),
         "active_compatibility_component_count": len(pre_components) + len(post_components),
@@ -156,24 +139,16 @@ def render_markdown(data: dict[str, Any]) -> str:
         "## Router bundles",
         "",
     ]
-    for item in data["router_bundles"]:
-        lines.append(f"- `{item['path']}`: {item['router_count']} routers.")
     lines.extend(
-        [
-            "",
-            "## Активная compatibility-граница",
-            "",
-            "### Pre-import",
-            "",
-        ]
+        f"- `{item['path']}`: {item['router_count']} routers."
+        for item in data["router_bundles"]
     )
-    lines.extend(
-        f"- `{item}`." for item in data["pre_import_compatibility_components"]
-    )
+    lines.extend(["", "## Handler module aliases", ""])
+    lines.extend(f"- `{item}`." for item in data["handler_compatibility_facades"])
+    lines.extend(["", "## Активная compatibility-граница", "", "### Pre-import", ""])
+    lines.extend(f"- `{item}`." for item in data["pre_import_compatibility_components"])
     lines.extend(["", "### Post-import", ""])
-    lines.extend(
-        f"- `{item}`." for item in data["post_import_compatibility_components"]
-    )
+    lines.extend(f"- `{item}`." for item in data["post_import_compatibility_components"])
     next_slice = data["next_slice"]
     lines.extend(
         [
@@ -185,8 +160,6 @@ def render_markdown(data: dict[str, Any]) -> str:
             f"- стратегия: {next_slice['strategy']}.",
             "",
             "## Правило обновления",
-            "",
-            "После изменения root Router, bundles, `handlers/` или compatibility запустите:",
             "",
             "```bash",
             "python scripts/inventory_architecture_layout.py --write --label <phase>",
