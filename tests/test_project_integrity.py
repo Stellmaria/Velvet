@@ -100,6 +100,7 @@ CONTEXT_COMMANDS = {
     "watermark",
 }
 DIRECT_COMMANDS = {
+    "savecancel",
     "refdone",
     "refcancel",
     "aliasreindex",

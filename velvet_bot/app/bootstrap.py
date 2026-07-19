@@ -8,6 +8,7 @@ from aiogram.exceptions import TelegramAPIError
 
 from velvet_bot.app.commands import install_command_menus
 from velvet_bot.app.dispatcher import build_dispatcher
+from velvet_bot.app.save_sessions import SaveUploadSessions
 from velvet_bot.app.workers import build_worker_manager
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
@@ -102,7 +103,7 @@ async def _close_application_resources(
         try:
             await bot.session.close()
         except Exception:  # p2-approved-boundary: isolate-bot-session-shutdown
-            logger.exception("Could not close Telegram bot session")
+            logger.exception("Could not close bot session")
 
     try:
         await database.close()
@@ -168,6 +169,7 @@ async def run_application() -> None:
         await error_center.start()
 
         reference_uploads = ReferenceUploadSessions()
+        save_upload_sessions = SaveUploadSessions()
         worker_manager = build_worker_manager(
             bot=bot,
             database=database,
@@ -191,6 +193,7 @@ async def run_application() -> None:
             audit_logger=audit_logger,
             error_center=error_center,
             reference_uploads=reference_uploads,
+            save_upload_sessions=save_upload_sessions,
             backup_service=backup_service,
             system_service=system_service,
             worker_manager=worker_manager,
@@ -255,6 +258,7 @@ async def run_application() -> None:
             audit_logger=audit_logger,
             error_center=error_center,
             reference_uploads=reference_uploads,
+            save_upload_sessions=save_upload_sessions,
             access_policy=bundle.access_policy,
             analytics_channel_ids=settings.analytics_channel_ids,
         )
