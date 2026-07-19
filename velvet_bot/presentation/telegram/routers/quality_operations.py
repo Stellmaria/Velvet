@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from velvet_bot.handlers.backup_center import router as backup_center_router
-from velvet_bot.handlers.ai_jobs import router as ai_jobs_router
-from velvet_bot.handlers.quality_operations import router as quality_operations_router
-from velvet_bot.handlers.velvet_ai_formatting import router as velvet_ai_formatting_router
-from velvet_bot.handlers.velvet_ai_visual import router as velvet_ai_visual_router
-from velvet_bot.handlers.velvet_ai import router as velvet_ai_router
-from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
-from velvet_bot.handlers.quality_sets import router as quality_sets_router
-from velvet_bot.handlers.quality_set_ai import router as quality_set_ai_router
-from velvet_bot.handlers.quality_calibration import router as quality_calibration_router
-from velvet_bot.handlers.quality_ai_preview import router as quality_ai_preview_router
-from velvet_bot.handlers.quality_ai import router as quality_ai_router
-from velvet_bot.handlers.quality_center import router as quality_center_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center import router as backup_center_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.ai_jobs import router as ai_jobs_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations import router as quality_operations_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_formatting import router as velvet_ai_formatting_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_visual import router as velvet_ai_visual_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai import router as velvet_ai_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates import router as quality_duplicates_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets import router as quality_sets_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_set_ai import router as quality_set_ai_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_calibration import router as quality_calibration_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview import router as quality_ai_preview_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai import router as quality_ai_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center import router as quality_center_router
 
 router = Router(name=__name__)
 router.include_router(backup_center_router)
