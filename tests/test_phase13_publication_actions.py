@@ -85,9 +85,10 @@ class PublicationActionsTests(unittest.IsolatedAsyncioTestCase):
         self.commands.retry.assert_awaited_once_with(1, owner_id=5)
 
     def test_publication_handler_uses_application_actions(self) -> None:
-        source = (ROOT / "velvet_bot/handlers/publication_center.py").read_text(
-            encoding="utf-8"
-        )
+        source = (
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/publication/center.py"
+        ).read_text(encoding="utf-8")
         application_source = (
             ROOT / "velvet_bot/application/publication_actions.py"
         ).read_text(encoding="utf-8")

@@ -74,7 +74,9 @@ from velvet_bot.presentation.telegram.routers.archive.guest import (
 from velvet_bot.presentation.telegram.routers.archive.spoiler import (
     router as spoiler_save_router,
 )
-from velvet_bot.handlers.publication_center_safe import router as publication_center_router
+from velvet_bot.presentation.telegram.routers.publication.safe import (
+    router as publication_center_router,
+)
 from velvet_bot.presentation.telegram.routers.archive.save import router as archive_router
 
 router = Router(name=__name__)

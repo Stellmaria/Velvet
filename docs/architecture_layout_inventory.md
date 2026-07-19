@@ -9,8 +9,8 @@
 - активных router imports в bundles: **55**;
 - дублирующих регистраций между bundles: **0**;
 - физических legacy handler-файлов: **68**;
-- активных legacy handler implementations: **37**;
-- временных handler module aliases: **31**;
+- активных legacy handler implementations: **35**;
+- временных handler module aliases: **33**;
 - корневых Python-модулей `velvet_bot/*.py`: **110**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -39,6 +39,8 @@
 - `velvet_bot/handlers/public_manager.py`.
 - `velvet_bot/handlers/public_media_display.py`.
 - `velvet_bot/handlers/public_notification_open.py`.
+- `velvet_bot/handlers/publication_center.py`.
+- `velvet_bot/handlers/publication_center_safe.py`.
 - `velvet_bot/handlers/reference_albums.py`.
 - `velvet_bot/handlers/reference_comparison.py`.
 - `velvet_bot/handlers/reference_comparison_help.py`.
@@ -75,7 +77,7 @@
 ## Следующий срез
 
 - фаза: **P3C**;
-- цель: **publication presentation controllers**;
+- цель: **analytics presentation controllers**;
 - стратегия: canonical presentation modules plus temporary handler module aliases.
 
 ## Правило обновления
