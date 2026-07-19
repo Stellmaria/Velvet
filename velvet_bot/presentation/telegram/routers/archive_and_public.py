@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+from aiogram import Router
+
+from velvet_bot.handlers.character_aliases import router as character_aliases_router
+from velvet_bot.handlers.telegram_analytics_import import router as telegram_analytics_import_router
+from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
+from velvet_bot.handlers.start import router as start_router
+from velvet_bot.handlers.public_media_display import router as public_media_display_router
+from velvet_bot.handlers.kr_universe_entry import router as kr_universe_entry_router
+from velvet_bot.handlers.kr_profile_overrides import router as kr_profile_overrides_router
+from velvet_bot.handlers.multi_story_kr import router as multi_story_kr_router
+from velvet_bot.handlers.public_manager import router as public_manager_router
+from velvet_bot.handlers.public_notification_open import router as public_notification_open_router
+from velvet_bot.handlers.public_archive import router as public_archive_router
+from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
+from velvet_bot.handlers.admin_media_spoiler import router as admin_media_spoiler_router
+from velvet_bot.handlers.admin_large_media_preview import router as admin_large_media_preview_router
+from velvet_bot.handlers.admin_media_display import router as admin_media_display_router
+from velvet_bot.handlers.admin_stories import router as admin_stories_router
+from velvet_bot.handlers.admin_universe_story_flow import router as admin_universe_story_flow_router
+from velvet_bot.handlers.admin_uncategorized import router as admin_uncategorized_router
+from velvet_bot.handlers.admin_directory import router as admin_directory_router
+from velvet_bot.handlers.characters import router as characters_router
+from velvet_bot.handlers.media_browser import router as media_browser_router
+from velvet_bot.handlers.reference_comparison_help import router as reference_comparison_help_router
+from velvet_bot.handlers.reference_comparison import router as reference_comparison_router
+from velvet_bot.handlers.reference_documents import router as reference_documents_router
+from velvet_bot.handlers.reference_albums import router as reference_albums_router
+from velvet_bot.handlers.reference_management import router as reference_management_router
+from velvet_bot.handlers.references import router as references_router
+from velvet_bot.handlers.inline_help import router as inline_help_router
+from velvet_bot.handlers.guest_archive import router as guest_archive_router
+from velvet_bot.handlers.spoiler_save import router as spoiler_save_router
+from velvet_bot.handlers.publication_center_safe import router as publication_center_router
+from velvet_bot.handlers.archive import router as archive_router
+
+router = Router(name=__name__)
+router.include_router(character_aliases_router)
+router.include_router(telegram_analytics_import_router)
+router.include_router(discussion_updates_router)
+router.include_router(start_router)
+router.include_router(public_media_display_router)
+router.include_router(kr_universe_entry_router)
+router.include_router(kr_profile_overrides_router)
+router.include_router(multi_story_kr_router)
+router.include_router(public_manager_router)
+router.include_router(public_notification_open_router)
+router.include_router(public_archive_router)
+router.include_router(media_prompt_binding_router)
+router.include_router(admin_media_spoiler_router)
+router.include_router(admin_large_media_preview_router)
+router.include_router(admin_media_display_router)
+router.include_router(admin_stories_router)
+router.include_router(admin_universe_story_flow_router)
+router.include_router(admin_uncategorized_router)
+router.include_router(admin_directory_router)
+router.include_router(characters_router)
+router.include_router(media_browser_router)
+router.include_router(reference_comparison_help_router)
+router.include_router(reference_comparison_router)
+router.include_router(reference_documents_router)
+router.include_router(reference_albums_router)
+router.include_router(reference_management_router)
+router.include_router(references_router)
+router.include_router(inline_help_router)
+router.include_router(guest_archive_router)
+router.include_router(spoiler_save_router)
+# Publication commands must stay before archive.py's catch-all topic handler.
+router.include_router(publication_center_router)
+router.include_router(archive_router)
+
+__all__ = ("router",)
