@@ -44,15 +44,41 @@ CATEGORY_ALIASES = {
     "uncategorized": "uncategorized",
 }
 
-UNIVERSE_ORDER = ("shs", "kr", "lm", "idm", "bg3", "lagerta", "original")
+# Верхний уровень меню. ``games`` является UI-группой и не хранится в БД.
+UNIVERSE_ORDER = (
+    "shs",
+    "kr",
+    "lm",
+    "idm",
+    "games",
+    "lagerta",
+    "original",
+    "other",
+)
+GAME_UNIVERSE_ORDER = ("bg3", "re")
+# Только эти значения разрешено сохранять в characters.universe.
+UNIVERSE_VALUE_ORDER = (
+    "shs",
+    "kr",
+    "lm",
+    "idm",
+    "bg3",
+    "re",
+    "lagerta",
+    "original",
+    "other",
+)
 UNIVERSE_LABELS = {
     "shs": "SHS",
     "kr": "КР",
     "lm": "ЛМ",
     "idm": "ИДМ",
+    "games": "Игры",
     "bg3": "BG3",
+    "re": "RE",
     "lagerta": "Лагерта",
     "original": "Original",
+    "other": "Другое",
     "unassigned": "Без вселенной",
 }
 UNIVERSE_EMOJI = {
@@ -60,9 +86,12 @@ UNIVERSE_EMOJI = {
     "kr": "💎",
     "lm": "🌙",
     "idm": "🕯",
+    "games": "🎮",
     "bg3": "🎲",
+    "re": "🧟",
     "lagerta": "⚔️",
     "original": "✨",
+    "other": "📂",
     "unassigned": "📦",
 }
 UNIVERSE_ALIASES = {
@@ -78,11 +107,18 @@ UNIVERSE_ALIASES = {
     "бг3": "bg3",
     "baldursgate3": "bg3",
     "baldur'sgate3": "bg3",
+    "re": "re",
+    "residentevil": "re",
+    "резидентэвил": "re",
+    "резидентевил": "re",
     "лагерта": "lagerta",
     "lagerta": "lagerta",
     "original": "original",
     "оригинал": "original",
     "ориджинал": "original",
+    "другое": "other",
+    "прочее": "other",
+    "other": "other",
     "без": "unassigned",
     "нет": "unassigned",
     "none": "unassigned",
@@ -97,10 +133,12 @@ __all__ = (
     "CATEGORY_EMOJI",
     "CATEGORY_LABELS",
     "CATEGORY_ORDER",
+    "GAME_UNIVERSE_ORDER",
     "STORY_REQUIRED_SQL",
     "STORY_REQUIRED_UNIVERSES",
     "UNIVERSE_ALIASES",
     "UNIVERSE_EMOJI",
     "UNIVERSE_LABELS",
     "UNIVERSE_ORDER",
+    "UNIVERSE_VALUE_ORDER",
 )
