@@ -12,6 +12,12 @@ PACKAGE = ROOT / "velvet_bot"
 HANDLERS = PACKAGE / "handlers"
 ROUTER_ROOT = PACKAGE / "presentation/telegram/router.py"
 BUNDLE_DIR = PACKAGE / "presentation/telegram/routers"
+BUNDLE_FILENAMES = (
+    "analytics.py",
+    "archive_and_public.py",
+    "core_operations.py",
+    "quality_operations.py",
+)
 COMPAT_PATH = PACKAGE / "presentation/telegram/compat.py"
 JSON_PATH = ROOT / "docs/architecture_layout_inventory.json"
 MARKDOWN_PATH = ROOT / "docs/architecture_layout_inventory.md"
@@ -54,9 +60,14 @@ def _literal_assignment(path: Path, name: str) -> tuple[str, ...]:
 
 def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
     root_handler_imports = _imports(ROUTER_ROOT, "velvet_bot.handlers.")
-    bundle_files = sorted(
-        path for path in BUNDLE_DIR.glob("*.py") if path.name != "__init__.py"
-    )
+    bundle_files = [BUNDLE_DIR / name for name in BUNDLE_FILENAMES]
+    missing_bundles = [path for path in bundle_files if not path.is_file()]
+    if missing_bundles:
+        raise RuntimeError(
+            "Не найдены router bundles: "
+            + ", ".join(path.relative_to(ROOT).as_posix() for path in missing_bundles)
+        )
+
     bundle_imports: list[str] = []
     bundle_rows: list[dict[str, Any]] = []
     for path in bundle_files:
