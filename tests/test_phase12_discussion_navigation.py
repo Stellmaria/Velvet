@@ -38,7 +38,8 @@ class DiscussionNavigationTests(unittest.IsolatedAsyncioTestCase):
 
     def test_discussion_handler_has_no_handler_import_or_sql(self) -> None:
         source = (
-            ROOT / "velvet_bot/handlers/analytics_discussion_overrides.py"
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py"
         ).read_text(encoding="utf-8")
         self.assertNotIn("from velvet_bot.handlers.analytics_dashboard", source)
         self.assertNotIn("database._require_pool()", source)
