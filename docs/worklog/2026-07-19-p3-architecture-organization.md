@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3-architecture-organization`
 - Линия/фаза: Velvet Archive, P3A–P3D
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3-architecture-organization`
 - Базовый commit: `3d98a60a49e5d3212be218cd7b0af705a1a06a2b`
 
@@ -52,7 +52,8 @@
 - добавлен генератор `architecture_layout_inventory` и CI-проверка его актуальности;
 - сгенерированный inventory фиксирует 0 прямых handler imports в root, 55 активных registrations без дублей, 68 legacy handler-файлов, 110 root modules и 8 active compatibility components;
 - обновлены `development_status`, `project_memory`, `ARCHITECTURE_AUDIT`, README и CHANGELOG;
-- временный generator workflow удалён после фиксации результата.
+- временный generator workflow удалён после фиксации результата;
+- старые тесты, проверявшие физические строки root Router и удалённый bridge, переведены на канонические bundles и dashboard boundary без сокращения остального test coverage.
 
 ### Миграции и совместимость
 
@@ -61,14 +62,17 @@
 ### Проверки
 
 - одноразовый architecture generator run #1: success;
-- clean tests, Docker build и project notes contract выполняются на итоговой ветке;
-- первый project notes run выявил ожидаемый незавершённый статус worklog и обязательные compatibility headings, оба контракта исправлены.
+- tests #917: success;
+- docker build #454: success;
+- project notes contract #319: success;
+- первый промежуточный unit run #911 обнаружил четыре устаревших тестовых ожидания старой раскладки; тесты обновлены на новые архитектурные contracts, повторный полный прогон успешен.
 
 ### PR и commit
 
 - PR: #194 `Organize remaining P3 architecture boundaries`;
-- текущая ветка: `agent/p3-architecture-organization`;
-- итоговый merge commit будет добавлен после зелёного CI.
+- ветка: `agent/p3-architecture-organization`;
+- проверенный head: `4cca47ff5dcd06c53b50a1038ba31293967bd083`;
+- merge commit будет создан GitHub при слиянии PR.
 
 ### Незавершённое
 
@@ -76,4 +80,4 @@
 
 ### Следующий шаг
 
-После зелёного CI завершить запись и слить PR #194. Затем начать P3C с физического переноса Supervisor/system presentation controllers через канонические модули и временные handler re-exports.
+Начать P3C с физического переноса Supervisor/system presentation controllers через канонические модули и временные handler re-exports.
