@@ -200,7 +200,8 @@ async def handle_admin_game_group(
 
 @router.callback_query(
     AdminDirectoryCallback.filter(
-        (F.action == "setgame") & F.universe.in_(GAME_UNIVERSE_ORDER)
+        F.action.in_({"setgame", "setuni"})
+        & F.universe.in_(GAME_UNIVERSE_ORDER)
     )
 )
 async def handle_admin_game_assignment(
@@ -285,7 +286,8 @@ async def handle_manager_game_group(
 
 @router.callback_query(
     PublicArchiveCallback.filter(
-        (F.action == "pgame") & F.universe.in_(GAME_UNIVERSE_ORDER)
+        F.action.in_({"pgame", "puni"})
+        & F.universe.in_(GAME_UNIVERSE_ORDER)
     )
 )
 async def handle_manager_game_assignment(
