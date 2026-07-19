@@ -13,6 +13,8 @@ PERSONAL_DEFAULTS = (
     "5367533184",
     "1003802812639",
 )
+RUNTIME_DIRECTORIES = ("backups/", "logs/", "runtime/", "data/")
+ALLOWED_RUNTIME_PLACEHOLDERS = frozenset({".gitkeep", "README.md"})
 SECRET_PATTERNS = (
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
     re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
@@ -42,7 +44,8 @@ class PublicRepositorySafetyTests(unittest.TestCase):
         forbidden = {".env", "result.json", "database.dump", "velvet.db"}
         self.assertFalse(forbidden & tracked)
         for value in tracked:
-            self.assertFalse(value.startswith(("backups/", "logs/", "runtime/", "data/")))
+            if value.startswith(RUNTIME_DIRECTORIES):
+                self.assertIn(Path(value).name, ALLOWED_RUNTIME_PLACEHOLDERS)
             self.assertFalse(value.endswith((".dump", ".db", ".db-wal", ".db-shm")))
 
     def test_active_configuration_contains_no_personal_defaults(self) -> None:
