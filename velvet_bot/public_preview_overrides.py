@@ -13,7 +13,6 @@ from velvet_bot.archive_preview import (
 from velvet_bot.archive_ui import build_input_media
 from velvet_bot.database import Database
 from velvet_bot.image_preview import BOT_API_DOWNLOAD_MAX_BYTES, ImagePreviewError
-from velvet_bot.public_ui import format_public_archive_caption
 
 _INSTALLED = False
 
@@ -60,7 +59,11 @@ async def send_viewer_archive_page(
     )
     common = {
         "chat_id": chat_id,
-        "caption": format_public_archive_caption(page, state),
+        "caption": public_display.build_viewer_caption(
+            page,
+            state,
+            manager_access=manager_access,
+        ),
         "reply_markup": keyboard,
         "protect_content": True,
     }
@@ -137,6 +140,11 @@ async def replace_viewer_archive_page(
         universe=universe,
         story_id=story_id,
     )
+    caption = public_display.build_viewer_caption(
+        page,
+        state,
+        manager_access=manager_access,
+    )
 
     if page.media.is_image_document:
         photo = await resolve_archive_image_preview(
@@ -153,15 +161,12 @@ async def replace_viewer_archive_page(
 
         input_media = InputMediaPhoto(
             media=photo,
-            caption=format_public_archive_caption(page, state),
+            caption=caption,
             parse_mode=ParseMode.HTML,
             has_spoiler=page.media.is_spoiler,
         )
     else:
-        input_media = build_input_media(
-            page.media,
-            format_public_archive_caption(page, state),
-        )
+        input_media = build_input_media(page.media, caption)
 
     try:
         edited = await callback.message.edit_media(
