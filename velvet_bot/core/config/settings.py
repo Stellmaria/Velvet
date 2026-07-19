@@ -28,6 +28,7 @@ class Settings:
     ai_vision_api_key: str | None = None
     ai_vision_timeout_seconds: int = 180
     ai_vision_max_attempts: int = 3
+    moderator_user_ids: frozenset[int] = frozenset()
 
 
 def parse_integer_list(value: str, *, variable_name: str) -> frozenset[int]:
@@ -139,10 +140,9 @@ def load_settings() -> Settings:
     allowed_user_ids = parse_allowed_user_ids(
         os.getenv("ALLOWED_USER_IDS", "")
     )
-    raw_usernames = os.getenv("ALLOWED_USERNAMES")
-    if raw_usernames is None:
-        raw_usernames = "va_stellmaria"
-    allowed_usernames = parse_allowed_usernames(raw_usernames)
+    allowed_usernames = parse_allowed_usernames(
+        os.getenv("ALLOWED_USERNAMES", "")
+    )
 
     if not allowed_user_ids and not allowed_usernames:
         raise RuntimeError(
@@ -171,9 +171,9 @@ def load_settings() -> Settings:
         database_url=database_url,
         allowed_user_ids=allowed_user_ids,
         allowed_usernames=allowed_usernames,
-        log_chat_id=parse_optional_chat_id(os.getenv("LOG_CHAT_ID", "-5367533184")),
+        log_chat_id=parse_optional_chat_id(os.getenv("LOG_CHAT_ID", "")),
         analytics_channel_ids=parse_integer_list(
-            os.getenv("ANALYTICS_CHANNEL_IDS", "-1003802812639"),
+            os.getenv("ANALYTICS_CHANNEL_IDS", ""),
             variable_name="ANALYTICS_CHANNEL_IDS",
         ),
         publication_timezone=parse_timezone(
@@ -215,6 +215,10 @@ def load_settings() -> Settings:
             default=3,
             minimum=1,
             maximum=10,
+        ),
+        moderator_user_ids=parse_integer_list(
+            os.getenv("MODERATOR_USER_IDS", ""),
+            variable_name="MODERATOR_USER_IDS",
         ),
     )
 

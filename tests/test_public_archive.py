@@ -11,7 +11,6 @@ from velvet_bot.public_catalog import (
     PublicMediaState,
 )
 from velvet_bot.public_ui import (
-    PUBLIC_DOWNLOAD_USER_ID,
     PublicArchiveCallback,
     build_public_archive_keyboard,
     build_public_category_menu,
@@ -249,11 +248,12 @@ class PublicArchiveUiTests(unittest.TestCase):
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertNotIn("📥 Скачать файлом", labels)
 
-    def test_download_button_is_visible_only_for_allowed_id(self) -> None:
+    def test_download_button_is_visible_for_authorized_manager(self) -> None:
         keyboard = build_public_archive_keyboard(
             self.page,
             self.state,
-            viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+            viewer_user_id=100,
+            can_download=True,
         )
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("📥 Скачать файлом", labels)

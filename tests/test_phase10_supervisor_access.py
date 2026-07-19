@@ -10,7 +10,6 @@ from velvet_bot.core.access import (
     MODERATOR_CALLBACK_ACTIONS,
     MODERATOR_CALLBACK_PREFIXES,
     MODERATOR_COMMANDS,
-    MODERATOR_USER_IDS,
     OWNER_ONLY_COMMANDS,
     PUBLIC_CALLBACK_ACTIONS,
     PUBLIC_CALLBACK_PREFIX,
@@ -22,6 +21,9 @@ from velvet_bot.presentation.telegram.middleware.access import (
 )
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
 
+
+MODERATOR_ID = 900000001
+MODERATOR_IDS = frozenset({MODERATOR_ID})
 
 SUPERVISOR_CONTROLLERS = {
     "velvet_bot/presentation/telegram/routers/supervisor/status.py": {
@@ -117,8 +119,7 @@ class AccessBoundaryTests(unittest.TestCase):
         self.assertIn("sub", PUBLIC_CALLBACK_ACTIONS)
         self.assertNotIn("download", PUBLIC_CALLBACK_ACTIONS)
 
-    def test_single_moderator_has_narrow_editor_permissions(self) -> None:
-        self.assertEqual(MODERATOR_USER_IDS, {8179531132})
+    def test_configured_moderator_has_narrow_editor_permissions(self) -> None:
         self.assertEqual(MODERATOR_COMMANDS, {"characters", "prompt", "setprompt"})
         self.assertEqual(
             MODERATOR_CALLBACK_PREFIXES,
@@ -151,7 +152,7 @@ class AccessBoundaryTests(unittest.TestCase):
         )
 
     def test_supervisor_callback_is_owner_only(self) -> None:
-        moderator = User(id=8179531132, is_bot=False, first_name="Moderator")
+        moderator = User(id=MODERATOR_ID, is_bot=False, first_name="Moderator")
         supervisor_callback = _callback(
             moderator,
             SupervisorCallback(action="status").pack(),
@@ -168,8 +169,10 @@ class AccessBoundaryTests(unittest.TestCase):
             callback_id="public",
         )
         self.assertFalse(is_public_callback(supervisor_callback))
-        self.assertFalse(is_moderator_callback(supervisor_callback))
-        self.assertTrue(is_moderator_callback(moderator_callback))
+        self.assertFalse(
+            is_moderator_callback(supervisor_callback, MODERATOR_IDS)
+        )
+        self.assertTrue(is_moderator_callback(moderator_callback, MODERATOR_IDS))
         self.assertTrue(is_public_callback(public_callback))
 
     def test_likes_and_subscriptions_are_public_but_management_is_not(self) -> None:
@@ -198,7 +201,7 @@ class AccessBoundaryTests(unittest.TestCase):
                 )
 
     def test_unknown_actions_do_not_inherit_moderator_access(self) -> None:
-        moderator = User(id=8179531132, is_bot=False, first_name="Moderator")
+        moderator = User(id=MODERATOR_ID, is_bot=False, first_name="Moderator")
         for data in (
             "adir:owner_settings:0",
             "astory:delete_catalog:0",
@@ -209,12 +212,13 @@ class AccessBoundaryTests(unittest.TestCase):
             with self.subTest(data=data):
                 self.assertFalse(
                     is_moderator_callback(
-                        _callback(moderator, data, callback_id=data)
+                        _callback(moderator, data, callback_id=data),
+                        MODERATOR_IDS,
                     )
                 )
 
     def test_current_moderator_archive_actions_remain_available(self) -> None:
-        moderator = User(id=8179531132, is_bot=False, first_name="Moderator")
+        moderator = User(id=MODERATOR_ID, is_bot=False, first_name="Moderator")
         for action in (
             "open",
             "show",
@@ -233,7 +237,8 @@ class AccessBoundaryTests(unittest.TestCase):
                             moderator,
                             f"arc:{action}:1:0:2",
                             callback_id=action,
-                        )
+                        ),
+                        MODERATOR_IDS,
                     )
                 )
         self.assertTrue(
@@ -242,7 +247,8 @@ class AccessBoundaryTests(unittest.TestCase):
                     moderator,
                     "pub:download:1:0:2",
                     callback_id="download",
-                )
+                ),
+                MODERATOR_IDS,
             )
         )
 

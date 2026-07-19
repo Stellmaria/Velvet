@@ -17,8 +17,6 @@ from velvet_bot.character_directory import (
 from velvet_bot.public_catalog import PublicCharacterPage, PublicMediaState
 from velvet_bot.story_catalog import StorySummary, universe_requires_story
 
-PUBLIC_DOWNLOAD_USER_ID = 8179531132
-
 
 class PublicArchiveCallback(CallbackData, prefix="pub"):
     action: str
@@ -361,6 +359,7 @@ def build_public_archive_keyboard(
     state: PublicMediaState,
     *,
     viewer_user_id: int,
+    can_download: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -441,7 +440,7 @@ def build_public_archive_keyboard(
             [InlineKeyboardButton(text="📝 Открыть промт", url=effective_prompt_url)]
         )
 
-    if viewer_user_id == PUBLIC_DOWNLOAD_USER_ID:
+    if can_download:
         rows.append(
             [
                 InlineKeyboardButton(

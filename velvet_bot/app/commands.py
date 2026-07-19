@@ -6,7 +6,6 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import BotCommand, BotCommandScopeChat
 
-from velvet_bot.core.access import CHARACTER_EDITOR_USER_IDS
 from velvet_bot.core.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -65,8 +64,8 @@ async def install_command_menus(bot: Bot, settings: Settings) -> None:
     await _set_scoped_commands(
         bot,
         commands=build_editor_commands(),
-        chat_ids=CHARACTER_EDITOR_USER_IDS,
-        role_name="editor",
+        chat_ids=settings.moderator_user_ids,
+        role_name="moderator",
     )
     await _set_scoped_commands(
         bot,

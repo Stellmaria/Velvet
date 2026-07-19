@@ -11,7 +11,6 @@ from velvet_bot.app.dispatcher import build_dispatcher
 from velvet_bot.app.workers import build_worker_manager
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
-from velvet_bot.core.access import CHARACTER_EDITOR_USER_IDS
 from velvet_bot.core.config import Settings, load_settings
 from velvet_bot.database import Database
 from velvet_bot.error_center import ErrorIncidentCenter, ErrorIncidentRepository
@@ -203,8 +202,8 @@ async def run_application() -> None:
             sorted(settings.allowed_usernames),
         )
         logger.info(
-            "Character editor access enabled for ids=%s",
-            sorted(CHARACTER_EDITOR_USER_IDS),
+            "Moderator access enabled for ids=%s",
+            sorted(settings.moderator_user_ids),
         )
         if settings.ai_vision_enabled:
             logger.info(
@@ -258,10 +257,6 @@ async def run_application() -> None:
             reference_uploads=reference_uploads,
             access_policy=bundle.access_policy,
             analytics_channel_ids=settings.analytics_channel_ids,
-            publication_timezone=settings.publication_timezone,
-            backup_service=backup_service,
-            system_service=system_service,
-            worker_manager=worker_manager,
         )
     except Exception as error:  # p2-approved-boundary: report-fatal-application-error
         await _report_fatal_application_error(error_center, error)

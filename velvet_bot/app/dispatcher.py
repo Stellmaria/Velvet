@@ -41,6 +41,7 @@ def build_dispatcher(
     access_policy = AccessPolicy(
         allowed_user_ids=settings.allowed_user_ids,
         allowed_usernames=settings.allowed_usernames,
+        moderator_user_ids=settings.moderator_user_ids,
     )
     access_middleware = OwnerAccessMiddleware(access_policy)
     publication_inbox_middleware = PublicationInboxMiddleware()

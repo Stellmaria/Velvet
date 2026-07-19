@@ -12,7 +12,6 @@ from velvet_bot.character_directory import (
     UNIVERSE_ORDER,
 )
 from velvet_bot.public_ui import (
-    PUBLIC_DOWNLOAD_USER_ID,
     PublicArchiveCallback,
     build_public_archive_keyboard,
 )
@@ -55,7 +54,8 @@ def build_manager_archive_keyboard(
     base = build_public_archive_keyboard(
         page,
         state,
-        viewer_user_id=PUBLIC_DOWNLOAD_USER_ID,
+        viewer_user_id=0,
+        can_download=True,
         category=category,
         universe=universe,
         story_id=story_id,
