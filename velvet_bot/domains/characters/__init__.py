@@ -10,9 +10,11 @@ from velvet_bot.domains.characters.constants import (
     CATEGORY_EMOJI,
     CATEGORY_LABELS,
     CATEGORY_ORDER,
+    GAME_UNIVERSE_ORDER,
     UNIVERSE_EMOJI,
     UNIVERSE_LABELS,
     UNIVERSE_ORDER,
+    UNIVERSE_VALUE_ORDER,
 )
 from velvet_bot.domains.characters.models import (
     CategorySummary,
@@ -28,9 +30,11 @@ __all__ = (
     "CATEGORY_EMOJI",
     "CATEGORY_LABELS",
     "CATEGORY_ORDER",
+    "GAME_UNIVERSE_ORDER",
     "UNIVERSE_EMOJI",
     "UNIVERSE_LABELS",
     "UNIVERSE_ORDER",
+    "UNIVERSE_VALUE_ORDER",
     "CategorySummary",
     "CharacterDirectoryItem",
     "CharacterDirectoryPage",
