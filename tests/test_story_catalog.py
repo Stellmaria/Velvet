@@ -47,8 +47,8 @@ class StoryCatalogTests(unittest.TestCase):
             for universe, entries in universes.items()
             for entry in entries
         ]
-        self.assertEqual("2026-07-16", payload["as_of"])
-        self.assertGreaterEqual(len(stories), 84)
+        self.assertEqual("2026-07-20", payload["as_of"])
+        self.assertGreaterEqual(len(stories), 92)
 
         keys = {(item[0], item[1]) for item in stories}
         initials = {(item[0], item[2]) for item in stories}
@@ -57,14 +57,34 @@ class StoryCatalogTests(unittest.TestCase):
 
         self.assertEqual(58, len(universes["kr"]))
         self.assertGreaterEqual(len(universes["lm"]), 16)
-        self.assertGreaterEqual(len(universes["shs"]), 7)
+        self.assertEqual(15, len(universes["shs"]))
         self.assertGreaterEqual(len(universes["idm"]), 1)
         self.assertEqual(2, len(universes["lagerta"]))
 
         self.assertIn(("kr", "РС"), initials)
         self.assertIn(("kr", "ТС2"), initials)
         self.assertIn(("lm", "СП"), initials)
-        self.assertIn(("shs", "РИМ"), initials)
+        expected_shs_labels = {
+            "ПОН",
+            "ПЖЗ",
+            "ЭФ",
+            "СА",
+            "НДВ",
+            "СБ",
+            "ИС",
+            "СДР",
+            "НА",
+            "ЦД",
+            "ДБ",
+            "МОР",
+            "К49",
+            "РИМ",
+            "МФ",
+        }
+        self.assertEqual(
+            expected_shs_labels,
+            {label for universe, label in initials if universe == "shs"},
+        )
         self.assertIn(("lagerta", "ОНХ"), initials)
         self.assertIn(("lagerta", "ПН"), initials)
         self.assertNotIn(("lagerta", "ПРЗ"), initials)
@@ -73,6 +93,34 @@ class StoryCatalogTests(unittest.TestCase):
             orders = [entry[3] for entry in entries]
             with self.subTest(universe=universe):
                 self.assertEqual(sorted(orders), orders)
+
+    def test_complete_shs_catalog_migration_contains_every_story(self) -> None:
+        path = (
+            Path(__file__).resolve().parents[1]
+            / "migrations"
+            / "029_complete_shs_story_catalog.sql"
+        )
+        sql = path.read_text(encoding="utf-8")
+        expected_keys = {
+            "celestial_legend",
+            "villains_last_wish",
+            "age_of_fatum",
+            "heart_of_atlanta",
+            "bride_for_vampire",
+            "deadly_biome",
+            "illusion_glory",
+            "ragnarok_dragon_saga",
+            "legacy_of_almazar",
+            "chains_of_agreement",
+            "child_of_abyss",
+            "morvain",
+            "frame_49",
+            "rome_temptation_of_wisdom",
+            "mission_fortune",
+        }
+        for key in expected_keys:
+            with self.subTest(key=key):
+                self.assertIn(f"'shs', '{key}'", sql)
 
     def test_owner_picker_is_paginated_newest_first(self) -> None:
         character = Character(
@@ -159,6 +207,7 @@ class StoryCatalogTests(unittest.TestCase):
             offset=999,
             media_id=999999,
             page=99,
+            category="mfm",
             universe="lagerta",
             story_id=9999,
         )
