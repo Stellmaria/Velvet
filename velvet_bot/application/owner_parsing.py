@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from velvet_bot.character_resolution import resolve_character
 from velvet_bot.database import Character, Database
 
 
 async def require_character(database: Database, name: str) -> Character:
-    character = await database.get_character(name)
+    character = await resolve_character(database, name)
     if character is None:
-        raise ValueError("Такой персонаж не найден.")
+        raise ValueError("Такой персонаж или быстрый тег не найден.")
     return character
 
 

@@ -81,8 +81,11 @@ FORM_COMMANDS = {
     "analyze_set",
     "qwen_set",
     "aliasadd",
+    "tagadd",
     "aliases",
+    "tags",
     "aliasdel",
+    "tagdel",
     "tagstats",
     "hashtagstats",
     "trackdiscussion",
@@ -96,7 +99,13 @@ CONTEXT_COMMANDS = {
     "importdiscussion",
     "watermark",
 }
-DIRECT_COMMANDS = {"refdone", "refcancel", "aliasreindex", "test_error_alert"}
+DIRECT_COMMANDS = {
+    "refdone",
+    "refcancel",
+    "aliasreindex",
+    "tagreindex",
+    "test_error_alert",
+}
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
 

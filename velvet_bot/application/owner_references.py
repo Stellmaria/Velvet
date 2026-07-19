@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from velvet_bot.app.references import build_reference_service
+from velvet_bot.character_resolution import resolve_character
 from velvet_bot.database import Character, Database
 from velvet_bot.domains.references import CharacterReference, ReferencePage
 from velvet_bot.reference_uploads import ReferenceUploadSession, ReferenceUploadSessions
@@ -23,9 +24,9 @@ async def start_reference_upload(
     user_id: int,
     character_name: str,
 ) -> ReferenceUploadSession:
-    character = await database.get_character(character_name)
+    character = await resolve_character(database, character_name)
     if character is None:
-        raise ValueError("Такой персонаж не найден.")
+        raise ValueError("Такой персонаж или быстрый тег не найден.")
     return sessions.start(
         user_id,
         character_id=character.id,
@@ -45,7 +46,7 @@ async def get_reference_page_by_name(
     database: Database,
     character_name: str,
 ) -> ReferencePage | None:
-    character = await database.get_character(character_name)
+    character = await resolve_character(database, character_name)
     if character is None:
         return None
     return await build_reference_service(database).get_page(character.id, 0)
@@ -56,9 +57,9 @@ async def delete_reference_by_index(
     raw_value: str,
 ) -> ReferenceDeleteResult:
     character_name, index = parse_reference_index(raw_value)
-    character = await database.get_character(character_name)
+    character = await resolve_character(database, character_name)
     if character is None:
-        raise ValueError("Такой персонаж не найден.")
+        raise ValueError("Такой персонаж или быстрый тег не найден.")
     service = build_reference_service(database)
     page = await service.get_page(character.id, index - 1)
     if page is None or page.reference is None or index > page.total:

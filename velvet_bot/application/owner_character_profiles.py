@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from velvet_bot.app.references import build_reference_service
 from velvet_bot.archive_topic_links import bind_character_archive_topic
+from velvet_bot.character_resolution import resolve_character
 from velvet_bot.database import Character, Database
 from velvet_bot.topics import TopicReference, split_character_and_topic
 
@@ -29,7 +30,7 @@ async def load_character_profile(
     database: Database,
     character_name: str,
 ) -> CharacterProfile | None:
-    character = await database.get_character(character_name)
+    character = await resolve_character(database, character_name)
     if character is None:
         return None
     return await _profile(database, character)
@@ -72,9 +73,9 @@ async def bind_character_topic(
     character_name, topic = split_character_and_topic(raw_value)
     if topic is None:
         raise ValueError("После имени укажите ссылку на тему Telegram.")
-    character = await database.get_character(character_name)
+    character = await resolve_character(database, character_name)
     if character is None:
-        raise ValueError("Такой персонаж не найден.")
+        raise ValueError("Такой персонаж или быстрый тег не найден.")
     await validate_topic(topic)
     character = await bind_character_archive_topic(
         database,

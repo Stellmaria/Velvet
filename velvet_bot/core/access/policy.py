@@ -29,6 +29,9 @@ PUBLIC_CALLBACK_PREFIX = "pub:"
 # Supervisor, Git, or Codex operations. Real IDs are loaded through Settings.
 MODERATOR_USER_IDS: frozenset[int] = frozenset()
 MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
+MODERATOR_TAG_COMMANDS = frozenset(
+    {"aliasadd", "tagadd", "aliases", "tags", "aliasdel", "tagdel"}
+)
 MODERATOR_CALLBACK_ACTIONS = {
     "adir": frozenset(
         {
@@ -74,6 +77,7 @@ MODERATOR_CALLBACK_ACTIONS = {
     # not a public archive action and must not become available through pub prefix.
     "pub": frozenset({"download"}),
 }
+MODERATOR_TAG_CALLBACK_ACTIONS = frozenset({"menu", "add", "del", "delok"})
 MODERATOR_CALLBACK_PREFIXES = tuple(
     f"{prefix}:" for prefix in MODERATOR_CALLBACK_ACTIONS
 )
@@ -113,6 +117,7 @@ OWNER_ONLY_COMMANDS = frozenset(
 )
 
 PROMPT_REPLY_MARKER = "PROMPT_MEDIA:"
+CHARACTER_TAG_REPLY_MARKER = "CHARACTER_TAG:"
 
 
 def normalize_username(value: str) -> str:
@@ -160,6 +165,8 @@ def is_moderator_callback_data(value: str | None) -> bool:
     if parts is None:
         return False
     prefix, action = parts
+    if prefix == "ctag":
+        return action in MODERATOR_TAG_CALLBACK_ACTIONS
     return action in MODERATOR_CALLBACK_ACTIONS.get(prefix, frozenset())
 
 
@@ -221,9 +228,12 @@ __all__ = (
     "AccessPolicy",
     "CHARACTER_EDITOR_COMMANDS",
     "CHARACTER_EDITOR_USER_IDS",
+    "CHARACTER_TAG_REPLY_MARKER",
     "MODERATOR_CALLBACK_ACTIONS",
     "MODERATOR_CALLBACK_PREFIXES",
     "MODERATOR_COMMANDS",
+    "MODERATOR_TAG_CALLBACK_ACTIONS",
+    "MODERATOR_TAG_COMMANDS",
     "MODERATOR_USER_IDS",
     "OWNER_ONLY_COMMANDS",
     "PROMPT_REPLY_MARKER",
