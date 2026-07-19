@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-analytics-controllers`
 - Линия/фаза: P3C, физическая архитектура Telegram presentation
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3c-analytics-controllers-v2`
 - Базовый commit: `d9d812fc7b35e04d5e1a36b6a6a4d03e6eabdbe0`
 
@@ -60,17 +60,26 @@ Canonical analytics controllers пока продолжают импортиро
 
 ### Проверки
 
-Первый прогон tests #999 выполнил 879 тестов; функциональные тесты прошли, а CI обнаружил только устаревший порядок aliases в architecture inventory и отсутствующий обязательный раздел рисков в worklog. Оба контрактных замечания исправлены. Финальный повторный прогон выполняется на текущем head.
+- tests #1003: success, 879 tests;
+- Docker build #539: success;
+- project notes contract #396: success;
+- active bundle routers: 56;
+- duplicate bundle router imports: 0;
+- legacy handler implementations: 30;
+- handler module aliases: 38.
+
+Первый CI обнаружил только два контрактных замечания: порядок нового alias в машинном inventory и обязательный раздел рисков worklog. Оба исправлены; функциональных регрессий не найдено.
 
 ### PR и commit
 
 - PR: #202 `Move analytics controllers into presentation`;
 - ветка: `agent/p3c-analytics-controllers-v2`;
+- проверенный runtime head: `9a43b13280e55d3622b2c0c1e09e83e09c49e14e`;
 - базовый `main` уже включает admin archive controls и shared topic links из PR #201.
 
 ### Незавершённое
 
-Нужно получить полный зелёный повторный CI, перевести worklog в `завершено`, обновить финальные номера проверок и только затем слить PR.
+Вспомогательные analytics helper modules остаются под `velvet_bot.handlers` и будут разбираться отдельным срезом. Активные Telegram controllers текущего analytics bundle перенесены полностью.
 
 ### Следующий шаг
 
