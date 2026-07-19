@@ -108,13 +108,26 @@ async def send_viewer_archive_page(
                 document=media.telegram_file_id,
                 **common,
             )
-        photo = await resolve_archive_image_preview(
-            bot,
-            database,
-            page,
-            cache_chat_id=chat_id,
-        )
+        try:
+            photo = await resolve_archive_image_preview(
+                bot,
+                database,
+                page,
+                cache_chat_id=chat_id,
+            )
+        except ImagePreviewError:
+            if manager_access:
+                return await bot.send_document(
+                    document=media.telegram_file_id,
+                    **common,
+                )
+            raise
         if photo is None:
+            if manager_access:
+                return await bot.send_document(
+                    document=media.telegram_file_id,
+                    **common,
+                )
             raise _image_display_error(page)
         sent = await bot.send_photo(
             photo=photo,
@@ -171,24 +184,35 @@ async def replace_viewer_archive_page(
     )
 
     if page.media.is_image_document and not file_mode:
-        photo = await resolve_archive_image_preview(
-            bot,
-            database,
-            page,
-            cache_chat_id=callback.message.chat.id,
-        )
-        if photo is None:
+        try:
+            photo = await resolve_archive_image_preview(
+                bot,
+                database,
+                page,
+                cache_chat_id=callback.message.chat.id,
+            )
+        except ImagePreviewError:
+            if not manager_access:
+                raise
+            photo = None
+            file_mode = True
+        if photo is None and manager_access:
+            file_mode = True
+        if photo is None and not file_mode:
             raise _image_display_error(page)
 
-        from aiogram.enums import ParseMode
-        from aiogram.types import InputMediaPhoto
+        if not file_mode:
+            from aiogram.enums import ParseMode
+            from aiogram.types import InputMediaPhoto
 
-        input_media = InputMediaPhoto(
-            media=photo,
-            caption=caption,
-            parse_mode=ParseMode.HTML,
-            has_spoiler=page.media.is_spoiler,
-        )
+            input_media = InputMediaPhoto(
+                media=photo,
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+                has_spoiler=page.media.is_spoiler,
+            )
+        else:
+            input_media = build_input_media(page.media, caption)
     else:
         input_media = build_input_media(page.media, caption)
 
