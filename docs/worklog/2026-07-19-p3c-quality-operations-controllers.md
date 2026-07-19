@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-quality-operations-controllers`
 - Линия/фаза: Velvet Archive, P3C
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3c-quality-operations-controllers`
 - Базовый commit: `16811adefe4acc5d7cc2b2cce1b37cf989ea4ab2`
 
@@ -63,21 +63,24 @@
 
 ### Проверки
 
-- source-level contracts и architecture inventory подготовлены;
-- полный CI будет зафиксирован после создания PR;
+- tests #1019: success;
+- Docker build #555: success;
+- project notes contract #409: success;
 - active bundle routers: 56, duplicate registrations: 0;
-- active legacy implementations: 14, aliases: 54.
+- active legacy implementations: 14, aliases: 54;
+- первый полный CI прошёл без runtime и source-path regressions.
 
 ### PR и commit
 
+- PR: #207 `Move quality operations controllers into presentation`;
 - рабочая ветка: `agent/p3c-quality-operations-controllers`;
 - runtime move commit: `b9949b9f34b79358db6cce84b897ff53535d6160`;
-- PR и проверенный финальный head будут добавлены после запуска CI.
+- проверенный runtime head: `31e12ec5eec3b223a2cfd1ae57b88474a8629d9e`.
 
 ### Незавершённое
 
-До зелёного полного CI срез считается частично завершённым. В `archive_and_public` остаются прямые legacy controllers; они требуют следующего отдельного P3C-среза, чтобы не смешивать архив, публикацию и служебные команды с Qwen-контроллерами.
+В `archive_and_public` остаются прямые legacy controllers; они требуют следующего отдельного P3C-среза, чтобы не смешивать архив, публикацию и служебные команды с Qwen-контроллерами. Временные aliases остаются контролируемым остатком до P3D.
 
 ### Следующий шаг
 
-Создать PR, пройти полный CI, исправить только выявленные source-path regressions и после зелёного результата слить срез. Затем продолжить remaining archive-and-public presentation controllers.
+Слить PR #207 после зелёного CI финального documentation head. Затем продолжить remaining archive-and-public presentation controllers с актуального `main`.
