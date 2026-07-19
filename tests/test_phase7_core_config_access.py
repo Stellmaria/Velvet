@@ -16,18 +16,18 @@ class CoreAccessTests(unittest.TestCase):
     def test_policy_accepts_generic_identity_without_telegram_type(self) -> None:
         policy = AccessPolicy(
             allowed_user_ids=frozenset({100}),
-            allowed_usernames=frozenset({"va_stellmaria"}),
+            allowed_usernames=frozenset({"owner_example"}),
         )
         self.assertTrue(policy.allows(user_id=100, username=None))
         self.assertTrue(
             policy.allows_user(
-                SimpleNamespace(id=200, username="VA_StellMaria")
+                SimpleNamespace(id=200, username="OWNER_EXAMPLE")
             )
         )
         self.assertFalse(
             policy.allows_user(SimpleNamespace(id=300, username="other"))
         )
-        self.assertEqual("va_stellmaria", normalize_username(" @VA_StellMaria "))
+        self.assertEqual("owner_example", normalize_username(" @OWNER_EXAMPLE "))
 
 
 class CoreConfigTests(unittest.TestCase):
@@ -37,8 +37,8 @@ class CoreConfigTests(unittest.TestCase):
             parse_allowed_user_ids("100, 200"),
         )
         self.assertEqual(
-            frozenset({"va_stellmaria", "second_owner"}),
-            parse_allowed_usernames("@VA_StellMaria, second_owner"),
+            frozenset({"owner_example", "second_owner"}),
+            parse_allowed_usernames("@OWNER_EXAMPLE, second_owner"),
         )
         self.assertEqual("Europe/Berlin", parse_timezone("Europe/Berlin"))
 
