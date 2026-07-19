@@ -16,9 +16,12 @@ jobs:
       - name: Apply verified local patch
         shell: bash
         run: |
-          base64 -d .github/p3d-pr222.patch.gz.b64 | gzip -d > /tmp/pr222.patch
+          cat .github/p3d-pr222.parts/* > /tmp/pr222.payload
+          test "$(git hash-object /tmp/pr222.payload)" = "ff00322779b615d43c0cce3757c4c84f25345578"
+          base64 -d /tmp/pr222.payload | gzip -d > /tmp/pr222.patch
           git apply --index --exclude=.github/workflows/p3d-source-snapshot.yml /tmp/pr222.patch
           rm -f .github/p3d-pr222.patch.gz.b64
+          rm -rf .github/p3d-pr222.parts
           rm -f .github/workflows/p3d-source-snapshot.yml
           git add -A
           git config user.name "github-actions[bot]"
