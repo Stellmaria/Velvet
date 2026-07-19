@@ -4,9 +4,9 @@
 
 ## Сводка
 
-- файлов-consumers: **20**;
-- legacy references: **30**;
-- затронутых legacy modules: **18**.
+- файлов-consumers: **19**;
+- legacy references: **28**;
+- затронутых legacy modules: **17**.
 
 ## Consumers
 
@@ -83,11 +83,6 @@
 
 - line 20: `velvet_bot.handlers.reference_management` (import; names: `parse_reference_add_character`).
 
-### `velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py`
-
-- line 18: `velvet_bot.handlers.admin_directory` (import; names: `AdminDirectoryCallback, _profile_keyboard, _profile_text`).
-- line 23: `velvet_bot.handlers.admin_stories` (import; names: `AdminStoryCallback`).
-
 ### `velvet_bot/presentation/telegram/routers/supervisor/codex.py`
 
 - line 12: `velvet_bot.handlers.supervisor_status` (import; names: `show_supervisor_menu`).
@@ -104,6 +99,7 @@
 
 - `velvet_bot/presentation/telegram/routers/characters/uncategorized.py`.
 - `velvet_bot/presentation/telegram/routers/stories/management.py`.
+- `velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py`.
 
 ## Следующий срез
 

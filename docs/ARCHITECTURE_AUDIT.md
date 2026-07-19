@@ -132,7 +132,7 @@ Root composition не должен импортировать отдельные
 
 ## P3D: compatibility retirement
 
-Статус: выполняется. Legacy-consumer inventory после первого cleanup-среза фиксирует 20 production-файлов, 30 references и 18 старых handler modules. Compatibility должен быть явным, перечисленным и стадийным.
+Статус: выполняется. Legacy-consumer inventory после второго cleanup-среза фиксирует 19 production-файлов, 28 references и 17 старых handler modules. Compatibility должен быть явным, перечисленным и стадийным.
 
 Допустимы временные категории:
 

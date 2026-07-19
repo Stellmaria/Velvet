@@ -1,6 +1,8 @@
 import unittest
 
-from velvet_bot.handlers.admin_stories import AdminStoryCallback
+from velvet_bot.presentation.telegram.routers.stories.contracts import (
+    AdminStoryCallback,
+)
 from velvet_bot.public_manager_ui import manager_callback
 
 

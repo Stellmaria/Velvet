@@ -27,6 +27,9 @@ from velvet_bot.character_directory import (
     set_character_universe,
 )
 from velvet_bot.database import Database
+from velvet_bot.presentation.telegram.message_deletion import (
+    delete_message_idempotently,
+)
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_archive_display import (
     refresh_viewer_archive_caption,
@@ -49,18 +52,6 @@ from velvet_bot.story_catalog import (
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
-
-class _ArchiveDeleteNoiseFilter(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
-        if record.getMessage() == "Could not delete archive topic message":
-            record.levelno = logging.INFO
-            record.levelname = "INFO"
-            record.msg = "Archive topic message was already absent or cannot be deleted"
-            record.args = ()
-        return True
-
-
-logger.addFilter(_ArchiveDeleteNoiseFilter())
 
 _ACTIONS = {
     "download", "pback", "psp", "pcats", "pcat", "punis", "puni",
@@ -349,14 +340,17 @@ async def handle_public_manager(
         if deleted is None:
             await callback.answer("Материал уже удалён.", show_alert=True)
             return
+        topic_delete_state = "not_requested"
         if deleted.media.archive_message_id and deleted.character.archive_chat_id:
             try:
-                await bot.delete_message(
+                topic_delete_state = await delete_message_idempotently(
+                    bot,
                     chat_id=deleted.character.archive_chat_id,
                     message_id=deleted.media.archive_message_id,
                 )
-            except TelegramAPIError:
-                logger.warning("Could not delete archive topic message")
+            except TelegramAPIError as error:
+                topic_delete_state = "failed"
+                logger.warning("Could not delete archive topic message: %s", error)
         if audit_logger is not None:
             await audit_logger.send(
                 "Медиа удалено через открытый архив",
@@ -365,6 +359,9 @@ async def handle_public_manager(
                 media_id=deleted.media.id,
                 deleted_by=viewer_user_id,
                 remaining=deleted.remaining_total,
+                topic_message_deleted=topic_delete_state == "deleted",
+                topic_message_already_absent=topic_delete_state == "already_absent",
+                topic_message_delete_failed=topic_delete_state == "failed",
             )
         if not isinstance(callback.message, Message):
             await callback.answer("Удалено.", show_alert=True)

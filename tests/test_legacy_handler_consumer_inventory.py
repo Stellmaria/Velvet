@@ -12,6 +12,12 @@ from velvet_bot.presentation.telegram.routers.characters.contracts import (
 from velvet_bot.presentation.telegram.routers.characters.directory import (
     AdminDirectoryCallback as DirectoryCallbackExport,
 )
+from velvet_bot.presentation.telegram.routers.stories.contracts import (
+    AdminStoryCallback,
+)
+from velvet_bot.presentation.telegram.routers.stories.management import (
+    AdminStoryCallback as StoryCallbackExport,
+)
 
 
 class LegacyHandlerConsumerInventoryTests(unittest.TestCase):
@@ -22,7 +28,7 @@ class LegacyHandlerConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_legacy_handler_consumers.py",
                 "--check",
                 "--label",
-                "p3d-legacy-consumer-inventory",
+                "p3d-multi-story-cleanup",
             ],
             check=True,
         )
@@ -31,6 +37,7 @@ class LegacyHandlerConsumerInventoryTests(unittest.TestCase):
         for relative in (
             "velvet_bot/presentation/telegram/routers/characters/uncategorized.py",
             "velvet_bot/presentation/telegram/routers/stories/management.py",
+            "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
         ):
             with self.subTest(path=relative):
                 source = Path(relative).read_text(encoding="utf-8")
@@ -60,6 +67,24 @@ class LegacyHandlerConsumerInventoryTests(unittest.TestCase):
         self.assertEqual("male", restored.category)
         self.assertEqual(2, restored.page)
         self.assertEqual(17, restored.character_id)
+
+    def test_story_management_keeps_callback_contract_compatibility_export(self) -> None:
+        self.assertIs(AdminStoryCallback, StoryCallbackExport)
+        packed = AdminStoryCallback(
+            action="mtoggle",
+            category="female",
+            directory_page=3,
+            story_page=4,
+            character_id=17,
+            story_id=21,
+        ).pack()
+        restored = StoryCallbackExport.unpack(packed)
+        self.assertEqual("mtoggle", restored.action)
+        self.assertEqual("female", restored.category)
+        self.assertEqual(3, restored.directory_page)
+        self.assertEqual(4, restored.story_page)
+        self.assertEqual(17, restored.character_id)
+        self.assertEqual(21, restored.story_id)
 
 
 if __name__ == "__main__":

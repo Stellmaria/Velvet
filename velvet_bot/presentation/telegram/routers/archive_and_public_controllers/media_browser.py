@@ -29,6 +29,9 @@ from velvet_bot.archive_ui import (
 )
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Database
+from velvet_bot.presentation.telegram.message_deletion import (
+    delete_message_idempotently,
+)
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -189,18 +192,19 @@ async def _delete_current_item(
         await callback.answer("Медиа уже удалено.", show_alert=True)
         return
 
-    topic_deleted = False
+    topic_delete_state = "not_requested"
     if (
         deleted.media.archive_message_id is not None
         and deleted.character.archive_chat_id is not None
     ):
         try:
-            await bot.delete_message(
+            topic_delete_state = await delete_message_idempotently(
+                bot,
                 chat_id=deleted.character.archive_chat_id,
                 message_id=deleted.media.archive_message_id,
             )
-            topic_deleted = True
         except TelegramAPIError as error:
+            topic_delete_state = "failed"
             logger.warning("Could not delete archive topic message: %s", error)
             await audit_logger.error(
                 "Не удалось удалить медиа из ветки",
@@ -218,7 +222,9 @@ async def _delete_current_item(
         file=deleted.media.display_file_name,
         media_id=deleted.media.id,
         remaining=deleted.remaining_total,
-        topic_message_deleted=topic_deleted,
+        topic_message_deleted=topic_delete_state == "deleted",
+        topic_message_already_absent=topic_delete_state == "already_absent",
+        topic_message_delete_failed=topic_delete_state == "failed",
         database_file_pruned=deleted.orphan_media_removed,
         deleted_by=callback.from_user.id,
     )

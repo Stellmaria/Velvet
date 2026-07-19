@@ -15,12 +15,17 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_directory import (
+from velvet_bot.presentation.telegram.routers.characters.contracts import (
     AdminDirectoryCallback,
-    _profile_keyboard,
-    _profile_text,
 )
-from velvet_bot.handlers.admin_stories import AdminStoryCallback
+from velvet_bot.presentation.telegram.routers.characters.profile_views import (
+    build_character_profile_keyboard,
+    format_character_profile,
+)
+from velvet_bot.presentation.telegram.routers.stories.contracts import (
+    AdminStoryCallback,
+    story_callback,
+)
 from velvet_bot.multi_story_support import (
     clear_character_stories,
     list_assigned_character_stories,
@@ -69,23 +74,7 @@ async def _safe_edit_caption(
             raise
 
 
-def _admin_callback(
-    action: str,
-    *,
-    category: str,
-    directory_page: int,
-    story_page: int,
-    character_id: int,
-    story_id: int = 0,
-) -> str:
-    return AdminStoryCallback(
-        action=action,
-        category=category,
-        directory_page=directory_page,
-        story_page=story_page,
-        character_id=character_id,
-        story_id=story_id,
-    ).pack()
+_admin_callback = story_callback
 
 
 def _admin_picker_keyboard(
@@ -316,8 +305,8 @@ async def handle_admin_multi_story_action(
             return
         await _safe_edit_text(
             callback.message,
-            _profile_text(refreshed),
-            _profile_keyboard(
+            format_character_profile(refreshed),
+            build_character_profile_keyboard(
                 refreshed,
                 category=category,
                 page=callback_data.directory_page,

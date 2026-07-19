@@ -1,13 +1,12 @@
 {
   "schema_version": 1,
-  "generated_from": "p3d-legacy-consumer-inventory",
-  "consumer_file_count": 20,
-  "legacy_reference_count": 30,
-  "legacy_module_count": 18,
+  "generated_from": "p3d-multi-story-cleanup",
+  "consumer_file_count": 19,
+  "legacy_reference_count": 28,
+  "legacy_module_count": 17,
   "legacy_modules": [
     "velvet_bot.handlers.admin_directory",
     "velvet_bot.handlers.admin_media_display",
-    "velvet_bot.handlers.admin_stories",
     "velvet_bot.handlers.analytics_dashboard",
     "velvet_bot.handlers.analytics_management_common",
     "velvet_bot.handlers.archive",
@@ -314,29 +313,6 @@
       ]
     },
     {
-      "path": "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
-      "imports": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.admin_directory",
-          "names": [
-            "AdminDirectoryCallback",
-            "_profile_keyboard",
-            "_profile_text"
-          ],
-          "line": 18
-        },
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.admin_stories",
-          "names": [
-            "AdminStoryCallback"
-          ],
-          "line": 23
-        }
-      ]
-    },
-    {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
       "imports": [
         {
@@ -376,7 +352,8 @@
   ],
   "cleaned_paths": [
     "velvet_bot/presentation/telegram/routers/characters/uncategorized.py",
-    "velvet_bot/presentation/telegram/routers/stories/management.py"
+    "velvet_bot/presentation/telegram/routers/stories/management.py",
+    "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py"
   ],
   "next_slice": {
     "phase": "P3D",

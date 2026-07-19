@@ -4,7 +4,6 @@ from html import escape
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
-from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.application.owner_profiles import (
@@ -26,6 +25,10 @@ from velvet_bot.presentation.telegram.routers.characters.profile_views import (
     build_character_profile_keyboard,
     format_character_profile,
 )
+from velvet_bot.presentation.telegram.routers.stories.contracts import (
+    AdminStoryCallback,
+    story_callback,
+)
 from velvet_bot.story_catalog import (
     CharacterStory,
     StoryPage,
@@ -38,32 +41,7 @@ from velvet_bot.story_catalog import (
 router = Router(name=__name__)
 
 
-class AdminStoryCallback(CallbackData, prefix="astory"):
-    action: str
-    category: str = ""
-    directory_page: int = 0
-    story_page: int = 0
-    character_id: int = 0
-    story_id: int = 0
-
-
-def _story_cb(
-    action: str,
-    *,
-    category: str,
-    directory_page: int,
-    story_page: int,
-    character_id: int,
-    story_id: int = 0,
-) -> str:
-    return AdminStoryCallback(
-        action=action,
-        category=category,
-        directory_page=directory_page,
-        story_page=story_page,
-        character_id=character_id,
-        story_id=story_id,
-    ).pack()
+_story_cb = story_callback
 
 
 def _profile_cb(*, category: str, page: int, character_id: int) -> str:
