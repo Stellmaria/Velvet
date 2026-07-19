@@ -51,7 +51,11 @@ class OwnerActionsSplitTests(unittest.TestCase):
         )
 
     def test_owner_controller_has_no_business_branches(self) -> None:
-        path = ROOT / "velvet_bot/handlers/owner_actions.py"
+        path = (
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/"
+            "core_operations_controllers/owner_actions.py"
+        )
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
         function = next(
