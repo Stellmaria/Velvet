@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from aiogram import Dispatcher
 
+from velvet_bot.app.save_sessions import SaveUploadSessions
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.access import AccessPolicy
@@ -33,6 +34,7 @@ def build_dispatcher(
     bot_username: str,
     audit_logger: TelegramAuditLogger,
     reference_uploads: ReferenceUploadSessions,
+    save_upload_sessions: SaveUploadSessions,
     backup_service: BackupService,
     system_service: SystemHealthService,
     worker_manager: WorkerManager,
@@ -53,6 +55,7 @@ def build_dispatcher(
         "bot_username": bot_username,
         "audit_logger": audit_logger,
         "reference_uploads": reference_uploads,
+        "save_upload_sessions": save_upload_sessions,
         "access_policy": access_policy,
         "analytics_channel_ids": settings.analytics_channel_ids,
         "adult_channel_id": settings.adult_channel_id,
