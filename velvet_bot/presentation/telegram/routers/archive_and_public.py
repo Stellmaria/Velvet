@@ -41,12 +41,24 @@ from velvet_bot.presentation.telegram.routers.characters.profiles import (
     router as characters_router,
 )
 from velvet_bot.handlers.media_browser import router as media_browser_router
-from velvet_bot.handlers.reference_comparison_help import router as reference_comparison_help_router
-from velvet_bot.handlers.reference_comparison import router as reference_comparison_router
-from velvet_bot.handlers.reference_documents import router as reference_documents_router
-from velvet_bot.handlers.reference_albums import router as reference_albums_router
-from velvet_bot.handlers.reference_management import router as reference_management_router
-from velvet_bot.handlers.references import router as references_router
+from velvet_bot.presentation.telegram.routers.references.comparison_help import (
+    router as reference_comparison_help_router,
+)
+from velvet_bot.presentation.telegram.routers.references.comparison import (
+    router as reference_comparison_router,
+)
+from velvet_bot.presentation.telegram.routers.references.documents import (
+    router as reference_documents_router,
+)
+from velvet_bot.presentation.telegram.routers.references.albums import (
+    router as reference_albums_router,
+)
+from velvet_bot.presentation.telegram.routers.references.management import (
+    router as reference_management_router,
+)
+from velvet_bot.presentation.telegram.routers.references.catalog import (
+    router as references_router,
+)
 from velvet_bot.handlers.inline_help import router as inline_help_router
 from velvet_bot.handlers.guest_archive import router as guest_archive_router
 from velvet_bot.handlers.spoiler_save import router as spoiler_save_router
