@@ -19,6 +19,7 @@ from aiogram.types import (
 
 from velvet_bot.core.access import (
     AccessPolicy,
+    CHARACTER_TAG_REPLY_MARKER,
     MODERATOR_CALLBACK_PREFIXES,
     MODERATOR_COMMANDS,
     PROMPT_REPLY_MARKER,
@@ -86,7 +87,10 @@ def is_moderator_message(
     if reply is None:
         return False
     reply_text = reply.text or reply.caption or ""
-    return PROMPT_REPLY_MARKER in reply_text
+    return bool(
+        PROMPT_REPLY_MARKER in reply_text
+        or CHARACTER_TAG_REPLY_MARKER in reply_text
+    )
 
 
 # Compatibility aliases used by existing imports and tests.
