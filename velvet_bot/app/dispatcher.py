@@ -34,11 +34,11 @@ def build_dispatcher(
     bot_username: str,
     audit_logger: TelegramAuditLogger,
     reference_uploads: ReferenceUploadSessions,
-    save_upload_sessions: SaveUploadSessions,
     backup_service: BackupService,
     system_service: SystemHealthService,
     worker_manager: WorkerManager,
     error_center: ErrorIncidentCenter | None = None,
+    save_upload_sessions: SaveUploadSessions | None = None,
 ) -> DispatcherBundle:
     access_policy = AccessPolicy(
         allowed_user_ids=settings.allowed_user_ids,
@@ -49,13 +49,14 @@ def build_dispatcher(
     publication_inbox_middleware = PublicationInboxMiddleware()
     discussion_middleware = DiscussionAnalyticsMiddleware()
     supervisor_client = build_supervisor_client()
+    active_save_upload_sessions = save_upload_sessions or SaveUploadSessions()
 
     workflow_data = {
         "database": database,
         "bot_username": bot_username,
         "audit_logger": audit_logger,
         "reference_uploads": reference_uploads,
-        "save_upload_sessions": save_upload_sessions,
+        "save_upload_sessions": active_save_upload_sessions,
         "access_policy": access_policy,
         "analytics_channel_ids": settings.analytics_channel_ids,
         "adult_channel_id": settings.adult_channel_id,
