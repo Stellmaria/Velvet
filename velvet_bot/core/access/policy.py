@@ -28,18 +28,9 @@ PUBLIC_CALLBACK_PREFIX = "pub:"
 # role must never inherit owner-only system, publication, analytics, backup,
 # Supervisor, Git, or Codex operations. Real IDs are loaded through Settings.
 MODERATOR_USER_IDS: frozenset[int] = frozenset()
-MODERATOR_COMMANDS = frozenset(
-    {
-        "characters",
-        "prompt",
-        "setprompt",
-        "aliasadd",
-        "tagadd",
-        "aliases",
-        "tags",
-        "aliasdel",
-        "tagdel",
-    }
+MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
+MODERATOR_TAG_COMMANDS = frozenset(
+    {"aliasadd", "tagadd", "aliases", "tags", "aliasdel", "tagdel"}
 )
 MODERATOR_CALLBACK_ACTIONS = {
     "adir": frozenset(
@@ -82,11 +73,11 @@ MODERATOR_CALLBACK_ACTIONS = {
             "close",
         }
     ),
-    "ctag": frozenset({"menu", "add", "del", "delok"}),
     # Download is shown only to configured moderators in the public viewer. It is
     # not a public archive action and must not become available through pub prefix.
     "pub": frozenset({"download"}),
 }
+MODERATOR_TAG_CALLBACK_ACTIONS = frozenset({"menu", "add", "del", "delok"})
 MODERATOR_CALLBACK_PREFIXES = tuple(
     f"{prefix}:" for prefix in MODERATOR_CALLBACK_ACTIONS
 )
@@ -174,6 +165,8 @@ def is_moderator_callback_data(value: str | None) -> bool:
     if parts is None:
         return False
     prefix, action = parts
+    if prefix == "ctag":
+        return action in MODERATOR_TAG_CALLBACK_ACTIONS
     return action in MODERATOR_CALLBACK_ACTIONS.get(prefix, frozenset())
 
 
@@ -239,6 +232,8 @@ __all__ = (
     "MODERATOR_CALLBACK_ACTIONS",
     "MODERATOR_CALLBACK_PREFIXES",
     "MODERATOR_COMMANDS",
+    "MODERATOR_TAG_CALLBACK_ACTIONS",
+    "MODERATOR_TAG_COMMANDS",
     "MODERATOR_USER_IDS",
     "OWNER_ONLY_COMMANDS",
     "PROMPT_REPLY_MARKER",
