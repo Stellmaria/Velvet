@@ -21,7 +21,6 @@ from velvet_bot.core.access import (
     AccessPolicy,
     MODERATOR_CALLBACK_PREFIXES,
     MODERATOR_COMMANDS,
-    MODERATOR_USER_IDS,
     PROMPT_REPLY_MARKER,
     PUBLIC_CALLBACK_PREFIX,
     command_name,
@@ -50,13 +49,19 @@ def is_public_callback(callback: CallbackQuery) -> bool:
     return is_public_callback_data(callback.data)
 
 
-def is_moderator_user(user: User | None) -> bool:
-    return bool(user and user.id in MODERATOR_USER_IDS)
+def is_moderator_user(
+    user: User | None,
+    moderator_user_ids: frozenset[int] = frozenset(),
+) -> bool:
+    return bool(user and user.id in moderator_user_ids)
 
 
-def is_moderator_callback(callback: CallbackQuery) -> bool:
+def is_moderator_callback(
+    callback: CallbackQuery,
+    moderator_user_ids: frozenset[int] = frozenset(),
+) -> bool:
     return bool(
-        is_moderator_user(callback.from_user)
+        is_moderator_user(callback.from_user, moderator_user_ids)
         and is_moderator_callback_data(callback.data)
     )
 
@@ -65,9 +70,12 @@ def get_caller_user(message: Message) -> User | None:
     return message.from_user or message.guest_bot_caller_user
 
 
-def is_moderator_message(message: Message) -> bool:
+def is_moderator_message(
+    message: Message,
+    moderator_user_ids: frozenset[int] = frozenset(),
+) -> bool:
     caller = get_caller_user(message)
-    if not is_moderator_user(caller):
+    if not is_moderator_user(caller, moderator_user_ids):
         return False
 
     text = message.text or message.caption or ""
@@ -135,7 +143,10 @@ class OwnerAccessMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         if isinstance(event, CallbackQuery):
-            if is_public_callback(event) or is_moderator_callback(event):
+            if is_public_callback(event) or is_moderator_callback(
+                event,
+                self.policy.moderator_user_ids,
+            ):
                 return await handler(event, data)
 
             allowed = self.policy.allows_user(event.from_user)
@@ -181,7 +192,10 @@ class OwnerAccessMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         text = event.text or event.caption or ""
-        if is_public_command_text(text) or is_moderator_message(event):
+        if is_public_command_text(text) or is_moderator_message(
+            event,
+            self.policy.moderator_user_ids,
+        ):
             return await handler(event, data)
 
         if not message_requires_owner_access(
