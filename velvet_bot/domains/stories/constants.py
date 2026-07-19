@@ -1,6 +1,6 @@
 STORY_REQUIRED_UNIVERSES = frozenset({"shs", "kr", "lm", "idm", "lagerta"})
 KNOWN_UNIVERSES = frozenset(
-    {"shs", "kr", "lm", "idm", "bg3", "lagerta", "original"}
+    {"shs", "kr", "lm", "idm", "bg3", "re", "lagerta", "original", "other"}
 )
 RELEASE_PRECISIONS = frozenset({"day", "month", "year", "unknown"})
 
