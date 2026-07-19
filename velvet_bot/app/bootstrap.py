@@ -258,9 +258,8 @@ async def run_application() -> None:
             access_policy=bundle.access_policy,
             analytics_channel_ids=settings.analytics_channel_ids,
         )
-    except BaseException as error:  # p2-approved-boundary: report-fatal-application-error
-        if isinstance(error, Exception):
-            await _report_fatal_application_error(error_center, error)
+    except Exception as error:  # p2-approved-boundary: report-fatal-application-error
+        await _report_fatal_application_error(error_center, error)
         raise
     finally:
         await _close_application_resources(
