@@ -222,13 +222,22 @@ class ProjectIntegrityTests(unittest.TestCase):
             self.assertNotRegex(source, r'callback_data\s*=\s*["\'](?:own|oact):')
 
     def test_owner_forms_precede_private_and_topic_catch_all_handlers(self) -> None:
-        source = Path("velvet_bot/presentation/telegram/router.py").read_text(
+        root_source = Path("velvet_bot/presentation/telegram/router.py").read_text(
             encoding="utf-8"
         )
-        owner_index = source.index("root.include_router(owner_actions_router)")
-        publication_index = source.index("root.include_router(publication_center_router)")
-        archive_index = source.index("root.include_router(archive_router)")
-        self.assertLess(owner_index, publication_index)
+        archive_source = Path(
+            "velvet_bot/presentation/telegram/routers/archive_and_public.py"
+        ).read_text(encoding="utf-8")
+
+        core_index = root_source.index("root.include_router(core_operations_router)")
+        archive_bundle_index = root_source.index(
+            "root.include_router(archive_and_public_router)"
+        )
+        publication_index = archive_source.index(
+            "router.include_router(publication_center_router)"
+        )
+        archive_index = archive_source.index("router.include_router(archive_router)")
+        self.assertLess(core_index, archive_bundle_index)
         self.assertLess(publication_index, archive_index)
 
 

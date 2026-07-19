@@ -184,9 +184,11 @@ python -m unittest discover -s tests -v
 ## Архитектура
 
 - `velvet_bot/app` — composition root, lifecycle и workers;
+- `velvet_bot/application` — transport-neutral use cases владельца;
 - `velvet_bot/domains` — доменные модели, repositories и services;
-- `velvet_bot/infrastructure` — PostgreSQL, Telegram и файловые адаптеры;
-- `velvet_bot/presentation/telegram` — роутеры, callback и middleware;
-- старые модули в корне постепенно сокращаются до compatibility-фасадов.
+- `velvet_bot/infrastructure` — PostgreSQL, Telegram, filesystem и Krita adapters;
+- `velvet_bot/presentation/telegram` — root Router, contracts, views и ordered router bundles;
+- `velvet_bot/handlers` — временный legacy presentation layout, переносимый по доменам в P3C;
+- `velvet_bot/presentation/telegram/compat.py` — единый реестр временных pre/post-import adapters.
 
-Актуальный статус и оставшийся долг: `docs/development_status.md` и `docs/ARCHITECTURE_AUDIT.md`.
+Private PostgreSQL boundary и P2 stability закрыты. Текущий физический долг измеряется в `docs/architecture_layout_inventory.*`, актуальный статус — в `docs/development_status.md` и `docs/ARCHITECTURE_AUDIT.md`.

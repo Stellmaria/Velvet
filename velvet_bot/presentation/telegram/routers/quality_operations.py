@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+from aiogram import Router
+
+from velvet_bot.handlers.backup_center import router as backup_center_router
+from velvet_bot.handlers.ai_jobs import router as ai_jobs_router
+from velvet_bot.handlers.quality_operations import router as quality_operations_router
+from velvet_bot.handlers.velvet_ai_formatting import router as velvet_ai_formatting_router
+from velvet_bot.handlers.velvet_ai_visual import router as velvet_ai_visual_router
+from velvet_bot.handlers.velvet_ai import router as velvet_ai_router
+from velvet_bot.handlers.quality_duplicates import router as quality_duplicates_router
+from velvet_bot.handlers.quality_sets import router as quality_sets_router
+from velvet_bot.handlers.quality_set_ai import router as quality_set_ai_router
+from velvet_bot.handlers.quality_calibration import router as quality_calibration_router
+from velvet_bot.handlers.quality_ai_preview import router as quality_ai_preview_router
+from velvet_bot.handlers.quality_ai import router as quality_ai_router
+from velvet_bot.handlers.quality_center import router as quality_center_router
+
+router = Router(name=__name__)
+router.include_router(backup_center_router)
+router.include_router(ai_jobs_router)
+router.include_router(quality_operations_router)
+router.include_router(velvet_ai_formatting_router)
+router.include_router(velvet_ai_visual_router)
+router.include_router(velvet_ai_router)
+router.include_router(quality_duplicates_router)
+router.include_router(quality_sets_router)
+router.include_router(quality_set_ai_router)
+router.include_router(quality_calibration_router)
+router.include_router(quality_ai_preview_router)
+router.include_router(quality_ai_router)
+router.include_router(quality_center_router)
+
+__all__ = ("router",)

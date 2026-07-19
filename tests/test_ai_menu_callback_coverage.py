@@ -146,14 +146,20 @@ class AIMenuCoverageTests(unittest.TestCase):
             literal_quality_actions() - registered_quality_actions(),
         )
 
-    def test_new_routers_are_connected(self) -> None:
-        source = (
-            ROOT / "velvet_bot/presentation/telegram/router.py"
+    def test_new_routers_are_connected_through_domain_bundles(self) -> None:
+        quality_source = (
+            ROOT / "velvet_bot/presentation/telegram/routers/quality_operations.py"
+        ).read_text(encoding="utf-8")
+        archive_source = (
+            ROOT / "velvet_bot/presentation/telegram/routers/archive_and_public.py"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("root.include_router(ai_jobs_router)", source)
-        self.assertIn("root.include_router(quality_operations_router)", source)
-        self.assertIn("root.include_router(reference_comparison_help_router)", source)
+        self.assertIn("router.include_router(ai_jobs_router)", quality_source)
+        self.assertIn("router.include_router(quality_operations_router)", quality_source)
+        self.assertIn(
+            "router.include_router(reference_comparison_help_router)",
+            archive_source,
+        )
 
     def test_each_interactive_ai_flow_creates_a_job(self) -> None:
         paths = {

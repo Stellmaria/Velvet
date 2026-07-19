@@ -1,8 +1,6 @@
 import unittest
 
-from velvet_bot.handlers.analytics_discussion_overrides import (
-    _get_discussion_dashboard,
-)
+from velvet_bot.analytics_dashboard import get_discussion_dashboard
 
 
 class _Acquire:
@@ -51,7 +49,7 @@ class DiscussionDashboardTypeTests(unittest.IsolatedAsyncioTestCase):
         connection = _Connection()
         database = _Database(connection)
 
-        result = await _get_discussion_dashboard(
+        result = await get_discussion_dashboard(
             database,
             -1003859952761,
             period="all",
