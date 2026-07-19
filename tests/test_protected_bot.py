@@ -127,8 +127,9 @@ class ProtectedMediaBotAsyncTests(unittest.IsolatedAsyncioTestCase):
                 "build_viewer_keyboard",
                 new=AsyncMock(return_value=None),
             ),
-            patch(
-                "velvet_bot.public_preview_overrides.format_public_archive_caption",
+            patch.object(
+                public_display,
+                "build_viewer_caption",
                 return_value="Archive caption",
             ),
         ):
