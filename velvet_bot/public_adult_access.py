@@ -5,22 +5,27 @@ import logging
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
-ADULT_CHANNEL_ID = -1003807972037
+from velvet_bot.core.config.settings import DEFAULT_ADULT_CHANNEL_ID
 
 logger = logging.getLogger(__name__)
 
 
-async def has_adult_channel_access(bot: Bot, user_id: int) -> bool:
+async def has_adult_channel_access(
+    bot: Bot,
+    user_id: int,
+    *,
+    channel_id: int = DEFAULT_ADULT_CHANNEL_ID,
+) -> bool:
     """Return whether the user currently belongs to the configured +18 channel."""
     try:
         member = await bot.get_chat_member(
-            chat_id=ADULT_CHANNEL_ID,
+            chat_id=int(channel_id),
             user_id=int(user_id),
         )
     except TelegramAPIError:
         logger.exception(
             "Failed to check +18 channel membership channel=%s user=%s",
-            ADULT_CHANNEL_ID,
+            channel_id,
             user_id,
         )
         return False
@@ -32,4 +37,4 @@ async def has_adult_channel_access(bot: Bot, user_id: int) -> bool:
     )
 
 
-__all__ = ("ADULT_CHANNEL_ID", "has_adult_channel_access")
+__all__ = ("has_adult_channel_access",)
