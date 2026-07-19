@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-save-next-media-session`
 - Линия/фаза: Velvet Archive, owner save workflow
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/save-next-media-session`
 - Базовый commit: `51ef8bcd3c5e88af7d4e6da6e2154e32ef372a3d`
 
@@ -49,24 +49,44 @@
 
 ### Фактически сделано
 
-Реализация ещё выполняется.
+- добавлен application runtime `SaveUploadSessions` с TTL 10 минут;
+- сессии ключуются по `chat_id + caller user_id`, поэтому пользователи и чаты не смешиваются;
+- `/save Имя` без reply заранее разрешает персонажа или быстрый тег и сохраняет canonical name;
+- следующее поддерживаемое медиа проходит через существующий `save_media_from_message`, включая дедупликацию, аудит, preview и отправку в архивную тему;
+- пересланные фото, видео, анимации и image/video-документы принимаются как обычное входящее медиа;
+- сессия удаляется после одного поддерживаемого файла либо автоматически истекает;
+- неподдерживаемый документ показывает подсказку и оставляет ожидание активным;
+- добавлена команда `/savecancel`;
+- reply-вариант и команда в caption с медиа продолжают сохранять немедленно;
+- pending filter активируется только при существующей сессии и не блокирует обычный topic auto-archive;
+- dispatcher создаёт session runtime по умолчанию для совместимости старых фабрик и тестов;
+- добавлены unit/regression tests session lifecycle, TTL, isolation, filter routing, save, unsupported document, alias resolution и cancel.
 
 ### Миграции и совместимость
 
-Миграции PostgreSQL не требуются. Существующие команды, callback prefixes, таблицы и формат архива не меняются.
+Миграции PostgreSQL не требуются. Callback prefixes, таблицы, формат архива и общий media save service не менялись. Существующий reply workflow сохранён. Сессии намеренно не переживают рестарт process.
 
 ### Проверки
 
-Проверки ещё не запущены.
+- первый tests #1062: единственный ожидаемый failure показал, что новая `/savecancel` не была внесена в explicit command inventory;
+- command integrity contract обновлён;
+- tests #1063: success, 921 tests;
+- Docker build #597: success;
+- project notes contract #446: success.
 
 ### PR и commit
 
-PR будет создан после реализации и локального контрактного анализа.
+- PR: #215 `Add one-shot save-next-media sessions`;
+- ветка: `agent/save-next-media-session`;
+- session runtime commit: `30cb5bbc57fa6a7bd6184ed7e63dcd56a95f7175`;
+- controller commit: `16d5cf98e606d8ea2d25b78891e39143c2c4ec67`;
+- regression tests commit: `71fa54f740bd0e2416f8f3bfb7a0c65f9c4de734`;
+- command contract fix: `5f1a42e751e9830f8bf5f79945707f8433a060c1`.
 
 ### Незавершённое
 
-Реализация session runtime, handler и тестов пока не завершена.
+Telegram media groups состоят из нескольких сообщений, поэтому one-shot режим сохраняет только первый элемент альбома. Отдельная batch/album session может быть добавлена позже без изменения текущего контракта.
 
 ### Следующий шаг
 
-Добавить application session store, зарегистрировать его в dispatcher workflow data и расширить archive save controller.
+Слить PR #215 после повторного зелёного CI финального documentation head, затем вернуться к P3D legacy import inventory PR #214.
