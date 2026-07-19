@@ -29,6 +29,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.archive.spoiler",
     "velvet_bot.presentation.telegram.routers.characters.aliases",
     "velvet_bot.presentation.telegram.routers.characters.directory",
+    "velvet_bot.presentation.telegram.routers.characters.game_universes",
     "velvet_bot.presentation.telegram.routers.characters.kr_profile_overrides",
     "velvet_bot.presentation.telegram.routers.characters.profiles",
     "velvet_bot.presentation.telegram.routers.characters.rename",

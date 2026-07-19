@@ -5,7 +5,10 @@ from velvet_bot.domains.characters.catalog import (
     normalize_universe,
     validate_prompt_post_url,
 )
-from velvet_bot.domains.characters.constants import CATEGORY_ORDER, UNIVERSE_ORDER
+from velvet_bot.domains.characters.constants import (
+    CATEGORY_ORDER,
+    UNIVERSE_VALUE_ORDER,
+)
 from velvet_bot.domains.characters.models import (
     CategorySummary,
     CharacterDirectoryItem,
@@ -55,7 +58,7 @@ class CharacterDirectoryService:
         character_id: int,
         universe: str | None,
     ) -> None:
-        if universe is not None and universe not in UNIVERSE_ORDER:
+        if universe is not None and universe not in UNIVERSE_VALUE_ORDER:
             raise ValueError("Неизвестная вселенная архива.")
         await self._repository.set_universe(
             character_id=character_id,
@@ -144,7 +147,7 @@ class CharacterDirectoryService:
             )
         except ValueError as error:
             raise ValueError("Неизвестная категория архива.") from error
-        if universe is not None and universe not in UNIVERSE_ORDER:
+        if universe is not None and universe not in UNIVERSE_VALUE_ORDER:
             raise ValueError("Неизвестная вселенная архива.")
         if normalized_category == "uncategorized" and universe is not None:
             raise ValueError(

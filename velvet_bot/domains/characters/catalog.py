@@ -28,7 +28,7 @@ def normalize_universe(value: str, *, allow_unassigned: bool = False) -> str:
     normalized = "".join(value.casefold().split())
     universe = UNIVERSE_ALIASES.get(normalized)
     if universe is None or (universe == "unassigned" and not allow_unassigned):
-        allowed = "SHS, КР, ЛМ, ИДМ, BG3, Лагерта, Original"
+        allowed = "SHS, КР, ЛМ, ИДМ, BG3, RE, Лагерта, Original, Другое"
         raise ValueError(f"Неизвестная вселенная. Доступны: {allowed}.")
     return universe
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from velvet_bot.app.public_archive import build_public_archive_service
 from velvet_bot.database import Database
 from velvet_bot.domains.characters import (
+    GAME_UNIVERSE_ORDER,
     CategorySummary,
     CharacterDirectoryItem,
     CharacterDirectoryPage,
@@ -30,7 +31,28 @@ async def list_public_universes(
     *,
     category: str,
 ) -> list[UniverseSummary]:
-    return await list_visible_universes(database, category=category)
+    summaries = await list_visible_universes(database, category=category)
+    game_count = 0
+    for universe in GAME_UNIVERSE_ORDER:
+        page = await list_visible_characters(
+            database,
+            category=category,
+            universe=universe,
+            page=0,
+            page_size=1,
+        )
+        game_count += page.total_characters
+    return [
+        UniverseSummary(
+            key=item.key,
+            label=item.label,
+            emoji=item.emoji,
+            character_count=game_count,
+        )
+        if item.key == "games"
+        else item
+        for item in summaries
+    ]
 
 
 async def list_public_stories(

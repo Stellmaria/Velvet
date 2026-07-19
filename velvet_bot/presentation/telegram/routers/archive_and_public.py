@@ -17,6 +17,9 @@ from velvet_bot.presentation.telegram.routers.public_archive.media_display impor
 from velvet_bot.presentation.telegram.routers.characters.aliases import (
     router as character_aliases_router,
 )
+from velvet_bot.presentation.telegram.routers.characters.game_universes import (
+    router as game_universes_router,
+)
 from velvet_bot.presentation.telegram.routers.stories.kr_universe_entry import (
     router as kr_universe_entry_router,
 )
@@ -117,6 +120,8 @@ router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
 router.include_router(start_router)
 router.include_router(public_media_display_router)
+# Virtual universe groups must run before generic setuni/puni/menu handlers.
+router.include_router(game_universes_router)
 router.include_router(kr_universe_entry_router)
 router.include_router(kr_profile_overrides_router)
 router.include_router(multi_story_kr_router)
