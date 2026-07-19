@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-archive-public-controllers`
 - Линия/фаза: Velvet Archive, P3C
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3c-archive-public-controllers`
 - Базовый commit: `1e4dc6194a2b9671979a32d473537b46c59c6818`
 
@@ -47,6 +47,7 @@
 - семь archive/public archive controllers перенесены в canonical presentation packages;
 - старые paths заменены короткими aliases через `importlib` и `sys.modules`;
 - `archive_and_public` использует canonical imports без изменения порядка 32 routers;
+- publication router сохранён перед catch-all обработчиком автоматического архива темы;
 - Phase 9 и P3 architecture contracts переведены на canonical paths;
 - добавлены проверки identity, alias size, canonical router ownership и порядка imports;
 - layout inventory обновлён до 37 implementations и 31 aliases.
@@ -57,18 +58,23 @@
 
 ### Проверки
 
-Статическая сверка router order и layout inventory выполнена. Обязательные GitHub Actions будут зафиксированы после открытия PR.
+- tests #974: 862 теста, success;
+- docker build #510: success;
+- project notes contract #371: success;
+- architecture inventory: root imports 0, active routers 55, archive/public bundle 32, duplicates 0, implementations 37, aliases 31;
+- отдельные исправления после первого CI не потребовались.
 
 ### PR и commit
 
+- PR: #199 `Move archive and public archive controllers into presentation`;
 - ветка: `agent/p3c-archive-public-controllers`;
-- PR: будет создан после фиксации worklog и inventory;
-- основной перенос выполнен серией содержательных commits через GitHub Contents API.
+- основной перенос выполнен серией содержательных commits через GitHub Contents API;
+- финальная документационная фиксация выполнена после зелёного CI.
 
 ### Незавершённое
 
-До завершения среза требуется получить зелёные tests, Docker build и project notes contract, затем обновить эту запись финальными номерами прогонов. Внутренние imports через legacy aliases остаются контролируемой совместимостью P3D.
+Внутренние imports между частью archive/public archive controllers всё ещё проходят через совместимые legacy aliases. Это контролируемый остаток P3D и не влияет на runtime semantics. Очистка import graph выполняется только отдельным срезом после завершения физических переносов.
 
 ### Следующий шаг
 
-После зелёного CI слить archive/public archive PR и продолжить отдельным P3C-срезом переноса publication presentation controllers.
+Слить PR #199 после зелёного финального CI. Затем продолжить отдельным P3C-срезом переноса publication presentation controllers.
