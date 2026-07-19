@@ -3,7 +3,7 @@
 - Дата: 2026-07-20
 - ID: `2026-07-20-p3d-legacy-consumer-inventory`
 - Линия/фаза: Velvet Archive, P3D
-- Статус: `в работе`
+- Статус: `завершено`
 - Ветка: `agent/p3d-legacy-consumer-inventory`
 - Базовый commit: `c198db0582cb24c6bbd34ed14b5a3dfd2231f741`
 
@@ -42,24 +42,36 @@ Module aliases нельзя удалять до нулевого consumer invent
 
 ### Фактически сделано
 
-В работе.
+- добавлен AST-инвентарь production imports и dynamic references на `velvet_bot.handlers.*`;
+- создан baseline: 20 consumer-файлов, 30 references, 18 legacy modules;
+- очищены `characters/uncategorized.py` и `stories/management.py`;
+- `AdminDirectoryCallback` вынесен в публичный character contract с compatibility export из `directory.py`;
+- profile text и keyboard вынесены в `characters/profile_views.py`;
+- старые `_profile_text` и `_profile_keyboard` оставлены в `directory.py` только как временные wrappers для ещё не перенесённых consumers;
+- обновлены project memory, development status, architecture audit и changelog;
+- временный source snapshot workflow удалён до финализации ветки.
 
 ### Миграции и совместимость
 
-Миграции не требуются. Старые import paths сохраняются.
+Миграции не требуются. Callback prefix `adir`, команды, SQL и пользовательские тексты сохранены. Все 68 старых handler aliases остаются доступными; этот срез уменьшает consumers, но ещё не удаляет aliases.
 
 ### Проверки
 
-Будут зафиксированы после выполнения.
+- target regression suite: 29 tests, success;
+- полный локальный suite без PostgreSQL: 938 tests, 24 integration skips, единственный промежуточный failure был ожидаемым из-за статуса worklog `в работе`;
+- `compileall`, inventory `--check` и `git diff --check`: success;
+- финальные GitHub Actions фиксируются на head PR #220.
 
 ### PR и commit
 
-Будут зафиксированы после выполнения.
+- PR: #220 `P3D: inventory legacy handler consumers`;
+- ветка: `agent/p3d-legacy-consumer-inventory`;
+- production head будет создан единым tree commit после локальных проверок.
 
 ### Незавершённое
 
-Будет уточнено после инвентаризации.
+Остаются 20 production consumers, 30 references, 18 legacy modules, 68 handler aliases и 8 runtime compatibility components. Alias удаляется только после нулевого consumer count для соответствующего старого path.
 
 ### Следующий шаг
 
-Перейти к следующей связной группе legacy consumers после подтверждения baseline.
+Очистить `stories/multi_story_kr.py` от `handlers.admin_directory` и `handlers.admin_stories`, используя публичные character profile views и story callback contract.

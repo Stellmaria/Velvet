@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "generated_from": "p3d-legacy-consumer-inventory",
+  "consumer_file_count": 20,
+  "legacy_reference_count": 30,
+  "legacy_module_count": 18,
+  "legacy_modules": [
+    "velvet_bot.handlers.admin_directory",
+    "velvet_bot.handlers.admin_media_display",
+    "velvet_bot.handlers.admin_stories",
+    "velvet_bot.handlers.analytics_dashboard",
+    "velvet_bot.handlers.analytics_management_common",
+    "velvet_bot.handlers.archive",
+    "velvet_bot.handlers.backup_center",
+    "velvet_bot.handlers.owner_menu",
+    "velvet_bot.handlers.public_archive",
+    "velvet_bot.handlers.public_manager",
+    "velvet_bot.handlers.publication_center",
+    "velvet_bot.handlers.quality_ai",
+    "velvet_bot.handlers.quality_center",
+    "velvet_bot.handlers.reference_albums",
+    "velvet_bot.handlers.reference_management",
+    "velvet_bot.handlers.references",
+    "velvet_bot.handlers.supervisor_status",
+    "velvet_bot.handlers.system_center"
+  ],
+  "consumers": [
+    {
+      "path": "velvet_bot/analytics_callbacks.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.analytics_dashboard",
+          "names": [
+            "AnalyticsCallback"
+          ],
+          "line": 6
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/owner_menu.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.admin_directory",
+          "names": [
+            "AdminDirectoryCallback"
+          ],
+          "line": 5
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.analytics_dashboard",
+          "names": [
+            "AnalyticsCallback"
+          ],
+          "line": 6
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.backup_center",
+          "names": [
+            "BackupCallback"
+          ],
+          "line": 7
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.publication_center",
+          "names": [
+            "PublicationCallback"
+          ],
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/owner_menu_compat.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.admin_directory",
+          "names": [
+            "admin_directory"
+          ],
+          "line": 50
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.analytics_dashboard",
+          "names": [
+            "analytics_dashboard"
+          ],
+          "line": 51
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.backup_center",
+          "names": [
+            "backup_center"
+          ],
+          "line": 52
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.publication_center",
+          "names": [
+            "publication_center"
+          ],
+          "line": 53
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.system_center",
+          "names": [
+            "system_center"
+          ],
+          "line": 54
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_center",
+          "names": [
+            "quality_center"
+          ],
+          "line": 75
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/analytics_controllers/management_aliases.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.analytics_management_common",
+          "names": [
+            "_edit",
+            "_short",
+            "_show_character_picker"
+          ],
+          "line": 21
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/analytics_controllers/management_publications.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.analytics_management_common",
+          "names": [
+            "_date",
+            "_edit",
+            "_pager",
+            "_short"
+          ],
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/analytics_controllers/management_tags.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.analytics_management_common",
+          "names": [
+            "_edit",
+            "_pager",
+            "_short",
+            "_show_character_picker"
+          ],
+          "line": 16
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/archive/guest.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.archive",
+          "names": [
+            "parse_guest_save_character"
+          ],
+          "line": 19
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/archive_and_public_controllers/admin_media_spoiler.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.admin_media_display",
+          "names": [
+            "replace_admin_archive_page"
+          ],
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.owner_menu",
+          "names": [
+            "show_owner_menu"
+          ],
+          "line": 303
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/public_archive/notification_open.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.public_archive",
+          "names": [
+            "_send_public_archive_page"
+          ],
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai_preview.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_ai",
+          "names": [
+            "quality_ai_module"
+          ],
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_center.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.admin_directory",
+          "names": [
+            "AdminDirectoryCallback"
+          ],
+          "line": 11
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.analytics_dashboard",
+          "names": [
+            "AnalyticsCallback"
+          ],
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/references/albums.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.references",
+          "names": [
+            "parse_reference_character"
+          ],
+          "line": 21
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/references/comparison.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.reference_albums",
+          "names": [
+            "parse_reference_selector"
+          ],
+          "line": 22
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/references/comparison_help.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.admin_directory",
+          "names": [
+            "AdminDirectoryCallback"
+          ],
+          "line": 27
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/references/documents.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.reference_management",
+          "names": [
+            "parse_reference_add_character"
+          ],
+          "line": 20
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.admin_directory",
+          "names": [
+            "AdminDirectoryCallback",
+            "_profile_keyboard",
+            "_profile_text"
+          ],
+          "line": 18
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.admin_stories",
+          "names": [
+            "AdminStoryCallback"
+          ],
+          "line": 23
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.supervisor_status",
+          "names": [
+            "show_supervisor_menu"
+          ],
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/public_manager_preview_bridge.py",
+      "imports": [
+        {
+          "kind": "dynamic-reference",
+          "module": "velvet_bot.handlers.public_manager",
+          "names": [],
+          "line": 9
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/quality_calibration_ui.py",
+      "imports": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_ai",
+          "names": [
+            "quality_ai"
+          ],
+          "line": 25
+        }
+      ]
+    }
+  ],
+  "cleaned_paths": [
+    "velvet_bot/presentation/telegram/routers/characters/uncategorized.py",
+    "velvet_bot/presentation/telegram/routers/stories/management.py"
+  ],
+  "next_slice": {
+    "phase": "P3D",
+    "target": "retire the next reviewed legacy consumer group",
+    "strategy": "move shared helpers to public contracts before deleting aliases"
+  }
+}

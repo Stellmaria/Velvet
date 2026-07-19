@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### P3C–P3D: presentation completion and legacy consumer baseline
+
+- All active Telegram controllers now live under canonical presentation routers; `velvet_bot/handlers` contains 68 aliases and 0 implementations.
+- Added a generated inventory for production consumers of legacy `velvet_bot.handlers.*` paths.
+- The first cleanup slice reduced the baseline to 20 consumer files, 30 references and 18 legacy modules.
+- Character profile text and keyboard rendering moved to a public presentation contract used by character and story controllers.
+- Callback prefixes, commands, SQL and user-visible behavior remain unchanged.
+
 ### P3A–P3B: architecture organization
 
 - Root Telegram Router now includes four ordered domain bundles instead of importing 55 handlers directly.

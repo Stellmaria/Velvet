@@ -19,10 +19,12 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_directory import (
+from velvet_bot.presentation.telegram.routers.characters.contracts import (
     AdminDirectoryCallback,
-    _profile_keyboard,
-    _profile_text,
+)
+from velvet_bot.presentation.telegram.routers.characters.profile_views import (
+    build_character_profile_keyboard,
+    format_character_profile,
 )
 from velvet_bot.story_catalog import (
     CharacterStory,
@@ -195,8 +197,8 @@ async def _render_profile(
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
     await callback.message.edit_text(
-        _profile_text(item),
-        reply_markup=_profile_keyboard(item, category=category, page=page),
+        format_character_profile(item),
+        reply_markup=build_character_profile_keyboard(item, category=category, page=page),
     )
 
 
