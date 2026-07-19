@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-archive-public-controllers`
 - Линия/фаза: Velvet Archive, P3C
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3c-archive-public-controllers`
 - Базовый commit: `c335e670ef2429f9d9846e1cbaab06882b11fe13`
 
@@ -62,22 +62,25 @@ Bundle объединяет несвязанные исторические фу
 
 ### Проверки
 
-- source-level и inventory contracts подготовлены;
-- полный CI будет записан после создания PR;
+- первый CI: Docker build #558 и project notes contract #412 прошли; tests #1022 выявил только устаревший source-path contract;
+- `tests/test_phase9_owner_use_cases.py` переведён с legacy `handlers/telegram_analytics_import.py` на canonical controller;
+- повторный CI: tests #1025, Docker build #561, project notes contract #414 — success;
 - active bundle routers: 56;
 - duplicate registrations: 0;
-- direct legacy imports в domain bundles: 0.
+- direct legacy imports в domain bundles: 0;
+- active legacy implementations: 5, aliases: 63.
 
 ### PR и commit
 
+- PR: #208 `Move remaining archive and public controllers into presentation`;
 - рабочая ветка: `agent/p3c-archive-public-controllers`;
 - runtime move commit: `6220476c4abdee43abdc5a4a4ecd18ff8aeb4b0a`;
-- PR и проверенный финальный head будут добавлены после CI.
+- проверенный runtime head: `5658792a4343028a5bf90cd81440d4c43deaa61e`.
 
 ### Незавершённое
 
-До зелёного CI срез считается частично завершённым. Пять standalone handler implementations ещё требуют классификации: являются ли они активными runtime controllers, вложенными routers или служебными файлами, которые следует переносить либо удалить в P3D.
+Пять standalone handler implementations ещё требуют классификации в P3D: являются ли они активными runtime controllers, вложенными routers или служебными файлами. Это не блокирует завершение bundle migration.
 
 ### Следующий шаг
 
-Открыть PR, пройти CI и слить срез. После этого реализовать разрешение крупных архивных изображений для администраторов и модераторов и добавить быстрые теги/алиасы персонажей для `/save`.
+Слить PR #208. После этого реализовать разрешение крупных архивных изображений для администраторов и модераторов и добавить быстрые теги/алиасы персонажей для `/save` и других сценариев разрешения имени.
