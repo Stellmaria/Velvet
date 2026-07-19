@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, Mock
 from velvet_bot.character_resolution import resolve_character
 from velvet_bot.core.access import (
     CHARACTER_TAG_REPLY_MARKER,
-    MODERATOR_COMMANDS,
+    MODERATOR_TAG_COMMANDS,
     is_moderator_callback_data,
 )
 from velvet_bot.presentation.telegram.middleware.access import is_moderator_message
@@ -82,7 +82,9 @@ class CharacterQuickTagTests(unittest.IsolatedAsyncioTestCase):
         self.assertLessEqual(len(button.callback_data.encode("utf-8")), 64)
 
     def test_moderator_access_includes_tag_commands_and_callbacks(self) -> None:
-        self.assertTrue({"tagadd", "tags", "tagdel"}.issubset(MODERATOR_COMMANDS))
+        self.assertTrue(
+            {"tagadd", "tags", "tagdel"}.issubset(MODERATOR_TAG_COMMANDS)
+        )
         callback_data = CharacterTagCallback(
             action="menu",
             character_id=41,
