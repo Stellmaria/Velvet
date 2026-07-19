@@ -57,4 +57,4 @@ Telegram ID и username уже присутствуют в Git history и при
 
 ## После завершения
 
-Заполняется после удаления временного workflow и полного CI.
+Первый generated patch применил production/config/docs изменения. Хвостовой patch удаляет устаревшие public-controller download tests и добавляет постоянный public-repository safety contract. Итоговые номера CI будут внесены после удаления временных workflows.
