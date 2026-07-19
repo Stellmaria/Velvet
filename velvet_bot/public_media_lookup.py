@@ -8,11 +8,13 @@ async def get_character_media_offset(
     *,
     character_id: int,
     media_id: int,
+    public_only: bool = False,
 ) -> int | None:
-    """Return the current newest-first offset of one character-media link."""
+    """Return the newest-first offset of one visible character-media link."""
+    visibility_filter = "AND is_public = TRUE" if public_only else ""
     async with database.acquire() as connection:
         value = await connection.fetchval(
-            """
+            f"""
             WITH ordered_media AS (
                 SELECT
                     media_id,
@@ -21,6 +23,7 @@ async def get_character_media_offset(
                     ) - 1 AS media_offset
                 FROM character_media
                 WHERE character_id = $1
+                  {visibility_filter}
             )
             SELECT media_offset
             FROM ordered_media

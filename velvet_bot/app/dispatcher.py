@@ -55,6 +55,7 @@ def build_dispatcher(
         "reference_uploads": reference_uploads,
         "access_policy": access_policy,
         "analytics_channel_ids": settings.analytics_channel_ids,
+        "adult_channel_id": settings.adult_channel_id,
         "publication_timezone": settings.publication_timezone,
         "backup_service": backup_service,
         "system_service": system_service,

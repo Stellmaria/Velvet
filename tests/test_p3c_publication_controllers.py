@@ -69,7 +69,7 @@ class P3CPublicationControllersTests(unittest.TestCase):
             source.index("router.include_router(publication_center_router)"),
             source.index("router.include_router(archive_router)"),
         )
-        self.assertEqual(32, source.count("router.include_router("))
+        self.assertEqual(33, source.count("router.include_router("))
 
 
 if __name__ == "__main__":

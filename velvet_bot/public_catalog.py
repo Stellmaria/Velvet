@@ -10,13 +10,19 @@ from velvet_bot.domains.characters import (
 )
 from velvet_bot.domains.public_archive import PublicMediaState
 from velvet_bot.domains.stories import StorySummary
+from velvet_bot.public_directory import (
+    list_visible_categories,
+    list_visible_characters,
+    list_visible_stories,
+    list_visible_universes,
+)
 
 PublicCharacterItem = CharacterDirectoryItem
 PublicCharacterPage = CharacterDirectoryPage
 
 
 async def list_public_categories(database: Database) -> list[CategorySummary]:
-    return await build_public_archive_service(database).list_categories()
+    return await list_visible_categories(database)
 
 
 async def list_public_universes(
@@ -24,9 +30,7 @@ async def list_public_universes(
     *,
     category: str,
 ) -> list[UniverseSummary]:
-    return await build_public_archive_service(database).list_universes(
-        category=category,
-    )
+    return await list_visible_universes(database, category=category)
 
 
 async def list_public_stories(
@@ -35,7 +39,8 @@ async def list_public_stories(
     category: str,
     universe: str,
 ) -> list[StorySummary]:
-    return await build_public_archive_service(database).list_stories(
+    return await list_visible_stories(
+        database,
         category=category,
         universe=universe,
     )
@@ -50,7 +55,8 @@ async def list_public_characters(
     page: int = 0,
     page_size: int = 6,
 ) -> PublicCharacterPage:
-    return await build_public_archive_service(database).list_characters(
+    return await list_visible_characters(
+        database,
         category=category,
         universe=universe,
         story_id=story_id,

@@ -16,6 +16,7 @@ class ArchiveRepository:
         *,
         character_id: int,
         offset: int,
+        public_only: bool = False,
     ) -> ArchivePage | None:
         safe_offset = max(0, int(offset))
         async with self._database.acquire() as connection:
@@ -44,19 +45,16 @@ class ArchiveRepository:
                     SELECT COUNT(*)
                     FROM character_media
                     WHERE character_id = $1::BIGINT
+                      AND ($2::BOOLEAN = FALSE OR is_public = TRUE)
                     """,
                     int(character_id),
+                    bool(public_only),
                 )
                 or 0
             )
             character = self._row_to_character(character_row)
             if total == 0:
-                return ArchivePage(
-                    character=character,
-                    media=None,
-                    offset=0,
-                    total=0,
-                )
+                return ArchivePage(character=character, media=None, offset=0, total=0)
 
             normalized_offset = safe_offset % total
             media_row = await connection.fetchrow(
@@ -76,27 +74,26 @@ class ArchiveRepository:
                     END AS prompt_post_url,
                     cm.archive_message_id,
                     cm.is_spoiler,
+                    cm.is_public,
+                    cm.requires_adult_channel,
                     ms.id AS media_set_id,
                     ms.title AS media_set_title
                 FROM character_media AS cm
                 JOIN media_files AS mf ON mf.id = cm.media_id
                 LEFT JOIN media_sets AS ms ON ms.id = mf.media_set_id
                 WHERE cm.character_id = $1::BIGINT
+                  AND ($2::BOOLEAN = FALSE OR cm.is_public = TRUE)
                 ORDER BY cm.created_at DESC, mf.id DESC
-                OFFSET $2::INTEGER
+                OFFSET $3::INTEGER
                 LIMIT 1
                 """,
                 int(character_id),
+                bool(public_only),
                 normalized_offset,
             )
 
         if media_row is None:
-            return ArchivePage(
-                character=character,
-                media=None,
-                offset=0,
-                total=0,
-            )
+            return ArchivePage(character=character, media=None, offset=0, total=0)
         return ArchivePage(
             character=character,
             media=self._row_to_media(media_row),
@@ -154,14 +151,54 @@ class ArchiveRepository:
         character_id: int,
         media_id: int,
     ) -> bool | None:
+        return await self._toggle_boolean(
+            character_id=character_id,
+            media_id=media_id,
+            column="is_spoiler",
+        )
+
+    async def toggle_public_visibility(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+    ) -> bool | None:
+        return await self._toggle_boolean(
+            character_id=character_id,
+            media_id=media_id,
+            column="is_public",
+        )
+
+    async def toggle_adult_requirement(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+    ) -> bool | None:
+        return await self._toggle_boolean(
+            character_id=character_id,
+            media_id=media_id,
+            column="requires_adult_channel",
+        )
+
+    async def _toggle_boolean(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+        column: str,
+    ) -> bool | None:
+        allowed = {"is_spoiler", "is_public", "requires_adult_channel"}
+        if column not in allowed:
+            raise ValueError("Неизвестный флаг медиа.")
         async with self._database.acquire() as connection:
             value = await connection.fetchval(
-                """
+                f"""
                 UPDATE character_media
-                SET is_spoiler = NOT is_spoiler
+                SET {column} = NOT {column}
                 WHERE character_id = $1::BIGINT
                   AND media_id = $2::BIGINT
-                RETURNING is_spoiler
+                RETURNING {column}
                 """,
                 int(character_id),
                 int(media_id),
@@ -201,6 +238,8 @@ class ArchiveRepository:
                         END AS prompt_post_url,
                         cm.archive_message_id,
                         cm.is_spoiler,
+                        cm.is_public,
+                        cm.requires_adult_channel,
                         ms.id AS media_set_id,
                         ms.title AS media_set_title
                     FROM character_media AS cm
@@ -228,11 +267,7 @@ class ArchiveRepository:
                 )
                 remaining_links = int(
                     await connection.fetchval(
-                        """
-                        SELECT COUNT(*)
-                        FROM character_media
-                        WHERE media_id = $1::BIGINT
-                        """,
+                        "SELECT COUNT(*) FROM character_media WHERE media_id = $1::BIGINT",
                         int(media_id),
                     )
                     or 0
@@ -306,6 +341,8 @@ class ArchiveRepository:
                 else None
             ),
             is_spoiler=bool(row["is_spoiler"]),
+            is_public=bool(row["is_public"]),
+            requires_adult_channel=bool(row["requires_adult_channel"]),
             media_set_id=(
                 int(row["media_set_id"])
                 if row["media_set_id"] is not None

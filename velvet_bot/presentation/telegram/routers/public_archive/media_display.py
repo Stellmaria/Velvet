@@ -4,10 +4,18 @@ from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.access import AccessPolicy
-from velvet_bot.archive_catalog import get_archive_page
+from velvet_bot.archive_catalog import (
+    get_archive_page,
+    toggle_archive_media_adult_requirement,
+    toggle_archive_media_public_visibility,
+)
 from velvet_bot.database import Database
 from velvet_bot.image_preview import ImagePreviewError
-from velvet_bot.public_archive_display import refresh_viewer_archive_caption
+from velvet_bot.public_adult_access import has_adult_channel_access
+from velvet_bot.public_archive_display import (
+    refresh_viewer_archive_caption,
+    replace_viewer_archive_page,
+)
 from velvet_bot.public_catalog import (
     toggle_character_subscription,
     toggle_public_like,
@@ -16,13 +24,36 @@ from velvet_bot.public_manager_access import has_public_manager_access
 from velvet_bot.public_manager_preview_bridge import connect_public_manager_preview
 from velvet_bot.public_media_lookup import get_character_media_offset
 from velvet_bot.public_preview_overrides import (
-    replace_viewer_archive_page,
+    replace_viewer_archive_page as replace_preview_archive_page,
     send_viewer_archive_page,
 )
 from velvet_bot.public_ui import PublicArchiveCallback
 
 connect_public_manager_preview()
 router = Router(name=__name__)
+
+
+async def _check_media_access(
+    callback: CallbackQuery,
+    bot: Bot,
+    *,
+    adult_channel_id: int,
+    requires_adult_channel: bool,
+    manager_access: bool,
+) -> bool:
+    if manager_access or not requires_adult_channel:
+        return True
+    if await has_adult_channel_access(
+        bot,
+        callback.from_user.id,
+        channel_id=adult_channel_id,
+    ):
+        return True
+    await callback.answer(
+        "Этот материал доступен только подписчикам канала Velvet +18.",
+        show_alert=True,
+    )
+    return False
 
 
 @router.callback_query(
@@ -34,25 +65,41 @@ async def handle_spoiler_aware_open(
     database: Database,
     bot: Bot,
     access_policy: AccessPolicy,
+    adult_channel_id: int,
 ) -> None:
+    manager_access = has_public_manager_access(callback.from_user, access_policy)
+    public_only = not manager_access
     offset = callback_data.offset
     if callback_data.action == "open" and callback_data.media_id:
         exact_offset = await get_character_media_offset(
             database,
             character_id=callback_data.character_id,
             media_id=callback_data.media_id,
+            public_only=public_only,
         )
         if exact_offset is None:
-            await callback.answer("Материал уже удалён.", show_alert=True)
+            await callback.answer("Материал уже удалён или скрыт.", show_alert=True)
             return
         offset = exact_offset
 
-    page = await get_archive_page(database, callback_data.character_id, offset)
+    page = await get_archive_page(
+        database,
+        callback_data.character_id,
+        offset,
+        public_only=public_only,
+    )
     if page is None or page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
+    if not await _check_media_access(
+        callback,
+        bot,
+        adult_channel_id=adult_channel_id,
+        requires_adult_channel=page.media.requires_adult_channel,
+        manager_access=manager_access,
+    ):
+        return
 
-    manager_access = has_public_manager_access(callback.from_user, access_policy)
     try:
         if callback_data.action == "open":
             if not isinstance(callback.message, Message):
@@ -71,7 +118,7 @@ async def handle_spoiler_aware_open(
                 story_id=callback_data.story_id,
             )
         else:
-            await replace_viewer_archive_page(
+            await replace_preview_archive_page(
                 callback=callback,
                 bot=bot,
                 database=database,
@@ -97,15 +144,33 @@ async def handle_like_and_subscription(
     callback: CallbackQuery,
     callback_data: PublicArchiveCallback,
     database: Database,
+    bot: Bot,
     access_policy: AccessPolicy,
+    adult_channel_id: int,
 ) -> None:
+    manager_access = has_public_manager_access(callback.from_user, access_policy)
     page = await get_archive_page(
         database,
         callback_data.character_id,
         callback_data.offset,
+        public_only=not manager_access,
     )
     if page is None or page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
+        return
+    if callback_data.media_id and callback_data.media_id != page.media.id:
+        await callback.answer(
+            "Архив изменился. Откройте материал заново.",
+            show_alert=True,
+        )
+        return
+    if not await _check_media_access(
+        callback,
+        bot,
+        adult_channel_id=adult_channel_id,
+        requires_adult_channel=page.media.requires_adult_channel,
+        manager_access=manager_access,
+    ):
         return
 
     if callback_data.action == "like":
@@ -129,10 +194,84 @@ async def handle_like_and_subscription(
         database=database,
         page=page,
         viewer_user_id=callback.from_user.id,
-        manager_access=has_public_manager_access(callback.from_user, access_policy),
+        manager_access=manager_access,
         menu_page=callback_data.page,
         category=callback_data.category,
         universe=callback_data.universe,
         story_id=callback_data.story_id,
     )
     await callback.answer(alert)
+
+
+async def handle_manager_access_flags(
+    callback: CallbackQuery,
+    callback_data: PublicArchiveCallback,
+    database: Database,
+    bot: Bot,
+    access_policy: AccessPolicy,
+) -> None:
+    if not has_public_manager_access(callback.from_user, access_policy):
+        await callback.answer("Управление архивом для вас закрыто.", show_alert=True)
+        return
+
+    page = await get_archive_page(
+        database,
+        callback_data.character_id,
+        callback_data.offset,
+    )
+    if page is None or page.media is None:
+        await callback.answer("Материал больше недоступен.", show_alert=True)
+        return
+    if callback_data.media_id and callback_data.media_id != page.media.id:
+        await callback.answer(
+            "Архив изменился. Откройте материал заново.",
+            show_alert=True,
+        )
+        return
+
+    if callback_data.action == "ppub":
+        enabled = await toggle_archive_media_public_visibility(
+            database,
+            character_id=page.character.id,
+            media_id=page.media.id,
+        )
+        alert = (
+            "Материал возвращён в публичный архив."
+            if enabled
+            else "Материал скрыт из публичного архива."
+        )
+    else:
+        enabled = await toggle_archive_media_adult_requirement(
+            database,
+            character_id=page.character.id,
+            media_id=page.media.id,
+        )
+        alert = (
+            "Для материала включена проверка подписки на канал +18."
+            if enabled
+            else "Проверка подписки на канал +18 отключена."
+        )
+
+    updated_page = await get_archive_page(
+        database,
+        page.character.id,
+        page.offset,
+    )
+    if updated_page is None or updated_page.media is None:
+        await callback.answer("Материал больше недоступен.", show_alert=True)
+        return
+    await replace_viewer_archive_page(
+        callback=callback,
+        bot=bot,
+        database=database,
+        page=updated_page,
+        viewer_user_id=callback.from_user.id,
+        manager_access=True,
+    )
+    await callback.answer(alert, show_alert=True)
+
+
+router.callback_query.register(
+    handle_manager_access_flags,
+    PublicArchiveCallback.filter(F.action.in_({"ppub", "p18"})),
+)

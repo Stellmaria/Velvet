@@ -21,6 +21,11 @@ from velvet_bot.services.telegram_topics import validate_topic_access
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
+_SHARED_TOPIC_NOTE = (
+    "Одна ветка может быть связана с несколькими персонажами. "
+    "Новые материалы из неё сохраняются во все связанные карточки."
+)
+
 
 def _topic_line(character: Character) -> str:
     if not character.archive_topic_url:
@@ -67,9 +72,10 @@ async def handle_create_character(
     if result.created:
         heading = "<b>Профиль персонажа создан</b>"
     elif result.topic_supplied:
-        heading = "<b>Профиль уже существовал, тема архива обновлена</b>"
+        heading = "<b>Профиль уже существовал, тема архива добавлена</b>"
     else:
         heading = "<b>Профиль уже существует</b>"
+    topic_note = f"\n\n{_SHARED_TOPIC_NOTE}" if result.topic_supplied else ""
     await message.answer(
         f"{heading}\n\n"
         f"Имя: <b>{escape(character.name)}</b>\n"
@@ -77,7 +83,8 @@ async def handle_create_character(
         f"Фото и видео в архиве: <b>{profile.media_count}</b>\n"
         f"Референсов: <b>{profile.reference_count}</b>\n"
         f"{_topic_line(character)}\n\n"
-        "Новые фото и видео из назначенной темы будут учитываться автоматически.",
+        "Новые фото и видео из назначенной темы будут учитываться автоматически."
+        f"{topic_note}",
         reply_markup=build_character_archive_keyboard(character, profile.media_count),
     )
 
@@ -113,9 +120,10 @@ async def handle_bind_character_topic(
         )
         return
     await message.answer(
-        "<b>Тема архива назначена</b>\n\n"
+        "<b>Тема архива добавлена</b>\n\n"
         f"Персонаж: <b>{escape(profile.character.name)}</b>\n"
-        f"{_topic_line(profile.character)}",
+        f"{_topic_line(profile.character)}\n\n"
+        f"{_SHARED_TOPIC_NOTE}",
         reply_markup=build_character_archive_keyboard(
             profile.character,
             profile.media_count,
