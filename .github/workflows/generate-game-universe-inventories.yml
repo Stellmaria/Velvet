@@ -1,0 +1,29 @@
+name: generate game universe inventories
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Generate inventories
+        run: |
+          python scripts/update_p2_stability_inventory.py --label game-universe-grouping --schema-version 44
+          python scripts/inventory_architecture_layout.py --write --label game-universe-grouping
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-universe-inventories
+          path: |
+            docs/p2_stability_inventory.json
+            docs/p2_stability_inventory.md
+            docs/architecture_layout_inventory.json
+            docs/architecture_layout_inventory.md
