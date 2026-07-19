@@ -25,7 +25,8 @@ async def has_adult_channel_access(bot: Bot, user_id: int) -> bool:
         )
         return False
 
-    status = str(member.status)
+    status_value = getattr(member.status, "value", member.status)
+    status = str(status_value)
     return status in {"creator", "administrator", "member"} or bool(
         getattr(member, "is_member", False)
     )
