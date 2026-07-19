@@ -74,7 +74,7 @@ class TopicArchiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(audit.errors), 1)
         title, recorded_error, fields = audit.errors[0]
-        self.assertEqual(title, "Ошибка автоматического архива ветки")
+        self.assertEqual(title, "Ошибка автоматического архива общей ветки")
         self.assertIs(recorded_error, error)
         self.assertEqual(fields["character"], "Ada")
         self.assertEqual(fields["archive_chat_id"], -1001)

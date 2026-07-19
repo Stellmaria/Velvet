@@ -60,6 +60,7 @@ class SpoilerManagerUiTests(unittest.TestCase):
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("📥 Скачать файлом", labels)
         self.assertIn("🌫 Убрать блюр", labels)
+        self.assertIn("🔞 Пометить как +18", labels)
         self.assertIn("🗑 Удалить", labels)
         self.assertIn("👥 Пол / состав", labels)
         self.assertIn("🎭 Вселенная", labels)
@@ -79,7 +80,7 @@ class SpoilerManagerUiTests(unittest.TestCase):
             button
             for row in keyboard.inline_keyboard
             for button in row
-            if button.text == "🌫 Скрыть под блюр 18+"
+            if button.text == "🌫 Включить блюр"
         )
         callback = PublicArchiveCallback.unpack(button.callback_data)
         self.assertEqual("psp", callback.action)

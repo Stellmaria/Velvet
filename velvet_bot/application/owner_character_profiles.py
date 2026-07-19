@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from velvet_bot.app.references import build_reference_service
+from velvet_bot.archive_topic_links import bind_character_archive_topic
 from velvet_bot.database import Character, Database
 from velvet_bot.topics import TopicReference, split_character_and_topic
 
@@ -50,11 +51,10 @@ async def create_character_profile(
     )
     if topic is not None:
         await validate_topic(topic)
-        character = await database.bind_character_topic(
-            character.id,
-            archive_chat_id=topic.chat_id,
-            archive_thread_id=topic.thread_id,
-            archive_topic_url=topic.url,
+        character = await bind_character_archive_topic(
+            database,
+            character_id=character.id,
+            topic=topic,
         )
     return CreateCharacterResult(
         profile=await _profile(database, character),
@@ -76,11 +76,10 @@ async def bind_character_topic(
     if character is None:
         raise ValueError("Такой персонаж не найден.")
     await validate_topic(topic)
-    character = await database.bind_character_topic(
-        character.id,
-        archive_chat_id=topic.chat_id,
-        archive_thread_id=topic.thread_id,
-        archive_topic_url=topic.url,
+    character = await bind_character_archive_topic(
+        database,
+        character_id=character.id,
+        topic=topic,
     )
     return await _profile(database, character)
 

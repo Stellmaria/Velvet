@@ -8,6 +8,7 @@ class PublicMediaState:
     like_count: int
     liked_by_user: bool
     subscribed: bool
+    subscriber_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)

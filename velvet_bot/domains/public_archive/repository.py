@@ -43,7 +43,12 @@ class PublicArchiveRepository:
                         FROM character_subscriptions
                         WHERE character_id = $1::BIGINT
                           AND user_id = $3::BIGINT
-                    ) AS subscribed
+                    ) AS subscribed,
+                    (
+                        SELECT COUNT(*)
+                        FROM character_subscriptions
+                        WHERE character_id = $1::BIGINT
+                    ) AS subscriber_count
                 """,
                 int(character_id),
                 int(media_id),
@@ -53,6 +58,7 @@ class PublicArchiveRepository:
             like_count=int(row["like_count"] or 0),
             liked_by_user=bool(row["liked_by_user"]),
             subscribed=bool(row["subscribed"]),
+            subscriber_count=int(row["subscriber_count"] or 0),
         )
 
     async def toggle_like(
@@ -197,6 +203,7 @@ class PublicArchiveRepository:
                 JOIN character_media AS cm
                   ON cm.character_id = cs.character_id
                  AND cm.created_at > cs.created_at
+                 AND cm.is_public = TRUE
                 JOIN media_files AS mf ON mf.id = cm.media_id
                 LEFT JOIN public_notification_deliveries AS pnd
                   ON pnd.character_id = cs.character_id

@@ -9,8 +9,14 @@ async def get_archive_page(
     database: Database,
     character_id: int,
     offset: int,
+    *,
+    public_only: bool = False,
 ) -> ArchivePage | None:
-    return await build_archive_service(database).get_page(character_id, offset)
+    return await build_archive_service(database).get_page(
+        character_id,
+        offset,
+        public_only=public_only,
+    )
 
 
 async def set_archive_media_prompt(
@@ -53,6 +59,30 @@ async def toggle_archive_media_spoiler(
     )
 
 
+async def toggle_archive_media_public_visibility(
+    database: Database,
+    *,
+    character_id: int,
+    media_id: int,
+) -> bool | None:
+    return await build_archive_service(database).toggle_public_visibility(
+        character_id=character_id,
+        media_id=media_id,
+    )
+
+
+async def toggle_archive_media_adult_requirement(
+    database: Database,
+    *,
+    character_id: int,
+    media_id: int,
+) -> bool | None:
+    return await build_archive_service(database).toggle_adult_requirement(
+        character_id=character_id,
+        media_id=media_id,
+    )
+
+
 async def delete_archive_item(
     database: Database,
     character_id: int,
@@ -72,5 +102,7 @@ __all__ = (
     "get_archive_page",
     "set_archive_media_prompt",
     "set_archive_media_spoiler",
+    "toggle_archive_media_adult_requirement",
+    "toggle_archive_media_public_visibility",
     "toggle_archive_media_spoiler",
 )

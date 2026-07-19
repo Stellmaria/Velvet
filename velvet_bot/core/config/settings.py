@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 from velvet_bot.core.access import normalize_username
 
 
+DEFAULT_ADULT_CHANNEL_ID = -1003807972037
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     bot_token: str
@@ -29,6 +32,7 @@ class Settings:
     ai_vision_timeout_seconds: int = 180
     ai_vision_max_attempts: int = 3
     moderator_user_ids: frozenset[int] = frozenset()
+    adult_channel_id: int = DEFAULT_ADULT_CHANNEL_ID
 
 
 def parse_integer_list(value: str, *, variable_name: str) -> frozenset[int]:
@@ -66,6 +70,23 @@ def parse_optional_chat_id(value: str) -> int | None:
         return int(cleaned)
     except ValueError as error:
         raise RuntimeError("LOG_CHAT_ID должен быть числовым Telegram chat ID.") from error
+
+
+def parse_chat_id(
+    value: str,
+    *,
+    variable_name: str,
+    default: int,
+) -> int:
+    cleaned = value.strip()
+    if not cleaned:
+        return int(default)
+    try:
+        return int(cleaned)
+    except ValueError as error:
+        raise RuntimeError(
+            f"{variable_name} должен быть числовым Telegram chat ID."
+        ) from error
 
 
 def parse_boolean(value: str, *, variable_name: str) -> bool:
@@ -220,16 +241,23 @@ def load_settings() -> Settings:
             os.getenv("MODERATOR_USER_IDS", ""),
             variable_name="MODERATOR_USER_IDS",
         ),
+        adult_channel_id=parse_chat_id(
+            os.getenv("ADULT_CHANNEL_ID", str(DEFAULT_ADULT_CHANNEL_ID)),
+            variable_name="ADULT_CHANNEL_ID",
+            default=DEFAULT_ADULT_CHANNEL_ID,
+        ),
     )
 
 
 __all__ = (
+    "DEFAULT_ADULT_CHANNEL_ID",
     "Settings",
     "load_settings",
     "parse_allowed_user_ids",
     "parse_allowed_usernames",
     "parse_boolean",
     "parse_bounded_integer",
+    "parse_chat_id",
     "parse_integer_list",
     "parse_optional_chat_id",
     "parse_required_path",

@@ -12,12 +12,12 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
-from velvet_bot.handlers.admin_directory import (
-    AdminDirectoryCallback,
-    _profile_keyboard,
-)
+from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
 from velvet_bot.handlers.admin_stories import AdminStoryCallback
 from velvet_bot.multi_story_queries import list_assigned_character_stories
+from velvet_bot.presentation.telegram.routers.characters.rename import (
+    _keyboard_with_rename,
+)
 from velvet_bot.safe_analytics_edit import safe_analytics_edit
 
 router = Router(name=__name__)
@@ -72,7 +72,7 @@ async def _render_kr_profile(
     await safe_analytics_edit(
         callback,
         _kr_profile_text(item, assignments),
-        _profile_keyboard(
+        _keyboard_with_rename(
             item,
             category=category or item.category or "uncategorized",
             page=page,

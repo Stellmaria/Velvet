@@ -44,6 +44,20 @@ async def actual_character_filters(
     return item.category or "", item.universe or "", item.story_id or 0
 
 
+def build_viewer_caption(page: ArchivePage, state, *, manager_access: bool = False) -> str:
+    caption = format_public_archive_caption(page, state)
+    if not manager_access or page.media is None:
+        return caption
+    visibility = "показывается" if page.media.is_public else "скрыт"
+    adult = "требуется подписка" if page.media.requires_adult_channel else "обычный доступ"
+    return (
+        f"{caption}\n"
+        f"Подписок на героя: <b>{state.subscriber_count}</b>\n"
+        f"Публичный архив: <b>{visibility}</b>\n"
+        f"Канал +18: <b>{adult}</b>"
+    )
+
+
 async def build_viewer_keyboard(
     database: Database,
     page: ArchivePage,
@@ -83,10 +97,12 @@ async def build_viewer_input_media(
     bot: Bot,
     page: ArchivePage,
     state,
+    *,
+    manager_access: bool = False,
 ):
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
-    caption = format_public_archive_caption(page, state)
+    caption = build_viewer_caption(page, state, manager_access=manager_access)
     if page.media.is_image_document:
         try:
             upload = await build_image_document_preview(bot, page.media)
@@ -130,7 +146,7 @@ async def send_viewer_archive_page(
     )
     common = {
         "chat_id": chat_id,
-        "caption": format_public_archive_caption(page, state),
+        "caption": build_viewer_caption(page, state, manager_access=manager_access),
         "reply_markup": keyboard,
     }
     if page.media.media_type == "photo":
@@ -183,7 +199,12 @@ async def replace_viewer_archive_page(
         await callback.answer("Материал больше недоступен.", show_alert=True)
         return
     state = await load_public_state(database, page, viewer_user_id)
-    media = await build_viewer_input_media(bot, page, state)
+    media = await build_viewer_input_media(
+        bot,
+        page,
+        state,
+        manager_access=manager_access,
+    )
     keyboard = await build_viewer_keyboard(
         database,
         page,
@@ -247,7 +268,7 @@ async def refresh_viewer_archive_caption(
         story_id=story_id,
     )
     await callback.message.edit_caption(
-        caption=format_public_archive_caption(page, state),
+        caption=build_viewer_caption(page, state, manager_access=manager_access),
         parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
     )

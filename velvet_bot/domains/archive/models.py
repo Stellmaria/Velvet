@@ -19,6 +19,8 @@ class ArchivedMedia:
     prompt_post_url: str | None = None
     archive_message_id: int | None = None
     is_spoiler: bool = False
+    is_public: bool = True
+    requires_adult_channel: bool = False
     media_set_id: int | None = None
     media_set_title: str | None = None
 
