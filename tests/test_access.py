@@ -17,25 +17,25 @@ from velvet_bot.config import (
 
 class AccessPolicyTests(unittest.TestCase):
     def test_username_is_normalized(self) -> None:
-        self.assertEqual("va_stellmaria", normalize_username(" @VA_StellMaria "))
+        self.assertEqual("owner_example", normalize_username(" @OWNER_EXAMPLE "))
 
     def test_owner_is_allowed_by_username(self) -> None:
         policy = AccessPolicy(
             allowed_user_ids=frozenset(),
-            allowed_usernames=frozenset({"va_stellmaria"}),
+            allowed_usernames=frozenset({"owner_example"}),
         )
         owner = User(
             id=100,
             is_bot=False,
-            first_name="Stell",
-            username="VA_StellMaria",
+            first_name="Owner",
+            username="OWNER_EXAMPLE",
         )
         self.assertTrue(policy.allows_user(owner))
 
     def test_stranger_is_rejected(self) -> None:
         policy = AccessPolicy(
             allowed_user_ids=frozenset({100}),
-            allowed_usernames=frozenset({"va_stellmaria"}),
+            allowed_usernames=frozenset({"owner_example"}),
         )
         stranger = User(
             id=200,
@@ -50,7 +50,7 @@ class AccessPolicyTests(unittest.TestCase):
             allowed_user_ids=frozenset({100}),
             allowed_usernames=frozenset(),
         )
-        owner = User(id=100, is_bot=False, first_name="Stell")
+        owner = User(id=100, is_bot=False, first_name="Owner")
         self.assertTrue(policy.allows_user(owner))
 
     def test_allowlist_parsers_accept_comma_separated_values(self) -> None:
@@ -59,8 +59,8 @@ class AccessPolicyTests(unittest.TestCase):
             _parse_allowed_user_ids("100, 200"),
         )
         self.assertEqual(
-            frozenset({"va_stellmaria", "second_owner"}),
-            _parse_allowed_usernames("@VA_StellMaria, second_owner"),
+            frozenset({"owner_example", "second_owner"}),
+            _parse_allowed_usernames("@OWNER_EXAMPLE, second_owner"),
         )
 
     def test_public_commands_are_archive_entry_points_only(self) -> None:
