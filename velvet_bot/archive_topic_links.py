@@ -75,7 +75,15 @@ async def list_characters_by_archive_topic(
     archive_chat_id: int,
     archive_thread_id: int,
 ) -> list[Character]:
-    async with database.acquire() as connection:
+    acquire = getattr(database, "acquire", None)
+    if not callable(acquire):
+        legacy_lookup = getattr(database, "get_character_by_archive_topic", None)
+        if not callable(legacy_lookup):
+            return []
+        character = await legacy_lookup(archive_chat_id, archive_thread_id)
+        return [character] if character is not None else []
+
+    async with acquire() as connection:
         rows = await connection.fetch(
             """
             SELECT DISTINCT
