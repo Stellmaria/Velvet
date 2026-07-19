@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
@@ -19,6 +21,32 @@ from velvet_bot.presentation.telegram.supervisor.views import (
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
 
 router = Router(name=__name__)
+logger = logging.getLogger(__name__)
+
+_STALE_CALLBACK_MARKERS = (
+    "query is too old",
+    "response timeout expired",
+    "query id is invalid",
+)
+
+
+async def _acknowledge_callback(
+    callback: CallbackQuery,
+    text: str | None = None,
+    *,
+    show_alert: bool = False,
+) -> bool:
+    """Answer before Supervisor I/O and tolerate an already expired query."""
+
+    try:
+        await callback.answer(text=text, show_alert=show_alert)
+    except TelegramBadRequest as error:
+        normalized = str(error).casefold()
+        if any(marker in normalized for marker in _STALE_CALLBACK_MARKERS):
+            logger.info("Supervisor status callback expired before acknowledgement: %s", error)
+            return False
+        raise
+    return True
 
 
 async def show_supervisor_menu(
@@ -60,11 +88,21 @@ async def handle_supervisor_status_callback(
     supervisor_client: SupervisorClient | None,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
+        await _acknowledge_callback(
+            callback,
+            "Меню больше недоступно.",
+            show_alert=True,
+        )
         return
     if supervisor_client is None:
-        await callback.answer("Supervisor не подключён.", show_alert=True)
+        await _acknowledge_callback(
+            callback,
+            "Supervisor не подключён.",
+            show_alert=True,
+        )
         return
+
+    await _acknowledge_callback(callback)
 
     try:
         if callback_data.action == "close":
@@ -72,7 +110,6 @@ async def handle_supervisor_status_callback(
                 await callback.message.delete()
             except TelegramBadRequest:
                 await callback.message.edit_reply_markup(reply_markup=None)
-            await callback.answer()
             return
 
         payload = await load_supervisor_status(supervisor_client)
@@ -80,9 +117,8 @@ async def handle_supervisor_status_callback(
             await _safe_edit(callback.message, _bot_text(payload), _bot_keyboard())
         else:
             await _safe_edit(callback.message, _status_text(payload), _main_keyboard())
-        await callback.answer()
     except SupervisorClientError as error:
-        await _answer_error(callback, error)
+        await _answer_error(callback.message, error)
 
 
 __all__ = ("router", "show_supervisor_menu")
