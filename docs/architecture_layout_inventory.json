@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3c-characters-stories-presentation",
+  "generated_from": "p3c-reference-controllers",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -23,8 +23,8 @@
   "active_bundle_router_count": 55,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 68,
-  "legacy_handler_implementation_count": 50,
-  "handler_compatibility_facade_count": 18,
+  "legacy_handler_implementation_count": 44,
+  "handler_compatibility_facade_count": 24,
   "handler_compatibility_facades": [
     "velvet_bot/handlers/admin_directory.py",
     "velvet_bot/handlers/admin_stories.py",
@@ -35,6 +35,12 @@
     "velvet_bot/handlers/kr_profile_overrides.py",
     "velvet_bot/handlers/kr_universe_entry.py",
     "velvet_bot/handlers/multi_story_kr.py",
+    "velvet_bot/handlers/reference_albums.py",
+    "velvet_bot/handlers/reference_comparison.py",
+    "velvet_bot/handlers/reference_comparison_help.py",
+    "velvet_bot/handlers/reference_documents.py",
+    "velvet_bot/handlers/reference_management.py",
+    "velvet_bot/handlers/references.py",
     "velvet_bot/handlers/supervisor_codex.py",
     "velvet_bot/handlers/supervisor_console.py",
     "velvet_bot/handlers/supervisor_control.py",
@@ -62,7 +68,7 @@
   "active_compatibility_component_count": 8,
   "next_slice": {
     "phase": "P3C",
-    "target": "reference presentation controllers",
+    "target": "archive and public archive presentation controllers",
     "strategy": "canonical presentation modules plus temporary handler module aliases"
   }
 }
