@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+### P3A–P3B: architecture organization
+
+- Root Telegram Router now includes four ordered domain bundles instead of importing 55 handlers directly.
+- Active compatibility installers are centralized into explicit pre-import and post-import stages.
+- The unused discussion-dashboard package bridge was removed.
+- A generated architecture-layout inventory and regression contracts now measure remaining physical debt.
+- Project status, memory and architecture audit were synchronized with current `main`.
+
+### P2AO–P2AP: final stability closure
+
+- System health and WorkerManager boundaries were verified with cancellation/error regression tests.
+- P2 inventory reached 67 approved broad boundaries, 0 unresolved boundaries and 0 late/missing callbacks.
+- P2 stability has no remaining code slice.
+
 ### P2AN: media save boundaries
 
 - Save failures are isolated and recorded.
