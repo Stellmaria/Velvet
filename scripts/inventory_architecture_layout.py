@@ -15,19 +15,28 @@ BUNDLE_DIR = PACKAGE / "presentation/telegram/routers"
 COMPAT_PATH = PACKAGE / "presentation/telegram/compat.py"
 JSON_PATH = ROOT / "docs/architecture_layout_inventory.json"
 MARKDOWN_PATH = ROOT / "docs/architecture_layout_inventory.md"
+MODULE_ALIAS_MARKER = "P3_COMPAT_MODULE_ALIAS"
 
 
 def _tree(path: Path) -> ast.Module:
     return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 
-def _imports(path: Path, prefix: str) -> list[str]:
+def _all_import_modules(path: Path) -> list[str]:
     return sorted(
         node.module
         for node in ast.walk(_tree(path))
-        if isinstance(node, ast.ImportFrom)
-        and node.module
-        and node.module.startswith(prefix)
+        if isinstance(node, ast.ImportFrom) and node.module
+    )
+
+
+def _imports(path: Path, prefix: str) -> list[str]:
+    return [name for name in _all_import_modules(path) if name.startswith(prefix)]
+
+
+def _is_active_router_module(name: str) -> bool:
+    return name.startswith("velvet_bot.handlers.") or name.startswith(
+        "velvet_bot.presentation.telegram.routers."
     )
 
 
@@ -52,23 +61,29 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
     bundle_imports: list[str] = []
     bundle_rows: list[dict[str, Any]] = []
     for path in bundle_files:
-        imports = _imports(path, "velvet_bot.handlers.")
+        imports = [
+            name for name in _all_import_modules(path) if _is_active_router_module(name)
+        ]
         bundle_imports.extend(imports)
         bundle_rows.append(
             {
                 "path": path.relative_to(ROOT).as_posix(),
-                "handler_imports": imports,
-                "handler_count": len(imports),
+                "router_imports": imports,
+                "router_count": len(imports),
             }
         )
 
     counts = Counter(bundle_imports)
     duplicate_imports = sorted(name for name, count in counts.items() if count > 1)
-    active_handler_files = sorted(
-        path.relative_to(ROOT).as_posix()
-        for path in HANDLERS.glob("*.py")
-        if path.name != "__init__.py"
+    handler_paths = sorted(
+        path for path in HANDLERS.glob("*.py") if path.name != "__init__.py"
     )
+    handler_facades = sorted(
+        path
+        for path in handler_paths
+        if MODULE_ALIAS_MARKER in path.read_text(encoding="utf-8")
+    )
+    handler_implementations = sorted(set(handler_paths) - set(handler_facades))
     root_modules = sorted(
         path.relative_to(ROOT).as_posix()
         for path in PACKAGE.glob("*.py")
@@ -83,17 +98,27 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
     post_components = _literal_assignment(COMPAT_PATH, "POST_IMPORT_COMPONENTS")
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_from": label,
         "root_direct_handler_imports": root_handler_imports,
         "root_direct_handler_import_count": len(root_handler_imports),
         "router_bundles": bundle_rows,
-        "active_bundle_handler_imports": sorted(bundle_imports),
-        "active_bundle_handler_count": len(bundle_imports),
-        "duplicate_bundle_handler_imports": duplicate_imports,
-        "duplicate_bundle_handler_import_count": len(duplicate_imports),
-        "legacy_handler_file_count": len(active_handler_files),
-        "legacy_handler_files": active_handler_files,
+        "active_bundle_router_imports": sorted(bundle_imports),
+        "active_bundle_router_count": len(bundle_imports),
+        "duplicate_bundle_router_imports": duplicate_imports,
+        "duplicate_bundle_router_import_count": len(duplicate_imports),
+        "legacy_handler_file_count": len(handler_paths),
+        "legacy_handler_files": [
+            path.relative_to(ROOT).as_posix() for path in handler_paths
+        ],
+        "legacy_handler_implementation_count": len(handler_implementations),
+        "legacy_handler_implementations": [
+            path.relative_to(ROOT).as_posix() for path in handler_implementations
+        ],
+        "handler_compatibility_facade_count": len(handler_facades),
+        "handler_compatibility_facades": [
+            path.relative_to(ROOT).as_posix() for path in handler_facades
+        ],
         "root_level_module_count": len(root_modules),
         "root_level_modules": root_modules,
         "compatibility_file_count": len(compatibility_files),
@@ -103,8 +128,8 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "active_compatibility_component_count": len(pre_components) + len(post_components),
         "next_slice": {
             "phase": "P3C",
-            "target": "Supervisor and system presentation controllers",
-            "strategy": "canonical presentation modules plus temporary handler re-exports",
+            "target": "characters and stories presentation controllers",
+            "strategy": "canonical presentation modules plus temporary handler module aliases",
         },
     }
 
@@ -119,9 +144,11 @@ def render_markdown(data: dict[str, Any]) -> str:
         "",
         f"- прямые imports `velvet_bot.handlers.*` в root Router: **{data['root_direct_handler_import_count']}**;",
         f"- доменных router bundles: **{len(data['router_bundles'])}**;",
-        f"- активных handler imports в bundles: **{data['active_bundle_handler_count']}**;",
-        f"- дублирующих регистраций между bundles: **{data['duplicate_bundle_handler_import_count']}**;",
+        f"- активных router imports в bundles: **{data['active_bundle_router_count']}**;",
+        f"- дублирующих регистраций между bundles: **{data['duplicate_bundle_router_import_count']}**;",
         f"- физических legacy handler-файлов: **{data['legacy_handler_file_count']}**;",
+        f"- активных legacy handler implementations: **{data['legacy_handler_implementation_count']}**;",
+        f"- временных handler module aliases: **{data['handler_compatibility_facade_count']}**;",
         f"- корневых Python-модулей `velvet_bot/*.py`: **{data['root_level_module_count']}**;",
         f"- файлов с `compat` в имени: **{data['compatibility_file_count']}**;",
         f"- активных compatibility-компонентов: **{data['active_compatibility_component_count']}**.",
@@ -130,7 +157,7 @@ def render_markdown(data: dict[str, Any]) -> str:
         "",
     ]
     for item in data["router_bundles"]:
-        lines.append(f"- `{item['path']}`: {item['handler_count']} handlers.")
+        lines.append(f"- `{item['path']}`: {item['router_count']} routers.")
     lines.extend(
         [
             "",
@@ -163,7 +190,7 @@ def render_markdown(data: dict[str, Any]) -> str:
             "",
             "```bash",
             "python scripts/inventory_architecture_layout.py --write --label <phase>",
-            "python scripts/inventory_architecture_layout.py --check",
+            "python scripts/inventory_architecture_layout.py --check --label <phase>",
             "```",
             "",
         ]
@@ -188,8 +215,8 @@ def _check(data: dict[str, Any]) -> None:
         raise SystemExit("architecture_layout_inventory.md устарел")
     if data["root_direct_handler_import_count"] != 0:
         raise SystemExit("Root Router снова импортирует отдельные handlers")
-    if data["duplicate_bundle_handler_import_count"] != 0:
-        raise SystemExit("Один handler зарегистрирован в нескольких router bundles")
+    if data["duplicate_bundle_router_import_count"] != 0:
+        raise SystemExit("Один router зарегистрирован в нескольких bundles")
 
 
 def main() -> None:
