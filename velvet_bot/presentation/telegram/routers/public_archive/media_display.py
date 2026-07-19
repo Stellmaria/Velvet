@@ -37,12 +37,17 @@ async def _check_media_access(
     callback: CallbackQuery,
     bot: Bot,
     *,
+    adult_channel_id: int,
     requires_adult_channel: bool,
     manager_access: bool,
 ) -> bool:
     if manager_access or not requires_adult_channel:
         return True
-    if await has_adult_channel_access(bot, callback.from_user.id):
+    if await has_adult_channel_access(
+        bot,
+        callback.from_user.id,
+        channel_id=adult_channel_id,
+    ):
         return True
     await callback.answer(
         "Этот материал доступен только подписчикам канала Velvet +18.",
@@ -60,6 +65,7 @@ async def handle_spoiler_aware_open(
     database: Database,
     bot: Bot,
     access_policy: AccessPolicy,
+    adult_channel_id: int,
 ) -> None:
     manager_access = has_public_manager_access(callback.from_user, access_policy)
     public_only = not manager_access
@@ -88,6 +94,7 @@ async def handle_spoiler_aware_open(
     if not await _check_media_access(
         callback,
         bot,
+        adult_channel_id=adult_channel_id,
         requires_adult_channel=page.media.requires_adult_channel,
         manager_access=manager_access,
     ):
@@ -139,6 +146,7 @@ async def handle_like_and_subscription(
     database: Database,
     bot: Bot,
     access_policy: AccessPolicy,
+    adult_channel_id: int,
 ) -> None:
     manager_access = has_public_manager_access(callback.from_user, access_policy)
     page = await get_archive_page(
@@ -153,6 +161,7 @@ async def handle_like_and_subscription(
     if not await _check_media_access(
         callback,
         bot,
+        adult_channel_id=adult_channel_id,
         requires_adult_channel=page.media.requires_adult_channel,
         manager_access=manager_access,
     ):
