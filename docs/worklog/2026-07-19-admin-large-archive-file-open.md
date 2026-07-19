@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-admin-large-archive-file-open`
 - Линия/фаза: Velvet Archive, исправление admin archive preview
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/admin-open-large-archive-files`
 - Базовый commit: `8627fafbc317172eca5503edf83dc57d23c62440`
 
@@ -57,20 +57,24 @@
 
 ### Проверки
 
-- полный CI запущен на пересобранном head;
-- итоговые номера tests, Docker build и project notes contract будут записаны после завершения.
+- tests #1016: success;
+- Docker build #552: success;
+- project notes contract #406: success;
+- отдельные regression-тесты подтвердили порог 20 МБ, отправку исходного документа, навигацию через `InputMediaDocument` и сохранение photo preview для небольших изображений;
+- функциональных и архитектурных регрессий не обнаружено.
 
 ### PR и commit
 
 - PR: #206 `Allow admins to open large archive images as files`;
 - рабочая ветка: `agent/admin-open-large-archive-files`;
 - runtime commit после синхронизации: `d46d557c3d2c48d3e05ee9325dd6fb94f3d84f8b`;
-- regression tests commit: `d88417e68dfed03f7685dc873322678e4c42bf33`.
+- regression tests commit: `d88417e68dfed03f7685dc873322678e4c42bf33`;
+- проверенный runtime head: `abe065691ef545b8f3476d1a2e5e7d9f373d9a20`.
 
 ### Незавершённое
 
-До зелёного полного CI срез считается частично завершённым. После merge PR #206 можно начать следующий архитектурный срез P3C: quality operations presentation controllers.
+Код исправления завершён. Остаётся живая проверка на реальном архивном файле больше 20 МБ после развёртывания; это эксплуатационная проверка, а не блокировка merge.
 
 ### Следующий шаг
 
-Дождаться зелёного CI, завершить worklog и слить PR #206. Затем начать перенос quality operations presentation controllers с актуального `main`.
+Слить PR #206 и начать следующий архитектурный срез P3C: перенос quality operations presentation controllers с актуального `main`.
