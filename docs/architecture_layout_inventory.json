@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3c-archive-public-controllers",
+  "generated_from": "p3c-publication-controllers",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -23,8 +23,8 @@
   "active_bundle_router_count": 55,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 68,
-  "legacy_handler_implementation_count": 37,
-  "handler_compatibility_facade_count": 31,
+  "legacy_handler_implementation_count": 35,
+  "handler_compatibility_facade_count": 33,
   "handler_compatibility_facades": [
     "velvet_bot/handlers/admin_directory.py",
     "velvet_bot/handlers/admin_stories.py",
@@ -41,6 +41,8 @@
     "velvet_bot/handlers/public_manager.py",
     "velvet_bot/handlers/public_media_display.py",
     "velvet_bot/handlers/public_notification_open.py",
+    "velvet_bot/handlers/publication_center.py",
+    "velvet_bot/handlers/publication_center_safe.py",
     "velvet_bot/handlers/reference_albums.py",
     "velvet_bot/handlers/reference_comparison.py",
     "velvet_bot/handlers/reference_comparison_help.py",
@@ -75,7 +77,7 @@
   "active_compatibility_component_count": 8,
   "next_slice": {
     "phase": "P3C",
-    "target": "publication presentation controllers",
+    "target": "analytics presentation controllers",
     "strategy": "canonical presentation modules plus temporary handler module aliases"
   }
 }
