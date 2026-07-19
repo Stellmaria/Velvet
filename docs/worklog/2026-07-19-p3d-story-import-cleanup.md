@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3d-story-import-cleanup`
 - Линия/фаза: P3D, canonical import cleanup
-- Статус: в работе
+- Статус: завершено
 - Ветка: `agent/p3d-characters-stories-import-cleanup`
 - Базовый commit: `ef93f01cc34ead12a2d292bcddeba13ceb4af024`
 
@@ -39,24 +39,35 @@
 
 ### Фактически сделано
 
-Работа выполняется.
+- `stories/universe_flow.py` переведён с `handlers.admin_directory` и `handlers.admin_stories` на canonical modules `characters.directory` и `stories.management`;
+- `stories/kr_universe_entry.py` переведён с `handlers.admin_directory` и `handlers.multi_story_kr` на canonical modules `characters.directory` и `stories.multi_story_kr`;
+- удалены три production legacy-imports;
+- callback classes, prefixes, router registration, UI-тексты и ветвление обработчиков не менялись;
+- добавлен AST regression contract `tests/test_p3d_story_canonical_imports.py`, который запрещает возвращение handler aliases в очищенные файлы и проверяет ожидаемые canonical dependencies;
+- импортного цикла между `universe_flow` и `management` не возникло.
 
 ### Миграции и совместимость
 
-Миграции не требуются. Callback data и Telegram UI не меняются.
+Миграции не требуются. Callback data, Telegram UI, router count и compatibility alias-файлы не менялись. Внешние старые импорты продолжают работать через существующие aliases.
 
 ### Проверки
 
-Проверки ещё не запущены.
+- tests #1075 выполнил 928 тестов: все production и regression-тесты прошли, единственный failure был ожидаемым project-notes assertion из-за статуса worklog `в работе`;
+- Docker build #608: success;
+- project notes contract #455: ожидаемый failure до финализации worklog;
+- после этой записи запускается повторный полный CI финального documentation head.
 
 ### PR и commit
 
-PR будет создан после production-правок и regression-теста.
+- PR: #217 `P3D: clean canonical imports in story routers`;
+- `universe_flow` canonical imports: `6e535afcab1a64ca5dd9ee47f314c63cde49fae6`;
+- `kr_universe_entry` canonical imports: `77872b7498958c9a90c17d84b4741fd1c176e72f`;
+- regression contract: `df232fb0452bdfae526271e3ec9ea3e4bf22ab67`.
 
 ### Незавершённое
 
-Остальные production consumers legacy handler paths остаются вне этого среза.
+Остальные production consumers legacy handler paths остаются вне этого среза. Сами compatibility alias-файлы также пока не удаляются.
 
 ### Следующий шаг
 
-Перевести два story-router'а на canonical imports и добавить точечный CI-контракт.
+После зелёного повторного CI слить PR #217. Следующим отдельным срезом очистить `characters/uncategorized.py` и `stories/management.py` от `handlers.admin_directory`.
