@@ -72,9 +72,27 @@ def build_manager_archive_keyboard(
             [
                 InlineKeyboardButton(
                     text=(
+                        "👁 Вернуть в публичный"
+                        if not page.media.is_public
+                        else "🙈 Скрыть из публичного"
+                    ),
+                    callback_data=manager_callback("ppub", **common),
+                ),
+                InlineKeyboardButton(
+                    text=(
+                        "🔞 Снять отметку +18"
+                        if page.media.requires_adult_channel
+                        else "🔞 Пометить как +18"
+                    ),
+                    callback_data=manager_callback("p18", **common),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=(
                         "🌫 Убрать блюр"
                         if page.media.is_spoiler
-                        else "🌫 Скрыть под блюр 18+"
+                        else "🌫 Включить блюр"
                     ),
                     callback_data=manager_callback("psp", **common),
                 ),
