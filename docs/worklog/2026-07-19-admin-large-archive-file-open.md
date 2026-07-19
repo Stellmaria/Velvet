@@ -5,7 +5,7 @@
 - Линия/фаза: Velvet Archive, исправление admin archive preview
 - Статус: `частично`
 - Ветка: `agent/admin-open-large-archive-files`
-- Базовый commit после merge PR #205: `8627fafbc317172eca5503edf83dc57d23c62440`
+- Базовый commit: `8627fafbc317172eca5503edf83dc57d23c62440`
 
 ## Перед началом
 
