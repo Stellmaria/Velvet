@@ -121,9 +121,9 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "post_import_compatibility_components": list(post_components),
         "active_compatibility_component_count": len(pre_components) + len(post_components),
         "next_slice": {
-            "phase": "P3C",
-            "target": "remaining archive-and-public presentation controllers",
-            "strategy": "canonical presentation modules plus temporary handler module aliases",
+            "phase": "P3D",
+            "target": "remaining standalone handler implementations and compatibility retirement",
+            "strategy": "classify five residual implementations before removing temporary aliases",
         },
     }
 

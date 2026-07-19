@@ -81,7 +81,7 @@ class Phase9ArchitectureTests(unittest.TestCase):
             "velvet_bot/presentation/telegram/routers/analytics_controllers/channel.py": (
                 "velvet_bot.application.owner_analytics"
             ),
-            "velvet_bot/handlers/telegram_analytics_import.py": (
+            "velvet_bot/presentation/telegram/routers/archive_and_public_controllers/telegram_analytics_import.py": (
                 "velvet_bot.application.owner_analytics"
             ),
             "velvet_bot/presentation/telegram/routers/archive/save.py": (

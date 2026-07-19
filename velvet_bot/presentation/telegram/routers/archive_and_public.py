@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from velvet_bot.handlers.telegram_analytics_import import router as telegram_analytics_import_router
-from velvet_bot.handlers.discussion_updates import router as discussion_updates_router
-from velvet_bot.handlers.start import router as start_router
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
+    router as telegram_analytics_import_router,
+)
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.discussion_updates import (
+    router as discussion_updates_router,
+)
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.start import (
+    router as start_router,
+)
 from velvet_bot.presentation.telegram.routers.public_archive.media_display import (
     router as public_media_display_router,
 )
@@ -29,10 +35,18 @@ from velvet_bot.presentation.telegram.routers.public_archive.notification_open i
 from velvet_bot.presentation.telegram.routers.public_archive.catalog import (
     router as public_archive_router,
 )
-from velvet_bot.handlers.media_prompt_binding import router as media_prompt_binding_router
-from velvet_bot.handlers.admin_media_spoiler import router as admin_media_spoiler_router
-from velvet_bot.handlers.admin_large_media_preview import router as admin_large_media_preview_router
-from velvet_bot.handlers.admin_media_display import router as admin_media_display_router
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.media_prompt_binding import (
+    router as media_prompt_binding_router,
+)
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_spoiler import (
+    router as admin_media_spoiler_router,
+)
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_large_media_preview import (
+    router as admin_large_media_preview_router,
+)
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_display import (
+    router as admin_media_display_router,
+)
 from velvet_bot.presentation.telegram.routers.stories.management import (
     router as admin_stories_router,
 )
@@ -51,7 +65,9 @@ from velvet_bot.presentation.telegram.routers.characters.directory import (
 from velvet_bot.presentation.telegram.routers.characters.profiles import (
     router as characters_router,
 )
-from velvet_bot.handlers.media_browser import router as media_browser_router
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.media_browser import (
+    router as media_browser_router,
+)
 from velvet_bot.presentation.telegram.routers.references.comparison_help import (
     router as reference_comparison_help_router,
 )
@@ -70,7 +86,9 @@ from velvet_bot.presentation.telegram.routers.references.management import (
 from velvet_bot.presentation.telegram.routers.references.catalog import (
     router as references_router,
 )
-from velvet_bot.handlers.inline_help import router as inline_help_router
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.inline_help import (
+    router as inline_help_router,
+)
 from velvet_bot.presentation.telegram.routers.archive.guest import (
     router as guest_archive_router,
 )
