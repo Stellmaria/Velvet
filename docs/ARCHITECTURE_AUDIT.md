@@ -1,6 +1,6 @@
 # Актуальный аудит архитектуры Velvet
 
-Дата актуализации: 19 июля 2026 года.
+Дата актуализации: 20 июля 2026 года.
 
 ## Объём проверки
 
@@ -21,7 +21,7 @@
 
 Логический рефакторинг основных бизнес- и persistence-границ завершён. Проект использует composition root, application use cases, repositories/services, централизованный WorkerManager и проверенные Telegram/error boundaries.
 
-Физическая структура пакетов остаётся переходной: активные Telegram controllers ещё находятся в `velvet_bot/handlers`, часть repositories и services расположена в исторических корневых модулях, а несколько runtime compatibility adapters всё ещё нужны до завершения переноса.
+Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, но 68 старых handler paths сохраняются как module aliases, часть repositories и services расположена в исторических корневых модулях, а несколько runtime compatibility adapters всё ещё нужны до завершения очистки consumers.
 
 ## Закрытые архитектурные долги
 
@@ -92,7 +92,7 @@ velvet_bot/
   repositories/                часть исторических repository implementations
   services/                    application/integration services
   workers/                     WorkerManager и worker boundaries
-  handlers/                    активные legacy presentation controllers
+  handlers/                    68 временных module aliases, 0 implementations
   *.py                         compatibility и исторические domain modules
 ```
 
@@ -123,26 +123,16 @@ Root composition не должен импортировать отдельные
 
 ## P3C: физический перенос presentation
 
-Открытый долг:
+Статус: завершено.
 
-- перенести controllers из `velvet_bot/handlers` в `velvet_bot/presentation/telegram/routers/<domain>/`;
-- сохранить старые import paths через временные re-export facades;
-- не менять callback prefixes, команды и use cases во время физического переноса;
-- переносить один связный домен за PR.
-
-Приоритет:
-
-1. Supervisor и system;
-2. characters/stories;
-3. references;
-4. archive/public archive;
-5. publication;
-6. analytics;
-7. quality/Velvet AI.
+- 68 legacy handler-файлов являются module aliases;
+- активных implementations в `velvet_bot/handlers` нет;
+- canonical controllers зарегистрированы через четыре ordered bundles;
+- callback prefixes, команды и use cases сохранены.
 
 ## P3D: compatibility retirement
 
-Compatibility должен быть явным, перечисленным и стадийным.
+Статус: выполняется. Legacy-consumer inventory после первого cleanup-среза фиксирует 20 production-файлов, 30 references и 18 старых handler modules. Compatibility должен быть явным, перечисленным и стадийным.
 
 Допустимы временные категории:
 
@@ -158,7 +148,7 @@ Compatibility должен быть явным, перечисленным и с
 - installer, который невозможно связать с regression-тестом;
 - no-op bridge, существующий только потому, что старый тест проверяет его наличие.
 
-Неиспользуемый discussion dashboard package bridge удалён. Оставшиеся active components перечисляются в `velvet_bot/presentation/telegram/compat.py`.
+Неиспользуемый discussion dashboard package bridge удалён. Оставшиеся active components перечисляются в `velvet_bot/presentation/telegram/compat.py`, а consumers старых handler paths — в `docs/legacy_handler_consumer_inventory.*`.
 
 ## P3E: repository layout
 
