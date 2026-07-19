@@ -3,7 +3,7 @@
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-supervisor-system-presentation`
 - Линия/фаза: Velvet Archive, P3C
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3c-supervisor-system-presentation`
 - Базовый commit: `37cf584d07972f88236b30a718222192e4a12bf8`
 
@@ -52,7 +52,8 @@ P3A–P3B создали ordered router bundles и машинный layout inven
 - layout inventory разделяет физические legacy-файлы, активные implementations и временные aliases;
 - активные legacy handler implementations уменьшены с 68 до 59;
 - временный move-workflow удалён после pre-execution failure, перенос выполнен атомарным Git tree commit;
-- отдельный Windows smoke workflow был создан для проверки целевой ОС и удалён после того, как Windows job также завершился до checkout.
+- отдельный Windows smoke workflow был создан для проверки целевой ОС и удалён после того, как Windows job также завершился до checkout;
+- после перевода репозитория в public обязательные workflow были повторно запущены на неизменённом кодовом head и успешно завершились.
 
 ### Миграции и совместимость
 
@@ -62,11 +63,10 @@ P3A–P3B создали ordered router bundles и машинный layout inven
 
 - статическая сверка PR diff и import graph выполнена;
 - architecture inventory: root imports 0, active routers 55, duplicates 0, implementations 59, aliases 9;
-- GitHub Actions tests #933, Docker #469 и notes #334, а также последующие попытки, завершились до первого workflow step с `steps=None`, `logs_url=None` и без checkout;
-- повторный запуск unit-tests также завершился до первого шага и не создал log blob;
-- Windows smoke run #1 завершился аналогично: `steps=None`, `logs_url=None`, checkout не выполнялся;
-- Linux и Windows pre-execution failures показывают, что проблема не относится к коду конкретного runner workflow, но точная причина недоступна подключённому GitHub integration API;
-- обязательный реальный CI пока не выполнен.
+- `tests` run #938: success;
+- `docker build` run #474: success;
+- `project notes contract` run #339: success;
+- все обязательные проверки выполнились после checkout, а не завершились на стадии provision runner.
 
 ### PR и commit
 
@@ -76,8 +76,8 @@ P3A–P3B создали ordered router bundles и машинный layout inven
 
 ### Незавершённое
 
-PR не готов к слиянию до первого фактического запуска tests, Docker build и project notes contract. Следующие presentation-домены, root modules и active compatibility components остаются отдельными P3-срезами.
+Следующие presentation-домены, root modules и active compatibility components остаются отдельными P3-срезами. Отдельно требуется убрать публичные персональные defaults из `.env.example` и `velvet_bot/core/config/settings.py`.
 
 ### Следующий шаг
 
-После восстановления выполнения GitHub Actions или доступного локального checkout выполнить полный CI, исправить реальные регрессии при наличии, завершить worklog и слить PR #195. Затем перенести characters/stories controllers.
+Слить PR #195 после финального документационного commit. Затем выполнить отдельный public-repository security hardening срез и продолжить перенос characters/stories controllers.
