@@ -6,19 +6,33 @@
 
 - прямые imports `velvet_bot.handlers.*` в root Router: **0**;
 - доменных router bundles: **4**;
-- активных handler imports в bundles: **55**;
+- активных router imports в bundles: **55**;
 - дублирующих регистраций между bundles: **0**;
 - физических legacy handler-файлов: **68**;
+- активных legacy handler implementations: **59**;
+- временных handler module aliases: **9**;
 - корневых Python-модулей `velvet_bot/*.py`: **110**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
 
 ## Router bundles
 
-- `velvet_bot/presentation/telegram/routers/analytics.py`: 5 handlers.
-- `velvet_bot/presentation/telegram/routers/archive_and_public.py`: 32 handlers.
-- `velvet_bot/presentation/telegram/routers/core_operations.py`: 5 handlers.
-- `velvet_bot/presentation/telegram/routers/quality_operations.py`: 13 handlers.
+- `velvet_bot/presentation/telegram/routers/analytics.py`: 5 routers.
+- `velvet_bot/presentation/telegram/routers/archive_and_public.py`: 32 routers.
+- `velvet_bot/presentation/telegram/routers/core_operations.py`: 5 routers.
+- `velvet_bot/presentation/telegram/routers/quality_operations.py`: 13 routers.
+
+## Handler module aliases
+
+- `velvet_bot/handlers/supervisor_codex.py`.
+- `velvet_bot/handlers/supervisor_console.py`.
+- `velvet_bot/handlers/supervisor_control.py`.
+- `velvet_bot/handlers/supervisor_git.py`.
+- `velvet_bot/handlers/supervisor_logs.py`.
+- `velvet_bot/handlers/supervisor_process.py`.
+- `velvet_bot/handlers/supervisor_self.py`.
+- `velvet_bot/handlers/supervisor_status.py`.
+- `velvet_bot/handlers/system_center.py`.
 
 ## Активная compatibility-граница
 
@@ -39,14 +53,12 @@
 ## Следующий срез
 
 - фаза: **P3C**;
-- цель: **Supervisor and system presentation controllers**;
-- стратегия: canonical presentation modules plus temporary handler re-exports.
+- цель: **characters and stories presentation controllers**;
+- стратегия: canonical presentation modules plus temporary handler module aliases.
 
 ## Правило обновления
 
-После изменения root Router, bundles, `handlers/` или compatibility запустите:
-
 ```bash
 python scripts/inventory_architecture_layout.py --write --label <phase>
-python scripts/inventory_architecture_layout.py --check
+python scripts/inventory_architecture_layout.py --check --label <phase>
 ```

@@ -24,11 +24,27 @@ from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallb
 
 
 SUPERVISOR_CONTROLLERS = {
-    "velvet_bot/handlers/supervisor_status.py": {"supervisor", "status"},
-    "velvet_bot/handlers/supervisor_process.py": {"restart"},
-    "velvet_bot/handlers/supervisor_git.py": {"update", "rollback"},
-    "velvet_bot/handlers/supervisor_logs.py": {"logs"},
-    "velvet_bot/handlers/supervisor_codex.py": {"codex", "codex_status"},
+    "velvet_bot/presentation/telegram/routers/supervisor/status.py": {
+        "supervisor",
+        "status",
+    },
+    "velvet_bot/presentation/telegram/routers/supervisor/process.py": {"restart"},
+    "velvet_bot/presentation/telegram/routers/supervisor/git.py": {
+        "update",
+        "rollback",
+    },
+    "velvet_bot/presentation/telegram/routers/supervisor/logs.py": {"logs"},
+    "velvet_bot/presentation/telegram/routers/supervisor/console.py": {
+        "console",
+        "supervisor_console",
+    },
+    "velvet_bot/presentation/telegram/routers/supervisor/self_control.py": {
+        "supervisor_self"
+    },
+    "velvet_bot/presentation/telegram/routers/supervisor/codex.py": {
+        "codex",
+        "codex_status",
+    },
 }
 
 
@@ -232,13 +248,26 @@ class AccessBoundaryTests(unittest.TestCase):
 
 
 class SupervisorArchitectureTests(unittest.TestCase):
-    def test_facade_contains_no_command_handlers(self) -> None:
-        path = Path("velvet_bot/handlers/supervisor_control.py")
-        source = path.read_text(encoding="utf-8")
-        self.assertEqual(_commands(str(path)), set())
-        self.assertLess(len(source.splitlines()), 100)
-        for module in ("status", "process", "git", "logs", "codex"):
-            self.assertIn(f"supervisor_{module}", source)
+    def test_legacy_modules_are_module_aliases_without_handlers(self) -> None:
+        aliases = {
+            "supervisor_control.py": "routers.supervisor.control",
+            "supervisor_status.py": "routers.supervisor.status",
+            "supervisor_process.py": "routers.supervisor.process",
+            "supervisor_git.py": "routers.supervisor.git",
+            "supervisor_logs.py": "routers.supervisor.logs",
+            "supervisor_console.py": "routers.supervisor.console",
+            "supervisor_self.py": "routers.supervisor.self_control",
+            "supervisor_codex.py": "routers.supervisor.codex",
+            "system_center.py": "routers.system",
+        }
+        for filename, target in aliases.items():
+            with self.subTest(filename=filename):
+                path = Path("velvet_bot/handlers") / filename
+                source = path.read_text(encoding="utf-8")
+                self.assertEqual(_commands(str(path)), set())
+                self.assertIn("P3_COMPAT_MODULE_ALIAS", source)
+                self.assertIn(target, source)
+                self.assertNotIn("@router.", source)
 
     def test_each_controller_owns_only_its_commands(self) -> None:
         for path, expected in SUPERVISOR_CONTROLLERS.items():
@@ -249,11 +278,16 @@ class SupervisorArchitectureTests(unittest.TestCase):
         contract = Path(
             "velvet_bot/presentation/telegram/supervisor/contract.py"
         ).read_text(encoding="utf-8")
+        control = Path(
+            "velvet_bot/presentation/telegram/routers/supervisor/control.py"
+        ).read_text(encoding="utf-8")
         facade = Path("velvet_bot/handlers/supervisor_control.py").read_text(
             encoding="utf-8"
         )
         self.assertIn('prefix="sup"', contract)
+        self.assertNotIn('prefix="sup"', control)
         self.assertNotIn('prefix="sup"', facade)
+        self.assertNotIn("class SupervisorCallback", control)
         self.assertNotIn("class SupervisorCallback", facade)
 
 

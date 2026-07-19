@@ -12,22 +12,37 @@ PACKAGE = ROOT / "velvet_bot"
 HANDLERS = PACKAGE / "handlers"
 ROUTER_ROOT = PACKAGE / "presentation/telegram/router.py"
 BUNDLE_DIR = PACKAGE / "presentation/telegram/routers"
+BUNDLE_FILENAMES = (
+    "analytics.py",
+    "archive_and_public.py",
+    "core_operations.py",
+    "quality_operations.py",
+)
 COMPAT_PATH = PACKAGE / "presentation/telegram/compat.py"
 JSON_PATH = ROOT / "docs/architecture_layout_inventory.json"
 MARKDOWN_PATH = ROOT / "docs/architecture_layout_inventory.md"
+MODULE_ALIAS_MARKER = "P3_COMPAT_MODULE_ALIAS"
 
 
 def _tree(path: Path) -> ast.Module:
     return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 
-def _imports(path: Path, prefix: str) -> list[str]:
+def _all_import_modules(path: Path) -> list[str]:
     return sorted(
         node.module
         for node in ast.walk(_tree(path))
-        if isinstance(node, ast.ImportFrom)
-        and node.module
-        and node.module.startswith(prefix)
+        if isinstance(node, ast.ImportFrom) and node.module
+    )
+
+
+def _imports(path: Path, prefix: str) -> list[str]:
+    return [name for name in _all_import_modules(path) if name.startswith(prefix)]
+
+
+def _is_active_router_module(name: str) -> bool:
+    return name.startswith("velvet_bot.handlers.") or name.startswith(
+        "velvet_bot.presentation.telegram.routers."
     )
 
 
@@ -39,72 +54,76 @@ def _literal_assignment(path: Path, name: str) -> tuple[str, ...]:
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id == name
         ):
-            value = ast.literal_eval(node.value)
-            return tuple(str(item) for item in value)
+            return tuple(str(item) for item in ast.literal_eval(node.value))
     raise RuntimeError(f"Не найдено literal assignment {name!r} в {path}")
 
 
 def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
     root_handler_imports = _imports(ROUTER_ROOT, "velvet_bot.handlers.")
-    bundle_files = sorted(
-        path for path in BUNDLE_DIR.glob("*.py") if path.name != "__init__.py"
-    )
+    bundle_files = [BUNDLE_DIR / name for name in BUNDLE_FILENAMES]
+    missing_bundles = [path for path in bundle_files if not path.is_file()]
+    if missing_bundles:
+        raise RuntimeError(
+            "Не найдены router bundles: "
+            + ", ".join(path.relative_to(ROOT).as_posix() for path in missing_bundles)
+        )
+
     bundle_imports: list[str] = []
     bundle_rows: list[dict[str, Any]] = []
     for path in bundle_files:
-        imports = _imports(path, "velvet_bot.handlers.")
+        imports = [
+            name for name in _all_import_modules(path) if _is_active_router_module(name)
+        ]
         bundle_imports.extend(imports)
         bundle_rows.append(
             {
                 "path": path.relative_to(ROOT).as_posix(),
-                "handler_imports": imports,
-                "handler_count": len(imports),
+                "router_count": len(imports),
             }
         )
 
-    counts = Counter(bundle_imports)
-    duplicate_imports = sorted(name for name, count in counts.items() if count > 1)
-    active_handler_files = sorted(
-        path.relative_to(ROOT).as_posix()
-        for path in HANDLERS.glob("*.py")
-        if path.name != "__init__.py"
+    duplicate_imports = sorted(
+        name for name, count in Counter(bundle_imports).items() if count > 1
     )
-    root_modules = sorted(
-        path.relative_to(ROOT).as_posix()
-        for path in PACKAGE.glob("*.py")
-        if path.name != "__init__.py"
+    handler_paths = sorted(
+        path for path in HANDLERS.glob("*.py") if path.name != "__init__.py"
     )
-    compatibility_files = sorted(
-        path.relative_to(ROOT).as_posix()
-        for path in PACKAGE.rglob("*.py")
-        if "compat" in path.stem.casefold()
+    handler_facades = sorted(
+        path
+        for path in handler_paths
+        if MODULE_ALIAS_MARKER in path.read_text(encoding="utf-8")
     )
+    root_modules = [
+        path for path in PACKAGE.glob("*.py") if path.name != "__init__.py"
+    ]
+    compatibility_files = [
+        path for path in PACKAGE.rglob("*.py") if "compat" in path.stem.casefold()
+    ]
     pre_components = _literal_assignment(COMPAT_PATH, "PRE_IMPORT_COMPONENTS")
     post_components = _literal_assignment(COMPAT_PATH, "POST_IMPORT_COMPONENTS")
 
     return {
-        "schema_version": 1,
+        "schema_version": 3,
         "generated_from": label,
-        "root_direct_handler_imports": root_handler_imports,
         "root_direct_handler_import_count": len(root_handler_imports),
         "router_bundles": bundle_rows,
-        "active_bundle_handler_imports": sorted(bundle_imports),
-        "active_bundle_handler_count": len(bundle_imports),
-        "duplicate_bundle_handler_imports": duplicate_imports,
-        "duplicate_bundle_handler_import_count": len(duplicate_imports),
-        "legacy_handler_file_count": len(active_handler_files),
-        "legacy_handler_files": active_handler_files,
+        "active_bundle_router_count": len(bundle_imports),
+        "duplicate_bundle_router_import_count": len(duplicate_imports),
+        "legacy_handler_file_count": len(handler_paths),
+        "legacy_handler_implementation_count": len(handler_paths) - len(handler_facades),
+        "handler_compatibility_facade_count": len(handler_facades),
+        "handler_compatibility_facades": [
+            path.relative_to(ROOT).as_posix() for path in handler_facades
+        ],
         "root_level_module_count": len(root_modules),
-        "root_level_modules": root_modules,
         "compatibility_file_count": len(compatibility_files),
-        "compatibility_files": compatibility_files,
         "pre_import_compatibility_components": list(pre_components),
         "post_import_compatibility_components": list(post_components),
         "active_compatibility_component_count": len(pre_components) + len(post_components),
         "next_slice": {
             "phase": "P3C",
-            "target": "Supervisor and system presentation controllers",
-            "strategy": "canonical presentation modules plus temporary handler re-exports",
+            "target": "characters and stories presentation controllers",
+            "strategy": "canonical presentation modules plus temporary handler module aliases",
         },
     }
 
@@ -119,9 +138,11 @@ def render_markdown(data: dict[str, Any]) -> str:
         "",
         f"- прямые imports `velvet_bot.handlers.*` в root Router: **{data['root_direct_handler_import_count']}**;",
         f"- доменных router bundles: **{len(data['router_bundles'])}**;",
-        f"- активных handler imports в bundles: **{data['active_bundle_handler_count']}**;",
-        f"- дублирующих регистраций между bundles: **{data['duplicate_bundle_handler_import_count']}**;",
+        f"- активных router imports в bundles: **{data['active_bundle_router_count']}**;",
+        f"- дублирующих регистраций между bundles: **{data['duplicate_bundle_router_import_count']}**;",
         f"- физических legacy handler-файлов: **{data['legacy_handler_file_count']}**;",
+        f"- активных legacy handler implementations: **{data['legacy_handler_implementation_count']}**;",
+        f"- временных handler module aliases: **{data['handler_compatibility_facade_count']}**;",
         f"- корневых Python-модулей `velvet_bot/*.py`: **{data['root_level_module_count']}**;",
         f"- файлов с `compat` в имени: **{data['compatibility_file_count']}**;",
         f"- активных compatibility-компонентов: **{data['active_compatibility_component_count']}**.",
@@ -129,24 +150,16 @@ def render_markdown(data: dict[str, Any]) -> str:
         "## Router bundles",
         "",
     ]
-    for item in data["router_bundles"]:
-        lines.append(f"- `{item['path']}`: {item['handler_count']} handlers.")
     lines.extend(
-        [
-            "",
-            "## Активная compatibility-граница",
-            "",
-            "### Pre-import",
-            "",
-        ]
+        f"- `{item['path']}`: {item['router_count']} routers."
+        for item in data["router_bundles"]
     )
-    lines.extend(
-        f"- `{item}`." for item in data["pre_import_compatibility_components"]
-    )
+    lines.extend(["", "## Handler module aliases", ""])
+    lines.extend(f"- `{item}`." for item in data["handler_compatibility_facades"])
+    lines.extend(["", "## Активная compatibility-граница", "", "### Pre-import", ""])
+    lines.extend(f"- `{item}`." for item in data["pre_import_compatibility_components"])
     lines.extend(["", "### Post-import", ""])
-    lines.extend(
-        f"- `{item}`." for item in data["post_import_compatibility_components"]
-    )
+    lines.extend(f"- `{item}`." for item in data["post_import_compatibility_components"])
     next_slice = data["next_slice"]
     lines.extend(
         [
@@ -159,11 +172,9 @@ def render_markdown(data: dict[str, Any]) -> str:
             "",
             "## Правило обновления",
             "",
-            "После изменения root Router, bundles, `handlers/` или compatibility запустите:",
-            "",
             "```bash",
             "python scripts/inventory_architecture_layout.py --write --label <phase>",
-            "python scripts/inventory_architecture_layout.py --check",
+            "python scripts/inventory_architecture_layout.py --check --label <phase>",
             "```",
             "",
         ]
@@ -188,8 +199,8 @@ def _check(data: dict[str, Any]) -> None:
         raise SystemExit("architecture_layout_inventory.md устарел")
     if data["root_direct_handler_import_count"] != 0:
         raise SystemExit("Root Router снова импортирует отдельные handlers")
-    if data["duplicate_bundle_handler_import_count"] != 0:
-        raise SystemExit("Один handler зарегистрирован в нескольких router bundles")
+    if data["duplicate_bundle_router_import_count"] != 0:
+        raise SystemExit("Один router зарегистрирован в нескольких bundles")
 
 
 def main() -> None:

@@ -6,13 +6,13 @@ from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
 from velvet_bot.handlers.analytics_dashboard import AnalyticsCallback
 from velvet_bot.handlers.backup_center import BackupCallback
 from velvet_bot.handlers.publication_center import PublicationCallback
-from velvet_bot.handlers.supervisor_control import SupervisorCallback
-from velvet_bot.handlers.system_center import SystemCallback
 from velvet_bot.owner_callbacks import (
     OwnerMenuCallback,
     owner_action_callback,
     owner_callback,
 )
+from velvet_bot.presentation.telegram.routers.supervisor.control import SupervisorCallback
+from velvet_bot.presentation.telegram.routers.system import SystemCallback
 from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.quality_ui import quality_callback
 from velvet_bot.watermark_ui import WatermarkCallback
