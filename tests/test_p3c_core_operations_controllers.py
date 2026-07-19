@@ -16,6 +16,9 @@ ALIASES = {
     "velvet_bot.handlers.owner_menu": (
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu"
     ),
+    "velvet_bot.handlers.watermark": (
+        "velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark"
+    ),
 }
 
 
@@ -45,6 +48,7 @@ class P3CCoreOperationsControllersTests(unittest.TestCase):
         error_center = (root / "error_center.py").read_text(encoding="utf-8")
         owner_actions = (root / "owner_actions.py").read_text(encoding="utf-8")
         owner_menu = (root / "owner_menu.py").read_text(encoding="utf-8")
+        watermark = (root / "watermark.py").read_text(encoding="utf-8")
 
         self.assertIn('Command("test_error_alert")', error_center)
         self.assertIn('F.data.startswith("err:ack:")', error_center)
@@ -53,11 +57,15 @@ class P3CCoreOperationsControllersTests(unittest.TestCase):
         self.assertIn('Command("menu", "admin")', owner_menu)
         self.assertIn("OwnerMenuCallback.filter()", owner_menu)
         self.assertIn("router.include_router(watermark_router)", owner_menu)
+        self.assertIn("router = Router(name=__name__)", watermark)
+        self.assertIn('Command("watermark")', watermark)
 
     def test_core_bundle_uses_canonical_controllers_in_original_order(self) -> None:
         path = ROOT / "velvet_bot/presentation/telegram/routers/core_operations.py"
         source = path.read_text(encoding="utf-8")
         for legacy_name, canonical_name in ALIASES.items():
+            if legacy_name.endswith(".watermark"):
+                continue
             self.assertNotIn(legacy_name, source)
             self.assertIn(canonical_name, source)
 
