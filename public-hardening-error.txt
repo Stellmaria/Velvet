@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "<stdin>", line 16, in <module>
+  File "public-hardening-embedded.py", line 521, in <module>
+RuntimeError: tests/test_p2v_public_archive_boundaries.py: expected one obsolete download test block, got 0

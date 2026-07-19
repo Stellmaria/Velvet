@@ -73,9 +73,10 @@ Copy-Item .env.example .env
 ```env
 BOT_TOKEN=токен_бота
 DATABASE_URL=postgresql://velvet:пароль@localhost:5432/velvet
-ALLOWED_USER_IDS=ваш_telegram_id
-LOG_CHAT_ID=-1001234567890
-ANALYTICS_CHANNEL_IDS=-1003802812639
+ALLOWED_USER_IDS=your_telegram_user_id
+MODERATOR_USER_IDS=optional_moderator_user_id
+LOG_CHAT_ID=optional_log_chat_id
+ANALYTICS_CHANNEL_IDS=optional_channel_id
 ```
 
 Запуск:
@@ -122,10 +123,10 @@ docker exec velvet-ollama ollama pull qwen3-vl:8b
 | Роль | Возможности |
 |---|---|
 | Публичный пользователь | `/start`, `/archive`, `/gallery`, навигация, лайки и подписки |
-| Редактор `8179531132` | публичные функции, карточки персонажей, промты, классификация и скачивание оригинала |
+| Настроенный модератор | публичные функции, карточки персонажей, промты, классификация и скачивание оригинала |
 | Владелец | публикации, аналитика, backup, система, Supervisor, Git, Codex и все служебные действия |
 
-Владелец задаётся через `ALLOWED_USER_IDS` и при необходимости `ALLOWED_USERNAMES`. Числовой ID надёжнее изменяемого username.
+Владелец задаётся через `ALLOWED_USER_IDS` и при необходимости `ALLOWED_USERNAMES`; модераторы задаются через `MODERATOR_USER_IDS`. Числовой ID надёжнее изменяемого username.
 
 ## Основные команды
 

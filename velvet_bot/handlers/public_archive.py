@@ -11,6 +11,7 @@ from aiogram.types import BufferedInputFile, CallbackQuery, InputMediaPhoto, Mes
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia, get_archive_page
 from velvet_bot.archive_ui import build_input_media
+from velvet_bot.access import AccessPolicy
 from velvet_bot.database import Database
 from velvet_bot.public_catalog import (
     PublicMediaState,
@@ -22,8 +23,8 @@ from velvet_bot.public_catalog import (
     toggle_character_subscription,
     toggle_public_like,
 )
+from velvet_bot.public_manager_access import has_public_manager_access
 from velvet_bot.public_ui import (
-    PUBLIC_DOWNLOAD_USER_ID,
     PublicArchiveCallback,
     build_public_archive_keyboard,
     build_public_category_menu,
@@ -361,6 +362,7 @@ async def handle_public_archive_callback(
     callback_data: PublicArchiveCallback,
     database: Database,
     bot: Bot,
+    access_policy: AccessPolicy | None = None,
 ) -> None:
     action = callback_data.action
     if action == "noop":
@@ -610,12 +612,14 @@ async def handle_public_archive_callback(
         return
 
     if action == "download":
-        if callback.from_user.id != PUBLIC_DOWNLOAD_USER_ID:
+        if access_policy is None or not has_public_manager_access(
+            callback.from_user, access_policy
+        ):
             await callback.answer("Скачивание файлов для вас закрыто.", show_alert=True)
             return
         try:
             await _send_as_document(
-                bot=bot, media=page.media, chat_id=PUBLIC_DOWNLOAD_USER_ID
+                bot=bot, media=page.media, chat_id=callback.from_user.id
             )
         except Exception:  # p2-approved-boundary: report-public-download-failure
             logger.exception("Failed to send public archive download")

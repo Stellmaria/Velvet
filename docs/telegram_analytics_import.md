@@ -64,7 +64,7 @@
 python scripts/import_telegram_export.py `
   --file "E:\Exports\channel.zip" `
   --kind channel `
-  --chat-id -1003802812639
+  --chat-id -1001234567890
 ```
 
 Для обсуждения:
@@ -74,7 +74,7 @@ python scripts/import_telegram_export.py `
   --file "E:\Exports\discussion.zip" `
   --kind discussion `
   --chat-id -1001234567890 `
-  --parent-channel-id -1003802812639
+  --parent-channel-id -1001234567890
 ```
 
 Скрипт читает только `result.json` внутри ZIP. Фотографии и видео в базу аналитики не копируются.
