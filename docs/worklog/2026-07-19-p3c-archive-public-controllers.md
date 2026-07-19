@@ -1,80 +1,83 @@
-# Сессия: перенос archive/public archive presentation controllers
+# Сессия: перенос оставшихся archive-and-public controllers в presentation
 
 - Дата: 2026-07-19
 - ID: `2026-07-19-p3c-archive-public-controllers`
 - Линия/фаза: Velvet Archive, P3C
-- Статус: `завершено`
+- Статус: `частично`
 - Ветка: `agent/p3c-archive-public-controllers`
-- Базовый commit: `1e4dc6194a2b9671979a32d473537b46c59c6818`
+- Базовый commit: `c335e670ef2429f9d9846e1cbaab06882b11fe13`
 
 ## Перед началом
 
 ### Цель
 
-Перенести связный набор активных Telegram-контроллеров сохранения и открытого архива из legacy `velvet_bot/handlers` в канонические presentation-пакеты без изменения команд, callback contracts, порядка регистрации и поведения пользовательских сценариев.
+Убрать последние прямые imports из `velvet_bot.handlers` в bundle `archive_and_public`, сохранив существующие команды, callback contracts, порядок регистрации и поведение архивных, стартовых и служебных Telegram-контроллеров.
 
 ### Исходный контекст
 
-После слияния PR #198 архитектурный inventory содержал 44 активных legacy implementations и 24 временных module aliases. Следующим P3C-срезом были назначены контроллеры archive/public archive.
+После merge PR #207 bundles analytics, core operations и quality operations полностью используют canonical presentation paths. В `archive_and_public` оставались девять прямых legacy controllers: Telegram analytics import, discussion updates, `/start`, привязка промтов, три admin media controller, media browser и inline help.
 
 ### Планируемый объём
 
-- перенести `archive`, `guest_archive` и `spoiler_save` в `presentation/telegram/routers/archive/`;
-- перенести `public_archive`, `public_manager`, `public_media_display` и `public_notification_open` в `presentation/telegram/routers/public_archive/`;
-- заменить старые handler-файлы module aliases того же объекта;
-- перевести active router bundle на canonical imports при неизменном порядке 32 registrations;
-- обновить Phase 9 source-path contract, P3 router inventory и layout inventory;
-- добавить regression-тесты module identity и canonical ownership;
-- не менять команды, callback data, PostgreSQL repositories, media delivery и тексты.
+- создать пакет `archive_and_public_controllers`;
+- перенести девять implementations с повторным использованием исходных Git blob SHA;
+- заменить старые handler paths module aliases;
+- переключить bundle на canonical imports без изменения include order;
+- сохранить publication router перед archive catch-all;
+- расширить P3C archive contracts на новые aliases;
+- обновить общую P3 architecture contract и inventory;
+- не менять бизнес-логику, SQL, миграции, callback data, команды, права или пользовательские тексты.
 
 ### Критерии готовности
 
-- canonical archive/public archive modules содержат реальные router implementations;
-- legacy paths возвращают те же module objects и не содержат decorators;
-- publication router остаётся перед catch-all archive router;
-- active legacy implementations уменьшаются с 44 до 37;
-- aliases увеличиваются с 24 до 31;
-- полный tests, Docker build и project notes contract зелёные.
+- bundle не импортирует ни одного `velvet_bot.handlers.*` controller;
+- legacy imports возвращают те же canonical module objects;
+- canonical files содержат реальные router implementations;
+- число active bundle routers остаётся 56, дублей остаётся 0;
+- active legacy implementations уменьшаются с 14 до 5;
+- handler aliases увеличиваются с 54 до 63;
+- publication router остаётся перед archive catch-all;
+- tests, Docker build и project notes contract зелёные.
 
 ### Риски и ограничения
 
-Контроллеры используют исторические imports друг друга, а `archive` содержит catch-all обработчик сообщений темы. Внутренние legacy imports сохраняются через aliases, а порядок регистрации не меняется, чтобы физический перенос не смешивался с cleanup import graph и изменением маршрутизации.
+Bundle объединяет несвязанные исторические функции. Поэтому срез меняет только физическое владение controller modules. Декомпозиция больших media handlers, удаление aliases и классификация пяти оставшихся standalone implementations вынесены в P3D. Исходные blobs переиспользованы без ручного копирования.
 
 ## После завершения
 
 ### Фактически сделано
 
-- семь archive/public archive controllers перенесены в canonical presentation packages;
-- старые paths заменены короткими aliases через `importlib` и `sys.modules`;
-- `archive_and_public` использует canonical imports без изменения порядка 32 routers;
-- publication router сохранён перед catch-all обработчиком автоматического архива темы;
-- Phase 9 и P3 architecture contracts переведены на canonical paths;
-- добавлены проверки identity, alias size, canonical router ownership и порядка imports;
-- layout inventory обновлён до 37 implementations и 31 aliases.
+- создан `velvet_bot/presentation/telegram/routers/archive_and_public_controllers`;
+- перенесены девять оставшихся прямых legacy controllers;
+- старые paths заменены module aliases;
+- `archive_and_public.py` использует только canonical presentation paths;
+- порядок регистрации сохранён;
+- расширены `test_p3c_archive_public_controllers.py` и общий P3 router contract;
+- inventory обновлён до 5 active implementations и 63 aliases;
+- следующим этапом назначен P3D: классификация пяти standalone implementations и controlled compatibility retirement.
 
 ### Миграции и совместимость
 
-Миграции PostgreSQL не требуются и не изменялись. Команды `/save`, `/save18`, `/archive`, `/gallery`, callback prefixes, Guest Mode, public likes/subscriptions, media downloads и manager actions сохранены. Старые import paths и monkeypatch targets продолжают работать.
+Миграции PostgreSQL не нужны. Slash-команды, callbacks, middleware boundaries, Telegram file IDs, media display behavior, analytics import, `/start`, inline help и archive catch-all не изменены. Legacy imports сохраняют module identity.
 
 ### Проверки
 
-- tests #974: 862 теста, success;
-- docker build #510: success;
-- project notes contract #371: success;
-- architecture inventory: root imports 0, active routers 55, archive/public bundle 32, duplicates 0, implementations 37, aliases 31;
-- отдельные исправления после первого CI не потребовались.
+- source-level и inventory contracts подготовлены;
+- полный CI будет записан после создания PR;
+- active bundle routers: 56;
+- duplicate registrations: 0;
+- direct legacy imports в domain bundles: 0.
 
 ### PR и commit
 
-- PR: #199 `Move archive and public archive controllers into presentation`;
-- ветка: `agent/p3c-archive-public-controllers`;
-- основной перенос выполнен серией содержательных commits через GitHub Contents API;
-- финальная документационная фиксация выполнена после зелёного CI.
+- рабочая ветка: `agent/p3c-archive-public-controllers`;
+- runtime move commit: `6220476c4abdee43abdc5a4a4ecd18ff8aeb4b0a`;
+- PR и проверенный финальный head будут добавлены после CI.
 
 ### Незавершённое
 
-Внутренние imports между частью archive/public archive controllers всё ещё проходят через совместимые legacy aliases. Это контролируемый остаток P3D и не влияет на runtime semantics. Очистка import graph выполняется только отдельным срезом после завершения физических переносов.
+До зелёного CI срез считается частично завершённым. Пять standalone handler implementations ещё требуют классификации: являются ли они активными runtime controllers, вложенными routers или служебными файлами, которые следует переносить либо удалить в P3D.
 
 ### Следующий шаг
 
-Слить PR #199 после зелёного финального CI. Затем продолжить отдельным P3C-срезом переноса publication presentation controllers.
+Открыть PR, пройти CI и слить срез. После этого реализовать разрешение крупных архивных изображений для администраторов и модераторов и добавить быстрые теги/алиасы персонажей для `/save`.
