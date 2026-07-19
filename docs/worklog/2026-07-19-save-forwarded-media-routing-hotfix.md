@@ -62,7 +62,9 @@ Bundle-level registration должен оставаться узким и акт
 - первый tests run #1067 выполнил 926 тестов и выявил только repository contracts: временный дополнительный router отсутствовал в inventory, include-router count стал 34, а worklog был неполным;
 - функциональные тесты распознавания generic MIME и save routing в первом run прошли;
 - временный router заменён bundle-level registration, поэтому число router modules и include-router count вернулись к текущему контракту;
-- выполняется повторный полный CI финального head.
+- tests #1072: success, 926 tests;
+- Docker build #605: success;
+- project notes contract #453: success.
 
 ### PR и commit
 
@@ -74,8 +76,8 @@ Bundle-level registration должен оставаться узким и акт
 
 ### Незавершённое
 
-Функциональных долгов внутри hotfix нет. До merge требуется только зелёный повторный CI финального head.
+Функциональных долгов внутри hotfix нет.
 
 ### Следующий шаг
 
-После merge и локального обновления проверить живой сценарий: `/save Макс Кроу`, затем немедленно переслать PNG-документ от другого бота. После подтверждения вернуться к отдельному P3D legacy import slice в PR #214.
+Слить PR #216, обновить локальный `main` и проверить живой сценарий: `/save Макс Кроу`, затем немедленно переслать PNG-документ от другого бота. После подтверждения вернуться к отдельному P3D legacy import slice в PR #214.
