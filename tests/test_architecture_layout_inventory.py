@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "admin-public-archive-controls",
+                "p3c-analytics-controllers",
             ],
             check=True,
         )
