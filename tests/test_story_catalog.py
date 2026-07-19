@@ -207,7 +207,6 @@ class StoryCatalogTests(unittest.TestCase):
             offset=999,
             media_id=999999,
             page=99,
-            category="mfm",
             universe="lagerta",
             story_id=9999,
         )
