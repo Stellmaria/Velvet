@@ -176,7 +176,7 @@ class ManagerWatermarkButtonTests(unittest.TestCase):
 
 
 class WatermarkReplacementRepositoryTests(unittest.IsolatedAsyncioTestCase):
-    async def test_approval_preserves_original_and_enables_public_watermark(self) -> None:
+    async def test_approval_preserves_original_and_indexes_storage_message(self) -> None:
         connection = SimpleNamespace(execute=AsyncMock(return_value="UPDATE 1"))
         database = SimpleNamespace(acquire=lambda: _AsyncContext(connection))
         repository = PublicArchiveWatermarkRepository(database)
@@ -184,9 +184,14 @@ class WatermarkReplacementRepositoryTests(unittest.IsolatedAsyncioTestCase):
         updated = await repository.approve_replacement(
             media_id=77,
             telegram_file_id="watermarked",
+            telegram_file_unique_id="watermarked-unique",
             file_size=12_500_000,
             approved_by=7221553045,
             settings=WatermarkSettings(),
+            storage_chat_id=-1004459280894,
+            storage_thread_id=3,
+            storage_message_id=44,
+            storage_sha256="a" * 64,
         )
 
         self.assertTrue(updated)
@@ -194,10 +199,16 @@ class WatermarkReplacementRepositoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("source_telegram_file_id = COALESCE", sql)
         self.assertIn("watermark_applied = TRUE", sql)
         self.assertIn("watermark_approved = TRUE", sql)
+        self.assertIn("watermark_storage_chat_id", sql)
+        self.assertIn("watermark_storage_message_id", sql)
+        self.assertIn("watermark_storage_sha256", sql)
         self.assertNotIn("character_media", sql)
         template = json.loads(connection.execute.await_args.args[5])
         self.assertEqual("bottom_right", template["position"])
         self.assertEqual("auto", template["color"])
+        self.assertEqual(-1004459280894, connection.execute.await_args.args[6])
+        self.assertEqual(3, connection.execute.await_args.args[7])
+        self.assertEqual(44, connection.execute.await_args.args[8])
 
 
 if __name__ == "__main__":
