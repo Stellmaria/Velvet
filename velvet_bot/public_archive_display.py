@@ -62,7 +62,7 @@ def build_viewer_caption(page: ArchivePage, state, *, manager_access: bool = Fal
         f"Подписок на героя: <b>{state.subscriber_count}</b>\n"
         f"Просмотров: <b>{state.view_count}</b>\n"
         f"Скачиваний: <b>{state.download_count}</b>\n"
-        f"Просмотр 7221553045: <b>{owner_review}</b>\n"
+        f"Просмотрено Стэл: <b>{owner_review}</b>\n"
         f"Watermark: <b>{watermark}</b>\n"
         f"Публичный архив: <b>{visibility}</b>\n"
         f"Канал +18: <b>{adult}</b>"
