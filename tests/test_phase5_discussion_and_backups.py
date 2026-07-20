@@ -13,7 +13,9 @@ from velvet_bot.handlers.analytics_discussion_overrides import (
     DiscussionInsightCallback,
     _dcb,
 )
-from velvet_bot.handlers.backup_center import BackupCallback
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center import (
+    BackupCallback,
+)
 
 
 class DiscussionInsightTests(unittest.TestCase):
