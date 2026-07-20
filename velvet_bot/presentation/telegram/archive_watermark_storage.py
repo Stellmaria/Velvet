@@ -6,6 +6,7 @@ from html import escape
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.database import Database
@@ -21,6 +22,7 @@ from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.domains.watermark.telegram_storage import (
     WatermarkStorageSettings,
     cleanup_watermark_job_files,
+    storage_message_link,
     store_archive_watermark,
 )
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
@@ -45,6 +47,19 @@ def _build_service(bot: Bot, database: Database) -> WatermarkService:
         repository=WatermarkRepository(database),
         bridge=KritaBridge(default_krita_bridge_dir()),
     )
+
+
+def _command_media_id(command: CommandObject) -> int:
+    raw = (command.args or "").strip().split(maxsplit=1)[0]
+    if not raw:
+        raise ValueError("Укажите media_id, например <code>/wm_file 77</code>.")
+    try:
+        media_id = int(raw)
+    except ValueError as error:
+        raise ValueError("media_id должен быть числом.") from error
+    if media_id <= 0:
+        raise ValueError("media_id должен быть положительным числом.")
+    return media_id
 
 
 async def _approve_or_resume(
@@ -76,6 +91,63 @@ async def _safe_finish_card(callback: CallbackQuery, text: str) -> None:
     except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             raise
+
+
+async def handle_watermark_storage_lookup(
+    message: Message,
+    command: CommandObject,
+    database: Database,
+) -> None:
+    try:
+        media_id = _command_media_id(command)
+    except ValueError as error:
+        await message.answer(str(error))
+        return
+    stored = await PublicArchiveWatermarkRepository(database).get_storage(media_id)
+    if stored is None:
+        await message.answer(
+            f"Watermark для media_id <code>{media_id}</code> в Telegram-хранилище не найден."
+        )
+        return
+    size = (
+        f"{stored.file_size / 1024 / 1024:.2f} МБ"
+        if stored.file_size is not None
+        else "неизвестно"
+    )
+    sha = stored.sha256 or "не сохранён"
+    link = storage_message_link(stored.chat_id, stored.message_id)
+    await message.answer(
+        f"<b>Watermark media_id {media_id}</b>\n"
+        f"Размер: <b>{size}</b>\n"
+        f"SHA256: <code>{sha}</code>\n"
+        f'<a href="{link}">Открыть в Telegram-хранилище</a>\n\n'
+        f"Скачать через бота: <code>/wm_download {media_id}</code>"
+    )
+
+
+async def handle_watermark_storage_download(
+    message: Message,
+    command: CommandObject,
+    database: Database,
+) -> None:
+    try:
+        media_id = _command_media_id(command)
+    except ValueError as error:
+        await message.answer(str(error))
+        return
+    stored = await PublicArchiveWatermarkRepository(database).get_storage(media_id)
+    if stored is None:
+        await message.answer(
+            f"Watermark для media_id <code>{media_id}</code> в Telegram-хранилище не найден."
+        )
+        return
+    await message.answer_document(
+        document=stored.telegram_file_id,
+        caption=(
+            f"✅ Watermark media_id <code>{media_id}</code> из Telegram-хранилища.\n"
+            f"SHA256: <code>{stored.sha256 or 'не сохранён'}</code>"
+        ),
+    )
 
 
 async def handle_archive_watermark_storage_approve(
@@ -197,6 +269,14 @@ async def handle_archive_watermark_storage_approve(
 
 
 def register_archive_watermark_storage_handler(router: Router) -> None:
+    router.message.register(
+        handle_watermark_storage_lookup,
+        Command("wm_file", "wm_storage"),
+    )
+    router.message.register(
+        handle_watermark_storage_download,
+        Command("wm_download"),
+    )
     router.callback_query.register(
         handle_archive_watermark_storage_approve,
         WatermarkCallback.filter(F.action == "archive_approve"),
