@@ -62,6 +62,21 @@ class MessageDeletionTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("already_absent", result)
 
+    async def test_old_message_that_cannot_be_deleted_is_terminal(self) -> None:
+        bot = SimpleNamespace(
+            delete_message=AsyncMock(
+                side_effect=_bad_request("Bad Request: message can't be deleted")
+            )
+        )
+
+        result = await message_deletion.delete_message_idempotently(
+            bot,
+            chat_id=-1003951213065,
+            message_id=9309,
+        )
+
+        self.assertEqual("not_deletable", result)
+
     async def test_other_bad_request_is_not_suppressed(self) -> None:
         error = _bad_request("Bad Request: chat not found")
         bot = SimpleNamespace(delete_message=AsyncMock(side_effect=error))
