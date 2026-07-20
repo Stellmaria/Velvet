@@ -13,7 +13,16 @@ PREFIX = "velvet_bot.handlers"
 ALIAS_MARKER = "P3_COMPAT_MODULE_ALIAS"
 JSON_PATH = ROOT / "docs" / "handler_alias_consumer_inventory.json"
 MARKDOWN_PATH = ROOT / "docs" / "handler_alias_consumer_inventory.md"
-SKIP_PARTS = {".git", ".venv", "venv", "__pycache__"}
+SKIP_PARTS = {
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "runtime",
+    "logs",
+    "data",
+    "backups",
+}
 
 
 def _alias_modules() -> dict[str, str]:
