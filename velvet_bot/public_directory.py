@@ -17,10 +17,12 @@ from velvet_bot.domains.characters.models import (
     CharacterRecord,
     UniverseSummary,
 )
+from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
 from velvet_bot.domains.stories.models import StorySummary
 
 
 async def list_visible_categories(database: Database) -> list[CategorySummary]:
+    visibility_sql = public_media_visibility_sql()
     async with database.acquire() as connection:
         rows = await connection.fetch(
             f"""
@@ -28,8 +30,9 @@ async def list_visible_categories(database: Database) -> list[CategorySummary]:
             FROM characters AS c
             JOIN character_media AS cm
               ON cm.character_id = c.id
-             AND cm.is_public = TRUE
-            WHERE c.category IS NOT NULL
+            JOIN media_files AS mf ON mf.id = cm.media_id
+            WHERE ({visibility_sql})
+              AND c.category IS NOT NULL
               AND c.universe IS NOT NULL
               AND (
                     c.universe NOT IN {STORY_REQUIRED_SQL}
@@ -62,6 +65,7 @@ async def list_visible_universes(
     *,
     category: str,
 ) -> list[UniverseSummary]:
+    visibility_sql = public_media_visibility_sql()
     async with database.acquire() as connection:
         rows = await connection.fetch(
             f"""
@@ -69,8 +73,9 @@ async def list_visible_universes(
             FROM characters AS c
             JOIN character_media AS cm
               ON cm.character_id = c.id
-             AND cm.is_public = TRUE
-            WHERE c.category = $1::VARCHAR
+            JOIN media_files AS mf ON mf.id = cm.media_id
+            WHERE ({visibility_sql})
+              AND c.category = $1::VARCHAR
               AND c.universe IS NOT NULL
               AND (
                     c.universe NOT IN {STORY_REQUIRED_SQL}
@@ -105,9 +110,13 @@ async def list_visible_stories(
     category: str,
     universe: str,
 ) -> list[StorySummary]:
+    visibility_sql = public_media_visibility_sql(
+        link_alias="media",
+        file_alias="file",
+    )
     async with database.acquire() as connection:
         rows = await connection.fetch(
-            """
+            f"""
             SELECT
                 story.id,
                 story.universe,
@@ -123,8 +132,9 @@ async def list_visible_stories(
             JOIN characters AS character ON character.id = link.character_id
             JOIN character_media AS media
               ON media.character_id = character.id
-             AND media.is_public = TRUE
-            WHERE story.universe = $1::VARCHAR
+            JOIN media_files AS file ON file.id = media.media_id
+            WHERE ({visibility_sql})
+              AND story.universe = $1::VARCHAR
               AND character.category = $2::VARCHAR
               AND character.universe = $1::VARCHAR
             GROUP BY story.id
@@ -164,18 +174,23 @@ async def list_visible_characters(
 ) -> CharacterDirectoryPage:
     safe_page_size = max(1, min(int(page_size), 10))
     safe_page = max(0, int(page))
+    visibility_sql = public_media_visibility_sql(
+        link_alias="media",
+        file_alias="file",
+    )
     async with database.acquire() as connection:
         total = int(
             await connection.fetchval(
-                """
+                f"""
                 SELECT COUNT(*)
                 FROM (
                     SELECT character.id
                     FROM characters AS character
                     JOIN character_media AS media
                       ON media.character_id = character.id
-                     AND media.is_public = TRUE
-                    WHERE character.category = $1::VARCHAR
+                    JOIN media_files AS file ON file.id = media.media_id
+                    WHERE ({visibility_sql})
+                      AND character.category = $1::VARCHAR
                       AND ($2::VARCHAR IS NULL OR character.universe = $2::VARCHAR)
                       AND (
                             $3::BIGINT IS NULL
@@ -198,7 +213,7 @@ async def list_visible_characters(
         total_pages = max(1, (total + safe_page_size - 1) // safe_page_size)
         normalized_page = min(safe_page, total_pages - 1)
         rows = await connection.fetch(
-            """
+            f"""
             SELECT
                 character.id,
                 character.name,
@@ -219,8 +234,9 @@ async def list_visible_characters(
             LEFT JOIN character_stories AS story ON story.id = character.story_id
             JOIN character_media AS media
               ON media.character_id = character.id
-             AND media.is_public = TRUE
-            WHERE character.category = $1::VARCHAR
+            JOIN media_files AS file ON file.id = media.media_id
+            WHERE ({visibility_sql})
+              AND character.category = $1::VARCHAR
               AND ($2::VARCHAR IS NULL OR character.universe = $2::VARCHAR)
               AND (
                     $3::BIGINT IS NULL
