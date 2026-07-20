@@ -4,10 +4,10 @@
 
 ## Сводка
 
-- alias-файлов: **17**;
-- файлов-consumers: **15**;
-- references: **40**;
-- aliases с references: **17**;
+- alias-файлов: **9**;
+- файлов-consumers: **9**;
+- references: **25**;
+- aliases с references: **9**;
 - aliases без references: **0**;
 - динамических prefix references: **2**;
 - references на уже отсутствующие aliases: **0**.
@@ -23,14 +23,6 @@
 - `velvet_bot.handlers.analytics_management_publications` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications`: используется.
 - `velvet_bot.handlers.analytics_management_tags` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags`: используется.
 - `velvet_bot.handlers.channel_analytics` → `velvet_bot.presentation.telegram.routers.analytics_controllers.channel`: используется.
-- `velvet_bot.handlers.supervisor_codex` → `velvet_bot.presentation.telegram.routers.supervisor.codex`: используется.
-- `velvet_bot.handlers.supervisor_console` → `velvet_bot.presentation.telegram.routers.supervisor.console`: используется.
-- `velvet_bot.handlers.supervisor_control` → `velvet_bot.presentation.telegram.routers.supervisor.control`: используется.
-- `velvet_bot.handlers.supervisor_git` → `velvet_bot.presentation.telegram.routers.supervisor.git`: используется.
-- `velvet_bot.handlers.supervisor_logs` → `velvet_bot.presentation.telegram.routers.supervisor.logs`: используется.
-- `velvet_bot.handlers.supervisor_process` → `velvet_bot.presentation.telegram.routers.supervisor.process`: используется.
-- `velvet_bot.handlers.supervisor_self` → `velvet_bot.presentation.telegram.routers.supervisor.self_control`: используется.
-- `velvet_bot.handlers.supervisor_status` → `velvet_bot.presentation.telegram.routers.supervisor.status`: используется.
 
 ## Consumers
 
@@ -45,18 +37,6 @@
 ### `tests/test_analytics_phase2_callbacks.py`
 
 - line 5: `velvet_bot.handlers.analytics_management` (from-import).
-
-### `tests/test_fresh_runtime_log_hotfix.py`
-
-- line 12: `velvet_bot.handlers.supervisor_status` (import).
-
-### `tests/test_inline_management_menus.py`
-
-- line 17: `velvet_bot.handlers.supervisor_control` (from-import).
-
-### `tests/test_p2ae_supervisor_console_watcher.py`
-
-- line 6: `velvet_bot.handlers.supervisor_console` (import).
 
 ### `tests/test_p2q_channel_analytics_boundary.py`
 
@@ -83,18 +63,6 @@
 
 - line 41: `velvet_bot.handlers` (dynamic-prefix-reference).
 
-### `tests/test_p3c_supervisor_system_presentation.py`
-
-- line 9: `velvet_bot.handlers.supervisor_control` (literal-reference).
-- line 12: `velvet_bot.handlers.supervisor_status` (literal-reference).
-- line 15: `velvet_bot.handlers.supervisor_process` (literal-reference).
-- line 18: `velvet_bot.handlers.supervisor_git` (literal-reference).
-- line 21: `velvet_bot.handlers.supervisor_logs` (literal-reference).
-- line 24: `velvet_bot.handlers.supervisor_console` (literal-reference).
-- line 27: `velvet_bot.handlers.supervisor_self` (literal-reference).
-- line 30: `velvet_bot.handlers.supervisor_codex` (literal-reference).
-- line 73: `velvet_bot.handlers.supervisor_control` (literal-reference).
-
 ### `tests/test_p3d_residual_handler_classification.py`
 
 - line 12: `velvet_bot.handlers.analytics_management_common` (literal-reference).
@@ -109,15 +77,6 @@
 ### `tests/test_phase5_discussion_and_backups.py`
 
 - line 12: `velvet_bot.handlers.analytics_discussion_overrides` (from-import).
-
-### `tests/test_supervisor.py`
-
-- line 16: `velvet_bot.handlers.supervisor_control` (from-import).
-
-### `tests/test_supervisor_logs_callback.py`
-
-- line 11: `velvet_bot.handlers.supervisor_logs` (from-import).
-- line 41: `velvet_bot.handlers.supervisor_logs` (literal-reference).
 
 ## Следующий срез
 
