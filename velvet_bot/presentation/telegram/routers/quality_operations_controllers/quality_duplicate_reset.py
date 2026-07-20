@@ -30,7 +30,6 @@ async def _safe_edit(
             raise
 
 
-@router.callback_query(QualityCallback.filter(F.action == "dupresetask"))
 async def handle_duplicate_reset_confirmation(
     callback: CallbackQuery,
     callback_data: QualityCallback,
@@ -71,7 +70,6 @@ async def handle_duplicate_reset_confirmation(
     await callback.answer()
 
 
-@router.callback_query(QualityCallback.filter(F.action == "dupreset"))
 async def handle_duplicate_reset(
     callback: CallbackQuery,
     database: Database,
@@ -105,6 +103,16 @@ async def handle_duplicate_reset(
         f"Удалено старых пар: <b>{result.candidates_deleted}</b>\n\n"
         f"{worker_note} Остальные файлы обработает периодический worker."
     )
+
+
+router.callback_query.register(
+    handle_duplicate_reset_confirmation,
+    QualityCallback.filter(F.action == "dupresetask"),
+)
+router.callback_query.register(
+    handle_duplicate_reset,
+    QualityCallback.filter(F.action == "dupreset"),
+)
 
 
 __all__ = ("router",)
