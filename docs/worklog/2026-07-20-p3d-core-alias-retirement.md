@@ -1,56 +1,72 @@
-# P3D Core handler alias retirement
+# Сессия: удаление P3D Core handler aliases
 
-Дата: 2026-07-20
+- Дата: 2026-07-20
+- ID: `2026-07-20-p3d-core-alias-retirement`
+- Линия/фаза: P3D Core compatibility alias retirement
+- Статус: `завершено`
+- Ветка: `agent/p3d-core-alias-retirement`
+- Базовый commit: `6a8dc298098a94490d23efad025e9a1b8146f2ee`
 
-## Цель
+## Перед началом
 
-Удалить завершившие миграцию compatibility aliases для core, owner, publication, system и watermark контроллеров после перевода оставшихся regression-тестов на canonical presentation imports.
+### Цель
 
-## Удалённые aliases
+Удалить завершившие миграцию compatibility aliases для core, owner, publication, system и watermark контроллеров после перевода оставшихся regression- и boundary-тестов на canonical presentation imports.
 
-- `velvet_bot.handlers.error_center`;
-- `velvet_bot.handlers.owner_actions`;
-- `velvet_bot.handlers.owner_menu`;
-- `velvet_bot.handlers.publication_center`;
-- `velvet_bot.handlers.publication_center_safe`;
-- `velvet_bot.handlers.system_center`;
-- `velvet_bot.handlers.watermark`.
+### Исходный контекст
 
-## Canonical owners
+После P3D-Q в `velvet_bot/handlers` оставалось 25 module aliases при нулевом количестве production legacy imports и нулевом количестве активных handler implementations. Core, owner, publication, system и watermark runtime уже использовали canonical presentation-модули, но старые тесты продолжали импортировать семь compatibility paths и тем самым удерживали aliases в репозитории.
 
-- `velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center`;
-- `velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions`;
-- `velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu`;
-- `velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark`;
-- `velvet_bot.presentation.telegram.routers.publication.center`;
-- `velvet_bot.presentation.telegram.routers.publication.safe`;
-- `velvet_bot.presentation.telegram.routers.system`.
+### Планируемый объём
 
-## Изменения
+- перевести оставшиеся tests на canonical modules;
+- заменить старые alias-contract tests проверками отсутствия удалённых файлов;
+- удалить семь core/publication/system aliases;
+- сохранить Supervisor и backup aliases для отдельных срезов;
+- обновить architecture и handler consumer inventories;
+- не менять Router composition, callback contracts и runtime behavior.
 
-- boundary и workflow tests импортируют canonical controllers напрямую;
-- P3C contracts теперь проверяют отсутствие удалённых alias-файлов и владение обработчиками canonical-модулями;
-- Supervisor aliases сохранены для отдельного следующего среза;
-- backup alias сохранён для отдельного backup-среза;
-- architecture inventory уменьшен с 25 до 18 aliases;
-- handler consumer inventory уменьшен с 23 до 16 consumer-файлов и с 57 до 42 references;
-- production Router composition и порядок регистрации routers не менялись;
-- runtime compatibility components остаются 8;
-- миграции базы данных не требуются.
+### Критерии готовности
 
-## Проверяемые инварианты
+- семь выбранных alias-файлов отсутствуют;
+- canonical controllers остаются владельцами router implementations;
+- production legacy imports и missing alias references равны нулю;
+- количество aliases уменьшается с 25 до 18;
+- количество consumer-файлов уменьшается с 23 до 16;
+- полный CI, Docker build и project notes contract проходят.
 
-- active legacy handler implementations: `0`;
-- duplicate router registrations: `0`;
-- production legacy imports: `0`;
-- missing alias references: `0`;
-- active routers: `58`;
-- root-level Python modules: `117`.
+### Риски и ограничения
 
-## Не затрагивалось
+Удаление aliases допустимо только после перевода всех test consumers. Полные dotted names удалённых модулей нельзя оставлять даже в строковых test fixtures, потому что машинный inventory трактует их как ссылки на отсутствующие aliases. Backup и Supervisor не смешиваются с этим срезом из-за отдельных runtime и recovery-контрактов. Отложенный channel analytics controller не затрагивается.
 
-Отложенный модуль `velvet_bot.presentation.telegram.routers.analytics_controllers.channel` и ошибка `Message.views` не изменялись.
+## После завершения
 
-## Следующий срез
+### Фактически сделано
 
-P3D-Backup: перевести backup boundary-тесты на canonical module и удалить `velvet_bot.handlers.backup_center`. Затем P3D-Supervisor.
+- tests владельца, Error Center, публикаций и System Center переведены на canonical imports;
+- P3C core/publication/system contracts проверяют отсутствие удалённых файлов и наличие реализаций в canonical modules;
+- удалены `error_center`, `owner_actions`, `owner_menu`, `publication_center`, `publication_center_safe`, `system_center` и `watermark` aliases;
+- architecture inventory обновлён до 18 aliases, 58 active routers и 117 root-level modules;
+- handler consumer inventory обновлён до 16 consumer-файлов и 42 references;
+- Supervisor aliases, backup alias и 8 runtime compatibility components сохранены без изменений;
+- production Router composition и порядок регистрации routers не менялись.
+
+### Миграции и совместимость
+
+SQL-миграции не требуются. Telegram callback-data, команды, owner menu, публикации, Error Center, watermark и System Center сохраняют прежнее поведение. Удаляются только временные import paths, которые больше не используются production-кодом.
+
+### Проверки
+
+Обновлены architecture inventory contracts, handler consumer inventory contracts, P3C controller tests и профильные boundary/workflow tests. Полный GitHub CI запускается в PR #232.
+
+### PR и commit
+
+PR #232 создан из ветки `agent/p3d-core-alias-retirement`. Итоговый merge commit фиксируется после зелёных tests, Docker build и project notes contract.
+
+### Незавершённое
+
+Остаются 18 aliases: восемь analytics management/dashboard aliases, `channel_analytics`, `backup_center` и восемь Supervisor aliases. Также остаются 8 runtime compatibility components и 117 корневых Python-модулей.
+
+### Следующий шаг
+
+Выполнить P3D-Backup: перевести backup tests на canonical controller и удалить `velvet_bot.handlers.backup_center`. После этого отдельным срезом удалить восемь Supervisor aliases. Отложенный `analytics_controllers.channel` и ошибка `Message.views` остаются без изменений.
