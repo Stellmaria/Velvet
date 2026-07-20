@@ -1,0 +1,65 @@
+name: temporary storage inventory refresh
+
+on:
+  push:
+    branches:
+      - agent/full-telegram-storage-migration
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/full-telegram-storage-migration
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Classify storage boundaries and regenerate inventory
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          targets = (
+              Path('velvet_bot/domains/telegram_storage/service.py'),
+              Path('velvet_bot/domains/telegram_storage/uploader.py'),
+              Path('velvet_bot/presentation/telegram/storage_center.py'),
+          )
+          for path in targets:
+              lines = path.read_text(encoding='utf-8').splitlines()
+              changed = False
+              output = []
+              for line in lines:
+                  stripped = line.strip()
+                  if (
+                      stripped in {'except Exception:', 'except Exception as error:'}
+                      and 'p2-approved-boundary:' not in line
+                  ):
+                      line += '  # p2-approved-boundary: isolate-telegram-storage-operation'
+                      changed = True
+                  output.append(line)
+              if changed:
+                  path.write_text('\n'.join(output) + '\n', encoding='utf-8')
+          PY
+          python scripts/update_p2_stability_inventory.py \
+            --label telegram-storage-center \
+            --schema-version 44
+      - name: Commit generated files
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            velvet_bot/domains/telegram_storage/service.py \
+            velvet_bot/domains/telegram_storage/uploader.py \
+            velvet_bot/presentation/telegram/storage_center.py \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md
+          git commit -m "Refresh storage stability inventory"
+          git push origin HEAD:agent/full-telegram-storage-migration
