@@ -3,7 +3,7 @@
 - Дата: 2026-07-20
 - ID: `2026-07-20-qwen-duplicate-retry-controls`
 - Линия/фаза: P3D stabilization slice
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/qwen-duplicate-retry-controls`
 - Базовый commit: `820723eb1da1c20e67bc321e42a2046bbba425a4`
 
@@ -43,24 +43,32 @@ Qwen quality уже имел bulk-операцию повторной поста
 
 ### Фактически сделано
 
-Работа выполняется в текущем PR.
+- существующая кнопка повтора Qwen теперь возвращает в очередь одновременно quality checks и semantic profiles со статусами `error` и `skipped`;
+- кнопка `🔄 Ошибки Qwen` добавлена в главный аудит качества;
+- периодические workers `ai-quality` и `ai-vision` автоматически подхватывают возвращённые задания;
+- в список дублей добавлена кнопка `♻️ Сбросить и проверить заново`;
+- перед полным сбросом показывается подтверждение с предупреждением об удалении решений;
+- новый domain repository удаляет старые пары и fingerprints для доступных изображений, возвращает их в `pending` и не ставит в очередь файлы больше 20 МБ без preview;
+- после подтверждения немедленно запускается первый цикл `media-quality`, остальные файлы обрабатываются периодическим worker;
+- добавлены регрессионные тесты repository-операций и callback-кнопок;
+- architecture inventory обновлён с 57 до 58 активных routers.
 
 ### Миграции и совместимость
 
-Миграции не планируются. Используются существующие таблицы AI checks, semantic profiles, visual fingerprints и duplicate candidates.
+SQL-миграции не требуются. Используются существующие таблицы AI checks, semantic profiles, visual fingerprints и duplicate candidates. Callback prefix `quality` и существующие поля payload не меняются.
 
 ### Проверки
 
-Будут добавлены целевые unit tests и запущен полный GitHub CI.
+Добавлены `tests/test_qwen_duplicate_retry_controls.py` и обновлены архитектурные inventory-файлы. Полный GitHub CI запускается в PR.
 
 ### PR и commit
 
-Будут заполнены после создания PR и зелёного CI.
+PR будет создан из ветки `agent/qwen-duplicate-retry-controls`; итоговый merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 
-До завершения остаются реализация, тесты, CI и merge.
+Кодовый объём этого среза закрыт. Для файлов Qwen без доступного thumbnail ручной повтор снова завершится terminal `skipped`, что является ожидаемым техническим ограничением cloud Bot API.
 
 ### Следующий шаг
 
-Завершить этот stabilization slice, затем продолжить P3D compatibility retirement: analytics/core либо quality aliases. После P3D перейти к P3E persistence layout и P3F gradual typing.
+Продолжить P3D compatibility retirement: следующая связанная группа analytics/core либо quality aliases. После P3D перейти к P3E persistence layout и P3F gradual typing.
