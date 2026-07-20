@@ -3,6 +3,7 @@ from __future__ import annotations
 from html import escape
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.database import Database
@@ -15,6 +16,18 @@ from velvet_bot.workers import WorkerManager
 
 
 router = Router(name=__name__)
+
+
+async def _safe_edit(
+    message: Message,
+    text: str,
+    keyboard: InlineKeyboardMarkup,
+) -> None:
+    try:
+        await message.edit_text(text, reply_markup=keyboard)
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error).casefold():
+            raise
 
 
 @router.callback_query(QualityCallback.filter(F.action == "dupresetask"))
@@ -45,14 +58,15 @@ async def handle_duplicate_reset_confirmation(
             ],
         ]
     )
-    await callback.message.edit_text(
+    await _safe_edit(
+        callback.message,
         "<b>♻️ Полностью пересканировать дубли?</b>\n\n"
         "Будут удалены рассчитанные fingerprints и пары дублей для доступных "
         "изображений. Прежние решения «подтверждено» и «разные изображения» для "
         "этих пар тоже сбросятся.\n\n"
         "Изображения больше 20 МБ без сохранённого preview не попадут в заведомо "
         "неисполнимую очередь.",
-        reply_markup=keyboard,
+        keyboard,
     )
     await callback.answer()
 
