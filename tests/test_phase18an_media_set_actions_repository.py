@@ -7,7 +7,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import velvet_bot.media_set_actions as actions
 import velvet_bot.media_set_actions_repository as repository_module
-from velvet_bot.media_set_actions_repository import MediaSetActionsRepository
+from velvet_bot.media_set_actions_repository import (
+    CreatedMediaSetRecord,
+    MediaSetActionsRepository,
+)
 from velvet_bot.media_sets import CreatedMediaSet
 
 
@@ -103,6 +106,39 @@ class MediaSetActionsRepositoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(transaction.entered)
         self.assertTrue(transaction.exited)
 
+    async def test_create_repository_cleans_overlapping_pending_candidates(self) -> None:
+        transaction = _TransactionContext()
+        connection = SimpleNamespace(
+            fetchrow=AsyncMock(
+                return_value={
+                    "id": 7,
+                    "suggested_title": "KR · сет",
+                    "prompt_post_url": None,
+                    "status": "pending",
+                }
+            ),
+            fetch=AsyncMock(return_value=[{"media_id": 11}, {"media_id": 12}]),
+            fetchval=AsyncMock(return_value=51),
+            execute=AsyncMock(return_value="OK"),
+            transaction=Mock(return_value=transaction),
+        )
+        database = SimpleNamespace(acquire=Mock(return_value=_AsyncContext(connection)))
+
+        result = await MediaSetActionsRepository(database).create_media_set(
+            candidate_id=7,
+            created_by=42,
+        )
+
+        self.assertEqual(result.media_ids, (11, 12))
+        self.assertEqual(result.id, 51)
+        sqls = [call.args[0] for call in connection.execute.await_args_list]
+        self.assertIn("UPDATE media_files", sqls[0])
+        self.assertIn("status = 'accepted'", sqls[1])
+        self.assertIn("DELETE FROM media_set_candidate_items", sqls[2])
+        self.assertIn("COUNT(*)", sqls[3])
+        self.assertTrue(transaction.entered)
+        self.assertTrue(transaction.exited)
+
 
 class MediaSetActionsServiceTests(unittest.IsolatedAsyncioTestCase):
     def test_prompt_url_normalization_and_validation_are_preserved(self) -> None:
@@ -161,20 +197,21 @@ class MediaSetActionsServiceTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-    async def test_create_wrapper_propagates_existing_prompt_and_preserves_result(self) -> None:
-        created = CreatedMediaSet(
+    async def test_create_wrapper_maps_repository_record(self) -> None:
+        record = CreatedMediaSetRecord(
             id=51,
             title="KR · сет",
             media_ids=(11, 12),
             prompt_post_url="https://t.me/channel/123",
         )
-        original_create = AsyncMock(return_value=created)
-        set_prompt = AsyncMock(return_value=created.prompt_post_url)
+        repository = SimpleNamespace(create_media_set=AsyncMock(return_value=record))
+        repository_factory = Mock(return_value=repository)
         database = SimpleNamespace()
 
-        with (
-            patch.object(actions, "_ORIGINAL_CREATE_MEDIA_SET", new=original_create),
-            patch.object(actions, "set_media_set_prompt", new=set_prompt),
+        with patch.object(
+            actions,
+            "MediaSetActionsRepository",
+            new=repository_factory,
         ):
             result = await actions.create_media_set_with_prompt(
                 database,
@@ -182,41 +219,20 @@ class MediaSetActionsServiceTests(unittest.IsolatedAsyncioTestCase):
                 created_by=42,
             )
 
-        self.assertEqual(result, created)
-        original_create.assert_awaited_once_with(
-            database,
+        self.assertEqual(
+            result,
+            CreatedMediaSet(
+                id=51,
+                title="KR · сет",
+                media_ids=(11, 12),
+                prompt_post_url="https://t.me/channel/123",
+            ),
+        )
+        repository_factory.assert_called_once_with(database)
+        repository.create_media_set.assert_awaited_once_with(
             candidate_id=7,
             created_by=42,
         )
-        set_prompt.assert_awaited_once_with(
-            database,
-            media_set_id=51,
-            prompt_post_url="https://t.me/channel/123",
-        )
-
-    async def test_create_wrapper_skips_repository_when_prompt_is_missing(self) -> None:
-        created = CreatedMediaSet(
-            id=52,
-            title="Новый сет",
-            media_ids=(21, 22),
-            prompt_post_url=None,
-        )
-        original_create = AsyncMock(return_value=created)
-        set_prompt = AsyncMock()
-        database = SimpleNamespace()
-
-        with (
-            patch.object(actions, "_ORIGINAL_CREATE_MEDIA_SET", new=original_create),
-            patch.object(actions, "set_media_set_prompt", new=set_prompt),
-        ):
-            result = await actions.create_media_set_with_prompt(
-                database,
-                candidate_id=8,
-                created_by=42,
-            )
-
-        self.assertEqual(result, created)
-        set_prompt.assert_not_awaited()
 
     def test_installer_is_idempotent(self) -> None:
         original_installed = actions._INSTALLED
