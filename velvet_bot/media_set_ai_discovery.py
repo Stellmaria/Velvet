@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+import velvet_bot.media_set_candidate_listing  # noqa: F401
 import velvet_bot.media_sets as media_sets
 from velvet_bot.ai_vision import (
     build_semantic_reason,
