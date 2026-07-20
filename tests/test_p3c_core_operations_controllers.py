@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import importlib
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ALIASES = {
+RETIRED_ALIASES = {
     "velvet_bot.handlers.error_center": (
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center"
     ),
@@ -23,22 +22,11 @@ ALIASES = {
 
 
 class P3CCoreOperationsControllersTests(unittest.TestCase):
-    def test_legacy_imports_resolve_to_canonical_module_objects(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
-            with self.subTest(legacy=legacy_name):
-                legacy = importlib.import_module(legacy_name)
-                canonical = importlib.import_module(canonical_name)
-                self.assertIs(legacy, canonical)
-
-    def test_legacy_files_are_only_module_aliases(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
+    def test_retired_legacy_files_are_removed(self) -> None:
+        for legacy_name in RETIRED_ALIASES:
             with self.subTest(legacy=legacy_name):
                 path = ROOT / Path(*legacy_name.split(".")).with_suffix(".py")
-                source = path.read_text(encoding="utf-8")
-                self.assertIn("P3_COMPAT_MODULE_ALIAS", source)
-                self.assertIn(canonical_name, source)
-                self.assertNotIn("@router.", source)
-                self.assertLessEqual(len(source.splitlines()), 10)
+                self.assertFalse(path.exists())
 
     def test_canonical_modules_own_core_handlers(self) -> None:
         root = (
@@ -63,10 +51,10 @@ class P3CCoreOperationsControllersTests(unittest.TestCase):
     def test_core_bundle_uses_canonical_controllers_in_original_order(self) -> None:
         path = ROOT / "velvet_bot/presentation/telegram/routers/core_operations.py"
         source = path.read_text(encoding="utf-8")
-        for legacy_name, canonical_name in ALIASES.items():
+        for legacy_name, canonical_name in RETIRED_ALIASES.items():
+            self.assertNotIn(legacy_name, source)
             if legacy_name.endswith(".watermark"):
                 continue
-            self.assertNotIn(legacy_name, source)
             self.assertIn(canonical_name, source)
 
         includes = [
