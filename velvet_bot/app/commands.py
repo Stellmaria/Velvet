@@ -28,11 +28,12 @@ def build_editor_commands() -> tuple[BotCommand, ...]:
 
 def build_admin_commands() -> tuple[BotCommand, ...]:
     # Служебные slash-команды сохранены в обработчиках как аварийный резерв,
-    # но обычное меню Telegram ведёт владельца в единый кнопочный центр.
+    # а /help даёт владельцу полный актуальный справочник по ним.
     return (
         BotCommand(command="start", description="Открыть центр управления"),
         BotCommand(command="menu", description="Центр управления"),
         BotCommand(command="archive", description="Архив персонажей"),
+        BotCommand(command="help", description="Все команды владельца"),
     )
 
 
