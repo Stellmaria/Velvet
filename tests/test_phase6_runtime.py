@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from velvet_bot.database import Database
-from velvet_bot.handlers.system_center import SystemCallback, _format_bytes
+from velvet_bot.presentation.telegram.routers.system import SystemCallback, _format_bytes
 from velvet_bot.repositories.system_repository import (
     RuntimeDatabaseSnapshot,
     SystemRepository,

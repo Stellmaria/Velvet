@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-from velvet_bot.handlers.owner_actions import (
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions import (
     OwnerActionCallback,
     OwnerActionReplyFilter,
     _FORM_COPY,

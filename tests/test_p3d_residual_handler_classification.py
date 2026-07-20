@@ -21,10 +21,8 @@ ALIASES = {
     "velvet_bot.handlers.analytics_management_publications": (
         "velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications"
     ),
-    "velvet_bot.handlers.watermark": (
-        "velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark"
-    ),
 }
+RETIRED_ALIAS_NAMES = {"watermark"}
 
 
 def residual_handler_implementations() -> set[str]:
@@ -56,6 +54,10 @@ class P3DResidualHandlerClassificationTests(unittest.TestCase):
                 self.assertIn(MODULE_ALIAS_MARKER, source)
                 self.assertIn(canonical_name, source)
                 self.assertLessEqual(len(source.splitlines()), 10)
+
+    def test_retired_legacy_files_are_absent(self) -> None:
+        for alias_name in RETIRED_ALIAS_NAMES:
+            self.assertFalse((HANDLERS / f"{alias_name}.py").exists())
 
     def test_runtime_owners_use_canonical_paths(self) -> None:
         management = (

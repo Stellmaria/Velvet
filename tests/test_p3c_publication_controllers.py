@@ -1,38 +1,19 @@
 from __future__ import annotations
 
-import importlib
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ALIASES = {
-    "velvet_bot.handlers.publication_center": (
-        "velvet_bot.presentation.telegram.routers.publication.center"
-    ),
-    "velvet_bot.handlers.publication_center_safe": (
-        "velvet_bot.presentation.telegram.routers.publication.safe"
-    ),
-}
+HANDLERS = ROOT / "velvet_bot/handlers"
+RETIRED = {"publication_center", "publication_center_safe"}
 
 
 class P3CPublicationControllersTests(unittest.TestCase):
-    def test_legacy_imports_resolve_to_canonical_module_objects(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
-            with self.subTest(legacy=legacy_name):
-                legacy = importlib.import_module(legacy_name)
-                canonical = importlib.import_module(canonical_name)
-                self.assertIs(legacy, canonical)
-
-    def test_legacy_files_are_only_module_aliases(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
-            with self.subTest(legacy=legacy_name):
-                path = ROOT / Path(*legacy_name.split(".")).with_suffix(".py")
-                source = path.read_text(encoding="utf-8")
-                self.assertIn("P3_COMPAT_MODULE_ALIAS", source)
-                self.assertIn(canonical_name, source)
-                self.assertNotIn("@router.", source)
-                self.assertLessEqual(len(source.splitlines()), 10)
+    def test_retired_legacy_files_are_removed(self) -> None:
+        for alias_name in RETIRED:
+            with self.subTest(alias=alias_name):
+                self.assertFalse((HANDLERS / f"{alias_name}.py").exists())
 
     def test_canonical_center_owns_publication_handlers(self) -> None:
         path = (
@@ -56,7 +37,6 @@ class P3CPublicationControllersTests(unittest.TestCase):
             "from velvet_bot.presentation.telegram.routers.publication.center import (",
             source,
         )
-        self.assertNotIn("from velvet_bot.handlers.publication_center", source)
 
     def test_bundle_keeps_publication_before_archive_catch_all(self) -> None:
         path = ROOT / "velvet_bot/presentation/telegram/routers/archive_and_public.py"

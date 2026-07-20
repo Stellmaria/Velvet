@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_from": "p3d-quality-alias-retirement",
-  "alias_file_count": 25,
-  "consumer_file_count": 23,
-  "reference_count": 57,
-  "referenced_alias_count": 25,
+  "generated_from": "p3d-core-alias-retirement",
+  "alias_file_count": 18,
+  "consumer_file_count": 16,
+  "reference_count": 42,
+  "referenced_alias_count": 18,
   "unreferenced_alias_count": 0,
   "dynamic_prefix_reference_count": 2,
   "missing_alias_reference_count": 0,
@@ -61,31 +61,6 @@
       "referenced": true
     },
     {
-      "module": "velvet_bot.handlers.error_center",
-      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.owner_actions",
-      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.owner_menu",
-      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.publication_center",
-      "target": "velvet_bot.presentation.telegram.routers.publication.center",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.publication_center_safe",
-      "target": "velvet_bot.presentation.telegram.routers.publication.safe",
-      "referenced": true
-    },
-    {
       "module": "velvet_bot.handlers.supervisor_codex",
       "target": "velvet_bot.presentation.telegram.routers.supervisor.codex",
       "referenced": true
@@ -123,16 +98,6 @@
     {
       "module": "velvet_bot.handlers.supervisor_status",
       "target": "velvet_bot.presentation.telegram.routers.supervisor.status",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.system_center",
-      "target": "velvet_bot.presentation.telegram.routers.system",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.watermark",
-      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark",
       "referenced": true
     }
   ],
@@ -189,16 +154,6 @@
       ]
     },
     {
-      "path": "tests/test_owner_action_menu.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.owner_actions",
-          "line": 7
-        }
-      ]
-    },
-    {
       "path": "tests/test_p2ae_supervisor_console_watcher.py",
       "references": [
         {
@@ -224,26 +179,6 @@
         {
           "kind": "import",
           "module": "velvet_bot.handlers.channel_analytics",
-          "line": 7
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p2s_error_center_markup_boundary.py",
-      "references": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.error_center",
-          "line": 7
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p2x_publication_report_boundary.py",
-      "references": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.publication_center",
           "line": 7
         }
       ]
@@ -324,46 +259,6 @@
       ]
     },
     {
-      "path": "tests/test_p3c_core_operations_controllers.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.error_center",
-          "line": 10
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.owner_actions",
-          "line": 13
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.owner_menu",
-          "line": 16
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.watermark",
-          "line": 19
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p3c_publication_controllers.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.publication_center",
-          "line": 10
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.publication_center_safe",
-          "line": 13
-        }
-      ]
-    },
-    {
       "path": "tests/test_p3c_quality_operations_controllers.py",
       "references": [
         {
@@ -418,18 +313,8 @@
         },
         {
           "kind": "literal-reference",
-          "module": "velvet_bot.handlers.system_center",
-          "line": 33
-        },
-        {
-          "kind": "literal-reference",
           "module": "velvet_bot.handlers.supervisor_control",
-          "line": 70
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.system_center",
-          "line": 71
+          "line": 73
         }
       ]
     },
@@ -455,11 +340,6 @@
           "kind": "literal-reference",
           "module": "velvet_bot.handlers.analytics_management_publications",
           "line": 21
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.watermark",
-          "line": 24
         }
       ]
     },
@@ -485,31 +365,6 @@
           "kind": "from-import",
           "module": "velvet_bot.handlers.backup_center",
           "line": 16
-        }
-      ]
-    },
-    {
-      "path": "tests/test_phase6_runtime.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.system_center",
-          "line": 12
-        }
-      ]
-    },
-    {
-      "path": "tests/test_publication_workflow.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.publication_center",
-          "line": 7
-        },
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.publication_center_safe",
-          "line": 8
         }
       ]
     },

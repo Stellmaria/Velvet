@@ -18,10 +18,18 @@ from velvet_bot.application.owner_references import (
 from velvet_bot.reference_uploads import ReferenceUploadSessions
 
 
+OWNER_ACTIONS_PATH = Path(
+    "velvet_bot/presentation/telegram/routers/"
+    "core_operations_controllers/owner_actions.py"
+)
+
+
 class Phase9ArchitectureTests(unittest.TestCase):
     def test_owner_actions_does_not_import_other_handlers(self) -> None:
-        path = Path("velvet_bot/handlers/owner_actions.py")
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = ast.parse(
+            OWNER_ACTIONS_PATH.read_text(encoding="utf-8"),
+            filename=str(OWNER_ACTIONS_PATH),
+        )
         imported = {
             node.module
             for node in ast.walk(tree)
@@ -46,7 +54,7 @@ class Phase9ArchitectureTests(unittest.TestCase):
         self.assertEqual(violations, [])
 
     def test_owner_actions_no_longer_fakes_command_objects(self) -> None:
-        source = Path("velvet_bot/handlers/owner_actions.py").read_text(encoding="utf-8")
+        source = OWNER_ACTIONS_PATH.read_text(encoding="utf-8")
         self.assertNotIn("SimpleNamespace", source)
         self.assertNotIn("CommandObject", source)
         self.assertNotIn("model_copy(", source)

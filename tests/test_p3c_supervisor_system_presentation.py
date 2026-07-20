@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 
-ALIASES = {
+SUPERVISOR_ALIASES = {
     "velvet_bot.handlers.supervisor_control": (
         "velvet_bot.presentation.telegram.routers.supervisor.control"
     ),
@@ -30,22 +30,21 @@ ALIASES = {
     "velvet_bot.handlers.supervisor_codex": (
         "velvet_bot.presentation.telegram.routers.supervisor.codex"
     ),
-    "velvet_bot.handlers.system_center": (
-        "velvet_bot.presentation.telegram.routers.system"
-    ),
 }
+SYSTEM_ALIAS_NAME = "system_center"
+SYSTEM_CANONICAL = "velvet_bot.presentation.telegram.routers.system"
 
 
 class P3CSupervisorSystemPresentationTests(unittest.TestCase):
-    def test_legacy_imports_resolve_to_canonical_module_objects(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
+    def test_supervisor_legacy_imports_resolve_to_canonical_module_objects(self) -> None:
+        for legacy_name, canonical_name in SUPERVISOR_ALIASES.items():
             with self.subTest(legacy=legacy_name):
                 legacy = importlib.import_module(legacy_name)
                 canonical = importlib.import_module(canonical_name)
                 self.assertIs(legacy, canonical)
 
-    def test_legacy_files_are_only_module_aliases(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
+    def test_supervisor_legacy_files_are_only_module_aliases(self) -> None:
+        for legacy_name, canonical_name in SUPERVISOR_ALIASES.items():
             with self.subTest(legacy=legacy_name):
                 path = Path(*legacy_name.split(".")).with_suffix(".py")
                 source = path.read_text(encoding="utf-8")
@@ -54,8 +53,12 @@ class P3CSupervisorSystemPresentationTests(unittest.TestCase):
                 self.assertNotIn("@router.", source)
                 self.assertLessEqual(len(source.splitlines()), 8)
 
+    def test_system_alias_is_retired(self) -> None:
+        path = Path("velvet_bot/handlers", f"{SYSTEM_ALIAS_NAME}.py")
+        self.assertFalse(path.exists())
+
     def test_canonical_controllers_own_router_implementations(self) -> None:
-        for canonical_name in ALIASES.values():
+        for canonical_name in (*SUPERVISOR_ALIASES.values(), SYSTEM_CANONICAL):
             with self.subTest(canonical=canonical_name):
                 path = Path(*canonical_name.split(".")).with_suffix(".py")
                 source = path.read_text(encoding="utf-8")
@@ -68,12 +71,11 @@ class P3CSupervisorSystemPresentationTests(unittest.TestCase):
         owner_menu = Path("velvet_bot/owner_menu.py").read_text(encoding="utf-8")
         for text in (source, owner_menu):
             self.assertNotIn("velvet_bot.handlers.supervisor_control", text)
-            self.assertNotIn("velvet_bot.handlers.system_center", text)
         self.assertIn(
             "velvet_bot.presentation.telegram.routers.supervisor.control",
             source,
         )
-        self.assertIn("velvet_bot.presentation.telegram.routers.system", source)
+        self.assertIn(SYSTEM_CANONICAL, source)
 
 
 if __name__ == "__main__":
