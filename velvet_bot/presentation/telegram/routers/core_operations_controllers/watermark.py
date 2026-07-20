@@ -325,11 +325,15 @@ async def handle_watermark_callback(
     job_id = callback_data.job_id
 
     if action == "archive_edit":
-        item = await WatermarkRepository(database).get_work_item(
-            job_id,
-            owner_user_id=owner_user_id,
-        )
-        if item is None or item.job.archive_media_id is None:
+        try:
+            item = await service.get_current(
+                job_id,
+                owner_user_id=owner_user_id,
+            )
+        except ValueError:
+            await callback.answer("Архивное задание не найдено.", show_alert=True)
+            return
+        if item.job.archive_media_id is None:
             await callback.answer("Архивное задание не найдено.", show_alert=True)
             return
         await callback.answer("Настройки открыты.")
