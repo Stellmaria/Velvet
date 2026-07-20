@@ -8,9 +8,9 @@
 - доменных router bundles: **4**;
 - активных router imports в bundles: **58**;
 - дублирующих регистраций между bundles: **0**;
-- физических legacy handler-файлов: **25**;
+- физических legacy handler-файлов: **18**;
 - активных legacy handler implementations: **0**;
-- временных handler module aliases: **25**;
+- временных handler module aliases: **18**;
 - корневых Python-модулей `velvet_bot/*.py`: **117**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -34,11 +34,6 @@
 - `velvet_bot/handlers/analytics_management_tags.py`.
 - `velvet_bot/handlers/backup_center.py`.
 - `velvet_bot/handlers/channel_analytics.py`.
-- `velvet_bot/handlers/error_center.py`.
-- `velvet_bot/handlers/owner_actions.py`.
-- `velvet_bot/handlers/owner_menu.py`.
-- `velvet_bot/handlers/publication_center.py`.
-- `velvet_bot/handlers/publication_center_safe.py`.
 - `velvet_bot/handlers/supervisor_codex.py`.
 - `velvet_bot/handlers/supervisor_console.py`.
 - `velvet_bot/handlers/supervisor_control.py`.
@@ -47,8 +42,6 @@
 - `velvet_bot/handlers/supervisor_process.py`.
 - `velvet_bot/handlers/supervisor_self.py`.
 - `velvet_bot/handlers/supervisor_status.py`.
-- `velvet_bot/handlers/system_center.py`.
-- `velvet_bot/handlers/watermark.py`.
 
 ## Активная compatibility-граница
 
