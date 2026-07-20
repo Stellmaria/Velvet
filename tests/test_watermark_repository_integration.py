@@ -98,7 +98,7 @@ class WatermarkRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         undone = await self.repository.undo(first.job.id)
         self.assertEqual(
-            (3, "bottom_right", "#ffffff"),
+            (3, "bottom_right", "auto"),
             (
                 undone.revision.revision,
                 undone.revision.settings.position,
