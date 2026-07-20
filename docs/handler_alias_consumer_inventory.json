@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_from": "p3d-backup-alias-retirement",
-  "alias_file_count": 17,
-  "consumer_file_count": 15,
-  "reference_count": 40,
-  "referenced_alias_count": 17,
+  "generated_from": "p3d-supervisor-alias-retirement",
+  "alias_file_count": 9,
+  "consumer_file_count": 9,
+  "reference_count": 25,
+  "referenced_alias_count": 9,
   "unreferenced_alias_count": 0,
   "dynamic_prefix_reference_count": 2,
   "missing_alias_reference_count": 0,
@@ -54,46 +54,6 @@
       "module": "velvet_bot.handlers.channel_analytics",
       "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.channel",
       "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_codex",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_console",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.console",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_control",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.control",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_git",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.git",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_logs",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.logs",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_process",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.process",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_self",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.self_control",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.supervisor_status",
-      "target": "velvet_bot.presentation.telegram.routers.supervisor.status",
-      "referenced": true
     }
   ],
   "unreferenced_aliases": [],
@@ -125,36 +85,6 @@
           "kind": "from-import",
           "module": "velvet_bot.handlers.analytics_management",
           "line": 5
-        }
-      ]
-    },
-    {
-      "path": "tests/test_fresh_runtime_log_hotfix.py",
-      "references": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.supervisor_status",
-          "line": 12
-        }
-      ]
-    },
-    {
-      "path": "tests/test_inline_management_menus.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.supervisor_control",
-          "line": 17
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p2ae_supervisor_console_watcher.py",
-      "references": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.supervisor_console",
-          "line": 6
         }
       ]
     },
@@ -254,56 +184,6 @@
       ]
     },
     {
-      "path": "tests/test_p3c_supervisor_system_presentation.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_control",
-          "line": 9
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_status",
-          "line": 12
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_process",
-          "line": 15
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_git",
-          "line": 18
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_logs",
-          "line": 21
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_console",
-          "line": 24
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_self",
-          "line": 27
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_codex",
-          "line": 30
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_control",
-          "line": 73
-        }
-      ]
-    },
-    {
       "path": "tests/test_p3d_residual_handler_classification.py",
       "references": [
         {
@@ -345,31 +225,6 @@
           "kind": "from-import",
           "module": "velvet_bot.handlers.analytics_discussion_overrides",
           "line": 12
-        }
-      ]
-    },
-    {
-      "path": "tests/test_supervisor.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.supervisor_control",
-          "line": 16
-        }
-      ]
-    },
-    {
-      "path": "tests/test_supervisor_logs_callback.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.supervisor_logs",
-          "line": 11
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.supervisor_logs",
-          "line": 41
         }
       ]
     }
