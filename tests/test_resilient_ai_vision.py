@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 from aiogram.methods import GetFile
 
-from velvet_bot.ai_vision import VisionAnalysisTarget
+from velvet_bot.ai_vision import VisionAnalysisError, VisionAnalysisTarget
 from velvet_bot.resilient_ai_vision import ResilientMediaAIVisionService
 
 
@@ -77,12 +77,24 @@ class _OversizedRecoveryBot:
         self.deleted_messages.append((chat_id, message_id))
 
 
+class _OversizedWithoutThumbnailBot(_OversizedRecoveryBot):
+    async def send_document(self, *, chat_id, document, disable_notification):
+        self.sent_documents.append((chat_id, document, disable_notification))
+        return SimpleNamespace(
+            message_id=502,
+            document=SimpleNamespace(thumbnail=None),
+            video=None,
+            animation=None,
+            photo=None,
+        )
+
+
 class ResilientMediaAIVisionServiceTests(unittest.IsolatedAsyncioTestCase):
     @staticmethod
-    def _service(bot):
+    def _service(bot, repository=None):
         return ResilientMediaAIVisionService(
             bot=bot,
-            repository=SimpleNamespace(),
+            repository=repository or SimpleNamespace(),
             client=SimpleNamespace(),
             max_attempts=3,
         )
@@ -123,9 +135,10 @@ class ResilientMediaAIVisionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b"preview-bytes", result)
         self.assertEqual(["original-id", "preview-id"], bot.file_ids)
 
-    async def test_oversized_document_uses_temporary_telegram_thumbnail(self) -> None:
+    async def test_oversized_document_uses_and_persists_temporary_thumbnail(self) -> None:
         bot = _OversizedRecoveryBot()
-        service = self._service(bot)
+        repository = SimpleNamespace(save_preview_file_id=AsyncMock())
+        service = self._service(bot, repository)
         service.set_cache_chat_id(-1001234567890)
         target = VisionAnalysisTarget(
             media_id=2618,
@@ -146,6 +159,31 @@ class ResilientMediaAIVisionServiceTests(unittest.IsolatedAsyncioTestCase):
             bot.sent_documents,
         )
         self.assertEqual([(-1001234567890, 501)], bot.deleted_messages)
+        repository.save_preview_file_id.assert_awaited_once_with(
+            2618,
+            "recovered-thumbnail-id",
+        )
+
+    async def test_missing_oversized_thumbnail_becomes_terminal_media_specific_error(self) -> None:
+        bot = _OversizedWithoutThumbnailBot()
+        service = self._service(bot)
+        service.set_cache_chat_id(-1001234567890)
+        target = VisionAnalysisTarget(
+            media_id=3366,
+            telegram_file_id="oversized-id",
+            preview_file_id=None,
+            mime_type="image/png",
+        )
+
+        with self.assertRaises(VisionAnalysisError) as captured:
+            await service._download_target(target)
+
+        message = str(captured.exception)
+        self.assertIn("file is too big", message)
+        self.assertIn("media_key=m3366", message)
+        self.assertIn("Повтор автоматически не требуется", message)
+        self.assertEqual(["oversized-id"], bot.file_ids)
+        self.assertEqual([(-1001234567890, 502)], bot.deleted_messages)
 
 
 if __name__ == "__main__":

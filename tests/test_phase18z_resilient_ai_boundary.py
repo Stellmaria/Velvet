@@ -33,7 +33,7 @@ class ResilientAIBoundaryTests(unittest.IsolatedAsyncioTestCase):
         source = inspect.getsource(ResilientMediaAIRepository)
 
         self.assertNotIn("._require_pool()", source)
-        self.assertEqual(source.count("self._database.acquire()"), 2)
+        self.assertEqual(source.count("self._database.acquire()"), 3)
         self.assertNotIn(
             "_database.acquire",
             inspect.getsource(ResilientMediaAIVisionService),

@@ -33,6 +33,22 @@ class ErrorCenterTests(unittest.TestCase):
         self.assertEqual(first.fingerprint, second.fingerprint)
         self.assertNotEqual(first.summary, second.summary)
 
+    def test_explicit_media_keys_keep_different_files_separate(self) -> None:
+        first = capture_log_record(
+            self._record(
+                "AI semantic analysis failed media_id=%s: media_key=m56 unavailable",
+                56,
+            )
+        )
+        second = capture_log_record(
+            self._record(
+                "AI semantic analysis failed media_id=%s: media_key=m83 unavailable",
+                83,
+            )
+        )
+
+        self.assertNotEqual(first.fingerprint, second.fingerprint)
+
     def test_secrets_are_redacted_before_telegram(self) -> None:
         captured = capture_log_record(
             self._record(

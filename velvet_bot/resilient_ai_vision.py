@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+from collections.abc import Awaitable, Callable
 
 from aiogram.exceptions import (
     TelegramAPIError,
@@ -10,6 +11,7 @@ from aiogram.exceptions import (
     TelegramNetworkError,
 )
 from aiogram.types import Message, PhotoSize
+from asyncpg.exceptions import PostgresError
 
 from velvet_bot.ai_vision import (
     MediaAIVisionService,
@@ -83,6 +85,19 @@ class ResilientMediaAIRepository(ReliableMediaAIRepository):
                 )
         return targets
 
+    async def save_preview_file_id(self, media_id: int, preview_file_id: str) -> None:
+        async with self._database.acquire() as connection:
+            await connection.execute(
+                """
+                UPDATE media_files
+                SET preview_file_id = $2::TEXT
+                WHERE id = $1::BIGINT
+                  AND preview_file_id IS DISTINCT FROM $2::TEXT
+                """,
+                int(media_id),
+                str(preview_file_id),
+            )
+
 
 class ResilientMediaAIVisionService(MediaAIVisionService):
     """Retry Telegram downloads and recover previews for oversized documents."""
@@ -139,9 +154,8 @@ class ResilientMediaAIVisionService(MediaAIVisionService):
         target: VisionAnalysisTarget,
     ) -> PhotoSize | None:
         if self._cache_chat_id is None:
-            logger.warning(
-                "Cannot recover oversized Telegram document media_id=%s: "
-                "no cache chat is configured",
+            logger.info(
+                "Oversized Telegram document has no cache chat media_key=m%s",
                 target.media_id,
             )
             return None
@@ -155,16 +169,16 @@ class ResilientMediaAIVisionService(MediaAIVisionService):
             )
             thumbnail = message_thumbnail(temporary)
             if thumbnail is None:
-                logger.warning(
-                    "Telegram did not generate a thumbnail for oversized media_id=%s",
+                logger.info(
+                    "Telegram did not generate a thumbnail for oversized media_key=m%s",
                     target.media_id,
                 )
             return thumbnail
         except asyncio.CancelledError:
             raise
         except TelegramAPIError as error:
-            logger.warning(
-                "Could not recover thumbnail for oversized media_id=%s: %s",
+            logger.info(
+                "Could not recover thumbnail for oversized media_key=m%s: %s",
                 target.media_id,
                 error,
             )
@@ -178,6 +192,33 @@ class ResilientMediaAIVisionService(MediaAIVisionService):
                     )
                 except TelegramAPIError:
                     pass
+
+    async def _persist_recovered_thumbnail(
+        self,
+        *,
+        media_id: int,
+        thumbnail: PhotoSize,
+    ) -> None:
+        saver = getattr(self._repository, "save_preview_file_id", None)
+        if not callable(saver):
+            return
+        typed_saver: Callable[[int, str], Awaitable[None]] = saver
+        try:
+            await typed_saver(int(media_id), str(thumbnail.file_id))
+        except PostgresError:
+            logger.info(
+                "Could not persist recovered AI thumbnail media_key=m%s",
+                media_id,
+                exc_info=True,
+            )
+
+    @staticmethod
+    def _oversized_terminal_error(target: VisionAnalysisTarget) -> VisionAnalysisError:
+        return VisionAnalysisError(
+            "Крупное изображение недоступно для AI-анализа "
+            f"media_key=m{target.media_id}: file is too big, а Telegram не предоставил "
+            "доступную миниатюру. Повтор автоматически не требуется."
+        )
 
     async def _download_target(self, target: VisionAnalysisTarget) -> bytes:
         errors: list[BaseException] = []
@@ -193,28 +234,39 @@ class ResilientMediaAIVisionService(MediaAIVisionService):
                 )
             except asyncio.CancelledError:
                 raise
-            except (TelegramAPIError, VisionAnalysisError, TimeoutError, ConnectionError, OSError) as error:
+            except (
+                TelegramAPIError,
+                VisionAnalysisError,
+                TimeoutError,
+                ConnectionError,
+                OSError,
+            ) as error:
                 errors.append(error)
 
         oversized = any("file is too big" in str(error).casefold() for error in errors)
         if oversized:
             thumbnail = await self._recover_document_thumbnail(target)
-            if thumbnail is not None:
-                try:
-                    return await self._download_file_id(
-                        media_id=target.media_id,
-                        file_id=thumbnail.file_id,
-                    )
-                except asyncio.CancelledError:
-                    raise
-                except (
-                    TelegramAPIError,
-                    VisionAnalysisError,
-                    TimeoutError,
-                    ConnectionError,
-                    OSError,
-                ) as error:
-                    errors.append(error)
+            if thumbnail is None:
+                raise self._oversized_terminal_error(target)
+            await self._persist_recovered_thumbnail(
+                media_id=target.media_id,
+                thumbnail=thumbnail,
+            )
+            try:
+                return await self._download_file_id(
+                    media_id=target.media_id,
+                    file_id=thumbnail.file_id,
+                )
+            except asyncio.CancelledError:
+                raise
+            except (
+                TelegramAPIError,
+                VisionAnalysisError,
+                TimeoutError,
+                ConnectionError,
+                OSError,
+            ):
+                raise self._oversized_terminal_error(target) from None
 
         if errors:
             raise VisionAnalysisError(
