@@ -21,8 +21,26 @@ from velvet_bot.domains.public_archive.visibility import public_media_visibility
 from velvet_bot.domains.stories.models import StorySummary
 
 
-async def list_visible_categories(database: Database) -> list[CategorySummary]:
-    visibility_sql = public_media_visibility_sql()
+def _visibility_sql(
+    *,
+    link_alias: str = "cm",
+    file_alias: str = "mf",
+    include_restricted: bool = False,
+) -> str:
+    return public_media_visibility_sql(
+        link_alias=link_alias,
+        file_alias=file_alias,
+        include_adult_restricted=include_restricted,
+        include_oversized_images=include_restricted,
+    )
+
+
+async def list_visible_categories(
+    database: Database,
+    *,
+    include_restricted: bool = False,
+) -> list[CategorySummary]:
+    visibility_sql = _visibility_sql(include_restricted=include_restricted)
     async with database.acquire() as connection:
         rows = await connection.fetch(
             f"""
@@ -64,8 +82,9 @@ async def list_visible_universes(
     database: Database,
     *,
     category: str,
+    include_restricted: bool = False,
 ) -> list[UniverseSummary]:
-    visibility_sql = public_media_visibility_sql()
+    visibility_sql = _visibility_sql(include_restricted=include_restricted)
     async with database.acquire() as connection:
         rows = await connection.fetch(
             f"""
@@ -109,10 +128,12 @@ async def list_visible_stories(
     *,
     category: str,
     universe: str,
+    include_restricted: bool = False,
 ) -> list[StorySummary]:
-    visibility_sql = public_media_visibility_sql(
+    visibility_sql = _visibility_sql(
         link_alias="media",
         file_alias="file",
+        include_restricted=include_restricted,
     )
     async with database.acquire() as connection:
         rows = await connection.fetch(
@@ -171,12 +192,14 @@ async def list_visible_characters(
     story_id: int | None = None,
     page: int = 0,
     page_size: int = 6,
+    include_restricted: bool = False,
 ) -> CharacterDirectoryPage:
     safe_page_size = max(1, min(int(page_size), 10))
     safe_page = max(0, int(page))
-    visibility_sql = public_media_visibility_sql(
+    visibility_sql = _visibility_sql(
         link_alias="media",
         file_alias="file",
+        include_restricted=include_restricted,
     )
     async with database.acquire() as connection:
         total = int(
