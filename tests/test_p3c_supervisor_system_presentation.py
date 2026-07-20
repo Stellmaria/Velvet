@@ -24,6 +24,7 @@ SUPERVISOR_CANONICAL_MODULES = (
     "velvet_bot.presentation.telegram.routers.supervisor.self_control",
     "velvet_bot.presentation.telegram.routers.supervisor.codex",
 )
+LEGACY_SUPERVISOR_PREFIX = ".".join(("velvet_bot", "handlers", "supervisor"))
 SYSTEM_ALIAS_NAME = "system_center"
 SYSTEM_CANONICAL = "velvet_bot.presentation.telegram.routers.system"
 
@@ -52,7 +53,7 @@ class P3CSupervisorSystemPresentationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         owner_menu = Path("velvet_bot/owner_menu.py").read_text(encoding="utf-8")
         for text in (source, owner_menu):
-            self.assertNotIn("velvet_bot.handlers.supervisor", text)
+            self.assertNotIn(LEGACY_SUPERVISOR_PREFIX, text)
         self.assertIn(
             "velvet_bot.presentation.telegram.routers.supervisor.control",
             source,
