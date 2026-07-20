@@ -153,9 +153,11 @@ class WatermarkTelegramStorageTests(unittest.TestCase):
             owner_menu.index("router.include_router(watermark_router)"),
         )
         self.assertIn('F.action == "archive_approve"', handler)
+        self.assertIn('Command("wm_file", "wm_storage")', handler)
+        self.assertIn('Command("wm_download")', handler)
         self.assertIn("store_archive_watermark", handler)
         self.assertIn("cleanup_watermark_job_files", handler)
-        self.assertNotIn("answer_document", handler)
+        self.assertNotIn("callback.message.answer_document", handler)
 
 
 if __name__ == "__main__":
