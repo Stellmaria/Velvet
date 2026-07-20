@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.publication_center as module
+import velvet_bot.presentation.telegram.routers.publication.center as module
 
 
 class FakeTelegramAPIError(Exception):
