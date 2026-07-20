@@ -113,6 +113,43 @@ class MediaSetDuplicateActionsRepository:
                     )
                 await connection.execute(
                     """
+                    DELETE FROM media_set_candidate_items AS item
+                    USING media_set_candidates AS candidate
+                    WHERE item.candidate_id = candidate.id
+                      AND candidate.status = 'pending'
+                      AND candidate.id <> $1::BIGINT
+                      AND item.media_id = ANY($2::BIGINT[])
+                    """,
+                    candidate_id,
+                    list(media_ids),
+                )
+                await connection.execute(
+                    """
+                    UPDATE media_set_candidates AS candidate
+                    SET status = 'ignored',
+                        decided_by = COALESCE(candidate.decided_by, $2::BIGINT),
+                        decided_at = COALESCE(candidate.decided_at, NOW()),
+                        updated_at = NOW(),
+                        reason = CASE
+                            WHEN candidate.reason LIKE '%ручного решения по дублям.%'
+                                THEN candidate.reason
+                            ELSE candidate.reason || ' Скрыто после ручного решения по дублям.'
+                        END
+                    WHERE candidate.status = 'pending'
+                      AND candidate.id <> $1::BIGINT
+                      AND (
+                            SELECT COUNT(*)
+                            FROM media_set_candidate_items AS remaining
+                            JOIN media_files AS media ON media.id = remaining.media_id
+                            WHERE remaining.candidate_id = candidate.id
+                              AND media.media_set_id IS NULL
+                          ) < 2
+                    """,
+                    candidate_id,
+                    int(decided_by),
+                )
+                await connection.execute(
+                    """
                     UPDATE media_duplicate_candidates
                     SET status = 'ignored', decided_by = $2::BIGINT,
                         decided_at = NOW(), updated_at = NOW()
