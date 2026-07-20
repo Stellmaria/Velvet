@@ -23,6 +23,7 @@ MODULES = (
     "quality_center",
 )
 RETIRED_ALIASES = {
+    "backup_center",
     "ai_jobs",
     "quality_ai",
     "quality_ai_preview",
