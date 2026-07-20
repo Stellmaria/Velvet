@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.error_center as module
+import velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center as module
 
 
 class FakeCenter:
