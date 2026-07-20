@@ -2,3 +2,4 @@ aiogram==3.29.1
 asyncpg==0.31.0
 python-dotenv==1.2.2
 Pillow==11.3.0
+cryptography==49.0.0
