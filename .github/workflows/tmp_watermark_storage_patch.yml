@@ -1,0 +1,180 @@
+name: temporary watermark storage patch
+
+on:
+  push:
+    branches:
+      - agent/watermark-telegram-storage
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/watermark-telegram-storage
+          fetch-depth: 0
+
+      - name: Patch watermark approval controller
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py")
+          source = path.read_text(encoding="utf-8")
+
+          source = source.replace(
+              "from aiogram.exceptions import TelegramBadRequest",
+              "from aiogram.exceptions import TelegramAPIError, TelegramBadRequest",
+          )
+
+          import_anchor = """from velvet_bot.domains.watermark.archive_output import (\n    prepare_archive_watermark_output,\n)\n"""
+          storage_import = """from velvet_bot.domains.watermark.telegram_storage import (\n    WatermarkStorageSettings,\n    cleanup_watermark_job_files,\n    store_archive_watermark,\n)\n"""
+          if storage_import not in source:
+              if import_anchor not in source:
+                  raise SystemExit("watermark archive_output import anchor not found")
+              source = source.replace(import_anchor, import_anchor + storage_import)
+
+          old = '''            archive_media_id = item.job.archive_media_id
+            if archive_media_id is not None:
+                prepared = prepare_archive_watermark_output(
+                    item.job.source_path,
+                    final_path,
+                )
+                sent = await callback.message.answer_document(
+                    FSInputFile(
+                        prepared.path,
+                        filename=f"velvet-archive-{archive_media_id}-watermarked.png",
+                    ),
+                    caption=(
+                        "✅ PNG без потерь подтверждён для публичного архива.\n"
+                        f"Размер: <b>{prepared.output_bytes / 1024 / 1024:.2f} МБ</b> · "
+                        f"{prepared.width}×{prepared.height}."
+                    ),
+                )
+                if sent.document is None:
+                    raise ValueError("Telegram не вернул file_id загруженного PNG.")
+                updated = await PublicArchiveWatermarkRepository(
+                    database
+                ).approve_replacement(
+                    media_id=archive_media_id,
+                    telegram_file_id=sent.document.file_id,
+                    file_size=int(sent.document.file_size or prepared.output_bytes),
+                    approved_by=owner_user_id,
+                    settings=item.revision.settings,
+                )
+                if not updated:
+                    raise ValueError("Материал публичного архива больше не найден.")
+                await _safe_edit(
+                    callback,
+                    format_watermark_caption(
+                        item,
+                        status_text="одобрен и заменён в публичном архиве",
+                    ),
+                    None,
+                )
+                return
+'''
+
+          new = '''            archive_media_id = item.job.archive_media_id
+            if archive_media_id is not None:
+                prepared = prepare_archive_watermark_output(
+                    item.job.source_path,
+                    final_path,
+                )
+                archive_repository = PublicArchiveWatermarkRepository(database)
+                source_record = await archive_repository.get_source(archive_media_id)
+                if source_record is None:
+                    raise ValueError("Исходный материал публичного архива больше не найден.")
+                storage_settings = WatermarkStorageSettings.from_env()
+                stored = await store_archive_watermark(
+                    bot=bot,
+                    item=item,
+                    media_id=archive_media_id,
+                    output=prepared,
+                    source_name=source_record.file_name,
+                    character_names=source_record.character_names,
+                    settings=storage_settings,
+                )
+                if stored.message.document is None:
+                    raise ValueError("Telegram-хранилище не вернуло file_id PNG.")
+                updated = await archive_repository.approve_replacement(
+                    media_id=archive_media_id,
+                    telegram_file_id=stored.message.document.file_id,
+                    telegram_file_unique_id=stored.message.document.file_unique_id,
+                    file_size=stored.file_size,
+                    approved_by=owner_user_id,
+                    settings=item.revision.settings,
+                    storage_chat_id=storage_settings.chat_id,
+                    storage_thread_id=storage_settings.thread_id,
+                    storage_message_id=stored.message.message_id,
+                    storage_sha256=stored.sha256,
+                )
+                if not updated:
+                    try:
+                        await bot.delete_message(
+                            storage_settings.chat_id,
+                            stored.message.message_id,
+                        )
+                    except TelegramAPIError:
+                        logger.warning(
+                            "Could not remove orphan watermark storage message chat=%s message=%s",
+                            storage_settings.chat_id,
+                            stored.message.message_id,
+                        )
+                    raise ValueError("Материал публичного архива больше не найден.")
+
+                deleted_files, freed_bytes = cleanup_watermark_job_files(
+                    item,
+                    service.bridge,
+                )
+                if deleted_files:
+                    await archive_repository.mark_local_cleaned(archive_media_id)
+                logger.info(
+                    "Stored archive watermark media=%s chat=%s thread=%s message=%s "
+                    "deleted_files=%s freed_bytes=%s",
+                    archive_media_id,
+                    storage_settings.chat_id,
+                    storage_settings.thread_id,
+                    stored.message.message_id,
+                    deleted_files,
+                    freed_bytes,
+                )
+                await callback.message.answer(
+                    "✅ Watermark сохранён в закрытом Telegram-хранилище и "
+                    "заменил файл публичного архива.\n"
+                    f"Media ID: <code>{archive_media_id}</code> · "
+                    f"SHA: <code>{stored.sha256[:12]}</code>\n"
+                    f'<a href="{stored.message_link}">Открыть файл в хранилище</a>'
+                )
+                await _safe_edit(
+                    callback,
+                    format_watermark_caption(
+                        item,
+                        status_text="одобрен, сохранён в Telegram и заменён в архиве",
+                    ),
+                    None,
+                )
+                return
+'''
+
+          if old in source:
+              source = source.replace(old, new)
+          elif new not in source:
+              raise SystemExit("watermark approval block not found")
+
+          path.write_text(source, encoding="utf-8")
+          PY
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py
+          git commit -m "Route approved watermarks to Telegram storage"
+          git push origin HEAD:agent/watermark-telegram-storage
