@@ -85,7 +85,7 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
         self.assertIn("🙈 Скрыть из публичного", labels)
         self.assertIn("🔞 Пометить как +18", labels)
 
-    def test_manager_caption_shows_subscriber_and_access_state(self) -> None:
+    def test_manager_caption_shows_metrics_review_and_watermark_state(self) -> None:
         caption = build_viewer_caption(
             self._page(is_public=False, requires_adult_channel=True),
             PublicMediaState(
@@ -93,20 +93,32 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
                 liked_by_user=True,
                 subscribed=True,
                 subscriber_count=11,
+                view_count=19,
+                download_count=4,
+                reviewed_by_owner=False,
+                watermark_applied=True,
+                watermark_approved=False,
             ),
             manager_access=True,
         )
         self.assertIn("Подписок на героя: <b>11</b>", caption)
+        self.assertIn("Просмотров: <b>19</b>", caption)
+        self.assertIn("Скачиваний: <b>4</b>", caption)
+        self.assertIn("Просмотр 7221553045: <b>🆕 не просмотрено</b>", caption)
+        self.assertIn("Watermark: <b>нанесён, ожидает одобрения</b>", caption)
         self.assertIn("Публичный архив: <b>скрыт</b>", caption)
         self.assertIn("Канал +18: <b>требуется подписка</b>", caption)
 
-    def test_migrations_keep_visibility_and_shared_topics_separate(self) -> None:
+    def test_migrations_keep_access_metrics_and_shared_topics_separate(self) -> None:
         visibility = Path(
             "migrations/026_public_archive_visibility_and_adult_access.sql"
         ).read_text(encoding="utf-8")
         topics = Path("migrations/027_multi_character_archive_topics.sql").read_text(
             encoding="utf-8"
         )
+        activity = Path(
+            "migrations/028_public_archive_downloads_and_watermarks.sql"
+        ).read_text(encoding="utf-8")
         self.assertIn("is_public BOOLEAN", visibility)
         self.assertIn("requires_adult_channel BOOLEAN", visibility)
         self.assertIn("CREATE TABLE IF NOT EXISTS character_archive_topics", topics)
@@ -115,14 +127,23 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
             "PRIMARY KEY (character_id, archive_chat_id, archive_thread_id)",
             topics,
         )
+        self.assertIn("watermark_approved BOOLEAN", activity)
+        self.assertIn("CREATE TABLE IF NOT EXISTS public_media_view_stats", activity)
+        self.assertIn("CREATE TABLE IF NOT EXISTS public_media_download_stats", activity)
 
-    def test_public_queries_use_restricted_media_policy(self) -> None:
+    def test_public_queries_support_regular_and_member_visibility(self) -> None:
         self.assertEqual(20 * 1024 * 1024, PUBLIC_IMAGE_MAX_BYTES)
-        predicate = public_media_visibility_sql()
-        self.assertIn("cm.is_public = TRUE", predicate)
-        self.assertIn("cm.requires_adult_channel = FALSE", predicate)
-        self.assertIn("mf.file_size", predicate)
-        self.assertIn(str(PUBLIC_IMAGE_MAX_BYTES), predicate)
+        regular = public_media_visibility_sql()
+        member = public_media_visibility_sql(
+            include_adult_restricted=True,
+            include_oversized_images=True,
+        )
+        self.assertIn("cm.is_public = TRUE", regular)
+        self.assertIn("cm.requires_adult_channel = FALSE", regular)
+        self.assertIn("mf.file_size", regular)
+        self.assertIn(str(PUBLIC_IMAGE_MAX_BYTES), regular)
+        self.assertNotIn("requires_adult_channel = FALSE", member)
+        self.assertNotIn("mf.file_size", member)
 
         for relative in (
             "velvet_bot/domains/archive/repository.py",
@@ -150,7 +171,8 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
         self.assertIn("for character in characters:", archive_save)
         self.assertIn("list_characters_by_archive_topic", archive_save)
 
-    def test_adult_channel_parser_uses_velvet_default(self) -> None:
+    def test_member_channel_parser_uses_requested_velvet_default(self) -> None:
+        self.assertEqual(-1003951213065, DEFAULT_ADULT_CHANNEL_ID)
         self.assertEqual(
             DEFAULT_ADULT_CHANNEL_ID,
             parse_chat_id(
@@ -170,10 +192,10 @@ class AdultChannelAccessTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.assertTrue(
-            await has_adult_channel_access(bot, 77, channel_id=-1003807972037)
+            await has_adult_channel_access(bot, 77, channel_id=-1003951213065)
         )
         bot.get_chat_member.assert_awaited_once_with(
-            chat_id=-1003807972037,
+            chat_id=-1003951213065,
             user_id=77,
         )
 
