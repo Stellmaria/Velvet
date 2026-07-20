@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 
 from velvet_bot.core.config.settings import DEFAULT_ADULT_CHANNEL_ID
 
@@ -22,6 +22,20 @@ async def has_adult_channel_access(
             chat_id=int(channel_id),
             user_id=int(user_id),
         )
+    except TelegramBadRequest as error:
+        if "chat not found" in str(error).casefold():
+            logger.info(
+                "+18 channel is unavailable; membership check denied channel=%s user=%s",
+                channel_id,
+                user_id,
+            )
+            return False
+        logger.exception(
+            "Failed to check +18 channel membership channel=%s user=%s",
+            channel_id,
+            user_id,
+        )
+        return False
     except TelegramAPIError:
         logger.exception(
             "Failed to check +18 channel membership channel=%s user=%s",
