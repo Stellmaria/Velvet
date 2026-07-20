@@ -45,18 +45,34 @@ def _page(*, file_size: int) -> ArchivePage:
 
 
 class PublicManagerLargeFileOpenTests(unittest.IsolatedAsyncioTestCase):
-    def test_large_image_file_mode_requires_manager_access(self) -> None:
+    def test_large_image_file_mode_requires_manager_or_member_access(self) -> None:
         page = _page(file_size=BOT_API_DOWNLOAD_MAX_BYTES + 1)
         self.assertTrue(
-            _open_image_document_as_file(page, manager_access=True)
+            _open_image_document_as_file(
+                page,
+                manager_access=True,
+                member_access=False,
+            )
+        )
+        self.assertTrue(
+            _open_image_document_as_file(
+                page,
+                manager_access=False,
+                member_access=True,
+            )
         )
         self.assertFalse(
-            _open_image_document_as_file(page, manager_access=False)
+            _open_image_document_as_file(
+                page,
+                manager_access=False,
+                member_access=False,
+            )
         )
         self.assertFalse(
             _open_image_document_as_file(
                 _page(file_size=BOT_API_DOWNLOAD_MAX_BYTES),
                 manager_access=True,
+                member_access=False,
             )
         )
 
@@ -97,6 +113,7 @@ class PublicManagerLargeFileOpenTests(unittest.IsolatedAsyncioTestCase):
                 page=page,
                 viewer_user_id=8179531132,
                 manager_access=True,
+                member_access=False,
             )
 
         self.assertIs(result, sent)
@@ -149,6 +166,7 @@ class PublicManagerLargeFileOpenTests(unittest.IsolatedAsyncioTestCase):
                 page=page,
                 viewer_user_id=456,
                 manager_access=False,
+                member_access=False,
             )
 
         resolver.assert_awaited_once()

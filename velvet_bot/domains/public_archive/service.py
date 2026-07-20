@@ -9,6 +9,7 @@ from velvet_bot.domains.characters import (
 from velvet_bot.domains.public_archive.models import (
     LikeToggleResult,
     PendingPublicNotification,
+    PublicDownloadSource,
     PublicMediaState,
 )
 from velvet_bot.domains.public_archive.repository import PublicArchiveRepository
@@ -16,7 +17,7 @@ from velvet_bot.domains.stories import StoryService, StorySummary
 
 
 class PublicArchiveService:
-    """Coordinate public filters, likes, subscriptions and delivery records."""
+    """Coordinate public filters, likes, subscriptions and media activity."""
 
     def __init__(
         self,
@@ -83,6 +84,47 @@ class PublicArchiveService:
             character_id=character_id,
             media_id=media_id,
             user_id=user_id,
+        )
+
+    async def record_view(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+        user_id: int,
+    ) -> None:
+        await self._repository.record_view(
+            character_id=character_id,
+            media_id=media_id,
+            user_id=user_id,
+        )
+
+    async def resolve_download_source(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+        member_access: bool,
+    ) -> PublicDownloadSource | None:
+        return await self._repository.resolve_download_source(
+            character_id=character_id,
+            media_id=media_id,
+            member_access=member_access,
+        )
+
+    async def record_download(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+        user_id: int,
+        variant: str,
+    ) -> None:
+        await self._repository.record_download(
+            character_id=character_id,
+            media_id=media_id,
+            user_id=user_id,
+            variant=variant,
         )
 
     async def toggle_like(

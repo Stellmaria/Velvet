@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from velvet_bot.core.access import normalize_username
 
 
-DEFAULT_ADULT_CHANNEL_ID = -1003807972037
+DEFAULT_ADULT_CHANNEL_ID = -1003951213065
 
 
 @dataclass(frozen=True, slots=True)

@@ -11,11 +11,15 @@ async def get_archive_page(
     offset: int,
     *,
     public_only: bool = False,
+    include_adult_restricted: bool = False,
+    include_oversized_images: bool = False,
 ) -> ArchivePage | None:
     return await build_archive_service(database).get_page(
         character_id,
         offset,
         public_only=public_only,
+        include_adult_restricted=include_adult_restricted,
+        include_oversized_images=include_oversized_images,
     )
 
 

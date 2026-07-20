@@ -17,11 +17,15 @@ class ArchiveService:
         offset: int,
         *,
         public_only: bool = False,
+        include_adult_restricted: bool = False,
+        include_oversized_images: bool = False,
     ) -> ArchivePage | None:
         return await self._repository.get_page(
             character_id=character_id,
             offset=offset,
             public_only=public_only,
+            include_adult_restricted=include_adult_restricted,
+            include_oversized_images=include_oversized_images,
         )
 
     async def set_prompt(

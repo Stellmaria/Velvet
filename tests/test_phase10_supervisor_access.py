@@ -105,7 +105,7 @@ def _callback(user: User, data: str, *, callback_id: str) -> CallbackQuery:
 
 
 class AccessBoundaryTests(unittest.TestCase):
-    def test_public_access_includes_archive_engagement(self) -> None:
+    def test_public_access_includes_archive_engagement_and_gated_download(self) -> None:
         self.assertEqual(PUBLIC_COMMANDS, {"start", "archive", "gallery"})
         self.assertEqual(PUBLIC_CALLBACK_PREFIX, "pub:")
         self.assertEqual(
@@ -122,12 +122,13 @@ class AccessBoundaryTests(unittest.TestCase):
                 "back",
                 "like",
                 "sub",
+                "download",
             },
         )
         self.assertNotIn("menu", PUBLIC_COMMANDS)
         self.assertIn("like", PUBLIC_CALLBACK_ACTIONS)
         self.assertIn("sub", PUBLIC_CALLBACK_ACTIONS)
-        self.assertNotIn("download", PUBLIC_CALLBACK_ACTIONS)
+        self.assertIn("download", PUBLIC_CALLBACK_ACTIONS)
 
     def test_configured_moderator_has_narrow_editor_permissions(self) -> None:
         self.assertEqual(MODERATOR_COMMANDS, {"characters", "prompt", "setprompt"})
@@ -185,9 +186,9 @@ class AccessBoundaryTests(unittest.TestCase):
         self.assertTrue(is_moderator_callback(moderator_callback, MODERATOR_IDS))
         self.assertTrue(is_public_callback(public_callback))
 
-    def test_likes_and_subscriptions_are_public_but_management_is_not(self) -> None:
+    def test_engagement_and_download_reach_policy_handler_but_management_does_not(self) -> None:
         stranger = User(id=11, is_bot=False, first_name="Viewer")
-        for action in ("like", "sub"):
+        for action in ("like", "sub", "download"):
             with self.subTest(action=action):
                 self.assertTrue(
                     is_public_callback(
@@ -198,7 +199,7 @@ class AccessBoundaryTests(unittest.TestCase):
                         )
                     )
                 )
-        for action in ("download", "pcat", "puni", "purge"):
+        for action in ("pcat", "puni", "purge"):
             with self.subTest(action=action):
                 self.assertFalse(
                     is_public_callback(

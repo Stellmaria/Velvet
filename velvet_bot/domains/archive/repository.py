@@ -18,9 +18,14 @@ class ArchiveRepository:
         character_id: int,
         offset: int,
         public_only: bool = False,
+        include_adult_restricted: bool = False,
+        include_oversized_images: bool = False,
     ) -> ArchivePage | None:
         safe_offset = max(0, int(offset))
-        visibility_sql = public_media_visibility_sql()
+        visibility_sql = public_media_visibility_sql(
+            include_adult_restricted=include_adult_restricted,
+            include_oversized_images=include_oversized_images,
+        )
         async with self._database.acquire() as connection:
             character_row = await connection.fetchrow(
                 """
