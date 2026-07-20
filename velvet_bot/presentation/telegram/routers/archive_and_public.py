@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from aiogram import F, Router
 
+from velvet_bot.presentation.telegram.public_archive_rework import (
+    register_public_archive_rework,
+)
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
     router as telegram_analytics_import_router,
 )
@@ -115,6 +118,7 @@ router.message.register(
     F.photo | F.video | F.animation | F.document,
     PendingSaveUploadFilter(),
 )
+register_public_archive_rework(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
