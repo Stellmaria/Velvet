@@ -254,7 +254,7 @@ class AccessBoundaryTests(unittest.TestCase):
 
 
 class SupervisorArchitectureTests(unittest.TestCase):
-    def test_legacy_modules_are_module_aliases_without_handlers(self) -> None:
+    def test_legacy_supervisor_modules_are_aliases_without_handlers(self) -> None:
         aliases = {
             "supervisor_control.py": "routers.supervisor.control",
             "supervisor_status.py": "routers.supervisor.status",
@@ -264,7 +264,6 @@ class SupervisorArchitectureTests(unittest.TestCase):
             "supervisor_console.py": "routers.supervisor.console",
             "supervisor_self.py": "routers.supervisor.self_control",
             "supervisor_codex.py": "routers.supervisor.codex",
-            "system_center.py": "routers.system",
         }
         for filename, target in aliases.items():
             with self.subTest(filename=filename):
@@ -274,6 +273,12 @@ class SupervisorArchitectureTests(unittest.TestCase):
                 self.assertIn("P3_COMPAT_MODULE_ALIAS", source)
                 self.assertIn(target, source)
                 self.assertNotIn("@router.", source)
+
+    def test_system_controller_is_canonical_and_alias_is_absent(self) -> None:
+        canonical = Path("velvet_bot/presentation/telegram/routers/system.py")
+        self.assertTrue(canonical.exists())
+        self.assertIn("router = Router(name=__name__)", canonical.read_text(encoding="utf-8"))
+        self.assertFalse((Path("velvet_bot/handlers") / "system_center.py").exists())
 
     def test_each_controller_owns_only_its_commands(self) -> None:
         for path, expected in SUPERVISOR_CONTROLLERS.items():
