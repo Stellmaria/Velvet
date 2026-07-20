@@ -6,11 +6,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+from aiogram.exceptions import TelegramBadRequest
+
 from velvet_bot.archive_topic_links import list_characters_by_archive_topic
 from velvet_bot.core.config.settings import DEFAULT_ADULT_CHANNEL_ID, parse_chat_id
 from velvet_bot.domains.archive import ArchivePage, ArchivedMedia
 from velvet_bot.domains.characters.models import CharacterRecord
 from velvet_bot.domains.public_archive import PublicMediaState
+from velvet_bot.domains.public_archive.visibility import (
+    PUBLIC_IMAGE_MAX_BYTES,
+    public_media_visibility_sql,
+)
 from velvet_bot.public_adult_access import has_adult_channel_access
 from velvet_bot.public_archive_display import build_viewer_caption
 from velvet_bot.public_manager_ui import build_manager_archive_keyboard
@@ -110,13 +116,23 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
             topics,
         )
 
-    def test_public_queries_require_visible_media(self) -> None:
-        source = Path("velvet_bot/public_directory.py").read_text(encoding="utf-8")
-        self.assertGreaterEqual(source.count("is_public = TRUE"), 4)
-        notifications = Path(
-            "velvet_bot/domains/public_archive/repository.py"
-        ).read_text(encoding="utf-8")
-        self.assertIn("AND cm.is_public = TRUE", notifications)
+    def test_public_queries_use_restricted_media_policy(self) -> None:
+        self.assertEqual(20 * 1024 * 1024, PUBLIC_IMAGE_MAX_BYTES)
+        predicate = public_media_visibility_sql()
+        self.assertIn("cm.is_public = TRUE", predicate)
+        self.assertIn("cm.requires_adult_channel = FALSE", predicate)
+        self.assertIn("mf.file_size", predicate)
+        self.assertIn(str(PUBLIC_IMAGE_MAX_BYTES), predicate)
+
+        for relative in (
+            "velvet_bot/domains/archive/repository.py",
+            "velvet_bot/domains/public_archive/repository.py",
+            "velvet_bot/public_directory.py",
+            "velvet_bot/public_media_lookup.py",
+        ):
+            with self.subTest(path=relative):
+                source = Path(relative).read_text(encoding="utf-8")
+                self.assertIn("public_media_visibility_sql", source)
 
     def test_rename_and_shared_topic_routes_are_registered(self) -> None:
         bundle = Path(
@@ -160,6 +176,20 @@ class AdultChannelAccessTests(unittest.IsolatedAsyncioTestCase):
             chat_id=-1003807972037,
             user_id=77,
         )
+
+    async def test_missing_adult_channel_is_a_denied_check_not_an_error(self) -> None:
+        bot = SimpleNamespace(
+            get_chat_member=AsyncMock(
+                side_effect=TelegramBadRequest(
+                    method=SimpleNamespace(),
+                    message="Bad Request: chat not found",
+                )
+            )
+        )
+        with self.assertLogs("velvet_bot.public_adult_access", level="INFO") as logs:
+            allowed = await has_adult_channel_access(bot, 77, channel_id=-10042)
+        self.assertFalse(allowed)
+        self.assertTrue(any("channel is unavailable" in line for line in logs.output))
 
 
 class SharedArchiveTopicTests(unittest.IsolatedAsyncioTestCase):
