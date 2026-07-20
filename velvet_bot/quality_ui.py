@@ -89,7 +89,11 @@ def build_quality_dashboard(
                 InlineKeyboardButton(
                     text=f"🧠 Проверка изображений · {ai_quality.unreviewed}",
                     callback_data=quality_callback("qchecks", section="review"),
-                )
+                ),
+                InlineKeyboardButton(
+                    text="🔄 Ошибки Qwen",
+                    callback_data=quality_callback("quality_retry_errors"),
+                ),
             ]
         )
     rows.extend(
@@ -222,6 +226,18 @@ def build_duplicate_list(
                 )
             ]
         )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="♻️ Сбросить и проверить заново",
+                callback_data=quality_callback(
+                    "dupresetask",
+                    section=status,
+                    page=page.page,
+                ),
+            )
+        ]
+    )
     rows.extend(
         page_navigation(
             page=page.page,
