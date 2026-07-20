@@ -5,17 +5,18 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RETIRED_ALIASES = {
-    "velvet_bot.handlers.error_center": (
+HANDLERS = ROOT / "velvet_bot/handlers"
+RETIRED = {
+    "error_center": (
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center"
     ),
-    "velvet_bot.handlers.owner_actions": (
+    "owner_actions": (
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions"
     ),
-    "velvet_bot.handlers.owner_menu": (
+    "owner_menu": (
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu"
     ),
-    "velvet_bot.handlers.watermark": (
+    "watermark": (
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark"
     ),
 }
@@ -23,10 +24,9 @@ RETIRED_ALIASES = {
 
 class P3CCoreOperationsControllersTests(unittest.TestCase):
     def test_retired_legacy_files_are_removed(self) -> None:
-        for legacy_name in RETIRED_ALIASES:
-            with self.subTest(legacy=legacy_name):
-                path = ROOT / Path(*legacy_name.split(".")).with_suffix(".py")
-                self.assertFalse(path.exists())
+        for alias_name in RETIRED:
+            with self.subTest(alias=alias_name):
+                self.assertFalse((HANDLERS / f"{alias_name}.py").exists())
 
     def test_canonical_modules_own_core_handlers(self) -> None:
         root = (
@@ -51,9 +51,8 @@ class P3CCoreOperationsControllersTests(unittest.TestCase):
     def test_core_bundle_uses_canonical_controllers_in_original_order(self) -> None:
         path = ROOT / "velvet_bot/presentation/telegram/routers/core_operations.py"
         source = path.read_text(encoding="utf-8")
-        for legacy_name, canonical_name in RETIRED_ALIASES.items():
-            self.assertNotIn(legacy_name, source)
-            if legacy_name.endswith(".watermark"):
+        for alias_name, canonical_name in RETIRED.items():
+            if alias_name == "watermark":
                 continue
             self.assertIn(canonical_name, source)
 
