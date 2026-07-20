@@ -8,9 +8,9 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import SendDocument, SendPhoto
 
 from velvet_bot.ai_quality import AIQualityItem
-from velvet_bot.handlers import quality_ai as quality_ai_module
-from velvet_bot.handlers.quality_ai_preview import _send_preview_with_fallback
-import velvet_bot.handlers.quality_ai_preview  # noqa: F401
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers import quality_ai as quality_ai_module
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview import _send_preview_with_fallback
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview  # noqa: F401
 
 
 def _item(
