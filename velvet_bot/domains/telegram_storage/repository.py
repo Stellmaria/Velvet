@@ -15,6 +15,19 @@ from velvet_bot.domains.telegram_storage.models import (
 )
 
 
+def _decode_json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+        if isinstance(decoded, dict):
+            return decoded
+    return {}
+
+
 @dataclass(frozen=True, slots=True)
 class WatermarkBackfillItem:
     media_id: int
@@ -476,7 +489,7 @@ class TelegramStorageRepository:
                     file_name=str(row["file_name"] or path.name),
                     sha256=str(row["sha256"]) if row["sha256"] else None,
                     schema_version=str(row["schema_version"]) if row["schema_version"] else None,
-                    validation=dict(row["validation"] or {}),
+                    validation=_decode_json_object(row["validation"]),
                 )
             )
         if backup_dir.is_dir():
