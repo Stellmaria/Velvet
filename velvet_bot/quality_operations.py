@@ -4,7 +4,7 @@ from velvet_bot.database import Database
 
 
 class QualityOperationsRepository:
-    """Queue-management operations for the Qwen quality worker."""
+    """Queue-management operations for the Qwen semantic and quality workers."""
 
     def __init__(self, database: Database) -> None:
         self._database = database
@@ -55,27 +55,48 @@ class QualityOperationsRepository:
         return len(rows)
 
     async def retry_errors(self) -> int:
-        """Return all failed or permanently skipped quality checks to the queue."""
+        """Return all failed semantic and quality Qwen jobs to their queues."""
         async with self._database.acquire() as connection:
-            result = await connection.execute(
-                """
-                UPDATE media_ai_quality_checks
-                SET status = 'pending',
-                    attempt_count = 0,
-                    verdict = NULL,
-                    quality_score = NULL,
-                    confidence = NULL,
-                    report = NULL,
-                    decision = NULL,
-                    decided_by = NULL,
-                    decided_at = NULL,
-                    error_message = NULL,
-                    analyzed_at = NULL,
-                    updated_at = NOW()
-                WHERE status IN ('error', 'skipped')
-                """
-            )
-        return int(result.split()[-1])
+            async with connection.transaction():
+                quality_result = await connection.execute(
+                    """
+                    UPDATE media_ai_quality_checks
+                    SET status = 'pending',
+                        attempt_count = 0,
+                        verdict = NULL,
+                        quality_score = NULL,
+                        confidence = NULL,
+                        report = NULL,
+                        decision = NULL,
+                        decided_by = NULL,
+                        decided_at = NULL,
+                        error_message = NULL,
+                        analyzed_at = NULL,
+                        updated_at = NOW()
+                    WHERE status IN ('error', 'skipped')
+                    """
+                )
+                semantic_result = await connection.execute(
+                    """
+                    UPDATE media_ai_profiles
+                    SET status = 'pending',
+                        attempt_count = 0,
+                        analysis = NULL,
+                        semantic_text = NULL,
+                        error_message = NULL,
+                        analyzed_at = NULL,
+                        updated_at = NOW()
+                    WHERE status IN ('error', 'skipped')
+                    """
+                )
+        return _affected_rows(quality_result) + _affected_rows(semantic_result)
+
+
+def _affected_rows(result: str) -> int:
+    try:
+        return int(str(result).split()[-1])
+    except (TypeError, ValueError, IndexError):
+        return 0
 
 
 __all__ = ("QualityOperationsRepository",)
