@@ -4,13 +4,15 @@ from velvet_bot.database import Database
 from velvet_bot.domains.public_archive.models import (
     LikeToggleResult,
     PendingPublicNotification,
+    PUBLIC_ARCHIVE_REVIEWER_ID,
+    PublicDownloadSource,
     PublicMediaState,
 )
 from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
 
 
 class PublicArchiveRepository:
-    """PostgreSQL boundary for public likes, subscriptions and notifications."""
+    """PostgreSQL boundary for public likes, subscriptions and media activity."""
 
     def __init__(self, database: Database) -> None:
         self._database = database
@@ -49,18 +51,153 @@ class PublicArchiveRepository:
                         SELECT COUNT(*)
                         FROM character_subscriptions
                         WHERE character_id = $1::BIGINT
-                    ) AS subscriber_count
+                    ) AS subscriber_count,
+                    COALESCE((
+                        SELECT SUM(view_count)
+                        FROM public_media_view_stats
+                        WHERE character_id = $1::BIGINT
+                          AND media_id = $2::BIGINT
+                    ), 0) AS view_count,
+                    COALESCE((
+                        SELECT SUM(download_count)
+                        FROM public_media_download_stats
+                        WHERE character_id = $1::BIGINT
+                          AND media_id = $2::BIGINT
+                    ), 0) AS download_count,
+                    EXISTS (
+                        SELECT 1
+                        FROM public_media_view_stats
+                        WHERE character_id = $1::BIGINT
+                          AND media_id = $2::BIGINT
+                          AND user_id = $4::BIGINT
+                    ) AS reviewed_by_owner,
+                    COALESCE((
+                        SELECT watermark_applied
+                        FROM media_files
+                        WHERE id = $2::BIGINT
+                    ), FALSE) AS watermark_applied,
+                    COALESCE((
+                        SELECT watermark_approved
+                        FROM media_files
+                        WHERE id = $2::BIGINT
+                    ), FALSE) AS watermark_approved
                 """,
                 int(character_id),
                 int(media_id),
                 int(user_id),
+                PUBLIC_ARCHIVE_REVIEWER_ID,
             )
         return PublicMediaState(
             like_count=int(row["like_count"] or 0),
             liked_by_user=bool(row["liked_by_user"]),
             subscribed=bool(row["subscribed"]),
             subscriber_count=int(row["subscriber_count"] or 0),
+            view_count=int(row["view_count"] or 0),
+            download_count=int(row["download_count"] or 0),
+            reviewed_by_owner=bool(row["reviewed_by_owner"]),
+            watermark_applied=bool(row["watermark_applied"]),
+            watermark_approved=bool(row["watermark_approved"]),
         )
+
+    async def record_view(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+        user_id: int,
+    ) -> None:
+        async with self._database.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO public_media_view_stats (
+                    character_id,
+                    media_id,
+                    user_id,
+                    view_count
+                )
+                VALUES ($1::BIGINT, $2::BIGINT, $3::BIGINT, 1)
+                ON CONFLICT (character_id, media_id, user_id)
+                DO UPDATE SET
+                    view_count = public_media_view_stats.view_count + 1,
+                    last_viewed_at = NOW()
+                """,
+                int(character_id),
+                int(media_id),
+                int(user_id),
+            )
+
+    async def resolve_download_source(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+        member_access: bool,
+    ) -> PublicDownloadSource | None:
+        async with self._database.acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                SELECT
+                    mf.telegram_file_id,
+                    mf.source_telegram_file_id,
+                    mf.watermark_applied,
+                    mf.watermark_approved
+                FROM character_media AS cm
+                JOIN media_files AS mf ON mf.id = cm.media_id
+                WHERE cm.character_id = $1::BIGINT
+                  AND cm.media_id = $2::BIGINT
+                  AND cm.is_public = TRUE
+                """,
+                int(character_id),
+                int(media_id),
+            )
+        if row is None:
+            return None
+        if member_access:
+            return PublicDownloadSource(
+                telegram_file_id=str(
+                    row["source_telegram_file_id"] or row["telegram_file_id"]
+                ),
+                variant="original",
+            )
+        if bool(row["watermark_applied"]) and bool(row["watermark_approved"]):
+            return PublicDownloadSource(
+                telegram_file_id=str(row["telegram_file_id"]),
+                variant="watermarked",
+            )
+        return None
+
+    async def record_download(
+        self,
+        *,
+        character_id: int,
+        media_id: int,
+        user_id: int,
+        variant: str,
+    ) -> None:
+        if variant not in {"original", "watermarked"}:
+            raise ValueError("Неизвестный вариант скачивания.")
+        async with self._database.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO public_media_download_stats (
+                    character_id,
+                    media_id,
+                    user_id,
+                    download_count,
+                    last_variant
+                )
+                VALUES ($1::BIGINT, $2::BIGINT, $3::BIGINT, 1, $4::VARCHAR)
+                ON CONFLICT (character_id, media_id, user_id)
+                DO UPDATE SET
+                    download_count = public_media_download_stats.download_count + 1,
+                    last_variant = EXCLUDED.last_variant,
+                    last_downloaded_at = NOW()
+                """,
+                int(character_id),
+                int(media_id),
+                int(user_id),
+                variant,
+            )
 
     async def toggle_like(
         self,
