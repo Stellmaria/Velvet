@@ -44,16 +44,23 @@ class AnalyticsManagementSplitTests(unittest.TestCase):
             },
         )
 
-    def test_facade_is_small_and_importable(self) -> None:
-        module = importlib.import_module("velvet_bot.handlers.analytics_management")
+    def test_canonical_facade_is_small_and_importable(self) -> None:
+        module_name = (
+            "velvet_bot.presentation.telegram.routers.analytics_controllers.management"
+        )
+        module = importlib.import_module(module_name)
         self.assertIsNotNone(module.router)
         source = (
-            ROOT / "velvet_bot/handlers/analytics_management.py"
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/analytics_controllers/management.py"
         ).read_text(encoding="utf-8")
         self.assertLess(len(source.splitlines()), 100)
         self.assertNotIn("list_unresolved_tag_reviews", source)
         self.assertNotIn("set_manual_publication_type", source)
         self.assertNotIn("get_character_alias_summary", source)
+        self.assertFalse(
+            (ROOT / "velvet_bot/handlers/analytics_management.py").exists()
+        )
 
     def test_domain_modules_are_separate_and_parse(self) -> None:
         root = (

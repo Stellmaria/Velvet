@@ -1,7 +1,7 @@
 import unittest
 
 from velvet_bot.analytics_dashboard import DashboardPage, DashboardRankItem, normalize_period
-from velvet_bot.handlers.analytics_dashboard import (
+from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard import (
     AnalyticsCallback,
     _main_keyboard,
     _page_keyboard,

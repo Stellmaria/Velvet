@@ -27,7 +27,7 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_handler_alias_consumers.py",
                 "--check",
                 "--label",
-                "p3d-supervisor-alias-retirement",
+                "p3d-analytics-alias-retirement",
             ],
             check=True,
         )
@@ -113,6 +113,14 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
             "supervisor_console",
             "supervisor_self",
             "supervisor_codex",
+            "analytics_dashboard",
+            "analytics_dashboard_overrides",
+            "analytics_discussion_overrides",
+            "analytics_management",
+            "analytics_management_aliases",
+            "analytics_management_common",
+            "analytics_management_publications",
+            "analytics_management_tags",
         }
         for name in retired:
             with self.subTest(alias=name):

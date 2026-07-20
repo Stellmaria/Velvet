@@ -9,7 +9,7 @@ from velvet_bot.backup_service import (
     select_retained_paths,
 )
 from velvet_bot.discussion_insights import format_delay
-from velvet_bot.handlers.analytics_discussion_overrides import (
+from velvet_bot.presentation.telegram.routers.analytics_controllers.discussion_overrides import (
     DiscussionInsightCallback,
     _dcb,
 )
