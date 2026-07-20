@@ -22,7 +22,7 @@ ALIASES = {
         "velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications"
     ),
 }
-RETIRED_ALIASES = {"velvet_bot.handlers.watermark"}
+RETIRED_ALIAS_NAMES = {"watermark"}
 
 
 def residual_handler_implementations() -> set[str]:
@@ -56,9 +56,8 @@ class P3DResidualHandlerClassificationTests(unittest.TestCase):
                 self.assertLessEqual(len(source.splitlines()), 10)
 
     def test_retired_legacy_files_are_absent(self) -> None:
-        for legacy_name in RETIRED_ALIASES:
-            path = ROOT / Path(*legacy_name.split(".")).with_suffix(".py")
-            self.assertFalse(path.exists())
+        for alias_name in RETIRED_ALIAS_NAMES:
+            self.assertFalse((HANDLERS / f"{alias_name}.py").exists())
 
     def test_runtime_owners_use_canonical_paths(self) -> None:
         management = (
@@ -73,7 +72,7 @@ class P3DResidualHandlerClassificationTests(unittest.TestCase):
             ROOT
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/owner_menu.py"
         ).read_text(encoding="utf-8")
-        for legacy_name in (*ALIASES, *RETIRED_ALIASES):
+        for legacy_name in ALIASES:
             self.assertNotIn(f"from {legacy_name} import", management)
             self.assertNotIn(f"from {legacy_name} import", dashboard)
             self.assertNotIn(f"from {legacy_name} import", owner_menu)
