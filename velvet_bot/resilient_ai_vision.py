@@ -11,6 +11,7 @@ from aiogram.exceptions import (
     TelegramNetworkError,
 )
 from aiogram.types import Message, PhotoSize
+from asyncpg.exceptions import PostgresError
 
 from velvet_bot.ai_vision import (
     MediaAIVisionService,
@@ -204,7 +205,7 @@ class ResilientMediaAIVisionService(MediaAIVisionService):
         typed_saver: Callable[[int, str], Awaitable[None]] = saver
         try:
             await typed_saver(int(media_id), str(thumbnail.file_id))
-        except Exception:  # p2-approved-boundary: preview-cache-write-is-best-effort
+        except PostgresError:
             logger.info(
                 "Could not persist recovered AI thumbnail media_key=m%s",
                 media_id,
