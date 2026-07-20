@@ -82,6 +82,12 @@ def build_manager_archive_keyboard(
             ],
             [
                 InlineKeyboardButton(
+                    text="🛠 Отправить на доработку",
+                    callback_data=manager_callback("prework", **common),
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     text=(
                         "👁 Вернуть в публичный"
                         if not page.media.is_public
