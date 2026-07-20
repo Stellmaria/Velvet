@@ -144,7 +144,7 @@ class TelegramStorageUploader:
                 manifest=payload,
                 encryption_version=encryption_version,
             )
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-telegram-storage-operation
             for chat_id, message_id in sent_messages:
                 try:
                     await self._bot.delete_message(chat_id=chat_id, message_id=message_id)

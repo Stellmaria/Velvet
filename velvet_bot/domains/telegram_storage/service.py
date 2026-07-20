@@ -111,7 +111,7 @@ class TelegramStorageMigrationService:
                 await self._migrate_releases(summary)
                 await self._notify(progress, "Rework Review: снимок очереди")
                 await self._snapshot_rework(summary)
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: isolate-telegram-storage-operation
                 logger.exception("Telegram storage migration failed run=%s", run_id)
                 summary.failed_files += 1
                 summary.errors.append(f"fatal: {error}")
@@ -163,7 +163,7 @@ class TelegramStorageMigrationService:
                 manifest=manifest,
                 encryption_version=encryption_version,
             )
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: isolate-telegram-storage-operation
             self._record_failure(summary, candidate.kind, candidate.logical_key, error)
             return None
         if duplicate:
@@ -279,7 +279,7 @@ class TelegramStorageMigrationService:
                 )
                 summary.stored_files += 1
                 summary.bump("watermarks", "stored")
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: isolate-telegram-storage-operation
                 if message is not None:
                     try:
                         await self._bot.delete_message(
@@ -460,7 +460,7 @@ class TelegramStorageMigrationService:
                 summary.bump("backups", "deleted", deleted)
                 if item.run_id is not None:
                     await self.repository.mark_backup_offloaded(item.run_id, stored_object.object_id)
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: isolate-telegram-storage-operation
                 remove_paths((zip_path, encrypted_path, verify_path))
                 self._record_failure(summary, "backups", item.file_name, error)
 
@@ -607,7 +607,7 @@ class TelegramStorageMigrationService:
                 task["storage_object_id"] = stored.object_id
                 task["storage_archived_at"] = datetime.now(UTC).isoformat()
                 changed = True
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: isolate-telegram-storage-operation
                 archive_path.unlink(missing_ok=True)
                 self._record_failure(summary, "codex", task_id, error)
         if changed:

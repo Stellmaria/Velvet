@@ -124,7 +124,7 @@ async def _run_manual_migration(
             progress=progress,
         )
         await status_message.edit_text(_summary_text(summary))
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary: isolate-telegram-storage-operation
         logger.exception("Manual Telegram storage migration failed")
         await status_message.edit_text(
             "<b>Перенос не выполнен</b>\n\n" + escape(str(error))
@@ -291,7 +291,7 @@ async def handle_storage_startup(
                     summary.deleted_files,
                     summary.freed_bytes,
                 )
-        except Exception:
+        except Exception:  # p2-approved-boundary: isolate-telegram-storage-operation
             logger.exception("Initial Telegram storage migration failed")
 
     task = asyncio.create_task(runner(), name="telegram-storage-initial-migration")
