@@ -58,7 +58,7 @@ INSERT INTO media_rework_items (
 SELECT
     q.media_id,
     'needs_fix',
-    'qwen',
+    CASE WHEN q.decision = 'fix_required' THEN 'admin' ELSE 'qwen' END,
     COALESCE(q.report ->> 'summary_ru', 'Qwen рекомендовал доработку.'),
     q.verdict,
     q.quality_score,
@@ -67,5 +67,160 @@ SELECT
 FROM media_ai_quality_checks AS q
 WHERE q.status = 'ready'
   AND q.decision IS DISTINCT FROM 'accepted'
-  AND (q.verdict = 'critical' OR COALESCE(q.quality_score, 100) < 70)
+  AND (
+        q.decision = 'fix_required'
+        OR q.verdict = 'critical'
+        OR COALESCE(q.quality_score, 100) < 70
+      )
 ON CONFLICT (media_id) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION sync_media_rework_from_quality()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    desired_source VARCHAR(16);
+    desired_reason TEXT;
+    changed_media_id BIGINT;
+BEGIN
+    IF NEW.decision = 'accepted' THEN
+        UPDATE media_rework_items
+        SET status = 'accepted',
+            last_action_by = NEW.decided_by,
+            resolved_at = NOW(),
+            updated_at = NOW()
+        WHERE media_id = NEW.media_id
+          AND status IN ('needs_fix', 'checking', 'ready_for_review')
+        RETURNING media_id INTO changed_media_id;
+
+        IF changed_media_id IS NOT NULL THEN
+            INSERT INTO media_rework_events (
+                media_id, action, source, actor_user_id
+            )
+            VALUES (
+                NEW.media_id, 'accepted', 'admin', NEW.decided_by
+            );
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF NEW.status = 'ready'
+       AND (
+            NEW.decision = 'fix_required'
+            OR NEW.verdict = 'critical'
+            OR COALESCE(NEW.quality_score, 100) < 70
+       ) THEN
+        desired_source := CASE
+            WHEN NEW.decision = 'fix_required' THEN 'admin'
+            ELSE 'qwen'
+        END;
+        desired_reason := COALESCE(
+            NEW.report ->> 'summary_ru',
+            CASE
+                WHEN NEW.decision = 'fix_required'
+                    THEN 'Администратор отправил работу на доработку.'
+                ELSE 'Qwen рекомендовал доработку.'
+            END
+        );
+
+        INSERT INTO media_rework_items AS rework (
+            media_id,
+            status,
+            source,
+            reason,
+            qwen_verdict,
+            qwen_score,
+            requested_by,
+            last_action_by,
+            updated_at
+        )
+        VALUES (
+            NEW.media_id,
+            'needs_fix',
+            desired_source,
+            desired_reason,
+            NEW.verdict,
+            NEW.quality_score,
+            NEW.decided_by,
+            NEW.decided_by,
+            NOW()
+        )
+        ON CONFLICT (media_id) DO UPDATE
+        SET status = 'needs_fix',
+            source = CASE
+                WHEN rework.source = EXCLUDED.source THEN rework.source
+                ELSE 'mixed'
+            END,
+            reason = EXCLUDED.reason,
+            qwen_verdict = EXCLUDED.qwen_verdict,
+            qwen_score = EXCLUDED.qwen_score,
+            requested_by = COALESCE(EXCLUDED.requested_by, rework.requested_by),
+            last_action_by = COALESCE(EXCLUDED.last_action_by, rework.last_action_by),
+            resolved_at = NULL,
+            updated_at = NOW();
+
+        INSERT INTO media_rework_events (
+            media_id,
+            action,
+            source,
+            actor_user_id,
+            reason,
+            payload
+        )
+        VALUES (
+            NEW.media_id,
+            CASE
+                WHEN NEW.decision = 'fix_required'
+                    THEN 'admin_flagged'
+                ELSE 'qwen_flagged'
+            END,
+            desired_source,
+            NEW.decided_by,
+            desired_reason,
+            NEW.report
+        );
+        RETURN NEW;
+    END IF;
+
+    IF NEW.status = 'ready' THEN
+        UPDATE media_rework_items
+        SET status = 'ready_for_review',
+            reason = COALESCE(
+                NEW.report ->> 'summary_ru',
+                'Повторная проверка Qwen завершена.'
+            ),
+            qwen_verdict = NEW.verdict,
+            qwen_score = NEW.quality_score,
+            updated_at = NOW()
+        WHERE media_id = NEW.media_id
+          AND status = 'checking'
+        RETURNING media_id INTO changed_media_id;
+
+        IF changed_media_id IS NOT NULL THEN
+            INSERT INTO media_rework_events (
+                media_id, action, source, reason, payload
+            )
+            VALUES (
+                NEW.media_id,
+                'recheck_ready',
+                'system',
+                COALESCE(
+                    NEW.report ->> 'summary_ru',
+                    'Повторная проверка Qwen завершена.'
+                ),
+                NEW.report
+            );
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_media_rework_from_quality
+    ON media_ai_quality_checks;
+CREATE TRIGGER trg_media_rework_from_quality
+AFTER INSERT OR UPDATE
+ON media_ai_quality_checks
+FOR EACH ROW
+EXECUTE FUNCTION sync_media_rework_from_quality();
