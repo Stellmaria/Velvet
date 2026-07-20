@@ -59,13 +59,14 @@
 - alias, legacy и architecture inventory checks: success;
 - целевой regression/inventory suite: 21 tests + 4062 subtests, success;
 - полный локальный suite: 924 tests, success; 24 PostgreSQL integration tests skipped без `TEST_DATABASE_URL`; 4775 subtests, success;
-- финальные GitHub Actions фиксируются на head PR.
+- финальные GitHub Actions фиксируются на head PR #224.
 
 ### PR и commit
 
-- PR: создаётся после полного локального прогона;
+- PR: #224 `P3D: retire zero-reference handler aliases`;
 - ветка: `agent/p3d-zero-reference-alias-retirement`;
-- локальное verified tree готово к публикации отдельным squash PR.
+- verified production tree применён commit `5d5724f005811777a523122a023497ec8beecbdb`;
+- финальный user-authored head создан после очистки transport files.
 
 ### Незавершённое
 
