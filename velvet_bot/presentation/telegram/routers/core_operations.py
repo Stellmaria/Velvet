@@ -8,6 +8,9 @@ from velvet_bot.presentation.telegram.routers.core_operations_controllers.error_
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions import (
     router as owner_actions_router,
 )
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_help import (
+    router as owner_help_router,
+)
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu import (
     router as owner_menu_router,
 )
@@ -19,6 +22,7 @@ from velvet_bot.presentation.telegram.routers.system import router as system_cen
 router = Router(name=__name__)
 router.include_router(error_center_router)
 router.include_router(owner_actions_router)
+router.include_router(owner_help_router)
 router.include_router(owner_menu_router)
 router.include_router(supervisor_control_router)
 router.include_router(system_center_router)
