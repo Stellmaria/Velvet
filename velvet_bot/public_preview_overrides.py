@@ -21,10 +21,11 @@ def _open_image_document_as_file(
     page: ArchivePage,
     *,
     manager_access: bool,
+    member_access: bool,
 ) -> bool:
     media = page.media
     return bool(
-        manager_access
+        (manager_access or member_access)
         and media is not None
         and media.is_image_document
         and media.file_size is not None
@@ -52,6 +53,8 @@ async def send_viewer_archive_page(
     page: ArchivePage,
     viewer_user_id: int,
     manager_access: bool = False,
+    member_access: bool = False,
+    can_download: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -67,6 +70,7 @@ async def send_viewer_archive_page(
         state,
         viewer_user_id=viewer_user_id,
         manager_access=manager_access,
+        can_download=can_download,
         menu_page=menu_page,
         category=category,
         universe=universe,
@@ -103,7 +107,11 @@ async def send_viewer_archive_page(
             **common,
         )
     if media.is_image_document:
-        if _open_image_document_as_file(page, manager_access=manager_access):
+        if _open_image_document_as_file(
+            page,
+            manager_access=manager_access,
+            member_access=member_access,
+        ):
             return await bot.send_document(
                 document=media.telegram_file_id,
                 **common,
@@ -116,14 +124,14 @@ async def send_viewer_archive_page(
                 cache_chat_id=chat_id,
             )
         except ImagePreviewError:
-            if manager_access:
+            if manager_access or member_access:
                 return await bot.send_document(
                     document=media.telegram_file_id,
                     **common,
                 )
             raise
         if photo is None:
-            if manager_access:
+            if manager_access or member_access:
                 return await bot.send_document(
                     document=media.telegram_file_id,
                     **common,
@@ -152,6 +160,8 @@ async def replace_viewer_archive_page(
     page: ArchivePage,
     viewer_user_id: int,
     manager_access: bool = False,
+    member_access: bool = False,
+    can_download: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -168,6 +178,7 @@ async def replace_viewer_archive_page(
         state,
         viewer_user_id=viewer_user_id,
         manager_access=manager_access,
+        can_download=can_download,
         menu_page=menu_page,
         category=category,
         universe=universe,
@@ -181,6 +192,7 @@ async def replace_viewer_archive_page(
     file_mode = _open_image_document_as_file(
         page,
         manager_access=manager_access,
+        member_access=member_access,
     )
 
     if page.media.is_image_document and not file_mode:
@@ -192,11 +204,11 @@ async def replace_viewer_archive_page(
                 cache_chat_id=callback.message.chat.id,
             )
         except ImagePreviewError:
-            if not manager_access:
+            if not manager_access and not member_access:
                 raise
             photo = None
             file_mode = True
-        if photo is None and manager_access:
+        if photo is None and (manager_access or member_access):
             file_mode = True
         if photo is None and not file_mode:
             raise _image_display_error(page)
@@ -237,6 +249,8 @@ async def replace_viewer_archive_page(
             page=page,
             viewer_user_id=viewer_user_id,
             manager_access=manager_access,
+            member_access=member_access,
+            can_download=can_download,
             menu_page=menu_page,
             category=category,
             universe=universe,
