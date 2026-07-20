@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 from aiogram.enums import ChatType
 from aiogram.types import Chat, Message, User
 
-from velvet_bot.handlers.publication_center import PublicationCallback
-from velvet_bot.handlers.publication_center_safe import PublicationReplyMarkerFilter
+from velvet_bot.presentation.telegram.routers.publication.center import PublicationCallback
+from velvet_bot.presentation.telegram.routers.publication.safe import PublicationReplyMarkerFilter
 from velvet_bot.publication_worker import split_publication_text
 from velvet_bot.publication_workflow import (
     PublicationDraft,
