@@ -62,20 +62,22 @@ Production legacy-consumer inventory уже закрыт на `0 / 0 / 0`, но 
 
 ### Проверки
 
-- archive/reference regression suite: 93 tests + 66 subtests, success;
-- alias inventory и architecture inventory checks: success;
-- полный suite и GitHub Actions фиксируются на head PR.
+- целевой canonical/inventory suite: 19 tests + 91 subtests, success;
+- alias inventory, legacy inventory и architecture inventory checks: success;
+- полный локальный suite: 924 tests, success; 24 PostgreSQL integration tests skipped без `TEST_DATABASE_URL`;
+- финальные GitHub Actions фиксируются на head PR #223.
 
 ### PR и commit
 
-- PR: создаётся после локальной проверки;
+- PR: #223 `P3D: retire archive and reference handler aliases`;
 - ветка: `agent/p3d-archive-reference-alias-retirement`;
-- production commit создаётся после полного test suite.
+- verified production tree применён commit `397771ffc229a2e23532c9d2a6f05b2249cb654e`;
+- финальный user-authored head создан после очистки transport files.
 
 ### Незавершённое
 
-Остаются 46 handler aliases, 8 runtime compatibility components, 114 root modules и неоднородное размещение repositories.
+Остаются 46 handler aliases, из которых 44 имеют repository references, а 2 (`ai_jobs`, `quality_calibration`) уже не используются внутри репозитория. Также остаются 8 runtime compatibility components, 114 root modules и неоднородное размещение repositories.
 
 ### Следующий шаг
 
-Мигрировать следующую alias-группу: character/story либо analytics/core, затем перейти к P3E repository/root module layout после сокращения compatibility-слоя.
+Удалить два уже неиспользуемых aliases отдельным минимальным срезом и мигрировать следующую связанную группу character/story либо analytics/core. После сокращения compatibility-слоя перейти к P3E repository/root module layout.
