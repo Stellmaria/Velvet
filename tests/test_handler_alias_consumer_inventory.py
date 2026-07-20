@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -34,6 +35,33 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
     def test_inventory_has_no_references_to_missing_aliases(self) -> None:
         data = _load_module().build_inventory(label="test")
         self.assertEqual(data["missing_alias_reference_count"], 0)
+
+    def test_runtime_worktrees_are_not_scanned(self) -> None:
+        module = _load_module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            handlers = root / "velvet_bot" / "handlers"
+            handlers.mkdir(parents=True)
+            (root / "tracked.py").write_text("value = 1\n", encoding="utf-8")
+            stale = root / "runtime" / "supervisor" / "codex-worktrees" / "old"
+            stale.mkdir(parents=True)
+            (stale / "stale_test.py").write_text(
+                "import velvet_bot.handlers.removed_alias\n",
+                encoding="utf-8",
+            )
+
+            original_root = module.ROOT
+            original_handlers = module.HANDLERS
+            try:
+                module.ROOT = root
+                module.HANDLERS = handlers
+                candidates = module._candidate_paths()
+            finally:
+                module.ROOT = original_root
+                module.HANDLERS = original_handlers
+
+        relative = {path.relative_to(root).as_posix() for path in candidates}
+        self.assertEqual(relative, {"tracked.py"})
 
     def test_archive_and_reference_alias_group_is_retired(self) -> None:
         retired = {
