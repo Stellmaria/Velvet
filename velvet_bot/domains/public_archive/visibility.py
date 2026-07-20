@@ -7,8 +7,10 @@ def public_media_visibility_sql(
     *,
     link_alias: str = "cm",
     file_alias: str = "mf",
+    include_adult_restricted: bool = False,
+    include_oversized_images: bool = False,
 ) -> str:
-    """Return the SQL predicate for media allowed in the public archive."""
+    """Return the SQL predicate for media allowed to the current viewer."""
     allowed_aliases = {
         "cm",
         "mf",
@@ -19,16 +21,29 @@ def public_media_visibility_sql(
     }
     if link_alias not in allowed_aliases or file_alias not in allowed_aliases:
         raise ValueError("Unsupported SQL alias for public media visibility.")
-    return f"""
-        {link_alias}.is_public = TRUE
-        AND {link_alias}.requires_adult_channel = FALSE
-        AND NOT (
+
+    adult_predicate = (
+        "TRUE"
+        if include_adult_restricted
+        else f"{link_alias}.requires_adult_channel = FALSE"
+    )
+    size_predicate = (
+        "TRUE"
+        if include_oversized_images
+        else f"""
+        NOT (
             (
                 {file_alias}.media_type = 'photo'
                 OR COALESCE({file_alias}.mime_type, '') LIKE 'image/%'
             )
             AND COALESCE({file_alias}.file_size, 0) > {PUBLIC_IMAGE_MAX_BYTES}
         )
+        """.strip()
+    )
+    return f"""
+        {link_alias}.is_public = TRUE
+        AND ({adult_predicate})
+        AND ({size_predicate})
     """.strip()
 
 
