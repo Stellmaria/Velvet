@@ -220,7 +220,6 @@ async def replace_viewer_archive_page(
         await callback.message.edit_media(media=media, reply_markup=keyboard)
     except TelegramBadRequest as error:
         if "message is not modified" in str(error).casefold():
-            await callback.message.edit_reply_markup(reply_markup=keyboard)
             return
         await send_viewer_archive_page(
             bot=bot,

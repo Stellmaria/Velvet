@@ -3,6 +3,7 @@ from __future__ import annotations
 from velvet_bot.database import Database
 from velvet_bot.domains.archive.models import ArchivePage, ArchivedMedia, DeletedArchiveItem
 from velvet_bot.domains.characters.models import CharacterRecord
+from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
 
 
 class ArchiveRepository:
@@ -19,6 +20,7 @@ class ArchiveRepository:
         public_only: bool = False,
     ) -> ArchivePage | None:
         safe_offset = max(0, int(offset))
+        visibility_sql = public_media_visibility_sql()
         async with self._database.acquire() as connection:
             character_row = await connection.fetchrow(
                 """
@@ -41,11 +43,15 @@ class ArchiveRepository:
 
             total = int(
                 await connection.fetchval(
-                    """
+                    f"""
                     SELECT COUNT(*)
-                    FROM character_media
-                    WHERE character_id = $1::BIGINT
-                      AND ($2::BOOLEAN = FALSE OR is_public = TRUE)
+                    FROM character_media AS cm
+                    JOIN media_files AS mf ON mf.id = cm.media_id
+                    WHERE cm.character_id = $1::BIGINT
+                      AND (
+                            $2::BOOLEAN = FALSE
+                            OR ({visibility_sql})
+                          )
                     """,
                     int(character_id),
                     bool(public_only),
@@ -58,7 +64,7 @@ class ArchiveRepository:
 
             normalized_offset = safe_offset % total
             media_row = await connection.fetchrow(
-                """
+                f"""
                 SELECT
                     mf.id AS media_id,
                     mf.telegram_file_id,
@@ -82,7 +88,10 @@ class ArchiveRepository:
                 JOIN media_files AS mf ON mf.id = cm.media_id
                 LEFT JOIN media_sets AS ms ON ms.id = mf.media_set_id
                 WHERE cm.character_id = $1::BIGINT
-                  AND ($2::BOOLEAN = FALSE OR cm.is_public = TRUE)
+                  AND (
+                        $2::BOOLEAN = FALSE
+                        OR ({visibility_sql})
+                      )
                 ORDER BY cm.created_at DESC, mf.id DESC
                 OFFSET $3::INTEGER
                 LIMIT 1
@@ -285,8 +294,8 @@ class ArchiveRepository:
                             DELETE FROM media_sets AS media_set
                             WHERE media_set.id = $1::BIGINT
                               AND NOT EXISTS (
-                                  SELECT 1 FROM media_files
-                                  WHERE media_set_id = media_set.id
+                                SELECT 1 FROM media_files
+                                WHERE media_set_id = media_set.id
                               )
                             """,
                             int(media_set_id),

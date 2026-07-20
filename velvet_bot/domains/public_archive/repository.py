@@ -6,6 +6,7 @@ from velvet_bot.domains.public_archive.models import (
     PendingPublicNotification,
     PublicMediaState,
 )
+from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
 
 
 class PublicArchiveRepository:
@@ -190,9 +191,10 @@ class PublicArchiveRepository:
         limit: int = 100,
     ) -> list[PendingPublicNotification]:
         safe_limit = max(1, min(int(limit), 500))
+        visibility_sql = public_media_visibility_sql()
         async with self._database.acquire() as connection:
             rows = await connection.fetch(
-                """
+                f"""
                 SELECT
                     cs.character_id,
                     c.name AS character_name,
@@ -203,13 +205,13 @@ class PublicArchiveRepository:
                 JOIN character_media AS cm
                   ON cm.character_id = cs.character_id
                  AND cm.created_at > cs.created_at
-                 AND cm.is_public = TRUE
                 JOIN media_files AS mf ON mf.id = cm.media_id
                 LEFT JOIN public_notification_deliveries AS pnd
                   ON pnd.character_id = cs.character_id
                  AND pnd.media_id = cm.media_id
                  AND pnd.user_id = cs.user_id
                 WHERE pnd.user_id IS NULL
+                  AND ({visibility_sql})
                   AND (
                         mf.media_type = 'photo'
                         OR COALESCE(mf.mime_type, '') LIKE 'image/%'

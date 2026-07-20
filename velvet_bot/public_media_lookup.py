@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from velvet_bot.database import Database
+from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
 
 
 async def get_character_media_offset(
@@ -11,7 +12,16 @@ async def get_character_media_offset(
     public_only: bool = False,
 ) -> int | None:
     """Return the newest-first offset of one visible character-media link."""
-    visibility_filter = "AND is_public = TRUE" if public_only else ""
+    visibility_filter = (
+        "AND ("
+        + public_media_visibility_sql(
+            link_alias="character_media",
+            file_alias="mf",
+        )
+        + ")"
+        if public_only
+        else ""
+    )
     async with database.acquire() as connection:
         value = await connection.fetchval(
             f"""
@@ -22,6 +32,7 @@ async def get_character_media_offset(
                         ORDER BY created_at DESC, media_id DESC
                     ) - 1 AS media_offset
                 FROM character_media
+                JOIN media_files AS mf ON mf.id = character_media.media_id
                 WHERE character_id = $1
                   {visibility_filter}
             )
