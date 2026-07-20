@@ -50,9 +50,20 @@ def build_viewer_caption(page: ArchivePage, state, *, manager_access: bool = Fal
         return caption
     visibility = "показывается" if page.media.is_public else "скрыт"
     adult = "требуется подписка" if page.media.requires_adult_channel else "обычный доступ"
+    if state.watermark_approved:
+        watermark = "одобрен для публичного скачивания"
+    elif state.watermark_applied:
+        watermark = "нанесён, ожидает одобрения"
+    else:
+        watermark = "нет"
+    owner_review = "✅ просмотрено" if state.reviewed_by_owner else "🆕 не просмотрено"
     return (
         f"{caption}\n"
         f"Подписок на героя: <b>{state.subscriber_count}</b>\n"
+        f"Просмотров: <b>{state.view_count}</b>\n"
+        f"Скачиваний: <b>{state.download_count}</b>\n"
+        f"Просмотр 7221553045: <b>{owner_review}</b>\n"
+        f"Watermark: <b>{watermark}</b>\n"
         f"Публичный архив: <b>{visibility}</b>\n"
         f"Канал +18: <b>{adult}</b>"
     )
@@ -65,6 +76,7 @@ async def build_viewer_keyboard(
     *,
     viewer_user_id: int,
     manager_access: bool = False,
+    can_download: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -86,6 +98,7 @@ async def build_viewer_keyboard(
         page,
         state,
         viewer_user_id=viewer_user_id,
+        can_download=can_download,
         menu_page=menu_page,
         category=category,
         universe=universe,
@@ -125,6 +138,7 @@ async def send_viewer_archive_page(
     page: ArchivePage,
     viewer_user_id: int,
     manager_access: bool = False,
+    can_download: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -139,6 +153,7 @@ async def send_viewer_archive_page(
         state,
         viewer_user_id=viewer_user_id,
         manager_access=manager_access,
+        can_download=can_download,
         menu_page=menu_page,
         category=category,
         universe=universe,
@@ -190,6 +205,7 @@ async def replace_viewer_archive_page(
     page: ArchivePage,
     viewer_user_id: int,
     manager_access: bool = False,
+    can_download: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -211,6 +227,7 @@ async def replace_viewer_archive_page(
         state,
         viewer_user_id=viewer_user_id,
         manager_access=manager_access,
+        can_download=can_download,
         menu_page=menu_page,
         category=category,
         universe=universe,
@@ -228,6 +245,7 @@ async def replace_viewer_archive_page(
             page=page,
             viewer_user_id=viewer_user_id,
             manager_access=manager_access,
+            can_download=can_download,
             menu_page=menu_page,
             category=category,
             universe=universe,
@@ -246,6 +264,7 @@ async def refresh_viewer_archive_caption(
     page: ArchivePage,
     viewer_user_id: int,
     manager_access: bool = False,
+    can_download: bool = False,
     menu_page: int = 0,
     category: str = "",
     universe: str = "",
@@ -261,6 +280,7 @@ async def refresh_viewer_archive_caption(
         state,
         viewer_user_id=viewer_user_id,
         manager_access=manager_access,
+        can_download=can_download,
         menu_page=menu_page,
         category=category,
         universe=universe,
