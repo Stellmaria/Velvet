@@ -59,7 +59,7 @@
 
 ### Миграции и совместимость
 
-Добавлена зарезервированная миграция `900_public_archive_downloads_and_watermarks.sql`. Старые файлы получают безопасные defaults: watermark отсутствует и публичное скачивание для nonmembers закрыто. Участники канала продолжают скачивать текущий original file_id, пока fast-watermark не сохранит отдельный source file_id.
+Добавлена технически зарезервированная миграция `999999_public_archive_downloads_and_watermarks.sql`. Старые файлы получают безопасные defaults: watermark отсутствует и публичное скачивание для nonmembers закрыто. Участники канала продолжают скачивать текущий original file_id, пока fast-watermark не сохранит отдельный source file_id.
 
 ### Проверки
 
