@@ -1,0 +1,380 @@
+name: agent rework queue autofix
+
+on:
+  push:
+    branches:
+      - agent/unified-media-rework-queue
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[rework-autofix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/unified-media-rework-queue
+          fetch-depth: 0
+      - name: Apply focused rework queue integration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"patch marker not found in {path}: {old[:80]!r}")
+              target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          ai_path = "velvet_bot/ai_quality.py"
+          old_mark_ready = '''    async def mark_ready(self, media_id: int, report: dict[str, Any]) -> None:
+              async with self._database.acquire() as connection:
+                  await connection.execute(
+                      """
+                      UPDATE media_ai_quality_checks
+                      SET status = 'ready', verdict = $2::VARCHAR,
+                          quality_score = $3::SMALLINT, confidence = $4::SMALLINT,
+                          report = $5::JSONB, error_message = NULL,
+                          analyzed_at = NOW(), updated_at = NOW()
+                      WHERE media_id = $1::BIGINT
+                      """,
+                      int(media_id),
+                      str(report["verdict"]),
+                      int(report["quality_score"]),
+                      int(report["confidence"]),
+                      json.dumps(report, ensure_ascii=False),
+                  )
+'''
+          new_mark_ready = '''    async def mark_ready(self, media_id: int, report: dict[str, Any]) -> None:
+              verdict = str(report["verdict"])
+              score = int(report["quality_score"])
+              confidence = int(report["confidence"])
+              report_json = json.dumps(report, ensure_ascii=False)
+              issues = report.get("critical_issues") or report.get("warnings") or []
+              reason_parts = [str(report.get("summary_ru") or "").strip()]
+              if isinstance(issues, list):
+                  reason_parts.extend(str(item).strip() for item in issues[:3])
+              reason = " ".join(part for part in reason_parts if part)[:2000]
+              poor_result = verdict == "critical" or score < 70
+
+              async with self._database.acquire() as connection:
+                  async with connection.transaction():
+                      await connection.execute(
+                          """
+                          UPDATE media_ai_quality_checks
+                          SET status = 'ready', verdict = $2::VARCHAR,
+                              quality_score = $3::SMALLINT, confidence = $4::SMALLINT,
+                              report = $5::JSONB, error_message = NULL,
+                              analyzed_at = NOW(), updated_at = NOW()
+                          WHERE media_id = $1::BIGINT
+                          """,
+                          int(media_id),
+                          verdict,
+                          score,
+                          confidence,
+                          report_json,
+                      )
+                      if poor_result:
+                          await connection.execute(
+                              """
+                              INSERT INTO media_rework_items AS rework (
+                                  media_id, status, source, reason,
+                                  qwen_verdict, qwen_score, updated_at
+                              )
+                              VALUES (
+                                  $1::BIGINT, 'needs_fix', 'qwen', $2::TEXT,
+                                  $3::VARCHAR, $4::SMALLINT, NOW()
+                              )
+                              ON CONFLICT (media_id) DO UPDATE
+                              SET status = 'needs_fix',
+                                  source = CASE
+                                      WHEN rework.source = 'admin' THEN 'mixed'
+                                      ELSE rework.source
+                                  END,
+                                  reason = EXCLUDED.reason,
+                                  qwen_verdict = EXCLUDED.qwen_verdict,
+                                  qwen_score = EXCLUDED.qwen_score,
+                                  resolved_at = NULL,
+                                  updated_at = NOW()
+                              """,
+                              int(media_id),
+                              reason or "Qwen рекомендовал доработку.",
+                              verdict,
+                              score,
+                          )
+                          await connection.execute(
+                              """
+                              INSERT INTO media_rework_events (
+                                  media_id, action, source, reason, payload
+                              )
+                              VALUES (
+                                  $1::BIGINT, 'qwen_flagged', 'qwen',
+                                  $2::TEXT, $3::JSONB
+                              )
+                              """,
+                              int(media_id),
+                              reason or "Qwen рекомендовал доработку.",
+                              report_json,
+                          )
+                      else:
+                          moved = await connection.fetchrow(
+                              """
+                              UPDATE media_rework_items
+                              SET status = 'ready_for_review',
+                                  reason = $2::TEXT,
+                                  qwen_verdict = $3::VARCHAR,
+                                  qwen_score = $4::SMALLINT,
+                                  updated_at = NOW()
+                              WHERE media_id = $1::BIGINT
+                                AND status = 'checking'
+                              RETURNING media_id
+                              """,
+                              int(media_id),
+                              reason or "Повторная проверка Qwen завершена без критичных замечаний.",
+                              verdict,
+                              score,
+                          )
+                          if moved is not None:
+                              await connection.execute(
+                                  """
+                                  INSERT INTO media_rework_events (
+                                      media_id, action, source, reason, payload
+                                  )
+                                  VALUES (
+                                      $1::BIGINT, 'recheck_ready', 'system',
+                                      $2::TEXT, $3::JSONB
+                                  )
+                                  """,
+                                  int(media_id),
+                                  reason or "Повторная проверка завершена.",
+                                  report_json,
+                              )
+'''
+          replace_once(ai_path, old_mark_ready, new_mark_ready)
+
+          old_decision = '''    async def set_decision(self, media_id: int, decision: str, user_id: int) -> bool:
+              if decision not in {"accepted", "fix_required"}:
+                  raise ValueError("Неизвестное решение проверки качества.")
+              async with self._database.acquire() as connection:
+                  result = await connection.execute(
+                      """
+                      UPDATE media_ai_quality_checks
+                      SET decision = $2::VARCHAR, decided_by = $3::BIGINT,
+                          decided_at = NOW(), updated_at = NOW()
+                      WHERE media_id = $1::BIGINT AND status = 'ready'
+                      """,
+                      int(media_id),
+                      decision,
+                      int(user_id),
+                  )
+              return result.endswith("1")
+'''
+          new_decision = '''    async def set_decision(self, media_id: int, decision: str, user_id: int) -> bool:
+              if decision not in {"accepted", "fix_required"}:
+                  raise ValueError("Неизвестное решение проверки качества.")
+              async with self._database.acquire() as connection:
+                  async with connection.transaction():
+                      row = await connection.fetchrow(
+                          """
+                          UPDATE media_ai_quality_checks
+                          SET decision = $2::VARCHAR, decided_by = $3::BIGINT,
+                              decided_at = NOW(), updated_at = NOW()
+                          WHERE media_id = $1::BIGINT
+                            AND status = 'ready'
+                            AND decision IS DISTINCT FROM $2::VARCHAR
+                          RETURNING verdict, quality_score, report
+                          """,
+                          int(media_id),
+                          decision,
+                          int(user_id),
+                      )
+                      if row is None:
+                          return False
+
+                      report = _decode_report(row["report"]) or {}
+                      reason = str(report.get("summary_ru") or "").strip()[:2000]
+                      if decision == "fix_required":
+                          await connection.execute(
+                              """
+                              INSERT INTO media_rework_items AS rework (
+                                  media_id, status, source, reason,
+                                  qwen_verdict, qwen_score,
+                                  requested_by, last_action_by, updated_at
+                              )
+                              VALUES (
+                                  $1::BIGINT, 'needs_fix', 'admin', $2::TEXT,
+                                  $3::VARCHAR, $4::SMALLINT,
+                                  $5::BIGINT, $5::BIGINT, NOW()
+                              )
+                              ON CONFLICT (media_id) DO UPDATE
+                              SET status = 'needs_fix',
+                                  source = CASE
+                                      WHEN rework.source = 'qwen' THEN 'mixed'
+                                      ELSE rework.source
+                                  END,
+                                  reason = COALESCE(EXCLUDED.reason, rework.reason),
+                                  qwen_verdict = COALESCE(
+                                      EXCLUDED.qwen_verdict, rework.qwen_verdict
+                                  ),
+                                  qwen_score = COALESCE(
+                                      EXCLUDED.qwen_score, rework.qwen_score
+                                  ),
+                                  requested_by = EXCLUDED.requested_by,
+                                  last_action_by = EXCLUDED.last_action_by,
+                                  resolved_at = NULL,
+                                  updated_at = NOW()
+                              """,
+                              int(media_id),
+                              reason or "Администратор отправил работу на доработку.",
+                              row["verdict"],
+                              row["quality_score"],
+                              int(user_id),
+                          )
+                          await connection.execute(
+                              """
+                              INSERT INTO media_rework_events (
+                                  media_id, action, source, actor_user_id, reason
+                              )
+                              VALUES (
+                                  $1::BIGINT, 'admin_flagged', 'admin',
+                                  $2::BIGINT, $3::TEXT
+                              )
+                              """,
+                              int(media_id),
+                              int(user_id),
+                              reason or "Администратор отправил работу на доработку.",
+                          )
+                      else:
+                          resolved = await connection.fetchrow(
+                              """
+                              UPDATE media_rework_items
+                              SET status = 'accepted',
+                                  last_action_by = $2::BIGINT,
+                                  resolved_at = NOW(),
+                                  updated_at = NOW()
+                              WHERE media_id = $1::BIGINT
+                                AND status IN (
+                                    'needs_fix', 'checking', 'ready_for_review'
+                                )
+                              RETURNING media_id
+                              """,
+                              int(media_id),
+                              int(user_id),
+                          )
+                          if resolved is not None:
+                              await connection.execute(
+                                  """
+                                  INSERT INTO media_rework_events (
+                                      media_id, action, source, actor_user_id
+                                  )
+                                  VALUES (
+                                      $1::BIGINT, 'accepted', 'admin', $2::BIGINT
+                                  )
+                                  """,
+                                  int(media_id),
+                                  int(user_id),
+                              )
+              return True
+'''
+          replace_once(ai_path, old_decision, new_decision)
+
+          replace_once(
+              "velvet_bot/quality_ui.py",
+              '''def build_quality_dashboard(
+              summary: QualitySummary,
+              ai_quality: AIQualitySummary | None = None,
+          ) -> tuple[str, InlineKeyboardMarkup]:''',
+              '''def build_quality_dashboard(
+              summary: QualitySummary,
+              ai_quality: AIQualitySummary | None = None,
+              *,
+              rework_count: int = 0,
+          ) -> tuple[str, InlineKeyboardMarkup]:''',
+          )
+          replace_once(
+              "velvet_bot/quality_ui.py",
+              '''        )
+              lines.extend(
+          ''',
+              '''        )
+              lines.append(
+                  f"Единая очередь доработки: <b>{max(0, int(rework_count))}</b>"
+              )
+              lines.extend(
+          ''',
+          )
+          replace_once(
+              "velvet_bot/quality_ui.py",
+              '''        )
+              rows.extend(
+          ''',
+              '''        )
+              rows.append(
+                  [
+                      InlineKeyboardButton(
+                          text=f"🛠 Доработка · {max(0, int(rework_count))}",
+                          callback_data=quality_callback("reworks"),
+                      )
+                  ]
+              )
+              rows.extend(
+          ''',
+          )
+
+          replace_once(
+              "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_center.py",
+              '''from velvet_bot.database import Database
+          ''',
+              '''from velvet_bot.database import Database
+          from velvet_bot.domains.media_rework import MediaReworkRepository
+          ''',
+          )
+          replace_once(
+              "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_center.py",
+              '''async def _dashboard_payload(database: Database):
+              summary = await get_quality_summary(database)
+              ai_quality = await AIQualityRepository(database).summary()
+              return build_quality_dashboard(summary, ai_quality)
+          ''',
+              '''async def _dashboard_payload(database: Database):
+              summary = await get_quality_summary(database)
+              ai_quality = await AIQualityRepository(database).summary()
+              rework = await MediaReworkRepository(database).summary()
+              return build_quality_dashboard(
+                  summary,
+                  ai_quality,
+                  rework_count=rework.active,
+              )
+          ''',
+          )
+
+          replace_once(
+              "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py",
+              '''from velvet_bot.database import Database
+          ''',
+              '''from velvet_bot.database import Database
+          from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_rework import (
+              register_quality_rework_handlers,
+          )
+          ''',
+          )
+          replace_once(
+              "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py",
+              '''__all__ = ("router",)
+          ''',
+              '''register_quality_rework_handlers(router)
+
+          __all__ = ("router",)
+          ''',
+          )
+          PY
+      - name: Commit focused integration
+        run: |
+          git config user.name "Velvet CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add velvet_bot/ai_quality.py velvet_bot/quality_ui.py velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_center.py velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py
+          git commit -m "[rework-autofix] integrate unified rework queue"
+          git push origin HEAD:agent/unified-media-rework-queue
