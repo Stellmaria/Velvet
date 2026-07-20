@@ -9,6 +9,7 @@ from aiogram.exceptions import (
     TelegramBadRequest,
     TelegramNetworkError,
 )
+from aiogram.types import Message, PhotoSize
 
 from velvet_bot.ai_vision import (
     MediaAIVisionService,
@@ -16,6 +17,7 @@ from velvet_bot.ai_vision import (
     VisionAnalysisTarget,
 )
 from velvet_bot.database import Database
+from velvet_bot.infrastructure.telegram.archive_previews import message_thumbnail
 from velvet_bot.ollama_vision import ReliableMediaAIRepository
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 _DOWNLOAD_ATTEMPTS = 3
 _DOWNLOAD_TIMEOUT_SECONDS = 90
 _RETRY_DELAYS_SECONDS = (1.0, 3.0)
-_RESPONSE_VERSION = 3
+_RESPONSE_VERSION = 4
 
 
 class ResilientMediaAIRepository(ReliableMediaAIRepository):
@@ -55,6 +57,7 @@ class ResilientMediaAIRepository(ReliableMediaAIRepository):
                         error_message LIKE '%HTTP Client says%'
                         OR error_message LIKE '%ServerDisconnectedError%'
                         OR error_message LIKE '%TelegramNetworkError%'
+                        OR LOWER(error_message) LIKE '%file is too big%'
                       )
                 """,
                 _RESPONSE_VERSION,
@@ -82,7 +85,99 @@ class ResilientMediaAIRepository(ReliableMediaAIRepository):
 
 
 class ResilientMediaAIVisionService(MediaAIVisionService):
-    """Retry transient Telegram downloads before spending a profile attempt."""
+    """Retry Telegram downloads and recover previews for oversized documents."""
+
+    _cache_chat_id: int | None = None
+
+    def set_cache_chat_id(self, chat_id: int | None) -> None:
+        self._cache_chat_id = int(chat_id) if chat_id is not None else None
+
+    async def _download_file_id(self, *, media_id: int, file_id: str) -> bytes:
+        errors: list[BaseException] = []
+        for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
+            try:
+                destination = io.BytesIO()
+                await self._bot.download(
+                    file_id,
+                    destination=destination,
+                    timeout=_DOWNLOAD_TIMEOUT_SECONDS,
+                    seek=True,
+                )
+                value = destination.getvalue()
+                if value:
+                    return value
+                raise VisionAnalysisError("Telegram вернул пустое изображение.")
+            except asyncio.CancelledError:
+                raise
+            except TelegramBadRequest as error:
+                errors.append(error)
+                break
+            except (TelegramNetworkError, TimeoutError, ConnectionError, OSError) as error:
+                errors.append(error)
+                if attempt >= _DOWNLOAD_ATTEMPTS:
+                    break
+                delay = _RETRY_DELAYS_SECONDS[attempt - 1]
+                logger.warning(
+                    "Transient Telegram download failure media_id=%s attempt=%s/%s; "
+                    "retrying in %.1fs: %s",
+                    media_id,
+                    attempt,
+                    _DOWNLOAD_ATTEMPTS,
+                    delay,
+                    error,
+                )
+                await asyncio.sleep(delay)
+            except TelegramAPIError as error:
+                errors.append(error)
+                break
+        if errors:
+            raise errors[-1]
+        raise VisionAnalysisError("Telegram вернул пустое изображение.")
+
+    async def _recover_document_thumbnail(
+        self,
+        target: VisionAnalysisTarget,
+    ) -> PhotoSize | None:
+        if self._cache_chat_id is None:
+            logger.warning(
+                "Cannot recover oversized Telegram document media_id=%s: "
+                "no cache chat is configured",
+                target.media_id,
+            )
+            return None
+
+        temporary: Message | None = None
+        try:
+            temporary = await self._bot.send_document(
+                chat_id=self._cache_chat_id,
+                document=target.telegram_file_id,
+                disable_notification=True,
+            )
+            thumbnail = message_thumbnail(temporary)
+            if thumbnail is None:
+                logger.warning(
+                    "Telegram did not generate a thumbnail for oversized media_id=%s",
+                    target.media_id,
+                )
+            return thumbnail
+        except asyncio.CancelledError:
+            raise
+        except TelegramAPIError as error:
+            logger.warning(
+                "Could not recover thumbnail for oversized media_id=%s: %s",
+                target.media_id,
+                error,
+            )
+            return None
+        finally:
+            if temporary is not None:
+                try:
+                    await self._bot.delete_message(
+                        chat_id=self._cache_chat_id,
+                        message_id=temporary.message_id,
+                    )
+                except TelegramAPIError:
+                    pass
 
     async def _download_target(self, target: VisionAnalysisTarget) -> bytes:
         errors: list[BaseException] = []
@@ -91,43 +186,35 @@ class ResilientMediaAIVisionService(MediaAIVisionService):
             file_ids.append(target.preview_file_id)
 
         for file_id in file_ids:
-            for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
+            try:
+                return await self._download_file_id(
+                    media_id=target.media_id,
+                    file_id=file_id,
+                )
+            except asyncio.CancelledError:
+                raise
+            except (TelegramAPIError, VisionAnalysisError, TimeoutError, ConnectionError, OSError) as error:
+                errors.append(error)
+
+        oversized = any("file is too big" in str(error).casefold() for error in errors)
+        if oversized:
+            thumbnail = await self._recover_document_thumbnail(target)
+            if thumbnail is not None:
                 try:
-                    destination = io.BytesIO()
-                    await self._bot.download(
-                        file_id,
-                        destination=destination,
-                        timeout=_DOWNLOAD_TIMEOUT_SECONDS,
-                        seek=True,
+                    return await self._download_file_id(
+                        media_id=target.media_id,
+                        file_id=thumbnail.file_id,
                     )
-                    value = destination.getvalue()
-                    if value:
-                        return value
-                    errors.append(VisionAnalysisError("Telegram вернул пустое изображение."))
-                    break
                 except asyncio.CancelledError:
                     raise
-                except TelegramBadRequest as error:
+                except (
+                    TelegramAPIError,
+                    VisionAnalysisError,
+                    TimeoutError,
+                    ConnectionError,
+                    OSError,
+                ) as error:
                     errors.append(error)
-                    break
-                except (TelegramNetworkError, TimeoutError, ConnectionError, OSError) as error:
-                    errors.append(error)
-                    if attempt >= _DOWNLOAD_ATTEMPTS:
-                        break
-                    delay = _RETRY_DELAYS_SECONDS[attempt - 1]
-                    logger.warning(
-                        "Transient Telegram download failure media_id=%s attempt=%s/%s; "
-                        "retrying in %.1fs: %s",
-                        target.media_id,
-                        attempt,
-                        _DOWNLOAD_ATTEMPTS,
-                        delay,
-                        error,
-                    )
-                    await asyncio.sleep(delay)
-                except TelegramAPIError as error:
-                    errors.append(error)
-                    break
 
         if errors:
             raise VisionAnalysisError(
