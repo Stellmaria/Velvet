@@ -8,6 +8,7 @@ from typing import Awaitable, Callable
 from aiogram import Bot
 
 from velvet_bot.ai_quality import QualityVisionClient
+from velvet_bot.app.ai_vision_logging import run_ai_vision_once_with_terminal_skip_info
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
@@ -148,7 +149,14 @@ def build_worker_manager(
                 name="ai-vision",
                 description="Смысловой ИИ-анализ изображений",
                 interval_seconds=8,
-                runner=partial(_run_ai_locked, ai_lock, ai_service.process_once),
+                runner=partial(
+                    _run_ai_locked,
+                    ai_lock,
+                    partial(
+                        run_ai_vision_once_with_terminal_skip_info,
+                        ai_service.process_once,
+                    ),
+                ),
             )
         )
         manager.register(
