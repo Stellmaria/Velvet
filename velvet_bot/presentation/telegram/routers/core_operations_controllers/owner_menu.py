@@ -15,6 +15,7 @@ from velvet_bot.owner_menu import (
 from velvet_bot.presentation.telegram.archive_watermark_storage import (
     register_archive_watermark_storage_handler,
 )
+from velvet_bot.presentation.telegram.storage_center import register_storage_center
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark import (
     router as watermark_router,
 )
@@ -78,6 +79,7 @@ async def handle_owner_menu_callback(
     await callback.answer("Неизвестный раздел.", show_alert=True)
 
 
+register_storage_center(router)
 register_archive_watermark_storage_handler(router)
 router.include_router(watermark_router)
 
