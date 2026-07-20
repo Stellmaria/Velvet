@@ -13,7 +13,12 @@ async def get_character_media_offset(
 ) -> int | None:
     """Return the newest-first offset of one visible character-media link."""
     visibility_filter = (
-        f"AND ({public_media_visibility_sql()})"
+        "AND ("
+        + public_media_visibility_sql(
+            link_alias="character_media",
+            file_alias="mf",
+        )
+        + ")"
         if public_only
         else ""
     )
@@ -22,13 +27,13 @@ async def get_character_media_offset(
             f"""
             WITH ordered_media AS (
                 SELECT
-                    cm.media_id,
+                    media_id,
                     ROW_NUMBER() OVER (
-                        ORDER BY cm.created_at DESC, cm.media_id DESC
+                        ORDER BY created_at DESC, media_id DESC
                     ) - 1 AS media_offset
-                FROM character_media AS cm
-                JOIN media_files AS mf ON mf.id = cm.media_id
-                WHERE cm.character_id = $1
+                FROM character_media
+                JOIN media_files AS mf ON mf.id = character_media.media_id
+                WHERE character_id = $1
                   {visibility_filter}
             )
             SELECT media_offset
