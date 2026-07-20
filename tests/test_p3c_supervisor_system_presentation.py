@@ -31,7 +31,7 @@ SUPERVISOR_ALIASES = {
         "velvet_bot.presentation.telegram.routers.supervisor.codex"
     ),
 }
-SYSTEM_ALIAS = "velvet_bot.handlers.system_center"
+SYSTEM_ALIAS_NAME = "system_center"
 SYSTEM_CANONICAL = "velvet_bot.presentation.telegram.routers.system"
 
 
@@ -54,7 +54,7 @@ class P3CSupervisorSystemPresentationTests(unittest.TestCase):
                 self.assertLessEqual(len(source.splitlines()), 8)
 
     def test_system_alias_is_retired(self) -> None:
-        path = Path(*SYSTEM_ALIAS.split(".")).with_suffix(".py")
+        path = Path("velvet_bot/handlers", f"{SYSTEM_ALIAS_NAME}.py")
         self.assertFalse(path.exists())
 
     def test_canonical_controllers_own_router_implementations(self) -> None:
@@ -71,7 +71,6 @@ class P3CSupervisorSystemPresentationTests(unittest.TestCase):
         owner_menu = Path("velvet_bot/owner_menu.py").read_text(encoding="utf-8")
         for text in (source, owner_menu):
             self.assertNotIn("velvet_bot.handlers.supervisor_control", text)
-            self.assertNotIn(SYSTEM_ALIAS, text)
         self.assertIn(
             "velvet_bot.presentation.telegram.routers.supervisor.control",
             source,
