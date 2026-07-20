@@ -9,6 +9,11 @@ from velvet_bot.app.commands import (
     build_editor_commands,
     build_public_commands,
 )
+from velvet_bot.core.access import (
+    MODERATOR_COMMANDS,
+    MODERATOR_TAG_COMMANDS,
+    is_public_command_text,
+)
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_help import (
     OWNER_HELP_COMMANDS,
     build_owner_help_pages,
@@ -71,10 +76,12 @@ def _menu_commands(builder) -> set[str]:
 
 
 class OwnerHelpTests(unittest.TestCase):
-    def test_help_is_visible_only_in_owner_command_menu(self) -> None:
-        self.assertIn("help", _menu_commands(build_admin_commands))
+    def test_help_is_owner_only_and_keeps_botfather_menus_compact(self) -> None:
+        self.assertNotIn("help", _menu_commands(build_admin_commands))
         self.assertNotIn("help", _menu_commands(build_editor_commands))
         self.assertNotIn("help", _menu_commands(build_public_commands))
+        self.assertFalse(is_public_command_text("/help"))
+        self.assertNotIn("help", MODERATOR_COMMANDS | MODERATOR_TAG_COMMANDS)
 
     def test_help_lists_every_registered_slash_command(self) -> None:
         self.assertEqual(_registered_commands(), set(OWNER_HELP_COMMANDS))
