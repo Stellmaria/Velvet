@@ -14,14 +14,25 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 from PIL import Image, UnidentifiedImageError
 
 from velvet_bot.database import Database
+from velvet_bot.domains.public_archive.watermark_repository import (
+    PublicArchiveWatermarkRepository,
+)
+from velvet_bot.domains.watermark.archive_output import (
+    prepare_archive_watermark_output,
+)
 from velvet_bot.domains.watermark.models import WatermarkWorkItem
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
 from velvet_bot.krita_supervisor import build_krita_supervisor_client
+from velvet_bot.presentation.telegram.routers.public_archive.watermark_actions import (
+    handle_manager_fast_watermark,
+)
+from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.supervisor_client import SupervisorClientError
 from velvet_bot.watermark_ui import (
     WatermarkCallback,
+    build_archive_watermark_edit_keyboard,
     build_watermark_keyboard,
     build_watermark_start_keyboard,
     format_watermark_caption,
@@ -98,11 +109,9 @@ def _source_file(message: Message):
     if message.photo:
         photo = message.photo[-1]
         return photo.file_id, photo.file_unique_id, ".jpg"
-
     document = message.document
     if document is None:
         return None
-
     mime_type = (document.mime_type or "").strip().casefold()
     filename_suffix = Path(document.file_name or "").suffix.lower()
     if filename_suffix in _SUPPORTED_IMAGE_SUFFIXES:
@@ -128,7 +137,6 @@ async def _create_job_from_message(
             "PNG/JPG/JPEG/WEBP/TIFF/BMP."
         )
         return None
-
     wake_error = await _wake_krita()
     if wake_error:
         await message.answer(
@@ -155,7 +163,6 @@ async def _create_job_from_message(
             "❌ Документ не является поддерживаемым изображением или повреждён."
         )
         return None
-
     item = await watermark_service.create_job(
         owner_user_id=message.from_user.id,
         chat_id=message.chat.id,
@@ -176,15 +183,21 @@ async def _safe_edit(
     callback: CallbackQuery,
     text: str,
     item: WatermarkWorkItem | None = None,
+    *,
+    keyboard=None,
 ) -> None:
     if not isinstance(callback.message, Message):
         return
-    keyboard = build_watermark_keyboard(item) if item is not None else None
+    reply_markup = (
+        keyboard
+        if keyboard is not None
+        else (build_watermark_keyboard(item) if item is not None else None)
+    )
     try:
         if callback.message.photo or callback.message.document:
-            await callback.message.edit_caption(caption=text, reply_markup=keyboard)
+            await callback.message.edit_caption(caption=text, reply_markup=reply_markup)
         else:
-            await callback.message.edit_text(text, reply_markup=keyboard)
+            await callback.message.edit_text(text, reply_markup=reply_markup)
     except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             raise
@@ -267,6 +280,23 @@ async def handle_watermark_custom_color(
     )
 
 
+@router.callback_query(PublicArchiveCallback.filter(F.action == "pwm"))
+async def handle_public_archive_watermark(
+    callback: CallbackQuery,
+    callback_data: PublicArchiveCallback,
+    database: Database,
+    bot: Bot,
+    access_policy,
+) -> None:
+    await handle_manager_fast_watermark(
+        callback,
+        callback_data,
+        database,
+        bot,
+        access_policy,
+    )
+
+
 @router.callback_query(WatermarkCallback.filter())
 async def handle_watermark_callback(
     callback: CallbackQuery,
@@ -307,14 +337,29 @@ async def handle_watermark_callback(
             await show_owner_menu(callback.message)
         return
 
-    await callback.answer("Принято, готовлю новую версию…")
-    if action != "cancel":
-        await _wake_krita()
     service = _build_service(bot, database)
     owner_user_id = callback.from_user.id
     job_id = callback_data.job_id
 
+    if action == "archive_edit":
+        item = await WatermarkRepository(database).get_work_item(
+            job_id,
+            owner_user_id=owner_user_id,
+        )
+        if item is None or item.job.archive_media_id is None:
+            await callback.answer("Архивное задание не найдено.", show_alert=True)
+            return
+        await callback.answer("Настройки открыты.")
+        await _safe_edit(
+            callback,
+            format_watermark_caption(item, status_text="измените шаблон"),
+            item,
+            keyboard=build_archive_watermark_edit_keyboard(item),
+        )
+        return
+
     if action == "custom_color":
+        await callback.answer()
         if isinstance(callback.message, Message):
             await callback.message.answer(
                 "Ответьте на это сообщение HEX-цветом, например "
@@ -322,6 +367,10 @@ async def handle_watermark_callback(
                 f"<code>#watermark-color:{job_id}</code>"
             )
         return
+
+    await callback.answer("Принято, готовлю новую версию…")
+    if action != "cancel":
+        await _wake_krita()
 
     try:
         if action == "position":
@@ -364,19 +413,61 @@ async def handle_watermark_callback(
                 owner_user_id=owner_user_id,
                 enabled=False,
             )
-        elif action == "approve":
+        elif action in {"approve", "archive_approve"}:
             item = await service.approve(job_id, owner_user_id=owner_user_id)
             final_path = item.job.final_path
             if not final_path:
                 raise ValueError("Финальный путь задания не сохранён.")
-            if isinstance(callback.message, Message):
-                await callback.message.answer_document(
-                    FSInputFile(
-                        final_path,
-                        filename=f"velvet-watermark-job-{job_id}.png",
-                    ),
-                    caption=f"✅ PNG без сжатия · задание <b>{job_id}</b>.",
+            if not isinstance(callback.message, Message):
+                raise ValueError("Сообщение preview больше недоступно.")
+
+            archive_media_id = item.job.archive_media_id
+            if archive_media_id is not None:
+                prepared = prepare_archive_watermark_output(
+                    item.job.source_path,
+                    final_path,
                 )
+                sent = await callback.message.answer_document(
+                    FSInputFile(
+                        prepared.path,
+                        filename=f"velvet-archive-{archive_media_id}-watermarked.png",
+                    ),
+                    caption=(
+                        "✅ PNG без потерь подтверждён для публичного архива.\n"
+                        f"Размер: <b>{prepared.output_bytes / 1024 / 1024:.2f} МБ</b> · "
+                        f"{prepared.width}×{prepared.height}."
+                    ),
+                )
+                if sent.document is None:
+                    raise ValueError("Telegram не вернул file_id загруженного PNG.")
+                updated = await PublicArchiveWatermarkRepository(
+                    database
+                ).approve_replacement(
+                    media_id=archive_media_id,
+                    telegram_file_id=sent.document.file_id,
+                    file_size=int(sent.document.file_size or prepared.output_bytes),
+                    approved_by=owner_user_id,
+                    settings=item.revision.settings,
+                )
+                if not updated:
+                    raise ValueError("Материал публичного архива больше не найден.")
+                await _safe_edit(
+                    callback,
+                    format_watermark_caption(
+                        item,
+                        status_text="одобрен и заменён в публичном архиве",
+                    ),
+                    None,
+                )
+                return
+
+            await callback.message.answer_document(
+                FSInputFile(
+                    final_path,
+                    filename=f"velvet-watermark-job-{job_id}.png",
+                ),
+                caption=f"✅ PNG без сжатия · задание <b>{job_id}</b>.",
+            )
             await _safe_edit(
                 callback,
                 format_watermark_caption(item, status_text="PNG отправлен"),
