@@ -280,23 +280,6 @@ async def handle_watermark_custom_color(
     )
 
 
-@router.callback_query(PublicArchiveCallback.filter(F.action == "pwm"))
-async def handle_public_archive_watermark(
-    callback: CallbackQuery,
-    callback_data: PublicArchiveCallback,
-    database: Database,
-    bot: Bot,
-    access_policy,
-) -> None:
-    await handle_manager_fast_watermark(
-        callback,
-        callback_data,
-        database,
-        bot,
-        access_policy,
-    )
-
-
 @router.callback_query(WatermarkCallback.filter())
 async def handle_watermark_callback(
     callback: CallbackQuery,
@@ -496,6 +479,12 @@ async def handle_watermark_callback(
         format_watermark_caption(item, status_text="поставлено в очередь"),
         item,
     )
+
+
+router.callback_query.register(
+    handle_manager_fast_watermark,
+    PublicArchiveCallback.filter(F.action == "pwm"),
+)
 
 
 __all__ = ("router",)
