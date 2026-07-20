@@ -11,7 +11,6 @@ _PROMPT_POST_URL_RE = re.compile(
     r"^https://t\.me/(?:c/\d+|[A-Za-z0-9_]+)/\d+$",
     re.IGNORECASE,
 )
-_ORIGINAL_CREATE_MEDIA_SET = media_sets.create_media_set
 _INSTALLED = False
 
 
@@ -46,18 +45,16 @@ async def create_media_set_with_prompt(
     candidate_id: int,
     created_by: int,
 ) -> CreatedMediaSet:
-    created = await _ORIGINAL_CREATE_MEDIA_SET(
-        database,
+    record = await MediaSetActionsRepository(database).create_media_set(
         candidate_id=int(candidate_id),
         created_by=int(created_by),
     )
-    if created.prompt_post_url:
-        await set_media_set_prompt(
-            database,
-            media_set_id=created.id,
-            prompt_post_url=created.prompt_post_url,
-        )
-    return created
+    return CreatedMediaSet(
+        id=record.id,
+        title=record.title,
+        media_ids=record.media_ids,
+        prompt_post_url=record.prompt_post_url,
+    )
 
 
 create_media_set = create_media_set_with_prompt
