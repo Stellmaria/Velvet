@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.backup_center as module
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center as module
 
 
 class FakeCallback:
