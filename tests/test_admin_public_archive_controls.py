@@ -104,7 +104,7 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
         self.assertIn("Подписок на героя: <b>11</b>", caption)
         self.assertIn("Просмотров: <b>19</b>", caption)
         self.assertIn("Скачиваний: <b>4</b>", caption)
-        self.assertIn("Просмотр 7221553045: <b>🆕 не просмотрено</b>", caption)
+        self.assertIn("Просмотрено Стэл: <b>🆕 не просмотрено</b>", caption)
         self.assertIn("Watermark: <b>нанесён, ожидает одобрения</b>", caption)
         self.assertIn("Публичный архив: <b>скрыт</b>", caption)
         self.assertIn("Канал +18: <b>требуется подписка</b>", caption)
