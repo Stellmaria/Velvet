@@ -16,6 +16,7 @@ from velvet_bot.presentation.telegram.routers.quality_operations_controllers.qua
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview import router as quality_ai_preview_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai import router as quality_ai_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center import router as quality_center_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_rework_entry import register_quality_rework_entry
 
 router = Router(name=__name__)
 router.include_router(backup_center_router)
@@ -32,5 +33,6 @@ router.include_router(quality_calibration_router)
 router.include_router(quality_ai_preview_router)
 router.include_router(quality_ai_router)
 router.include_router(quality_center_router)
+register_quality_rework_entry(router)
 
 __all__ = ("router",)
