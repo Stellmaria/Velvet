@@ -5,7 +5,7 @@
 - Линия/фаза: public archive manager workflow
 - Статус: `завершено`
 - Ветка: `agent/add-public-archive-rework-button`
-- Базовый commit: `bf56339e43edd13bfda4843b8639f91a28210840`
+- Базовый commit: `522b3a804e60bb576bfc77f1ccb81c24c55711e8`
 
 ## Перед началом
 
