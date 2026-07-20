@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from aiogram import Router
 
+from velvet_bot.presentation.telegram.quality_rework_entry import register_quality_rework_entry
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center import router as backup_center_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.ai_jobs import router as ai_jobs_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations import router as quality_operations_router
@@ -32,5 +33,6 @@ router.include_router(quality_calibration_router)
 router.include_router(quality_ai_preview_router)
 router.include_router(quality_ai_router)
 router.include_router(quality_center_router)
+register_quality_rework_entry(router)
 
 __all__ = ("router",)
