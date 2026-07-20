@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3d-supervisor-alias-retirement",
+  "generated_from": "p3d-analytics-alias-retirement",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -22,18 +22,10 @@
   ],
   "active_bundle_router_count": 58,
   "duplicate_bundle_router_import_count": 0,
-  "legacy_handler_file_count": 9,
+  "legacy_handler_file_count": 1,
   "legacy_handler_implementation_count": 0,
-  "handler_compatibility_facade_count": 9,
+  "handler_compatibility_facade_count": 1,
   "handler_compatibility_facades": [
-    "velvet_bot/handlers/analytics_dashboard.py",
-    "velvet_bot/handlers/analytics_dashboard_overrides.py",
-    "velvet_bot/handlers/analytics_discussion_overrides.py",
-    "velvet_bot/handlers/analytics_management.py",
-    "velvet_bot/handlers/analytics_management_aliases.py",
-    "velvet_bot/handlers/analytics_management_common.py",
-    "velvet_bot/handlers/analytics_management_publications.py",
-    "velvet_bot/handlers/analytics_management_tags.py",
     "velvet_bot/handlers/channel_analytics.py"
   ],
   "root_level_module_count": 117,
