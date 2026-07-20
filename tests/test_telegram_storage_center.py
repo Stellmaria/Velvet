@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import os
 import tempfile
 import unittest
@@ -20,6 +21,8 @@ from velvet_bot.domains.telegram_storage.models import (
     TelegramStorageSettings,
 )
 from velvet_bot.domains.telegram_storage.uploader import TelegramStorageUploader
+
+_CRYPTOGRAPHY_AVAILABLE = importlib.util.find_spec("cryptography") is not None
 
 
 class TelegramStorageSettingsTests(unittest.TestCase):
@@ -52,6 +55,10 @@ class TelegramStorageSettingsTests(unittest.TestCase):
 
 
 class TelegramStorageEncryptionTests(unittest.TestCase):
+    @unittest.skipUnless(
+        _CRYPTOGRAPHY_AVAILABLE,
+        "cryptography is installed by Supervisor before storage encryption runs",
+    )
     def test_aes_gcm_round_trip_preserves_backup_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
