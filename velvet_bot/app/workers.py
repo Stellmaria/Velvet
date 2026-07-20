@@ -49,6 +49,14 @@ def _env_enabled(name: str) -> bool:
     }
 
 
+def _ai_cache_chat_id(settings: Settings) -> int | None:
+    if settings.log_chat_id is not None:
+        return int(settings.log_chat_id)
+    if settings.allowed_user_ids:
+        return min(settings.allowed_user_ids)
+    return None
+
+
 def build_worker_manager(
     *,
     bot: Bot,
@@ -106,6 +114,7 @@ def build_worker_manager(
         )
     if settings is not None and settings.ai_vision_enabled:
         ai_lock = get_local_ai_lock()
+        cache_chat_id = _ai_cache_chat_id(settings)
         ai_service = ResilientMediaAIVisionService(
             bot=bot,
             repository=ResilientMediaAIRepository(database),
@@ -118,6 +127,7 @@ def build_worker_manager(
             ),
             max_attempts=settings.ai_vision_max_attempts,
         )
+        ai_service.set_cache_chat_id(cache_chat_id)
         quality_service = CalibratedAIQualityService(
             bot=bot,
             repository=AIQualityRepository(database),
@@ -131,6 +141,7 @@ def build_worker_manager(
             ),
             max_attempts=settings.ai_vision_max_attempts,
         )
+        quality_service.set_cache_chat_id(cache_chat_id)
         manager.register(
             PeriodicWorkerSpec(
                 name="ai-vision",
