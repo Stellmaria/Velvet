@@ -27,7 +27,7 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_handler_alias_consumers.py",
                 "--check",
                 "--label",
-                "p3d-quality-alias-retirement",
+                "p3d-core-alias-retirement",
             ],
             check=True,
         )
@@ -63,7 +63,7 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
         relative = {path.relative_to(root).as_posix() for path in candidates}
         self.assertEqual(relative, {"tracked.py"})
 
-    def test_archive_and_reference_alias_group_is_retired(self) -> None:
+    def test_retired_alias_groups_are_absent(self) -> None:
         retired = {
             "admin_large_media_preview",
             "admin_media_display",
@@ -87,6 +87,23 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
             "reference_documents",
             "reference_management",
             "references",
+            "quality_ai",
+            "quality_ai_preview",
+            "quality_center",
+            "quality_duplicates",
+            "quality_operations",
+            "quality_set_ai",
+            "quality_sets",
+            "velvet_ai",
+            "velvet_ai_formatting",
+            "velvet_ai_visual",
+            "error_center",
+            "owner_actions",
+            "owner_menu",
+            "publication_center",
+            "publication_center_safe",
+            "system_center",
+            "watermark",
         }
         for name in retired:
             with self.subTest(alias=name):
