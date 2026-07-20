@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.characters as module
+from velvet_bot.presentation.telegram.routers.characters import profiles as module
 
 
 class FakeMessage:

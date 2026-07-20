@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-import velvet_bot.handlers.multi_story_kr as multi_story
+from velvet_bot.presentation.telegram.routers.stories import multi_story_kr as multi_story
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "velvet_bot"
