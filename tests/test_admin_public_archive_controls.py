@@ -117,7 +117,7 @@ class AdminPublicArchiveControlsTests(unittest.TestCase):
             encoding="utf-8"
         )
         activity = Path(
-            "migrations/104_public_archive_downloads_and_watermarks.sql"
+            "migrations/105_public_archive_downloads_and_watermarks.sql"
         ).read_text(encoding="utf-8")
         self.assertIn("is_public BOOLEAN", visibility)
         self.assertIn("requires_adult_channel BOOLEAN", visibility)
