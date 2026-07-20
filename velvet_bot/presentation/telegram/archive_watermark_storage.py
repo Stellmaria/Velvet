@@ -15,6 +15,7 @@ from velvet_bot.domains.public_archive.watermark_repository import (
 from velvet_bot.domains.watermark.archive_output import (
     prepare_archive_watermark_output,
 )
+from velvet_bot.domains.watermark.models import WatermarkWorkItem
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.domains.watermark.telegram_storage import (
@@ -44,6 +45,24 @@ def _build_service(bot: Bot, database: Database) -> WatermarkService:
         repository=WatermarkRepository(database),
         bridge=KritaBridge(default_krita_bridge_dir()),
     )
+
+
+async def _approve_or_resume(
+    service: WatermarkService,
+    *,
+    job_id: int,
+    owner_user_id: int,
+) -> WatermarkWorkItem:
+    try:
+        return await service.approve(job_id, owner_user_id=owner_user_id)
+    except ValueError as error:
+        if "уже подтверждён" not in str(error).casefold():
+            raise
+        item = await service.get_current(job_id, owner_user_id=owner_user_id)
+        if item.job.status != "approved" or not item.job.final_path:
+            raise
+        logger.info("Resuming approved watermark storage job=%s", job_id)
+        return item
 
 
 async def _safe_finish_card(callback: CallbackQuery, text: str) -> None:
@@ -77,8 +96,9 @@ async def handle_archive_watermark_storage_approve(
     repository = PublicArchiveWatermarkRepository(database)
 
     try:
-        item = await service.approve(
-            callback_data.job_id,
+        item = await _approve_or_resume(
+            service,
+            job_id=callback_data.job_id,
             owner_user_id=callback.from_user.id,
         )
         media_id = item.job.archive_media_id
