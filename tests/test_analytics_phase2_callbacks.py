@@ -2,12 +2,12 @@ import unittest
 
 from velvet_bot.analytics_callbacks import dashboard_link, management_link
 from velvet_bot.analytics_review import ReviewPage
-from velvet_bot.handlers.analytics_management import (
+from velvet_bot.post_classification import POST_TYPE_LABELS
+from velvet_bot.presentation.telegram.routers.analytics_controllers.management import (
     _ALIAS_REPLY_RE,
     _TYPE_BUTTON_LABELS,
     _short,
 )
-from velvet_bot.post_classification import POST_TYPE_LABELS
 
 
 class AnalyticsPhaseTwoCallbackTests(unittest.TestCase):
