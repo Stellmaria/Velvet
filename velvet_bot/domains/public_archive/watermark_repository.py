@@ -75,6 +75,8 @@ class PublicArchiveWatermarkRepository:
                     preview_file_unique_id = NULL,
                     preview_width = NULL,
                     preview_height = NULL,
+                    preview_source = NULL,
+                    preview_updated_at = NULL,
                     watermark_applied = TRUE,
                     watermark_approved = TRUE,
                     watermark_approved_by = $4::BIGINT,
