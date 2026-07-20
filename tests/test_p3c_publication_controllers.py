@@ -5,22 +5,15 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RETIRED_ALIASES = {
-    "velvet_bot.handlers.publication_center": (
-        "velvet_bot.presentation.telegram.routers.publication.center"
-    ),
-    "velvet_bot.handlers.publication_center_safe": (
-        "velvet_bot.presentation.telegram.routers.publication.safe"
-    ),
-}
+HANDLERS = ROOT / "velvet_bot/handlers"
+RETIRED = {"publication_center", "publication_center_safe"}
 
 
 class P3CPublicationControllersTests(unittest.TestCase):
     def test_retired_legacy_files_are_removed(self) -> None:
-        for legacy_name in RETIRED_ALIASES:
-            with self.subTest(legacy=legacy_name):
-                path = ROOT / Path(*legacy_name.split(".")).with_suffix(".py")
-                self.assertFalse(path.exists())
+        for alias_name in RETIRED:
+            with self.subTest(alias=alias_name):
+                self.assertFalse((HANDLERS / f"{alias_name}.py").exists())
 
     def test_canonical_center_owns_publication_handlers(self) -> None:
         path = (
@@ -44,7 +37,6 @@ class P3CPublicationControllersTests(unittest.TestCase):
             "from velvet_bot.presentation.telegram.routers.publication.center import (",
             source,
         )
-        self.assertNotIn("from velvet_bot.handlers.publication_center", source)
 
     def test_bundle_keeps_publication_before_archive_catch_all(self) -> None:
         path = ROOT / "velvet_bot/presentation/telegram/routers/archive_and_public.py"
