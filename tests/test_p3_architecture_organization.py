@@ -48,6 +48,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview",
     "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_calibration",
     "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center",
+    "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicate_reset",
     "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates",
     "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations",
     "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_set_ai",

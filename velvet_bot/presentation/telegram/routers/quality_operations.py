@@ -9,6 +9,7 @@ from velvet_bot.presentation.telegram.routers.quality_operations_controllers.vel
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_visual import router as velvet_ai_visual_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai import router as velvet_ai_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates import router as quality_duplicates_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicate_reset import router as quality_duplicate_reset_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets import router as quality_sets_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_set_ai import router as quality_set_ai_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_calibration import router as quality_calibration_router
@@ -24,6 +25,7 @@ router.include_router(velvet_ai_formatting_router)
 router.include_router(velvet_ai_visual_router)
 router.include_router(velvet_ai_router)
 router.include_router(quality_duplicates_router)
+router.include_router(quality_duplicate_reset_router)
 router.include_router(quality_sets_router)
 router.include_router(quality_set_ai_router)
 router.include_router(quality_calibration_router)
