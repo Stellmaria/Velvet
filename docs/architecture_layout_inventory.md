@@ -8,9 +8,9 @@
 - доменных router bundles: **4**;
 - активных router imports в bundles: **58**;
 - дублирующих регистраций между bundles: **0**;
-- физических legacy handler-файлов: **18**;
+- физических legacy handler-файлов: **17**;
 - активных legacy handler implementations: **0**;
-- временных handler module aliases: **18**;
+- временных handler module aliases: **17**;
 - корневых Python-модулей `velvet_bot/*.py`: **117**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -32,7 +32,6 @@
 - `velvet_bot/handlers/analytics_management_common.py`.
 - `velvet_bot/handlers/analytics_management_publications.py`.
 - `velvet_bot/handlers/analytics_management_tags.py`.
-- `velvet_bot/handlers/backup_center.py`.
 - `velvet_bot/handlers/channel_analytics.py`.
 - `velvet_bot/handlers/supervisor_codex.py`.
 - `velvet_bot/handlers/supervisor_console.py`.
