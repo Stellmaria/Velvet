@@ -6,17 +6,32 @@ import os
 import re
 import shutil
 import zipfile
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
-
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 _MAGIC = b"VELVET-AESGCM1\n"
 _SALT_BYTES = 16
 _NONCE_BYTES = 12
 _TAG_BYTES = 16
 _CHUNK_BYTES = 1024 * 1024
+
+
+class StorageEncryptionUnavailable(RuntimeError):
+    pass
+
+
+@lru_cache(maxsize=1)
+def _crypto_components():
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+    except ModuleNotFoundError as error:
+        raise StorageEncryptionUnavailable(
+            "Для шифрования резервных копий не установлен пакет cryptography. "
+            "Supervisor должен синхронизировать requirements.txt перед запуском."
+        ) from error
+    return Cipher, algorithms, modes, Scrypt
 
 
 def sha256_file(path: str | Path) -> str:
@@ -71,17 +86,19 @@ def zip_directory(source: Path, destination: Path) -> Path:
 
 
 def _derive_key(secret: str, salt: bytes) -> bytes:
-    return Scrypt(salt=salt, length=32, n=2**15, r=8, p=1).derive(
+    _, _, _, scrypt = _crypto_components()
+    return scrypt(salt=salt, length=32, n=2**15, r=8, p=1).derive(
         secret.encode("utf-8")
     )
 
 
 def encrypt_file(source: Path, destination: Path, secret: str) -> Path:
+    cipher, algorithms, modes, _ = _crypto_components()
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.unlink(missing_ok=True)
     salt = os.urandom(_SALT_BYTES)
     nonce = os.urandom(_NONCE_BYTES)
-    encryptor = Cipher(
+    encryptor = cipher(
         algorithms.AES(_derive_key(secret, salt)),
         modes.GCM(nonce),
     ).encryptor()
@@ -97,6 +114,7 @@ def encrypt_file(source: Path, destination: Path, secret: str) -> Path:
 
 
 def decrypt_file(source: Path, destination: Path, secret: str) -> Path:
+    cipher, algorithms, modes, _ = _crypto_components()
     size = source.stat().st_size
     header_size = len(_MAGIC) + _SALT_BYTES + _NONCE_BYTES
     if size <= header_size + _TAG_BYTES:
@@ -110,7 +128,7 @@ def decrypt_file(source: Path, destination: Path, secret: str) -> Path:
         tag = input_stream.read(_TAG_BYTES)
         input_stream.seek(header_size)
         remaining = size - header_size - _TAG_BYTES
-        decryptor = Cipher(
+        decryptor = cipher(
             algorithms.AES(_derive_key(secret, salt)),
             modes.GCM(nonce, tag),
         ).decryptor()
@@ -177,6 +195,7 @@ def write_json(path: Path, payload: object) -> Path:
 
 
 __all__ = (
+    "StorageEncryptionUnavailable",
     "build_zip",
     "decrypt_file",
     "encrypt_file",
