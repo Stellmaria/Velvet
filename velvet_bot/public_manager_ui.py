@@ -67,8 +67,19 @@ def build_manager_archive_keyboard(
         "offset": page.offset,
         "media_id": page.media.id,
     }
+    watermark_label = (
+        "🔄 Переделать watermark"
+        if getattr(state, "watermark_approved", False)
+        else "⚡ Быстрый watermark"
+    )
     rows.extend(
         [
+            [
+                InlineKeyboardButton(
+                    text=watermark_label,
+                    callback_data=manager_callback("pwm", **common),
+                )
+            ],
             [
                 InlineKeyboardButton(
                     text=(

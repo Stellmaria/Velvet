@@ -30,48 +30,80 @@ def build_watermark_start_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def build_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
+def _settings_rows(item: WatermarkWorkItem) -> list[list[InlineKeyboardButton]]:
+    job_id = item.job.id
+    return [
+        [
+            _button("↖️", "position", job_id, "top_left"),
+            _button("↗️", "position", job_id, "top_right"),
+            _button("↙️", "position", job_id, "bottom_left"),
+            _button("↘️", "position", job_id, "bottom_right"),
+        ],
+        [
+            _button("⚪ Белый", "color", job_id, "#ffffff"),
+            _button("⚫ Чёрный", "color", job_id, "#000000"),
+            _button("◐ Авто", "color", job_id, "auto"),
+            _button("🎨 HEX", "custom_color", job_id),
+        ],
+        [
+            _button("Прозр. −", "opacity", job_id, "-10"),
+            _button("Прозр. +", "opacity", job_id, "10"),
+        ],
+        [
+            _button("Размер −", "size", job_id, "-1.5"),
+            _button("Размер +", "size", job_id, "1.5"),
+        ],
+        [
+            _button("Отступ −", "margin", job_id, "-0.5"),
+            _button("Отступ +", "margin", job_id, "0.5"),
+        ],
+        [
+            _button("↩️ Предыдущая версия", "undo", job_id),
+            _button("🚫 Без знака", "remove", job_id),
+        ],
+    ]
+
+
+def build_archive_watermark_review_keyboard(
+    item: WatermarkWorkItem,
+) -> InlineKeyboardMarkup:
     job_id = item.job.id
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                _button("↖️", "position", job_id, "top_left"),
-                _button("↗️", "position", job_id, "top_right"),
-                _button("↙️", "position", job_id, "bottom_left"),
-                _button("↘️", "position", job_id, "bottom_right"),
-            ],
-            [
-                _button("⚪ Белый", "color", job_id, "#ffffff"),
-                _button("⚫ Чёрный", "color", job_id, "#000000"),
-                _button("◐ Авто", "color", job_id, "auto"),
-                _button("🎨 HEX", "custom_color", job_id),
-            ],
-            [
-                _button("Прозр. −", "opacity", job_id, "-10"),
-                _button("Прозр. +", "opacity", job_id, "10"),
-            ],
-            [
-                _button("Размер −", "size", job_id, "-1.5"),
-                _button("Размер +", "size", job_id, "1.5"),
-            ],
-            [
-                _button("Отступ −", "margin", job_id, "-0.5"),
-                _button("Отступ +", "margin", job_id, "0.5"),
-            ],
-            [
-                _button("↩️ Предыдущая версия", "undo", job_id),
-                _button("🚫 Без знака", "remove", job_id),
-            ],
-            [_button("✅ Скачать PNG без сжатия", "approve", job_id)],
+            [_button("✅ Оставить и заменить в архиве", "archive_approve", job_id)],
+            [_button("⚙️ Изменить стандартный шаблон", "archive_edit", job_id)],
             [_button("✖ Отмена", "cancel", job_id)],
         ]
     )
+
+
+def build_archive_watermark_edit_keyboard(
+    item: WatermarkWorkItem,
+) -> InlineKeyboardMarkup:
+    rows = _settings_rows(item)
+    rows.append([_button("✅ Оставить и заменить в архиве", "archive_approve", item.job.id)])
+    rows.append([_button("✖ Отмена", "cancel", item.job.id)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
+    if item.job.archive_media_id is not None:
+        return build_archive_watermark_review_keyboard(item)
+    rows = _settings_rows(item)
+    rows.append([_button("✅ Скачать PNG без сжатия", "approve", item.job.id)])
+    rows.append([_button("✖ Отмена", "cancel", item.job.id)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def format_watermark_caption(item: WatermarkWorkItem, *, status_text: str | None = None) -> str:
     settings = item.revision.settings
     color = settings.color.upper() if settings.enabled else "без знака"
     status = status_text or item.revision.status
+    archive_line = (
+        f"\nАрхивный media_id: <code>{item.job.archive_media_id}</code>"
+        if item.job.archive_media_id is not None
+        else ""
+    )
     return (
         f"<b>Водяной знак · задание {item.job.id}</b>\n\n"
         f"Версия: <b>{item.revision.revision}</b>\n"
@@ -81,11 +113,14 @@ def format_watermark_caption(item: WatermarkWorkItem, *, status_text: str | None
         f"Размер: <b>{settings.size:.1f}%</b>\n"
         f"Отступ: <b>{settings.margin:.1f}%</b>\n"
         f"Статус: <b>{escape(status)}</b>"
+        f"{archive_line}"
     )
 
 
 __all__ = (
     "WatermarkCallback",
+    "build_archive_watermark_edit_keyboard",
+    "build_archive_watermark_review_keyboard",
     "build_watermark_keyboard",
     "build_watermark_start_keyboard",
     "format_watermark_caption",

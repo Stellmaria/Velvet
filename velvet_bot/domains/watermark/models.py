@@ -15,9 +15,9 @@ _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 @dataclass(frozen=True, slots=True)
 class WatermarkSettings:
     position: str = "bottom_right"
-    color: str = "#ffffff"
+    color: str = "auto"
     opacity: int = 70
-    size: float = 16.7
+    size: float = 19.7
     margin: float = 4.4
     enabled: bool = True
     lock: bool = True
@@ -60,6 +60,11 @@ class WatermarkJob:
     final_path: str | None
     created_at: datetime
     updated_at: datetime
+
+    @property
+    def archive_media_id(self) -> int | None:
+        """Negative source_message_id is reserved for fast archive watermark jobs."""
+        return -self.source_message_id if self.source_message_id < 0 else None
 
 
 @dataclass(frozen=True, slots=True)
