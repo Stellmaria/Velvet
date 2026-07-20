@@ -59,13 +59,14 @@
 - character/story + inventory regression suite: 37 tests + 70 subtests, success;
 - alias, legacy и architecture inventory checks: success;
 - полный локальный suite: 923 tests, success; 24 PostgreSQL integration tests skipped без `TEST_DATABASE_URL`;
-- финальные GitHub Actions фиксируются на head PR.
+- финальные GitHub Actions фиксируются на head PR #225.
 
 ### PR и commit
 
-- PR: создаётся после полного локального прогона;
+- PR: #225 `P3D: retire character and story handler aliases`;
 - ветка: `agent/p3d-character-story-alias-retirement`;
-- verified local tree готово к публикации отдельным squash PR.
+- verified production tree применён commit `90efbebe42c0a35b76c46730960a994650f4fd5a`;
+- финальный user-authored head создан после очистки transport files.
 
 ### Незавершённое
 
