@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.velvet_ai_formatting as module
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_formatting as module
 
 
 class FakeMessage:
@@ -55,13 +55,13 @@ class FakeFormattingClient:
     failure: BaseException | None = None
 
     def __init__(self, **kwargs) -> None:
-        self.provider = kwargs['provider']
-        self.model = kwargs['model']
+        self.provider = kwargs["provider"]
+        self.model = kwargs["model"]
 
     async def format(self, mode, source):
         if self.failure is not None:
             raise self.failure
-        return {'title': 'unused'}
+        return {"title": "unused"}
 
 
 class FormattingBoundaryTests(unittest.IsolatedAsyncioTestCase):
@@ -74,9 +74,9 @@ class FormattingBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
         module.load_settings = lambda: SimpleNamespace(
             ai_vision_enabled=True,
-            ai_vision_provider='ollama',
-            ai_vision_base_url='http://localhost',
-            ai_vision_model='qwen',
+            ai_vision_provider="ollama",
+            ai_vision_base_url="http://localhost",
+            ai_vision_model="qwen",
             ai_vision_api_key=None,
             ai_vision_timeout_seconds=90,
         )
@@ -96,32 +96,32 @@ class FormattingBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_expected_value_error_is_answered_before_job_creation(self) -> None:
         async def fail_source(message, bot):
-            raise ValueError('file too large')
+            raise ValueError("file too large")
 
         module._source_text = fail_source
         message = FakeMessage()
 
-        await module.handle_formatting_reply(message, 'shell', object(), object())
+        await module.handle_formatting_reply(message, "shell", object(), object())
 
         self.assertEqual(len(message.answers), 1)
-        self.assertIn('file too large', message.answers[0][0][0])
+        self.assertIn("file too large", message.answers[0][0][0])
         self.assertEqual(FakeTrackerFactory.create_calls, [])
 
     async def test_expected_runtime_error_is_answered_before_job_creation(self) -> None:
         async def fail_source(message, bot):
-            raise RuntimeError('download failed')
+            raise RuntimeError("download failed")
 
         module._source_text = fail_source
         message = FakeMessage()
 
-        await module.handle_formatting_reply(message, 'short', object(), object())
+        await module.handle_formatting_reply(message, "short", object(), object())
 
         self.assertEqual(len(message.answers), 1)
-        self.assertIn('download failed', message.answers[0][0][0])
+        self.assertIn("download failed", message.answers[0][0][0])
         self.assertEqual(FakeTrackerFactory.create_calls, [])
 
     async def test_unexpected_source_type_error_is_not_swallowed(self) -> None:
-        error = TypeError('broken source adapter')
+        error = TypeError("broken source adapter")
 
         async def fail_source(message, bot):
             raise error
@@ -129,7 +129,7 @@ class FormattingBoundaryTests(unittest.IsolatedAsyncioTestCase):
         module._source_text = fail_source
 
         with self.assertRaises(TypeError) as captured:
-            await module.handle_formatting_reply(FakeMessage(), 'full', object(), object())
+            await module.handle_formatting_reply(FakeMessage(), "full", object(), object())
 
         self.assertIs(captured.exception, error)
         self.assertEqual(FakeTrackerFactory.create_calls, [])
@@ -141,64 +141,64 @@ class FormattingBoundaryTests(unittest.IsolatedAsyncioTestCase):
         module._source_text = cancel_source
 
         with self.assertRaises(asyncio.CancelledError):
-            await module.handle_formatting_reply(FakeMessage(), 'shell', object(), object())
+            await module.handle_formatting_reply(FakeMessage(), "shell", object(), object())
 
         self.assertEqual(FakeTrackerFactory.create_calls, [])
 
     async def test_job_failure_marks_tracker_error_with_request_metadata(self) -> None:
-        source = 'Detailed Velvet source material.'
+        source = "Detailed Velvet source material."
 
         async def source_text(message, bot):
             return source
 
-        error = RuntimeError('format provider failed')
+        error = RuntimeError("format provider failed")
         module._source_text = source_text
         FakeFormattingClient.failure = error
         message = FakeMessage()
         database = object()
 
-        await module.handle_formatting_reply(message, 'short', database, object())
+        await module.handle_formatting_reply(message, "short", database, object())
 
         tracker = FakeTrackerFactory.tracker
-        self.assertEqual(tracker.stages, ['analyzing'])
+        self.assertEqual(tracker.stages, ["analyzing"])
         self.assertEqual(tracker.errors, [error])
         self.assertEqual(tracker.ready_calls, [])
         self.assertEqual(len(FakeTrackerFactory.create_calls), 1)
         call = FakeTrackerFactory.create_calls[0]
-        self.assertIs(call['database'], database)
-        self.assertIs(call['source_message'], message)
-        self.assertEqual(call['kind'], 'velvet_formatting')
-        self.assertEqual(call['provider'], 'ollama')
-        self.assertEqual(call['model'], 'qwen')
+        self.assertIs(call["database"], database)
+        self.assertIs(call["source_message"], message)
+        self.assertEqual(call["kind"], "velvet_formatting")
+        self.assertEqual(call["provider"], "ollama")
+        self.assertEqual(call["model"], "qwen")
         self.assertEqual(
-            call['request_payload'],
-            {'mode': 'short', 'source_length': len(source)},
+            call["request_payload"],
+            {"mode": "short", "source_length": len(source)},
         )
 
     async def test_job_cancellation_marks_interruption_and_propagates(self) -> None:
         async def source_text(message, bot):
-            return 'Detailed Velvet source material.'
+            return "Detailed Velvet source material."
 
         module._source_text = source_text
         FakeFormattingClient.failure = asyncio.CancelledError()
 
         with self.assertRaises(asyncio.CancelledError):
-            await module.handle_formatting_reply(FakeMessage(), 'full', object(), object())
+            await module.handle_formatting_reply(FakeMessage(), "full", object(), object())
 
         tracker = FakeTrackerFactory.tracker
-        self.assertEqual(tracker.stages, ['analyzing'])
+        self.assertEqual(tracker.stages, ["analyzing"])
         self.assertEqual(
             tracker.errors,
-            ['Задание прервано остановкой процесса.'],
+            ["Задание прервано остановкой процесса."],
         )
         self.assertEqual(tracker.ready_calls, [])
 
     async def test_compensation_failure_is_not_silently_swallowed(self) -> None:
         async def source_text(message, bot):
-            return 'Detailed Velvet source material.'
+            return "Detailed Velvet source material."
 
-        provider_error = RuntimeError('provider failed')
-        compensation_error = RuntimeError('job write failed')
+        provider_error = RuntimeError("provider failed")
+        compensation_error = RuntimeError("job write failed")
 
         async def fail_error(value):
             raise compensation_error
@@ -208,10 +208,10 @@ class FormattingBoundaryTests(unittest.IsolatedAsyncioTestCase):
         FakeTrackerFactory.tracker.error = fail_error
 
         with self.assertRaises(RuntimeError) as captured:
-            await module.handle_formatting_reply(FakeMessage(), 'shell', object(), object())
+            await module.handle_formatting_reply(FakeMessage(), "shell", object(), object())
 
         self.assertIs(captured.exception, compensation_error)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
