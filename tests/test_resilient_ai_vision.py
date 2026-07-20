@@ -41,6 +41,42 @@ class _PreviewFallbackBot:
         return destination
 
 
+class _OversizedRecoveryBot:
+    def __init__(self) -> None:
+        self.file_ids: list[str] = []
+        self.sent_documents: list[tuple[int, str, bool]] = []
+        self.deleted_messages: list[tuple[int, int]] = []
+
+    async def download(self, file_id, *, destination, timeout, seek):
+        self.file_ids.append(file_id)
+        if file_id == "oversized-id":
+            raise TelegramBadRequest(
+                method=GetFile(file_id=file_id),
+                message="file is too big",
+            )
+        destination.write(b"recovered-thumbnail-bytes")
+        return destination
+
+    async def send_document(self, *, chat_id, document, disable_notification):
+        self.sent_documents.append((chat_id, document, disable_notification))
+        thumbnail = SimpleNamespace(
+            file_id="recovered-thumbnail-id",
+            file_unique_id="recovered-thumbnail-unique-id",
+            width=320,
+            height=480,
+        )
+        return SimpleNamespace(
+            message_id=501,
+            document=SimpleNamespace(thumbnail=thumbnail),
+            video=None,
+            animation=None,
+            photo=None,
+        )
+
+    async def delete_message(self, *, chat_id, message_id):
+        self.deleted_messages.append((chat_id, message_id))
+
+
 class ResilientMediaAIVisionServiceTests(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def _service(bot):
@@ -86,6 +122,30 @@ class ResilientMediaAIVisionServiceTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(b"preview-bytes", result)
         self.assertEqual(["original-id", "preview-id"], bot.file_ids)
+
+    async def test_oversized_document_uses_temporary_telegram_thumbnail(self) -> None:
+        bot = _OversizedRecoveryBot()
+        service = self._service(bot)
+        service.set_cache_chat_id(-1001234567890)
+        target = VisionAnalysisTarget(
+            media_id=2618,
+            telegram_file_id="oversized-id",
+            preview_file_id=None,
+            mime_type="image/png",
+        )
+
+        result = await service._download_target(target)
+
+        self.assertEqual(b"recovered-thumbnail-bytes", result)
+        self.assertEqual(
+            ["oversized-id", "recovered-thumbnail-id"],
+            bot.file_ids,
+        )
+        self.assertEqual(
+            [(-1001234567890, "oversized-id", True)],
+            bot.sent_documents,
+        )
+        self.assertEqual([(-1001234567890, 501)], bot.deleted_messages)
 
 
 if __name__ == "__main__":

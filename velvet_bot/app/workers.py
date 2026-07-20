@@ -7,7 +7,7 @@ from typing import Awaitable, Callable
 
 from aiogram import Bot
 
-from velvet_bot.ai_quality import AIQualityRepository, QualityVisionClient
+from velvet_bot.ai_quality import QualityVisionClient
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
@@ -22,6 +22,7 @@ from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_br
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.ollama_vision import ReliableVisionClient
 from velvet_bot.quality_calibration import QualityCalibrationRepository
+from velvet_bot.resilient_ai_quality import ResilientAIQualityRepository
 from velvet_bot.resilient_ai_vision import (
     ResilientMediaAIRepository,
     ResilientMediaAIVisionService,
@@ -47,6 +48,14 @@ def _env_enabled(name: str) -> bool:
         "on",
         "да",
     }
+
+
+def _ai_cache_chat_id(settings: Settings) -> int | None:
+    if settings.log_chat_id is not None:
+        return int(settings.log_chat_id)
+    if settings.allowed_user_ids:
+        return min(settings.allowed_user_ids)
+    return None
 
 
 def build_worker_manager(
@@ -106,6 +115,7 @@ def build_worker_manager(
         )
     if settings is not None and settings.ai_vision_enabled:
         ai_lock = get_local_ai_lock()
+        cache_chat_id = _ai_cache_chat_id(settings)
         ai_service = ResilientMediaAIVisionService(
             bot=bot,
             repository=ResilientMediaAIRepository(database),
@@ -118,9 +128,10 @@ def build_worker_manager(
             ),
             max_attempts=settings.ai_vision_max_attempts,
         )
+        ai_service.set_cache_chat_id(cache_chat_id)
         quality_service = CalibratedAIQualityService(
             bot=bot,
-            repository=AIQualityRepository(database),
+            repository=ResilientAIQualityRepository(database),
             calibration_repository=QualityCalibrationRepository(database),
             client=QualityVisionClient(
                 provider=settings.ai_vision_provider,
@@ -131,6 +142,7 @@ def build_worker_manager(
             ),
             max_attempts=settings.ai_vision_max_attempts,
         )
+        quality_service.set_cache_chat_id(cache_chat_id)
         manager.register(
             PeriodicWorkerSpec(
                 name="ai-vision",

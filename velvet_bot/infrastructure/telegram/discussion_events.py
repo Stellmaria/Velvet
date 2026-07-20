@@ -1,9 +1,28 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from aiogram.types import Message, MessageOriginChannel
 
 from velvet_bot.channel_analytics import detect_media_type
 from velvet_bot.domains.discussions.models import DiscussionMessageEvent
+
+
+def _coerce_telegram_datetime(
+    value: datetime | int | float | None,
+    *,
+    required: bool = False,
+) -> datetime | None:
+    """Normalize aiogram dates, including raw Unix timestamps from constructed updates."""
+    if value is None:
+        if required:
+            raise ValueError("Telegram message date is required.")
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return datetime.fromtimestamp(value, tz=UTC)
+    raise TypeError(f"Unsupported Telegram datetime value: {type(value).__name__}")
 
 
 def discussion_event_from_message(message: Message) -> DiscussionMessageEvent:
@@ -31,13 +50,15 @@ def discussion_event_from_message(message: Message) -> DiscussionMessageEvent:
             forward_message_id = int(legacy_message_id)
 
     reply = message.reply_to_message
+    posted_at = _coerce_telegram_datetime(message.date, required=True)
+    assert posted_at is not None
     return DiscussionMessageEvent(
         chat_id=int(message.chat.id),
         chat_title=message.chat.title,
         chat_username=message.chat.username,
         message_id=int(message.message_id),
-        posted_at=message.date,
-        edited_at=message.edit_date,
+        posted_at=posted_at,
+        edited_at=_coerce_telegram_datetime(message.edit_date),
         sender_is_bot=sender_is_bot,
         sender_id=sender_id,
         sender_name=sender_name,
@@ -47,7 +68,11 @@ def discussion_event_from_message(message: Message) -> DiscussionMessageEvent:
         has_spoiler=bool(getattr(message, "has_media_spoiler", False)),
         reply_to_message_id=(int(reply.message_id) if reply is not None else None),
         reply_text=(reply.text or reply.caption or "") if reply is not None else "",
-        reply_date=reply.date if reply is not None else None,
+        reply_date=(
+            _coerce_telegram_datetime(reply.date)
+            if reply is not None
+            else None
+        ),
         reply_is_automatic_forward=(
             bool(getattr(reply, "is_automatic_forward", False))
             if reply is not None

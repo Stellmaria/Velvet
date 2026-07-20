@@ -62,7 +62,7 @@
     "velvet_bot/handlers/velvet_ai_visual.py",
     "velvet_bot/handlers/watermark.py"
   ],
-  "root_level_module_count": 114,
+  "root_level_module_count": 115,
   "compatibility_file_count": 5,
   "pre_import_compatibility_components": [
     "ai-quality-schema",

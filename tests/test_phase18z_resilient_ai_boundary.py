@@ -71,7 +71,8 @@ class ResilientAIBoundaryTests(unittest.IsolatedAsyncioTestCase):
         requeue_sql, response_version = first_connection.execute.await_args.args
         self.assertIn("ServerDisconnectedError", requeue_sql)
         self.assertIn("TelegramNetworkError", requeue_sql)
-        self.assertEqual(response_version, 3)
+        self.assertIn("file is too big", requeue_sql)
+        self.assertEqual(response_version, 4)
         parent_claim.assert_awaited_once_with(
             provider="ollama",
             model="qwen",
@@ -81,7 +82,7 @@ class ResilientAIBoundaryTests(unittest.IsolatedAsyncioTestCase):
         version_sql, media_ids, response_version = second_connection.execute.await_args.args
         self.assertIn("SET analysis_version", version_sql)
         self.assertEqual(media_ids, [51])
-        self.assertEqual(response_version, 3)
+        self.assertEqual(response_version, 4)
         self.assertEqual(result, (target,))
 
     async def test_empty_claim_skips_second_database_acquire(self) -> None:
