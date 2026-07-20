@@ -33,7 +33,6 @@ def build_admin_commands() -> tuple[BotCommand, ...]:
         BotCommand(command="start", description="Открыть центр управления"),
         BotCommand(command="menu", description="Центр управления"),
         BotCommand(command="archive", description="Архив персонажей"),
-        BotCommand(command="storage", description="Telegram Storage Center"),
     )
 
 
