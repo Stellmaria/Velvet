@@ -10,6 +10,7 @@ async def get_character_media_offset(
     character_id: int,
     media_id: int,
     public_only: bool = False,
+    include_restricted: bool = False,
 ) -> int | None:
     """Return the newest-first offset of one visible character-media link."""
     visibility_filter = (
@@ -17,6 +18,8 @@ async def get_character_media_offset(
         + public_media_visibility_sql(
             link_alias="character_media",
             file_alias="mf",
+            include_adult_restricted=include_restricted,
+            include_oversized_images=include_restricted,
         )
         + ")"
         if public_only
