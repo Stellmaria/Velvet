@@ -7,7 +7,7 @@ from typing import Awaitable, Callable
 
 from aiogram import Bot
 
-from velvet_bot.ai_quality import AIQualityRepository, QualityVisionClient
+from velvet_bot.ai_quality import QualityVisionClient
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
@@ -22,6 +22,7 @@ from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_br
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.ollama_vision import ReliableVisionClient
 from velvet_bot.quality_calibration import QualityCalibrationRepository
+from velvet_bot.resilient_ai_quality import ResilientAIQualityRepository
 from velvet_bot.resilient_ai_vision import (
     ResilientMediaAIRepository,
     ResilientMediaAIVisionService,
@@ -130,7 +131,7 @@ def build_worker_manager(
         ai_service.set_cache_chat_id(cache_chat_id)
         quality_service = CalibratedAIQualityService(
             bot=bot,
-            repository=AIQualityRepository(database),
+            repository=ResilientAIQualityRepository(database),
             calibration_repository=QualityCalibrationRepository(database),
             client=QualityVisionClient(
                 provider=settings.ai_vision_provider,
