@@ -4,7 +4,9 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-# Public access includes archive viewing plus user-facing likes and subscriptions.
+# Public access includes archive viewing plus user-facing likes, subscriptions and
+# download callbacks. The download handler still enforces channel membership or
+# approved-watermark policy before sending any file.
 # `/menu` still belongs exclusively to the owner control panel.
 PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery"})
 PUBLIC_CALLBACK_ACTIONS = frozenset(
@@ -20,6 +22,7 @@ PUBLIC_CALLBACK_ACTIONS = frozenset(
         "back",
         "like",
         "sub",
+        "download",
     }
 )
 PUBLIC_CALLBACK_PREFIX = "pub:"
@@ -73,8 +76,8 @@ MODERATOR_CALLBACK_ACTIONS = {
             "close",
         }
     ),
-    # Download is shown only to configured moderators in the public viewer. It is
-    # not a public archive action and must not become available through pub prefix.
+    # Kept for compatibility with moderator inventories. Runtime download access
+    # is decided by public-archive membership/watermark policy.
     "pub": frozenset({"download"}),
 }
 MODERATOR_TAG_CALLBACK_ACTIONS = frozenset({"menu", "add", "del", "delok"})
