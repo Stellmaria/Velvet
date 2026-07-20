@@ -8,7 +8,9 @@ from unittest.mock import AsyncMock, patch
 from aiogram.enums import ChatType
 from aiogram.types import Chat, Message
 
-from velvet_bot.handlers.supervisor_logs import handle_supervisor_logs_callback
+from velvet_bot.presentation.telegram.routers.supervisor.logs import (
+    handle_supervisor_logs_callback,
+)
 
 
 def _message() -> Message:
@@ -38,7 +40,7 @@ class SupervisorLogsCallbackTests(unittest.IsolatedAsyncioTestCase):
         supervisor_client = SimpleNamespace(logs=AsyncMock(side_effect=logs))
 
         with patch(
-            "velvet_bot.handlers.supervisor_logs._safe_edit",
+            "velvet_bot.presentation.telegram.routers.supervisor.logs._safe_edit",
             new=AsyncMock(side_effect=edit),
         ):
             await handle_supervisor_logs_callback(
