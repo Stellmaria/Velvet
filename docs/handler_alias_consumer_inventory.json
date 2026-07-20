@@ -1,35 +1,15 @@
 {
   "schema_version": 1,
-  "generated_from": "p3d-zero-reference-alias-retirement",
-  "alias_file_count": 44,
-  "consumer_file_count": 41,
-  "reference_count": 90,
-  "referenced_alias_count": 44,
+  "generated_from": "p3d-character-story-alias-retirement",
+  "alias_file_count": 35,
+  "consumer_file_count": 35,
+  "reference_count": 74,
+  "referenced_alias_count": 35,
   "unreferenced_alias_count": 0,
   "dynamic_prefix_reference_count": 2,
   "missing_alias_reference_count": 0,
   "missing_alias_references": [],
   "aliases": [
-    {
-      "module": "velvet_bot.handlers.admin_directory",
-      "target": "velvet_bot.presentation.telegram.routers.characters.directory",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.admin_stories",
-      "target": "velvet_bot.presentation.telegram.routers.stories.management",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.admin_uncategorized",
-      "target": "velvet_bot.presentation.telegram.routers.characters.uncategorized",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.admin_universe_story_flow",
-      "target": "velvet_bot.presentation.telegram.routers.stories.universe_flow",
-      "referenced": true
-    },
     {
       "module": "velvet_bot.handlers.analytics_dashboard",
       "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard",
@@ -81,33 +61,8 @@
       "referenced": true
     },
     {
-      "module": "velvet_bot.handlers.character_aliases",
-      "target": "velvet_bot.presentation.telegram.routers.characters.aliases",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.characters",
-      "target": "velvet_bot.presentation.telegram.routers.characters.profiles",
-      "referenced": true
-    },
-    {
       "module": "velvet_bot.handlers.error_center",
       "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.kr_profile_overrides",
-      "target": "velvet_bot.presentation.telegram.routers.characters.kr_profile_overrides",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.kr_universe_entry",
-      "target": "velvet_bot.presentation.telegram.routers.stories.kr_universe_entry",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.multi_story_kr",
-      "target": "velvet_bot.presentation.telegram.routers.stories.multi_story_kr",
       "referenced": true
     },
     {
@@ -244,21 +199,6 @@
       ]
     },
     {
-      "path": "tests/test_admin_uncategorized.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.admin_directory",
-          "line": 6
-        },
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.admin_uncategorized",
-          "line": 7
-        }
-      ]
-    },
-    {
       "path": "tests/test_ai_quality.py",
       "references": [
         {
@@ -285,21 +225,6 @@
           "kind": "from-import",
           "module": "velvet_bot.handlers.analytics_management",
           "line": 5
-        }
-      ]
-    },
-    {
-      "path": "tests/test_directory_back_navigation_hotfix.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.admin_directory",
-          "line": 79
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.admin_stories",
-          "line": 80
         }
       ]
     },
@@ -340,16 +265,6 @@
           "kind": "from-import",
           "module": "velvet_bot.handlers.owner_actions",
           "line": 7
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p2_stability_inventory.py",
-      "references": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.multi_story_kr",
-          "line": 9
         }
       ]
     },
@@ -449,16 +364,6 @@
         {
           "kind": "import",
           "module": "velvet_bot.handlers.channel_analytics",
-          "line": 7
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p2r_character_topic_boundaries.py",
-      "references": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.characters",
           "line": 7
         }
       ]
@@ -575,56 +480,6 @@
           "kind": "literal-reference",
           "module": "velvet_bot.handlers.analytics_dashboard",
           "line": 80
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p3c_characters_stories_presentation.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.admin_directory",
-          "line": 9
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.admin_stories",
-          "line": 12
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.admin_uncategorized",
-          "line": 15
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.admin_universe_story_flow",
-          "line": 18
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.character_aliases",
-          "line": 21
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.characters",
-          "line": 24
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.kr_profile_overrides",
-          "line": 27
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.kr_universe_entry",
-          "line": 30
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.multi_story_kr",
-          "line": 33
         }
       ]
     },
@@ -850,16 +705,6 @@
           "kind": "import",
           "module": "velvet_bot.handlers.quality_ai_preview",
           "line": 13
-        }
-      ]
-    },
-    {
-      "path": "tests/test_story_catalog.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.admin_stories",
-          "line": 8
         }
       ]
     },

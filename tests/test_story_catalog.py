@@ -5,7 +5,12 @@ from pathlib import Path
 
 from velvet_bot.character_directory import CharacterDirectoryItem
 from velvet_bot.database import Character
-from velvet_bot.handlers.admin_stories import AdminStoryCallback, build_story_picker
+from velvet_bot.presentation.telegram.routers.stories.contracts import (
+    AdminStoryCallback,
+)
+from velvet_bot.presentation.telegram.routers.stories.management import (
+    build_story_picker,
+)
 from velvet_bot.public_manager_ui import manager_callback
 from velvet_bot.public_ui import PublicArchiveCallback
 from velvet_bot.story_catalog import (

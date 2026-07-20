@@ -76,8 +76,7 @@ class DirectoryBackNavigationHotfixTests(unittest.IsolatedAsyncioTestCase):
 
     def test_touched_kr_controller_uses_canonical_imports(self) -> None:
         source = inspect.getsource(kr_profile_overrides)
-        self.assertNotIn("velvet_bot.handlers.admin_directory", source)
-        self.assertNotIn("velvet_bot.handlers.admin_stories", source)
+        self.assertNotIn("velvet_bot.handlers.", source)
 
 
 if __name__ == "__main__":

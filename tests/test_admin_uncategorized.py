@@ -3,8 +3,10 @@ from datetime import UTC, datetime
 
 from velvet_bot.character_directory import CharacterDirectoryItem, CharacterDirectoryPage
 from velvet_bot.database import Character
-from velvet_bot.handlers.admin_directory import AdminDirectoryCallback
-from velvet_bot.handlers.admin_uncategorized import (
+from velvet_bot.presentation.telegram.routers.characters.contracts import (
+    AdminDirectoryCallback,
+)
+from velvet_bot.presentation.telegram.routers.characters.uncategorized import (
     build_category_picker,
     build_uncategorized_keyboard,
     build_universe_picker,
