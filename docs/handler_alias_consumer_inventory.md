@@ -4,10 +4,10 @@
 
 ## Сводка
 
-- alias-файлов: **18**;
-- файлов-consumers: **16**;
-- references: **42**;
-- aliases с references: **18**;
+- alias-файлов: **17**;
+- файлов-consumers: **15**;
+- references: **40**;
+- aliases с references: **17**;
 - aliases без references: **0**;
 - динамических prefix references: **2**;
 - references на уже отсутствующие aliases: **0**.
@@ -22,7 +22,6 @@
 - `velvet_bot.handlers.analytics_management_common` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_common`: используется.
 - `velvet_bot.handlers.analytics_management_publications` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications`: используется.
 - `velvet_bot.handlers.analytics_management_tags` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags`: используется.
-- `velvet_bot.handlers.backup_center` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center`: используется.
 - `velvet_bot.handlers.channel_analytics` → `velvet_bot.presentation.telegram.routers.analytics_controllers.channel`: используется.
 - `velvet_bot.handlers.supervisor_codex` → `velvet_bot.presentation.telegram.routers.supervisor.codex`: используется.
 - `velvet_bot.handlers.supervisor_console` → `velvet_bot.presentation.telegram.routers.supervisor.console`: используется.
@@ -59,10 +58,6 @@
 
 - line 6: `velvet_bot.handlers.supervisor_console` (import).
 
-### `tests/test_p2p_backup_center_boundary.py`
-
-- line 7: `velvet_bot.handlers.backup_center` (import).
-
 ### `tests/test_p2q_channel_analytics_boundary.py`
 
 - line 7: `velvet_bot.handlers.channel_analytics` (import).
@@ -86,7 +81,7 @@
 
 ### `tests/test_p3c_quality_operations_controllers.py`
 
-- line 40: `velvet_bot.handlers` (dynamic-prefix-reference).
+- line 41: `velvet_bot.handlers` (dynamic-prefix-reference).
 
 ### `tests/test_p3c_supervisor_system_presentation.py`
 
@@ -114,7 +109,6 @@
 ### `tests/test_phase5_discussion_and_backups.py`
 
 - line 12: `velvet_bot.handlers.analytics_discussion_overrides` (from-import).
-- line 16: `velvet_bot.handlers.backup_center` (from-import).
 
 ### `tests/test_supervisor.py`
 
