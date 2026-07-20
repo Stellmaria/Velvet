@@ -5,7 +5,7 @@ import unittest
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-import velvet_bot.handlers.velvet_ai as module
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai as module
 
 
 class FakeMessage:
@@ -53,18 +53,18 @@ class PromptResultJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.original_download = module._download_image
         self.original_sessions = dict(module._sessions)
 
-        module._result_file = lambda message: ('result-file', 'result-unique')
+        module._result_file = lambda message: ("result-file", "result-unique")
         module.load_settings = lambda: SimpleNamespace(
             ai_vision_enabled=True,
-            ai_vision_provider='ollama',
-            ai_vision_model='qwen',
+            ai_vision_provider="ollama",
+            ai_vision_model="qwen",
         )
         FakeTrackerFactory.tracker = FakeTracker()
         FakeTrackerFactory.create_calls = []
         module.AIJobTracker = FakeTrackerFactory
         module._sessions.clear()
         module._sessions[(23, 17)] = module.PromptCheckSession(
-            prompt_text='A sufficiently detailed prompt for comparison.',
+            prompt_text="A sufficiently detailed prompt for comparison.",
             created_at=datetime.now(UTC),
         )
 
@@ -77,7 +77,7 @@ class PromptResultJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         module._sessions.update(self.original_sessions)
 
     async def test_failure_marks_job_error_and_keeps_prompt_session(self) -> None:
-        error = RuntimeError('download failed')
+        error = RuntimeError("download failed")
 
         async def fail_download(bot, file_id):
             raise error
@@ -88,30 +88,30 @@ class PromptResultJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
         await module.handle_prompt_check_reply(
             message,
-            'image',
+            "image",
             database,
             object(),
         )
 
         tracker = FakeTrackerFactory.tracker
-        self.assertEqual(tracker.stages, ['downloading'])
+        self.assertEqual(tracker.stages, ["downloading"])
         self.assertEqual(tracker.errors, [error])
         self.assertEqual(tracker.ready_calls, [])
         self.assertIn((23, 17), module._sessions)
         self.assertEqual(len(FakeTrackerFactory.create_calls), 1)
         call = FakeTrackerFactory.create_calls[0]
-        self.assertIs(call['database'], database)
-        self.assertIs(call['source_message'], message)
-        self.assertEqual(call['kind'], 'prompt_result')
-        self.assertEqual(call['title'], 'Промт против результата')
-        self.assertEqual(call['provider'], 'ollama')
-        self.assertEqual(call['model'], 'qwen')
+        self.assertIs(call["database"], database)
+        self.assertIs(call["source_message"], message)
+        self.assertEqual(call["kind"], "prompt_result")
+        self.assertEqual(call["title"], "Промт против результата")
+        self.assertEqual(call["provider"], "ollama")
+        self.assertEqual(call["model"], "qwen")
         self.assertEqual(
-            call['request_payload'],
+            call["request_payload"],
             {
-                'result_file_id': 'result-file',
-                'result_file_unique_id': 'result-unique',
-                'prompt_length': len(module._sessions[(23, 17)].prompt_text),
+                "result_file_id": "result-file",
+                "result_file_unique_id": "result-unique",
+                "prompt_length": len(module._sessions[(23, 17)].prompt_text),
             },
         )
 
@@ -124,23 +124,23 @@ class PromptResultJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(asyncio.CancelledError):
             await module.handle_prompt_check_reply(
                 FakeMessage(),
-                'image',
+                "image",
                 object(),
                 object(),
             )
 
         tracker = FakeTrackerFactory.tracker
-        self.assertEqual(tracker.stages, ['downloading'])
+        self.assertEqual(tracker.stages, ["downloading"])
         self.assertEqual(
             tracker.errors,
-            ['Задание прервано остановкой процесса.'],
+            ["Задание прервано остановкой процесса."],
         )
         self.assertEqual(tracker.ready_calls, [])
         self.assertIn((23, 17), module._sessions)
 
     async def test_compensation_failure_is_not_silently_swallowed(self) -> None:
-        primary_error = RuntimeError('provider failed')
-        compensation_error = RuntimeError('job persistence failed')
+        primary_error = RuntimeError("provider failed")
+        compensation_error = RuntimeError("job persistence failed")
 
         async def fail_download(bot, file_id):
             raise primary_error
@@ -154,7 +154,7 @@ class PromptResultJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(RuntimeError) as captured:
             await module.handle_prompt_check_reply(
                 FakeMessage(),
-                'image',
+                "image",
                 object(),
                 object(),
             )
@@ -163,5 +163,5 @@ class PromptResultJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn((23, 17), module._sessions)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.velvet_ai_visual as module
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_visual as module
 
 
 class FakeMessage:
@@ -14,10 +14,10 @@ class FakeMessage:
         self.photo_error: BaseException | None = None
 
     async def answer(self, *args, **kwargs) -> None:
-        raise AssertionError('unexpected text answer')
+        raise AssertionError("unexpected text answer")
 
     async def answer_photo(self, *args, **kwargs) -> None:
-        self.photo_calls.append({'args': args, **kwargs})
+        self.photo_calls.append({"args": args, **kwargs})
         if self.photo_error is not None:
             raise self.photo_error
 
@@ -59,11 +59,11 @@ class FakeLock:
 
 class FakeCompositionClient:
     failure: BaseException | None = None
-    report: dict[str, object] = {'verdict': 'strong'}
+    report: dict[str, object] = {"verdict": "strong"}
 
     def __init__(self, **kwargs) -> None:
-        self.provider = kwargs['provider']
-        self.model = kwargs['model']
+        self.provider = kwargs["provider"]
+        self.model = kwargs["model"]
 
     async def analyze_composition(self, image, metrics):
         if self.failure is not None:
@@ -96,12 +96,12 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.original_report_text = module._report_text
         self.original_palette_line = module._palette_line
 
-        module._result_file = lambda message: ('result-file', 'result-unique')
+        module._result_file = lambda message: ("result-file", "result-unique")
         module.load_settings = lambda: SimpleNamespace(
             ai_vision_enabled=True,
-            ai_vision_provider='ollama',
-            ai_vision_base_url='http://localhost',
-            ai_vision_model='qwen',
+            ai_vision_provider="ollama",
+            ai_vision_base_url="http://localhost",
+            ai_vision_model="qwen",
             ai_vision_api_key=None,
             ai_vision_timeout_seconds=90,
         )
@@ -109,15 +109,15 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         FakeTrackerFactory.create_calls = []
         module.AIJobTracker = FakeTrackerFactory
         FakeCompositionClient.failure = None
-        FakeCompositionClient.report = {'verdict': 'strong'}
+        FakeCompositionClient.report = {"verdict": "strong"}
         module.CompositionAnalysisClient = FakeCompositionClient
         module.get_local_ai_lock = lambda: FakeLock()
         FakeReportRepository.save_calls = []
         module.PaletteCompositionReportRepository = FakeReportRepository
         module.extract_palette_metrics = lambda image: SimpleNamespace(colors=[])
-        module.build_palette_card = lambda metrics: b'palette-card'
-        module._report_text = lambda report_id, metrics, report: 'rendered report'
-        module._palette_line = lambda metrics: 'palette line'
+        module.build_palette_card = lambda metrics: b"palette-card"
+        module._report_text = lambda report_id, metrics, report: "rendered report"
+        module._palette_line = lambda metrics: "palette line"
 
     def tearDown(self) -> None:
         module._result_file = self.original_result_file
@@ -133,7 +133,7 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         module._palette_line = self.original_palette_line
 
     async def test_failure_marks_job_error_with_request_metadata(self) -> None:
-        error = RuntimeError('image download failed')
+        error = RuntimeError("image download failed")
 
         async def fail_download(bot, file_id):
             raise error
@@ -145,21 +145,21 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         await module.handle_visual_analysis_reply(message, database, object())
 
         tracker = FakeTrackerFactory.tracker
-        self.assertEqual(tracker.stages, ['downloading'])
+        self.assertEqual(tracker.stages, ["downloading"])
         self.assertEqual(tracker.errors, [error])
         self.assertEqual(tracker.ready_calls, [])
         self.assertEqual(message.photo_calls, [])
         call = FakeTrackerFactory.create_calls[0]
-        self.assertIs(call['database'], database)
-        self.assertIs(call['source_message'], message)
-        self.assertEqual(call['kind'], 'palette_composition')
-        self.assertEqual(call['provider'], 'ollama')
-        self.assertEqual(call['model'], 'qwen')
+        self.assertIs(call["database"], database)
+        self.assertIs(call["source_message"], message)
+        self.assertEqual(call["kind"], "palette_composition")
+        self.assertEqual(call["provider"], "ollama")
+        self.assertEqual(call["model"], "qwen")
         self.assertEqual(
-            call['request_payload'],
+            call["request_payload"],
             {
-                'result_file_id': 'result-file',
-                'result_file_unique_id': 'result-unique',
+                "result_file_id": "result-file",
+                "result_file_unique_id": "result-unique",
             },
         )
 
@@ -173,16 +173,16 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
             await module.handle_visual_analysis_reply(FakeMessage(), object(), object())
 
         tracker = FakeTrackerFactory.tracker
-        self.assertEqual(tracker.stages, ['downloading'])
+        self.assertEqual(tracker.stages, ["downloading"])
         self.assertEqual(
             tracker.errors,
-            ['Задание прервано остановкой процесса.'],
+            ["Задание прервано остановкой процесса."],
         )
         self.assertEqual(tracker.ready_calls, [])
 
     async def test_compensation_failure_is_not_silently_swallowed(self) -> None:
-        primary_error = RuntimeError('analysis failed')
-        compensation_error = RuntimeError('job write failed')
+        primary_error = RuntimeError("analysis failed")
+        compensation_error = RuntimeError("job write failed")
 
         async def fail_download(bot, file_id):
             raise primary_error
@@ -200,11 +200,11 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_palette_delivery_failure_does_not_reopen_ready_job(self) -> None:
         async def download(bot, file_id):
-            return b'image'
+            return b"image"
 
         module._download_image = download
         message = FakeMessage()
-        delivery_error = RuntimeError('telegram send failed')
+        delivery_error = RuntimeError("telegram send failed")
         message.photo_error = delivery_error
 
         with self.assertRaises(RuntimeError) as captured:
@@ -214,19 +214,19 @@ class VisualAnalysisJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         tracker = FakeTrackerFactory.tracker
         self.assertEqual(
             tracker.stages,
-            ['downloading', 'preparing', 'analyzing', 'saving'],
+            ["downloading", "preparing", "analyzing", "saving"],
         )
         self.assertEqual(tracker.errors, [])
         self.assertEqual(len(tracker.ready_calls), 1)
         ready = tracker.ready_calls[0]
-        self.assertEqual(ready['reference_type'], 'palette_composition_report')
-        self.assertEqual(ready['reference_id'], 91)
+        self.assertEqual(ready["reference_type"], "palette_composition_report")
+        self.assertEqual(ready["reference_id"], 91)
         self.assertEqual(len(message.photo_calls), 1)
         photo_call = message.photo_calls[0]
-        self.assertEqual(photo_call['protect_content'], False)
-        self.assertIn('отчёт #91', photo_call['caption'])
-        self.assertEqual(photo_call['args'][0].filename, 'palette-91.png')
+        self.assertEqual(photo_call["protect_content"], False)
+        self.assertIn("отчёт #91", photo_call["caption"])
+        self.assertEqual(photo_call["args"][0].filename, "palette-91.png")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

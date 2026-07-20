@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 from velvet_bot.ai_quality import AIQualityItem, normalize_quality_report
-from velvet_bot.handlers.quality_ai import _report_text
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai import _report_text
 
 
 class AIQualityNormalizationTests(unittest.TestCase):

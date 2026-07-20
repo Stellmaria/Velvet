@@ -4,10 +4,10 @@
 
 ## Сводка
 
-- alias-файлов: **35**;
-- файлов-consumers: **35**;
-- references: **74**;
-- aliases с references: **35**;
+- alias-файлов: **25**;
+- файлов-consumers: **23**;
+- references: **57**;
+- aliases с references: **25**;
 - aliases без references: **0**;
 - динамических prefix references: **2**;
 - references на уже отсутствующие aliases: **0**.
@@ -29,13 +29,6 @@
 - `velvet_bot.handlers.owner_menu` → `velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu`: используется.
 - `velvet_bot.handlers.publication_center` → `velvet_bot.presentation.telegram.routers.publication.center`: используется.
 - `velvet_bot.handlers.publication_center_safe` → `velvet_bot.presentation.telegram.routers.publication.safe`: используется.
-- `velvet_bot.handlers.quality_ai` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai`: используется.
-- `velvet_bot.handlers.quality_ai_preview` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview`: используется.
-- `velvet_bot.handlers.quality_center` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center`: используется.
-- `velvet_bot.handlers.quality_duplicates` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates`: используется.
-- `velvet_bot.handlers.quality_operations` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations`: используется.
-- `velvet_bot.handlers.quality_set_ai` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_set_ai`: используется.
-- `velvet_bot.handlers.quality_sets` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets`: используется.
 - `velvet_bot.handlers.supervisor_codex` → `velvet_bot.presentation.telegram.routers.supervisor.codex`: используется.
 - `velvet_bot.handlers.supervisor_console` → `velvet_bot.presentation.telegram.routers.supervisor.console`: используется.
 - `velvet_bot.handlers.supervisor_control` → `velvet_bot.presentation.telegram.routers.supervisor.control`: используется.
@@ -45,9 +38,6 @@
 - `velvet_bot.handlers.supervisor_self` → `velvet_bot.presentation.telegram.routers.supervisor.self_control`: используется.
 - `velvet_bot.handlers.supervisor_status` → `velvet_bot.presentation.telegram.routers.supervisor.status`: используется.
 - `velvet_bot.handlers.system_center` → `velvet_bot.presentation.telegram.routers.system`: используется.
-- `velvet_bot.handlers.velvet_ai` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai`: используется.
-- `velvet_bot.handlers.velvet_ai_formatting` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_formatting`: используется.
-- `velvet_bot.handlers.velvet_ai_visual` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_visual`: используется.
 - `velvet_bot.handlers.watermark` → `velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark`: используется.
 
 ## Consumers
@@ -55,10 +45,6 @@
 ### `scripts/inventory_architecture_layout.py`
 
 - line 139: `velvet_bot.handlers` (dynamic-prefix-reference).
-
-### `tests/test_ai_quality.py`
-
-- line 6: `velvet_bot.handlers.quality_ai` (from-import).
 
 ### `tests/test_analytics_dashboard.py`
 
@@ -72,10 +58,6 @@
 
 - line 12: `velvet_bot.handlers.supervisor_status` (import).
 
-### `tests/test_hotfix_quality_sets_stale_callback.py`
-
-- line 11: `velvet_bot.handlers.quality_sets` (from-package).
-
 ### `tests/test_inline_management_menus.py`
 
 - line 17: `velvet_bot.handlers.supervisor_control` (from-import).
@@ -84,35 +66,9 @@
 
 - line 7: `velvet_bot.handlers.owner_actions` (from-import).
 
-### `tests/test_p2aa_set_analysis_job_boundaries.py`
-
-- line 7: `velvet_bot.handlers.quality_set_ai` (import).
-
-### `tests/test_p2ab_quality_sets_safe_edit.py`
-
-- line 6: `velvet_bot.handlers.quality_sets` (import).
-
 ### `tests/test_p2ae_supervisor_console_watcher.py`
 
 - line 6: `velvet_bot.handlers.supervisor_console` (import).
-
-### `tests/test_p2af_prompt_result_job_boundary.py`
-
-- line 8: `velvet_bot.handlers.velvet_ai` (import).
-
-### `tests/test_p2ag_formatting_boundaries.py`
-
-- line 7: `velvet_bot.handlers.velvet_ai_formatting` (import).
-
-### `tests/test_p2ah_visual_analysis_job_boundary.py`
-
-- line 7: `velvet_bot.handlers.velvet_ai_visual` (import).
-
-### `tests/test_p2b_quality_callback_ack.py`
-
-- line 6: `velvet_bot.handlers.quality_ai` (import).
-- line 7: `velvet_bot.handlers.quality_center` (import).
-- line 8: `velvet_bot.handlers.quality_operations` (import).
 
 ### `tests/test_p2p_backup_center_boundary.py`
 
@@ -129,14 +85,6 @@
 ### `tests/test_p2x_publication_report_boundary.py`
 
 - line 7: `velvet_bot.handlers.publication_center` (import).
-
-### `tests/test_p2y_quality_duplicate_safe_edit.py`
-
-- line 6: `velvet_bot.handlers.quality_duplicates` (import).
-
-### `tests/test_p2z_manual_quality_job_boundary.py`
-
-- line 7: `velvet_bot.handlers.quality_operations` (import).
 
 ### `tests/test_p3c_analytics_controllers.py`
 
@@ -169,7 +117,7 @@
 
 ### `tests/test_p3c_quality_operations_controllers.py`
 
-- line 27: `velvet_bot.handlers` (dynamic-prefix-reference).
+- line 40: `velvet_bot.handlers` (dynamic-prefix-reference).
 
 ### `tests/test_p3c_supervisor_system_presentation.py`
 
@@ -197,11 +145,6 @@
 
 - line 48: `velvet_bot.handlers.analytics_management` (literal-reference).
 
-### `tests/test_phase18_completion.py`
-
-- line 9: `velvet_bot.handlers.quality_set_ai` (import).
-- line 10: `velvet_bot.handlers.quality_sets` (import).
-
 ### `tests/test_phase5_discussion_and_backups.py`
 
 - line 12: `velvet_bot.handlers.analytics_discussion_overrides` (from-import).
@@ -215,12 +158,6 @@
 
 - line 7: `velvet_bot.handlers.publication_center` (from-import).
 - line 8: `velvet_bot.handlers.publication_center_safe` (from-import).
-
-### `tests/test_quality_ai_preview.py`
-
-- line 11: `velvet_bot.handlers.quality_ai` (from-package).
-- line 12: `velvet_bot.handlers.quality_ai_preview` (from-import).
-- line 13: `velvet_bot.handlers.quality_ai_preview` (import).
 
 ### `tests/test_supervisor.py`
 

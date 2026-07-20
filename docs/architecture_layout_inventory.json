@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3d-character-story-alias-retirement",
+  "generated_from": "p3d-quality-alias-retirement",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -22,9 +22,9 @@
   ],
   "active_bundle_router_count": 58,
   "duplicate_bundle_router_import_count": 0,
-  "legacy_handler_file_count": 35,
+  "legacy_handler_file_count": 25,
   "legacy_handler_implementation_count": 0,
-  "handler_compatibility_facade_count": 35,
+  "handler_compatibility_facade_count": 25,
   "handler_compatibility_facades": [
     "velvet_bot/handlers/analytics_dashboard.py",
     "velvet_bot/handlers/analytics_dashboard_overrides.py",
@@ -41,13 +41,6 @@
     "velvet_bot/handlers/owner_menu.py",
     "velvet_bot/handlers/publication_center.py",
     "velvet_bot/handlers/publication_center_safe.py",
-    "velvet_bot/handlers/quality_ai.py",
-    "velvet_bot/handlers/quality_ai_preview.py",
-    "velvet_bot/handlers/quality_center.py",
-    "velvet_bot/handlers/quality_duplicates.py",
-    "velvet_bot/handlers/quality_operations.py",
-    "velvet_bot/handlers/quality_set_ai.py",
-    "velvet_bot/handlers/quality_sets.py",
     "velvet_bot/handlers/supervisor_codex.py",
     "velvet_bot/handlers/supervisor_console.py",
     "velvet_bot/handlers/supervisor_control.py",
@@ -57,9 +50,6 @@
     "velvet_bot/handlers/supervisor_self.py",
     "velvet_bot/handlers/supervisor_status.py",
     "velvet_bot/handlers/system_center.py",
-    "velvet_bot/handlers/velvet_ai.py",
-    "velvet_bot/handlers/velvet_ai_formatting.py",
-    "velvet_bot/handlers/velvet_ai_visual.py",
     "velvet_bot/handlers/watermark.py"
   ],
   "root_level_module_count": 115,

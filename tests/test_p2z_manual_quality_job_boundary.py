@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.quality_operations as module
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations as module
 
 
 class FakeTracker:

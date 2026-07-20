@@ -3,9 +3,9 @@ from __future__ import annotations
 import inspect
 import unittest
 
-import velvet_bot.handlers.quality_ai as quality_ai
-import velvet_bot.handlers.quality_center as quality_center
-import velvet_bot.handlers.quality_operations as quality_operations
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai as quality_ai
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center as quality_center
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations as quality_operations
 
 
 class QualityCallbackAcknowledgmentTests(unittest.TestCase):

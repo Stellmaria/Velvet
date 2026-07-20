@@ -22,7 +22,20 @@ MODULES = (
     "quality_ai",
     "quality_center",
 )
-RETIRED_ALIASES = {"ai_jobs", "quality_calibration"}
+RETIRED_ALIASES = {
+    "ai_jobs",
+    "quality_ai",
+    "quality_ai_preview",
+    "quality_calibration",
+    "quality_center",
+    "quality_duplicates",
+    "quality_operations",
+    "quality_set_ai",
+    "quality_sets",
+    "velvet_ai",
+    "velvet_ai_formatting",
+    "velvet_ai_visual",
+}
 ALIASES = {
     f"velvet_bot.handlers.{name}": f"{PACKAGE}.{name}"
     for name in MODULES
@@ -46,14 +59,14 @@ INCLUDE_ORDER = (
 
 
 class P3CQualityOperationsControllersTests(unittest.TestCase):
-    def test_legacy_imports_resolve_to_canonical_module_objects(self) -> None:
+    def test_remaining_legacy_imports_resolve_to_canonical_module_objects(self) -> None:
         for legacy_name, canonical_name in ALIASES.items():
             with self.subTest(legacy=legacy_name):
                 legacy = importlib.import_module(legacy_name)
                 canonical = importlib.import_module(canonical_name)
                 self.assertIs(legacy, canonical)
 
-    def test_legacy_files_are_only_module_aliases(self) -> None:
+    def test_remaining_legacy_files_are_only_module_aliases(self) -> None:
         for legacy_name, canonical_name in ALIASES.items():
             with self.subTest(legacy=legacy_name):
                 path = ROOT / Path(*legacy_name.split(".")).with_suffix(".py")
@@ -62,6 +75,12 @@ class P3CQualityOperationsControllersTests(unittest.TestCase):
                 self.assertIn(canonical_name, source)
                 self.assertNotIn("@router.", source)
                 self.assertLessEqual(len(source.splitlines()), 10)
+
+    def test_retired_quality_alias_files_are_absent(self) -> None:
+        for name in RETIRED_ALIASES:
+            with self.subTest(alias=name):
+                path = ROOT / "velvet_bot" / "handlers" / f"{name}.py"
+                self.assertFalse(path.exists())
 
     def test_canonical_modules_own_real_router_implementations(self) -> None:
         root = ROOT / "velvet_bot/presentation/telegram/routers/quality_operations_controllers"

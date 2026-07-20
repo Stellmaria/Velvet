@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-import velvet_bot.handlers.quality_duplicates as module
+import velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates as module
 
 
 class FakeTelegramBadRequest(Exception):
