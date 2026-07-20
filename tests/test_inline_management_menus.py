@@ -14,7 +14,12 @@ from velvet_bot.app.commands import (
     build_editor_commands,
     build_public_commands,
 )
-from velvet_bot.handlers.supervisor_control import (
+from velvet_bot.owner_menu import (
+    OwnerMenuCallback,
+    build_owner_back_keyboard,
+    build_owner_main_keyboard,
+)
+from velvet_bot.presentation.telegram.routers.supervisor.control import (
     SupervisorCallback,
     SupervisorReplyMarkerFilter,
     _accepted_keyboard,
@@ -25,11 +30,6 @@ from velvet_bot.handlers.supervisor_control import (
     _logs_keyboard,
     _main_keyboard,
     _task_keyboard,
-)
-from velvet_bot.owner_menu import (
-    OwnerMenuCallback,
-    build_owner_back_keyboard,
-    build_owner_main_keyboard,
 )
 from velvet_supervisor.http_api import SupervisorHTTPServer
 
