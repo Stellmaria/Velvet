@@ -1,55 +1,15 @@
 {
   "schema_version": 1,
-  "generated_from": "p3d-supervisor-alias-retirement",
-  "alias_file_count": 9,
-  "consumer_file_count": 9,
-  "reference_count": 25,
-  "referenced_alias_count": 9,
+  "generated_from": "p3d-analytics-alias-retirement",
+  "alias_file_count": 1,
+  "consumer_file_count": 5,
+  "reference_count": 5,
+  "referenced_alias_count": 1,
   "unreferenced_alias_count": 0,
   "dynamic_prefix_reference_count": 2,
   "missing_alias_reference_count": 0,
   "missing_alias_references": [],
   "aliases": [
-    {
-      "module": "velvet_bot.handlers.analytics_dashboard",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.analytics_dashboard_overrides",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard_overrides",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.analytics_discussion_overrides",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.discussion_overrides",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.analytics_management",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.analytics_management_aliases",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_aliases",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.analytics_management_common",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_common",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.analytics_management_publications",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications",
-      "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.analytics_management_tags",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags",
-      "referenced": true
-    },
     {
       "module": "velvet_bot.handlers.channel_analytics",
       "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.channel",
@@ -69,26 +29,6 @@
       ]
     },
     {
-      "path": "tests/test_analytics_dashboard.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.analytics_dashboard",
-          "line": 4
-        }
-      ]
-    },
-    {
-      "path": "tests/test_analytics_phase2_callbacks.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.analytics_management",
-          "line": 5
-        }
-      ]
-    },
-    {
       "path": "tests/test_p2q_channel_analytics_boundary.py",
       "references": [
         {
@@ -104,72 +44,7 @@
         {
           "kind": "literal-reference",
           "module": "velvet_bot.handlers.channel_analytics",
-          "line": 9
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_dashboard_overrides",
-          "line": 12
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_discussion_overrides",
-          "line": 15
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management",
-          "line": 18
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_dashboard",
-          "line": 21
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_common",
-          "line": 24
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_tags",
-          "line": 27
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_aliases",
-          "line": 30
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_publications",
-          "line": 33
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.channel_analytics",
-          "line": 76
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_dashboard_overrides",
-          "line": 77
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_discussion_overrides",
-          "line": 78
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management",
-          "line": 79
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_dashboard",
-          "line": 80
+          "line": 8
         }
       ]
     },
@@ -188,43 +63,8 @@
       "references": [
         {
           "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_common",
-          "line": 12
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_tags",
-          "line": 15
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_aliases",
-          "line": 18
-        },
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management_publications",
-          "line": 21
-        }
-      ]
-    },
-    {
-      "path": "tests/test_phase14_analytics_management_split.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.analytics_management",
-          "line": 48
-        }
-      ]
-    },
-    {
-      "path": "tests/test_phase5_discussion_and_backups.py",
-      "references": [
-        {
-          "kind": "from-import",
-          "module": "velvet_bot.handlers.analytics_discussion_overrides",
-          "line": 12
+          "module": "velvet_bot.handlers.channel_analytics",
+          "line": 11
         }
       ]
     }
