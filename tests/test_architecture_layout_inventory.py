@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "p3d-production-legacy-zero",
+                "p3d-archive-reference-alias-retirement",
             ],
             check=True,
         )

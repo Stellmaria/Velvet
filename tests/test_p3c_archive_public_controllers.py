@@ -5,80 +5,60 @@ import unittest
 from pathlib import Path
 
 
-ALIASES = {
-    "velvet_bot.handlers.admin_large_media_preview": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_large_media_preview"
-    ),
-    "velvet_bot.handlers.admin_media_display": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_display"
-    ),
-    "velvet_bot.handlers.admin_media_spoiler": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_spoiler"
-    ),
-    "velvet_bot.handlers.archive": (
-        "velvet_bot.presentation.telegram.routers.archive.save"
-    ),
-    "velvet_bot.handlers.discussion_updates": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.discussion_updates"
-    ),
-    "velvet_bot.handlers.guest_archive": (
-        "velvet_bot.presentation.telegram.routers.archive.guest"
-    ),
-    "velvet_bot.handlers.inline_help": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.inline_help"
-    ),
-    "velvet_bot.handlers.media_browser": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.media_browser"
-    ),
-    "velvet_bot.handlers.media_prompt_binding": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.media_prompt_binding"
-    ),
-    "velvet_bot.handlers.public_archive": (
-        "velvet_bot.presentation.telegram.routers.public_archive.catalog"
-    ),
-    "velvet_bot.handlers.public_manager": (
-        "velvet_bot.presentation.telegram.routers.public_archive.manager"
-    ),
-    "velvet_bot.handlers.public_media_display": (
-        "velvet_bot.presentation.telegram.routers.public_archive.media_display"
-    ),
-    "velvet_bot.handlers.public_notification_open": (
-        "velvet_bot.presentation.telegram.routers.public_archive.notification_open"
-    ),
-    "velvet_bot.handlers.spoiler_save": (
-        "velvet_bot.presentation.telegram.routers.archive.spoiler"
-    ),
-    "velvet_bot.handlers.start": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.start"
-    ),
-    "velvet_bot.handlers.telegram_analytics_import": (
-        "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import"
-    ),
-}
+CANONICAL_MODULES = (
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_large_media_preview",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_display",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_spoiler",
+    "velvet_bot.presentation.telegram.routers.archive.save",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.discussion_updates",
+    "velvet_bot.presentation.telegram.routers.archive.guest",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.inline_help",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.media_browser",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.media_prompt_binding",
+    "velvet_bot.presentation.telegram.routers.public_archive.catalog",
+    "velvet_bot.presentation.telegram.routers.public_archive.manager",
+    "velvet_bot.presentation.telegram.routers.public_archive.media_display",
+    "velvet_bot.presentation.telegram.routers.public_archive.notification_open",
+    "velvet_bot.presentation.telegram.routers.archive.spoiler",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.start",
+    "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import",
+)
+
+RETIRED_ALIASES = (
+    "admin_large_media_preview",
+    "admin_media_display",
+    "admin_media_spoiler",
+    "archive",
+    "discussion_updates",
+    "guest_archive",
+    "inline_help",
+    "media_browser",
+    "media_prompt_binding",
+    "public_archive",
+    "public_manager",
+    "public_media_display",
+    "public_notification_open",
+    "spoiler_save",
+    "start",
+    "telegram_analytics_import",
+)
 
 
 class P3CArchivePublicControllersTests(unittest.TestCase):
-    def test_legacy_imports_resolve_to_canonical_module_objects(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
-            with self.subTest(legacy=legacy_name):
-                legacy = importlib.import_module(legacy_name)
-                canonical = importlib.import_module(canonical_name)
-                self.assertIs(legacy, canonical)
+    def test_canonical_modules_import_directly(self) -> None:
+        for module_name in CANONICAL_MODULES:
+            with self.subTest(module=module_name):
+                self.assertIsNotNone(importlib.import_module(module_name))
 
-    def test_legacy_files_are_only_module_aliases(self) -> None:
-        for legacy_name, canonical_name in ALIASES.items():
-            with self.subTest(legacy=legacy_name):
-                path = Path(*legacy_name.split(".")).with_suffix(".py")
-                source = path.read_text(encoding="utf-8")
-                self.assertIn("P3_COMPAT_MODULE_ALIAS", source)
-                self.assertIn(canonical_name, source)
-                self.assertNotIn("@router.", source)
-                self.assertLessEqual(len(source.splitlines()), 10)
+    def test_retired_handler_alias_files_are_absent(self) -> None:
+        for name in RETIRED_ALIASES:
+            with self.subTest(alias=name):
+                self.assertFalse(Path("velvet_bot/handlers", f"{name}.py").exists())
 
     def test_canonical_controllers_own_router_implementations(self) -> None:
-        for canonical_name in ALIASES.values():
-            with self.subTest(canonical=canonical_name):
-                path = Path(*canonical_name.split(".")).with_suffix(".py")
+        for module_name in CANONICAL_MODULES:
+            with self.subTest(module=module_name):
+                path = Path(*module_name.split(".")).with_suffix(".py")
                 source = path.read_text(encoding="utf-8")
                 self.assertIn("router = Router", source)
                 self.assertIn("@router.", source)
@@ -87,9 +67,8 @@ class P3CArchivePublicControllersTests(unittest.TestCase):
         source = Path(
             "velvet_bot/presentation/telegram/routers/archive_and_public.py"
         ).read_text(encoding="utf-8")
-        for legacy_name, canonical_name in ALIASES.items():
-            self.assertIn(canonical_name, source)
-            self.assertNotIn(f"from {legacy_name} import", source)
+        for module_name in CANONICAL_MODULES:
+            self.assertIn(module_name, source)
 
     def test_new_controller_include_order_is_preserved(self) -> None:
         source = Path(

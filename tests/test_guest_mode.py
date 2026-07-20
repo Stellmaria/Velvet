@@ -1,6 +1,6 @@
 import unittest
 
-from velvet_bot.handlers.archive import parse_guest_save_character
+from velvet_bot.presentation.telegram.routers.archive.save import parse_guest_save_character
 
 
 class GuestModeCommandTests(unittest.TestCase):

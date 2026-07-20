@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.admin_media_display as module
+import velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_media_display as module
 
 
 class FakeBot:

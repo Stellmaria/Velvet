@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.archive as module
+import velvet_bot.presentation.telegram.routers.archive.save as module
 
 
 class FakeBot:

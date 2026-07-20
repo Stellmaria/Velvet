@@ -1,0 +1,910 @@
+{
+  "schema_version": 1,
+  "generated_from": "p3d-archive-reference-alias-retirement",
+  "alias_file_count": 46,
+  "consumer_file_count": 41,
+  "reference_count": 90,
+  "referenced_alias_count": 44,
+  "unreferenced_alias_count": 2,
+  "dynamic_prefix_reference_count": 2,
+  "missing_alias_reference_count": 0,
+  "missing_alias_references": [],
+  "aliases": [
+    {
+      "module": "velvet_bot.handlers.admin_directory",
+      "target": "velvet_bot.presentation.telegram.routers.characters.directory",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.admin_stories",
+      "target": "velvet_bot.presentation.telegram.routers.stories.management",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.admin_uncategorized",
+      "target": "velvet_bot.presentation.telegram.routers.characters.uncategorized",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.admin_universe_story_flow",
+      "target": "velvet_bot.presentation.telegram.routers.stories.universe_flow",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.ai_jobs",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.ai_jobs",
+      "referenced": false
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_dashboard",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_dashboard_overrides",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard_overrides",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_discussion_overrides",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.discussion_overrides",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_management",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_management_aliases",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_aliases",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_management_common",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_common",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_management_publications",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.analytics_management_tags",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.backup_center",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.channel_analytics",
+      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.channel",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.character_aliases",
+      "target": "velvet_bot.presentation.telegram.routers.characters.aliases",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.characters",
+      "target": "velvet_bot.presentation.telegram.routers.characters.profiles",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.error_center",
+      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.kr_profile_overrides",
+      "target": "velvet_bot.presentation.telegram.routers.characters.kr_profile_overrides",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.kr_universe_entry",
+      "target": "velvet_bot.presentation.telegram.routers.stories.kr_universe_entry",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.multi_story_kr",
+      "target": "velvet_bot.presentation.telegram.routers.stories.multi_story_kr",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.owner_actions",
+      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.owner_menu",
+      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.publication_center",
+      "target": "velvet_bot.presentation.telegram.routers.publication.center",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.publication_center_safe",
+      "target": "velvet_bot.presentation.telegram.routers.publication.safe",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.quality_ai",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.quality_ai_preview",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.quality_calibration",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_calibration",
+      "referenced": false
+    },
+    {
+      "module": "velvet_bot.handlers.quality_center",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.quality_duplicates",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.quality_operations",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.quality_set_ai",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_set_ai",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.quality_sets",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_codex",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.codex",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_console",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.console",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_control",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.control",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_git",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.git",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_logs",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.logs",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_process",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.process",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_self",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.self_control",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.supervisor_status",
+      "target": "velvet_bot.presentation.telegram.routers.supervisor.status",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.system_center",
+      "target": "velvet_bot.presentation.telegram.routers.system",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.velvet_ai",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.velvet_ai_formatting",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_formatting",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.velvet_ai_visual",
+      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_visual",
+      "referenced": true
+    },
+    {
+      "module": "velvet_bot.handlers.watermark",
+      "target": "velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark",
+      "referenced": true
+    }
+  ],
+  "unreferenced_aliases": [
+    "velvet_bot.handlers.ai_jobs",
+    "velvet_bot.handlers.quality_calibration"
+  ],
+  "consumers": [
+    {
+      "path": "scripts/inventory_architecture_layout.py",
+      "references": [
+        {
+          "kind": "dynamic-prefix-reference",
+          "module": "velvet_bot.handlers",
+          "line": 139
+        }
+      ]
+    },
+    {
+      "path": "tests/test_admin_uncategorized.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.admin_directory",
+          "line": 6
+        },
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.admin_uncategorized",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_ai_quality.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.quality_ai",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "path": "tests/test_analytics_dashboard.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.analytics_dashboard",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "path": "tests/test_analytics_phase2_callbacks.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.analytics_management",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "path": "tests/test_directory_back_navigation_hotfix.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.admin_directory",
+          "line": 79
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.admin_stories",
+          "line": 80
+        }
+      ]
+    },
+    {
+      "path": "tests/test_fresh_runtime_log_hotfix.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.supervisor_status",
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "tests/test_hotfix_quality_sets_stale_callback.py",
+      "references": [
+        {
+          "kind": "from-package",
+          "module": "velvet_bot.handlers.quality_sets",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "tests/test_inline_management_menus.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.supervisor_control",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "tests/test_owner_action_menu.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.owner_actions",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2_stability_inventory.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.multi_story_kr",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2aa_set_analysis_job_boundaries.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_set_ai",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2ab_quality_sets_safe_edit.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_sets",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2ae_supervisor_console_watcher.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.supervisor_console",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2af_prompt_result_job_boundary.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.velvet_ai",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2ag_formatting_boundaries.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.velvet_ai_formatting",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2ah_visual_analysis_job_boundary.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.velvet_ai_visual",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2b_quality_callback_ack.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_ai",
+          "line": 6
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_center",
+          "line": 7
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_operations",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2p_backup_center_boundary.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.backup_center",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2q_channel_analytics_boundary.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.channel_analytics",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2r_character_topic_boundaries.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.characters",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2s_error_center_markup_boundary.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.error_center",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2x_publication_report_boundary.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.publication_center",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2y_quality_duplicate_safe_edit.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_duplicates",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p2z_manual_quality_job_boundary.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_operations",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p3c_analytics_controllers.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.channel_analytics",
+          "line": 9
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_dashboard_overrides",
+          "line": 12
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_discussion_overrides",
+          "line": 15
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management",
+          "line": 18
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_dashboard",
+          "line": 21
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_common",
+          "line": 24
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_tags",
+          "line": 27
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_aliases",
+          "line": 30
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_publications",
+          "line": 33
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.channel_analytics",
+          "line": 76
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_dashboard_overrides",
+          "line": 77
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_discussion_overrides",
+          "line": 78
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management",
+          "line": 79
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_dashboard",
+          "line": 80
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p3c_characters_stories_presentation.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.admin_directory",
+          "line": 9
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.admin_stories",
+          "line": 12
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.admin_uncategorized",
+          "line": 15
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.admin_universe_story_flow",
+          "line": 18
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.character_aliases",
+          "line": 21
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.characters",
+          "line": 24
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.kr_profile_overrides",
+          "line": 27
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.kr_universe_entry",
+          "line": 30
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.multi_story_kr",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p3c_core_operations_controllers.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.error_center",
+          "line": 10
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.owner_actions",
+          "line": 13
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.owner_menu",
+          "line": 16
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.watermark",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p3c_publication_controllers.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.publication_center",
+          "line": 10
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.publication_center_safe",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p3c_quality_operations_controllers.py",
+      "references": [
+        {
+          "kind": "dynamic-prefix-reference",
+          "module": "velvet_bot.handlers",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p3c_supervisor_system_presentation.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_control",
+          "line": 9
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_status",
+          "line": 12
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_process",
+          "line": 15
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_git",
+          "line": 18
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_logs",
+          "line": 21
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_console",
+          "line": 24
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_self",
+          "line": 27
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_codex",
+          "line": 30
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.system_center",
+          "line": 33
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_control",
+          "line": 70
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.system_center",
+          "line": 71
+        }
+      ]
+    },
+    {
+      "path": "tests/test_p3d_residual_handler_classification.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_common",
+          "line": 12
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_tags",
+          "line": 15
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_aliases",
+          "line": 18
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management_publications",
+          "line": 21
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.watermark",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "path": "tests/test_phase14_analytics_management_split.py",
+      "references": [
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.analytics_management",
+          "line": 48
+        }
+      ]
+    },
+    {
+      "path": "tests/test_phase18_completion.py",
+      "references": [
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_set_ai",
+          "line": 9
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_sets",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "path": "tests/test_phase5_discussion_and_backups.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.analytics_discussion_overrides",
+          "line": 12
+        },
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.backup_center",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "path": "tests/test_phase6_runtime.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.system_center",
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "tests/test_publication_workflow.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.publication_center",
+          "line": 7
+        },
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.publication_center_safe",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "tests/test_quality_ai_preview.py",
+      "references": [
+        {
+          "kind": "from-package",
+          "module": "velvet_bot.handlers.quality_ai",
+          "line": 11
+        },
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.quality_ai_preview",
+          "line": 12
+        },
+        {
+          "kind": "import",
+          "module": "velvet_bot.handlers.quality_ai_preview",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "path": "tests/test_story_catalog.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.admin_stories",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "tests/test_supervisor.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.supervisor_control",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "path": "tests/test_supervisor_logs_callback.py",
+      "references": [
+        {
+          "kind": "from-import",
+          "module": "velvet_bot.handlers.supervisor_logs",
+          "line": 11
+        },
+        {
+          "kind": "literal-reference",
+          "module": "velvet_bot.handlers.supervisor_logs",
+          "line": 41
+        }
+      ]
+    }
+  ],
+  "next_slice": {
+    "phase": "P3D",
+    "target": "retire the next compatibility alias group",
+    "strategy": "migrate tests to canonical modules, then delete only aliases with no repository references"
+  }
+}

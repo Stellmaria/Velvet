@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.reference_comparison as module
+import velvet_bot.presentation.telegram.routers.references.comparison as module
 
 
 class FakeStatus:

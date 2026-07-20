@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from velvet_bot.archive_preview import _resend_document_for_thumbnail
-from velvet_bot.handlers.archive import _persist_descriptor_preview
+from velvet_bot.presentation.telegram.routers.archive.save import _persist_descriptor_preview
 from velvet_bot.media import MediaDescriptor
 
 
@@ -64,7 +64,7 @@ class LargeDocumentPreviewRegressionTests(unittest.IsolatedAsyncioTestCase):
         database = SimpleNamespace()
 
         with patch(
-            "velvet_bot.handlers.archive.set_media_preview",
+            "velvet_bot.presentation.telegram.routers.archive.save.set_media_preview",
             new=AsyncMock(),
         ) as mocked:
             await _persist_descriptor_preview(
@@ -95,7 +95,7 @@ class LargeDocumentPreviewRegressionTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "velvet_bot.handlers.archive.set_media_preview",
+            "velvet_bot.presentation.telegram.routers.archive.save.set_media_preview",
             new=AsyncMock(),
         ) as mocked:
             await _persist_descriptor_preview(

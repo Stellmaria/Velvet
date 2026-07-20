@@ -28,7 +28,7 @@ class LegacyHandlerConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_legacy_handler_consumers.py",
                 "--check",
                 "--label",
-                "p3d-production-legacy-zero",
+                "p3d-archive-reference-alias-retirement",
             ],
             check=True,
         )

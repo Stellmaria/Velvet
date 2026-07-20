@@ -9,7 +9,7 @@ from velvet_bot.archive_ui import (
 )
 from velvet_bot.config import _parse_optional_chat_id
 from velvet_bot.database import Character
-from velvet_bot.handlers.archive import parse_guest_save_character
+from velvet_bot.presentation.telegram.routers.archive.save import parse_guest_save_character
 
 
 class ArchiveControlsTests(unittest.TestCase):

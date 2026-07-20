@@ -2,11 +2,11 @@ import unittest
 from datetime import UTC, datetime
 
 from velvet_bot.database import Character
-from velvet_bot.handlers.reference_management import (
+from velvet_bot.presentation.telegram.routers.references.management import (
     parse_reference_add_character,
     parse_reference_delete_args,
 )
-from velvet_bot.handlers.references import parse_reference_character
+from velvet_bot.presentation.telegram.routers.references.catalog import parse_reference_character
 from velvet_bot.reference_catalog import CharacterReference, ReferencePage
 from velvet_bot.reference_ui import (
     ReferenceCallback,

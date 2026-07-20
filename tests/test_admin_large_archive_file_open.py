@@ -9,7 +9,7 @@ from aiogram.types import InputMediaDocument, InputMediaPhoto
 
 from velvet_bot.domains.archive.models import ArchivePage, ArchivedMedia
 from velvet_bot.domains.characters.models import CharacterRecord
-from velvet_bot.handlers.admin_large_media_preview import (
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_large_media_preview import (
     _build_display_media,
     _open_image_document_as_file,
     _send_page,
@@ -69,7 +69,7 @@ class AdminLargeArchiveFileOpenTests(unittest.IsolatedAsyncioTestCase):
         page = _page(file_size=72 * 1024 * 1024)
 
         with patch(
-            "velvet_bot.handlers.admin_large_media_preview.resolve_archive_image_preview",
+            "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_large_media_preview.resolve_archive_image_preview",
             new=AsyncMock(),
         ) as resolver:
             result = await _send_page(
@@ -92,7 +92,7 @@ class AdminLargeArchiveFileOpenTests(unittest.IsolatedAsyncioTestCase):
         page = _page(file_size=72 * 1024 * 1024)
 
         with patch(
-            "velvet_bot.handlers.admin_large_media_preview.resolve_archive_image_preview",
+            "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_large_media_preview.resolve_archive_image_preview",
             new=AsyncMock(),
         ) as resolver:
             result = await _build_display_media(
@@ -110,7 +110,7 @@ class AdminLargeArchiveFileOpenTests(unittest.IsolatedAsyncioTestCase):
         page = _page(file_size=5 * 1024 * 1024)
 
         with patch(
-            "velvet_bot.handlers.admin_large_media_preview.resolve_archive_image_preview",
+            "velvet_bot.presentation.telegram.routers.archive_and_public_controllers.admin_large_media_preview.resolve_archive_image_preview",
             new=AsyncMock(return_value="full-quality-preview-file-id"),
         ) as resolver:
             result = await _build_display_media(

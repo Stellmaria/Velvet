@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia
 from velvet_bot.archive_ui import ArchiveMediaCallback, build_archive_navigation
 from velvet_bot.database import Character
-from velvet_bot.handlers.media_prompt_binding import _prompt_marker
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.media_prompt_binding import _prompt_marker
 
 
 class MediaPromptBindingTests(unittest.TestCase):
