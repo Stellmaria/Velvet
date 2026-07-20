@@ -22,8 +22,11 @@ MODULES = (
     "quality_ai",
     "quality_center",
 )
+RETIRED_ALIASES = {"ai_jobs", "quality_calibration"}
 ALIASES = {
-    f"velvet_bot.handlers.{name}": f"{PACKAGE}.{name}" for name in MODULES
+    f"velvet_bot.handlers.{name}": f"{PACKAGE}.{name}"
+    for name in MODULES
+    if name not in RETIRED_ALIASES
 }
 INCLUDE_ORDER = (
     "backup_center",

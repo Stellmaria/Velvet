@@ -4,11 +4,11 @@
 
 ## Сводка
 
-- alias-файлов: **46**;
+- alias-файлов: **44**;
 - файлов-consumers: **41**;
 - references: **90**;
 - aliases с references: **44**;
-- aliases без references: **2**;
+- aliases без references: **0**;
 - динамических prefix references: **2**;
 - references на уже отсутствующие aliases: **0**.
 
@@ -18,7 +18,6 @@
 - `velvet_bot.handlers.admin_stories` → `velvet_bot.presentation.telegram.routers.stories.management`: используется.
 - `velvet_bot.handlers.admin_uncategorized` → `velvet_bot.presentation.telegram.routers.characters.uncategorized`: используется.
 - `velvet_bot.handlers.admin_universe_story_flow` → `velvet_bot.presentation.telegram.routers.stories.universe_flow`: используется.
-- `velvet_bot.handlers.ai_jobs` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.ai_jobs`: без repository consumers.
 - `velvet_bot.handlers.analytics_dashboard` → `velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard`: используется.
 - `velvet_bot.handlers.analytics_dashboard_overrides` → `velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard_overrides`: используется.
 - `velvet_bot.handlers.analytics_discussion_overrides` → `velvet_bot.presentation.telegram.routers.analytics_controllers.discussion_overrides`: используется.
@@ -41,7 +40,6 @@
 - `velvet_bot.handlers.publication_center_safe` → `velvet_bot.presentation.telegram.routers.publication.safe`: используется.
 - `velvet_bot.handlers.quality_ai` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai`: используется.
 - `velvet_bot.handlers.quality_ai_preview` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview`: используется.
-- `velvet_bot.handlers.quality_calibration` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_calibration`: без repository consumers.
 - `velvet_bot.handlers.quality_center` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center`: используется.
 - `velvet_bot.handlers.quality_duplicates` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates`: используется.
 - `velvet_bot.handlers.quality_operations` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations`: используется.
@@ -210,7 +208,7 @@
 
 ### `tests/test_p3c_quality_operations_controllers.py`
 
-- line 26: `velvet_bot.handlers` (dynamic-prefix-reference).
+- line 27: `velvet_bot.handlers` (dynamic-prefix-reference).
 
 ### `tests/test_p3c_supervisor_system_presentation.py`
 

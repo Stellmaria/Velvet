@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_from": "p3d-archive-reference-alias-retirement",
-  "alias_file_count": 46,
+  "generated_from": "p3d-zero-reference-alias-retirement",
+  "alias_file_count": 44,
   "consumer_file_count": 41,
   "reference_count": 90,
   "referenced_alias_count": 44,
-  "unreferenced_alias_count": 2,
+  "unreferenced_alias_count": 0,
   "dynamic_prefix_reference_count": 2,
   "missing_alias_reference_count": 0,
   "missing_alias_references": [],
@@ -29,11 +29,6 @@
       "module": "velvet_bot.handlers.admin_universe_story_flow",
       "target": "velvet_bot.presentation.telegram.routers.stories.universe_flow",
       "referenced": true
-    },
-    {
-      "module": "velvet_bot.handlers.ai_jobs",
-      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.ai_jobs",
-      "referenced": false
     },
     {
       "module": "velvet_bot.handlers.analytics_dashboard",
@@ -146,11 +141,6 @@
       "referenced": true
     },
     {
-      "module": "velvet_bot.handlers.quality_calibration",
-      "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_calibration",
-      "referenced": false
-    },
-    {
       "module": "velvet_bot.handlers.quality_center",
       "target": "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center",
       "referenced": true
@@ -241,10 +231,7 @@
       "referenced": true
     }
   ],
-  "unreferenced_aliases": [
-    "velvet_bot.handlers.ai_jobs",
-    "velvet_bot.handlers.quality_calibration"
-  ],
+  "unreferenced_aliases": [],
   "consumers": [
     {
       "path": "scripts/inventory_architecture_layout.py",
@@ -687,7 +674,7 @@
         {
           "kind": "dynamic-prefix-reference",
           "module": "velvet_bot.handlers",
-          "line": 26
+          "line": 27
         }
       ]
     },

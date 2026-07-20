@@ -21,7 +21,7 @@
 
 Логический рефакторинг основных бизнес- и persistence-границ завершён. Проект использует composition root, application use cases, repositories/services, централизованный WorkerManager и проверенные Telegram/error boundaries.
 
-Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, production imports больше не используют старые handler paths, но 46 aliases сохраняются для тестовой и внешней совместимости. Часть repositories и services всё ещё расположена в исторических корневых модулях, а runtime compatibility adapters удаляются отдельными проверяемыми срезами.
+Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, production imports больше не используют старые handler paths, но 44 aliases сохраняются для тестовой и внешней совместимости. Часть repositories и services всё ещё расположена в исторических корневых модулях, а runtime compatibility adapters удаляются отдельными проверяемыми срезами.
 
 ## Закрытые архитектурные долги
 
