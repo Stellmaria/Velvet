@@ -13,7 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from velvet_bot.handlers.supervisor_control import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
 from velvet_bot.supervisor_client import build_supervisor_client
 from velvet_supervisor.git_ops import GitRepository
 from velvet_supervisor.http_api import SupervisorHTTPServer
