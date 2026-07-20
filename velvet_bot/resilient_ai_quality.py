@@ -57,5 +57,18 @@ class ResilientAIQualityRepository(AIQualityRepository):
                 )
         return targets
 
+    async def save_preview_file_id(self, media_id: int, preview_file_id: str) -> None:
+        async with self._database.acquire() as connection:
+            await connection.execute(
+                """
+                UPDATE media_files
+                SET preview_file_id = $2::TEXT
+                WHERE id = $1::BIGINT
+                  AND preview_file_id IS DISTINCT FROM $2::TEXT
+                """,
+                int(media_id),
+                str(preview_file_id),
+            )
+
 
 __all__ = ("ResilientAIQualityRepository",)
