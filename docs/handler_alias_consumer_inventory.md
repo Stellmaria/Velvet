@@ -1,0 +1,290 @@
+# Инвентаризация consumers handler aliases
+
+Машинный срез оставшегося compatibility API `velvet_bot.handlers.*` после закрытия production consumers.
+
+## Сводка
+
+- alias-файлов: **46**;
+- файлов-consumers: **41**;
+- references: **90**;
+- aliases с references: **44**;
+- aliases без references: **2**;
+- динамических prefix references: **2**;
+- references на уже отсутствующие aliases: **0**.
+
+## Alias status
+
+- `velvet_bot.handlers.admin_directory` → `velvet_bot.presentation.telegram.routers.characters.directory`: используется.
+- `velvet_bot.handlers.admin_stories` → `velvet_bot.presentation.telegram.routers.stories.management`: используется.
+- `velvet_bot.handlers.admin_uncategorized` → `velvet_bot.presentation.telegram.routers.characters.uncategorized`: используется.
+- `velvet_bot.handlers.admin_universe_story_flow` → `velvet_bot.presentation.telegram.routers.stories.universe_flow`: используется.
+- `velvet_bot.handlers.ai_jobs` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.ai_jobs`: без repository consumers.
+- `velvet_bot.handlers.analytics_dashboard` → `velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard`: используется.
+- `velvet_bot.handlers.analytics_dashboard_overrides` → `velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard_overrides`: используется.
+- `velvet_bot.handlers.analytics_discussion_overrides` → `velvet_bot.presentation.telegram.routers.analytics_controllers.discussion_overrides`: используется.
+- `velvet_bot.handlers.analytics_management` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management`: используется.
+- `velvet_bot.handlers.analytics_management_aliases` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_aliases`: используется.
+- `velvet_bot.handlers.analytics_management_common` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_common`: используется.
+- `velvet_bot.handlers.analytics_management_publications` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_publications`: используется.
+- `velvet_bot.handlers.analytics_management_tags` → `velvet_bot.presentation.telegram.routers.analytics_controllers.management_tags`: используется.
+- `velvet_bot.handlers.backup_center` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center`: используется.
+- `velvet_bot.handlers.channel_analytics` → `velvet_bot.presentation.telegram.routers.analytics_controllers.channel`: используется.
+- `velvet_bot.handlers.character_aliases` → `velvet_bot.presentation.telegram.routers.characters.aliases`: используется.
+- `velvet_bot.handlers.characters` → `velvet_bot.presentation.telegram.routers.characters.profiles`: используется.
+- `velvet_bot.handlers.error_center` → `velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center`: используется.
+- `velvet_bot.handlers.kr_profile_overrides` → `velvet_bot.presentation.telegram.routers.characters.kr_profile_overrides`: используется.
+- `velvet_bot.handlers.kr_universe_entry` → `velvet_bot.presentation.telegram.routers.stories.kr_universe_entry`: используется.
+- `velvet_bot.handlers.multi_story_kr` → `velvet_bot.presentation.telegram.routers.stories.multi_story_kr`: используется.
+- `velvet_bot.handlers.owner_actions` → `velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions`: используется.
+- `velvet_bot.handlers.owner_menu` → `velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu`: используется.
+- `velvet_bot.handlers.publication_center` → `velvet_bot.presentation.telegram.routers.publication.center`: используется.
+- `velvet_bot.handlers.publication_center_safe` → `velvet_bot.presentation.telegram.routers.publication.safe`: используется.
+- `velvet_bot.handlers.quality_ai` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai`: используется.
+- `velvet_bot.handlers.quality_ai_preview` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview`: используется.
+- `velvet_bot.handlers.quality_calibration` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_calibration`: без repository consumers.
+- `velvet_bot.handlers.quality_center` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center`: используется.
+- `velvet_bot.handlers.quality_duplicates` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates`: используется.
+- `velvet_bot.handlers.quality_operations` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations`: используется.
+- `velvet_bot.handlers.quality_set_ai` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_set_ai`: используется.
+- `velvet_bot.handlers.quality_sets` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets`: используется.
+- `velvet_bot.handlers.supervisor_codex` → `velvet_bot.presentation.telegram.routers.supervisor.codex`: используется.
+- `velvet_bot.handlers.supervisor_console` → `velvet_bot.presentation.telegram.routers.supervisor.console`: используется.
+- `velvet_bot.handlers.supervisor_control` → `velvet_bot.presentation.telegram.routers.supervisor.control`: используется.
+- `velvet_bot.handlers.supervisor_git` → `velvet_bot.presentation.telegram.routers.supervisor.git`: используется.
+- `velvet_bot.handlers.supervisor_logs` → `velvet_bot.presentation.telegram.routers.supervisor.logs`: используется.
+- `velvet_bot.handlers.supervisor_process` → `velvet_bot.presentation.telegram.routers.supervisor.process`: используется.
+- `velvet_bot.handlers.supervisor_self` → `velvet_bot.presentation.telegram.routers.supervisor.self_control`: используется.
+- `velvet_bot.handlers.supervisor_status` → `velvet_bot.presentation.telegram.routers.supervisor.status`: используется.
+- `velvet_bot.handlers.system_center` → `velvet_bot.presentation.telegram.routers.system`: используется.
+- `velvet_bot.handlers.velvet_ai` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai`: используется.
+- `velvet_bot.handlers.velvet_ai_formatting` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_formatting`: используется.
+- `velvet_bot.handlers.velvet_ai_visual` → `velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_visual`: используется.
+- `velvet_bot.handlers.watermark` → `velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark`: используется.
+
+## Consumers
+
+### `scripts/inventory_architecture_layout.py`
+
+- line 139: `velvet_bot.handlers` (dynamic-prefix-reference).
+
+### `tests/test_admin_uncategorized.py`
+
+- line 6: `velvet_bot.handlers.admin_directory` (from-import).
+- line 7: `velvet_bot.handlers.admin_uncategorized` (from-import).
+
+### `tests/test_ai_quality.py`
+
+- line 6: `velvet_bot.handlers.quality_ai` (from-import).
+
+### `tests/test_analytics_dashboard.py`
+
+- line 4: `velvet_bot.handlers.analytics_dashboard` (from-import).
+
+### `tests/test_analytics_phase2_callbacks.py`
+
+- line 5: `velvet_bot.handlers.analytics_management` (from-import).
+
+### `tests/test_directory_back_navigation_hotfix.py`
+
+- line 79: `velvet_bot.handlers.admin_directory` (literal-reference).
+- line 80: `velvet_bot.handlers.admin_stories` (literal-reference).
+
+### `tests/test_fresh_runtime_log_hotfix.py`
+
+- line 12: `velvet_bot.handlers.supervisor_status` (import).
+
+### `tests/test_hotfix_quality_sets_stale_callback.py`
+
+- line 11: `velvet_bot.handlers.quality_sets` (from-package).
+
+### `tests/test_inline_management_menus.py`
+
+- line 17: `velvet_bot.handlers.supervisor_control` (from-import).
+
+### `tests/test_owner_action_menu.py`
+
+- line 7: `velvet_bot.handlers.owner_actions` (from-import).
+
+### `tests/test_p2_stability_inventory.py`
+
+- line 9: `velvet_bot.handlers.multi_story_kr` (import).
+
+### `tests/test_p2aa_set_analysis_job_boundaries.py`
+
+- line 7: `velvet_bot.handlers.quality_set_ai` (import).
+
+### `tests/test_p2ab_quality_sets_safe_edit.py`
+
+- line 6: `velvet_bot.handlers.quality_sets` (import).
+
+### `tests/test_p2ae_supervisor_console_watcher.py`
+
+- line 6: `velvet_bot.handlers.supervisor_console` (import).
+
+### `tests/test_p2af_prompt_result_job_boundary.py`
+
+- line 8: `velvet_bot.handlers.velvet_ai` (import).
+
+### `tests/test_p2ag_formatting_boundaries.py`
+
+- line 7: `velvet_bot.handlers.velvet_ai_formatting` (import).
+
+### `tests/test_p2ah_visual_analysis_job_boundary.py`
+
+- line 7: `velvet_bot.handlers.velvet_ai_visual` (import).
+
+### `tests/test_p2b_quality_callback_ack.py`
+
+- line 6: `velvet_bot.handlers.quality_ai` (import).
+- line 7: `velvet_bot.handlers.quality_center` (import).
+- line 8: `velvet_bot.handlers.quality_operations` (import).
+
+### `tests/test_p2p_backup_center_boundary.py`
+
+- line 7: `velvet_bot.handlers.backup_center` (import).
+
+### `tests/test_p2q_channel_analytics_boundary.py`
+
+- line 7: `velvet_bot.handlers.channel_analytics` (import).
+
+### `tests/test_p2r_character_topic_boundaries.py`
+
+- line 7: `velvet_bot.handlers.characters` (import).
+
+### `tests/test_p2s_error_center_markup_boundary.py`
+
+- line 7: `velvet_bot.handlers.error_center` (import).
+
+### `tests/test_p2x_publication_report_boundary.py`
+
+- line 7: `velvet_bot.handlers.publication_center` (import).
+
+### `tests/test_p2y_quality_duplicate_safe_edit.py`
+
+- line 6: `velvet_bot.handlers.quality_duplicates` (import).
+
+### `tests/test_p2z_manual_quality_job_boundary.py`
+
+- line 7: `velvet_bot.handlers.quality_operations` (import).
+
+### `tests/test_p3c_analytics_controllers.py`
+
+- line 9: `velvet_bot.handlers.channel_analytics` (literal-reference).
+- line 12: `velvet_bot.handlers.analytics_dashboard_overrides` (literal-reference).
+- line 15: `velvet_bot.handlers.analytics_discussion_overrides` (literal-reference).
+- line 18: `velvet_bot.handlers.analytics_management` (literal-reference).
+- line 21: `velvet_bot.handlers.analytics_dashboard` (literal-reference).
+- line 24: `velvet_bot.handlers.analytics_management_common` (literal-reference).
+- line 27: `velvet_bot.handlers.analytics_management_tags` (literal-reference).
+- line 30: `velvet_bot.handlers.analytics_management_aliases` (literal-reference).
+- line 33: `velvet_bot.handlers.analytics_management_publications` (literal-reference).
+- line 76: `velvet_bot.handlers.channel_analytics` (literal-reference).
+- line 77: `velvet_bot.handlers.analytics_dashboard_overrides` (literal-reference).
+- line 78: `velvet_bot.handlers.analytics_discussion_overrides` (literal-reference).
+- line 79: `velvet_bot.handlers.analytics_management` (literal-reference).
+- line 80: `velvet_bot.handlers.analytics_dashboard` (literal-reference).
+
+### `tests/test_p3c_characters_stories_presentation.py`
+
+- line 9: `velvet_bot.handlers.admin_directory` (literal-reference).
+- line 12: `velvet_bot.handlers.admin_stories` (literal-reference).
+- line 15: `velvet_bot.handlers.admin_uncategorized` (literal-reference).
+- line 18: `velvet_bot.handlers.admin_universe_story_flow` (literal-reference).
+- line 21: `velvet_bot.handlers.character_aliases` (literal-reference).
+- line 24: `velvet_bot.handlers.characters` (literal-reference).
+- line 27: `velvet_bot.handlers.kr_profile_overrides` (literal-reference).
+- line 30: `velvet_bot.handlers.kr_universe_entry` (literal-reference).
+- line 33: `velvet_bot.handlers.multi_story_kr` (literal-reference).
+
+### `tests/test_p3c_core_operations_controllers.py`
+
+- line 10: `velvet_bot.handlers.error_center` (literal-reference).
+- line 13: `velvet_bot.handlers.owner_actions` (literal-reference).
+- line 16: `velvet_bot.handlers.owner_menu` (literal-reference).
+- line 19: `velvet_bot.handlers.watermark` (literal-reference).
+
+### `tests/test_p3c_publication_controllers.py`
+
+- line 10: `velvet_bot.handlers.publication_center` (literal-reference).
+- line 13: `velvet_bot.handlers.publication_center_safe` (literal-reference).
+
+### `tests/test_p3c_quality_operations_controllers.py`
+
+- line 26: `velvet_bot.handlers` (dynamic-prefix-reference).
+
+### `tests/test_p3c_supervisor_system_presentation.py`
+
+- line 9: `velvet_bot.handlers.supervisor_control` (literal-reference).
+- line 12: `velvet_bot.handlers.supervisor_status` (literal-reference).
+- line 15: `velvet_bot.handlers.supervisor_process` (literal-reference).
+- line 18: `velvet_bot.handlers.supervisor_git` (literal-reference).
+- line 21: `velvet_bot.handlers.supervisor_logs` (literal-reference).
+- line 24: `velvet_bot.handlers.supervisor_console` (literal-reference).
+- line 27: `velvet_bot.handlers.supervisor_self` (literal-reference).
+- line 30: `velvet_bot.handlers.supervisor_codex` (literal-reference).
+- line 33: `velvet_bot.handlers.system_center` (literal-reference).
+- line 70: `velvet_bot.handlers.supervisor_control` (literal-reference).
+- line 71: `velvet_bot.handlers.system_center` (literal-reference).
+
+### `tests/test_p3d_residual_handler_classification.py`
+
+- line 12: `velvet_bot.handlers.analytics_management_common` (literal-reference).
+- line 15: `velvet_bot.handlers.analytics_management_tags` (literal-reference).
+- line 18: `velvet_bot.handlers.analytics_management_aliases` (literal-reference).
+- line 21: `velvet_bot.handlers.analytics_management_publications` (literal-reference).
+- line 24: `velvet_bot.handlers.watermark` (literal-reference).
+
+### `tests/test_phase14_analytics_management_split.py`
+
+- line 48: `velvet_bot.handlers.analytics_management` (literal-reference).
+
+### `tests/test_phase18_completion.py`
+
+- line 9: `velvet_bot.handlers.quality_set_ai` (import).
+- line 10: `velvet_bot.handlers.quality_sets` (import).
+
+### `tests/test_phase5_discussion_and_backups.py`
+
+- line 12: `velvet_bot.handlers.analytics_discussion_overrides` (from-import).
+- line 16: `velvet_bot.handlers.backup_center` (from-import).
+
+### `tests/test_phase6_runtime.py`
+
+- line 12: `velvet_bot.handlers.system_center` (from-import).
+
+### `tests/test_publication_workflow.py`
+
+- line 7: `velvet_bot.handlers.publication_center` (from-import).
+- line 8: `velvet_bot.handlers.publication_center_safe` (from-import).
+
+### `tests/test_quality_ai_preview.py`
+
+- line 11: `velvet_bot.handlers.quality_ai` (from-package).
+- line 12: `velvet_bot.handlers.quality_ai_preview` (from-import).
+- line 13: `velvet_bot.handlers.quality_ai_preview` (import).
+
+### `tests/test_story_catalog.py`
+
+- line 8: `velvet_bot.handlers.admin_stories` (from-import).
+
+### `tests/test_supervisor.py`
+
+- line 16: `velvet_bot.handlers.supervisor_control` (from-import).
+
+### `tests/test_supervisor_logs_callback.py`
+
+- line 11: `velvet_bot.handlers.supervisor_logs` (from-import).
+- line 41: `velvet_bot.handlers.supervisor_logs` (literal-reference).
+
+## Следующий срез
+
+- фаза: **P3D**;
+- цель: **retire the next compatibility alias group**;
+- стратегия: migrate tests to canonical modules, then delete only aliases with no repository references.
+
+## Правило обновления
+
+```bash
+python scripts/inventory_handler_alias_consumers.py --write --label <phase>
+python scripts/inventory_handler_alias_consumers.py --check --label <phase>
+```

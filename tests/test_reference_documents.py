@@ -2,7 +2,7 @@ import unittest
 
 from aiogram.types import Document
 
-from velvet_bot.handlers.reference_albums import (
+from velvet_bot.presentation.telegram.routers.references.albums import (
     chunk_references,
     parse_reference_selector,
 )

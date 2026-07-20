@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.guest_archive as module
+import velvet_bot.presentation.telegram.routers.archive.guest as module
 
 
 class FakeAudit:

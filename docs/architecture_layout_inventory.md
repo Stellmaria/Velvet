@@ -8,9 +8,9 @@
 - доменных router bundles: **4**;
 - активных router imports в bundles: **57**;
 - дублирующих регистраций между bundles: **0**;
-- физических legacy handler-файлов: **68**;
+- физических legacy handler-файлов: **46**;
 - активных legacy handler implementations: **0**;
-- временных handler module aliases: **68**;
+- временных handler module aliases: **46**;
 - корневых Python-модулей `velvet_bot/*.py`: **114**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -25,9 +25,6 @@
 ## Handler module aliases
 
 - `velvet_bot/handlers/admin_directory.py`.
-- `velvet_bot/handlers/admin_large_media_preview.py`.
-- `velvet_bot/handlers/admin_media_display.py`.
-- `velvet_bot/handlers/admin_media_spoiler.py`.
 - `velvet_bot/handlers/admin_stories.py`.
 - `velvet_bot/handlers/admin_uncategorized.py`.
 - `velvet_bot/handlers/admin_universe_story_flow.py`.
@@ -40,26 +37,16 @@
 - `velvet_bot/handlers/analytics_management_common.py`.
 - `velvet_bot/handlers/analytics_management_publications.py`.
 - `velvet_bot/handlers/analytics_management_tags.py`.
-- `velvet_bot/handlers/archive.py`.
 - `velvet_bot/handlers/backup_center.py`.
 - `velvet_bot/handlers/channel_analytics.py`.
 - `velvet_bot/handlers/character_aliases.py`.
 - `velvet_bot/handlers/characters.py`.
-- `velvet_bot/handlers/discussion_updates.py`.
 - `velvet_bot/handlers/error_center.py`.
-- `velvet_bot/handlers/guest_archive.py`.
-- `velvet_bot/handlers/inline_help.py`.
 - `velvet_bot/handlers/kr_profile_overrides.py`.
 - `velvet_bot/handlers/kr_universe_entry.py`.
-- `velvet_bot/handlers/media_browser.py`.
-- `velvet_bot/handlers/media_prompt_binding.py`.
 - `velvet_bot/handlers/multi_story_kr.py`.
 - `velvet_bot/handlers/owner_actions.py`.
 - `velvet_bot/handlers/owner_menu.py`.
-- `velvet_bot/handlers/public_archive.py`.
-- `velvet_bot/handlers/public_manager.py`.
-- `velvet_bot/handlers/public_media_display.py`.
-- `velvet_bot/handlers/public_notification_open.py`.
 - `velvet_bot/handlers/publication_center.py`.
 - `velvet_bot/handlers/publication_center_safe.py`.
 - `velvet_bot/handlers/quality_ai.py`.
@@ -70,14 +57,6 @@
 - `velvet_bot/handlers/quality_operations.py`.
 - `velvet_bot/handlers/quality_set_ai.py`.
 - `velvet_bot/handlers/quality_sets.py`.
-- `velvet_bot/handlers/reference_albums.py`.
-- `velvet_bot/handlers/reference_comparison.py`.
-- `velvet_bot/handlers/reference_comparison_help.py`.
-- `velvet_bot/handlers/reference_documents.py`.
-- `velvet_bot/handlers/reference_management.py`.
-- `velvet_bot/handlers/references.py`.
-- `velvet_bot/handlers/spoiler_save.py`.
-- `velvet_bot/handlers/start.py`.
 - `velvet_bot/handlers/supervisor_codex.py`.
 - `velvet_bot/handlers/supervisor_console.py`.
 - `velvet_bot/handlers/supervisor_control.py`.
@@ -87,7 +66,6 @@
 - `velvet_bot/handlers/supervisor_self.py`.
 - `velvet_bot/handlers/supervisor_status.py`.
 - `velvet_bot/handlers/system_center.py`.
-- `velvet_bot/handlers/telegram_analytics_import.py`.
 - `velvet_bot/handlers/velvet_ai.py`.
 - `velvet_bot/handlers/velvet_ai_formatting.py`.
 - `velvet_bot/handlers/velvet_ai_visual.py`.

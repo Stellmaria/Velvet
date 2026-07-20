@@ -21,7 +21,7 @@
 
 Логический рефакторинг основных бизнес- и persistence-границ завершён. Проект использует composition root, application use cases, repositories/services, централизованный WorkerManager и проверенные Telegram/error boundaries.
 
-Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, production imports больше не используют старые handler paths, но 68 aliases сохраняются для тестовой и внешней совместимости. Часть repositories и services всё ещё расположена в исторических корневых модулях, а runtime compatibility adapters удаляются отдельными проверяемыми срезами.
+Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, production imports больше не используют старые handler paths, но 46 aliases сохраняются для тестовой и внешней совместимости. Часть repositories и services всё ещё расположена в исторических корневых модулях, а runtime compatibility adapters удаляются отдельными проверяемыми срезами.
 
 ## Закрытые архитектурные долги
 
@@ -92,7 +92,7 @@ velvet_bot/
   repositories/                часть исторических repository implementations
   services/                    application/integration services
   workers/                     WorkerManager и worker boundaries
-  handlers/                    68 временных module aliases, 0 implementations
+  handlers/                    46 временных module aliases, 0 implementations
   *.py                         compatibility и исторические domain modules
 ```
 
@@ -125,14 +125,14 @@ Root composition не должен импортировать отдельные
 
 Статус: завершено.
 
-- 68 legacy handler-файлов являются module aliases;
+- 46 legacy handler-файлов являются module aliases;
 - активных implementations в `velvet_bot/handlers` нет;
 - canonical controllers зарегистрированы через четыре ordered bundles;
 - callback prefixes, команды и use cases сохранены.
 
 ## P3D: compatibility retirement
 
-Статус: production cleanup завершён. Legacy-consumer inventory фиксирует 0 production-файлов, 0 references и 0 legacy modules. Остаётся стадийно мигрировать compatibility-тесты и удалить 68 старых handler aliases без изменения внешних callback/command contracts.
+Статус: production cleanup завершён. Legacy-consumer inventory фиксирует 0 production-файлов, 0 references и 0 legacy modules. Первый compatibility-batch удалил 22 archive/reference aliases. Alias-consumer inventory фиксирует 46 оставшихся facades: 44 имеют repository references, 2 не используются. Следующие группы удаляются после миграции тестов без изменения внешних callback/command contracts.
 
 Допустимы временные категории:
 

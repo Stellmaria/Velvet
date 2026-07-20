@@ -8,7 +8,7 @@ from pathlib import Path
 import velvet_bot.analytics_dashboard as analytics_dashboard
 import velvet_bot.handlers.quality_set_ai as quality_set_ai
 import velvet_bot.handlers.quality_sets as quality_sets
-import velvet_bot.handlers.reference_comparison as reference_comparison
+import velvet_bot.presentation.telegram.routers.references.comparison as reference_comparison
 import velvet_bot.media_set_actions as media_set_actions
 import velvet_bot.media_set_duplicate_actions as duplicate_actions
 import velvet_bot.media_set_duplicate_actions_repository as duplicate_repository
