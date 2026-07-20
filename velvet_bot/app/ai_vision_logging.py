@@ -20,7 +20,7 @@ class _TerminalAISkipInfoFilter(logging.Filter):
             return True
         try:
             message = record.getMessage().casefold()
-        except Exception:
+        except (KeyError, TypeError, ValueError):
             return True
         if all(marker in message for marker in _TERMINAL_SKIP_MARKERS):
             record.levelno = logging.INFO
