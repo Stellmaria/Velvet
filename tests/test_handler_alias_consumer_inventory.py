@@ -26,7 +26,7 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_handler_alias_consumers.py",
                 "--check",
                 "--label",
-                "p3d-archive-reference-alias-retirement",
+                "p3d-zero-reference-alias-retirement",
             ],
             check=True,
         )

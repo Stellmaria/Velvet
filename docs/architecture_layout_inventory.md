@@ -8,9 +8,9 @@
 - доменных router bundles: **4**;
 - активных router imports в bundles: **57**;
 - дублирующих регистраций между bundles: **0**;
-- физических legacy handler-файлов: **46**;
+- физических legacy handler-файлов: **44**;
 - активных legacy handler implementations: **0**;
-- временных handler module aliases: **46**;
+- временных handler module aliases: **44**;
 - корневых Python-модулей `velvet_bot/*.py`: **114**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -28,7 +28,6 @@
 - `velvet_bot/handlers/admin_stories.py`.
 - `velvet_bot/handlers/admin_uncategorized.py`.
 - `velvet_bot/handlers/admin_universe_story_flow.py`.
-- `velvet_bot/handlers/ai_jobs.py`.
 - `velvet_bot/handlers/analytics_dashboard.py`.
 - `velvet_bot/handlers/analytics_dashboard_overrides.py`.
 - `velvet_bot/handlers/analytics_discussion_overrides.py`.
@@ -51,7 +50,6 @@
 - `velvet_bot/handlers/publication_center_safe.py`.
 - `velvet_bot/handlers/quality_ai.py`.
 - `velvet_bot/handlers/quality_ai_preview.py`.
-- `velvet_bot/handlers/quality_calibration.py`.
 - `velvet_bot/handlers/quality_center.py`.
 - `velvet_bot/handlers/quality_duplicates.py`.
 - `velvet_bot/handlers/quality_operations.py`.

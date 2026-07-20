@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3d-archive-reference-alias-retirement",
+  "generated_from": "p3d-zero-reference-alias-retirement",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -22,15 +22,14 @@
   ],
   "active_bundle_router_count": 57,
   "duplicate_bundle_router_import_count": 0,
-  "legacy_handler_file_count": 46,
+  "legacy_handler_file_count": 44,
   "legacy_handler_implementation_count": 0,
-  "handler_compatibility_facade_count": 46,
+  "handler_compatibility_facade_count": 44,
   "handler_compatibility_facades": [
     "velvet_bot/handlers/admin_directory.py",
     "velvet_bot/handlers/admin_stories.py",
     "velvet_bot/handlers/admin_uncategorized.py",
     "velvet_bot/handlers/admin_universe_story_flow.py",
-    "velvet_bot/handlers/ai_jobs.py",
     "velvet_bot/handlers/analytics_dashboard.py",
     "velvet_bot/handlers/analytics_dashboard_overrides.py",
     "velvet_bot/handlers/analytics_discussion_overrides.py",
@@ -53,7 +52,6 @@
     "velvet_bot/handlers/publication_center_safe.py",
     "velvet_bot/handlers/quality_ai.py",
     "velvet_bot/handlers/quality_ai_preview.py",
-    "velvet_bot/handlers/quality_calibration.py",
     "velvet_bot/handlers/quality_center.py",
     "velvet_bot/handlers/quality_duplicates.py",
     "velvet_bot/handlers/quality_operations.py",
