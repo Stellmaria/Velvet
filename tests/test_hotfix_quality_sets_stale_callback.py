@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import AnswerCallbackQuery
 
-from velvet_bot.handlers import quality_sets
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers import quality_sets
 
 
 class QualitySetsStaleCallbackTests(unittest.IsolatedAsyncioTestCase):
