@@ -27,7 +27,7 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_handler_alias_consumers.py",
                 "--check",
                 "--label",
-                "p3d-core-alias-retirement",
+                "p3d-backup-alias-retirement",
             ],
             check=True,
         )
@@ -104,6 +104,7 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
             "publication_center_safe",
             "system_center",
             "watermark",
+            "backup_center",
         }
         for name in retired:
             with self.subTest(alias=name):
