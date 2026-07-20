@@ -27,7 +27,7 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
                 "scripts/inventory_handler_alias_consumers.py",
                 "--check",
                 "--label",
-                "p3d-backup-alias-retirement",
+                "p3d-supervisor-alias-retirement",
             ],
             check=True,
         )
@@ -105,6 +105,14 @@ class HandlerAliasConsumerInventoryTests(unittest.TestCase):
             "system_center",
             "watermark",
             "backup_center",
+            "supervisor_control",
+            "supervisor_status",
+            "supervisor_process",
+            "supervisor_git",
+            "supervisor_logs",
+            "supervisor_console",
+            "supervisor_self",
+            "supervisor_codex",
         }
         for name in retired:
             with self.subTest(alias=name):

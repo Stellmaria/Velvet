@@ -9,7 +9,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import AnswerCallbackQuery
 from aiogram.types import Chat, Message
 
-import velvet_bot.handlers.supervisor_status as status_module
+import velvet_bot.presentation.telegram.routers.supervisor.status as status_module
 import velvet_supervisor.runtime_extended  # noqa: F401 - installs the production filter
 from velvet_supervisor.runtime import _looks_like_error
 

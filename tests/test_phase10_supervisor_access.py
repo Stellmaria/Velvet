@@ -48,6 +48,16 @@ SUPERVISOR_CONTROLLERS = {
         "codex_status",
     },
 }
+RETIRED_SUPERVISOR_ALIASES = (
+    "supervisor_control",
+    "supervisor_status",
+    "supervisor_process",
+    "supervisor_git",
+    "supervisor_logs",
+    "supervisor_console",
+    "supervisor_self",
+    "supervisor_codex",
+)
 
 
 def _call_name(node: ast.AST) -> str:
@@ -254,30 +264,20 @@ class AccessBoundaryTests(unittest.TestCase):
 
 
 class SupervisorArchitectureTests(unittest.TestCase):
-    def test_legacy_supervisor_modules_are_aliases_without_handlers(self) -> None:
-        aliases = {
-            "supervisor_control.py": "routers.supervisor.control",
-            "supervisor_status.py": "routers.supervisor.status",
-            "supervisor_process.py": "routers.supervisor.process",
-            "supervisor_git.py": "routers.supervisor.git",
-            "supervisor_logs.py": "routers.supervisor.logs",
-            "supervisor_console.py": "routers.supervisor.console",
-            "supervisor_self.py": "routers.supervisor.self_control",
-            "supervisor_codex.py": "routers.supervisor.codex",
-        }
-        for filename, target in aliases.items():
-            with self.subTest(filename=filename):
-                path = Path("velvet_bot/handlers") / filename
-                source = path.read_text(encoding="utf-8")
-                self.assertEqual(_commands(str(path)), set())
-                self.assertIn("P3_COMPAT_MODULE_ALIAS", source)
-                self.assertIn(target, source)
-                self.assertNotIn("@router.", source)
+    def test_legacy_supervisor_aliases_are_absent(self) -> None:
+        for name in RETIRED_SUPERVISOR_ALIASES:
+            with self.subTest(alias=name):
+                self.assertFalse(
+                    (Path("velvet_bot/handlers") / f"{name}.py").exists()
+                )
 
     def test_system_controller_is_canonical_and_alias_is_absent(self) -> None:
         canonical = Path("velvet_bot/presentation/telegram/routers/system.py")
         self.assertTrue(canonical.exists())
-        self.assertIn("router = Router(name=__name__)", canonical.read_text(encoding="utf-8"))
+        self.assertIn(
+            "router = Router(name=__name__)",
+            canonical.read_text(encoding="utf-8"),
+        )
         self.assertFalse((Path("velvet_bot/handlers") / "system_center.py").exists())
 
     def test_each_controller_owns_only_its_commands(self) -> None:
@@ -292,14 +292,9 @@ class SupervisorArchitectureTests(unittest.TestCase):
         control = Path(
             "velvet_bot/presentation/telegram/routers/supervisor/control.py"
         ).read_text(encoding="utf-8")
-        facade = Path("velvet_bot/handlers/supervisor_control.py").read_text(
-            encoding="utf-8"
-        )
         self.assertIn('prefix="sup"', contract)
         self.assertNotIn('prefix="sup"', control)
-        self.assertNotIn('prefix="sup"', facade)
         self.assertNotIn("class SupervisorCallback", control)
-        self.assertNotIn("class SupervisorCallback", facade)
 
 
 if __name__ == "__main__":

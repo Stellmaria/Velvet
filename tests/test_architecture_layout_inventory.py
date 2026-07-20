@@ -13,7 +13,7 @@ class ArchitectureLayoutInventoryTests(unittest.TestCase):
                 "scripts/inventory_architecture_layout.py",
                 "--check",
                 "--label",
-                "p3d-backup-alias-retirement",
+                "p3d-supervisor-alias-retirement",
             ],
             check=True,
         )
