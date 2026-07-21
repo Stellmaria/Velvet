@@ -1,0 +1,31 @@
+name: temporary renumber workspace migration
+
+on:
+  push:
+    branches:
+      - agent/workspace-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  renumber:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-foundation
+          fetch-depth: 0
+
+      - name: Choose free migration number
+        run: python scripts/temp_renumber_workspace_migration.py
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Assign free migration number to workspace foundation"
+          git push origin HEAD:agent/workspace-foundation
