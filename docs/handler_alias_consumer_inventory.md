@@ -27,9 +27,9 @@
 
 ## Следующий срез
 
-- фаза: **P3D**;
-- цель: **retire the next compatibility alias group**;
-- стратегия: migrate tests to canonical modules, then delete only aliases with no repository references.
+- фаза: **P3E**;
+- цель: **repository and root-module layout normalization**;
+- стратегия: keep handler aliases at zero while migrating repository consumers by domain.
 
 ## Правило обновления
 
