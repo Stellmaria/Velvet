@@ -278,7 +278,11 @@ class ReferenceRepository:
             archive_chat_id=row["archive_chat_id"],
             archive_thread_id=row["archive_thread_id"],
             archive_topic_url=row["archive_topic_url"],
-            workspace_id=int(row["workspace_id"]),
+            workspace_id=(
+                int(row["workspace_id"])
+                if "workspace_id" in row
+                else DEFAULT_WORKSPACE_ID
+            ),
         )
 
     @staticmethod
@@ -290,7 +294,11 @@ class ReferenceRepository:
             telegram_file_unique_id=str(row["telegram_file_unique_id"]),
             added_by=row["added_by"],
             created_at=row["reference_created_at"],
-            workspace_id=int(row["workspace_id"]),
+            workspace_id=(
+                int(row["workspace_id"])
+                if "workspace_id" in row
+                else DEFAULT_WORKSPACE_ID
+            ),
         )
 
 
