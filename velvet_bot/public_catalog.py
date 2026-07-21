@@ -11,6 +11,12 @@ from velvet_bot.domains.characters import (
 )
 from velvet_bot.domains.public_archive import PublicDownloadSource, PublicMediaState
 from velvet_bot.domains.stories import StorySummary
+from velvet_bot.domains.workspaces.character_directory import (
+    list_workspace_category_summaries,
+    list_workspace_character_directory,
+    list_workspace_story_summaries,
+    list_workspace_universe_summaries,
+)
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.public_directory import (
     list_visible_categories,
@@ -52,6 +58,13 @@ async def list_public_categories(
     workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[CategorySummary]:
+    if int(workspace_id) != DEFAULT_WORKSPACE_ID:
+        return await list_workspace_category_summaries(
+            database,
+            workspace_id=int(workspace_id),
+            public_only=True,
+            include_restricted=include_restricted,
+        )
     return await list_visible_categories(
         database,
         workspace_id=workspace_id,
@@ -66,6 +79,14 @@ async def list_public_universes(
     workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[UniverseSummary]:
+    if int(workspace_id) != DEFAULT_WORKSPACE_ID:
+        return await list_workspace_universe_summaries(
+            database,
+            workspace_id=int(workspace_id),
+            category=category,
+            public_only=True,
+            include_restricted=include_restricted,
+        )
     summaries = await list_visible_universes(
         database,
         category=category,
@@ -105,6 +126,15 @@ async def list_public_stories(
     workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[StorySummary]:
+    if int(workspace_id) != DEFAULT_WORKSPACE_ID:
+        return await list_workspace_story_summaries(
+            database,
+            workspace_id=int(workspace_id),
+            category=category,
+            universe=universe,
+            public_only=True,
+            include_restricted=include_restricted,
+        )
     return await list_visible_stories(
         database,
         category=category,
@@ -125,6 +155,18 @@ async def list_public_characters(
     workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> PublicCharacterPage:
+    if int(workspace_id) != DEFAULT_WORKSPACE_ID:
+        return await list_workspace_character_directory(
+            database,
+            workspace_id=int(workspace_id),
+            category=category,
+            universe=universe,
+            story_id=story_id,
+            page=page,
+            page_size=page_size,
+            public_only=True,
+            include_restricted=include_restricted,
+        )
     return await list_visible_characters(
         database,
         category=category,
