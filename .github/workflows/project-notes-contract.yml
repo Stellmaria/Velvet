@@ -29,7 +29,7 @@ jobs:
           python scripts/temp_qwen_mobile_patch.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add velvet_bot
+          git add velvet_bot tests
           if ! git diff --cached --quiet; then
             git commit -m "Build Qwen panel and compact navigation"
             git push origin HEAD:agent/qwen-panel-mobile-navigation
