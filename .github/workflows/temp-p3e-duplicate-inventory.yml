@@ -1,0 +1,42 @@
+name: temporary P3E duplicate inventory synchronization
+
+on:
+  push:
+    branches:
+      - agent/p3e-move-media-set-duplicate-repository
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/p3e-move-media-set-duplicate-repository
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Generate inventories
+        run: |
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-baseline
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+
+      - name: Commit inventories
+        run: |
+          if git diff --quiet -- docs/repository_layout_inventory.json docs/repository_layout_inventory.md docs/architecture_layout_inventory.json docs/architecture_layout_inventory.md; then
+            echo "Inventories already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/repository_layout_inventory.json docs/repository_layout_inventory.md docs/architecture_layout_inventory.json docs/architecture_layout_inventory.md
+          git commit -m "Sync P3E duplicate repository inventories"
+          git push origin HEAD:agent/p3e-move-media-set-duplicate-repository
