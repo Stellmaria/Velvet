@@ -50,8 +50,11 @@ class WorkspaceMediaScopeContractTests(unittest.TestCase):
         source = (
             ROOT / "velvet_bot/presentation/telegram/routers/archive/save.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("workspace_id=character.workspace_id", source)
-        self.assertIn("character_id=character.id", source)
+        self.assertIn(
+            "target_workspace_id = int(getattr(character, \"workspace_id\", workspace_id))",
+            source,
+        )
+        self.assertIn("character_id=getattr(character, \"id\", None)", source)
         self.assertIn("save_upload_session.workspace_id", source)
         self.assertIn("minimum_role=\"editor\"", source)
         self.assertIn("module_key = 'archive'", source)
