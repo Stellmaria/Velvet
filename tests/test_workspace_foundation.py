@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class WorkspaceFoundationContractTests(unittest.IsolatedAsyncioTestCase):
     def test_migration_creates_tenant_boundary(self) -> None:
-        sql = (ROOT / "migrations/103_workspaces.sql").read_text(encoding="utf-8")
+        sql = (ROOT / "migrations/901_workspaces.sql").read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE IF NOT EXISTS workspaces", sql)
         self.assertIn("CREATE TABLE IF NOT EXISTS workspace_members", sql)
         self.assertIn("CREATE TABLE IF NOT EXISTS workspace_settings", sql)
