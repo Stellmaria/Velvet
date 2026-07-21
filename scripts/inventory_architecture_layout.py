@@ -121,9 +121,9 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "post_import_compatibility_components": list(post_components),
         "active_compatibility_component_count": len(pre_components) + len(post_components),
         "next_slice": {
-            "phase": "P3D",
-            "target": "compatibility alias retirement and canonical import cleanup",
-            "strategy": "remove temporary handler aliases in reviewed consumer groups",
+            "phase": "P3E",
+            "target": "repository and root-module layout normalization",
+            "strategy": "inventory repository consumers, then migrate one domain per reviewed slice",
         },
     }
 
