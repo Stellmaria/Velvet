@@ -11,7 +11,7 @@
 - физических legacy handler-файлов: **0**;
 - активных legacy handler implementations: **0**;
 - временных handler module aliases: **0**;
-- корневых Python-модулей `velvet_bot/*.py`: **117**;
+- корневых Python-модулей `velvet_bot/*.py`: **116**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
 
