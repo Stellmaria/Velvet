@@ -21,9 +21,13 @@ RETIRED_ROOT_CANDIDATE_REPOSITORY = (
 CANONICAL_MEDIA_SET_REPOSITORY = (
     "velvet_bot.domains.media_sets." + "repository"
 )
-NEXT_ROOT_REPOSITORY = (
+RETIRED_ROOT_DUPLICATE_REPOSITORY = (
     "velvet_bot." + "media_set_duplicate_actions_repository"
 )
+CANONICAL_DUPLICATE_REPOSITORY = (
+    "velvet_bot.domains.media_sets." + "duplicate_actions_repository"
+)
+NEXT_ROOT_REPOSITORY = "velvet_bot." + "quality_set_ai_repository"
 
 
 class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
@@ -51,7 +55,9 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertNotIn(RETIRED_NOTIFICATION_REPOSITORY, modules)
         self.assertNotIn(RETIRED_PUBLICATION_REPOSITORY, modules)
         self.assertNotIn(RETIRED_ROOT_CANDIDATE_REPOSITORY, modules)
+        self.assertNotIn(RETIRED_ROOT_DUPLICATE_REPOSITORY, modules)
         self.assertIn(CANONICAL_MEDIA_SET_REPOSITORY, modules)
+        self.assertIn(CANONICAL_DUPLICATE_REPOSITORY, modules)
         self.assertNotIn("PublicNotificationRepository", repository_package)
         self.assertNotIn("PendingPublicNotification", repository_package)
         self.assertNotIn("PublicationRepository", repository_package)
@@ -64,17 +70,27 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertFalse(
             (ROOT / "velvet_bot/media_set_candidate_listing_repository.py").exists()
         )
+        self.assertFalse(
+            (ROOT / "velvet_bot/media_set_duplicate_actions_repository.py").exists()
+        )
         self.assertTrue(
             (ROOT / "velvet_bot/domains/media_sets/repository.py").is_file()
+        )
+        self.assertTrue(
+            (
+                ROOT
+                / "velvet_bot/domains/media_sets/duplicate_actions_repository.py"
+            ).is_file()
         )
 
     def test_next_slice_is_measurable(self) -> None:
         inventory = build_inventory(label=LABEL)
 
         self.assertEqual(31, inventory["repository_module_count"])
-        self.assertEqual(24, inventory["layout_counts"]["domain"])
+        self.assertEqual(25, inventory["layout_counts"]["domain"])
         self.assertEqual(1, inventory["layout_counts"]["central"])
-        self.assertEqual(6, inventory["layout_counts"]["root"])
+        self.assertEqual(5, inventory["layout_counts"]["root"])
+        self.assertEqual(115, inventory["root_module_count"])
         self.assertEqual(
             NEXT_ROOT_REPOSITORY,
             inventory["next_slice"]["candidate"],
