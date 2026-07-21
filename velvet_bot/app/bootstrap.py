@@ -17,7 +17,7 @@ from velvet_bot.database import Database
 from velvet_bot.error_center import ErrorIncidentCenter, ErrorIncidentRepository
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.reference_uploads import ReferenceUploadSessions
-from velvet_bot.repositories.system_repository import SystemRepository
+from velvet_bot.infrastructure.postgres.system_repository import SystemRepository
 from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.version import APP_VERSION
 from velvet_bot.workers import WorkerManager

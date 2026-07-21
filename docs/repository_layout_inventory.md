@@ -6,9 +6,9 @@
 
 - repository-модулей: **31**;
 - внутри доменов: **30**;
-- в `velvet_bot/repositories`: **1**;
+- в `velvet_bot/repositories`: **0**;
 - корневых `*_repository.py`: **0**;
-- infrastructure repositories: **0**;
+- infrastructure repositories: **1**;
 - прочих repository paths: **0**;
 - repository-модулей с production consumers: **27**;
 - repository-модулей с package exports: **27**;
@@ -28,7 +28,6 @@
 
 | Module | Layout | Production | Tests | Package exports | References |
 |---|---:|---:|---:|---:|---:|
-| `velvet_bot.repositories.system_repository` | central | 2 | 2 | 1 | 5 |
 
 ## Repository modules
 
@@ -65,16 +64,16 @@
 - `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 0, exports 1, refs 4.
 - `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 1, exports 1, refs 7.
 
-### central
+### infrastructure
 
-- `velvet_bot.repositories.system_repository`: production 2, tests 2, exports 1, refs 5.
+- `velvet_bot.infrastructure.postgres.system_repository`: production 2, tests 2, exports 1, refs 5.
 
 ## Следующий срез
 
 - фаза: **P3E**;
-- цель: **migrate the first low-coupling repository module**;
-- первый кандидат: `velvet_bot.repositories.system_repository`;
-- стратегия: move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion.
+- цель: **repository layout migration complete**;
+- первый кандидат: `None`;
+- стратегия: keep root and central repository counts at zero and place new persistence only in reviewed domain or infrastructure boundaries.
 
 ## Правило обновления
 

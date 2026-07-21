@@ -11,7 +11,7 @@ from typing import Any
 
 from aiogram import Bot
 
-from velvet_bot.repositories.system_repository import (
+from velvet_bot.infrastructure.postgres.system_repository import (
     RuntimeDatabaseSnapshot,
     SystemRepository,
 )

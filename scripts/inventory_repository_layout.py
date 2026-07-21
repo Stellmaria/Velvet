@@ -249,9 +249,14 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         and int(item["package_export_count"]) > 0
     ]
     first_candidate = candidates[0] if candidates else None
-    if (
-        first_candidate is not None
-        and int(first_candidate["production_consumer_count"]) == 0
+    if first_candidate is None:
+        next_target = "repository layout migration complete"
+        next_strategy = (
+            "keep root and central repository counts at zero and place new persistence "
+            "only in reviewed domain or infrastructure boundaries"
+        )
+    elif (
+        int(first_candidate["production_consumer_count"]) == 0
         and int(first_candidate["test_consumer_count"]) == 0
         and int(first_candidate["package_export_count"]) > 0
     ):
@@ -260,7 +265,7 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
             "remove the unused package export and dead module, then update the generated "
             "baseline without creating a replacement facade"
         )
-    elif first_candidate is not None and int(first_candidate["reference_count"]) == 0:
+    elif int(first_candidate["reference_count"]) == 0:
         next_target = "retire the first unreferenced repository module"
         next_strategy = (
             "verify dynamic imports remain absent, delete the dead module, and update the "
