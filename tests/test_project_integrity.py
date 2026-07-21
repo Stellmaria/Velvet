@@ -26,6 +26,7 @@ ALLOWED_DUPLICATE_COMMAND_ROUTES = {
 PANEL_COMMANDS = {
     "admin",
     "menu",
+    "help",
     "system",
     "health",
     "version",
@@ -42,10 +43,15 @@ PANEL_COMMANDS = {
     "auditarchive",
     "qwen_calibration",
     "qcalibration",
+    "rework",
+    "reworks",
+    "quality_rework",
     "publish",
     "publishing",
     "publications",
     "characters",
+    "storage",
+    "storage_center",
     "supervisor",
     "status",
     "logs",
@@ -109,6 +115,12 @@ DIRECT_COMMANDS = {
     "tagreindex",
     "test_error_alert",
     "diag_export",
+    "storage_migrate",
+    "storage_find",
+    "storage_download",
+    "wm_file",
+    "wm_storage",
+    "wm_download",
     "workspace_grant",
     "workspace_revoke",
     "workspace_module",
@@ -143,20 +155,39 @@ def _command_routes() -> dict[str, list[str]]:
     for path in _python_files():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for decorator in node.decorator_list:
+                    if not isinstance(decorator, ast.Call):
+                        continue
+                    if not _call_name(decorator.func).endswith("router.message"):
+                        continue
+                    for argument in decorator.args:
+                        if not isinstance(argument, ast.Call):
+                            continue
+                        if not _call_name(argument.func).endswith("Command"):
+                            continue
+                        for command in _literal_strings(argument):
+                            routes[command].append(
+                                f"{path}:{node.lineno}:{node.name}"
+                            )
                 continue
-            for decorator in node.decorator_list:
-                if not isinstance(decorator, ast.Call):
+
+            if not isinstance(node, ast.Call):
+                continue
+            if not _call_name(node.func).endswith("router.message.register"):
+                continue
+            if not node.args:
+                continue
+            handler_name = _call_name(node.args[0]) or "<dynamic>"
+            for argument in node.args[1:]:
+                if not isinstance(argument, ast.Call):
                     continue
-                if not _call_name(decorator.func).endswith("router.message"):
+                if not _call_name(argument.func).endswith("Command"):
                     continue
-                for argument in decorator.args:
-                    if not isinstance(argument, ast.Call):
-                        continue
-                    if not _call_name(argument.func).endswith("Command"):
-                        continue
-                    for command in _literal_strings(argument):
-                        routes[command].append(f"{path}:{node.lineno}:{node.name}")
+                for command in _literal_strings(argument):
+                    routes[command].append(
+                        f"{path}:{node.lineno}:{handler_name}"
+                    )
     return routes
 
 
