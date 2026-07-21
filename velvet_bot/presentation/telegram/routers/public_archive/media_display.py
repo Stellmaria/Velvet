@@ -17,6 +17,7 @@ from velvet_bot.archive_catalog import (
 )
 from velvet_bot.database import Database
 from velvet_bot.domains.public_archive.models import PUBLIC_ARCHIVE_REVIEWER_ID
+from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.image_preview import ImagePreviewError
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_adult_access import has_adult_channel_access
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True, slots=True)
 class _PreparedMedia:
     page: ArchivePage | None
+    workspace_id: int
     manager_access: bool
     member_access: bool
     error: str | None = None
@@ -96,8 +98,10 @@ async def _prepare_media(
     user,
     access_policy: AccessPolicy,
     adult_channel_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> _PreparedMedia:
     """Load one viewer-specific archive page before acknowledging the callback."""
+    workspace_id = await workspace_product_service.public_workspace_id_for_user(user_id)
     manager_access = has_public_manager_access(user, access_policy)
     try:
         member_access = await _member_access(
@@ -113,12 +117,14 @@ async def _prepare_media(
                 database,
                 character_id=callback_data.character_id,
                 media_id=callback_data.media_id,
+                workspace_id=workspace_id,
                 public_only=public_only,
                 include_restricted=member_access,
             )
             if exact_offset is None:
                 return _PreparedMedia(
                     page=None,
+                    workspace_id=workspace_id,
                     manager_access=manager_access,
                     member_access=member_access,
                     error="Материал уже удалён или скрыт.",
@@ -129,6 +135,7 @@ async def _prepare_media(
             database,
             callback_data.character_id,
             offset,
+            workspace_id=workspace_id,
             public_only=public_only,
             include_adult_restricted=member_access,
             include_oversized_images=member_access,
@@ -137,6 +144,7 @@ async def _prepare_media(
         logger.exception("Failed to prepare public archive media page")
         return _PreparedMedia(
             page=None,
+            workspace_id=workspace_id,
             manager_access=manager_access,
             member_access=False,
             error="Не удалось открыть материал.",
@@ -145,6 +153,7 @@ async def _prepare_media(
     if page is None or page.media is None:
         return _PreparedMedia(
             page=None,
+            workspace_id=workspace_id,
             manager_access=manager_access,
             member_access=member_access,
             error="Материал больше недоступен.",
@@ -156,6 +165,7 @@ async def _prepare_media(
     ):
         return _PreparedMedia(
             page=None,
+            workspace_id=workspace_id,
             manager_access=manager_access,
             member_access=member_access,
             error="Архив изменился. Откройте материал заново.",
@@ -167,12 +177,14 @@ async def _prepare_media(
     ):
         return _PreparedMedia(
             page=None,
+            workspace_id=workspace_id,
             manager_access=manager_access,
             member_access=member_access,
             error="Этот материал доступен только участникам закрытого канала Velvet.",
         )
     return _PreparedMedia(
         page=page,
+        workspace_id=workspace_id,
         manager_access=manager_access,
         member_access=member_access,
     )
@@ -183,12 +195,14 @@ async def _can_download(
     *,
     character_id: int,
     media_id: int,
+    workspace_id: int,
     member_access: bool,
 ) -> bool:
     source = await resolve_public_download_source(
         database,
         character_id=character_id,
         media_id=media_id,
+        workspace_id=workspace_id,
         member_access=member_access,
     )
     return source is not None
@@ -235,6 +249,7 @@ async def handle_spoiler_aware_open(
     bot: Bot,
     access_policy: AccessPolicy,
     adult_channel_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> None:
     prepared = await _prepare_media(
         callback_data=callback_data,
@@ -244,6 +259,7 @@ async def handle_spoiler_aware_open(
         user=callback.from_user,
         access_policy=access_policy,
         adult_channel_id=adult_channel_id,
+        workspace_product_service=workspace_product_service,
     )
     if prepared.error or prepared.page is None or prepared.page.media is None:
         await callback.answer(
@@ -271,6 +287,7 @@ async def handle_spoiler_aware_open(
                 character_id=page.character.id,
                 media_id=page.media.id,
                 user_id=callback.from_user.id,
+                workspace_id=prepared.workspace_id,
             )
         except Exception:  # p2-approved-boundary: preserve-public-open-on-metric-failure
             logger.exception("Failed to record public archive view")
@@ -279,6 +296,7 @@ async def handle_spoiler_aware_open(
         database,
         character_id=page.character.id,
         media_id=page.media.id,
+        workspace_id=prepared.workspace_id,
         member_access=prepared.member_access,
     )
     try:
@@ -327,6 +345,7 @@ async def handle_spoiler_aware_open(
                 character_id=page.character.id,
                 media_id=owner_review_media_id,
                 user_id=callback.from_user.id,
+                workspace_id=prepared.workspace_id,
             )
         except Exception:  # p2-approved-boundary: preserve-navigation-on-owner-review-failure
             logger.exception("Failed to record Stell public archive review")
@@ -340,6 +359,7 @@ async def _apply_engagement(
     bot: Bot,
     access_policy: AccessPolicy,
     adult_channel_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> tuple[str, bool]:
     prepared = await _prepare_media(
         callback_data=callback_data,
@@ -349,6 +369,7 @@ async def _apply_engagement(
         user=callback.from_user,
         access_policy=access_policy,
         adult_channel_id=adult_channel_id,
+        workspace_product_service=workspace_product_service,
     )
     if prepared.error or prepared.page is None or prepared.page.media is None:
         return prepared.error or "Материал больше недоступен.", True
@@ -361,6 +382,7 @@ async def _apply_engagement(
                 character_id=page.character.id,
                 media_id=page.media.id,
                 user_id=callback.from_user.id,
+                workspace_id=prepared.workspace_id,
             )
             alert = "Отметка поставлена." if liked else "Отметка снята."
         else:
@@ -368,6 +390,7 @@ async def _apply_engagement(
                 database,
                 character_id=page.character.id,
                 user_id=callback.from_user.id,
+                workspace_id=prepared.workspace_id,
             )
             alert = "Подписка включена." if subscribed else "Подписка отключена."
     except Exception:  # p2-approved-boundary: report-public-engagement-write-failure
@@ -378,6 +401,7 @@ async def _apply_engagement(
         database,
         character_id=page.character.id,
         media_id=page.media.id,
+        workspace_id=prepared.workspace_id,
         member_access=prepared.member_access,
     )
     try:
@@ -409,6 +433,7 @@ async def handle_like_and_subscription(
     bot: Bot,
     access_policy: AccessPolicy,
     adult_channel_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> None:
     message, show_alert = await _apply_engagement(
         callback=callback,
@@ -417,6 +442,7 @@ async def handle_like_and_subscription(
         bot=bot,
         access_policy=access_policy,
         adult_channel_id=adult_channel_id,
+        workspace_product_service=workspace_product_service,
     )
     await callback.answer(message, show_alert=show_alert)
 
@@ -428,6 +454,7 @@ async def handle_public_download(
     bot: Bot,
     access_policy: AccessPolicy,
     adult_channel_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> None:
     prepared = await _prepare_media(
         callback_data=callback_data,
@@ -437,6 +464,7 @@ async def handle_public_download(
         user=callback.from_user,
         access_policy=access_policy,
         adult_channel_id=adult_channel_id,
+        workspace_product_service=workspace_product_service,
     )
     if prepared.error or prepared.page is None or prepared.page.media is None:
         await callback.answer(
@@ -451,6 +479,7 @@ async def handle_public_download(
         character_id=page.character.id,
         media_id=page.media.id,
         member_access=prepared.member_access,
+        workspace_id=prepared.workspace_id,
     )
     if source is None:
         await callback.answer(
@@ -474,6 +503,7 @@ async def handle_public_download(
             media_id=page.media.id,
             user_id=callback.from_user.id,
             variant=source.variant,
+            workspace_id=prepared.workspace_id,
         )
     except Exception:  # p2-approved-boundary: report-public-download-failure
         logger.exception("Failed to send public archive download")
@@ -488,15 +518,20 @@ async def handle_manager_access_flags(
     database: Database,
     bot: Bot,
     access_policy: AccessPolicy,
+    workspace_product_service: WorkspaceProductService,
 ) -> None:
     if not has_public_manager_access(callback.from_user, access_policy):
         await callback.answer("Управление архивом для вас закрыто.", show_alert=True)
         return
 
+    workspace_id = await workspace_product_service.public_workspace_id_for_user(
+        callback.from_user.id
+    )
     page = await get_archive_page(
         database,
         callback_data.character_id,
         callback_data.offset,
+        workspace_id=workspace_id,
     )
     if page is None or page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
@@ -513,6 +548,7 @@ async def handle_manager_access_flags(
             database,
             character_id=page.character.id,
             media_id=page.media.id,
+            workspace_id=workspace_id,
         )
         alert = (
             "Материал возвращён в публичный архив."
@@ -524,6 +560,7 @@ async def handle_manager_access_flags(
             database,
             character_id=page.character.id,
             media_id=page.media.id,
+            workspace_id=workspace_id,
         )
         alert = (
             "Для материала включена проверка участия в закрытом канале."
@@ -535,6 +572,7 @@ async def handle_manager_access_flags(
         database,
         page.character.id,
         page.offset,
+        workspace_id=workspace_id,
     )
     if updated_page is None or updated_page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
