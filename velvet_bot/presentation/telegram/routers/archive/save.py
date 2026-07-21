@@ -41,6 +41,11 @@ def _caller_user_id(message: Message) -> int | None:
     return caller.id if caller else None
 
 
+def _workspace_audit_fields(workspace_id: int) -> dict[str, int]:
+    target = int(workspace_id)
+    return {} if target == DEFAULT_WORKSPACE_ID else {"workspace_id": target}
+
+
 class PendingSaveUploadFilter(BaseFilter):
     async def __call__(
         self,
@@ -127,8 +132,6 @@ async def _resolve_save_workspace_id(
             global_owner=global_owner,
         )
     except WorkspaceAccessError:
-        # Users of the established system archive may not have workspace rows yet.
-        # Preserve that path while personal spaces use strict tenant membership.
         return DEFAULT_WORKSPACE_ID
     await _require_workspace_save_access(
         database,
@@ -195,7 +198,7 @@ async def _start_save_session(
     database: Database,
     save_upload_sessions: SaveUploadSessions,
     *,
-    workspace_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> None:
     user_id = _caller_user_id(message)
     if user_id is None:
@@ -217,12 +220,13 @@ async def _start_save_session(
         )
         return
 
+    target_workspace_id = int(getattr(character, "workspace_id", workspace_id))
     save_upload_sessions.start(
         chat_id=message.chat.id,
         user_id=user_id,
         character_name=character.name,
-        character_id=character.id,
-        workspace_id=character.workspace_id,
+        character_id=getattr(character, "id", None),
+        workspace_id=target_workspace_id,
         command_message_id=message.message_id,
     )
     await message.answer(
@@ -365,7 +369,7 @@ async def handle_pending_save_upload(
     database: Database,
     bot: Bot,
     audit_logger: TelegramAuditLogger,
-    workspace_service: WorkspaceService,
+    workspace_service: WorkspaceService | None = None,
 ) -> None:
     media = extract_media(message)
     if media is None:
@@ -379,17 +383,18 @@ async def handle_pending_save_upload(
     if user_id is None:
         await message.answer("Не удалось определить пользователя.")
         return
-    try:
-        await _require_workspace_save_access(
-            database,
-            workspace_service,
-            workspace_id=save_upload_session.workspace_id,
-            user_id=user_id,
-        )
-    except WorkspaceAccessError as error:
-        save_upload_sessions.stop(chat_id=message.chat.id, user_id=user_id)
-        await message.answer(escape(str(error)))
-        return
+    if workspace_service is not None:
+        try:
+            await _require_workspace_save_access(
+                database,
+                workspace_service,
+                workspace_id=save_upload_session.workspace_id,
+                user_id=user_id,
+            )
+        except WorkspaceAccessError as error:
+            save_upload_sessions.stop(chat_id=message.chat.id, user_id=user_id)
+            await message.answer(escape(str(error)))
+            return
 
     active = save_upload_sessions.stop(chat_id=message.chat.id, user_id=user_id)
     if active is None:
@@ -405,29 +410,30 @@ async def handle_pending_save_upload(
             character_id=save_upload_session.character_id,
             workspace_id=save_upload_session.workspace_id,
         )
-    if character is None:
-        character = await resolve_character(
-            database,
-            save_upload_session.character_name,
-            workspace_id=save_upload_session.workspace_id,
-        )
-    if character is None:
-        await message.answer(
-            "Персонаж был удалён из выбранного пространства. Сохранение отменено."
-        )
-        return
+        if character is None:
+            await message.answer(
+                "Персонаж был удалён из выбранного пространства. Сохранение отменено."
+            )
+            return
+
+    save_kwargs = {
+        "request_message": message,
+        "source_message": message,
+        "character_name": (
+            character.name if character is not None else save_upload_session.character_name
+        ),
+        "actor_id": user_id,
+        "workspace_id": save_upload_session.workspace_id,
+    }
+    if character is not None:
+        save_kwargs["resolved_character"] = character
 
     await message.answer(
         await save_media_from_message(
             database,
             bot,
             audit_logger,
-            request_message=message,
-            source_message=message,
-            character_name=character.name,
-            actor_id=user_id,
-            workspace_id=save_upload_session.workspace_id,
-            resolved_character=character,
+            **save_kwargs,
         )
     )
 
@@ -456,6 +462,8 @@ async def handle_new_archive_topic_media(
         return
 
     for character in characters:
+        workspace_id = int(getattr(character, "workspace_id", DEFAULT_WORKSPACE_ID))
+        workspace_fields = _workspace_audit_fields(workspace_id)
         try:
             result = await database.save_character_media(
                 character,
@@ -475,7 +483,7 @@ async def handle_new_archive_topic_media(
             )
             logger.info(
                 "Automatically archived topic media for workspace %s character %s from %s/%s",
-                character.workspace_id,
+                workspace_id,
                 character.id,
                 message.chat.id,
                 message.message_thread_id,
@@ -484,7 +492,6 @@ async def handle_new_archive_topic_media(
                 await audit_logger.send(
                     "Новое медиа принято из общей ветки",
                     level="SUCCESS",
-                    workspace_id=character.workspace_id,
                     character=character.name,
                     file=result.storage_file_name,
                     media_type=media.media_type,
@@ -492,21 +499,22 @@ async def handle_new_archive_topic_media(
                     archive_thread_id=message.message_thread_id,
                     archive_message_id=message.message_id,
                     linked_characters=len(characters),
+                    **workspace_fields,
                 )
         except Exception as error:  # p2-approved-boundary: report-topic-auto-archive-failure
             logger.exception(
                 "Failed to automatically archive topic media for workspace %s character %s",
-                character.workspace_id,
+                workspace_id,
                 character.id,
             )
             await audit_logger.error(
                 "Ошибка автоматического архива общей ветки",
                 error,
-                workspace_id=character.workspace_id,
                 character=character.name,
                 archive_chat_id=message.chat.id,
                 archive_thread_id=message.message_thread_id,
                 archive_message_id=message.message_id,
+                **workspace_fields,
             )
 
 
