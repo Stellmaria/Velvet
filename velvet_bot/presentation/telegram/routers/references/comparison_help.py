@@ -118,7 +118,7 @@ async def handle_reference_compare_start(callback: CallbackQuery) -> None:
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ Velvet AI",
+                    text="↩️ Qwen",
                     callback_data=quality_callback("ai_menu"),
                 )
             ],

@@ -39,17 +39,17 @@ def build_owner_main_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="💧 Водяной знак",
+                    text="💧 Знак",
                     callback_data=WatermarkCallback(action="start").pack(),
                 ),
                 InlineKeyboardButton(
-                    text="🧰 Все действия",
+                    text="🧰 Действия",
                     callback_data=owner_action_callback("menu"),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🛡 Supervisor и Codex",
+                    text="🛡 Supervisor",
                     callback_data=SupervisorCallback(action="status").pack(),
                 ),
                 InlineKeyboardButton(
@@ -59,11 +59,11 @@ def build_owner_main_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="🤖 Velvet AI",
+                    text="🤖 Qwen",
                     callback_data=quality_callback("ai_menu"),
                 ),
                 InlineKeyboardButton(
-                    text="💾 Резервные копии",
+                    text="💾 Backup",
                     callback_data=BackupCallback(action="menu").pack(),
                 ),
             ],
@@ -79,7 +79,7 @@ def build_owner_main_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="ℹ️ Как пользоваться",
+                    text="ℹ️ Справка",
                     callback_data=owner_callback("help"),
                 ),
                 InlineKeyboardButton(
@@ -96,7 +96,7 @@ def build_owner_back_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="↩️ Центр управления",
+                    text="🏠 Главная",
                     callback_data=owner_callback("menu"),
                 )
             ]
@@ -127,7 +127,7 @@ def owner_help_text() -> str:
         "🛡 <b>Supervisor и Codex</b> — состояние процесса, логи, Git, "
         "перезапуск, откат и задачи Codex.\n"
         "⚙️ <b>Система</b> — база, воркеры, очереди, версия и отчёт.\n"
-        "🤖 <b>Velvet AI</b> — качество, референсы, промт против результата, "
+        "🤖 <b>Qwen</b> — архивная проверка, доработка, референсы, промт против результата, "
         "целостность сетов, калибровка Qwen и архивный аудит.\n"
         "💾 <b>Резервные копии</b> — создание, проверка, история и очистка.\n"
         "📊 <b>Аналитика</b> — канал, промты, персонажи, хэштеги и обсуждения.\n"

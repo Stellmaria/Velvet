@@ -166,76 +166,67 @@ def build_quality_operations_menu(
     worker: WorkerSnapshot | None,
 ) -> tuple[str, InlineKeyboardMarkup]:
     text = (
-        "<b>🔍 Проверка качества</b>\n\n"
-        "Управление фоновыми проверками архива и ручной анализ новых изображений.\n\n"
-        f"Очередь Qwen: <b>{summary.pending + summary.processing}</b>\n"
-        f"Готово: <b>{summary.ready}</b> · без решения: <b>{summary.unreviewed}</b>\n"
-        f"Ошибки: <b>{summary.errors + summary.skipped}</b>\n"
+        "<b>🖼 Qwen · проверка архива</b>
+
+"
+        "Ручная проверка изображения и управление фоновым worker.
+
+"
+        f"Очередь: <b>{summary.pending + summary.processing}</b> · "
+        f"готово <b>{summary.ready}</b>
+"
+        f"Без решения: <b>{summary.unreviewed}</b> · "
+        f"ошибок <b>{summary.errors + summary.skipped}</b>
+"
         f"Worker: <code>{escape(_worker_text(worker))}</code>"
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🖼 Проверить новое изображение",
+                    text="🖼 Новое фото",
                     callback_data=quality_callback("quality_upload"),
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
-                    text="📋 Отчёты Qwen",
+                    text="📋 Отчёты",
                     callback_data=quality_callback("qchecks", section="review"),
                 ),
+            ],
+            [
                 InlineKeyboardButton(
-                    text="❌ Очередь ошибок",
+                    text="❌ Ошибки",
                     callback_data=quality_callback("qchecks", section="errors"),
                 ),
-            ],
-            [
                 InlineKeyboardButton(
-                    text="🧬 Поиск дублей",
-                    callback_data=quality_callback("duplicates", section="pending"),
-                ),
-                InlineKeyboardButton(
-                    text="🎞 Медиасеты",
-                    callback_data=quality_callback("sets", section="pending"),
+                    text="🛠 Доработка",
+                    callback_data=quality_callback("reworks"),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🧠 Целостность сетов",
-                    callback_data=quality_callback("setreports"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🕘 Проверить последние файлы",
+                    text="🕘 Последние",
                     callback_data=quality_callback("quality_recent"),
                 ),
                 InlineKeyboardButton(
-                    text="▶️ Запустить проверку",
+                    text="▶️ Запуск",
                     callback_data=quality_callback("quality_run"),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🔄 Повторить ошибки",
+                    text="🔁 Повтор ошибок",
                     callback_data=quality_callback("quality_retry_errors"),
                 ),
-                InlineKeyboardButton(
-                    text="🧬 Архивный аудит",
-                    callback_data=quality_callback("menu"),
-                ),
-            ],
-            [
                 InlineKeyboardButton(
                     text="🔄 Обновить",
                     callback_data=quality_callback("quality_ops"),
                 ),
+            ],
+            [
                 InlineKeyboardButton(
-                    text="↩️ Velvet AI",
+                    text="↩️ Qwen",
                     callback_data=quality_callback("ai_menu"),
-                ),
+                )
             ],
         ]
     )
