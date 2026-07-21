@@ -3,7 +3,7 @@
 - Дата: 2026-07-21
 - ID: `2026-07-21-global-navigation-audit`
 - Линия/фаза: Telegram UX and navigation
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/global-navigation-audit`
 - Базовый commit: `8340fd0adf906b91a564d27d3e47608aa73d3db9`
 
@@ -66,19 +66,23 @@ Qwen-контур и верхнеуровневое owner-меню уже пол
 
 ### Проверки
 
-- локальный scanner contract: success;
-- локальная компиляция production, scripts и tests: success;
+- generated navigation scanner: 509 кнопок, 0 нарушений;
 - generated inventory freshness test: success;
-- полный GitHub CI выполняется.
+- локальная компиляция production, scripts и tests: success;
+- full GitHub suite: 1019 тестов, success;
+- PostgreSQL integration tests: success;
+- strict type check: success;
+- Docker build: success;
+- project notes contract: success.
 
 ### PR и commit
 
-Draft PR #270: `Audit and standardize Telegram navigation`.
+PR #270: `Audit and standardize Telegram navigation`.
 
 ### Незавершённое
 
-Нужно пройти полный GitHub test suite, type check, Docker build и project notes contract, затем исправить только реальные несовместимости старых тестов или кода.
+В этом срезе не создавался визуальный screenshot-тест Telegram-клиентов: Telegram сам отвечает за конкретный рендеринг шрифтов и ширины. Структурные ограничения, длина текста, число кнопок в строке и callback limit теперь проверяются автоматически.
 
 ### Следующий шаг
 
-После зелёного CI закрыть worklog фактическими результатами, перевести PR из draft в ready и слить в `main`.
+После слияния обновить локальный `main`, перезапустить Velvet через Supervisor и выполнить короткий live smoke основных owner/public экранов на Android и desktop Telegram.
