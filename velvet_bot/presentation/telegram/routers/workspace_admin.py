@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from typing import cast
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
     WORKSPACE_MODULE_KEYS,
+    WorkspaceModuleKey,
 )
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 
@@ -40,17 +44,33 @@ async def handle_workspace_module_policy(
             + "</code>"
         )
         return
-    module_key = parts[2].casefold()
+    workspace_id = int(parts[1])
+    raw_module_key = parts[2].casefold()
     enabled = _parse_switch(parts[3])
-    if module_key not in WORKSPACE_MODULE_KEYS or enabled is None:
+    if raw_module_key not in WORKSPACE_MODULE_KEYS or enabled is None:
         await message.answer("Неизвестный модуль или значение on/off.")
+        return
+    module_key = cast(WorkspaceModuleKey, raw_module_key)
+    if (
+        workspace_id == DEFAULT_WORKSPACE_ID
+        and module_key == "public_archive"
+        and not enabled
+    ):
+        await message.answer("Системный Velvet Anatomy должен оставаться публичным.")
         return
     setting = await workspace_product_service.set_module_allowed(
         actor_user_id=actor_user_id,
-        workspace_id=int(parts[1]),
+        workspace_id=workspace_id,
         module_key=module_key,
         is_allowed=enabled,
     )
+    if module_key == "public_archive" and not enabled:
+        await workspace_product_service.set_public_archive_enabled(
+            workspace_id=workspace_id,
+            actor_user_id=actor_user_id,
+            enabled=False,
+            global_owner=True,
+        )
     await message.answer(
         f"Модуль <code>{setting.module_key}</code> "
         + ("разрешён." if setting.is_allowed else "запрещён и скрыт.")
