@@ -87,7 +87,7 @@
 
 ### PR и commit
 
-PR будет создан после подготовки полного diff. Финальный merge commit фиксируется в GitHub.
+PR: `#285 Isolate reference libraries by workspace`. Финальный merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 
