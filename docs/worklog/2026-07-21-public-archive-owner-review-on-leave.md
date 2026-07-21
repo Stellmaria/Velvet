@@ -58,15 +58,15 @@ Callback `open/show` записывал просмотр целевого мат
 
 ### Проверки
 
-Первый полный прогон выполнил 1025 тестов и выявил только необходимость обновить generated P2 stability inventory и обязательные разделы worklog. Type-check и Docker build прошли. После регенерации inventory запускается финальный полный CI.
+Первый полный прогон выполнил 1025 тестов. Кодовые сценарии новой логики прошли; падения относились только к устаревшему generated P2 inventory и незавершённому формату worklog. Inventory регенерирован до schema 46: 77 approved broad boundaries, 0 unresolved, 98 callback handlers. Type-check и Docker build прошли; финальный обычный commit запускает повторный полный CI.
 
 ### PR и commit
 
-PR #271: `Mark Stell review when leaving archive card`. Рабочий commit до финальной регенерации: `1b5f5ad8ee7be55c440b15a5cabd48afc90ec0db`.
+PR #271: `Mark Stell review when leaving archive card`. Финальный branch head перед повторным CI создаётся после regenerated inventory commit `4ca1059587403c5db6e0c016907226728d1552d0`.
 
 ### Незавершённое
 
-Нет незавершённой логики. Финальное подтверждение выполняет GitHub CI после обновления generated inventory.
+Нет.
 
 ### Следующий шаг
 
