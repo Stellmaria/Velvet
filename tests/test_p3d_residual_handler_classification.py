@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import unittest
 from pathlib import Path
 
@@ -8,11 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HANDLERS = ROOT / "velvet_bot/handlers"
 MODULE_ALIAS_MARKER = "P3_COMPAT_MODULE_ALIAS"
-CHANNEL_ALIAS = "velvet_bot.handlers.channel_analytics"
-CHANNEL_CANONICAL = (
-    "velvet_bot.presentation.telegram.routers.analytics_controllers.channel"
-)
 RETIRED_ALIAS_NAMES = {
+    "channel_analytics",
     "watermark",
     "analytics_dashboard",
     "analytics_dashboard_overrides",
@@ -38,25 +34,14 @@ class P3DResidualHandlerClassificationTests(unittest.TestCase):
     def test_no_physical_handler_implementations_remain(self) -> None:
         self.assertEqual(set(), residual_handler_implementations())
 
-    def test_only_deferred_channel_alias_remains(self) -> None:
+    def test_no_handler_aliases_remain(self) -> None:
         aliases = {
             path.stem
             for path in HANDLERS.glob("*.py")
             if path.name != "__init__.py"
             and MODULE_ALIAS_MARKER in path.read_text(encoding="utf-8")
         }
-        self.assertEqual({"channel_analytics"}, aliases)
-        self.assertIs(
-            importlib.import_module(CHANNEL_ALIAS),
-            importlib.import_module(CHANNEL_CANONICAL),
-        )
-
-    def test_deferred_channel_file_is_only_alias(self) -> None:
-        path = ROOT / Path(*CHANNEL_ALIAS.split(".")).with_suffix(".py")
-        source = path.read_text(encoding="utf-8")
-        self.assertIn(MODULE_ALIAS_MARKER, source)
-        self.assertIn(CHANNEL_CANONICAL, source)
-        self.assertLessEqual(len(source.splitlines()), 10)
+        self.assertEqual(set(), aliases)
 
     def test_retired_legacy_files_are_absent(self) -> None:
         for alias_name in RETIRED_ALIAS_NAMES:
