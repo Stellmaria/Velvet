@@ -4,17 +4,16 @@
 
 ## Сводка
 
-- alias-файлов: **1**;
-- файлов-consumers: **5**;
-- references: **5**;
-- aliases с references: **1**;
+- alias-файлов: **0**;
+- файлов-consumers: **2**;
+- references: **2**;
+- aliases с references: **0**;
 - aliases без references: **0**;
 - динамических prefix references: **2**;
 - references на уже отсутствующие aliases: **0**.
 
 ## Alias status
 
-- `velvet_bot.handlers.channel_analytics` → `velvet_bot.presentation.telegram.routers.analytics_controllers.channel`: используется.
 
 ## Consumers
 
@@ -22,21 +21,9 @@
 
 - line 139: `velvet_bot.handlers` (dynamic-prefix-reference).
 
-### `tests/test_p2q_channel_analytics_boundary.py`
-
-- line 7: `velvet_bot.handlers.channel_analytics` (import).
-
-### `tests/test_p3c_analytics_controllers.py`
-
-- line 8: `velvet_bot.handlers.channel_analytics` (literal-reference).
-
 ### `tests/test_p3c_quality_operations_controllers.py`
 
 - line 41: `velvet_bot.handlers` (dynamic-prefix-reference).
-
-### `tests/test_p3d_residual_handler_classification.py`
-
-- line 11: `velvet_bot.handlers.channel_analytics` (literal-reference).
 
 ## Следующий срез
 
