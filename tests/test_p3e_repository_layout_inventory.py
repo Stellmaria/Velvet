@@ -9,8 +9,11 @@ from scripts.inventory_repository_layout import build_inventory, render_markdown
 
 ROOT = Path(__file__).resolve().parents[1]
 LABEL = "p3e-repository-layout-baseline"
-NOTIFICATION_REPOSITORY = (
+RETIRED_NOTIFICATION_REPOSITORY = (
     "velvet_bot.repositories." + "public_notification_repository"
+)
+NEXT_PUBLICATION_REPOSITORY = (
+    "velvet_bot.repositories." + "publication_repository"
 )
 
 
@@ -29,28 +32,29 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertEqual(inventory, stored)
         self.assertEqual(render_markdown(inventory), markdown)
 
-    def test_package_exports_are_not_runtime_consumers(self) -> None:
+    def test_retired_notification_repository_is_absent(self) -> None:
         inventory = build_inventory(label=LABEL)
-        modules = {item["module"]: item for item in inventory["modules"]}
-        notification_repository = modules[NOTIFICATION_REPOSITORY]
+        modules = {item["module"] for item in inventory["modules"]}
+        repository_package = (
+            ROOT / "velvet_bot/repositories/__init__.py"
+        ).read_text(encoding="utf-8")
 
-        self.assertEqual(0, notification_repository["production_consumer_count"])
-        self.assertEqual(0, notification_repository["test_consumer_count"])
-        self.assertEqual(1, notification_repository["package_export_count"])
-        self.assertIn(
-            NOTIFICATION_REPOSITORY,
-            inventory["export_only_repository_modules"],
+        self.assertNotIn(RETIRED_NOTIFICATION_REPOSITORY, modules)
+        self.assertNotIn("PublicNotificationRepository", repository_package)
+        self.assertNotIn("PendingPublicNotification", repository_package)
+        self.assertFalse(
+            (ROOT / "velvet_bot/repositories/public_notification_repository.py").exists()
         )
 
-    def test_first_slice_is_measurable(self) -> None:
+    def test_next_slice_is_measurable(self) -> None:
         inventory = build_inventory(label=LABEL)
 
-        self.assertEqual(33, inventory["repository_module_count"])
+        self.assertEqual(32, inventory["repository_module_count"])
         self.assertEqual(23, inventory["layout_counts"]["domain"])
-        self.assertEqual(3, inventory["layout_counts"]["central"])
+        self.assertEqual(2, inventory["layout_counts"]["central"])
         self.assertEqual(7, inventory["layout_counts"]["root"])
         self.assertEqual(
-            NOTIFICATION_REPOSITORY,
+            NEXT_PUBLICATION_REPOSITORY,
             inventory["next_slice"]["candidate"],
         )
 
