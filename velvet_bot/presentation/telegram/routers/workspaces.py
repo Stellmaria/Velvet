@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+from typing import cast
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -8,7 +9,6 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from velvet_bot.core.access import AccessPolicy
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
@@ -59,10 +59,26 @@ _WORKSPACE_CALLBACK_ACTIONS = {
     "addstory",
     "krimport",
 }
+_TAXONOMY_ACTIONS = {
+    "taxonomy",
+    "categories",
+    "universes",
+    "stories",
+    "addcategory",
+    "adduniverse",
+    "addstory",
+    "krimport",
+}
 
 
 def _is_global_owner(user_id: int) -> bool:
     return int(user_id) == GLOBAL_WORKSPACE_CREATOR_ID
+
+
+def _module_key(value: str) -> WorkspaceModuleKey | None:
+    if value not in WORKSPACE_MODULE_KEYS:
+        return None
+    return cast(WorkspaceModuleKey, value)
 
 
 async def _edit_or_answer(
@@ -97,6 +113,22 @@ async def _resolve_workspace(
         user_id=user_id,
         global_owner=global_owner,
     )
+
+
+async def _module_is_enabled(
+    *,
+    workspace_id: int,
+    user_id: int,
+    module_key: WorkspaceModuleKey,
+    workspace_product_service: WorkspaceProductService,
+) -> bool:
+    modules = await workspace_product_service.list_modules(
+        workspace_id=workspace_id,
+        actor_user_id=user_id,
+        global_owner=_is_global_owner(user_id),
+    )
+    setting = next((item for item in modules if item.module_key == module_key), None)
+    return bool(setting and setting.is_allowed and setting.is_enabled)
 
 
 async def _show_home(
@@ -172,15 +204,18 @@ async def handle_workspace_grant(
                 "Неизвестные модули: " + ", ".join(escape(item) for item in unknown)
             )
             return
-        modules = parsed
-    kwargs = {}
-    if modules is not None:
-        kwargs["allowed_modules"] = modules
-    grant = await workspace_product_service.grant_creation_access(
-        actor_user_id=user_id,
-        user_id=int(parts[1]),
-        **kwargs,
-    )
+        modules = tuple(cast(WorkspaceModuleKey, item) for item in parsed)
+    if modules is None:
+        grant = await workspace_product_service.grant_creation_access(
+            actor_user_id=user_id,
+            user_id=int(parts[1]),
+        )
+    else:
+        grant = await workspace_product_service.grant_creation_access(
+            actor_user_id=user_id,
+            user_id=int(parts[1]),
+            allowed_modules=modules,
+        )
     await message.answer(
         "<b>Доступ выдан</b>\n\n"
         f"Telegram ID: <code>{grant.user_id}</code>\n"
@@ -279,7 +314,6 @@ async def handle_workspace_callback(
             )
             return
         await state.set_state(WorkspaceForm.waiting_workspace_name)
-        await state.update_data(workspace_owner_user_id=user_id)
         if isinstance(callback.message, Message):
             await callback.message.answer(
                 "<b>Название личного архива</b>\n\n"
@@ -314,6 +348,23 @@ async def handle_workspace_callback(
         settings = await workspace_product_service._workspaces.get_settings(workspace.id)
         if settings is None:
             await callback.answer("Настройки не найдены.", show_alert=True)
+            return
+        if workspace.is_system:
+            await callback.answer(
+                "Velvet Anatomy является системным публичным архивом.",
+                show_alert=True,
+            )
+            return
+        if not await _module_is_enabled(
+            workspace_id=workspace.id,
+            user_id=user_id,
+            module_key="public_archive",
+            workspace_product_service=workspace_product_service,
+        ):
+            await callback.answer(
+                "Модуль публичного архива выключен или не разрешён Стэл.",
+                show_alert=True,
+            )
             return
         try:
             await workspace_product_service.set_public_archive_enabled(
@@ -354,8 +405,8 @@ async def handle_workspace_callback(
         )
         return
     if action == "modtoggle":
-        module_key = callback_data.module_key
-        if module_key not in WORKSPACE_MODULE_KEYS:
+        module_key = _module_key(callback_data.module_key)
+        if module_key is None:
             await callback.answer("Неизвестный модуль.", show_alert=True)
             return
         modules = await workspace_product_service.list_modules(
@@ -367,14 +418,22 @@ async def handle_workspace_callback(
         if current is None or not current.is_allowed:
             await callback.answer("Этот модуль не разрешён Стэл.", show_alert=True)
             return
+        new_enabled = not current.is_enabled
         try:
             await workspace_product_service.set_module_enabled(
                 workspace_id=workspace.id,
                 actor_user_id=user_id,
                 module_key=module_key,
-                is_enabled=not current.is_enabled,
+                is_enabled=new_enabled,
                 global_owner=_is_global_owner(user_id),
             )
+            if module_key == "public_archive" and not new_enabled and not workspace.is_system:
+                await workspace_product_service.set_public_archive_enabled(
+                    workspace_id=workspace.id,
+                    actor_user_id=user_id,
+                    enabled=False,
+                    global_owner=_is_global_owner(user_id),
+                )
         except (WorkspaceAccessError, WorkspaceModuleAccessError) as error:
             await callback.answer(str(error), show_alert=True)
             return
@@ -390,9 +449,17 @@ async def handle_workspace_callback(
         )
         return
     if action in {"modulehelp", "module"}:
-        module_key = callback_data.module_key
-        if module_key not in WORKSPACE_MODULE_KEYS:
+        module_key = _module_key(callback_data.module_key)
+        if module_key is None:
             await callback.answer("Неизвестный модуль.", show_alert=True)
+            return
+        if action == "module" and not await _module_is_enabled(
+            workspace_id=workspace.id,
+            user_id=user_id,
+            module_key=module_key,
+            workspace_product_service=workspace_product_service,
+        ):
+            await callback.answer("Модуль выключен или не разрешён.", show_alert=True)
             return
         text = (
             f"<b>{MODULE_LABELS[module_key]}</b>\n\n"
@@ -405,6 +472,16 @@ async def handle_workspace_callback(
             reply_markup=build_module_help_keyboard(workspace.id),
         )
         return
+
+    if action in _TAXONOMY_ACTIONS and not await _module_is_enabled(
+        workspace_id=workspace.id,
+        user_id=user_id,
+        module_key="taxonomy",
+        workspace_product_service=workspace_product_service,
+    ):
+        await callback.answer("Модуль категорий и вселенных выключен.", show_alert=True)
+        return
+
     if action == "taxonomy":
         categories = await workspace_product_service.list_categories(workspace.id)
         universes = await workspace_product_service.list_universes(workspace.id)
