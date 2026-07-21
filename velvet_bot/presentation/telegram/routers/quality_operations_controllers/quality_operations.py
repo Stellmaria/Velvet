@@ -166,18 +166,12 @@ def build_quality_operations_menu(
     worker: WorkerSnapshot | None,
 ) -> tuple[str, InlineKeyboardMarkup]:
     text = (
-        "<b>🖼 Qwen · проверка архива</b>
-
-"
-        "Ручная проверка изображения и управление фоновым worker.
-
-"
+        "<b>🖼 Qwen · проверка архива</b>\n\n"
+        "Ручная проверка изображения и управление фоновым worker.\n\n"
         f"Очередь: <b>{summary.pending + summary.processing}</b> · "
-        f"готово <b>{summary.ready}</b>
-"
+        f"готово <b>{summary.ready}</b>\n"
         f"Без решения: <b>{summary.unreviewed}</b> · "
-        f"ошибок <b>{summary.errors + summary.skipped}</b>
-"
+        f"ошибок <b>{summary.errors + summary.skipped}</b>\n"
         f"Worker: <code>{escape(_worker_text(worker))}</code>"
     )
     keyboard = InlineKeyboardMarkup(
