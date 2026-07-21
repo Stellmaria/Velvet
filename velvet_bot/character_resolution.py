@@ -55,10 +55,13 @@ async def resolve_character(
 ) -> Character | None:
     """Resolve a character by name or alias inside exactly one workspace."""
     target_workspace_id = int(workspace_id)
-    character = await database.get_character(
-        value,
-        workspace_id=target_workspace_id,
-    )
+    if target_workspace_id == DEFAULT_WORKSPACE_ID:
+        character = await database.get_character(value)
+    else:
+        character = await database.get_character(
+            value,
+            workspace_id=target_workspace_id,
+        )
     if character is not None:
         return character
 
@@ -71,15 +74,13 @@ async def resolve_character(
             character_name = await connection.fetchval(
                 """
                 SELECT c.name
-                FROM character_aliases AS alias
-                JOIN characters AS c ON c.id = alias.character_id
-                WHERE c.workspace_id = $2::BIGINT
-                  AND alias.normalized_alias = $1::VARCHAR
-                ORDER BY CASE alias.source WHEN 'name' THEN 0 ELSE 1 END, alias.id
+                FROM character_aliases AS a
+                JOIN characters AS c ON c.id = a.character_id
+                WHERE a.normalized_alias = $1
+                ORDER BY CASE a.source WHEN 'name' THEN 0 ELSE 1 END, a.id
                 LIMIT 1
                 """,
                 normalized,
-                target_workspace_id,
             )
         else:
             character_name = await connection.fetchval(
@@ -99,6 +100,8 @@ async def resolve_character(
             )
     if character_name is None:
         return None
+    if target_workspace_id == DEFAULT_WORKSPACE_ID:
+        return await database.get_character(str(character_name))
     return await database.get_character(
         str(character_name),
         workspace_id=target_workspace_id,
