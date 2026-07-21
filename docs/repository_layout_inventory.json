@@ -4,21 +4,21 @@
   "repository_module_count": 31,
   "layout_counts": {
     "central": 1,
-    "domain": 24,
-    "root": 6
+    "domain": 25,
+    "root": 5
   },
-  "root_module_count": 116,
+  "root_module_count": 115,
   "root_module_categories": {
     "other": 100,
     "report": 4,
-    "repository": 6,
+    "repository": 5,
     "runtime": 4,
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 28,
-  "repository_modules_with_package_exports": 23,
-  "repository_modules_without_runtime_consumers": 3,
+  "repository_modules_with_production_consumers": 27,
+  "repository_modules_with_package_exports": 24,
+  "repository_modules_without_runtime_consumers": 4,
   "repository_modules_without_references": 0,
   "unreferenced_repository_modules": [],
   "export_only_repository_modules": [
@@ -280,6 +280,23 @@
       ]
     },
     {
+      "module": "velvet_bot.domains.media_sets.duplicate_actions_repository",
+      "path": "velvet_bot/domains/media_sets/duplicate_actions_repository.py",
+      "layout": "domain",
+      "domain": "media_sets",
+      "production_consumer_count": 0,
+      "test_consumer_count": 1,
+      "package_export_count": 1,
+      "reference_count": 2,
+      "production_consumers": [],
+      "test_consumers": [
+        "tests/test_phase18_completion.py"
+      ],
+      "package_exports": [
+        "velvet_bot/domains/media_sets/__init__.py"
+      ]
+    },
+    {
       "module": "velvet_bot.domains.media_sets.repository",
       "path": "velvet_bot/domains/media_sets/repository.py",
       "layout": "domain",
@@ -523,23 +540,6 @@
       "package_exports": []
     },
     {
-      "module": "velvet_bot.media_set_duplicate_actions_repository",
-      "path": "velvet_bot/media_set_duplicate_actions_repository.py",
-      "layout": "root",
-      "domain": null,
-      "production_consumer_count": 1,
-      "test_consumer_count": 1,
-      "package_export_count": 0,
-      "reference_count": 2,
-      "production_consumers": [
-        "velvet_bot/media_set_duplicate_actions.py"
-      ],
-      "test_consumers": [
-        "tests/test_phase18_completion.py"
-      ],
-      "package_exports": []
-    },
-    {
       "module": "velvet_bot.quality_set_ai_repository",
       "path": "velvet_bot/quality_set_ai_repository.py",
       "layout": "root",
@@ -592,23 +592,6 @@
     }
   ],
   "candidate_modules": [
-    {
-      "module": "velvet_bot.media_set_duplicate_actions_repository",
-      "path": "velvet_bot/media_set_duplicate_actions_repository.py",
-      "layout": "root",
-      "domain": null,
-      "production_consumer_count": 1,
-      "test_consumer_count": 1,
-      "package_export_count": 0,
-      "reference_count": 2,
-      "production_consumers": [
-        "velvet_bot/media_set_duplicate_actions.py"
-      ],
-      "test_consumers": [
-        "tests/test_phase18_completion.py"
-      ],
-      "package_exports": []
-    },
     {
       "module": "velvet_bot.quality_set_ai_repository",
       "path": "velvet_bot/quality_set_ai_repository.py",
@@ -719,7 +702,7 @@
   "next_slice": {
     "phase": "P3E",
     "target": "migrate the first low-coupling repository module",
-    "candidate": "velvet_bot.media_set_duplicate_actions_repository",
+    "candidate": "velvet_bot.quality_set_ai_repository",
     "strategy": "move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion"
   }
 }
