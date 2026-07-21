@@ -41,6 +41,8 @@ class QwenDuplicateRetryControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("media_ai_profiles", semantic_sql)
         self.assertIn("status IN ('error', 'skipped')", quality_sql)
         self.assertIn("status IN ('error', 'skipped')", semantic_sql)
+        self.assertIn("analysis = '{}'::JSONB", semantic_sql)
+        self.assertNotIn("analysis = NULL", semantic_sql)
 
     async def test_duplicate_reset_clears_results_and_requeues_available_media(self) -> None:
         connection = SimpleNamespace(
