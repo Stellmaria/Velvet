@@ -3,7 +3,7 @@
 - Дата: 2026-07-21
 - ID: `2026-07-21-p3f-archive-lightweight-exports`
 - Линия/фаза: P3F static typing
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3f-archive-lightweight-exports`
 - Базовый commit: `af48ae907bb066f77fa4a83556c6a794b9c60854`
 
@@ -58,28 +58,49 @@
 
 ### Фактически сделано
 
-Ожидает реализации и CI.
+- `velvet_bot.domains.archive` сохраняет archive и preview model exports при обычном импорте пакета;
+- `ArchivePreviewRepository`, `ArchiveRepository` и `ArchiveService` переведены на module-level lazy exports через `__getattr__`;
+- runtime exports кэшируются после первого обращения, остаются перечисленными в `__all__`/`__dir__` и отдают `AttributeError` для неизвестных имён;
+- `velvet_bot/domains/archive/models.py` и `velvet_bot/domains/archive/preview_models.py` добавлены в bounded strict mypy scope;
+- зависимость archive models от `characters.models` остаётся bounded благодаря ранее облегчённой characters package boundary;
+- P3F regression contract проверяет отсутствие eager imports для archive repository, preview repository и service, а также совместимость package-level runtime imports;
+- repository module names в тесте собираются частями и не создают ложные references в generated P3E inventory.
 
 ### Изменённые модули и контракты
 
-Ожидает реализации.
+- `velvet_bot/domains/archive/__init__.py`;
+- `mypy.ini`;
+- `tests/test_p3f_core_typing_baseline.py`;
+- этот worklog.
+
+Runtime import API сохранён:
+
+- `from velvet_bot.domains.archive import ArchivePreviewRepository, ArchiveRepository, ArchiveService`.
 
 ### Миграции и совместимость
 
-PostgreSQL migrations не планируются.
+PostgreSQL migrations не требуются. SQL, transaction boundaries, preview generation/persistence, watermark, архивные и public archive Telegram scenarios не менялись.
 
 ### Проверки
 
-Ожидают выполнения.
+Проверенный implementation head `5e46a8c807a97a32657bbf246c09c244d821ed0b`:
+
+- GitHub Actions `type check` run `55`: success;
+- GitHub Actions `tests` run `1402`: success;
+- GitHub Actions `docker build` run `850`: success;
+- GitHub Actions `project notes contract` run `725`: success.
+
+Финальный documentation commit проходит повторный полный CI перед merge.
 
 ### PR и commit
 
-Ожидает создания PR.
+- PR: `#274 Make archive domain exports lightweight for P3F typing`;
+- проверенный implementation head до финализации worklog: `5e46a8c807a97a32657bbf246c09c244d821ed0b`.
 
 ### Незавершённое
 
-Реализация, CI и итоговая запись.
+P3F остаётся активной линией. Strict baseline покрывает несколько core/transport-neutral modules и модели references, stories, archive/preview, но ещё не покрывает первый полноценный application/service scope, workers и Telegram adapters. Общий статус фазы и список долгов не менялись.
 
 ### Следующий шаг
 
-После завершения провести inventory первого transport-neutral application/service scope вместо механического расширения только на model files.
+Провести отдельный inventory transport-neutral application/service modules и выбрать первый bounded scope по фактическим import dependencies, а не продолжать механически добавлять только model files.
