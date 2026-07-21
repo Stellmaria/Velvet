@@ -22,7 +22,6 @@ from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATO
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.presentation.telegram.navigation import compact_button_text, two_column_rows
 
-
 router = Router(name=__name__)
 
 
@@ -99,12 +98,12 @@ async def _require_access(
             )
 
 
-async def _taxonomy_id_map(
+async def _taxonomy_rows(
     database: Database,
     *,
     workspace_id: int,
     table: str,
-) -> dict[str, int]:
+) -> tuple[tuple[int, str], ...]:
     if table not in {"workspace_categories", "workspace_universes"}:
         raise ValueError("Неизвестный справочник пространства.")
     async with database.acquire() as connection:
@@ -117,7 +116,7 @@ async def _taxonomy_id_map(
             """,
             int(workspace_id),
         )
-    return {str(row["key"]): int(row["id"]) for row in rows}
+    return tuple((int(row["id"]), str(row["key"])) for row in rows)
 
 
 async def _resolve_key(
@@ -127,30 +126,21 @@ async def _resolve_key(
     table: str,
     item_id: int,
 ) -> str:
-    if table not in {"workspace_categories", "workspace_universes"}:
-        raise ValueError("Неизвестный справочник пространства.")
-    async with database.acquire() as connection:
-        value = await connection.fetchval(
-            f"""
-            SELECT key
-            FROM {table}
-            WHERE workspace_id = $1::BIGINT
-              AND id = $2::BIGINT
-              AND is_enabled
-            """,
-            int(workspace_id),
-            int(item_id),
-        )
-    if value is None:
-        raise ValueError("Элемент структуры больше не доступен в этом пространстве.")
-    return str(value)
+    for row_id, key in await _taxonomy_rows(
+        database,
+        workspace_id=workspace_id,
+        table=table,
+    ):
+        if row_id == int(item_id):
+            return key
+    raise ValueError("Элемент структуры больше не доступен в этом пространстве.")
 
 
 def _root_text(workspace_name: str) -> str:
     return (
         f"<b>🔎 Каталог · {escape(workspace_name)}</b>\n\n"
-        "Фильтры строятся из категорий, вселенных и историй этого пространства. "
-        "Системные константы Velvet здесь не используются."
+        "Категории, вселенные и истории берутся только из структуры активного "
+        "пространства. Системные константы Velvet здесь не используются."
     )
 
 
@@ -187,21 +177,37 @@ def _root_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
     )
 
 
+def _back_keyboard(workspace_id: int, action: str = "root") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="↩️ Назад",
+                    callback_data=_cb(action, workspace_id=workspace_id),
+                )
+            ]
+        ]
+    )
+
+
 async def _categories_keyboard(
     database: Database,
     *,
     workspace_id: int,
 ) -> InlineKeyboardMarkup:
-    summaries = await list_workspace_directory_categories(
+    items = await list_workspace_directory_categories(
         database,
         workspace_id=workspace_id,
         include_uncategorized=True,
     )
-    ids = await _taxonomy_id_map(
-        database,
-        workspace_id=workspace_id,
-        table="workspace_categories",
-    )
+    ids = {
+        key: row_id
+        for row_id, key in await _taxonomy_rows(
+            database,
+            workspace_id=workspace_id,
+            table="workspace_categories",
+        )
+    }
     buttons = [
         InlineKeyboardButton(
             text=compact_button_text(
@@ -210,20 +216,13 @@ async def _categories_keyboard(
             callback_data=_cb(
                 "cchars",
                 workspace_id=workspace_id,
-                item_id=(-1 if item.key == "uncategorized" else ids[item.key]),
+                item_id=-1 if item.key == "uncategorized" else ids[item.key],
             ),
         )
-        for item in summaries
+        for item in items
     ]
     rows = two_column_rows(buttons)
-    rows.append(
-        [
-            InlineKeyboardButton(
-                text="↩️ Каталог",
-                callback_data=_cb("root", workspace_id=workspace_id),
-            )
-        ]
-    )
+    rows.extend(_back_keyboard(workspace_id).inline_keyboard)
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -233,16 +232,19 @@ async def _universes_keyboard(
     workspace_id: int,
     action: str,
 ) -> InlineKeyboardMarkup:
-    summaries = await list_workspace_directory_universes(
+    items = await list_workspace_directory_universes(
         database,
         workspace_id=workspace_id,
-        include_unassigned=(action == "uchars"),
+        include_unassigned=action == "uchars",
     )
-    ids = await _taxonomy_id_map(
-        database,
-        workspace_id=workspace_id,
-        table="workspace_universes",
-    )
+    ids = {
+        key: row_id
+        for row_id, key in await _taxonomy_rows(
+            database,
+            workspace_id=workspace_id,
+            table="workspace_universes",
+        )
+    }
     buttons = [
         InlineKeyboardButton(
             text=compact_button_text(
@@ -251,20 +253,13 @@ async def _universes_keyboard(
             callback_data=_cb(
                 action,
                 workspace_id=workspace_id,
-                item_id=(-1 if item.key == "unassigned" else ids[item.key]),
+                item_id=-1 if item.key == "unassigned" else ids[item.key],
             ),
         )
-        for item in summaries
+        for item in items
     ]
     rows = two_column_rows(buttons)
-    rows.append(
-        [
-            InlineKeyboardButton(
-                text="↩️ Каталог",
-                callback_data=_cb("root", workspace_id=workspace_id),
-            )
-        ]
-    )
+    rows.extend(_back_keyboard(workspace_id).inline_keyboard)
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -280,7 +275,7 @@ async def _stories_keyboard(
         table="workspace_universes",
         item_id=universe_id,
     )
-    stories = await list_workspace_directory_stories(
+    items = await list_workspace_directory_stories(
         database,
         workspace_id=workspace_id,
         universe_key=universe_key,
@@ -298,7 +293,7 @@ async def _stories_keyboard(
                 ),
             )
         ]
-        for item in stories
+        for item in items
     ]
     if not rows:
         rows.append(
@@ -309,14 +304,7 @@ async def _stories_keyboard(
                 )
             ]
         )
-    rows.append(
-        [
-            InlineKeyboardButton(
-                text="↩️ Вселенные",
-                callback_data=_cb("storyworlds", workspace_id=workspace_id),
-            )
-        ]
-    )
+    rows.extend(_back_keyboard(workspace_id, "storyworlds").inline_keyboard)
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -339,13 +327,9 @@ def _page_keyboard(
         [
             InlineKeyboardButton(
                 text=compact_button_text(
-                    "👤 "
-                    + item.name
-                    + " · "
-                    + (item.universe_label or "без вселенной")
-                    + " · "
-                    + (item.primary_story_short_label or "—")
-                    + f" · {item.media_count}"
+                    f"👤 {item.name} · "
+                    f"{item.universe_label or 'без вселенной'} · "
+                    f"{item.primary_story_short_label or '—'} · {item.media_count}"
                 ),
                 callback_data=_cb(
                     "profile",
@@ -408,9 +392,9 @@ async def _render_page(
     item_id: int,
     page_number: int,
 ) -> tuple[str, InlineKeyboardMarkup]:
-    category_key = None
-    universe_key = None
-    story_id = None
+    category_key: str | None = None
+    universe_key: str | None = None
+    story_id: int | None = None
     title = "👥 Все персонажи"
     if action == "cchars":
         category_key = (
@@ -423,7 +407,7 @@ async def _render_page(
                 item_id=item_id,
             )
         )
-        title = "📁 Категория · " + category_key
+        title = f"📁 Категория · {category_key}"
     elif action == "uchars":
         universe_key = (
             "unassigned"
@@ -435,9 +419,9 @@ async def _render_page(
                 item_id=item_id,
             )
         )
-        title = "🎭 Вселенная · " + universe_key
+        title = f"🎭 Вселенная · {universe_key}"
     elif action == "schars":
-        story_id = item_id
+        story_id = int(item_id)
         async with database.acquire() as connection:
             story = await connection.fetchrow(
                 """
@@ -448,7 +432,7 @@ async def _render_page(
                   AND is_enabled
                 """,
                 int(workspace_id),
-                int(story_id),
+                story_id,
             )
         if story is None:
             raise ValueError("История больше не доступна в этом пространстве.")
@@ -488,7 +472,6 @@ async def _edit(
     await callback.answer()
 
 
-@router.message(Command("wcatalog", "workspace_catalog"))
 async def handle_workspace_catalog_command(
     message: Message,
     database: Database,
@@ -520,7 +503,6 @@ async def handle_workspace_catalog_command(
     )
 
 
-@router.callback_query(WorkspaceCatalogCallback.filter())
 async def handle_workspace_catalog_callback(
     callback: CallbackQuery,
     callback_data: WorkspaceCatalogCallback,
@@ -559,7 +541,6 @@ async def handle_workspace_catalog_callback(
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
         return
-
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
@@ -572,8 +553,7 @@ async def handle_workspace_catalog_callback(
                 text=_root_text(workspace.name),
                 reply_markup=_root_keyboard(workspace.id),
             )
-            return
-        if action == "categories":
+        elif action == "categories":
             await _edit(
                 callback,
                 text=f"<b>📁 Категории · {escape(workspace.name)}</b>",
@@ -582,8 +562,7 @@ async def handle_workspace_catalog_callback(
                     workspace_id=workspace.id,
                 ),
             )
-            return
-        if action == "universes":
+        elif action == "universes":
             await _edit(
                 callback,
                 text=f"<b>🎭 Вселенные · {escape(workspace.name)}</b>",
@@ -593,8 +572,7 @@ async def handle_workspace_catalog_callback(
                     action="uchars",
                 ),
             )
-            return
-        if action == "storyworlds":
+        elif action == "storyworlds":
             await _edit(
                 callback,
                 text=f"<b>📖 Выберите вселенную · {escape(workspace.name)}</b>",
@@ -604,8 +582,7 @@ async def handle_workspace_catalog_callback(
                     action="stories",
                 ),
             )
-            return
-        if action == "stories":
+        elif action == "stories":
             await _edit(
                 callback,
                 text=f"<b>📖 Истории · {escape(workspace.name)}</b>",
@@ -615,8 +592,7 @@ async def handle_workspace_catalog_callback(
                     universe_id=callback_data.item_id,
                 ),
             )
-            return
-        if action in {"all", "cchars", "uchars", "schars"}:
+        elif action in {"all", "cchars", "uchars", "schars"}:
             text, keyboard = await _render_page(
                 database,
                 workspace_id=workspace.id,
@@ -625,8 +601,7 @@ async def handle_workspace_catalog_callback(
                 page_number=callback_data.page,
             )
             await _edit(callback, text=text, reply_markup=keyboard)
-            return
-        if action == "profile":
+        elif action == "profile":
             item = await load_workspace_character(
                 database,
                 workspace_id=workspace.id,
@@ -640,36 +615,31 @@ async def handle_workspace_catalog_callback(
                 f"{escape(story.short_label)} · {escape(story.title)}"
                 for story in item.stories
             ) or "Не назначены."
-            text = (
-                "<b>Карточка персонажа</b>\n\n"
-                f"Имя: <b>{escape(item.name)}</b>\n"
-                f"Категория: <b>{escape(item.category or 'не выбрана')}</b>\n"
-                f"Вселенная: <b>{escape(item.universe or 'не выбрана')}</b>\n"
-                f"Материалов: <b>{item.media_count}</b>\n\n"
-                f"<b>Истории</b>\n{stories}"
-            )
             await _edit(
                 callback,
-                text=text,
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="↩️ К списку",
-                                callback_data=_cb(
-                                    "all",
-                                    workspace_id=workspace.id,
-                                    page=callback_data.page,
-                                ),
-                            )
-                        ]
-                    ]
+                text=(
+                    "<b>Карточка персонажа</b>\n\n"
+                    f"Имя: <b>{escape(item.name)}</b>\n"
+                    f"Категория: <b>{escape(item.category or 'не выбрана')}</b>\n"
+                    f"Вселенная: <b>{escape(item.universe or 'не выбрана')}</b>\n"
+                    f"Материалов: <b>{item.media_count}</b>\n\n"
+                    f"<b>Истории</b>\n{stories}"
                 ),
+                reply_markup=_back_keyboard(workspace.id),
             )
-            return
-        await callback.answer("Неизвестное действие.", show_alert=True)
+        else:
+            await callback.answer("Неизвестное действие.", show_alert=True)
     except ValueError as error:
         await callback.answer(str(error), show_alert=True)
 
+
+router.message.register(
+    handle_workspace_catalog_command,
+    Command("wcatalog", "workspace_catalog"),
+)
+router.callback_query.register(
+    handle_workspace_catalog_callback,
+    WorkspaceCatalogCallback.filter(),
+)
 
 __all__ = ("router",)
