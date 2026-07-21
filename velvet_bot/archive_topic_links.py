@@ -127,6 +127,11 @@ async def list_characters_by_archive_topic(
             )
         except TypeError:
             character = await legacy_lookup(archive_chat_id, archive_thread_id)
+        if character is not None and not hasattr(character, "workspace_id"):
+            try:
+                setattr(character, "workspace_id", target_workspace_id)
+            except (AttributeError, TypeError):
+                pass
         return [character] if character is not None else []
 
     async with acquire() as connection:
