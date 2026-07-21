@@ -43,9 +43,9 @@
 
 ## Следующий срез
 
-- фаза: **workspace-media-scope**;
-- цель: **workspace-aware media save and automatic archive**;
-- стратегия: resolve active workspace before character lookup and preserve system workspace compatibility.
+- фаза: **P3F**;
+- цель: **bounded static typing baseline**;
+- стратегия: type-check one transport-neutral package, gate new errors, then expand scope.
 
 ## Правило обновления
 
