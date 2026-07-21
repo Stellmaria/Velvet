@@ -28,6 +28,8 @@ from velvet_bot.resilient_ai_vision import (
     ResilientMediaAIRepository,
     ResilientMediaAIVisionService,
 )
+from velvet_bot.services.diagnostic_bundle import DiagnosticBundleService
+from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
 from velvet_bot.workers.iterations import process_backup_once
 
@@ -66,6 +68,8 @@ def build_worker_manager(
     backup_service: BackupService,
     settings: Settings | None = None,
     error_center: ErrorIncidentCenter | None = None,
+    system_service: SystemHealthService | None = None,
+    diagnostic_service: DiagnosticBundleService | None = None,
 ) -> WorkerManager:
     """Build the complete periodic-worker registry for the application."""
     public_notifications = build_public_notification_dispatcher(bot, database)
@@ -174,6 +178,20 @@ def build_worker_manager(
                 description="Напоминания владельцу о непросмотренных ошибках",
                 interval_seconds=300,
                 runner=error_center.send_owner_reminder_once,
+            )
+        )
+    if diagnostic_service is not None and system_service is not None:
+        manager.register(
+            PeriodicWorkerSpec(
+                name="owner-diagnostics",
+                description="Критическая диагностика и ZIP владельцу",
+                interval_seconds=300,
+                runner=partial(
+                    diagnostic_service.monitor_once,
+                    bot=bot,
+                    system_service=system_service,
+                    worker_manager=manager,
+                ),
             )
         )
     manager.register(

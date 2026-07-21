@@ -15,9 +15,10 @@ from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.config import Settings, load_settings
 from velvet_bot.database import Database
 from velvet_bot.error_center import ErrorIncidentCenter, ErrorIncidentRepository
+from velvet_bot.infrastructure.postgres.system_repository import SystemRepository
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.reference_uploads import ReferenceUploadSessions
-from velvet_bot.infrastructure.postgres.system_repository import SystemRepository
+from velvet_bot.services.diagnostic_bundle import DiagnosticBundleService
 from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.version import APP_VERSION
 from velvet_bot.workers import WorkerManager
@@ -75,6 +76,7 @@ async def _close_application_resources(
     worker_manager: WorkerManager | None,
     audit_logger: TelegramAuditLogger | None,
     error_center: ErrorIncidentCenter | None,
+    diagnostic_service: DiagnosticBundleService | None = None,
     bot: ProtectedMediaBot | None,
     database: Database,
 ) -> None:
@@ -98,6 +100,9 @@ async def _close_application_resources(
             await error_center.stop()
         except Exception:  # p2-approved-boundary: isolate-error-center-shutdown
             logger.exception("Could not stop error incident center")
+
+    if diagnostic_service is not None:
+        diagnostic_service.stop()
 
     if bot is not None:
         try:
@@ -141,6 +146,7 @@ async def run_application() -> None:
     bot: ProtectedMediaBot | None = None
     audit_logger: TelegramAuditLogger | None = None
     error_center: ErrorIncidentCenter | None = None
+    diagnostic_service: DiagnosticBundleService | None = None
     worker_manager: WorkerManager | None = None
 
     try:
@@ -160,9 +166,16 @@ async def run_application() -> None:
         )
         bot = _build_bot(settings)
         audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
+        incident_repository = ErrorIncidentRepository(database)
+        diagnostic_service = DiagnosticBundleService(
+            incident_repository=incident_repository,
+            app_version=APP_VERSION,
+            owner_user_ids=settings.allowed_user_ids,
+        )
+        diagnostic_service.start()
         error_center = ErrorIncidentCenter(
             bot=bot,
-            repository=ErrorIncidentRepository(database),
+            repository=incident_repository,
             log_chat_id=settings.log_chat_id,
             owner_user_ids=settings.allowed_user_ids,
         )
@@ -176,6 +189,8 @@ async def run_application() -> None:
             backup_service=backup_service,
             settings=settings,
             error_center=error_center,
+            system_service=system_service,
+            diagnostic_service=diagnostic_service,
         )
 
         bot_info = await bot.get_me()
@@ -196,6 +211,7 @@ async def run_application() -> None:
             save_upload_sessions=save_upload_sessions,
             backup_service=backup_service,
             system_service=system_service,
+            diagnostic_service=diagnostic_service,
             worker_manager=worker_manager,
         )
 
@@ -247,6 +263,7 @@ async def run_application() -> None:
             backup_dir=settings.backup_dir,
             log_chat_id=settings.log_chat_id,
             error_center="enabled",
+            diagnostic_bundles="enabled",
         )
 
         await worker_manager.start_all()
@@ -270,6 +287,7 @@ async def run_application() -> None:
             worker_manager=worker_manager,
             audit_logger=audit_logger,
             error_center=error_center,
+            diagnostic_service=diagnostic_service,
             bot=bot,
             database=database,
         )

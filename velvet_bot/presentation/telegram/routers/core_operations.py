@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from aiogram import Router
 
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.diagnostics import (
+    router as diagnostics_router,
+)
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center import (
     router as error_center_router,
 )
@@ -21,6 +24,7 @@ from velvet_bot.presentation.telegram.routers.system import router as system_cen
 
 router = Router(name=__name__)
 router.include_router(error_center_router)
+router.include_router(diagnostics_router)
 router.include_router(owner_actions_router)
 router.include_router(owner_help_router)
 router.include_router(owner_menu_router)

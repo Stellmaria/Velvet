@@ -1,12 +1,12 @@
 {
-  "schema_version": 44,
-  "generated_from_commit": "telegram-storage-center",
-  "broad_exception_total": 75,
-  "broad_exception_files": 44,
-  "broad_exception_approved": 75,
+  "schema_version": 45,
+  "generated_from_commit": "owner-diagnostic-zip-bundles",
+  "broad_exception_total": 76,
+  "broad_exception_files": 45,
+  "broad_exception_approved": 76,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 97,
+  "callback_total": 98,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 25,
@@ -40,7 +40,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 85,
+      "line": 87,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-worker-shutdown"
@@ -48,7 +48,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 91,
+      "line": 93,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "best-effort-shutdown-audit"
@@ -56,7 +56,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 99,
+      "line": 101,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-error-center-shutdown"
@@ -64,7 +64,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 105,
+      "line": 110,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-bot-session-shutdown"
@@ -72,7 +72,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 110,
+      "line": 115,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-database-shutdown"
@@ -80,7 +80,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_report_fatal_application_error",
-      "line": 127,
+      "line": 132,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "preserve-original-fatal-error"
@@ -88,7 +88,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "run_application",
-      "line": 265,
+      "line": 282,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-fatal-application-error"
@@ -208,7 +208,7 @@
     {
       "path": "velvet_bot/domains/telegram_storage/uploader.py",
       "function": "upload",
-      "line": 147,
+      "line": 187,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-storage-operation"
@@ -566,6 +566,14 @@
       "reason": "isolate-publication-worker-iteration"
     },
     {
+      "path": "velvet_bot/services/diagnostic_bundle.py",
+      "function": "emit",
+      "line": 75,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "isolate-diagnostic-log-buffer"
+    },
+    {
       "path": "velvet_bot/services/media_save.py",
       "function": "save_media_from_message",
       "line": 41,
@@ -787,6 +795,15 @@
       "risk": "early_ack"
     },
     {
+      "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/diagnostics.py",
+      "function": "handle_diagnostic_callback",
+      "line": 187,
+      "ack_line": 196,
+      "pre_ack_awaits": 0,
+      "total_awaits": 7,
+      "risk": "early_ack"
+    },
+    {
       "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/error_center.py",
       "function": "acknowledge_error_callback",
       "line": 25,
@@ -828,7 +845,7 @@
       "line": 284,
       "ack_line": 292,
       "pre_ack_awaits": 0,
-      "total_awaits": 31,
+      "total_awaits": 32,
       "risk": "early_ack"
     },
     {
