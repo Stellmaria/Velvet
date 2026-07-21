@@ -63,11 +63,19 @@
 
 ### Проверки
 
-Первый CI на head `3f24849161775feedba23bf925d6d4b974541f13` подтвердил успешные type-check и Docker build. Последующие прогоны выявили занятые номера миграций `102` и `103`; generated P3E/navigation baselines также были регенерированы. Миграция получила фактически свободный номер `901`, после чего полный tests, type-check, Docker, notes и backup restore drill запускаются повторно на обычном commit.
+Проверенный implementation head `ae660fc4248cc62003c9f3f86a94446d25ef928a`:
+
+- tests run `1413`: **1033 tests, success**;
+- backup restore drill run `164`: **success**, реальный custom-format dump восстановлен в свежую PostgreSQL-базу;
+- type check run `66`: **success**;
+- Docker build run `861`: **success**;
+- project notes contract run `735`: **success**.
+
+Отдельные PostgreSQL-тесты подтвердили одинаковое имя персонажа в двух пространствах и невозможность открыть чужого персонажа через workspace-scoped directory.
 
 ### PR и commit
 
-PR #275: `Add workspace foundation for isolated personal archives`. Последний generated head до повторного CI содержит миграцию `901_workspaces.sql`.
+PR #275: `Add workspace foundation for isolated personal archives`. Проверенный implementation head: `ae660fc4248cc62003c9f3f86a94446d25ef928a`.
 
 ### Незавершённое
 
