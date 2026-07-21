@@ -3,7 +3,7 @@
 - Дата: 2026-07-21
 - ID: `2026-07-21-p3f-references-lightweight-exports`
 - Линия/фаза: P3F static typing
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3f-references-lightweight-exports`
 - Базовый commit: `15f14b4aef818310b0eaee164149f6bbd99725c5`
 
@@ -36,17 +36,18 @@ P3F уже проверяет core access/config, `topics.py` и `post_classific
 
 - заменить eager repository/service exports в `domains/references/__init__.py` на lazy runtime exports;
 - сохранить существующий `__all__` и `from velvet_bot.domains.references import ReferenceService`;
+- облегчить `domains/characters/__init__.py`, потому что reference models зависят от `characters.models`;
 - добавить `velvet_bot/domains/references/models.py` в strict mypy scope;
 - расширить P3F regression contract;
-- обновить project status/memory и итоговую запись после CI.
+- обновить итоговую запись после CI.
 
 ### Критерии готовности
 
-- package import не содержит статических imports repository/service;
+- package imports characters/references не содержат статических imports repository/service;
 - legacy package-level repository/service imports работают во время выполнения;
 - strict mypy scope включает reference models;
 - `ignore_errors` и `follow_imports` не добавлены;
-- full CI, type-check и project notes contract зелёные.
+- full CI, type-check, Docker и project notes contract зелёные.
 
 ### Риски и ограничения
 
@@ -58,28 +59,50 @@ P3F уже проверяет core access/config, `topics.py` и `post_classific
 
 ### Фактически сделано
 
-Ожидает реализации и CI.
+- `velvet_bot.domains.references` сохраняет model exports eager, а `ReferenceRepository`/`ReferenceService` загружает только при фактическом package-level обращении;
+- `velvet_bot.domains.characters` получил такую же lazy persistence/service boundary, чтобы импорт `characters.models` не затягивал repository graph;
+- lazy exports кэшируются в globals после первого обращения и остаются видимыми через `__all__`/`__dir__`;
+- `velvet_bot/domains/references/models.py` добавлен в strict mypy scope;
+- P3F regression test фиксирует точный scope, отсутствие eager repository/service imports и runtime совместимость старых package-level imports;
+- первоначальный full-test run выявил, что полные строки repository modules в новом тесте считались P3E inventory как test consumers; строки разделены без ослабления проверки, после чего generated inventory снова совпал без ручного редактирования baseline.
 
 ### Изменённые модули и контракты
 
-Ожидает реализации.
+- `velvet_bot/domains/characters/__init__.py`;
+- `velvet_bot/domains/references/__init__.py`;
+- `mypy.ini`;
+- `tests/test_p3f_core_typing_baseline.py`;
+- этот worklog.
+
+Runtime import API сохранён:
+
+- `from velvet_bot.domains.characters import CharacterDirectoryRepository, CharacterDirectoryService`;
+- `from velvet_bot.domains.references import ReferenceRepository, ReferenceService`.
 
 ### Миграции и совместимость
 
-PostgreSQL migrations не планируются. Runtime package imports repository/service должны остаться совместимыми.
+PostgreSQL migrations не требуются. SQL, transaction boundaries, Telegram commands/callbacks и domain service behavior не менялись. Существующие package-level imports сохраняются через module-level lazy exports.
 
 ### Проверки
 
-Ожидают выполнения в CI.
+Финальный head `bdf956f0113d6b32c9e3c62c5cc6b47c90598507`:
+
+- GitHub Actions `type check` run `49`: success;
+- GitHub Actions `tests` run `1396`: success, 1026-test suite;
+- GitHub Actions `docker build` run `844`: success;
+- GitHub Actions `project notes contract` run `721`: success.
+
+Промежуточный `tests` run `1395` завершился одним ожидаемым inventory failure из-за новых literal references в regression-тесте; причина устранена и финальный run зелёный.
 
 ### PR и commit
 
-Ожидает создания PR.
+- PR: `#272 Make reference domain exports lightweight for P3F typing`;
+- проверенный branch head до финализации worklog: `bdf956f0113d6b32c9e3c62c5cc6b47c90598507`.
 
 ### Незавершённое
 
-Реализация, CI и итоговая синхронизация документов.
+P3F в целом не завершён. В strict baseline пока не входят stories/archive models, services, workers и Telegram adapters. `docs/project_memory.md` и `docs/development_status.md` не менялись, потому что фаза, приоритет и список долгов остаются прежними: завершён только один bounded slice.
 
 ### Следующий шаг
 
-После зелёного среза применить тот же bounded boundary cleanup к `velvet_bot.domains.stories` либо `characters` на основании отдельного inventory.
+Следующий отдельный P3F-срез: облегчить `velvet_bot.domains.stories` package exports и добавить `velvet_bot/domains/stories/models.py` в strict mypy scope без расширения на repository/service graph.
