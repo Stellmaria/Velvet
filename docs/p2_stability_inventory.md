@@ -4,13 +4,13 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **78** в **46** файлах;
-- approved boundaries: **78**;
+- raw broad exceptions: **79** в **47** файлах;
+- approved boundaries: **79**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **102**;
+- callback handlers: **103**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **27**;
-- delegated callbacks: **5**.
+- delegated callbacks: **6**.
 
 ## Approved broad boundaries
 
@@ -31,8 +31,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/calibrated_ai_quality.py:121` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/discussion_analytics_middleware.py:36` `__call__`: isolate-discussion-analytics-ingest.
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
-- `velvet_bot/domains/publication/service.py:68` `publish`: compensate-claimed-publication.
-- `velvet_bot/domains/publication/service.py:89` `process_due_once`: isolate-scheduled-draft.
+- `velvet_bot/domains/publication/service.py:97` `publish`: compensate-claimed-publication.
+- `velvet_bot/domains/publication/service.py:131` `process_due_once`: isolate-scheduled-draft.
 - `velvet_bot/domains/telegram_storage/service.py:114` `run`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:166` `_upload_candidate`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:282` `_migrate_watermarks`: isolate-telegram-storage-operation.
@@ -77,7 +77,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/references/comparison.py:282` `handle_reference_comparison`: report-reference-comparison-failure.
 - `velvet_bot/presentation/telegram/routers/references/comparison_help.py:255` `handle_reference_comparison_reply`: compensate-reference-comparison-form-job.
 - `velvet_bot/presentation/telegram/routers/supervisor/console.py:174` `_watch_console_operation`: isolate-supervisor-console-watcher.
-- `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:959` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
+- `velvet_bot/presentation/telegram/routers/workspace_publications.py:400` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
+- `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:978` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
 - `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/storage_center.py:294` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
 - `velvet_bot/public_archive_display.py:128` `build_viewer_input_media`: fallback-viewer-edit-preview.
