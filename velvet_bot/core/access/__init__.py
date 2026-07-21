@@ -14,6 +14,8 @@ from velvet_bot.core.access.policy import (
     PUBLIC_CALLBACK_ACTIONS,
     PUBLIC_CALLBACK_PREFIX,
     PUBLIC_COMMANDS,
+    WORKSPACE_MEMBER_CALLBACK_PREFIXES,
+    WORKSPACE_MEMBER_COMMANDS,
     command_name,
     is_moderator_callback_data,
     is_owner_mention_text,
@@ -21,6 +23,8 @@ from velvet_bot.core.access.policy import (
     is_public_callback_data,
     is_public_command_text,
     is_save_mention_text,
+    is_workspace_member_callback_data,
+    is_workspace_member_command_text,
     normalize_username,
 )
 
@@ -40,6 +44,8 @@ __all__ = (
     "PUBLIC_CALLBACK_ACTIONS",
     "PUBLIC_CALLBACK_PREFIX",
     "PUBLIC_COMMANDS",
+    "WORKSPACE_MEMBER_CALLBACK_PREFIXES",
+    "WORKSPACE_MEMBER_COMMANDS",
     "command_name",
     "is_moderator_callback_data",
     "is_owner_mention_text",
@@ -47,5 +53,7 @@ __all__ = (
     "is_public_callback_data",
     "is_public_command_text",
     "is_save_mention_text",
+    "is_workspace_member_callback_data",
+    "is_workspace_member_command_text",
     "normalize_username",
 )
