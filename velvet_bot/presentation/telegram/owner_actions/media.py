@@ -33,7 +33,7 @@ def _main_back_markup() -> InlineKeyboardMarkup:
                     callback_data=owner_action_callback("menu"),
                 ),
                 InlineKeyboardButton(
-                    text="🏠 Главное меню",
+                    text="🏠 Главная",
                     callback_data=owner_callback("menu"),
                 ),
             ]

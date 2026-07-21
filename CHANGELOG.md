@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Telegram navigation and mobile UX
+
+- Added a generated inventory covering every production inline and reply keyboard.
+- Standardized compact entity labels, two-column rows and owner-home navigation for Android and desktop Telegram.
+- Bounded dynamic character, story, universe, analytics and publication labels without changing callback semantics.
+- Split overloaded backup and Supervisor rows while preserving every existing action.
+- Added a regression contract for label length, callback limits and generated navigation coverage.
+
 ### P3A: current architecture status synchronization
 
 - Current status, project memory and architecture audit now reflect merged `main`.

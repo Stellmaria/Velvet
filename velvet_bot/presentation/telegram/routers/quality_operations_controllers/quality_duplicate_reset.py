@@ -41,7 +41,7 @@ async def handle_duplicate_reset_confirmation(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Сбросить и пересканировать",
+                    text="✅ Сброс + перескан",
                     callback_data=quality_callback("dupreset"),
                 )
             ],

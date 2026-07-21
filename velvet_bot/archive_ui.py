@@ -15,6 +15,7 @@ from aiogram.types import (
 
 from velvet_bot.archive_catalog import ArchivePage, ArchivedMedia
 from velvet_bot.database import Character
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 
 
 class ArchiveMediaCallback(CallbackData, prefix="arc"):
@@ -61,7 +62,7 @@ def build_character_list_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f"🖼 {character.name}",
+                    text=compact_button_text(f"🖼 {character.name}"),
                     callback_data=ArchiveMediaCallback(
                         action="open",
                         character_id=character.id,

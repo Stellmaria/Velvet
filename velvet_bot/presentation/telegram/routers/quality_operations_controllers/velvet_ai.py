@@ -174,7 +174,7 @@ def _report_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="📝 Проверить другой результат",
+                    text="📝 Другой результат",
                     callback_data=quality_callback("promptcheck_start"),
                 )
             ],

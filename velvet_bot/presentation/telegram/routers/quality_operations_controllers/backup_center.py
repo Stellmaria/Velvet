@@ -111,17 +111,19 @@ def _settings_keyboard(
             ],
             [
                 InlineKeyboardButton(
-                    text="➖",
+                    text="➖ Меньше",
                     callback_data=_cb("retminus"),
                 ),
                 InlineKeyboardButton(
-                    text=f"Хранить {retention_count}",
-                    callback_data=_cb("noop"),
-                ),
-                InlineKeyboardButton(
-                    text="➕",
+                    text="➕ Больше",
                     callback_data=_cb("retplus"),
                 ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"📦 Хранить: {retention_count}",
+                    callback_data=_cb("noop"),
+                )
             ],
             [
                 InlineKeyboardButton(

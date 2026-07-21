@@ -22,7 +22,7 @@ def notification_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🖼 Открыть новое изображение",
+                    text="🖼 Открыть изображение",
                     callback_data=PublicArchiveCallback(
                         action="open",
                         character_id=character_id,

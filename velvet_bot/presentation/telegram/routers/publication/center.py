@@ -24,6 +24,7 @@ from velvet_bot.application.publication_actions import build_publication_actions
 from velvet_bot.database import Database
 from velvet_bot.domains.publication import PublicationDraft
 from velvet_bot.post_classification import POST_TYPE_LABELS
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 from velvet_bot.publication_drafts import capture_publication_inbox
 from velvet_bot.services.telegram_publications import create_publication_draft
 
@@ -312,7 +313,7 @@ async def _show_list(
     rows = [
         [
             InlineKeyboardButton(
-                text=(
+                text=compact_button_text(
                     f"{_validation_icon(draft)} #{draft.id} · "
                     f"{_draft_title(draft)}"
                 ),

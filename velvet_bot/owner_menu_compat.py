@@ -20,7 +20,7 @@ def _with_owner_home(keyboard: InlineKeyboardMarkup) -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton(
-                text="🏠 Центр управления",
+                text="🏠 Главная",
                 callback_data=_OWNER_CALLBACK,
             )
         ]

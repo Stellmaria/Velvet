@@ -15,6 +15,7 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 from velvet_bot.presentation.telegram.routers.characters.contracts import (
     AdminDirectoryCallback,
 )
@@ -91,7 +92,7 @@ def _admin_picker_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"{marker} {story.short_label} · {story.title}",
+                    text=compact_button_text(f"{marker} {story.short_label} · {story.title}"),
                     callback_data=_admin_callback(
                         "mtoggle",
                         category=category,
@@ -334,7 +335,7 @@ def _public_picker_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"{marker} {story.short_label} · {story.title}",
+                    text=compact_button_text(f"{marker} {story.short_label} · {story.title}"),
                     callback_data=manager_callback(
                         "pmst",
                         story_id=story.id,

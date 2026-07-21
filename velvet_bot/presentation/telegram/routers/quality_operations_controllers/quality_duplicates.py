@@ -253,7 +253,7 @@ async def handle_duplicate_confirm_menu(
             ],
             [
                 InlineKeyboardButton(
-                    text="✅ Только отметить, не удалять",
+                    text="✅ Только отметить",
                     callback_data=quality_callback(
                         "decide",
                         section="confirmed",
@@ -307,7 +307,7 @@ async def handle_duplicate_delete_confirmation(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Удалить выбранный дубль",
+                    text="✅ Удалить дубль",
                     callback_data=quality_callback(
                         "dupdelete",
                         section=callback_data.section,
@@ -406,7 +406,7 @@ async def handle_duplicate_to_set(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎞 Выбрать фото и создать сет",
+                    text="🎞 Создать сет из фото",
                     callback_data=quality_callback(
                         "set",
                         page=callback_data.page,

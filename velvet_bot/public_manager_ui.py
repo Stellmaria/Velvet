@@ -3,6 +3,7 @@ from __future__ import annotations
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.archive_catalog import ArchivePage
+from velvet_bot.presentation.telegram.navigation import compact_button_text, two_column_rows
 from velvet_bot.character_directory import (
     CATEGORY_EMOJI,
     CATEGORY_LABELS,
@@ -159,7 +160,7 @@ def build_manager_category_picker(page: ArchivePage) -> InlineKeyboardMarkup:
         )
         for key in CATEGORY_ORDER
     ]
-    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    rows = two_column_rows(buttons)
     rows.append(
         [
             InlineKeyboardButton(
@@ -186,7 +187,7 @@ def build_manager_universe_picker(page: ArchivePage) -> InlineKeyboardMarkup:
         )
         for key in UNIVERSE_ORDER
     ]
-    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    rows = two_column_rows(buttons)
     rows.append(
         [
             InlineKeyboardButton(
@@ -212,7 +213,7 @@ def build_manager_story_picker(
     rows = [
         [
             InlineKeyboardButton(
-                text=f"📖 {story.short_label} · {story.title}",
+                text=compact_button_text(f"📖 {story.short_label} · {story.title}"),
                 callback_data=manager_callback("pst", story_id=story.id, **common),
             )
         ]

@@ -23,6 +23,7 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 from velvet_bot.presentation.telegram.routers.characters.contracts import (
     AdminDirectoryCallback,
 )
@@ -69,7 +70,7 @@ def build_uncategorized_keyboard(page: CharacterDirectoryPage) -> InlineKeyboard
     for item in page.items:
         row = [
             InlineKeyboardButton(
-                text=f"👤 {item.character.name} · {item.media_count}",
+                text=compact_button_text(f"👤 {item.character.name} · {item.media_count}"),
                 callback_data=_cb(
                     "profile",
                     category="uncategorized",

@@ -22,6 +22,7 @@ from velvet_bot.analytics_dashboard import (
 from velvet_bot.character_directory import category_label, universe_label
 from velvet_bot.database import Database
 from velvet_bot.post_classification import POST_TYPE_LABELS
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 from velvet_bot.presentation.telegram.analytics_navigation import (
     AnalyticsCallback,
     _cb,
@@ -356,7 +357,7 @@ async def handle_analytics_callback(
         rows = [
             [
                 InlineKeyboardButton(
-                    text=f"💬 {source.title}",
+                    text=compact_button_text(f"💬 {source.title}"),
                     callback_data=_cb(
                         "discussion",
                         period=period,
