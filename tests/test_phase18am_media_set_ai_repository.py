@@ -6,9 +6,9 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import velvet_bot.media_set_ai_discovery as discovery
-import velvet_bot.media_set_ai_repository as repository_module
+import velvet_bot.domains.media_sets.discovery_repository as repository_module
 from velvet_bot.media_set_ai_discovery import _AIContext
-from velvet_bot.media_set_ai_repository import (
+from velvet_bot.domains.media_sets.discovery_repository import (
     MediaSetAICandidateDraft,
     MediaSetAICandidateItemDraft,
     MediaSetAIContextRow,
