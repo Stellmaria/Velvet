@@ -10,6 +10,7 @@ from velvet_bot.palette_composition_analysis import (
     extract_palette_metrics,
     normalize_composition_report,
 )
+from velvet_bot.quality_ui import QualityCallback
 from velvet_bot.velvet_ai_ui import build_velvet_ai_menu
 
 
@@ -107,17 +108,23 @@ class CompositionNormalizationTests(unittest.TestCase):
 
 
 class PaletteCompositionMenuTests(unittest.TestCase):
-    def test_velvet_ai_menu_contains_visual_analysis(self) -> None:
+    def test_qwen_panel_contains_visual_analysis_action(self) -> None:
         _, keyboard = build_velvet_ai_menu(
             enabled=True,
             provider="ollama",
             model="qwen3-vl:8b",
         )
-        buttons = [button for row in keyboard.inline_keyboard for button in row]
-        matches = [button for button in buttons if button.text == "🎨 Палитра и композиция"]
+        matches = [
+            button
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.callback_data
+            and button.callback_data.startswith("quality:")
+            and QualityCallback.unpack(button.callback_data).action == "visual_start"
+        ]
 
         self.assertEqual(1, len(matches))
-        self.assertIn("visual_start", matches[0].callback_data or "")
+        self.assertLessEqual(len(matches[0].text), 24)
         self.assertLessEqual(len((matches[0].callback_data or "").encode("utf-8")), 64)
 
 
