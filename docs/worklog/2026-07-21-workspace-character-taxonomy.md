@@ -38,7 +38,15 @@ Workspace foundation уже изолировал персонажей по `work
 - внешний владелец работает внутри middleware-approved workspace FSM;
 - старые `/create`, `/characters`, story и archive handlers Velvet не меняются.
 
-## После реализации
+### Риски и ограничения
+
+- нельзя смешивать legacy `character_stories` системного Velvet и новые `workspace_stories` личных архивов;
+- прямые связи должны быть защищены не только application checks, но и внешними ключами PostgreSQL;
+- Telegram callback модуля `characters` должен перехватываться раньше общей справочной заглушки;
+- этот срез не переводит системный workspace `1` на новый пользовательский интерфейс;
+- переименование, удаление, aliases, prompt URL, topic binding и публичный каталог остаются отдельными следующими срезами.
+
+## После завершения
 
 ### Фактически сделано
 
@@ -53,15 +61,44 @@ Workspace foundation уже изолировал персонажей по `work
 - первая назначенная история помечается основной;
 - удаление основной истории автоматически выбирает следующую;
 - смена вселенной очищает старые workspace story links;
-- системный Velvet не переводится на новый экран и продолжает использовать существующий контур.
+- составные внешние ключи PostgreSQL запрещают связать персонажа и историю разных workspace;
+- системный Velvet не переводится на новый экран и продолжает использовать существующий контур;
+- integrity scanner дополнен учётом команд, зарегистрированных через `router.message.register`.
 
-### Миграция
+### Миграции и совместимость
 
-`904_workspace_character_taxonomy.sql`.
+Добавлена миграция `904_workspace_character_taxonomy.sql`. Она создаёт `workspace_character_story_links`, индексы для workspace-scoped выборок и ограничение одного primary story на персонажа. Составные внешние ключи используют пары `(workspace_id, id)` и не позволяют создать cross-workspace связь даже прямым SQL.
 
-### Ограничение текущего среза
+Существующие `character_story_links` и `character_stories` не изменяются. Системный Velvet Anatomy продолжает работать через прежний story-контур, поэтому текущие карточки, команды и публикации workspace `1` сохраняют совместимость.
 
-Пока реализованы создание, просмотр и классификация. Переименование, удаление, aliases, prompt URL, Telegram topic binding и полноценные inline-кнопки выбора taxonomy остаются следующими срезами. Публичный каталог личного workspace ещё должен читать новые workspace story links вместо legacy `character_story_links`.
+### Проверки
+
+Добавлены contract и PostgreSQL regression tests на:
+
+- создание личного персонажа в выбранном workspace;
+- назначение собственной категории и вселенной;
+- добавление и удаление workspace story;
+- запрет назначения истории другого workspace;
+- очистку историй при смене вселенной;
+- структуру новой миграции.
+
+Первый CI-срез подтвердил успешные type-check и Docker build. `project notes contract` обнаружил неполную структуру этой записи; обязательные разделы добавлены данным исправлением. Полные tests, restore drill и повторный notes contract проверяются на обновлённом head PR.
+
+### PR и commit
+
+Draft PR #278: `Wire personal workspace character taxonomy`.
+
+Базовый commit: `036b4fee4088afada593670ed25707048ad3ac2f`. Финальный implementation head определяется последним commit ветки `agent/workspace-character-taxonomy` после исправлений CI.
+
+### Незавершённое
+
+- переименование и удаление персонажа личного workspace;
+- aliases и хэштеги личного персонажа;
+- prompt URL и Telegram topic binding;
+- inline-кнопки выбора категорий, вселенных и историй вместо текстовых действий FSM;
+- роли admin/editor для character-management вместо текущего owner-only среза;
+- перевод private/public directory builders на `workspace_character_story_links`;
+- отображение собственных workspace stories в публичном каталоге.
 
 ### Следующий шаг
 
