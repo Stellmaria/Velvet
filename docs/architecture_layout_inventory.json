@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3d-analytics-alias-retirement",
+  "generated_from": "p3d-channel-analytics-alias-retirement",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -22,12 +22,10 @@
   ],
   "active_bundle_router_count": 59,
   "duplicate_bundle_router_import_count": 0,
-  "legacy_handler_file_count": 1,
+  "legacy_handler_file_count": 0,
   "legacy_handler_implementation_count": 0,
-  "handler_compatibility_facade_count": 1,
-  "handler_compatibility_facades": [
-    "velvet_bot/handlers/channel_analytics.py"
-  ],
+  "handler_compatibility_facade_count": 0,
+  "handler_compatibility_facades": [],
   "root_level_module_count": 117,
   "compatibility_file_count": 5,
   "pre_import_compatibility_components": [
