@@ -76,7 +76,7 @@ async def _close_application_resources(
     worker_manager: WorkerManager | None,
     audit_logger: TelegramAuditLogger | None,
     error_center: ErrorIncidentCenter | None,
-    diagnostic_service: DiagnosticBundleService | None,
+    diagnostic_service: DiagnosticBundleService | None = None,
     bot: ProtectedMediaBot | None,
     database: Database,
 ) -> None:

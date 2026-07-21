@@ -4,10 +4,10 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **75** в **44** файлах;
-- approved boundaries: **75**;
+- raw broad exceptions: **76** в **45** файлах;
+- approved boundaries: **76**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **97**;
+- callback handlers: **98**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
 - delegated callbacks: **4**.
@@ -17,13 +17,13 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/ai_job_runtime.py:55` `create`: compensate-created-ai-job.
 - `velvet_bot/ai_quality.py:703` `process_once`: compensate-claimed-ai-quality.
 - `velvet_bot/ai_vision.py:725` `process_once`: compensate-claimed-ai-profile.
-- `velvet_bot/app/bootstrap.py:85` `_close_application_resources`: isolate-worker-shutdown.
-- `velvet_bot/app/bootstrap.py:91` `_close_application_resources`: best-effort-shutdown-audit.
-- `velvet_bot/app/bootstrap.py:99` `_close_application_resources`: isolate-error-center-shutdown.
-- `velvet_bot/app/bootstrap.py:105` `_close_application_resources`: isolate-bot-session-shutdown.
-- `velvet_bot/app/bootstrap.py:110` `_close_application_resources`: isolate-database-shutdown.
-- `velvet_bot/app/bootstrap.py:127` `_report_fatal_application_error`: preserve-original-fatal-error.
-- `velvet_bot/app/bootstrap.py:265` `run_application`: report-fatal-application-error.
+- `velvet_bot/app/bootstrap.py:87` `_close_application_resources`: isolate-worker-shutdown.
+- `velvet_bot/app/bootstrap.py:93` `_close_application_resources`: best-effort-shutdown-audit.
+- `velvet_bot/app/bootstrap.py:101` `_close_application_resources`: isolate-error-center-shutdown.
+- `velvet_bot/app/bootstrap.py:110` `_close_application_resources`: isolate-bot-session-shutdown.
+- `velvet_bot/app/bootstrap.py:115` `_close_application_resources`: isolate-database-shutdown.
+- `velvet_bot/app/bootstrap.py:132` `_report_fatal_application_error`: preserve-original-fatal-error.
+- `velvet_bot/app/bootstrap.py:282` `run_application`: report-fatal-application-error.
 - `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/backup_runtime.py:163` `_create_dump_file`: cleanup-invalid-backup-artifacts.
 - `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
@@ -38,7 +38,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/domains/telegram_storage/service.py:282` `_migrate_watermarks`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:463` `_migrate_backups`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:610` `_migrate_codex`: isolate-telegram-storage-operation.
-- `velvet_bot/domains/telegram_storage/uploader.py:147` `upload`: isolate-telegram-storage-operation.
+- `velvet_bot/domains/telegram_storage/uploader.py:187` `upload`: isolate-telegram-storage-operation.
 - `velvet_bot/error_center.py:99` `capture_log_record`: fallback-log-record-message.
 - `velvet_bot/error_center.py:337` `_is_recoverable_aiogram_polling_record`: fallback-polling-record-message.
 - `velvet_bot/error_center.py:364` `emit`: isolate-error-logging-handler.
@@ -83,6 +83,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/public_notifications.py:60` `run_public_notification_worker`: isolate-public-notification-worker-iteration.
 - `velvet_bot/publication_inbox_middleware.py:60` `_capture`: best-effort-publication-inbox-capture.
 - `velvet_bot/publication_worker.py:65` `run_publication_worker`: isolate-publication-worker-iteration.
+- `velvet_bot/services/diagnostic_bundle.py:75` `emit`: isolate-diagnostic-log-buffer.
 - `velvet_bot/services/media_save.py:41` `save_media_from_message`: report-media-save-failure.
 - `velvet_bot/services/media_save.py:229` `_place_in_topic`: isolate-media-topic-delivery.
 - `velvet_bot/services/system_health.py:126` `check`: isolate-database-health-probe.

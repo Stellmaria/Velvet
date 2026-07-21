@@ -66,7 +66,7 @@
 
 ### infrastructure
 
-- `velvet_bot.infrastructure.postgres.system_repository`: production 2, tests 2, exports 1, refs 5.
+- `velvet_bot.infrastructure.postgres.system_repository`: production 2, tests 3, exports 1, refs 6.
 
 ## Следующий срез
 

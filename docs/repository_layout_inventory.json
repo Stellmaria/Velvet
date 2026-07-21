@@ -579,14 +579,15 @@
       "layout": "infrastructure",
       "domain": null,
       "production_consumer_count": 2,
-      "test_consumer_count": 2,
+      "test_consumer_count": 3,
       "package_export_count": 1,
-      "reference_count": 5,
+      "reference_count": 6,
       "production_consumers": [
         "velvet_bot/app/bootstrap.py",
         "velvet_bot/services/system_health.py"
       ],
       "test_consumers": [
+        "tests/test_owner_diagnostic_bundles.py",
         "tests/test_phase18q_system_repository_boundary.py",
         "tests/test_phase6_runtime.py"
       ],

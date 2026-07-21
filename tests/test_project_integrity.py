@@ -29,6 +29,8 @@ PANEL_COMMANDS = {
     "system",
     "health",
     "version",
+    "diag",
+    "diagnostics",
     "analytics",
     "analyticsmenu",
     "channelstats",
@@ -106,6 +108,7 @@ DIRECT_COMMANDS = {
     "aliasreindex",
     "tagreindex",
     "test_error_alert",
+    "diag_export",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 

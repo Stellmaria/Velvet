@@ -34,6 +34,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.characters.profiles",
     "velvet_bot.presentation.telegram.routers.characters.rename",
     "velvet_bot.presentation.telegram.routers.characters.uncategorized",
+    "velvet_bot.presentation.telegram.routers.core_operations_controllers.diagnostics",
     "velvet_bot.presentation.telegram.routers.core_operations_controllers.error_center",
     "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions",
     "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_help",
