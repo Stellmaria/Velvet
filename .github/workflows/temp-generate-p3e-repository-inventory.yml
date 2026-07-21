@@ -1,0 +1,40 @@
+name: temporary P3E inventory generation
+
+on:
+  push:
+    branches:
+      - agent/p3e-retire-public-notification-repository
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/p3e-retire-public-notification-repository
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Generate inventory
+        run: python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-baseline
+
+      - name: Commit inventory
+        run: |
+          if git diff --quiet -- docs/repository_layout_inventory.json docs/repository_layout_inventory.md; then
+            echo "Inventory already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/repository_layout_inventory.json docs/repository_layout_inventory.md
+          git commit -m "Update P3E repository inventory"
+          git push origin HEAD:agent/p3e-retire-public-notification-repository
