@@ -10,6 +10,7 @@ from velvet_bot.archive_catalog import set_archive_media_spoiler
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.character_resolution import resolve_character
 from velvet_bot.database import Character, Database, SaveMediaResult
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
 from velvet_bot.media_preview_persistence import set_media_preview
 
@@ -26,6 +27,8 @@ async def save_media_from_message(
     character_name: str,
     actor_id: int | None,
     spoiler: bool = False,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
+    resolved_character: Character | None = None,
 ) -> str:
     try:
         return await _save_media_from_message(
@@ -37,6 +40,8 @@ async def save_media_from_message(
             character_name=character_name,
             actor_id=actor_id,
             spoiler=spoiler,
+            workspace_id=workspace_id,
+            resolved_character=resolved_character,
         )
     except Exception as error:  # p2-approved-boundary: report-media-save-failure
         logger.exception("Media save failed")
@@ -44,6 +49,7 @@ async def save_media_from_message(
             "Ошибка сохранения медиа",
             error,
             character=character_name,
+            workspace_id=int(workspace_id),
             chat_id=request_message.chat.id,
             message_id=request_message.message_id,
             user_id=actor_id,
@@ -61,6 +67,8 @@ async def _save_media_from_message(
     character_name: str,
     actor_id: int | None,
     spoiler: bool,
+    workspace_id: int,
+    resolved_character: Character | None,
 ) -> str:
     media = extract_media(source_message)
     if media is None:
@@ -68,9 +76,20 @@ async def _save_media_from_message(
             "В сообщении нет поддерживаемого медиафайла. "
             "Принимаются фото, видео, анимации и изображения/видео как файл."
         )
-    character = await resolve_character(database, character_name)
+
+    target_workspace_id = int(workspace_id)
+    character = resolved_character
     if character is None:
-        return "Такой персонаж или быстрый тег не найден. Сначала создайте его профиль."
+        character = await resolve_character(
+            database,
+            character_name,
+            workspace_id=target_workspace_id,
+        )
+    if character is None or character.workspace_id != target_workspace_id:
+        return (
+            "Такой персонаж или быстрый тег не найден в выбранном пространстве. "
+            "Сначала создайте его профиль в этом архиве."
+        )
 
     source_is_archive = _is_character_archive_source(source_message, character)
     result = await database.save_character_media(
@@ -91,6 +110,7 @@ async def _save_media_from_message(
             "Медиа добавлено в архив",
             level="SUCCESS",
             character=character.name,
+            workspace_id=character.workspace_id,
             file=result.storage_file_name,
             media_type=media.media_type,
             saved_by=actor_id,
@@ -122,6 +142,7 @@ async def _save_media_from_message(
                 "Материал отмечен как спойлер",
                 level="SUCCESS",
                 character=character.name,
+                workspace_id=character.workspace_id,
                 media_unique_id=media.telegram_file_unique_id,
                 changed_by=actor_id,
             )
@@ -220,6 +241,7 @@ async def _place_in_topic(
             "Медиа отправлено в ветку",
             level="SUCCESS",
             character=character.name,
+            workspace_id=character.workspace_id,
             file=media.storage_file_name,
             media_type=media.media_type,
             archive_chat_id=character.archive_chat_id,
@@ -232,6 +254,7 @@ async def _place_in_topic(
             "Ошибка отправки медиа в ветку",
             error,
             character=character.name,
+            workspace_id=character.workspace_id,
             file=media.storage_file_name,
             archive_chat_id=character.archive_chat_id,
             archive_thread_id=character.archive_thread_id,
