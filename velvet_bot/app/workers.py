@@ -20,6 +20,10 @@ from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.error_center import ErrorIncidentCenter
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
+from velvet_bot.infrastructure.transient_connections import (
+    install_recoverable_polling_filter,
+    recover_database_pool,
+)
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.ollama_vision import ReliableVisionClient
 from velvet_bot.quality_calibration import QualityCalibrationRepository
@@ -79,7 +83,11 @@ def build_worker_manager(
         repository=MediaQualityRepository(database),
     )
 
-    manager = WorkerManager()
+    manager = WorkerManager(
+        transient_failure_handler=partial(recover_database_pool, database),
+    )
+    if error_center is not None:
+        install_recoverable_polling_filter(error_center)
     manager.register(
         PeriodicWorkerSpec(
             name="public-archive-notifications",
