@@ -32,6 +32,7 @@ from velvet_bot.discussion_insights import (
     rebuild_discussion_threads,
 )
 from velvet_bot.discussion_queries import get_discussion_parent_channel_id
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 from velvet_bot.presentation.telegram.analytics_navigation import (
     AnalyticsCallback,
     _cb,
@@ -365,7 +366,7 @@ async def _render_sources(
     rows = [
         [
             InlineKeyboardButton(
-                text=f"💬 {source.title}",
+                text=compact_button_text(f"💬 {source.title}"),
                 callback_data=_dcb(
                     "sum",
                     period=period,

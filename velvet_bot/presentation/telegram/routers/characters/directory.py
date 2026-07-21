@@ -23,6 +23,7 @@ from velvet_bot.character_directory import (
     universe_label,
 )
 from velvet_bot.database import Database
+from velvet_bot.presentation.telegram.navigation import compact_button_text, two_column_rows
 from velvet_bot.presentation.telegram.routers.characters.contracts import (
     AdminDirectoryCallback,
     directory_callback,
@@ -57,7 +58,7 @@ def _category_keyboard(summaries) -> InlineKeyboardMarkup:
         )
         for item in summaries
     ]
-    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    rows = two_column_rows(buttons)
     rows.append(
         [
             InlineKeyboardButton(text="🔄 Обновить", callback_data=_cb("categories")),
@@ -86,7 +87,7 @@ def _page_keyboard(page: CharacterDirectoryPage) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=(
+                    text=compact_button_text(
                         f"👤 {item.character.name} · {universe} · "
                         f"{story} · {item.media_count}"
                     ),

@@ -225,7 +225,7 @@ def _main_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(text="🔄 Обновить", callback_data=supervisor_callback("status")),
-                InlineKeyboardButton(text="🏠 Главное меню", callback_data=_OWNER_MENU_CALLBACK),
+                InlineKeyboardButton(text="🏠 Главная", callback_data=_OWNER_MENU_CALLBACK),
             ],
             [InlineKeyboardButton(text="✖ Закрыть", callback_data=supervisor_callback("close"))],
         ]
@@ -274,6 +274,8 @@ def _logs_keyboard(selected_lines: int = 150) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text=label(50), callback_data=supervisor_callback("logs.50")),
                 InlineKeyboardButton(text=label(150), callback_data=supervisor_callback("logs.150")),
+            ],
+            [
                 InlineKeyboardButton(text=label(500), callback_data=supervisor_callback("logs.500")),
                 InlineKeyboardButton(text=label(2000), callback_data=supervisor_callback("logs.2000")),
             ],
@@ -282,7 +284,7 @@ def _logs_keyboard(selected_lines: int = 150) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(text="↩️ Supervisor", callback_data=supervisor_callback("status")),
-                InlineKeyboardButton(text="🏠 Главное меню", callback_data=_OWNER_MENU_CALLBACK),
+                InlineKeyboardButton(text="🏠 Главная", callback_data=_OWNER_MENU_CALLBACK),
             ],
         ]
     )
@@ -325,7 +327,7 @@ def _task_keyboard(task: dict[str, Any]) -> InlineKeyboardMarkup:
     if status == "ready":
         rows.append(
             [
-                InlineKeyboardButton(text="✅ Применить и перезапустить", callback_data=supervisor_callback("codex.apply.ask", task_id=task_id)),
+                InlineKeyboardButton(text="✅ Применить + рестарт", callback_data=supervisor_callback("codex.apply.ask", task_id=task_id)),
                 InlineKeyboardButton(text="🚫 Отклонить", callback_data=supervisor_callback("codex.reject.ask", task_id=task_id)),
             ]
         )
@@ -366,7 +368,7 @@ def _accepted_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="🔄 Проверить статус", callback_data=supervisor_callback("status")),
                 InlineKeyboardButton(text="📄 Логи", callback_data=supervisor_callback("logs.menu")),
             ],
-            [InlineKeyboardButton(text="🏠 Главное меню", callback_data=_OWNER_MENU_CALLBACK)],
+            [InlineKeyboardButton(text="🏠 Главная", callback_data=_OWNER_MENU_CALLBACK)],
         ]
     )
 

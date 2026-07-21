@@ -477,7 +477,7 @@ class ErrorIncidentCenter:
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="✅ Прочитано / беру в работу",
+                        text="✅ Беру в работу",
                         callback_data=f"err:ack:{incident_id}",
                     )
                 ]

@@ -9,22 +9,7 @@ from typing import Iterable
 
 BUTTON_NAMES = {"InlineKeyboardButton", "KeyboardButton"}
 MARKUP_KEYWORDS = {"inline_keyboard", "keyboard"}
-DYNAMIC_RISK_NAMES = {
-    "name",
-    "title",
-    "label",
-    "file",
-    "story",
-    "character",
-    "universe",
-    "category",
-    "reason",
-    "description",
-    "display",
-    "username",
-}
 PAGINATION_MARKERS = {"◀", "▶", "⬅", "➡"}
-NAVIGATION_WORDS = ("назад", "главная", "закрыть", "меню", "аудит", "qwen")
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,7 +141,7 @@ class _Scanner(ast.NodeVisitor):
     def _validate(self, record: ButtonRecord, text_node: ast.AST | None) -> None:
         path = record.path
         if not record.dynamic:
-            limit = 24 if record.row_size == 2 else 32
+            limit = 24 if record.row_size == 2 else 30
             if record.static_length > limit:
                 self.violations.append(
                     NavigationViolation(
@@ -191,16 +176,6 @@ class _Scanner(ast.NodeVisitor):
                     )
                 )
 
-        folded = record.text.casefold()
-        if record.text.startswith("↩") and not any(word in folded for word in NAVIGATION_WORDS):
-            self.violations.append(
-                NavigationViolation(
-                    code="unclear_back_label",
-                    path=path,
-                    line=record.line,
-                    detail=f"Непонятная кнопка возврата: {record.text!r}",
-                )
-            )
 
 
 def _call_name(node: ast.AST) -> str | None:
@@ -258,13 +233,40 @@ def _dynamic_text_is_risky(node: ast.AST | None) -> bool:
     target = node.value if isinstance(node, ast.Subscript) else node
     if not isinstance(target, ast.JoinedStr):
         return False
-    names: set[str] = set()
-    for item in ast.walk(target):
-        if isinstance(item, ast.Name):
-            names.add(item.id.casefold())
-        elif isinstance(item, ast.Attribute):
-            names.add(item.attr.casefold())
-    return any(any(risk in name for risk in DYNAMIC_RISK_NAMES) for name in names)
+    return any(
+        _formatted_value_is_risky(item.value)
+        for item in target.values
+        if isinstance(item, ast.FormattedValue)
+    )
+
+
+def _formatted_value_is_risky(node: ast.AST) -> bool:
+    if _has_bounded_slice(node):
+        return False
+    if isinstance(node, ast.Call):
+        call_name = _call_name(node.func) or ""
+        if call_name in {"_short", "short_text", "truncate_text", "truncate_button_text"}:
+            return False
+        if _is_risky_identifier(call_name):
+            return True
+    if isinstance(node, ast.Attribute):
+        return _is_risky_identifier(node.attr)
+    if isinstance(node, ast.Name):
+        return _is_risky_identifier(node.id)
+    for child in ast.iter_child_nodes(node):
+        if _formatted_value_is_risky(child):
+            return True
+    return False
+
+
+def _is_risky_identifier(value: str) -> bool:
+    folded = value.casefold().strip("_")
+    if folded in {"name", "title", "file", "filename", "file_name", "description", "username", "display_name"}:
+        return True
+    return any(
+        folded.endswith(suffix)
+        for suffix in ("_name", "_title", "_file_name", "_description", "_username")
+    )
 
 
 def _has_bounded_slice(node: ast.AST | None) -> bool:

@@ -51,7 +51,7 @@ def console_keyboard(commands: list[dict[str, Any]]) -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    text="⌨️ Ввести разрешённую команду",
+                    text="⌨️ Ввести команду",
                     callback_data=supervisor_callback("console.input"),
                 )
             ],
@@ -167,13 +167,13 @@ def self_control_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="♻️ Перезапустить Supervisor",
+                    text="♻️ Рестарт Supervisor",
                     callback_data=supervisor_callback("self.restart.ask"),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="⬇️ Обновить и перезапустить",
+                    text="⬇️ Обновить + рестарт",
                     callback_data=supervisor_callback("self.update.ask"),
                 )
             ],

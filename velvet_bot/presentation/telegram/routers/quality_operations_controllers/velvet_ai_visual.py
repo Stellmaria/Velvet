@@ -213,7 +213,7 @@ def _report_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎨 Проверить другое изображение",
+                    text="🎨 Другое изображение",
                     callback_data=quality_callback("visual_start"),
                 )
             ],

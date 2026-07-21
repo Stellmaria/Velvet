@@ -157,7 +157,7 @@ _MEDIA_FORMS: dict[str, tuple[str, str]] = {
 def _back_row(action: str = "menu") -> list[InlineKeyboardButton]:
     return [
         InlineKeyboardButton(text="↩️ Все действия", callback_data=_cb(action)),
-        InlineKeyboardButton(text="🏠 Главное меню", callback_data=_OWNER_HOME),
+        InlineKeyboardButton(text="🏠 Главная", callback_data=_OWNER_HOME),
     ]
 
 
@@ -184,7 +184,7 @@ def _main_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="📊 Данные и импорт", callback_data=_cb("data")),
                 InlineKeyboardButton(text="📋 Карта команд", callback_data=_cb("map")),
             ],
-            [InlineKeyboardButton(text="🏠 Главное меню", callback_data=_OWNER_HOME)],
+            [InlineKeyboardButton(text="🏠 Главная", callback_data=_OWNER_HOME)],
         ]
     )
 

@@ -15,6 +15,7 @@ from velvet_bot.character_directory import (
     UniverseSummary,
 )
 from velvet_bot.public_catalog import PublicCharacterPage, PublicMediaState
+from velvet_bot.presentation.telegram.navigation import compact_button_text, two_column_rows
 from velvet_bot.story_catalog import StorySummary, universe_requires_story
 
 
@@ -57,7 +58,7 @@ def build_public_entry_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🖼 Открыть архив персонажей",
+                    text="🖼 Архив персонажей",
                     callback_data=_callback("categories"),
                 )
             ]
@@ -130,7 +131,7 @@ def build_public_universe_menu(
         )
         for item in summaries
     ]
-    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    rows = two_column_rows(buttons)
     rows.append(
         [
             InlineKeyboardButton(
@@ -178,7 +179,7 @@ def build_public_story_menu(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=(
+                    text=compact_button_text(
                         f"📖 {item.short_label} · {item.title} "
                         f"· {item.character_count}"
                     ),
@@ -195,7 +196,7 @@ def build_public_story_menu(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="Пока нет назначенных персонажей",
+                    text="Нет персонажей",
                     callback_data=_callback("noop"),
                 )
             ]
@@ -254,7 +255,7 @@ def build_public_character_menu(page: PublicCharacterPage) -> InlineKeyboardMark
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"🖼 {item.character.name} · {item.media_count}",
+                    text=compact_button_text(f"🖼 {item.character.name} · {item.media_count}"),
                     callback_data=_callback(
                         "open",
                         character_id=item.character.id,

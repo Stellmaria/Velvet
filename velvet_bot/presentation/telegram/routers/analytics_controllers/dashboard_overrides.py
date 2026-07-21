@@ -76,7 +76,7 @@ async def handle_managed_dashboard_sections(
             _period_row("types", period),
             [
                 InlineKeyboardButton(
-                    text="⚠️ Проверить сомнительные",
+                    text="⚠️ Сомнительные",
                     callback_data=management_link(
                         "review",
                         period=period,
@@ -86,7 +86,7 @@ async def handle_managed_dashboard_sections(
             ],
             [
                 InlineKeyboardButton(
-                    text="🤖 Пересчитать автоматические",
+                    text="🤖 Пересчитать авто",
                     callback_data=management_link("reclassify", period=period),
                 )
             ],
