@@ -55,7 +55,7 @@ class DiagnosticLogBuffer(logging.Handler):
     def __init__(self, *, capacity: int = _MAX_LOG_ENTRIES) -> None:
         super().__init__(level=logging.INFO)
         self._entries: deque[DiagnosticLogEntry] = deque(maxlen=max(50, capacity))
-        self._lock = threading.Lock()
+        self._entries_lock = threading.Lock()
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
@@ -70,13 +70,13 @@ class DiagnosticLogBuffer(logging.Handler):
                 logger_name=record.name,
                 message=redacted[-8000:],
             )
-            with self._lock:
+            with self._entries_lock:
                 self._entries.append(entry)
         except Exception:  # p2-approved-boundary: isolate-diagnostic-log-buffer
             return
 
     def snapshot(self, *, since: datetime) -> tuple[DiagnosticLogEntry, ...]:
-        with self._lock:
+        with self._entries_lock:
             return tuple(item for item in self._entries if item.created_at >= since)
 
 
