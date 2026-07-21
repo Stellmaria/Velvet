@@ -9,6 +9,7 @@ from velvet_bot.domains.archive import ArchivePage, ArchivedMedia
 from velvet_bot.domains.characters.models import CharacterRecord
 from velvet_bot.domains.public_archive import PublicMediaState
 from velvet_bot.domains.public_archive.models import PUBLIC_ARCHIVE_REVIEWER_ID
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.presentation.telegram.routers.public_archive.media_display import (
     _PreparedMedia,
     _owner_review_media_after_navigation,
@@ -158,7 +159,15 @@ class PublicArchiveOwnerReviewNavigationTests(unittest.IsolatedAsyncioTestCase):
         async def display(**_kwargs) -> None:
             events.append("display")
 
-        async def record(_database, *, character_id, media_id, user_id) -> None:
+        async def record(
+            _database,
+            *,
+            character_id,
+            media_id,
+            user_id,
+            workspace_id=DEFAULT_WORKSPACE_ID,
+        ) -> None:
+            self.assertEqual(DEFAULT_WORKSPACE_ID, workspace_id)
             events.append(("record", character_id, media_id, user_id))
 
         with (
@@ -225,7 +234,15 @@ class PublicArchiveOwnerReviewNavigationTests(unittest.IsolatedAsyncioTestCase):
         async def display(**_kwargs) -> None:
             events.append("display")
 
-        async def record(_database, *, character_id, media_id, user_id) -> None:
+        async def record(
+            _database,
+            *,
+            character_id,
+            media_id,
+            user_id,
+            workspace_id=DEFAULT_WORKSPACE_ID,
+        ) -> None:
+            self.assertEqual(DEFAULT_WORKSPACE_ID, workspace_id)
             events.append(("record", character_id, media_id, user_id))
 
         with (
