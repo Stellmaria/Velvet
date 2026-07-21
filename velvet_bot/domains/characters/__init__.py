@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from importlib import import_module
+from typing import Final, cast
+
 from velvet_bot.domains.characters.catalog import (
     category_label,
     normalize_category,
@@ -23,8 +28,17 @@ from velvet_bot.domains.characters.models import (
     CharacterRecord,
     UniverseSummary,
 )
-from velvet_bot.domains.characters.repository import CharacterDirectoryRepository
-from velvet_bot.domains.characters.service import CharacterDirectoryService
+
+_RUNTIME_EXPORTS: Final[dict[str, tuple[str, str]]] = {
+    "CharacterDirectoryRepository": (
+        "velvet_bot.domains.characters.repository",
+        "CharacterDirectoryRepository",
+    ),
+    "CharacterDirectoryService": (
+        "velvet_bot.domains.characters.service",
+        "CharacterDirectoryService",
+    ),
+}
 
 __all__ = (
     "CATEGORY_EMOJI",
@@ -49,3 +63,18 @@ __all__ = (
     "universe_label",
     "validate_prompt_post_url",
 )
+
+
+def __getattr__(name: str) -> object:
+    target = _RUNTIME_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module_name, attribute_name = target
+    value = cast(object, getattr(import_module(module_name), attribute_name))
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))
