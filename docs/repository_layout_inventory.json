@@ -4,14 +4,14 @@
   "repository_module_count": 31,
   "layout_counts": {
     "central": 1,
-    "domain": 26,
-    "root": 4
+    "domain": 27,
+    "root": 3
   },
-  "root_module_count": 114,
+  "root_module_count": 113,
   "root_module_categories": {
     "other": 100,
     "report": 4,
-    "repository": 4,
+    "repository": 3,
     "runtime": 4,
     "service": 1,
     "worker": 1
@@ -316,6 +316,23 @@
       ]
     },
     {
+      "module": "velvet_bot.domains.media_sets.quality_repository",
+      "path": "velvet_bot/domains/media_sets/quality_repository.py",
+      "layout": "domain",
+      "domain": "media_sets",
+      "production_consumer_count": 1,
+      "test_consumer_count": 1,
+      "package_export_count": 0,
+      "reference_count": 2,
+      "production_consumers": [
+        "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py"
+      ],
+      "test_consumers": [
+        "tests/test_phase18_completion.py"
+      ],
+      "package_exports": []
+    },
+    {
       "module": "velvet_bot.domains.media_sets.repository",
       "path": "velvet_bot/domains/media_sets/repository.py",
       "layout": "domain",
@@ -559,23 +576,6 @@
       "package_exports": []
     },
     {
-      "module": "velvet_bot.quality_sets_repository",
-      "path": "velvet_bot/quality_sets_repository.py",
-      "layout": "root",
-      "domain": null,
-      "production_consumer_count": 1,
-      "test_consumer_count": 1,
-      "package_export_count": 0,
-      "reference_count": 2,
-      "production_consumers": [
-        "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py"
-      ],
-      "test_consumers": [
-        "tests/test_phase18_completion.py"
-      ],
-      "package_exports": []
-    },
-    {
       "module": "velvet_bot.reference_comparison_repository",
       "path": "velvet_bot/reference_comparison_repository.py",
       "layout": "root",
@@ -594,23 +594,6 @@
     }
   ],
   "candidate_modules": [
-    {
-      "module": "velvet_bot.quality_sets_repository",
-      "path": "velvet_bot/quality_sets_repository.py",
-      "layout": "root",
-      "domain": null,
-      "production_consumer_count": 1,
-      "test_consumer_count": 1,
-      "package_export_count": 0,
-      "reference_count": 2,
-      "production_consumers": [
-        "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py"
-      ],
-      "test_consumers": [
-        "tests/test_phase18_completion.py"
-      ],
-      "package_exports": []
-    },
     {
       "module": "velvet_bot.reference_comparison_repository",
       "path": "velvet_bot/reference_comparison_repository.py",
@@ -687,7 +670,7 @@
   "next_slice": {
     "phase": "P3E",
     "target": "migrate the first low-coupling repository module",
-    "candidate": "velvet_bot.quality_sets_repository",
+    "candidate": "velvet_bot.reference_comparison_repository",
     "strategy": "move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion"
   }
 }
