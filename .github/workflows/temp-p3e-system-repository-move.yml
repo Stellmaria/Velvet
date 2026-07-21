@@ -59,34 +59,38 @@ jobs:
           anchor = text.index('    first_candidate = candidates[0] if candidates else None')
           block_start = text.index('\n    if ', anchor) + 1
           block_end = text.index('\n\n    return {', block_start)
-          completion_block = '''    if first_candidate is None:
-              next_target = "repository layout migration complete"
-              next_strategy = (
-                  "keep root and central repository counts at zero and place new persistence "
-                  "only in reviewed domain or infrastructure boundaries"
-              )
-          elif (
-              int(first_candidate["production_consumer_count"]) == 0
-              and int(first_candidate["test_consumer_count"]) == 0
-              and int(first_candidate["package_export_count"]) > 0
-          ):
-              next_target = "retire the first export-only repository module"
-              next_strategy = (
-                  "remove the unused package export and dead module, then update the generated "
-                  "baseline without creating a replacement facade"
-              )
-          elif int(first_candidate["reference_count"]) == 0:
-              next_target = "retire the first unreferenced repository module"
-              next_strategy = (
-                  "verify dynamic imports remain absent, delete the dead module, and update the "
-                  "generated baseline without creating a replacement facade"
-              )
-          else:
-              next_target = "migrate the first low-coupling repository module"
-              next_strategy = (
-                  "move one reviewed module to its domain or infrastructure boundary, keep the old path "
-                  "as a temporary facade, and migrate consumers before deletion"
-              )'''
+          completion_block = '\n'.join(
+              [
+                  '    if first_candidate is None:',
+                  '        next_target = "repository layout migration complete"',
+                  '        next_strategy = (',
+                  '            "keep root and central repository counts at zero and place new persistence "',
+                  '            "only in reviewed domain or infrastructure boundaries"',
+                  '        )',
+                  '    elif (',
+                  '        int(first_candidate["production_consumer_count"]) == 0',
+                  '        and int(first_candidate["test_consumer_count"]) == 0',
+                  '        and int(first_candidate["package_export_count"]) > 0',
+                  '    ):',
+                  '        next_target = "retire the first export-only repository module"',
+                  '        next_strategy = (',
+                  '            "remove the unused package export and dead module, then update the generated "',
+                  '            "baseline without creating a replacement facade"',
+                  '        )',
+                  '    elif int(first_candidate["reference_count"]) == 0:',
+                  '        next_target = "retire the first unreferenced repository module"',
+                  '        next_strategy = (',
+                  '            "verify dynamic imports remain absent, delete the dead module, and update the "',
+                  '            "generated baseline without creating a replacement facade"',
+                  '        )',
+                  '    else:',
+                  '        next_target = "migrate the first low-coupling repository module"',
+                  '        next_strategy = (',
+                  '            "move one reviewed module to its domain or infrastructure boundary, keep the old path "',
+                  '            "as a temporary facade, and migrate consumers before deletion"',
+                  '        )',
+              ]
+          )
           inventory_script.write_text(
               text[:block_start] + completion_block + text[block_end:],
               encoding='utf-8',
@@ -101,10 +105,9 @@ jobs:
               old_path.unlink()
           PY
 
-      - name: Generate inventories
+      - name: Generate repository inventory
         run: |
           python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
-          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
 
       - name: Commit move
         run: |
