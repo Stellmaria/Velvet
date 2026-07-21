@@ -10,10 +10,20 @@ from velvet_bot.archive_catalog import set_archive_media_spoiler
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.character_resolution import resolve_character
 from velvet_bot.database import Character, Database, SaveMediaResult
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.media import MediaDescriptor, extract_media, send_media_to_topic
 from velvet_bot.media_preview_persistence import set_media_preview
 
 logger = logging.getLogger(__name__)
+
+
+def _character_workspace_id(character) -> int:
+    return int(getattr(character, "workspace_id", DEFAULT_WORKSPACE_ID))
+
+
+def _workspace_audit_fields(workspace_id: int) -> dict[str, int]:
+    target = int(workspace_id)
+    return {} if target == DEFAULT_WORKSPACE_ID else {"workspace_id": target}
 
 
 async def save_media_from_message(
@@ -26,6 +36,8 @@ async def save_media_from_message(
     character_name: str,
     actor_id: int | None,
     spoiler: bool = False,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
+    resolved_character: Character | None = None,
 ) -> str:
     try:
         return await _save_media_from_message(
@@ -37,6 +49,8 @@ async def save_media_from_message(
             character_name=character_name,
             actor_id=actor_id,
             spoiler=spoiler,
+            workspace_id=workspace_id,
+            resolved_character=resolved_character,
         )
     except Exception as error:  # p2-approved-boundary: report-media-save-failure
         logger.exception("Media save failed")
@@ -47,6 +61,7 @@ async def save_media_from_message(
             chat_id=request_message.chat.id,
             message_id=request_message.message_id,
             user_id=actor_id,
+            **_workspace_audit_fields(workspace_id),
         )
         return "Не удалось сохранить медиафайл из-за внутренней ошибки."
 
@@ -61,6 +76,8 @@ async def _save_media_from_message(
     character_name: str,
     actor_id: int | None,
     spoiler: bool,
+    workspace_id: int,
+    resolved_character: Character | None,
 ) -> str:
     media = extract_media(source_message)
     if media is None:
@@ -68,9 +85,20 @@ async def _save_media_from_message(
             "В сообщении нет поддерживаемого медиафайла. "
             "Принимаются фото, видео, анимации и изображения/видео как файл."
         )
-    character = await resolve_character(database, character_name)
+
+    target_workspace_id = int(workspace_id)
+    character = resolved_character
     if character is None:
-        return "Такой персонаж или быстрый тег не найден. Сначала создайте его профиль."
+        character = await resolve_character(
+            database,
+            character_name,
+            workspace_id=target_workspace_id,
+        )
+    if character is None or _character_workspace_id(character) != target_workspace_id:
+        return (
+            "Такой персонаж или быстрый тег не найден в выбранном пространстве. "
+            "Сначала создайте его профиль в этом архиве."
+        )
 
     source_is_archive = _is_character_archive_source(source_message, character)
     result = await database.save_character_media(
@@ -97,6 +125,7 @@ async def _save_media_from_message(
             saved_in_chat=request_message.chat.id,
             source_chat_id=source_message.chat.id,
             source_message_id=source_message.message_id,
+            **_workspace_audit_fields(_character_workspace_id(character)),
         )
 
     uploaded, upload_error = await _place_in_topic(
@@ -124,6 +153,7 @@ async def _save_media_from_message(
                 character=character.name,
                 media_unique_id=media.telegram_file_unique_id,
                 changed_by=actor_id,
+                **_workspace_audit_fields(_character_workspace_id(character)),
             )
 
     if not result.character_link_created:
@@ -204,6 +234,7 @@ async def _place_in_topic(
         return False, None
     if result.archive_message_id is not None:
         return False, None
+    workspace_fields = _workspace_audit_fields(_character_workspace_id(character))
     try:
         archived_message = await send_media_to_topic(
             bot,
@@ -225,6 +256,7 @@ async def _place_in_topic(
             archive_chat_id=character.archive_chat_id,
             archive_thread_id=character.archive_thread_id,
             archive_message_id=archived_message.message_id,
+            **workspace_fields,
         )
     except Exception as error:  # p2-approved-boundary: isolate-media-topic-delivery
         logger.exception("Failed to send media to archive topic")
@@ -235,6 +267,7 @@ async def _place_in_topic(
             file=media.storage_file_name,
             archive_chat_id=character.archive_chat_id,
             archive_thread_id=character.archive_thread_id,
+            **workspace_fields,
         )
         return False, str(error)
     return True, None
