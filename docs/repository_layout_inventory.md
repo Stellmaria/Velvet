@@ -57,7 +57,7 @@
 - `velvet_bot.domains.publication.draft_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
 - `velvet_bot.domains.publication.repository` · domain `publication`: production 6, tests 1, exports 1, refs 8.
 - `velvet_bot.domains.publication.validation_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
-- `velvet_bot.domains.references.comparison_repository` · domain `references`: production 1, tests 1, exports 0, refs 2.
+- `velvet_bot.domains.references.comparison_repository` · domain `references`: production 2, tests 2, exports 0, refs 4.
 - `velvet_bot.domains.references.repository` · domain `references`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.stories.repository` · domain `stories`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.telegram_storage.backup_repository` · domain `telegram_storage`: production 0, tests 1, exports 1, refs 2.

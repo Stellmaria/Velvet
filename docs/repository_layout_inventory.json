@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "p3e-repository-layout-complete",
+  "generated_from": "workspace-reference-library",
   "repository_module_count": 33,
   "layout_counts": {
     "domain": 32,
@@ -474,15 +474,17 @@
       "path": "velvet_bot/domains/references/comparison_repository.py",
       "layout": "domain",
       "domain": "references",
-      "production_consumer_count": 1,
-      "test_consumer_count": 1,
+      "production_consumer_count": 2,
+      "test_consumer_count": 2,
       "package_export_count": 0,
-      "reference_count": 2,
+      "reference_count": 4,
       "production_consumers": [
-        "velvet_bot/presentation/telegram/routers/references/comparison.py"
+        "velvet_bot/presentation/telegram/routers/references/comparison.py",
+        "velvet_bot/presentation/telegram/routers/workspace_reference_library.py"
       ],
       "test_consumers": [
-        "tests/test_phase18_completion.py"
+        "tests/test_phase18_completion.py",
+        "tests/test_workspace_reference_library.py"
       ],
       "package_exports": []
     },

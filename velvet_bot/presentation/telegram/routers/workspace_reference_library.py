@@ -28,7 +28,6 @@ from velvet_bot.domains.references import CharacterReference, ReferencePage
 from velvet_bot.domains.references.comparison_repository import _save_report
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, WorkspaceRole
 from velvet_bot.domains.workspaces.reference_access import (
-    ReferenceWorkspaceAccess,
     require_reference_workspace_access,
     resolve_personal_reference_access,
 )
@@ -651,6 +650,26 @@ async def handle_workspace_reference_delete(
     PersonalReferenceWorkspaceFilter("viewer"),
 )
 async def handle_workspace_reference_callback(
+    callback: CallbackQuery,
+    callback_data: ReferenceCallback,
+    personal_reference_context: PersonalReferenceContext,
+    database: Database,
+    bot: Bot,
+    workspace_service: WorkspaceService,
+    audit_logger: TelegramAuditLogger,
+) -> None:
+    await _handle_workspace_reference_callback(
+        callback,
+        callback_data,
+        personal_reference_context,
+        database,
+        bot,
+        workspace_service,
+        audit_logger,
+    )
+
+
+async def _handle_workspace_reference_callback(
     callback: CallbackQuery,
     callback_data: ReferenceCallback,
     personal_reference_context: PersonalReferenceContext,

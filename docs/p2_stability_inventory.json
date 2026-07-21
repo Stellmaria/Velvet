@@ -1,16 +1,16 @@
 {
-  "schema_version": 48,
-  "generated_from_commit": "workspace-character-inline-pickers",
-  "broad_exception_total": 77,
-  "broad_exception_files": 45,
-  "broad_exception_approved": 77,
+  "schema_version": 49,
+  "generated_from_commit": "workspace-reference-library",
+  "broad_exception_total": 78,
+  "broad_exception_files": 46,
+  "broad_exception_approved": 78,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 101,
+  "callback_total": 102,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 27,
-  "delegated_callback_total": 4,
+  "delegated_callback_total": 5,
   "next_slice": null,
   "broad_exceptions": [
     {
@@ -296,7 +296,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/archive/save.py",
       "function": "handle_new_archive_topic_media",
-      "line": 345,
+      "line": 504,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-topic-auto-archive-failure"
@@ -518,6 +518,14 @@
       "reason": "isolate-supervisor-console-watcher"
     },
     {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
+      "function": "handle_workspace_reference_comparison",
+      "line": 959,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "report-workspace-reference-comparison"
+    },
+    {
       "path": "velvet_bot/presentation/telegram/storage_center.py",
       "function": "_run_manual_migration",
       "line": 127,
@@ -584,7 +592,7 @@
     {
       "path": "velvet_bot/services/media_save.py",
       "function": "save_media_from_message",
-      "line": 41,
+      "line": 55,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-media-save-failure"
@@ -592,7 +600,7 @@
     {
       "path": "velvet_bot/services/media_save.py",
       "function": "_place_in_topic",
-      "line": 229,
+      "line": 261,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-media-topic-delivery"
@@ -1530,6 +1538,15 @@
       "pre_ack_awaits": 1,
       "total_awaits": 17,
       "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
+      "function": "handle_workspace_reference_callback",
+      "line": 652,
+      "ack_line": null,
+      "pre_ack_awaits": 1,
+      "total_awaits": 1,
+      "risk": "delegated"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspaces.py",
