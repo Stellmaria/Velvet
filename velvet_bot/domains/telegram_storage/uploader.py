@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Any
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
 from aiogram.types import FSInputFile
 
 from velvet_bot.domains.telegram_storage.files import (
@@ -26,6 +27,10 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramStorageUploader:
+    _MIN_SEND_INTERVAL_SECONDS = 1.1
+    _FLOOD_RETRY_CUSHION_SECONDS = 1.0
+    _MAX_FLOOD_RETRIES = 5
+
     def __init__(
         self,
         *,
@@ -36,6 +41,8 @@ class TelegramStorageUploader:
         self._bot = bot
         self._repository = repository
         self._settings = settings
+        self._send_lock = asyncio.Lock()
+        self._next_send_at = 0.0
 
     @staticmethod
     def _caption(
@@ -61,6 +68,39 @@ class TelegramStorageUploader:
         if part_count > 1:
             lines.append(f"Часть: {part_number}/{part_count}")
         return "\n".join(lines)[:1024]
+
+    async def _wait_for_send_slot(self) -> None:
+        delay = self._next_send_at - asyncio.get_running_loop().time()
+        if delay > 0:
+            await asyncio.sleep(delay)
+
+    async def _send_document(self, **kwargs: Any) -> Any:
+        async with self._send_lock:
+            await self._wait_for_send_slot()
+            loop = asyncio.get_running_loop()
+            for attempt in range(1, self._MAX_FLOOD_RETRIES + 1):
+                try:
+                    message = await self._bot.send_document(**kwargs)
+                except TelegramRetryAfter as error:
+                    if attempt >= self._MAX_FLOOD_RETRIES:
+                        raise
+                    delay = max(float(error.retry_after), 0.0) + (
+                        self._FLOOD_RETRY_CUSHION_SECONDS
+                    )
+                    self._next_send_at = max(self._next_send_at, loop.time() + delay)
+                    logger.info(
+                        "Telegram storage flood control chat=%s retry_after=%.1fs "
+                        "attempt=%s/%s",
+                        kwargs.get("chat_id"),
+                        delay,
+                        attempt,
+                        self._MAX_FLOOD_RETRIES,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                self._next_send_at = loop.time() + self._MIN_SEND_INTERVAL_SECONDS
+                return message
+        raise RuntimeError("Telegram storage send retry loop exhausted unexpectedly.")
 
     async def upload(
         self,
@@ -97,7 +137,7 @@ class TelegramStorageUploader:
         try:
             for index, part_path in enumerate(part_paths, start=1):
                 part_digest = sha256_file(part_path)
-                message = await self._bot.send_document(
+                message = await self._send_document(
                     chat_id=self._settings.chat_id,
                     message_thread_id=thread_id,
                     document=FSInputFile(part_path, filename=part_path.name),
