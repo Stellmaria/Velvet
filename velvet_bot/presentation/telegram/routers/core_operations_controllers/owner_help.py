@@ -28,6 +28,8 @@ OWNER_COMMAND_GROUPS: tuple[
             ("workspace_grant", "выдать Telegram ID право создать личный архив"),
             ("workspace_revoke", "отозвать неиспользованное право создания"),
             ("workspace_module", "разрешить или запретить модуль пространства"),
+            ("wcatalog", "открыть taxonomy-каталог активного личного пространства"),
+            ("workspace_catalog", "алиас taxonomy-каталога пространства"),
         ),
     ),
     (
