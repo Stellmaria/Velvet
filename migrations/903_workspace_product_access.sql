@@ -14,6 +14,16 @@ CREATE TABLE IF NOT EXISTS workspace_creation_grants (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS user_public_workspace_preferences (
+    user_id BIGINT PRIMARY KEY,
+    workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_public_workspace_preferences_workspace
+    ON user_public_workspace_preferences (workspace_id, user_id);
+
 CREATE TABLE IF NOT EXISTS workspace_modules (
     workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     module_key VARCHAR(32) NOT NULL,
