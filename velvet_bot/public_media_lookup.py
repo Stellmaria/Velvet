@@ -27,6 +27,7 @@ async def get_character_media_offset(
         if public_only
         else ""
     )
+    safe_workspace_id = int(workspace_id)
     async with database.acquire() as connection:
         value = await connection.fetchval(
             f"""
@@ -34,22 +35,20 @@ async def get_character_media_offset(
                 SELECT
                     character_media.media_id,
                     ROW_NUMBER() OVER (
-                        ORDER BY character_media.created_at DESC,
-                                 character_media.media_id DESC
+                        ORDER BY created_at DESC, media_id DESC
                     ) - 1 AS media_offset
                 FROM character_media
                 JOIN characters AS character
                   ON character.id = character_media.character_id
                 JOIN media_files AS mf ON mf.id = character_media.media_id
-                WHERE character.workspace_id = $1::BIGINT
-                  AND character_media.character_id = $2::BIGINT
+                WHERE character.workspace_id = {safe_workspace_id}
+                  AND character_media.character_id = $1::BIGINT
                   {visibility_filter}
             )
             SELECT media_offset
             FROM ordered_media
-            WHERE media_id = $3::BIGINT
+            WHERE media_id = $2::BIGINT
             """,
-            int(workspace_id),
             int(character_id),
             int(media_id),
         )
