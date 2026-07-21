@@ -63,11 +63,11 @@
 
 ### Проверки
 
-Первый CI на head `3f24849161775feedba23bf925d6d4b974541f13` подтвердил успешные type-check и Docker build. Tests и restore drill корректно остановились из-за занятого номера миграции `102`; дополнительно generated P3E/navigation baselines потребовали регенерации. Исправления внесены, запускается повторный полный CI.
+Первый CI на head `3f24849161775feedba23bf925d6d4b974541f13` подтвердил успешные type-check и Docker build. Tests и restore drill корректно остановились из-за занятого номера миграции `102`; generated P3E/navigation baselines также потребовали регенерации. Миграция перенумерована в `103`, baselines пересобраны, и финальный полный CI запущен на обычном commit после bot-generated изменений.
 
 ### PR и commit
 
-PR #275: `Add workspace foundation for isolated personal archives`. Implementation head до исправления контрактов: `3f24849161775feedba23bf925d6d4b974541f13`.
+PR #275: `Add workspace foundation for isolated personal archives`. Generated-contract head: `46f0aece6b8e4b85c0bd914a43e1442ede9e1ccc`.
 
 ### Незавершённое
 
