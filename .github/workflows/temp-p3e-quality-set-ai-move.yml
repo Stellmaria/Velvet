@@ -1,0 +1,85 @@
+name: temporary P3E quality set AI move
+
+on:
+  push:
+    branches:
+      - agent/p3e-move-quality-set-ai-repository
+
+permissions:
+  contents: write
+
+jobs:
+  move:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/p3e-move-quality-set-ai-repository
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Migrate canonical imports
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          controller = Path('velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py')
+          text = controller.read_text(encoding='utf-8')
+          old = '''from velvet_bot.quality_set_ai_repository import (
+              MediaSetBundle,
+              SetMediaItem,
+              SetReportListItem,
+              SetReportPage,
+              _latest_report,
+              _list_sets,
+              _load_set,
+              _save_report,
+          )
+          '''
+          new = '''from velvet_bot.domains.media_sets.ai_repository import (
+              MediaSetBundle,
+              SetMediaItem,
+              SetReportListItem,
+              SetReportPage,
+              _latest_report,
+              _list_sets,
+              _load_set,
+              _save_report,
+          )
+          '''
+          if old not in text:
+              raise SystemExit('quality_set_ai controller import block not found')
+          controller.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          phase18 = Path('tests/test_phase18_completion.py')
+          text = phase18.read_text(encoding='utf-8')
+          old = 'import velvet_bot.quality_set_ai_repository as set_ai_repository'
+          new = 'import velvet_bot.domains.media_sets.ai_repository as set_ai_repository'
+          if old not in text:
+              raise SystemExit('phase18 quality set AI import not found')
+          phase18.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          old_repository = Path('velvet_bot/quality_set_ai_repository.py')
+          if not old_repository.is_file():
+              raise SystemExit('old quality_set_ai_repository.py not found')
+          old_repository.unlink()
+          PY
+
+      - name: Generate inventories
+        run: |
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-baseline
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+
+      - name: Commit move
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Move quality set AI repository into media sets domain"
+          git push origin HEAD:agent/p3e-move-quality-set-ai-repository
