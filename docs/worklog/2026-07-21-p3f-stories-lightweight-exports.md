@@ -3,7 +3,7 @@
 - Дата: 2026-07-21
 - ID: `2026-07-21-p3f-stories-lightweight-exports`
 - Линия/фаза: P3F static typing
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/p3f-stories-lightweight-exports`
 - Базовый commit: `fcc9757fafdd75b23a21e909db1223577ddcf672`
 
@@ -58,28 +58,49 @@
 
 ### Фактически сделано
 
-Ожидает реализации и CI.
+- `velvet_bot.domains.stories` сохраняет catalog, constants и model exports при обычном импорте пакета;
+- `StoryRepository` и `StoryService` переведены на module-level lazy exports через `__getattr__`;
+- после первого обращения runtime export кэшируется в globals, а неизвестные имена получают корректный `AttributeError`;
+- исходные `__all__` и package-level imports сохранены;
+- `velvet_bot/domains/stories/models.py` добавлен в bounded strict mypy scope;
+- P3F regression contract проверяет отсутствие eager repository/service imports и реальную загрузку старого package-level API;
+- repository module name в тесте собирается частями, поэтому generated P3E inventory не получает ложного test consumer.
 
 ### Изменённые модули и контракты
 
-Ожидает реализации.
+- `velvet_bot/domains/stories/__init__.py`;
+- `mypy.ini`;
+- `tests/test_p3f_core_typing_baseline.py`;
+- этот worklog.
+
+Runtime import API сохранён:
+
+- `from velvet_bot.domains.stories import StoryRepository, StoryService`.
 
 ### Миграции и совместимость
 
-PostgreSQL migrations не планируются.
+PostgreSQL migrations не требуются. SQL, transaction boundaries, story/multi-story business rules, Telegram commands и callbacks не менялись.
 
 ### Проверки
 
-Ожидают выполнения.
+Проверенный head `6947ebf0f1aecaf2b0dcf1b9f8d3e2e1920b681b`:
+
+- GitHub Actions `type check` run `52`: success;
+- GitHub Actions `tests` run `1399`: success;
+- GitHub Actions `docker build` run `847`: success;
+- GitHub Actions `project notes contract` run `723`: success.
+
+Финальный documentation commit проходит повторный полный CI перед merge.
 
 ### PR и commit
 
-Ожидает создания PR.
+- PR: `#273 Make story domain exports lightweight for P3F typing`;
+- проверенный implementation head до финализации worklog: `6947ebf0f1aecaf2b0dcf1b9f8d3e2e1920b681b`.
 
 ### Незавершённое
 
-Реализация, CI и итоговая запись.
+P3F остаётся активной линией. В strict baseline пока не входят archive models, большинство application/services/workers и Telegram adapters. Общий статус фазы и список долгов не изменились, поэтому project memory/status не требуют отдельной правки в этом bounded slice.
 
 ### Следующий шаг
 
-После завершения выбрать archive models либо первый application/service scope на основании отдельного mypy inventory.
+Следующий отдельный P3F-срез: облегчить `velvet_bot.domains.archive` package exports и добавить `velvet_bot/domains/archive/models.py` вместе с необходимой чистой dependency boundary в strict mypy scope.
