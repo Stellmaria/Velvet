@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.characters.constants import (
     CATEGORY_EMOJI,
     CATEGORY_LABELS,
@@ -22,15 +23,27 @@ from velvet_bot.domains.characters.models import (
 class CharacterDirectoryRepository:
     """PostgreSQL boundary for character directory metadata and filters."""
 
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self,
+        database: Database,
+        *,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> None:
         self._database = database
+        self._workspace_id = int(workspace_id)
 
     async def set_category(self, *, character_id: int, category: str | None) -> None:
         async with self._database.acquire() as connection:
             result = await connection.execute(
-                "UPDATE characters SET category = $2::VARCHAR WHERE id = $1::BIGINT",
+                """
+                UPDATE characters
+                SET category = $2::VARCHAR
+                WHERE id = $1::BIGINT
+                  AND workspace_id = $3::BIGINT
+                """,
                 int(character_id),
                 category,
+                self._workspace_id,
             )
         if result == "UPDATE 0":
             raise ValueError("Персонаж не найден.")
@@ -39,8 +52,15 @@ class CharacterDirectoryRepository:
         async with self._database.acquire() as connection:
             async with connection.transaction():
                 current = await connection.fetchrow(
-                    "SELECT universe FROM characters WHERE id = $1::BIGINT FOR UPDATE",
+                    """
+                    SELECT universe
+                    FROM characters
+                    WHERE id = $1::BIGINT
+                      AND workspace_id = $2::BIGINT
+                    FOR UPDATE
+                    """,
                     int(character_id),
+                    self._workspace_id,
                 )
                 if current is None:
                     raise ValueError("Персонаж не найден.")
@@ -54,15 +74,23 @@ class CharacterDirectoryRepository:
                         UPDATE characters
                         SET universe = $2::VARCHAR, story_id = NULL
                         WHERE id = $1::BIGINT
+                          AND workspace_id = $3::BIGINT
                         """,
                         int(character_id),
                         universe,
+                        self._workspace_id,
                     )
                 else:
                     await connection.execute(
-                        "UPDATE characters SET universe = $2::VARCHAR WHERE id = $1::BIGINT",
+                        """
+                        UPDATE characters
+                        SET universe = $2::VARCHAR
+                        WHERE id = $1::BIGINT
+                          AND workspace_id = $3::BIGINT
+                        """,
                         int(character_id),
                         universe,
+                        self._workspace_id,
                     )
 
     async def set_prompt_url(
@@ -77,9 +105,11 @@ class CharacterDirectoryRepository:
                 UPDATE characters
                 SET prompt_post_url = $2::TEXT
                 WHERE id = $1::BIGINT
+                  AND workspace_id = $3::BIGINT
                 """,
                 int(character_id),
                 prompt_post_url,
+                self._workspace_id,
             )
         if result == "UPDATE 0":
             raise ValueError("Персонаж не найден.")
@@ -89,7 +119,7 @@ class CharacterDirectoryRepository:
             row = await connection.fetchrow(
                 """
                 SELECT
-                    c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
+                    c.id, c.workspace_id, c.name, c.created_by, c.created_in_chat, c.created_at,
                     c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
                     c.category, c.universe, c.prompt_post_url, c.story_id,
                     s.short_label AS story_short_label,
@@ -99,9 +129,11 @@ class CharacterDirectoryRepository:
                 LEFT JOIN character_stories AS s ON s.id = c.story_id
                 LEFT JOIN character_media AS cm ON cm.character_id = c.id
                 WHERE c.id = $1::BIGINT
+                  AND c.workspace_id = $2::BIGINT
                 GROUP BY c.id, s.id
                 """,
                 int(character_id),
+                self._workspace_id,
             )
         return self._row_to_directory_item(row) if row is not None else None
 
@@ -123,8 +155,9 @@ class CharacterDirectoryRepository:
                     COUNT(DISTINCT c.id) AS character_count
                 FROM characters AS c
                 LEFT JOIN character_media AS cm ON cm.character_id = c.id
-                WHERE (
-                    $1::BOOLEAN = FALSE
+                WHERE c.workspace_id = $1::BIGINT
+                  AND (
+                    $2::BOOLEAN = FALSE
                     OR (
                         cm.media_id IS NOT NULL
                         AND c.universe IS NOT NULL
@@ -140,6 +173,7 @@ class CharacterDirectoryRepository:
                 )
                 GROUP BY COALESCE(c.category, 'uncategorized')
                 """,
+                self._workspace_id,
                 bool(public_only),
             )
         counts = {
@@ -175,23 +209,25 @@ class CharacterDirectoryRepository:
                     COUNT(DISTINCT c.id) AS character_count
                 FROM characters AS c
                 LEFT JOIN character_media AS cm ON cm.character_id = c.id
-                WHERE c.category = $1::VARCHAR
+                WHERE c.workspace_id = $1::BIGINT
+                  AND c.category = $2::VARCHAR
                   AND (
-                        $2::BOOLEAN = FALSE
+                        $3::BOOLEAN = FALSE
                         OR (
                             cm.media_id IS NOT NULL
                             AND (
                                 c.universe NOT IN {STORY_REQUIRED_SQL}
                                 OR EXISTS (
-                                SELECT 1
-                                FROM character_story_links AS ready_link
-                                WHERE ready_link.character_id = c.id
-                            )
+                                    SELECT 1
+                                    FROM character_story_links AS ready_link
+                                    WHERE ready_link.character_id = c.id
+                                )
                             )
                         )
                       )
                 GROUP BY COALESCE(c.universe, 'unassigned')
                 """,
+                self._workspace_id,
                 category,
                 bool(public_only),
             )
@@ -222,20 +258,20 @@ class CharacterDirectoryRepository:
         safe_page_size = max(1, min(int(page_size), 10))
         safe_page = max(0, int(page))
         category_condition = """
-            (($1::TEXT = 'uncategorized' AND c.category IS NULL) OR c.category = $1)
+            (($2::TEXT = 'uncategorized' AND c.category IS NULL) OR c.category = $2)
         """
-        universe_condition = "($3::TEXT IS NULL OR c.universe = $3)"
+        universe_condition = "($4::TEXT IS NULL OR c.universe = $4)"
         story_condition = """
-            ($4::BIGINT IS NULL OR EXISTS (
+            ($5::BIGINT IS NULL OR EXISTS (
                 SELECT 1
                 FROM character_story_links AS selected_link
                 WHERE selected_link.character_id = c.id
-                  AND selected_link.story_id = $4::BIGINT
+                  AND selected_link.story_id = $5::BIGINT
             ))
         """
         public_condition = f"""
             (
-                $2::BOOLEAN = FALSE
+                $3::BOOLEAN = FALSE
                 OR (
                     cm.media_id IS NOT NULL
                     AND c.universe IS NOT NULL
@@ -260,13 +296,15 @@ class CharacterDirectoryRepository:
                         SELECT c.id
                         FROM characters AS c
                         LEFT JOIN character_media AS cm ON cm.character_id = c.id
-                        WHERE {category_condition}
+                        WHERE c.workspace_id = $1::BIGINT
+                          AND {category_condition}
                           AND {public_condition}
                           AND {universe_condition}
                           AND {story_condition}
                         GROUP BY c.id
                     ) AS directory
                     """,
+                    self._workspace_id,
                     category,
                     bool(public_only),
                     universe,
@@ -279,7 +317,7 @@ class CharacterDirectoryRepository:
             rows = await connection.fetch(
                 f"""
                 SELECT
-                    c.id, c.name, c.created_by, c.created_in_chat, c.created_at,
+                    c.id, c.workspace_id, c.name, c.created_by, c.created_in_chat, c.created_at,
                     c.archive_chat_id, c.archive_thread_id, c.archive_topic_url,
                     c.category, c.universe, c.prompt_post_url, c.story_id,
                     s.short_label AS story_short_label,
@@ -288,15 +326,17 @@ class CharacterDirectoryRepository:
                 FROM characters AS c
                 LEFT JOIN character_stories AS s ON s.id = c.story_id
                 LEFT JOIN character_media AS cm ON cm.character_id = c.id
-                WHERE {category_condition}
+                WHERE c.workspace_id = $1::BIGINT
+                  AND {category_condition}
                   AND {public_condition}
                   AND {universe_condition}
                   AND {story_condition}
                 GROUP BY c.id, s.id
                 ORDER BY c.normalized_name ASC, c.id ASC
-                OFFSET $5::INTEGER
-                LIMIT $6::INTEGER
+                OFFSET $6::INTEGER
+                LIMIT $7::INTEGER
                 """,
+                self._workspace_id,
                 category,
                 bool(public_only),
                 universe,
@@ -348,6 +388,11 @@ class CharacterDirectoryRepository:
             archive_chat_id=row["archive_chat_id"],
             archive_thread_id=row["archive_thread_id"],
             archive_topic_url=row["archive_topic_url"],
+            workspace_id=(
+                int(row["workspace_id"])
+                if "workspace_id" in row
+                else DEFAULT_WORKSPACE_ID
+            ),
         )
 
     @classmethod
