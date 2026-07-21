@@ -46,13 +46,13 @@ class WorkspaceCharacterTaxonomyContractTests(unittest.TestCase):
         self.assertIn("PRIMARY KEY (character_id, story_id)", sql)
         self.assertIn("WHERE is_primary", sql)
         self.assertIn("DROP CONSTRAINT IF EXISTS characters_category_check", sql)
-        self.assertIn("characters_workspace_universe_fkey", sql)
+        self.assertIn("workspace_id <> 1", sql)
         self.assertIn("FOREIGN KEY (workspace_id, story_id)", sql)
 
     def test_character_form_uses_workspace_middleware_prefix(self) -> None:
-        self.assertTrue(
-            str(WorkspaceForm.waiting_character_command).startswith("WorkspaceForm:")
-        )
+        state_name = WorkspaceForm.waiting_character_command.state
+        self.assertIsNotNone(state_name)
+        self.assertTrue(str(state_name).startswith("WorkspaceForm:"))
 
 
 @unittest.skipUnless(
