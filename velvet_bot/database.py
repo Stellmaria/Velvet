@@ -9,6 +9,7 @@ from pathlib import Path
 import asyncpg
 
 from velvet_bot.media import MediaDescriptor
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 MAX_CHARACTER_NAME_LENGTH = 64
 _LEGACY_DUPLICATE_MIGRATION_NUMBERS = {
@@ -26,6 +27,7 @@ class Character:
     archive_chat_id: int | None
     archive_thread_id: int | None
     archive_topic_url: str | None
+    workspace_id: int = DEFAULT_WORKSPACE_ID
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +117,7 @@ class Database:
         *,
         created_by: int | None,
         created_in_chat: int | None,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> tuple[Character, bool]:
         display_name = clean_character_name(name)
         normalized_name = normalize_character_name(display_name)
@@ -123,15 +126,17 @@ class Database:
             row = await connection.fetchrow(
                 """
                 INSERT INTO characters (
+                    workspace_id,
                     name,
                     normalized_name,
                     created_by,
                     created_in_chat
                 )
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (normalized_name) DO NOTHING
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (workspace_id, normalized_name) DO NOTHING
                 RETURNING
                     id,
+                    workspace_id,
                     name,
                     created_by,
                     created_in_chat,
@@ -140,6 +145,7 @@ class Database:
                     archive_thread_id,
                     archive_topic_url
                 """,
+                int(workspace_id),
                 display_name,
                 normalized_name,
                 created_by,
@@ -150,6 +156,7 @@ class Database:
                 row = await self._fetch_character_row(
                     connection,
                     normalized_name=normalized_name,
+                    workspace_id=int(workspace_id),
                 )
 
         if row is None:
@@ -164,6 +171,7 @@ class Database:
         archive_chat_id: int,
         archive_thread_id: int,
         archive_topic_url: str,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> Character:
         try:
             async with self._require_pool().acquire() as connection:
@@ -174,8 +182,10 @@ class Database:
                         archive_thread_id = $3,
                         archive_topic_url = $4
                     WHERE id = $1
+                      AND workspace_id = $5
                     RETURNING
                         id,
+                        workspace_id,
                         name,
                         created_by,
                         created_in_chat,
@@ -188,6 +198,7 @@ class Database:
                     archive_chat_id,
                     archive_thread_id,
                     archive_topic_url,
+                    int(workspace_id),
                 )
         except asyncpg.UniqueViolationError as error:
             raise ValueError(
@@ -198,12 +209,18 @@ class Database:
             raise RuntimeError("Персонаж для привязки темы не найден.")
         return self._row_to_character(row)
 
-    async def get_character(self, name: str) -> Character | None:
+    async def get_character(
+        self,
+        name: str,
+        *,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> Character | None:
         normalized_name = normalize_character_name(name)
         async with self._require_pool().acquire() as connection:
             row = await self._fetch_character_row(
                 connection,
                 normalized_name=normalized_name,
+                workspace_id=int(workspace_id),
             )
         return self._row_to_character(row) if row is not None else None
 
@@ -211,12 +228,15 @@ class Database:
         self,
         archive_chat_id: int,
         archive_thread_id: int,
+        *,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> Character | None:
         async with self._require_pool().acquire() as connection:
             row = await connection.fetchrow(
                 """
                 SELECT
                     id,
+                    workspace_id,
                     name,
                     created_by,
                     created_in_chat,
@@ -225,21 +245,29 @@ class Database:
                     archive_thread_id,
                     archive_topic_url
                 FROM characters
-                WHERE archive_chat_id = $1
-                  AND archive_thread_id = $2
+                WHERE workspace_id = $1
+                  AND archive_chat_id = $2
+                  AND archive_thread_id = $3
                 """,
+                int(workspace_id),
                 archive_chat_id,
                 archive_thread_id,
             )
         return self._row_to_character(row) if row is not None else None
 
-    async def list_characters(self, *, limit: int = 100) -> list[Character]:
+    async def list_characters(
+        self,
+        *,
+        limit: int = 100,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> list[Character]:
         safe_limit = max(1, min(limit, 100))
         async with self._require_pool().acquire() as connection:
             rows = await connection.fetch(
                 """
                 SELECT
                     id,
+                    workspace_id,
                     name,
                     created_by,
                     created_in_chat,
@@ -248,9 +276,11 @@ class Database:
                     archive_thread_id,
                     archive_topic_url
                 FROM characters
+                WHERE workspace_id = $1
                 ORDER BY normalized_name
-                LIMIT $1
+                LIMIT $2
                 """,
+                int(workspace_id),
                 safe_limit,
             )
         return [self._row_to_character(row) for row in rows]
@@ -470,11 +500,13 @@ class Database:
         connection: asyncpg.Connection,
         *,
         normalized_name: str,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> asyncpg.Record | None:
         return await connection.fetchrow(
             """
             SELECT
                 id,
+                workspace_id,
                 name,
                 created_by,
                 created_in_chat,
@@ -483,8 +515,10 @@ class Database:
                 archive_thread_id,
                 archive_topic_url
             FROM characters
-            WHERE normalized_name = $1
+            WHERE workspace_id = $1
+              AND normalized_name = $2
             """,
+            int(workspace_id),
             normalized_name,
         )
 
@@ -499,6 +533,11 @@ class Database:
             archive_chat_id=row["archive_chat_id"],
             archive_thread_id=row["archive_thread_id"],
             archive_topic_url=row["archive_topic_url"],
+            workspace_id=(
+                int(row["workspace_id"])
+                if "workspace_id" in row
+                else DEFAULT_WORKSPACE_ID
+            ),
         )
 
 

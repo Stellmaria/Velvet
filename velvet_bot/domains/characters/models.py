@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+
 
 @dataclass(frozen=True, slots=True)
 class CharacterRecord:
@@ -14,6 +16,7 @@ class CharacterRecord:
     archive_chat_id: int | None
     archive_thread_id: int | None
     archive_topic_url: str | None
+    workspace_id: int = DEFAULT_WORKSPACE_ID
 
 
 @dataclass(frozen=True, slots=True)
