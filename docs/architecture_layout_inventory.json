@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "workspace-character-inline-pickers",
+  "generated_from": "p3d-analytics-alias-retirement",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -42,8 +42,8 @@
   ],
   "active_compatibility_component_count": 8,
   "next_slice": {
-    "phase": "workspace-media-scope",
-    "target": "workspace-aware media save and automatic archive",
-    "strategy": "resolve active workspace before character lookup and preserve system workspace compatibility"
+    "phase": "P3F",
+    "target": "bounded static typing baseline",
+    "strategy": "type-check one transport-neutral package, gate new errors, then expand scope"
   }
 }
