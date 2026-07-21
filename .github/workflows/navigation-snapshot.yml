@@ -1,0 +1,29 @@
+name: navigation audit snapshot
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    if: github.head_ref == 'agent/global-navigation-audit'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package repository
+        run: |
+          zip -qr navigation-audit-source.zip velvet_bot tests scripts docs .github pyproject.toml requirements.txt Dockerfile docker-compose.yml README.md CHANGELOG.md
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: navigation-audit-source
+          path: navigation-audit-source.zip
+          if-no-files-found: error
+          retention-days: 1
