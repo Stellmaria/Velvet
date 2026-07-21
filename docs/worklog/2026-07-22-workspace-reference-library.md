@@ -85,6 +85,8 @@
 - запрет comparison report с reference соседнего workspace;
 - успешное сохранение валидного workspace comparison report.
 
+Generated architecture и repository-layout inventories сохранены с их каноническими baseline labels, а P2 inventory поднят до schema version `49` с нулём risky callbacks.
+
 ### PR и commit
 
 PR: `#285 Isolate reference libraries by workspace`. Финальный merge commit фиксируется после зелёного CI.
