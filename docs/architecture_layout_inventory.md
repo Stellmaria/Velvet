@@ -43,9 +43,9 @@
 
 ## Следующий срез
 
-- фаза: **P3E**;
-- цель: **repository and root-module layout normalization**;
-- стратегия: inventory repository consumers, then migrate one domain per reviewed slice.
+- фаза: **P3F**;
+- цель: **bounded static typing baseline**;
+- стратегия: type-check one transport-neutral package, gate new errors, then expand scope.
 
 ## Правило обновления
 
