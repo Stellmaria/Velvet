@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Protocol
+
 from velvet_bot.domains.characters import (
     CategorySummary,
     CharacterDirectoryPage,
@@ -13,7 +15,17 @@ from velvet_bot.domains.public_archive.models import (
     PublicMediaState,
 )
 from velvet_bot.domains.public_archive.repository import PublicArchiveRepository
-from velvet_bot.domains.stories import StoryService, StorySummary
+from velvet_bot.domains.stories import StorySummary
+
+
+class StorySummaryProvider(Protocol):
+    async def list_summaries(
+        self,
+        *,
+        category: str,
+        universe: str,
+        public_only: bool,
+    ) -> list[StorySummary]: ...
 
 
 class PublicArchiveService:
@@ -24,7 +36,7 @@ class PublicArchiveService:
         *,
         repository: PublicArchiveRepository,
         characters: CharacterDirectoryService,
-        stories: StoryService,
+        stories: StorySummaryProvider,
     ) -> None:
         self._repository = repository
         self._characters = characters
@@ -187,4 +199,4 @@ class PublicArchiveService:
         return await self._repository.mark_notification_delivered(notification)
 
 
-__all__ = ("PublicArchiveService",)
+__all__ = ("PublicArchiveService", "StorySummaryProvider")
