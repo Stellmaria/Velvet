@@ -7,9 +7,9 @@ AST-инвентаризация широких исключений и callback
 - raw broad exceptions: **77** в **45** файлах;
 - approved boundaries: **77**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **99**;
+- callback handlers: **101**;
 - late/missing callbacks: **0**;
-- guarded callbacks: **25**;
+- guarded callbacks: **27**;
 - delegated callbacks: **4**.
 
 ## Approved broad boundaries
@@ -89,8 +89,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py:229` `_place_in_topic`: isolate-media-topic-delivery.
 - `velvet_bot/services/system_health.py:126` `check`: isolate-database-health-probe.
 - `velvet_bot/services/system_health.py:138` `check`: isolate-telegram-health-probe.
-- `velvet_bot/workers/manager.py:182` `_execute_once`: isolate-worker-iteration-failure.
-- `velvet_bot/workers/manager.py:219` `_run_periodic`: isolate-worker-loop-failure.
+- `velvet_bot/workers/manager.py:222` `_execute_once`: isolate-worker-iteration-failure.
+- `velvet_bot/workers/manager.py:267` `_run_periodic`: isolate-worker-loop-failure.
 
 ## Unresolved broad exceptions by file
 
