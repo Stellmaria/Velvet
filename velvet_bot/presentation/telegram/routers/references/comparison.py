@@ -25,7 +25,7 @@ from velvet_bot.presentation.telegram.routers.references.parsing import (
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.reference_catalog import CharacterReference, list_character_references
 from velvet_bot.reference_comparison import ReferenceComparisonClient
-from velvet_bot.reference_comparison_repository import _save_report
+from velvet_bot.domains.references.comparison_repository import _save_report
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)

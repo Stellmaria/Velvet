@@ -14,7 +14,7 @@ import velvet_bot.media_set_duplicate_actions as duplicate_actions
 import velvet_bot.domains.media_sets.duplicate_actions_repository as duplicate_repository
 import velvet_bot.domains.media_sets.ai_repository as set_ai_repository
 import velvet_bot.domains.media_sets.quality_repository as sets_repository
-import velvet_bot.reference_comparison_repository as comparison_repository
+import velvet_bot.domains.references.comparison_repository as comparison_repository
 
 ROOT = Path(__file__).resolve().parents[1]
 

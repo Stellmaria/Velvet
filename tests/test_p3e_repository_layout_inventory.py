@@ -35,7 +35,13 @@ RETIRED_ROOT_QUALITY_REPOSITORY = "velvet_bot." + "quality_sets_repository"
 CANONICAL_QUALITY_REPOSITORY = (
     "velvet_bot.domains.media_sets." + "quality_repository"
 )
-NEXT_ROOT_REPOSITORY = "velvet_bot." + "reference_comparison_repository"
+RETIRED_ROOT_REFERENCE_REPOSITORY = (
+    "velvet_bot." + "reference_comparison_repository"
+)
+CANONICAL_REFERENCE_REPOSITORY = (
+    "velvet_bot.domains.references." + "comparison_repository"
+)
+NEXT_ROOT_REPOSITORY = "velvet_bot." + "media_set_actions_repository"
 
 
 class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
@@ -66,10 +72,12 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertNotIn(RETIRED_ROOT_DUPLICATE_REPOSITORY, modules)
         self.assertNotIn(RETIRED_ROOT_SET_AI_REPOSITORY, modules)
         self.assertNotIn(RETIRED_ROOT_QUALITY_REPOSITORY, modules)
+        self.assertNotIn(RETIRED_ROOT_REFERENCE_REPOSITORY, modules)
         self.assertIn(CANONICAL_MEDIA_SET_REPOSITORY, modules)
         self.assertIn(CANONICAL_DUPLICATE_REPOSITORY, modules)
         self.assertIn(CANONICAL_SET_AI_REPOSITORY, modules)
         self.assertIn(CANONICAL_QUALITY_REPOSITORY, modules)
+        self.assertIn(CANONICAL_REFERENCE_REPOSITORY, modules)
         self.assertNotIn("PublicNotificationRepository", repository_package)
         self.assertNotIn("PendingPublicNotification", repository_package)
         self.assertNotIn("PublicationRepository", repository_package)
@@ -91,6 +99,9 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertFalse(
             (ROOT / "velvet_bot/quality_sets_repository.py").exists()
         )
+        self.assertFalse(
+            (ROOT / "velvet_bot/reference_comparison_repository.py").exists()
+        )
         self.assertTrue(
             (ROOT / "velvet_bot/domains/media_sets/repository.py").is_file()
         )
@@ -106,15 +117,21 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertTrue(
             (ROOT / "velvet_bot/domains/media_sets/quality_repository.py").is_file()
         )
+        self.assertTrue(
+            (
+                ROOT
+                / "velvet_bot/domains/references/comparison_repository.py"
+            ).is_file()
+        )
 
     def test_next_slice_is_measurable(self) -> None:
         inventory = build_inventory(label=LABEL)
 
         self.assertEqual(31, inventory["repository_module_count"])
-        self.assertEqual(27, inventory["layout_counts"]["domain"])
+        self.assertEqual(28, inventory["layout_counts"]["domain"])
         self.assertEqual(1, inventory["layout_counts"]["central"])
-        self.assertEqual(3, inventory["layout_counts"]["root"])
-        self.assertEqual(113, inventory["root_module_count"])
+        self.assertEqual(2, inventory["layout_counts"]["root"])
+        self.assertEqual(112, inventory["root_module_count"])
         self.assertEqual(
             NEXT_ROOT_REPOSITORY,
             inventory["next_slice"]["candidate"],
