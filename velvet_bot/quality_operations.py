@@ -81,7 +81,7 @@ class QualityOperationsRepository:
                     UPDATE media_ai_profiles
                     SET status = 'pending',
                         attempt_count = 0,
-                        analysis = NULL,
+                        analysis = '{}'::JSONB,
                         semantic_text = NULL,
                         error_message = NULL,
                         analyzed_at = NULL,
