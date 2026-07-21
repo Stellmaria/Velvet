@@ -13,6 +13,8 @@ _EXPECTED_SCOPE = {
     "velvet_bot/post_classification.py",
     "velvet_bot/domains/references/models.py",
     "velvet_bot/domains/stories/models.py",
+    "velvet_bot/domains/archive/models.py",
+    "velvet_bot/domains/archive/preview_models.py",
 }
 
 
@@ -35,10 +37,19 @@ class P3FTypingBaselineTests(unittest.TestCase):
         self.assertNotIn("follow_imports", settings)
 
     def test_domain_packages_keep_persistence_exports_lazy(self) -> None:
+        archive_repository_module = "velvet_bot.domains.archive." + "repository"
+        archive_preview_repository_module = (
+            "velvet_bot.domains.archive." + "preview_repository"
+        )
         character_repository_module = "velvet_bot.domains.characters." + "repository"
         reference_repository_module = "velvet_bot.domains.references." + "repository"
         story_repository_module = "velvet_bot.domains.stories." + "repository"
         package_exports = {
+            "velvet_bot/domains/archive/__init__.py": {
+                archive_preview_repository_module,
+                archive_repository_module,
+                "velvet_bot.domains.archive.service",
+            },
             "velvet_bot/domains/characters/__init__.py": {
                 character_repository_module,
                 "velvet_bot.domains.characters.service",
@@ -63,6 +74,11 @@ class P3FTypingBaselineTests(unittest.TestCase):
                 }
                 self.assertTrue(forbidden_modules.isdisjoint(imported_modules))
 
+        from velvet_bot.domains.archive import (
+            ArchivePreviewRepository,
+            ArchiveRepository,
+            ArchiveService,
+        )
         from velvet_bot.domains.characters import (
             CharacterDirectoryRepository,
             CharacterDirectoryService,
@@ -70,6 +86,12 @@ class P3FTypingBaselineTests(unittest.TestCase):
         from velvet_bot.domains.references import ReferenceRepository, ReferenceService
         from velvet_bot.domains.stories import StoryRepository, StoryService
 
+        self.assertEqual(
+            archive_preview_repository_module,
+            ArchivePreviewRepository.__module__,
+        )
+        self.assertEqual(archive_repository_module, ArchiveRepository.__module__)
+        self.assertEqual("velvet_bot.domains.archive.service", ArchiveService.__module__)
         self.assertEqual(
             character_repository_module,
             CharacterDirectoryRepository.__module__,
