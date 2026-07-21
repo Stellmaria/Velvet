@@ -1,0 +1,35 @@
+name: temporary inventory label correction
+
+on:
+  push:
+    branches:
+      - agent/workspace-reference-library
+    paths:
+      - .github/workflows/tmp-correct-inventory-labels.yml
+
+permissions:
+  contents: write
+
+jobs:
+  correct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-reference-library
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Regenerate inventories with canonical baseline labels
+        run: |
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+      - name: Commit labels and remove workflow
+        run: |
+          rm .github/workflows/tmp-correct-inventory-labels.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Restore canonical inventory labels"
+          git push origin HEAD:agent/workspace-reference-library
