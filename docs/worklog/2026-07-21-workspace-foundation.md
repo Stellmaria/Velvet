@@ -3,7 +3,7 @@
 - Дата: 2026-07-21
 - ID: `2026-07-21-workspace-foundation`
 - Линия/фаза: multi-workspace foundation
-- Статус: `выполняется`
+- Статус: `частично`
 - Ветка: `agent/workspace-foundation`
 - Базовый commit: `3b38844fd57cb4ff18e3c8de5710facdef394e69`
 
@@ -15,11 +15,11 @@
 
 ### Исходный контекст
 
-Текущая модель однопользовательская. Персонажи имеют глобально уникальный `normalized_name`, каналы загружаются из глобального `.env`, а роли owner/moderator не привязаны к отдельному архиву. Простое добавление нового user ID не создаёт изоляцию данных.
+Текущая модель была однопользовательской. Персонажи имели глобально уникальный `normalized_name`, каналы загружались из глобального `.env`, а роли owner/moderator не были привязаны к отдельному архиву. Простое добавление нового user ID не создавало изоляцию данных.
 
 ### Планируемый объём
 
-- миграция `workspaces`, `workspace_members`, `workspace_settings`;
+- миграция `workspaces`, `workspace_members`, `workspace_settings`, `workspace_channels`;
 - создание системного пространства Velvet и перенос существующих персонажей в него;
 - добавление `workspace_id` в `characters`;
 - уникальность имени персонажа внутри workspace;
@@ -40,8 +40,41 @@
 
 ### Риски и ограничения
 
-Это первая фаза. Она создаёт tenant boundary и переносит ownership персонажей, но не включает внешнему пользователю production-меню до завершения сквозного перевода всех archive/publication/Qwen запросов на `workspace_id`. Такой порядок намеренно консервативен: сначала изоляция, потом кнопки.
+Это первая фаза. Она создаёт tenant boundary и переносит ownership персонажей, но не включает внешнему пользователю production-меню до завершения сквозного перевода archive/publication/Qwen запросов на `workspace_id`. Такой порядок намеренно консервативен: сначала изоляция, потом кнопки.
 
 ## После завершения
 
-Заполняется после реализации и проверок.
+### Фактически сделано
+
+- добавлены `workspaces`, `workspace_members`, `workspace_settings` и `workspace_channels`;
+- системное пространство Velvet закреплено за ID `1`;
+- существующие персонажи мигрируют в системное пространство;
+- глобальная уникальность имени заменена на `UNIQUE (workspace_id, normalized_name)`;
+- `Database.create_character`, поиск, topic binding и списки получили совместимый `workspace_id=1` по умолчанию;
+- `CharacterDirectoryRepository` фильтрует чтение и изменение по workspace;
+- добавлены роли `owner/admin/editor/reviewer/viewer` и явный global-owner support bypass;
+- настройки каналов, публичного архива, скачиваний, Qwen и часового пояса хранятся отдельно;
+- добавлены unit и PostgreSQL isolation tests;
+- generated repository-layout и Telegram navigation inventories обновлены.
+
+### Миграции и совместимость
+
+Новая миграция: `103_workspaces.sql`. Старые вызовы без workspace продолжают работать в системном пространстве ID `1`. Существующие персонажи, медиа и topic links сохраняются. Внешний пользовательский интерфейс пока не включён, поэтому частично переведённые домены не могут быть использованы для обхода tenant boundary.
+
+### Проверки
+
+Первый CI на head `3f24849161775feedba23bf925d6d4b974541f13` подтвердил успешные type-check и Docker build. Tests и restore drill корректно остановились из-за занятого номера миграции `102`; дополнительно generated P3E/navigation baselines потребовали регенерации. Исправления внесены, запускается повторный полный CI.
+
+### PR и commit
+
+PR #275: `Add workspace foundation for isolated personal archives`. Implementation head до исправления контрактов: `3f24849161775feedba23bf925d6d4b974541f13`.
+
+### Незавершённое
+
+- archive/public archive, stories, references, publication, Qwen, subscriptions и analytics ещё не переведены сквозным образом на workspace context;
+- мастер подключения каналов и внешнее меню не включены;
+- active workspace selection в Telegram FSM не добавлен.
+
+### Следующий шаг
+
+Перевести archive/public archive read/write boundaries на обязательный workspace context, затем добавить выбор активного пространства и мастер проверки прав бота в пользовательских каналах.
