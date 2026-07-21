@@ -60,6 +60,16 @@ def apply_calibration_to_report(
     return calibrated
 
 
+def _is_permanent_analysis_error(error: BaseException) -> bool:
+    if not isinstance(error, VisionAnalysisError):
+        return False
+    message = str(error)
+    return (
+        "прочитать как изображение" in message
+        or "file is too big" in message.casefold()
+    )
+
+
 class CalibratedAIQualityService(AIQualityService):
     def __init__(self, *args, calibration_repository: QualityCalibrationRepository, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -109,14 +119,12 @@ class CalibratedAIQualityService(AIQualityService):
                 )
                 break
             except Exception as error:  # p2-approved-boundary: compensate-claimed-calibrated-quality
-                logger.warning(
+                permanent = _is_permanent_analysis_error(error)
+                log_failure = logger.info if permanent else logger.warning
+                log_failure(
                     "Calibrated AI quality analysis failed media_id=%s: %s",
                     target.media_id,
                     error,
-                )
-                permanent = isinstance(error, VisionAnalysisError) and (
-                    "прочитать как изображение" in str(error)
-                    or "file is too big" in str(error).casefold()
                 )
                 await self._repository.mark_error(
                     target.media_id,
