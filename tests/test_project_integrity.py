@@ -124,6 +124,8 @@ DIRECT_COMMANDS = {
     "workspace_grant",
     "workspace_revoke",
     "workspace_module",
+    "wcatalog",
+    "workspace_catalog",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
