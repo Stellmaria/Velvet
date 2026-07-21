@@ -11,6 +11,10 @@ from velvet_bot.core.access import AccessPolicy
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
+from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
+from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
+from velvet_bot.domains.workspaces.repository import WorkspaceRepository
+from velvet_bot.domains.workspaces.service import WorkspaceService
 from velvet_bot.error_center import ErrorIncidentCenter
 from velvet_bot.presentation.telegram.middleware import OwnerAccessMiddleware
 from velvet_bot.presentation.telegram.router import get_root_router
@@ -52,6 +56,12 @@ def build_dispatcher(
     discussion_middleware = DiscussionAnalyticsMiddleware()
     supervisor_client = build_supervisor_client()
     active_save_upload_sessions = save_upload_sessions or SaveUploadSessions()
+    workspace_repository = WorkspaceRepository(database)
+    workspace_service = WorkspaceService(workspace_repository)
+    workspace_product_service = WorkspaceProductService(
+        product_repository=WorkspaceProductRepository(database),
+        workspace_repository=workspace_repository,
+    )
 
     workflow_data = {
         "database": database,
@@ -60,6 +70,8 @@ def build_dispatcher(
         "reference_uploads": reference_uploads,
         "save_upload_sessions": active_save_upload_sessions,
         "access_policy": access_policy,
+        "workspace_service": workspace_service,
+        "workspace_product_service": workspace_product_service,
         "analytics_channel_ids": settings.analytics_channel_ids,
         "adult_channel_id": settings.adult_channel_id,
         "publication_timezone": settings.publication_timezone,
