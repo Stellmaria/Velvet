@@ -107,6 +107,7 @@ class P3RouterOrganizationTests(unittest.TestCase):
                 if isinstance(node, ast.ImportFrom)
                 and node.module
                 and _active_router_module(node.module)
+                and any(alias.name == "router" for alias in node.names)
             )
         self.assertEqual(len(modules), len(set(modules)))
         self.assertEqual(EXPECTED_ROUTER_MODULES, set(modules))
