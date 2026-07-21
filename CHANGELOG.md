@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+### P3A: current architecture status synchronization
+
+- Current status, project memory and architecture audit now reflect merged `main`.
+- P2 generated baseline is 76 approved broad boundaries, 0 unresolved and 98 callback handlers with 0 late/missing acknowledgments.
+- Legacy handler files, implementations and aliases are 0; four Telegram bundles register 60 active routers without duplicates.
+- P3E is complete with 30 domain repositories, 1 PostgreSQL infrastructure adapter, 0 central repositories and 0 root repositories.
+- Architecture inventory now points to the first bounded P3F static-typing baseline.
+
+### Owner diagnostics and AI quality hotfixes
+
+- Added owner-only `Velvet Diagnostic Bundle v1` with redacted runtime, workers, Error Center incidents and bounded log tail.
+- Added five-minute critical diagnostics with per-incident and global cooldowns.
+- Qwen retry now resets `media_ai_profiles.analysis` to an empty JSON object instead of violating its `NOT NULL` constraint.
+- Permanent oversized/no-preview calibrated AI skips are logged as `INFO`; real provider, database and filesystem failures remain `WARNING/ERROR`.
+
 ### P3C–P3D: presentation completion and legacy consumer baseline
 
 - All active Telegram controllers now live under canonical presentation routers; `velvet_bot/handlers` contains 35 aliases and 0 implementations.

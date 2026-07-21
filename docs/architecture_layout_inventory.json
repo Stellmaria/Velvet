@@ -42,8 +42,8 @@
   ],
   "active_compatibility_component_count": 8,
   "next_slice": {
-    "phase": "P3E",
-    "target": "repository and root-module layout normalization",
-    "strategy": "inventory repository consumers, then migrate one domain per reviewed slice"
+    "phase": "P3F",
+    "target": "bounded static typing baseline",
+    "strategy": "type-check one transport-neutral package, gate new errors, then expand scope"
   }
 }
