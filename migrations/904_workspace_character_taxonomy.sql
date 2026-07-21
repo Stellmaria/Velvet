@@ -4,6 +4,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_characters_workspace_id_id
 CREATE UNIQUE INDEX IF NOT EXISTS uq_workspace_stories_workspace_id_id
     ON workspace_stories (workspace_id, id);
 
+ALTER TABLE characters
+    DROP CONSTRAINT IF EXISTS characters_category_check,
+    DROP CONSTRAINT IF EXISTS characters_universe_check,
+    DROP CONSTRAINT IF EXISTS characters_workspace_category_fkey,
+    DROP CONSTRAINT IF EXISTS characters_workspace_universe_fkey;
+
+ALTER TABLE characters
+    ADD CONSTRAINT characters_workspace_category_fkey
+        FOREIGN KEY (workspace_id, category)
+        REFERENCES workspace_categories(workspace_id, key),
+    ADD CONSTRAINT characters_workspace_universe_fkey
+        FOREIGN KEY (workspace_id, universe)
+        REFERENCES workspace_universes(workspace_id, key);
+
 CREATE TABLE IF NOT EXISTS workspace_character_story_links (
     workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     character_id BIGINT NOT NULL,
