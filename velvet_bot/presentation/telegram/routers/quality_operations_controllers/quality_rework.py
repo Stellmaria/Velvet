@@ -19,8 +19,8 @@ _STATUS_LABELS = {
 }
 _SOURCE_LABELS = {
     "qwen": "Qwen",
-    "admin": "администратор",
-    "mixed": "Qwen + администратор",
+    "admin": "Стэл",
+    "mixed": "Стэл + Qwen",
 }
 
 
@@ -48,7 +48,7 @@ def _list_keyboard(page) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"{status} {score} · #{item.media_id} · {item.file_name}"[:60],
+                    text=f"{status} {score} · #{item.media_id} · {item.file_name}"[:46],
                     callback_data=quality_callback(
                         "rework",
                         page=page.page,
@@ -83,12 +83,12 @@ def _list_keyboard(page) -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton(
-                text="🔄 Обновить",
+                text="🔄",
                 callback_data=quality_callback("reworks", page=page.page),
             ),
             InlineKeyboardButton(
-                text="↩️ К аудиту",
-                callback_data=quality_callback("menu"),
+                text="↩️ Qwen",
+                callback_data=quality_callback("ai_menu"),
             ),
         ]
     )
@@ -107,9 +107,10 @@ async def _show_list(message: Message, database: Database, *, page_number: int) 
             f"Нужно исправить: <b>{summary.needs_fix}</b> · "
             f"проверяется: <b>{summary.checking}</b> · "
             f"ждёт решения: <b>{summary.ready_for_review}</b>",
+            f"Стэл: <b>{summary.stel_priority}</b> · Qwen: <b>{summary.qwen_only}</b>",
             f"Страница: <b>{page.page + 1}</b> из <b>{page.total_pages}</b>",
             "",
-            "В очередь попадают критичные оценки Qwen и ручные решения администратора.",
+            "Работы Стэл показаны первыми. Активная доработка временно скрыта из публичного архива.",
         ]
     )
     await _safe_edit(message, text, _list_keyboard(page))
@@ -165,7 +166,7 @@ def _detail_keyboard(item: MediaReworkItem, *, page: int) -> InlineKeyboardMarku
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="🔄 Вернуть на проверку Qwen",
+                    text="🔄 Qwen-проверка",
                     callback_data=quality_callback(
                         "rretry", page=page, item_id=item.media_id
                     ),
@@ -175,7 +176,7 @@ def _detail_keyboard(item: MediaReworkItem, *, page: int) -> InlineKeyboardMarku
     rows.append(
         [
             InlineKeyboardButton(
-                text="↩️ К очереди",
+                text="↩️ Очередь",
                 callback_data=quality_callback("reworks", page=page),
             )
         ]
@@ -248,13 +249,13 @@ async def _apply_action(
     repository = MediaReworkRepository(database)
     if action == "accept":
         changed = await repository.accept(callback_data.item_id, callback.from_user.id)
-        message = "Работа принята."
+        message = "Работа принята. Публичная видимость восстановлена."
     elif action == "retry":
         changed = await repository.retry(callback_data.item_id, callback.from_user.id)
         message = "Работа возвращена на проверку Qwen."
     elif action == "dismiss":
         changed = await repository.dismiss(callback_data.item_id, callback.from_user.id)
-        message = "Работа снята с доработки."
+        message = "Работа снята. Публичная видимость восстановлена."
     else:
         raise ValueError("Неизвестное действие очереди доработки.")
     await callback.answer(

@@ -133,9 +133,13 @@ class PublicArchiveRepository:
         media_id: int,
         member_access: bool,
     ) -> PublicDownloadSource | None:
+        visibility_sql = public_media_visibility_sql(
+            include_adult_restricted=True,
+            include_oversized_images=True,
+        )
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
-                """
+                f"""
                 SELECT
                     mf.telegram_file_id,
                     mf.source_telegram_file_id,
@@ -145,7 +149,7 @@ class PublicArchiveRepository:
                 JOIN media_files AS mf ON mf.id = cm.media_id
                 WHERE cm.character_id = $1::BIGINT
                   AND cm.media_id = $2::BIGINT
-                  AND cm.is_public = TRUE
+                  AND ({visibility_sql})
                 """,
                 int(character_id),
                 int(media_id),

@@ -265,8 +265,8 @@ async def _show_set_list(message: Message, database: Database, *, page: int) -> 
                 callback_data=quality_callback("setreports", page=result.page),
             ),
             InlineKeyboardButton(
-                text="↩️ К аудиту",
-                callback_data=quality_callback("menu"),
+                text="↩️ Qwen",
+                callback_data=quality_callback("ai_menu"),
             ),
         ]
     )

@@ -134,8 +134,8 @@ def _profile_keyboard() -> InlineKeyboardMarkup:
                     callback_data=quality_callback("qcal"),
                 ),
                 InlineKeyboardButton(
-                    text="↩️ К аудиту",
-                    callback_data=quality_callback("menu"),
+                    text="↩️ Qwen",
+                    callback_data=quality_callback("ai_menu"),
                 ),
             ],
         ]

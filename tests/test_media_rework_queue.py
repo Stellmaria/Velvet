@@ -35,7 +35,7 @@ class MediaReworkContractTests(unittest.TestCase):
         self.assertIn('Command("rework", "reworks", "quality_rework")', entry)
         self.assertIn("router.callback_query.register", controller)
         self.assertNotIn("@router.callback_query", controller)
-        self.assertIn("Вернуть на проверку Qwen", controller)
+        self.assertIn("Qwen-проверка", controller)
         self.assertIn("✅ Принять", controller)
         self.assertIn("🗑 Снять", controller)
 

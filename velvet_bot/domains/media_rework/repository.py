@@ -15,6 +15,8 @@ class MediaReworkSummary:
     needs_fix: int
     checking: int
     ready_for_review: int
+    stel_priority: int
+    qwen_only: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,7 +105,15 @@ class MediaReworkRepository:
                     COUNT(*) FILTER (WHERE status = 'checking') AS checking,
                     COUNT(*) FILTER (
                         WHERE status = 'ready_for_review'
-                    ) AS ready_for_review
+                    ) AS ready_for_review,
+                    COUNT(*) FILTER (
+                        WHERE status IN ('needs_fix', 'checking', 'ready_for_review')
+                          AND source IN ('admin', 'mixed')
+                    ) AS stel_priority,
+                    COUNT(*) FILTER (
+                        WHERE status IN ('needs_fix', 'checking', 'ready_for_review')
+                          AND source = 'qwen'
+                    ) AS qwen_only
                 FROM media_rework_items
                 """
             )
@@ -112,6 +122,8 @@ class MediaReworkRepository:
             needs_fix=int(row["needs_fix"] or 0),
             checking=int(row["checking"] or 0),
             ready_for_review=int(row["ready_for_review"] or 0),
+            stel_priority=int(row["stel_priority"] or 0),
+            qwen_only=int(row["qwen_only"] or 0),
         )
 
     async def list_active(
@@ -152,6 +164,7 @@ class MediaReworkRepository:
                 WHERE r.status IN ('needs_fix', 'checking', 'ready_for_review')
                 GROUP BY r.media_id, mf.id, q.media_id
                 ORDER BY
+                    CASE WHEN r.source IN ('admin', 'mixed') THEN 1 ELSE 0 END DESC,
                     CASE r.status
                         WHEN 'needs_fix' THEN 3
                         WHEN 'ready_for_review' THEN 2

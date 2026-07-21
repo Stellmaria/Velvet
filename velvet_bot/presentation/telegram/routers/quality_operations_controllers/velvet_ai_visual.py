@@ -219,7 +219,7 @@ def _report_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ Velvet AI",
+                    text="↩️ Qwen",
                     callback_data=quality_callback("ai_menu"),
                 )
             ],

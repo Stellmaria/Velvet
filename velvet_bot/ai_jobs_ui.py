@@ -107,7 +107,7 @@ def build_job_keyboard(job: AIJob, *, page: int = 0) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="🔄 Обновить статус",
+                    text="🔄 Статус",
                     callback_data=quality_callback("aijob", page=page, item_id=job.id),
                 )
             ]
@@ -117,7 +117,7 @@ def build_job_keyboard(job: AIJob, *, page: int = 0) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="🔁 Запустить ещё раз",
+                    text="🔁 Повторить",
                     callback_data=quality_callback(repeat_action),
                 )
             ]
@@ -125,11 +125,11 @@ def build_job_keyboard(job: AIJob, *, page: int = 0) -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton(
-                text="📋 История AI",
+                text="📋 История",
                 callback_data=quality_callback("aijobs", page=page),
             ),
             InlineKeyboardButton(
-                text="↩️ Velvet AI",
+                text="↩️ Qwen",
                 callback_data=quality_callback("ai_menu"),
             ),
         ]
@@ -188,7 +188,7 @@ def build_job_list(page: AIJobPage) -> tuple[str, InlineKeyboardMarkup]:
                 callback_data=quality_callback("aijobs", page=page.page),
             ),
             InlineKeyboardButton(
-                text="↩️ Velvet AI",
+                text="↩️ Qwen",
                 callback_data=quality_callback("ai_menu"),
             ),
         ]

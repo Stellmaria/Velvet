@@ -78,7 +78,7 @@ def build_quality_dashboard(
         ],
         [
             InlineKeyboardButton(
-                text="🎞 Предложения медиасетов",
+                text="🎞 Медиасеты",
                 callback_data=quality_callback("sets", section="pending"),
             )
         ],
@@ -87,13 +87,9 @@ def build_quality_dashboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"🧠 Проверка изображений · {ai_quality.unreviewed}",
-                    callback_data=quality_callback("qchecks", section="review"),
-                ),
-                InlineKeyboardButton(
-                    text="🔄 Ошибки Qwen",
-                    callback_data=quality_callback("quality_retry_errors"),
-                ),
+                    text=f"🤖 Qwen · {ai_quality.pending + ai_quality.processing}",
+                    callback_data=quality_callback("ai_menu"),
+                )
             ]
         )
     rows.extend(
@@ -130,17 +126,17 @@ def build_quality_dashboard(
             ],
             [
                 InlineKeyboardButton(
-                    text=f"⚠ Ошибки сканирования · {summary.scan_errors}",
+                    text=f"⚠ Скан · {summary.scan_errors}",
                     callback_data=quality_callback("section", section="scan_errors"),
                 ),
                 InlineKeyboardButton(
-                    text=f"#️⃣ Не распознано · {summary.unresolved_hashtags}",
+                    text=f"#️⃣ Хэштеги · {summary.unresolved_hashtags}",
                     callback_data=quality_callback("section", section="unresolved_hashtags"),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text=f"🗃 Сиротские записи · {summary.orphan_media}",
+                    text=f"🗃 Сироты · {summary.orphan_media}",
                     callback_data=quality_callback("orphan_info"),
                 )
             ],
@@ -187,7 +183,7 @@ def page_navigation(
             ]
         )
     rows.append(
-        [InlineKeyboardButton(text="↩️ К аудиту", callback_data=quality_callback("menu"))]
+        [InlineKeyboardButton(text="↩️ Аудит", callback_data=quality_callback("menu"))]
     )
     return rows
 
@@ -229,7 +225,7 @@ def build_duplicate_list(
     rows.append(
         [
             InlineKeyboardButton(
-                text="♻️ Сбросить и проверить заново",
+                text="♻️ Пересканировать",
                 callback_data=quality_callback(
                     "dupresetask",
                     section=status,

@@ -23,8 +23,10 @@ from aiogram.types import (
 )
 
 from velvet_bot.ai_job_runtime import AIJobTracker
+from velvet_bot.ai_quality import AIQualityRepository
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
+from velvet_bot.domains.media_rework import MediaReworkRepository
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.prompt_result_comparison import PromptResultComparisonClient
 from velvet_bot.prompt_result_reports import PromptResultReportRepository
@@ -178,7 +180,7 @@ def _report_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ Velvet AI",
+                    text="↩️ Qwen",
                     callback_data=quality_callback("ai_menu"),
                 )
             ],
@@ -210,15 +212,24 @@ async def _send_image_form(message: Message) -> None:
 
 
 @router.callback_query(QualityCallback.filter(F.action == "ai_menu"))
-async def handle_velvet_ai_menu(callback: CallbackQuery) -> None:
+async def handle_velvet_ai_menu(
+    callback: CallbackQuery,
+    database: Database,
+) -> None:
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
     settings = load_settings()
+    quality, rework = await asyncio.gather(
+        AIQualityRepository(database).summary(),
+        MediaReworkRepository(database).summary(),
+    )
     text, keyboard = build_velvet_ai_menu(
         enabled=settings.ai_vision_enabled,
         provider=settings.ai_vision_provider,
         model=settings.ai_vision_model,
+        quality=quality,
+        rework=rework,
     )
     try:
         await callback.message.edit_text(text, reply_markup=keyboard)
@@ -274,7 +285,7 @@ async def handle_prompt_check_reply(
     if session is None or not _session_is_alive(session):
         _sessions.pop(key, None)
         await message.answer(
-            "Сохранённый промт отсутствует или устарел. Запустите проверку заново из Velvet AI."
+            "Сохранённый промт отсутствует или устарел. Запустите проверку заново из панели Qwen."
         )
         return
 

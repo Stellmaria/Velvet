@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from velvet_bot.ai_quality import AIQualitySummary
+from velvet_bot.domains.media_rework import MediaReworkSummary
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_operations import (
     build_quality_operations_menu,
 )
@@ -70,13 +71,26 @@ class AIMenuCoverageTests(unittest.TestCase):
             warnings=3,
             critical=1,
         )
+        self.rework = MediaReworkSummary(
+            active=5,
+            needs_fix=3,
+            checking=1,
+            ready_for_review=1,
+            stel_priority=2,
+            qwen_only=3,
+        )
 
-    def test_primary_menu_routes_to_operations_history_and_reference_form(self) -> None:
-        _, markup = build_velvet_ai_menu(
+    def _qwen_menu(self):
+        return build_velvet_ai_menu(
             enabled=True,
             provider="ollama",
             model="qwen3-vl:8b",
+            quality=self.summary,
+            rework=self.rework,
         )
+
+    def test_primary_panel_routes_to_operations_history_rework_and_reference(self) -> None:
+        _, markup = self._qwen_menu()
         by_label = {
             button.text: button.callback_data
             for row in markup.inline_keyboard
@@ -85,23 +99,23 @@ class AIMenuCoverageTests(unittest.TestCase):
 
         self.assertEqual(
             "quality_ops",
-            QualityCallback.unpack(by_label["🧠 Проверка качества"]).action,
+            QualityCallback.unpack(by_label["🖼 Проверка"]).action,
+        )
+        self.assertEqual(
+            "reworks",
+            QualityCallback.unpack(by_label["🛠 Доработка · 5"]).action,
         )
         self.assertEqual(
             "aijobs",
-            QualityCallback.unpack(by_label["📋 История AI-заданий"]).action,
+            QualityCallback.unpack(by_label["📋 История"]).action,
         )
         self.assertEqual(
             "refcompare_start",
-            QualityCallback.unpack(by_label["🔎 Сравнение с референсом"]).action,
+            QualityCallback.unpack(by_label["🔎 Референс"]).action,
         )
 
     def test_ai_slash_fallbacks_have_button_entry_points(self) -> None:
-        _, ai_markup = build_velvet_ai_menu(
-            enabled=True,
-            provider="ollama",
-            model="qwen3-vl:8b",
-        )
+        _, ai_markup = self._qwen_menu()
         _, operations_markup = build_quality_operations_menu(self.summary, None)
         actions = quality_actions(ai_markup) | quality_actions(operations_markup)
         command_to_button = {
@@ -113,11 +127,14 @@ class AIMenuCoverageTests(unittest.TestCase):
             "qwen_set": "setreports",
             "compare_ref": "refcompare_start",
             "compare_reference": "refcompare_start",
+            "rework": "reworks",
+            "reworks": "reworks",
+            "quality_rework": "reworks",
         }
 
         self.assertEqual(set(), set(command_to_button.values()) - actions)
 
-    def test_quality_operations_restores_expected_controls(self) -> None:
+    def test_quality_operations_keeps_only_worker_controls(self) -> None:
         text, markup = build_quality_operations_menu(self.summary, None)
         labels = {
             button.text
@@ -125,26 +142,22 @@ class AIMenuCoverageTests(unittest.TestCase):
             for button in row
         }
         expected = {
-            "🖼 Проверить новое изображение",
-            "📋 Отчёты Qwen",
-            "❌ Очередь ошибок",
-            "🧬 Поиск дублей",
-            "🎞 Медиасеты",
-            "🧠 Целостность сетов",
-            "🕘 Проверить последние файлы",
-            "▶️ Запустить проверку",
-            "🔄 Повторить ошибки",
+            "🖼 Новое фото",
+            "📋 Отчёты",
+            "❌ Ошибки",
+            "🛠 Доработка",
+            "🕘 Последние",
+            "▶️ Запуск",
+            "🔁 Повтор ошибок",
+            "🔄 Обновить",
+            "↩️ Qwen",
         }
 
-        self.assertIn("Управление фоновыми проверками", text)
-        self.assertTrue(expected.issubset(labels))
+        self.assertIn("управление фоновым worker", text)
+        self.assertEqual(expected, labels)
 
-    def test_each_primary_quality_callback_has_a_handler(self) -> None:
-        _, ai_markup = build_velvet_ai_menu(
-            enabled=True,
-            provider="ollama",
-            model="qwen3-vl:8b",
-        )
+    def test_each_primary_qwen_callback_has_a_handler(self) -> None:
+        _, ai_markup = self._qwen_menu()
         _, operations_markup = build_quality_operations_menu(self.summary, None)
         actions = quality_actions(ai_markup) | quality_actions(operations_markup)
 
@@ -166,12 +179,13 @@ class AIMenuCoverageTests(unittest.TestCase):
 
         self.assertIn("router.include_router(ai_jobs_router)", quality_source)
         self.assertIn("router.include_router(quality_operations_router)", quality_source)
+        self.assertIn("register_quality_rework_entry(router)", quality_source)
         self.assertIn(
             "router.include_router(reference_comparison_help_router)",
             archive_source,
         )
 
-    def test_each_interactive_ai_flow_creates_a_job(self) -> None:
+    def test_each_interactive_qwen_flow_creates_a_job(self) -> None:
         quality_root = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/quality_operations_controllers"

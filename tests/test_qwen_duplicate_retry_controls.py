@@ -6,10 +6,12 @@ from unittest.mock import AsyncMock, Mock
 
 from velvet_bot.ai_quality import AIQualitySummary
 from velvet_bot.domains.media_quality.models import DuplicatePage
+from velvet_bot.domains.media_rework import MediaReworkSummary
 from velvet_bot.domains.media_quality.reset_repository import DuplicateResetRepository
 from velvet_bot.quality_audit import QualitySummary
 from velvet_bot.quality_operations import QualityOperationsRepository
 from velvet_bot.quality_ui import QualityCallback, build_duplicate_list, build_quality_dashboard
+from velvet_bot.velvet_ai_ui import build_velvet_ai_menu
 
 
 class _AsyncContext:
@@ -61,7 +63,7 @@ class QwenDuplicateRetryControlTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(call.args[-1], 20 * 1024 * 1024)
             self.assertIn("preview_file_id IS NOT NULL", call.args[0])
 
-    def test_quality_dashboard_exposes_qwen_retry_button(self) -> None:
+    def test_qwen_panel_exposes_retry_and_audit_links_to_panel(self) -> None:
         summary = QualitySummary(
             pending_duplicates=0,
             confirmed_duplicates=0,
@@ -90,16 +92,38 @@ class QwenDuplicateRetryControlTests(unittest.IsolatedAsyncioTestCase):
             warnings=0,
             critical=0,
         )
+        rework_summary = MediaReworkSummary(
+            active=0,
+            needs_fix=0,
+            checking=0,
+            ready_for_review=0,
+            stel_priority=0,
+            qwen_only=0,
+        )
 
-        _, keyboard = build_quality_dashboard(summary, ai_summary)
-        actions = {
+        _, audit_keyboard = build_quality_dashboard(summary, ai_summary)
+        _, qwen_keyboard = build_velvet_ai_menu(
+            enabled=True,
+            provider="ollama",
+            model="qwen3-vl:8b",
+            quality=ai_summary,
+            rework=rework_summary,
+        )
+        audit_actions = {
             QualityCallback.unpack(button.callback_data).action
-            for row in keyboard.inline_keyboard
+            for row in audit_keyboard.inline_keyboard
             for button in row
-            if button.callback_data
+            if button.callback_data and button.callback_data.startswith("quality:")
+        }
+        qwen_actions = {
+            QualityCallback.unpack(button.callback_data).action
+            for row in qwen_keyboard.inline_keyboard
+            for button in row
+            if button.callback_data and button.callback_data.startswith("quality:")
         }
 
-        self.assertIn("quality_retry_errors", actions)
+        self.assertIn("ai_menu", audit_actions)
+        self.assertIn("quality_retry_errors", qwen_actions)
 
     def test_duplicate_list_exposes_confirmed_full_reset(self) -> None:
         page = DuplicatePage(items=(), page=0, page_size=6, total_items=0)

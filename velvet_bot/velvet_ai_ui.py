@@ -2,8 +2,37 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from velvet_bot.ai_quality import AIQualitySummary
+from velvet_bot.domains.media_rework import MediaReworkSummary
 from velvet_bot.owner_callbacks import owner_callback
 from velvet_bot.quality_ui import quality_callback
+
+
+def _empty_quality_summary() -> AIQualitySummary:
+    return AIQualitySummary(
+        pending=0,
+        processing=0,
+        ready=0,
+        errors=0,
+        skipped=0,
+        unreviewed=0,
+        accepted=0,
+        fix_required=0,
+        clean=0,
+        warnings=0,
+        critical=0,
+    )
+
+
+def _empty_rework_summary() -> MediaReworkSummary:
+    return MediaReworkSummary(
+        active=0,
+        needs_fix=0,
+        checking=0,
+        ready_for_review=0,
+        stel_priority=0,
+        qwen_only=0,
+    )
 
 
 def build_velvet_ai_menu(
@@ -11,69 +40,102 @@ def build_velvet_ai_menu(
     enabled: bool,
     provider: str,
     model: str,
+    quality: AIQualitySummary | None = None,
+    rework: MediaReworkSummary | None = None,
 ) -> tuple[str, InlineKeyboardMarkup]:
+    quality = quality or _empty_quality_summary()
+    rework = rework or _empty_rework_summary()
     state = "включён" if enabled else "отключён"
     text = (
-        "<b>🤖 Velvet AI</b>\n\n"
-        f"Локальный анализ: <b>{state}</b>\n"
-        f"Провайдер: <code>{provider}</code>\n"
-        f"Модель: <code>{model}</code>\n\n"
-        "Здесь собраны ручные и фоновые проверки изображения, референса, "
-        "исходного промта, палитры, композиции, оформление публикаций и "
-        "целостность медиасетов. Каждая долгая AI-задача получает номер, статус "
-        "и сохраняется в истории. Старые slash-команды остаются аварийным резервом."
+        "<b>🤖 Qwen · работа с архивом</b>\n\n"
+        f"Состояние: <b>{state}</b> · <code>{provider}:{model}</code>\n"
+        f"Очередь: <b>{quality.pending + quality.processing}</b> · "
+        f"готово <b>{quality.ready}</b> · ошибок <b>{quality.errors + quality.skipped}</b>\n"
+        f"Без решения: <b>{quality.unreviewed}</b>\n"
+        f"Доработка: <b>{rework.active}</b> · "
+        f"Стэл <b>{rework.stel_priority}</b> · Qwen <b>{rework.qwen_only}</b>\n\n"
+        "Все операции Qwen собраны здесь: архивная проверка, ручной анализ, "
+        "референсы, промт, палитра, оформление, медиасеты, история и калибровка."
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🧠 Проверка качества",
+                    text="🖼 Проверка",
                     callback_data=quality_callback("quality_ops"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔎 Сравнение с референсом",
-                    callback_data=quality_callback("refcompare_start"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="📝 Промт против результата",
-                    callback_data=quality_callback("promptcheck_start"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🎨 Палитра и композиция",
-                    callback_data=quality_callback("visual_start"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="✨ Оформление Velvet Anatomy",
-                    callback_data=quality_callback("format_menu"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🎞 Целостность медиасетов",
-                    callback_data=quality_callback("setreports"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="📋 История AI-заданий",
-                    callback_data=quality_callback("aijobs"),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🎛 Калибровка Qwen",
-                    callback_data=quality_callback("qcal"),
                 ),
                 InlineKeyboardButton(
-                    text="🧬 Архивный аудит",
+                    text=f"🛠 Доработка · {rework.active}",
+                    callback_data=quality_callback("reworks"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"📋 Отчёты · {quality.unreviewed}",
+                    callback_data=quality_callback("qchecks", section="review"),
+                ),
+                InlineKeyboardButton(
+                    text=f"❌ Ошибки · {quality.errors + quality.skipped}",
+                    callback_data=quality_callback("qchecks", section="errors"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="▶️ Запуск",
+                    callback_data=quality_callback("quality_run"),
+                ),
+                InlineKeyboardButton(
+                    text="🕘 Последние",
+                    callback_data=quality_callback("quality_recent"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔁 Повтор ошибок",
+                    callback_data=quality_callback("quality_retry_errors"),
+                ),
+                InlineKeyboardButton(
+                    text="🎛 Калибровка",
+                    callback_data=quality_callback("qcal"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔎 Референс",
+                    callback_data=quality_callback("refcompare_start"),
+                ),
+                InlineKeyboardButton(
+                    text="📝 Промт ↔ фото",
+                    callback_data=quality_callback("promptcheck_start"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🎨 Палитра",
+                    callback_data=quality_callback("visual_start"),
+                ),
+                InlineKeyboardButton(
+                    text="✨ Оформление",
+                    callback_data=quality_callback("format_menu"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🎞 Сеты",
+                    callback_data=quality_callback("sets", section="pending"),
+                ),
+                InlineKeyboardButton(
+                    text="🧠 Сет-проверка",
+                    callback_data=quality_callback("setreports"),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📋 История",
+                    callback_data=quality_callback("aijobs"),
+                ),
+                InlineKeyboardButton(
+                    text="🧬 Аудит",
                     callback_data=quality_callback("menu"),
                 ),
             ],
@@ -83,7 +145,7 @@ def build_velvet_ai_menu(
                     callback_data=quality_callback("ai_menu"),
                 ),
                 InlineKeyboardButton(
-                    text="↩️ Центр управления",
+                    text="🏠 Главная",
                     callback_data=owner_callback("menu"),
                 ),
             ],

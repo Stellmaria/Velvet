@@ -91,7 +91,7 @@ def _formatting_menu() -> tuple[str, InlineKeyboardMarkup]:
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ Velvet AI",
+                    text="↩️ Qwen",
                     callback_data=quality_callback("ai_menu"),
                 )
             ],
@@ -115,7 +115,7 @@ def _result_keyboard(mode: FormattingMode) -> InlineKeyboardMarkup:
                     callback_data=quality_callback("format_menu"),
                 ),
                 InlineKeyboardButton(
-                    text="↩️ Velvet AI",
+                    text="↩️ Qwen",
                     callback_data=quality_callback("ai_menu"),
                 ),
             ],
