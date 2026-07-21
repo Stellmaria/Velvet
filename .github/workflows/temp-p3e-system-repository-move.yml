@@ -49,17 +49,17 @@ jobs:
           }
           for path, (old, new) in replacements_by_path.items():
               text = path.read_text(encoding='utf-8')
-              if old not in text:
-                  raise SystemExit(f'import not found in {path}: {old}')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one import in {path}, found {count}: {old}')
               path.write_text(text.replace(old, new, 1), encoding='utf-8')
 
           inventory_script = Path('scripts/inventory_repository_layout.py')
           text = inventory_script.read_text(encoding='utf-8')
-          marker = '''    if (
-              first_candidate is not None
-              and int(first_candidate["production_consumer_count"]) == 0
-          '''
-          replacement = '''    if first_candidate is None:
+          anchor = text.index('    first_candidate = candidates[0] if candidates else None')
+          block_start = text.index('\n    if ', anchor) + 1
+          block_end = text.index('\n\n    return {', block_start)
+          completion_block = '''    if first_candidate is None:
               next_target = "repository layout migration complete"
               next_strategy = (
                   "keep root and central repository counts at zero and place new persistence "
@@ -67,19 +67,28 @@ jobs:
               )
           elif (
               int(first_candidate["production_consumer_count"]) == 0
-          '''
-          if marker not in text:
-              raise SystemExit('inventory completion marker not found')
-          text = text.replace(marker, replacement, 1)
-          old_elif = (
-              '    elif first_candidate is not None '
-              'and int(first_candidate["reference_count"]) == 0:'
-          )
-          new_elif = '    elif int(first_candidate["reference_count"]) == 0:'
-          if old_elif not in text:
-              raise SystemExit('inventory unreferenced marker not found')
+              and int(first_candidate["test_consumer_count"]) == 0
+              and int(first_candidate["package_export_count"]) > 0
+          ):
+              next_target = "retire the first export-only repository module"
+              next_strategy = (
+                  "remove the unused package export and dead module, then update the generated "
+                  "baseline without creating a replacement facade"
+              )
+          elif int(first_candidate["reference_count"]) == 0:
+              next_target = "retire the first unreferenced repository module"
+              next_strategy = (
+                  "verify dynamic imports remain absent, delete the dead module, and update the "
+                  "generated baseline without creating a replacement facade"
+              )
+          else:
+              next_target = "migrate the first low-coupling repository module"
+              next_strategy = (
+                  "move one reviewed module to its domain or infrastructure boundary, keep the old path "
+                  "as a temporary facade, and migrate consumers before deletion"
+              )'''
           inventory_script.write_text(
-              text.replace(old_elif, new_elif, 1),
+              text[:block_start] + completion_block + text[block_end:],
               encoding='utf-8',
           )
 
