@@ -23,6 +23,7 @@ from velvet_bot.workspace_ui import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+_TEST_KR_STORY_KEY = "workspace-test-template"
 
 
 class WorkspaceProductContractTests(unittest.TestCase):
@@ -96,6 +97,16 @@ class PostgreSQLWorkspaceProductTests(unittest.IsolatedAsyncioTestCase):
             )
             await connection.execute("DELETE FROM workspace_creation_grants")
             await connection.execute("DELETE FROM user_public_workspace_preferences")
+            await connection.execute(
+                """
+                DELETE FROM workspace_stories
+                WHERE workspace_id = $1::BIGINT
+                  AND universe_key = 'kr'
+                  AND key = $2::VARCHAR
+                """,
+                DEFAULT_WORKSPACE_ID,
+                _TEST_KR_STORY_KEY,
+            )
             await connection.execute(
                 """
                 UPDATE workspace_settings
@@ -244,6 +255,20 @@ class PostgreSQLWorkspaceProductTests(unittest.IsolatedAsyncioTestCase):
             workspace_id=DEFAULT_WORKSPACE_ID,
             universe_key="kr",
         )
+        if not system_before:
+            await self.product_repository.upsert_story(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                universe_key="kr",
+                key=_TEST_KR_STORY_KEY,
+                short_label="ТЕСТ",
+                title="Тестовый шаблон КР",
+                created_by_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+            )
+            system_before = await self.service.list_stories(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                universe_key="kr",
+            )
+
         _, copied = await self.service.import_kr_template(
             workspace_id=workspace.id,
             actor_user_id=107,
