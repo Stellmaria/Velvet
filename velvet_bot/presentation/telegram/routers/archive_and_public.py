@@ -17,6 +17,9 @@ from velvet_bot.presentation.telegram.routers.workspace_character_pickers import
 from velvet_bot.presentation.telegram.routers.workspace_character_management import (
     router as workspace_character_management_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_reference_library import (
+    router as workspace_reference_library_router,
+)
 from velvet_bot.presentation.telegram.routers.workspace_admin import (
     router as workspace_admin_router,
 )
@@ -139,6 +142,7 @@ router.include_router(discussion_updates_router)
 # character module before the text-command compatibility router.
 router.include_router(workspace_character_pickers_router)
 router.include_router(workspace_character_management_router)
+router.include_router(workspace_reference_library_router)
 router.include_router(workspace_admin_router)
 router.include_router(workspaces_router)
 router.include_router(start_router)

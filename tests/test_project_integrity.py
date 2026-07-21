@@ -22,6 +22,11 @@ ALLOWED_DUPLICATE_COMMAND_ROUTES = {
     "refs",
     "ref",
     "refadd",
+    "refdel",
+    "refdone",
+    "refcancel",
+    "compare_ref",
+    "compare_reference",
 }
 PANEL_COMMANDS = {
     "admin",

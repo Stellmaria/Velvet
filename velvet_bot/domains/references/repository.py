@@ -9,9 +9,11 @@ from velvet_bot.domains.references.models import (
     ReferenceMediaPayload,
     ReferencePage,
 )
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 _REFERENCE_SELECT = """
     id AS reference_id,
+    workspace_id,
     character_id,
     telegram_file_id,
     telegram_file_unique_id,
@@ -21,7 +23,7 @@ _REFERENCE_SELECT = """
 
 
 class ReferenceRepository:
-    """PostgreSQL boundary for character reference images."""
+    """PostgreSQL boundary for workspace-isolated character reference images."""
 
     def __init__(self, database: Database) -> None:
         self._database = database
@@ -32,21 +34,36 @@ class ReferenceRepository:
         character_id: int,
         media: ReferenceMediaPayload,
         added_by: int | None,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> AddReferenceResult:
         async with self._database.acquire() as connection:
             async with connection.transaction():
+                character_exists = await connection.fetchval(
+                    """
+                    SELECT TRUE
+                    FROM characters
+                    WHERE workspace_id = $1::BIGINT
+                      AND id = $2::BIGINT
+                    """,
+                    int(workspace_id),
+                    int(character_id),
+                )
+                if not character_exists:
+                    raise ValueError("Персонаж не найден в выбранном пространстве.")
                 row = await connection.fetchrow(
                     f"""
                     INSERT INTO character_references (
+                        workspace_id,
                         character_id,
                         telegram_file_id,
                         telegram_file_unique_id,
                         added_by
                     )
-                    VALUES ($1::BIGINT, $2::TEXT, $3::TEXT, $4::BIGINT)
+                    VALUES ($1::BIGINT, $2::BIGINT, $3::TEXT, $4::TEXT, $5::BIGINT)
                     ON CONFLICT (character_id, telegram_file_unique_id) DO NOTHING
                     RETURNING {_REFERENCE_SELECT}
                     """,
+                    int(workspace_id),
                     int(character_id),
                     media.telegram_file_id,
                     media.telegram_file_unique_id,
@@ -57,11 +74,13 @@ class ReferenceRepository:
                     row = await connection.fetchrow(
                         f"""
                         UPDATE character_references
-                        SET telegram_file_id = $3::TEXT
-                        WHERE character_id = $1::BIGINT
-                          AND telegram_file_unique_id = $2::TEXT
+                        SET telegram_file_id = $4::TEXT
+                        WHERE workspace_id = $1::BIGINT
+                          AND character_id = $2::BIGINT
+                          AND telegram_file_unique_id = $3::TEXT
                         RETURNING {_REFERENCE_SELECT}
                         """,
+                        int(workspace_id),
                         int(character_id),
                         media.telegram_file_unique_id,
                         media.telegram_file_id,
@@ -73,8 +92,10 @@ class ReferenceRepository:
                         """
                         SELECT COUNT(*)
                         FROM character_references
-                        WHERE character_id = $1::BIGINT
+                        WHERE workspace_id = $1::BIGINT
+                          AND character_id = $2::BIGINT
                         """,
+                        int(workspace_id),
                         int(character_id),
                     )
                     or 0
@@ -90,16 +111,19 @@ class ReferenceRepository:
         *,
         character_id: int,
         reference_id: int,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> DeleteReferenceResult:
         async with self._database.acquire() as connection:
             async with connection.transaction():
                 row = await connection.fetchrow(
                     f"""
                     DELETE FROM character_references
-                    WHERE id = $1::BIGINT
-                      AND character_id = $2::BIGINT
+                    WHERE workspace_id = $1::BIGINT
+                      AND id = $2::BIGINT
+                      AND character_id = $3::BIGINT
                     RETURNING {_REFERENCE_SELECT}
                     """,
+                    int(workspace_id),
                     int(reference_id),
                     int(character_id),
                 )
@@ -108,8 +132,10 @@ class ReferenceRepository:
                         """
                         SELECT COUNT(*)
                         FROM character_references
-                        WHERE character_id = $1::BIGINT
+                        WHERE workspace_id = $1::BIGINT
+                          AND character_id = $2::BIGINT
                         """,
+                        int(workspace_id),
                         int(character_id),
                     )
                     or 0
@@ -119,14 +145,21 @@ class ReferenceRepository:
             total=total,
         )
 
-    async def count(self, character_id: int) -> int:
+    async def count(
+        self,
+        character_id: int,
+        *,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> int:
         async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
                 SELECT COUNT(*)
                 FROM character_references
-                WHERE character_id = $1::BIGINT
+                WHERE workspace_id = $1::BIGINT
+                  AND character_id = $2::BIGINT
                 """,
+                int(workspace_id),
                 int(character_id),
             )
         return int(value or 0)
@@ -136,6 +169,7 @@ class ReferenceRepository:
         character_id: int,
         *,
         limit: int = 50,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> list[CharacterReference]:
         safe_limit = max(1, min(int(limit), 50))
         async with self._database.acquire() as connection:
@@ -143,10 +177,12 @@ class ReferenceRepository:
                 f"""
                 SELECT {_REFERENCE_SELECT}
                 FROM character_references
-                WHERE character_id = $1::BIGINT
+                WHERE workspace_id = $1::BIGINT
+                  AND character_id = $2::BIGINT
                 ORDER BY created_at, id
-                LIMIT $2::INTEGER
+                LIMIT $3::INTEGER
                 """,
+                int(workspace_id),
                 int(character_id),
                 safe_limit,
             )
@@ -156,6 +192,8 @@ class ReferenceRepository:
         self,
         character_id: int,
         offset: int,
+        *,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> ReferencePage | None:
         safe_offset = max(0, int(offset))
         async with self._database.acquire() as connection:
@@ -163,6 +201,7 @@ class ReferenceRepository:
                 """
                 SELECT
                     id AS character_id,
+                    workspace_id,
                     name AS character_name,
                     created_by,
                     created_in_chat,
@@ -171,8 +210,10 @@ class ReferenceRepository:
                     archive_thread_id,
                     archive_topic_url
                 FROM characters
-                WHERE id = $1::BIGINT
+                WHERE workspace_id = $1::BIGINT
+                  AND id = $2::BIGINT
                 """,
+                int(workspace_id),
                 int(character_id),
             )
             if character_row is None:
@@ -183,8 +224,10 @@ class ReferenceRepository:
                     """
                     SELECT COUNT(*)
                     FROM character_references
-                    WHERE character_id = $1::BIGINT
+                    WHERE workspace_id = $1::BIGINT
+                      AND character_id = $2::BIGINT
                     """,
+                    int(workspace_id),
                     int(character_id),
                 )
                 or 0
@@ -203,11 +246,13 @@ class ReferenceRepository:
                 f"""
                 SELECT {_REFERENCE_SELECT}
                 FROM character_references
-                WHERE character_id = $1::BIGINT
+                WHERE workspace_id = $1::BIGINT
+                  AND character_id = $2::BIGINT
                 ORDER BY created_at, id
-                OFFSET $2::INTEGER
+                OFFSET $3::INTEGER
                 LIMIT 1
                 """,
+                int(workspace_id),
                 int(character_id),
                 normalized_offset,
             )
@@ -233,6 +278,11 @@ class ReferenceRepository:
             archive_chat_id=row["archive_chat_id"],
             archive_thread_id=row["archive_thread_id"],
             archive_topic_url=row["archive_topic_url"],
+            workspace_id=(
+                int(row["workspace_id"])
+                if "workspace_id" in row
+                else DEFAULT_WORKSPACE_ID
+            ),
         )
 
     @staticmethod
@@ -244,6 +294,11 @@ class ReferenceRepository:
             telegram_file_unique_id=str(row["telegram_file_unique_id"]),
             added_by=row["added_by"],
             created_at=row["reference_created_at"],
+            workspace_id=(
+                int(row["workspace_id"])
+                if "workspace_id" in row
+                else DEFAULT_WORKSPACE_ID
+            ),
         )
 
 
