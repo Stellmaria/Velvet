@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from velvet_bot.repositories.system_repository import SystemRepository
+from velvet_bot.infrastructure.postgres.system_repository import SystemRepository
 
 
 class _AsyncContext:

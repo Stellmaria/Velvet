@@ -28,7 +28,7 @@ class RuntimeDatabaseSnapshot:
 
 
 class SystemRepository:
-    """Read-only database boundary for runtime diagnostics."""
+    """Read-only PostgreSQL boundary for runtime diagnostics."""
 
     def __init__(self, database: Database) -> None:
         self.database = database

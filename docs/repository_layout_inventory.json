@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "generated_from": "p3e-repository-layout-baseline",
+  "generated_from": "p3e-repository-layout-complete",
   "repository_module_count": 31,
   "layout_counts": {
-    "central": 1,
-    "domain": 30
+    "domain": 30,
+    "infrastructure": 1
   },
   "root_module_count": 110,
   "root_module_categories": {
@@ -24,27 +24,6 @@
     "velvet_bot.domains.media_sets.repository"
   ],
   "modules": [
-    {
-      "module": "velvet_bot.repositories.system_repository",
-      "path": "velvet_bot/repositories/system_repository.py",
-      "layout": "central",
-      "domain": null,
-      "production_consumer_count": 2,
-      "test_consumer_count": 2,
-      "package_export_count": 1,
-      "reference_count": 5,
-      "production_consumers": [
-        "velvet_bot/app/bootstrap.py",
-        "velvet_bot/services/system_health.py"
-      ],
-      "test_consumers": [
-        "tests/test_phase18q_system_repository_boundary.py",
-        "tests/test_phase6_runtime.py"
-      ],
-      "package_exports": [
-        "velvet_bot/repositories/__init__.py"
-      ]
-    },
     {
       "module": "velvet_bot.domains.archive.preview_repository",
       "path": "velvet_bot/domains/archive/preview_repository.py",
@@ -593,13 +572,11 @@
       "package_exports": [
         "velvet_bot/domains/watermark/__init__.py"
       ]
-    }
-  ],
-  "candidate_modules": [
+    },
     {
-      "module": "velvet_bot.repositories.system_repository",
-      "path": "velvet_bot/repositories/system_repository.py",
-      "layout": "central",
+      "module": "velvet_bot.infrastructure.postgres.system_repository",
+      "path": "velvet_bot/infrastructure/postgres/system_repository.py",
+      "layout": "infrastructure",
       "domain": null,
       "production_consumer_count": 2,
       "test_consumer_count": 2,
@@ -614,14 +591,15 @@
         "tests/test_phase6_runtime.py"
       ],
       "package_exports": [
-        "velvet_bot/repositories/__init__.py"
+        "velvet_bot/infrastructure/postgres/__init__.py"
       ]
     }
   ],
+  "candidate_modules": [],
   "next_slice": {
     "phase": "P3E",
-    "target": "migrate the first low-coupling repository module",
-    "candidate": "velvet_bot.repositories.system_repository",
-    "strategy": "move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion"
+    "target": "repository layout migration complete",
+    "candidate": null,
+    "strategy": "keep root and central repository counts at zero and place new persistence only in reviewed domain or infrastructure boundaries"
   }
 }
