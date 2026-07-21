@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import velvet_bot.media_set_actions as actions
-import velvet_bot.media_set_actions_repository as repository_module
-from velvet_bot.media_set_actions_repository import (
+import velvet_bot.domains.media_sets.actions_repository as repository_module
+from velvet_bot.domains.media_sets.actions_repository import (
     CreatedMediaSetRecord,
     MediaSetActionsRepository,
 )

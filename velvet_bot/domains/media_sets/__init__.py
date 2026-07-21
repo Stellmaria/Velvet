@@ -1,3 +1,7 @@
+from velvet_bot.domains.media_sets.actions_repository import (
+    CreatedMediaSetRecord,
+    MediaSetActionsRepository,
+)
 from velvet_bot.domains.media_sets.ai_repository import (
     MediaSetBundle,
     SetMediaItem,
@@ -13,6 +17,8 @@ from velvet_bot.domains.media_sets.repository import (
 )
 
 __all__ = (
+    "CreatedMediaSetRecord",
+    "MediaSetActionsRepository",
     "MediaSetBundle",
     "MediaSetCandidateIdPage",
     "MediaSetCandidateListingRepository",
