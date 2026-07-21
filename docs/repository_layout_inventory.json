@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-baseline",
-  "repository_module_count": 32,
+  "repository_module_count": 31,
   "layout_counts": {
-    "central": 2,
+    "central": 1,
     "domain": 23,
     "root": 7
   },
@@ -17,31 +17,14 @@
     "worker": 1
   },
   "repository_modules_with_production_consumers": 29,
-  "repository_modules_with_package_exports": 23,
-  "repository_modules_without_runtime_consumers": 3,
+  "repository_modules_with_package_exports": 22,
+  "repository_modules_without_runtime_consumers": 2,
   "repository_modules_without_references": 0,
   "unreferenced_repository_modules": [],
   "export_only_repository_modules": [
     "velvet_bot.domains.media_rework.repository"
   ],
   "modules": [
-    {
-      "module": "velvet_bot.repositories.publication_repository",
-      "path": "velvet_bot/repositories/publication_repository.py",
-      "layout": "central",
-      "domain": null,
-      "production_consumer_count": 0,
-      "test_consumer_count": 1,
-      "package_export_count": 1,
-      "reference_count": 2,
-      "production_consumers": [],
-      "test_consumers": [
-        "tests/test_phase6_publication_repository.py"
-      ],
-      "package_exports": [
-        "velvet_bot/repositories/__init__.py"
-      ]
-    },
     {
       "module": "velvet_bot.repositories.system_repository",
       "path": "velvet_bot/repositories/system_repository.py",
@@ -357,8 +340,8 @@
       "path": "velvet_bot/domains/publication/repository.py",
       "layout": "domain",
       "domain": "publication",
-      "production_consumer_count": 7,
-      "test_consumer_count": 0,
+      "production_consumer_count": 6,
+      "test_consumer_count": 1,
       "package_export_count": 1,
       "reference_count": 8,
       "production_consumers": [
@@ -367,10 +350,11 @@
         "velvet_bot/domains/publication/draft_service.py",
         "velvet_bot/domains/publication/service.py",
         "velvet_bot/domains/publication/validation_repository.py",
-        "velvet_bot/domains/publication/validation_service.py",
-        "velvet_bot/repositories/publication_repository.py"
+        "velvet_bot/domains/publication/validation_service.py"
       ],
-      "test_consumers": [],
+      "test_consumers": [
+        "tests/test_phase6_publication_repository.py"
+      ],
       "package_exports": [
         "velvet_bot/domains/publication/__init__.py"
       ]
@@ -610,23 +594,6 @@
   ],
   "candidate_modules": [
     {
-      "module": "velvet_bot.repositories.publication_repository",
-      "path": "velvet_bot/repositories/publication_repository.py",
-      "layout": "central",
-      "domain": null,
-      "production_consumer_count": 0,
-      "test_consumer_count": 1,
-      "package_export_count": 1,
-      "reference_count": 2,
-      "production_consumers": [],
-      "test_consumers": [
-        "tests/test_phase6_publication_repository.py"
-      ],
-      "package_exports": [
-        "velvet_bot/repositories/__init__.py"
-      ]
-    },
-    {
       "module": "velvet_bot.media_set_candidate_listing_repository",
       "path": "velvet_bot/media_set_candidate_listing_repository.py",
       "layout": "root",
@@ -770,7 +737,7 @@
   "next_slice": {
     "phase": "P3E",
     "target": "migrate the first low-coupling repository module",
-    "candidate": "velvet_bot.repositories.publication_repository",
+    "candidate": "velvet_bot.media_set_candidate_listing_repository",
     "strategy": "move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion"
   }
 }

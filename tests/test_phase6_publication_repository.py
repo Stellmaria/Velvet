@@ -2,7 +2,7 @@ import os
 import unittest
 
 from velvet_bot.database import Database
-from velvet_bot.repositories.publication_repository import PublicationRepository
+from velvet_bot.domains.publication.repository import PublicationRepository
 
 
 @unittest.skipUnless(

@@ -4,15 +4,15 @@
 
 ## Сводка
 
-- repository-модулей: **32**;
+- repository-модулей: **31**;
 - внутри доменов: **23**;
-- в `velvet_bot/repositories`: **2**;
+- в `velvet_bot/repositories`: **1**;
 - корневых `*_repository.py`: **7**;
 - infrastructure repositories: **0**;
 - прочих repository paths: **0**;
 - repository-модулей с production consumers: **29**;
-- repository-модулей с package exports: **23**;
-- repository-модулей без runtime consumers: **3**;
+- repository-модулей с package exports: **22**;
+- repository-модулей без runtime consumers: **2**;
 - repository-модулей без любых references: **0**;
 - корневых Python-модулей: **117**.
 
@@ -29,7 +29,6 @@
 
 | Module | Layout | Production | Tests | Package exports | References |
 |---|---:|---:|---:|---:|---:|
-| `velvet_bot.repositories.publication_repository` | central | 0 | 1 | 1 | 2 |
 | `velvet_bot.media_set_candidate_listing_repository` | root | 1 | 1 | 0 | 2 |
 | `velvet_bot.media_set_duplicate_actions_repository` | root | 1 | 1 | 0 | 2 |
 | `velvet_bot.quality_set_ai_repository` | root | 1 | 1 | 0 | 2 |
@@ -59,7 +58,7 @@
 - `velvet_bot.domains.public_archive.repository` · domain `public_archive`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.public_archive.watermark_repository` · domain `public_archive`: production 4, tests 1, exports 0, refs 5.
 - `velvet_bot.domains.publication.draft_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
-- `velvet_bot.domains.publication.repository` · domain `publication`: production 7, tests 0, exports 1, refs 8.
+- `velvet_bot.domains.publication.repository` · domain `publication`: production 6, tests 1, exports 1, refs 8.
 - `velvet_bot.domains.publication.validation_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
 - `velvet_bot.domains.references.repository` · domain `references`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.stories.repository` · domain `stories`: production 1, tests 0, exports 1, refs 2.
@@ -69,7 +68,6 @@
 
 ### central
 
-- `velvet_bot.repositories.publication_repository`: production 0, tests 1, exports 1, refs 2.
 - `velvet_bot.repositories.system_repository`: production 2, tests 2, exports 1, refs 5.
 
 ### root
@@ -86,7 +84,7 @@
 
 - фаза: **P3E**;
 - цель: **migrate the first low-coupling repository module**;
-- первый кандидат: `velvet_bot.repositories.publication_repository`;
+- первый кандидат: `velvet_bot.media_set_candidate_listing_repository`;
 - стратегия: move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion.
 
 ## Правило обновления
