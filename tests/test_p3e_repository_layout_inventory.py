@@ -9,6 +9,9 @@ from scripts.inventory_repository_layout import build_inventory, render_markdown
 
 ROOT = Path(__file__).resolve().parents[1]
 LABEL = "p3e-repository-layout-baseline"
+NOTIFICATION_REPOSITORY = (
+    "velvet_bot.repositories." + "public_notification_repository"
+)
 
 
 class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
@@ -29,15 +32,13 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
     def test_package_exports_are_not_runtime_consumers(self) -> None:
         inventory = build_inventory(label=LABEL)
         modules = {item["module"]: item for item in inventory["modules"]}
-        notification_repository = modules[
-            "velvet_bot.repositories.public_notification_repository"
-        ]
+        notification_repository = modules[NOTIFICATION_REPOSITORY]
 
         self.assertEqual(0, notification_repository["production_consumer_count"])
         self.assertEqual(0, notification_repository["test_consumer_count"])
         self.assertEqual(1, notification_repository["package_export_count"])
         self.assertIn(
-            "velvet_bot.repositories.public_notification_repository",
+            NOTIFICATION_REPOSITORY,
             inventory["export_only_repository_modules"],
         )
 
@@ -49,7 +50,7 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertEqual(3, inventory["layout_counts"]["central"])
         self.assertEqual(7, inventory["layout_counts"]["root"])
         self.assertEqual(
-            "velvet_bot.repositories.public_notification_repository",
+            NOTIFICATION_REPOSITORY,
             inventory["next_slice"]["candidate"],
         )
 
