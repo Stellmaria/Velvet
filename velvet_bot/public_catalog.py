@@ -11,6 +11,7 @@ from velvet_bot.domains.characters import (
 )
 from velvet_bot.domains.public_archive import PublicDownloadSource, PublicMediaState
 from velvet_bot.domains.stories import StorySummary
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.public_directory import (
     list_visible_categories,
     list_visible_characters,
@@ -22,13 +23,38 @@ PublicCharacterItem = CharacterDirectoryItem
 PublicCharacterPage = CharacterDirectoryPage
 
 
+async def _selected_workspace_id(
+    database: Database,
+    *,
+    user_id: int,
+    workspace_id: int | None,
+) -> int:
+    if workspace_id is not None:
+        return int(workspace_id)
+    async with database.acquire() as connection:
+        value = await connection.fetchval(
+            """
+            SELECT preference.workspace_id
+            FROM user_public_workspace_preferences AS preference
+            JOIN workspace_settings AS settings
+              ON settings.workspace_id = preference.workspace_id
+             AND settings.public_archive_enabled
+            WHERE preference.user_id = $1::BIGINT
+            """,
+            int(user_id),
+        )
+    return int(value) if value is not None else DEFAULT_WORKSPACE_ID
+
+
 async def list_public_categories(
     database: Database,
     *,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[CategorySummary]:
     return await list_visible_categories(
         database,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
 
@@ -37,11 +63,13 @@ async def list_public_universes(
     database: Database,
     *,
     category: str,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[UniverseSummary]:
     summaries = await list_visible_universes(
         database,
         category=category,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     game_count = 0
@@ -52,6 +80,7 @@ async def list_public_universes(
             universe=universe,
             page=0,
             page_size=1,
+            workspace_id=workspace_id,
             include_restricted=include_restricted,
         )
         game_count += page.total_characters
@@ -73,12 +102,14 @@ async def list_public_stories(
     *,
     category: str,
     universe: str,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[StorySummary]:
     return await list_visible_stories(
         database,
         category=category,
         universe=universe,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
 
@@ -91,6 +122,7 @@ async def list_public_characters(
     story_id: int | None = None,
     page: int = 0,
     page_size: int = 6,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> PublicCharacterPage:
     return await list_visible_characters(
@@ -100,6 +132,7 @@ async def list_public_characters(
         story_id=story_id,
         page=page,
         page_size=page_size,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
 
@@ -110,8 +143,17 @@ async def get_public_media_state(
     character_id: int,
     media_id: int,
     user_id: int,
+    workspace_id: int | None = None,
 ) -> PublicMediaState:
-    return await build_public_archive_service(database).get_media_state(
+    selected = await _selected_workspace_id(
+        database,
+        user_id=user_id,
+        workspace_id=workspace_id,
+    )
+    return await build_public_archive_service(
+        database,
+        workspace_id=selected,
+    ).get_media_state(
         character_id=character_id,
         media_id=media_id,
         user_id=user_id,
@@ -124,8 +166,17 @@ async def record_public_media_view(
     character_id: int,
     media_id: int,
     user_id: int,
+    workspace_id: int | None = None,
 ) -> None:
-    await build_public_archive_service(database).record_view(
+    selected = await _selected_workspace_id(
+        database,
+        user_id=user_id,
+        workspace_id=workspace_id,
+    )
+    await build_public_archive_service(
+        database,
+        workspace_id=selected,
+    ).record_view(
         character_id=character_id,
         media_id=media_id,
         user_id=user_id,
@@ -138,8 +189,12 @@ async def resolve_public_download_source(
     character_id: int,
     media_id: int,
     member_access: bool,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicDownloadSource | None:
-    return await build_public_archive_service(database).resolve_download_source(
+    return await build_public_archive_service(
+        database,
+        workspace_id=workspace_id,
+    ).resolve_download_source(
         character_id=character_id,
         media_id=media_id,
         member_access=member_access,
@@ -153,8 +208,17 @@ async def record_public_media_download(
     media_id: int,
     user_id: int,
     variant: str,
+    workspace_id: int | None = None,
 ) -> None:
-    await build_public_archive_service(database).record_download(
+    selected = await _selected_workspace_id(
+        database,
+        user_id=user_id,
+        workspace_id=workspace_id,
+    )
+    await build_public_archive_service(
+        database,
+        workspace_id=selected,
+    ).record_download(
         character_id=character_id,
         media_id=media_id,
         user_id=user_id,
@@ -168,8 +232,17 @@ async def toggle_public_like(
     character_id: int,
     media_id: int,
     user_id: int,
+    workspace_id: int | None = None,
 ) -> tuple[bool, int]:
-    result = await build_public_archive_service(database).toggle_like(
+    selected = await _selected_workspace_id(
+        database,
+        user_id=user_id,
+        workspace_id=workspace_id,
+    )
+    result = await build_public_archive_service(
+        database,
+        workspace_id=selected,
+    ).toggle_like(
         character_id=character_id,
         media_id=media_id,
         user_id=user_id,
@@ -182,8 +255,17 @@ async def toggle_character_subscription(
     *,
     character_id: int,
     user_id: int,
+    workspace_id: int | None = None,
 ) -> bool:
-    return await build_public_archive_service(database).toggle_subscription(
+    selected = await _selected_workspace_id(
+        database,
+        user_id=user_id,
+        workspace_id=workspace_id,
+    )
+    return await build_public_archive_service(
+        database,
+        workspace_id=selected,
+    ).toggle_subscription(
         character_id=character_id,
         user_id=user_id,
     )
@@ -194,8 +276,12 @@ async def list_character_subscriber_ids(
     character_id: int,
     *,
     exclude_user_id: int | None = None,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> list[int]:
-    return await build_public_archive_service(database).list_subscriber_ids(
+    return await build_public_archive_service(
+        database,
+        workspace_id=workspace_id,
+    ).list_subscriber_ids(
         character_id,
         exclude_user_id=exclude_user_id,
     )
@@ -206,8 +292,17 @@ async def remove_character_subscription(
     *,
     character_id: int,
     user_id: int,
+    workspace_id: int | None = None,
 ) -> None:
-    await build_public_archive_service(database).remove_subscription(
+    selected = await _selected_workspace_id(
+        database,
+        user_id=user_id,
+        workspace_id=workspace_id,
+    )
+    await build_public_archive_service(
+        database,
+        workspace_id=selected,
+    ).remove_subscription(
         character_id=character_id,
         user_id=user_id,
     )
