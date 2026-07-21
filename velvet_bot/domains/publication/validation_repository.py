@@ -12,10 +12,11 @@ from velvet_bot.domains.publication.models import (
     PublicationValidationContext,
 )
 from velvet_bot.domains.publication.repository import PublicationRepository
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 
 class PublicationValidationRepository:
-    """Read and persist data required by publication content validation."""
+    """Read and persist validation data inside one workspace boundary."""
 
     def __init__(self, database: Database) -> None:
         self._database = database
@@ -30,7 +31,7 @@ class PublicationValidationRepository:
     ) -> PublicationValidationContext:
         async with self._database.acquire() as connection:
             character_rows = []
-            if normalized_aliases:
+            if normalized_aliases and draft.workspace_id == DEFAULT_WORKSPACE_ID:
                 character_rows = await connection.fetch(
                     """
                     SELECT DISTINCT
@@ -43,8 +44,44 @@ class PublicationValidationRepository:
                         a.normalized_alias
                     FROM character_aliases AS a
                     JOIN characters AS c ON c.id = a.character_id
-                    WHERE a.normalized_alias = ANY($1::TEXT[])
+                    WHERE c.workspace_id = $1::BIGINT
+                      AND a.normalized_alias = ANY($2::TEXT[])
                     """,
+                    int(draft.workspace_id),
+                    normalized_aliases,
+                )
+            elif normalized_aliases:
+                character_rows = await connection.fetch(
+                    """
+                    SELECT DISTINCT
+                        c.id,
+                        c.name,
+                        c.category,
+                        c.universe,
+                        (
+                            SELECT link.story_id
+                            FROM workspace_character_story_links AS link
+                            WHERE link.workspace_id = c.workspace_id
+                              AND link.character_id = c.id
+                              AND link.is_primary
+                            ORDER BY link.story_id
+                            LIMIT 1
+                        ) AS story_id,
+                        EXISTS (
+                            SELECT 1
+                            FROM workspace_character_story_links AS link
+                            WHERE link.workspace_id = c.workspace_id
+                              AND link.character_id = c.id
+                        ) AS has_multi_story,
+                        a.normalized_alias
+                    FROM workspace_character_aliases AS a
+                    JOIN characters AS c
+                      ON c.workspace_id = a.workspace_id
+                     AND c.id = a.character_id
+                    WHERE a.workspace_id = $1::BIGINT
+                      AND a.normalized_alias = ANY($2::TEXT[])
+                    """,
+                    int(draft.workspace_id),
                     normalized_aliases,
                 )
 
@@ -52,16 +89,18 @@ class PublicationValidationRepository:
                 """
                 SELECT id, status
                 FROM publication_drafts
-                WHERE target_chat_id = $1::BIGINT
-                  AND content_hash = $2::CHAR(64)
-                  AND id <> $3::BIGINT
+                WHERE workspace_id = $1::BIGINT
+                  AND target_chat_id = $2::BIGINT
+                  AND content_hash = $3::CHAR(64)
+                  AND id <> $4::BIGINT
                   AND status IN ('scheduled', 'publishing', 'published')
                 ORDER BY id DESC
                 LIMIT 1
                 """,
-                draft.target_chat_id,
+                int(draft.workspace_id),
+                int(draft.target_chat_id),
                 draft.content_hash,
-                draft.id,
+                int(draft.id),
             )
 
             duplicate_post_row = None
@@ -75,7 +114,7 @@ class PublicationValidationRepository:
                     ORDER BY posted_at DESC
                     LIMIT 1
                     """,
-                    draft.target_chat_id,
+                    int(draft.target_chat_id),
                     text,
                 )
 
@@ -132,21 +171,24 @@ class PublicationValidationRepository:
                 result = await connection.execute(
                     """
                     UPDATE publication_drafts
-                    SET status = $2::VARCHAR,
-                        post_type = $3::VARCHAR,
-                        validation_status = $4::VARCHAR,
-                        validation_error_count = $5::INTEGER,
-                        validation_warning_count = $6::INTEGER,
-                        validation_report = $7::JSONB,
+                    SET status = $4::VARCHAR,
+                        post_type = $5::VARCHAR,
+                        validation_status = $6::VARCHAR,
+                        validation_error_count = $7::INTEGER,
+                        validation_warning_count = $8::INTEGER,
+                        validation_report = $9::JSONB,
                         last_error = CASE
                             WHEN status = 'error' THEN NULL
                             ELSE last_error
                         END,
                         updated_at = NOW()
-                    WHERE id = $1::BIGINT
-                      AND owner_id = $8::BIGINT
+                    WHERE workspace_id = $1::BIGINT
+                      AND id = $2::BIGINT
+                      AND ($1::BIGINT <> 1 OR owner_id = $3::BIGINT)
                     """,
-                    draft.id,
+                    int(draft.workspace_id),
+                    int(draft.id),
+                    int(owner_id),
                     status,
                     post_type,
                     validation_status,
@@ -156,19 +198,21 @@ class PublicationValidationRepository:
                         [issue.as_dict() for issue in issues],
                         ensure_ascii=False,
                     ),
-                    owner_id,
                 )
                 if result == "UPDATE 0":
-                    raise ValueError("Черновик не найден.")
+                    raise ValueError("Черновик не найден в выбранном пространстве.")
                 await connection.execute(
                     """
                     INSERT INTO publication_events (
-                        draft_id, event_type, actor_id, details
+                        workspace_id, draft_id, event_type, actor_id, details
                     )
-                    VALUES ($1::BIGINT, 'validated', $2::BIGINT, $3::JSONB)
+                    VALUES (
+                        $1::BIGINT, $2::BIGINT, 'validated', $3::BIGINT, $4::JSONB
+                    )
                     """,
-                    draft.id,
-                    owner_id,
+                    int(draft.workspace_id),
+                    int(draft.id),
+                    int(owner_id),
                     json.dumps(
                         {
                             "status": validation_status,
@@ -179,7 +223,11 @@ class PublicationValidationRepository:
                     ),
                 )
 
-        result_draft = await self._drafts.get_draft(draft.id, owner_id=owner_id)
+        result_draft = await self._drafts.get_draft(
+            draft.id,
+            owner_id=owner_id,
+            workspace_id=draft.workspace_id,
+        )
         if result_draft is None:
             raise RuntimeError("Черновик исчез после проверки.")
         return result_draft
