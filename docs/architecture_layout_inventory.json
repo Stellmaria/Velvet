@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "workspace-taxonomy-directory-catalog",
+  "generated_from": "p3d-analytics-alias-retirement",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
