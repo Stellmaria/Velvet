@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import re
 from dataclasses import dataclass
@@ -13,8 +14,10 @@ from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.types import (
     CallbackQuery,
     InlineQuery,
+    InlineQueryResultArticle,
     InlineQueryResultCachedPhoto,
     InputMediaPhoto,
+    InputTextMessageContent,
     Message,
 )
 
@@ -865,8 +868,24 @@ async def block_workspace_guest_reference_leak(
     message: Message,
     personal_reference_context: PersonalReferenceContext,
 ) -> None:
-    if message.guest_query_id:
-        await message.answer_guest_query([], cache_time=1, is_personal=True)
+    if not message.guest_query_id:
+        return
+    result_id = hashlib.sha256(
+        f"workspace-reference-private:{message.guest_query_id}".encode("utf-8")
+    ).hexdigest()[:32]
+    await message.answer_guest_query(
+        InlineQueryResultArticle(
+            id=result_id,
+            title="Личная библиотека референсов",
+            input_message_content=InputTextMessageContent(
+                message_text=(
+                    "Личные референсы доступны только владельцу и участникам "
+                    "выбранного пространства в чате с ботом."
+                ),
+                parse_mode=ParseMode.HTML,
+            ),
+        )
+    )
 
 
 @router.message(
