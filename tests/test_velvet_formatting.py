@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from velvet_bot.quality_ui import QualityCallback
 from velvet_bot.velvet_ai_ui import build_velvet_ai_menu
 from velvet_bot.velvet_formatting import (
     normalize_formatting_payload,
@@ -122,7 +123,9 @@ class VelvetFormattingRenderingTests(unittest.TestCase):
             "additional_ru",
             "negative_ru",
         ):
-            payload[field] = ("Подробное требование сохранить все заданные особенности. " * 30).strip()
+            payload[field] = (
+                "Подробное требование сохранить все заданные особенности. " * 30
+            ).strip()
 
         rendered = render_velvet_post("full", "Исходные заметки", payload)
 
@@ -132,17 +135,23 @@ class VelvetFormattingRenderingTests(unittest.TestCase):
 
 
 class VelvetFormattingMenuTests(unittest.TestCase):
-    def test_velvet_ai_menu_contains_formatting_master(self) -> None:
+    def test_qwen_panel_contains_formatting_action(self) -> None:
         _, keyboard = build_velvet_ai_menu(
             enabled=True,
             provider="ollama",
             model="qwen3-vl:8b",
         )
-        buttons = [button for row in keyboard.inline_keyboard for button in row]
-        matches = [button for button in buttons if button.text == "✨ Оформление Velvet Anatomy"]
+        matches = [
+            button
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.callback_data
+            and button.callback_data.startswith("quality:")
+            and QualityCallback.unpack(button.callback_data).action == "format_menu"
+        ]
 
         self.assertEqual(1, len(matches))
-        self.assertIn("format_menu", matches[0].callback_data or "")
+        self.assertLessEqual(len(matches[0].text), 24)
         self.assertLessEqual(len((matches[0].callback_data or "").encode("utf-8")), 64)
 
 
