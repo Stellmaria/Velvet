@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3d-analytics-alias-retirement",
+  "generated_from": "workspace-character-inline-pickers",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -9,7 +9,7 @@
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/archive_and_public.py",
-      "router_count": 37
+      "router_count": 38
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/core_operations.py",
@@ -20,7 +20,7 @@
       "router_count": 14
     }
   ],
-  "active_bundle_router_count": 63,
+  "active_bundle_router_count": 64,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 0,
   "legacy_handler_implementation_count": 0,
@@ -42,8 +42,8 @@
   ],
   "active_compatibility_component_count": 8,
   "next_slice": {
-    "phase": "P3F",
-    "target": "bounded static typing baseline",
-    "strategy": "type-check one transport-neutral package, gate new errors, then expand scope"
+    "phase": "workspace-media-scope",
+    "target": "workspace-aware media save and automatic archive",
+    "strategy": "resolve active workspace before character lookup and preserve system workspace compatibility"
   }
 }
