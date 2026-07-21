@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-complete",
-  "repository_module_count": 32,
+  "repository_module_count": 33,
   "layout_counts": {
-    "domain": 31,
+    "domain": 32,
     "infrastructure": 1
   },
-  "root_module_count": 110,
+  "root_module_count": 111,
   "root_module_categories": {
-    "other": 100,
+    "other": 101,
     "report": 4,
     "runtime": 4,
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 28,
+  "repository_modules_with_production_consumers": 29,
   "repository_modules_with_package_exports": 28,
   "repository_modules_without_runtime_consumers": 4,
   "repository_modules_without_references": 0,
@@ -580,20 +580,41 @@
       ]
     },
     {
+      "module": "velvet_bot.domains.workspaces.product_repository",
+      "path": "velvet_bot/domains/workspaces/product_repository.py",
+      "layout": "domain",
+      "domain": "workspaces",
+      "production_consumer_count": 2,
+      "test_consumer_count": 1,
+      "package_export_count": 0,
+      "reference_count": 3,
+      "production_consumers": [
+        "velvet_bot/app/dispatcher.py",
+        "velvet_bot/domains/workspaces/product_service.py"
+      ],
+      "test_consumers": [
+        "tests/test_workspace_product_access.py"
+      ],
+      "package_exports": []
+    },
+    {
       "module": "velvet_bot.domains.workspaces.repository",
       "path": "velvet_bot/domains/workspaces/repository.py",
       "layout": "domain",
       "domain": "workspaces",
-      "production_consumer_count": 1,
-      "test_consumer_count": 2,
+      "production_consumer_count": 3,
+      "test_consumer_count": 3,
       "package_export_count": 1,
-      "reference_count": 4,
+      "reference_count": 7,
       "production_consumers": [
+        "velvet_bot/app/dispatcher.py",
+        "velvet_bot/domains/workspaces/product_service.py",
         "velvet_bot/domains/workspaces/service.py"
       ],
       "test_consumers": [
         "tests/test_workspace_archive_isolation.py",
-        "tests/test_workspace_foundation.py"
+        "tests/test_workspace_foundation.py",
+        "tests/test_workspace_product_access.py"
       ],
       "package_exports": [
         "velvet_bot/domains/workspaces/__init__.py"

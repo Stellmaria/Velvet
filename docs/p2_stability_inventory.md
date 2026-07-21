@@ -7,7 +7,7 @@ AST-инвентаризация широких исключений и callback
 - raw broad exceptions: **77** в **45** файлах;
 - approved boundaries: **77**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **98**;
+- callback handlers: **99**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **25**;
 - delegated callbacks: **4**.
@@ -60,12 +60,12 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/characters/profiles.py:115` `handle_bind_character_topic`: report-character-topic-failure.
 - `velvet_bot/presentation/telegram/routers/core_operations_controllers/error_center.py:56` `acknowledge_all_errors_callback`: best-effort-error-markup-cleanup.
 - `velvet_bot/presentation/telegram/routers/public_archive/manager.py:163` `handle_public_manager`: report-manager-download-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:136` `_prepare_media`: report-public-media-prepare-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:275` `handle_spoiler_aware_open`: preserve-public-open-on-metric-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:331` `handle_spoiler_aware_open`: preserve-navigation-on-owner-review-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:373` `_apply_engagement`: report-public-engagement-write-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:396` `_apply_engagement`: preserve-engagement-on-ui-refresh-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:478` `handle_public_download`: report-public-download-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:148` `_prepare_media`: report-public-media-prepare-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:297` `handle_spoiler_aware_open`: preserve-public-open-on-metric-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:355` `handle_spoiler_aware_open`: preserve-navigation-on-owner-review-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:401` `_apply_engagement`: report-public-engagement-write-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:425` `_apply_engagement`: preserve-engagement-on-ui-refresh-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:513` `handle_public_download`: report-public-download-failure.
 - `velvet_bot/presentation/telegram/routers/publication/center.py:570` `handle_publication_callback`: report-publication-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/backup_center.py:393` `handle_backup_callback`: report-backup-callback-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:320` `handle_quality_upload_reply`: compensate-manual-quality-job.
