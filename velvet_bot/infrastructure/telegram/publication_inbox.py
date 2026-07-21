@@ -3,6 +3,7 @@ from __future__ import annotations
 from aiogram.types import Message
 
 from velvet_bot.domains.publication.models import PublicationInboxPayload
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.media import extract_media
 
 
@@ -10,6 +11,7 @@ def publication_payload_from_message(
     message: Message,
     *,
     owner_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationInboxPayload:
     media = extract_media(message)
     return PublicationInboxPayload(
@@ -25,6 +27,7 @@ def publication_payload_from_message(
         file_name=(media.original_file_name if media else None),
         file_size=(media.file_size if media else None),
         has_spoiler=bool(getattr(message, "has_media_spoiler", False)),
+        workspace_id=int(workspace_id),
     )
 
 
