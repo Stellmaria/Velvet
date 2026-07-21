@@ -5,22 +5,22 @@
 ## Сводка
 
 - repository-модулей: **31**;
-- внутри доменов: **23**;
+- внутри доменов: **24**;
 - в `velvet_bot/repositories`: **1**;
-- корневых `*_repository.py`: **7**;
+- корневых `*_repository.py`: **6**;
 - infrastructure repositories: **0**;
 - прочих repository paths: **0**;
-- repository-модулей с production consumers: **29**;
-- repository-модулей с package exports: **22**;
-- repository-модулей без runtime consumers: **2**;
+- repository-модулей с production consumers: **28**;
+- repository-модулей с package exports: **23**;
+- repository-модулей без runtime consumers: **3**;
 - repository-модулей без любых references: **0**;
-- корневых Python-модулей: **117**.
+- корневых Python-модулей: **116**.
 
 ## Категории корневых модулей
 
 - other: **100**;
 - report: **4**;
-- repository: **7**;
+- repository: **6**;
 - runtime: **4**;
 - service: **1**;
 - worker: **1**;
@@ -29,7 +29,6 @@
 
 | Module | Layout | Production | Tests | Package exports | References |
 |---|---:|---:|---:|---:|---:|
-| `velvet_bot.media_set_candidate_listing_repository` | root | 1 | 1 | 0 | 2 |
 | `velvet_bot.media_set_duplicate_actions_repository` | root | 1 | 1 | 0 | 2 |
 | `velvet_bot.quality_set_ai_repository` | root | 1 | 1 | 0 | 2 |
 | `velvet_bot.quality_sets_repository` | root | 1 | 1 | 0 | 2 |
@@ -55,6 +54,7 @@
 - `velvet_bot.domains.media_quality.repository` · domain `media_quality`: production 2, tests 0, exports 1, refs 3.
 - `velvet_bot.domains.media_quality.reset_repository` · domain `media_quality`: production 1, tests 1, exports 0, refs 2.
 - `velvet_bot.domains.media_rework.repository` · domain `media_rework`: production 0, tests 0, exports 1, refs 1.
+- `velvet_bot.domains.media_sets.repository` · domain `media_sets`: production 0, tests 0, exports 1, refs 1.
 - `velvet_bot.domains.public_archive.repository` · domain `public_archive`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.public_archive.watermark_repository` · domain `public_archive`: production 4, tests 1, exports 0, refs 5.
 - `velvet_bot.domains.publication.draft_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
@@ -74,7 +74,6 @@
 
 - `velvet_bot.media_set_actions_repository`: production 1, tests 1, exports 0, refs 3.
 - `velvet_bot.media_set_ai_repository`: production 1, tests 1, exports 0, refs 3.
-- `velvet_bot.media_set_candidate_listing_repository`: production 1, tests 1, exports 0, refs 2.
 - `velvet_bot.media_set_duplicate_actions_repository`: production 1, tests 1, exports 0, refs 2.
 - `velvet_bot.quality_set_ai_repository`: production 1, tests 1, exports 0, refs 2.
 - `velvet_bot.quality_sets_repository`: production 1, tests 1, exports 0, refs 2.
@@ -84,7 +83,7 @@
 
 - фаза: **P3E**;
 - цель: **migrate the first low-coupling repository module**;
-- первый кандидат: `velvet_bot.media_set_candidate_listing_repository`;
+- первый кандидат: `velvet_bot.media_set_duplicate_actions_repository`;
 - стратегия: move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion.
 
 ## Правило обновления
