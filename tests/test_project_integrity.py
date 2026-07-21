@@ -109,6 +109,9 @@ DIRECT_COMMANDS = {
     "tagreindex",
     "test_error_alert",
     "diag_export",
+    "workspace_grant",
+    "workspace_revoke",
+    "workspace_module",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
