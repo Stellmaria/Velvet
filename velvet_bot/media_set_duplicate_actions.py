@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import velvet_bot.media_sets as media_sets
 from velvet_bot.database import Database
-from velvet_bot.media_set_duplicate_actions_repository import (
-    MediaSetDuplicateActionsRepository,
-)
+from velvet_bot.domains.media_sets import MediaSetDuplicateActionsRepository
 
 _INSTALLED = False
 
