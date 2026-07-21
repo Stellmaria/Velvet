@@ -59,15 +59,15 @@
 
 ### Миграции и совместимость
 
-Новая миграция: `901_workspaces.sql`. Старые вызовы без workspace продолжают работать в системном пространстве ID `1`. Существующие персонажи, медиа и topic links сохраняются. Внешний пользовательский интерфейс пока не включён, поэтому частично переведённые домены не могут быть использованы для обхода tenant boundary.
+Новая миграция: `901_workspaces.sql`. Номер выбран автоматически из фактического каталога после обнаружения существующих `102_media_set_consistency.sql` и `103_qwen_quality_calibration.sql`. Старые вызовы без workspace продолжают работать в системном пространстве ID `1`. Существующие персонажи, медиа и topic links сохраняются. Внешний пользовательский интерфейс пока не включён, поэтому частично переведённые домены не могут быть использованы для обхода tenant boundary.
 
 ### Проверки
 
-Первый CI на head `3f24849161775feedba23bf925d6d4b974541f13` подтвердил успешные type-check и Docker build. Tests и restore drill корректно остановились из-за занятого номера миграции `102`; generated P3E/navigation baselines также потребовали регенерации. Миграция перенумерована в `103`, baselines пересобраны, и финальный полный CI запущен на обычном commit после bot-generated изменений.
+Первый CI на head `3f24849161775feedba23bf925d6d4b974541f13` подтвердил успешные type-check и Docker build. Последующие прогоны выявили занятые номера миграций `102` и `103`; generated P3E/navigation baselines также были регенерированы. Миграция получила фактически свободный номер `901`, после чего полный tests, type-check, Docker, notes и backup restore drill запускаются повторно на обычном commit.
 
 ### PR и commit
 
-PR #275: `Add workspace foundation for isolated personal archives`. Generated-contract head: `46f0aece6b8e4b85c0bd914a43e1442ede9e1ccc`.
+PR #275: `Add workspace foundation for isolated personal archives`. Последний generated head до повторного CI содержит миграцию `901_workspaces.sql`.
 
 ### Незавершённое
 
