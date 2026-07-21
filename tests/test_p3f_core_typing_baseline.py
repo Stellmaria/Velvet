@@ -8,10 +8,8 @@ from pathlib import Path
 _EXPECTED_SCOPE = {
     "velvet_bot/core/access",
     "velvet_bot/core/config",
-    "velvet_bot/domains/characters/models.py",
-    "velvet_bot/domains/archive/models.py",
-    "velvet_bot/domains/references/models.py",
-    "velvet_bot/domains/stories/models.py",
+    "velvet_bot/topics.py",
+    "velvet_bot/post_classification.py",
 }
 
 
@@ -41,6 +39,7 @@ class P3FTypingBaselineTests(unittest.TestCase):
         self.assertIn("python -m mypy", workflow)
         self.assertIn("mypy==2.3.0", requirements)
         self.assertIn("-r requirements.txt", requirements)
+        self.assertIn("mypy-output.txt", workflow)
 
 
 if __name__ == "__main__":
