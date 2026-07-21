@@ -7,6 +7,7 @@ from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.access import AccessPolicy
 from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.public_adult_access import has_adult_channel_access
 from velvet_bot.public_catalog import (
     list_public_categories,
@@ -54,10 +55,12 @@ async def _send_category_menu(
     bot: Bot,
     database: Database,
     chat_id: int,
+    workspace_id: int,
     include_restricted: bool,
 ) -> Message:
     summaries = await list_public_categories(
         database,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     return await bot.send_message(
@@ -71,6 +74,7 @@ async def _edit_category_menu(
     callback: CallbackQuery,
     database: Database,
     *,
+    workspace_id: int,
     include_restricted: bool,
 ) -> None:
     if not isinstance(callback.message, Message):
@@ -78,6 +82,7 @@ async def _edit_category_menu(
         return
     summaries = await list_public_categories(
         database,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     try:
@@ -97,11 +102,13 @@ async def _send_universe_menu(
     database: Database,
     chat_id: int,
     category: str,
+    workspace_id: int,
     include_restricted: bool,
 ) -> Message:
     summaries = await list_public_universes(
         database,
         category=category,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     return await bot.send_message(
@@ -116,6 +123,7 @@ async def _edit_universe_menu(
     database: Database,
     category: str,
     *,
+    workspace_id: int,
     include_restricted: bool,
 ) -> None:
     if not isinstance(callback.message, Message):
@@ -124,6 +132,7 @@ async def _edit_universe_menu(
     summaries = await list_public_universes(
         database,
         category=category,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     try:
@@ -144,12 +153,14 @@ async def _send_story_menu(
     chat_id: int,
     category: str,
     universe: str,
+    workspace_id: int,
     include_restricted: bool,
 ) -> Message:
     summaries = await list_public_stories(
         database,
         category=category,
         universe=universe,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     return await bot.send_message(
@@ -165,6 +176,7 @@ async def _edit_story_menu(
     category: str,
     universe: str,
     *,
+    workspace_id: int,
     include_restricted: bool,
 ) -> None:
     if not isinstance(callback.message, Message):
@@ -174,6 +186,7 @@ async def _edit_story_menu(
         database,
         category=category,
         universe=universe,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     try:
@@ -196,6 +209,7 @@ async def _send_public_menu(
     universe: str,
     story_id: int,
     page_number: int,
+    workspace_id: int,
     include_restricted: bool,
 ) -> Message:
     page = await list_public_characters(
@@ -204,6 +218,7 @@ async def _send_public_menu(
         universe=universe,
         story_id=story_id or None,
         page=page_number,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     return await bot.send_message(
@@ -221,6 +236,7 @@ async def _edit_public_menu(
     story_id: int,
     page_number: int,
     *,
+    workspace_id: int,
     include_restricted: bool,
 ) -> None:
     if not isinstance(callback.message, Message):
@@ -232,6 +248,7 @@ async def _edit_public_menu(
         universe=universe,
         story_id=story_id or None,
         page=page_number,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     try:
@@ -252,16 +269,20 @@ async def handle_public_archive_menu(
     bot: Bot,
     access_policy: AccessPolicy,
     adult_channel_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    workspace_id = await workspace_product_service.public_workspace_id_for_user(user_id)
     include_restricted = await _include_restricted(
         bot=bot,
-        user_id=message.from_user.id if message.from_user else 0,
+        user_id=user_id,
         adult_channel_id=adult_channel_id,
         access_policy=access_policy,
         user=message.from_user,
     )
     summaries = await list_public_categories(
         database,
+        workspace_id=workspace_id,
         include_restricted=include_restricted,
     )
     await message.answer(
@@ -280,6 +301,7 @@ async def handle_public_archive_callback(
     bot: Bot,
     access_policy: AccessPolicy,
     adult_channel_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> None:
     action = callback_data.action
     if action == "noop":
@@ -294,6 +316,9 @@ async def handle_public_archive_callback(
         await callback.answer()
         return
 
+    workspace_id = await workspace_product_service.public_workspace_id_for_user(
+        callback.from_user.id
+    )
     include_restricted = await _include_restricted(
         bot=bot,
         user_id=callback.from_user.id,
@@ -307,6 +332,7 @@ async def handle_public_archive_callback(
             await _edit_category_menu(
                 callback,
                 database,
+                workspace_id=workspace_id,
                 include_restricted=include_restricted,
             )
         except TelegramBadRequest:
@@ -315,6 +341,7 @@ async def handle_public_archive_callback(
                     bot=bot,
                     database=database,
                     chat_id=callback.message.chat.id,
+                    workspace_id=workspace_id,
                     include_restricted=include_restricted,
                 )
                 await callback.answer()
@@ -329,6 +356,7 @@ async def handle_public_archive_callback(
                 callback,
                 database,
                 callback_data.category,
+                workspace_id=workspace_id,
                 include_restricted=include_restricted,
             )
         except TelegramBadRequest:
@@ -338,6 +366,7 @@ async def handle_public_archive_callback(
                     database=database,
                     chat_id=callback.message.chat.id,
                     category=callback_data.category,
+                    workspace_id=workspace_id,
                     include_restricted=include_restricted,
                 )
                 await callback.answer()
@@ -353,6 +382,7 @@ async def handle_public_archive_callback(
                 database,
                 callback_data.category,
                 callback_data.universe,
+                workspace_id=workspace_id,
                 include_restricted=include_restricted,
             )
         except TelegramBadRequest:
@@ -363,6 +393,7 @@ async def handle_public_archive_callback(
                     chat_id=callback.message.chat.id,
                     category=callback_data.category,
                     universe=callback_data.universe,
+                    workspace_id=workspace_id,
                     include_restricted=include_restricted,
                 )
                 await callback.answer()
@@ -382,6 +413,7 @@ async def handle_public_archive_callback(
             callback_data.universe,
             callback_data.story_id,
             callback_data.page,
+            workspace_id=workspace_id,
             include_restricted=include_restricted,
         )
         return
@@ -404,6 +436,7 @@ async def handle_public_archive_callback(
                 universe=callback_data.universe,
                 story_id=callback_data.story_id,
                 page_number=callback_data.page,
+                workspace_id=workspace_id,
                 include_restricted=include_restricted,
             )
         elif callback_data.category:
@@ -412,6 +445,7 @@ async def handle_public_archive_callback(
                 database=database,
                 chat_id=chat_id,
                 category=callback_data.category,
+                workspace_id=workspace_id,
                 include_restricted=include_restricted,
             )
         else:
@@ -419,6 +453,7 @@ async def handle_public_archive_callback(
                 bot=bot,
                 database=database,
                 chat_id=chat_id,
+                workspace_id=workspace_id,
                 include_restricted=include_restricted,
             )
         await callback.answer()
