@@ -8,6 +8,12 @@ from velvet_bot.domains.media_sets.ai_repository import (
     SetReportListItem,
     SetReportPage,
 )
+from velvet_bot.domains.media_sets.discovery_repository import (
+    MediaSetAICandidateDraft,
+    MediaSetAICandidateItemDraft,
+    MediaSetAIContextRow,
+    MediaSetAIRepository,
+)
 from velvet_bot.domains.media_sets.duplicate_actions_repository import (
     MediaSetDuplicateActionsRepository,
 )
@@ -18,6 +24,10 @@ from velvet_bot.domains.media_sets.repository import (
 
 __all__ = (
     "CreatedMediaSetRecord",
+    "MediaSetAICandidateDraft",
+    "MediaSetAICandidateItemDraft",
+    "MediaSetAIContextRow",
+    "MediaSetAIRepository",
     "MediaSetActionsRepository",
     "MediaSetBundle",
     "MediaSetCandidateIdPage",
