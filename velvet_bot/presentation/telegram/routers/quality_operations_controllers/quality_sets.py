@@ -8,7 +8,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from velvet_bot.ai_vision import MediaAIRepository
 from velvet_bot.database import Database
-from velvet_bot.quality_sets_repository import (
+from velvet_bot.domains.media_sets.quality_repository import (
     _latest_ai_error,
     _retire_weak_fallback_candidates,
 )
