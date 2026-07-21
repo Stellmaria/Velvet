@@ -43,9 +43,9 @@
 
 ## Следующий срез
 
-- фаза: **P3D**;
-- цель: **compatibility alias retirement and canonical import cleanup**;
-- стратегия: remove temporary handler aliases in reviewed consumer groups.
+- фаза: **P3E**;
+- цель: **repository and root-module layout normalization**;
+- стратегия: inventory repository consumers, then migrate one domain per reviewed slice.
 
 ## Правило обновления
 
