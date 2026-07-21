@@ -20,7 +20,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
-from velvet_bot.quality_set_ai_repository import (
+from velvet_bot.domains.media_sets.ai_repository import (
     MediaSetBundle,
     SetMediaItem,
     SetReportListItem,

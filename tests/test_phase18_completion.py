@@ -12,7 +12,7 @@ import velvet_bot.presentation.telegram.routers.references.comparison as referen
 import velvet_bot.media_set_actions as media_set_actions
 import velvet_bot.media_set_duplicate_actions as duplicate_actions
 import velvet_bot.domains.media_sets.duplicate_actions_repository as duplicate_repository
-import velvet_bot.quality_set_ai_repository as set_ai_repository
+import velvet_bot.domains.media_sets.ai_repository as set_ai_repository
 import velvet_bot.quality_sets_repository as sets_repository
 import velvet_bot.reference_comparison_repository as comparison_repository
 
