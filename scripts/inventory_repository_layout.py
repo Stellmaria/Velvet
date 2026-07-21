@@ -157,6 +157,14 @@ def _root_module_category(path: Path) -> str:
     return "other"
 
 
+def _scope(path: Path) -> str:
+    if "tests" in path.parts:
+        return "test"
+    if path.name == "__init__.py":
+        return "package_export"
+    return "production"
+
+
 def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
     repository_paths = _repository_paths()
     repository_modules = {_module_name(path) for path in repository_paths}
@@ -174,7 +182,7 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
                     "path": path.relative_to(ROOT).as_posix(),
                     "line": int(reference["line"]),
                     "kind": str(reference["kind"]),
-                    "scope": "test" if "tests" in path.parts else "production",
+                    "scope": _scope(path),
                 }
             )
 
@@ -189,6 +197,13 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         test_files = sorted(
             {str(item["path"]) for item in references if item["scope"] == "test"}
         )
+        package_export_files = sorted(
+            {
+                str(item["path"])
+                for item in references
+                if item["scope"] == "package_export"
+            }
+        )
         rows.append(
             {
                 "module": module,
@@ -197,9 +212,11 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
                 "domain": domain,
                 "production_consumer_count": len(production_files),
                 "test_consumer_count": len(test_files),
+                "package_export_count": len(package_export_files),
                 "reference_count": len(references),
                 "production_consumers": production_files,
                 "test_consumers": test_files,
+                "package_exports": package_export_files,
             }
         )
     rows.sort(key=lambda item: (str(item["layout"]), str(item["path"])))
@@ -210,13 +227,11 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
     )
     root_categories = Counter(_root_module_category(path) for path in root_modules)
     candidates = sorted(
-        (
-            item
-            for item in rows
-            if item["layout"] in {"root", "central"}
-        ),
+        (item for item in rows if item["layout"] in {"root", "central"}),
         key=lambda item: (
             int(item["production_consumer_count"]),
+            int(item["test_consumer_count"]),
+            int(item["package_export_count"]),
             int(item["reference_count"]),
             str(item["path"]),
         ),
@@ -226,12 +241,30 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         for item in rows
         if int(item["reference_count"]) == 0
     ]
+    export_only = [
+        item["module"]
+        for item in rows
+        if int(item["production_consumer_count"]) == 0
+        and int(item["test_consumer_count"]) == 0
+        and int(item["package_export_count"]) > 0
+    ]
     first_candidate = candidates[0] if candidates else None
-    if first_candidate is not None and int(first_candidate["reference_count"]) == 0:
+    if (
+        first_candidate is not None
+        and int(first_candidate["production_consumer_count"]) == 0
+        and int(first_candidate["test_consumer_count"]) == 0
+        and int(first_candidate["package_export_count"]) > 0
+    ):
+        next_target = "retire the first export-only repository module"
+        next_strategy = (
+            "remove the unused package export and dead module, then update the generated "
+            "baseline without creating a replacement facade"
+        )
+    elif first_candidate is not None and int(first_candidate["reference_count"]) == 0:
         next_target = "retire the first unreferenced repository module"
         next_strategy = (
-            "verify package exports and dynamic imports remain absent, delete the dead module, "
-            "and update the generated baseline without creating a replacement facade"
+            "verify dynamic imports remain absent, delete the dead module, and update the "
+            "generated baseline without creating a replacement facade"
         )
     else:
         next_target = "migrate the first low-coupling repository module"
@@ -250,8 +283,15 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "repository_modules_with_production_consumers": sum(
             1 for item in rows if int(item["production_consumer_count"]) > 0
         ),
+        "repository_modules_with_package_exports": sum(
+            1 for item in rows if int(item["package_export_count"]) > 0
+        ),
+        "repository_modules_without_runtime_consumers": sum(
+            1 for item in rows if int(item["production_consumer_count"]) == 0
+        ),
         "repository_modules_without_references": len(unreferenced),
         "unreferenced_repository_modules": sorted(unreferenced),
+        "export_only_repository_modules": sorted(export_only),
         "modules": rows,
         "candidate_modules": candidates,
         "next_slice": {
@@ -280,7 +320,9 @@ def render_markdown(data: dict[str, Any]) -> str:
         f"- infrastructure repositories: **{counts.get('infrastructure', 0)}**;",
         f"- прочих repository paths: **{counts.get('other', 0)}**;",
         f"- repository-модулей с production consumers: **{data['repository_modules_with_production_consumers']}**;",
-        f"- repository-модулей без references: **{data['repository_modules_without_references']}**;",
+        f"- repository-модулей с package exports: **{data['repository_modules_with_package_exports']}**;",
+        f"- repository-модулей без runtime consumers: **{data['repository_modules_without_runtime_consumers']}**;",
+        f"- repository-модулей без любых references: **{data['repository_modules_without_references']}**;",
         f"- корневых Python-модулей: **{data['root_module_count']}**.",
         "",
         "## Категории корневых модулей",
@@ -294,17 +336,18 @@ def render_markdown(data: dict[str, Any]) -> str:
             "",
             "## Кандидаты для первых P3E-срезов",
             "",
-            "| Module | Layout | Production consumers | Test consumers | References |",
-            "|---|---:|---:|---:|---:|",
+            "| Module | Layout | Production | Tests | Package exports | References |",
+            "|---|---:|---:|---:|---:|---:|",
         ]
     )
     for item in data["candidate_modules"]:
         lines.append(
-            "| `{module}` | {layout} | {production} | {tests} | {references} |".format(
+            "| `{module}` | {layout} | {production} | {tests} | {exports} | {references} |".format(
                 module=item["module"],
                 layout=item["layout"],
                 production=item["production_consumer_count"],
                 tests=item["test_consumer_count"],
+                exports=item["package_export_count"],
                 references=item["reference_count"],
             )
         )
@@ -318,7 +361,8 @@ def render_markdown(data: dict[str, Any]) -> str:
             domain = f" · domain `{item['domain']}`" if item["domain"] else ""
             lines.append(
                 f"- `{item['module']}`{domain}: production {item['production_consumer_count']}, "
-                f"tests {item['test_consumer_count']}, refs {item['reference_count']}."
+                f"tests {item['test_consumer_count']}, exports {item['package_export_count']}, "
+                f"refs {item['reference_count']}."
             )
         lines.append("")
     next_slice = data["next_slice"]
