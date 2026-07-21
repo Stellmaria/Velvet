@@ -72,6 +72,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.system",
     "velvet_bot.presentation.telegram.routers.workspace_admin",
     "velvet_bot.presentation.telegram.routers.workspace_character_management",
+    "velvet_bot.presentation.telegram.routers.workspace_directory_catalog",
     "velvet_bot.presentation.telegram.routers.workspaces",
 }
 
