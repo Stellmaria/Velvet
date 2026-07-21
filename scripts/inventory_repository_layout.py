@@ -30,7 +30,10 @@ SKIP_PARTS = {
 
 
 def _module_name(path: Path) -> str:
-    return ".".join(path.relative_to(ROOT).with_suffix("").parts)
+    relative = path.relative_to(ROOT)
+    if path.name == "__init__.py":
+        return ".".join(relative.parent.parts)
+    return ".".join(relative.with_suffix("").parts)
 
 
 def _is_skipped(path: Path) -> bool:
@@ -51,7 +54,7 @@ def _python_paths() -> list[Path]:
     return sorted(
         path
         for path in ROOT.rglob("*.py")
-        if path.name != "__init__.py" and not _is_skipped(path)
+        if not _is_skipped(path)
     )
 
 
@@ -72,7 +75,8 @@ def _resolve_from_module(path: Path, node: ast.ImportFrom) -> str:
     module = node.module or ""
     if node.level <= 0:
         return module
-    current = _module_name(path).split(".")[:-1]
+    current_module = _module_name(path).split(".")
+    current = current_module if path.name == "__init__.py" else current_module[:-1]
     keep = max(0, len(current) - (node.level - 1))
     parts = current[:keep]
     if module:
@@ -222,7 +226,19 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         for item in rows
         if int(item["reference_count"]) == 0
     ]
-    first_candidate = candidates[0]["module"] if candidates else None
+    first_candidate = candidates[0] if candidates else None
+    if first_candidate is not None and int(first_candidate["reference_count"]) == 0:
+        next_target = "retire the first unreferenced repository module"
+        next_strategy = (
+            "verify package exports and dynamic imports remain absent, delete the dead module, "
+            "and update the generated baseline without creating a replacement facade"
+        )
+    else:
+        next_target = "migrate the first low-coupling repository module"
+        next_strategy = (
+            "move one reviewed module to its domain or infrastructure boundary, keep the old path "
+            "as a temporary facade, and migrate consumers before deletion"
+        )
 
     return {
         "schema_version": 1,
@@ -240,9 +256,9 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "candidate_modules": candidates,
         "next_slice": {
             "phase": "P3E",
-            "target": "migrate the first low-coupling repository module",
-            "candidate": first_candidate,
-            "strategy": "move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion",
+            "target": next_target,
+            "candidate": first_candidate["module"] if first_candidate else None,
+            "strategy": next_strategy,
         },
     }
 
