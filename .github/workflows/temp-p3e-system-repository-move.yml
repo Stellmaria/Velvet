@@ -31,65 +31,35 @@ jobs:
 
           replacements_by_path = {
               Path('velvet_bot/app/bootstrap.py'): (
-                  (
-                      'from velvet_bot.repositories.system_repository import SystemRepository',
-                      'from velvet_bot.infrastructure.postgres.system_repository import SystemRepository',
-                  ),
+                  'from velvet_bot.repositories.system_repository import SystemRepository',
+                  'from velvet_bot.infrastructure.postgres.system_repository import SystemRepository',
               ),
               Path('velvet_bot/services/system_health.py'): (
-                  (
-                      'from velvet_bot.repositories.system_repository import (',
-                      'from velvet_bot.infrastructure.postgres.system_repository import (',
-                  ),
+                  'from velvet_bot.repositories.system_repository import (',
+                  'from velvet_bot.infrastructure.postgres.system_repository import (',
               ),
               Path('tests/test_phase18q_system_repository_boundary.py'): (
-                  (
-                      'from velvet_bot.repositories.system_repository import SystemRepository',
-                      'from velvet_bot.infrastructure.postgres.system_repository import SystemRepository',
-                  ),
+                  'from velvet_bot.repositories.system_repository import SystemRepository',
+                  'from velvet_bot.infrastructure.postgres.system_repository import SystemRepository',
               ),
               Path('tests/test_phase6_runtime.py'): (
-                  (
-                      'from velvet_bot.repositories.system_repository import (',
-                      'from velvet_bot.infrastructure.postgres.system_repository import (',
-                  ),
+                  'from velvet_bot.repositories.system_repository import (',
+                  'from velvet_bot.infrastructure.postgres.system_repository import (',
               ),
           }
-          for path, replacements in replacements_by_path.items():
+          for path, (old, new) in replacements_by_path.items():
               text = path.read_text(encoding='utf-8')
-              for old, new in replacements:
-                  if old not in text:
-                      raise SystemExit(f'import not found in {path}: {old}')
-                  text = text.replace(old, new, 1)
-              path.write_text(text, encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'import not found in {path}: {old}')
+              path.write_text(text.replace(old, new, 1), encoding='utf-8')
 
           inventory_script = Path('scripts/inventory_repository_layout.py')
           text = inventory_script.read_text(encoding='utf-8')
-          old = '''    if (
+          marker = '''    if (
               first_candidate is not None
               and int(first_candidate["production_consumer_count"]) == 0
-              and int(first_candidate["test_consumer_count"]) == 0
-              and int(first_candidate["package_export_count"]) > 0
-          ):
-              next_target = "retire the first export-only repository module"
-              next_strategy = (
-                  "remove the unused package export and dead module, then update the generated "
-                  "baseline without creating a replacement facade"
-              )
-          elif first_candidate is not None and int(first_candidate["reference_count"]) == 0:
-              next_target = "retire the first unreferenced repository module"
-              next_strategy = (
-                  "verify dynamic imports remain absent, delete the dead module, and update the "
-                  "generated baseline without creating a replacement facade"
-              )
-          else:
-              next_target = "migrate the first low-coupling repository module"
-              next_strategy = (
-                  "move one reviewed module to its domain or infrastructure boundary, keep the old path "
-                  "as a temporary facade, and migrate consumers before deletion"
-              )
           '''
-          new = '''    if first_candidate is None:
+          replacement = '''    if first_candidate is None:
               next_target = "repository layout migration complete"
               next_strategy = (
                   "keep root and central repository counts at zero and place new persistence "
@@ -97,30 +67,21 @@ jobs:
               )
           elif (
               int(first_candidate["production_consumer_count"]) == 0
-              and int(first_candidate["test_consumer_count"]) == 0
-              and int(first_candidate["package_export_count"]) > 0
-          ):
-              next_target = "retire the first export-only repository module"
-              next_strategy = (
-                  "remove the unused package export and dead module, then update the generated "
-                  "baseline without creating a replacement facade"
-              )
-          elif int(first_candidate["reference_count"]) == 0:
-              next_target = "retire the first unreferenced repository module"
-              next_strategy = (
-                  "verify dynamic imports remain absent, delete the dead module, and update the "
-                  "generated baseline without creating a replacement facade"
-              )
-          else:
-              next_target = "migrate the first low-coupling repository module"
-              next_strategy = (
-                  "move one reviewed module to its domain or infrastructure boundary, keep the old path "
-                  "as a temporary facade, and migrate consumers before deletion"
-              )
           '''
-          if old not in text:
-              raise SystemExit('inventory next-slice block not found')
-          inventory_script.write_text(text.replace(old, new, 1), encoding='utf-8')
+          if marker not in text:
+              raise SystemExit('inventory completion marker not found')
+          text = text.replace(marker, replacement, 1)
+          old_elif = (
+              '    elif first_candidate is not None '
+              'and int(first_candidate["reference_count"]) == 0:'
+          )
+          new_elif = '    elif int(first_candidate["reference_count"]) == 0:'
+          if old_elif not in text:
+              raise SystemExit('inventory unreferenced marker not found')
+          inventory_script.write_text(
+              text.replace(old_elif, new_elif, 1),
+              encoding='utf-8',
+          )
 
           for old_path in (
               Path('velvet_bot/repositories/system_repository.py'),
