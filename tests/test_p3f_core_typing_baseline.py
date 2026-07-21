@@ -12,6 +12,7 @@ _EXPECTED_SCOPE = {
     "velvet_bot/topics.py",
     "velvet_bot/post_classification.py",
     "velvet_bot/domains/references/models.py",
+    "velvet_bot/domains/stories/models.py",
 }
 
 
@@ -36,6 +37,7 @@ class P3FTypingBaselineTests(unittest.TestCase):
     def test_domain_packages_keep_persistence_exports_lazy(self) -> None:
         character_repository_module = "velvet_bot.domains.characters." + "repository"
         reference_repository_module = "velvet_bot.domains.references." + "repository"
+        story_repository_module = "velvet_bot.domains.stories." + "repository"
         package_exports = {
             "velvet_bot/domains/characters/__init__.py": {
                 character_repository_module,
@@ -44,6 +46,10 @@ class P3FTypingBaselineTests(unittest.TestCase):
             "velvet_bot/domains/references/__init__.py": {
                 reference_repository_module,
                 "velvet_bot.domains.references.service",
+            },
+            "velvet_bot/domains/stories/__init__.py": {
+                story_repository_module,
+                "velvet_bot.domains.stories.service",
             },
         }
 
@@ -62,6 +68,7 @@ class P3FTypingBaselineTests(unittest.TestCase):
             CharacterDirectoryService,
         )
         from velvet_bot.domains.references import ReferenceRepository, ReferenceService
+        from velvet_bot.domains.stories import StoryRepository, StoryService
 
         self.assertEqual(
             character_repository_module,
@@ -79,6 +86,8 @@ class P3FTypingBaselineTests(unittest.TestCase):
             "velvet_bot.domains.references.service",
             ReferenceService.__module__,
         )
+        self.assertEqual(story_repository_module, StoryRepository.__module__)
+        self.assertEqual("velvet_bot.domains.stories.service", StoryService.__module__)
 
     def test_type_check_workflow_uses_pinned_development_dependencies(self) -> None:
         workflow = Path(".github/workflows/type-check.yml").read_text(encoding="utf-8")
