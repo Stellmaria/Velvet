@@ -96,21 +96,21 @@ def build_quality_dashboard(
         [
             [
                 InlineKeyboardButton(
-                    text=f"👥 Категория · {summary.missing_category}",
+                    text=f"👥 Без категории · {summary.missing_category}",
                     callback_data=quality_callback("section", section="missing_category"),
                 ),
                 InlineKeyboardButton(
-                    text=f"🌌 Вселенная · {summary.missing_universe}",
+                    text=f"🌌 Без вселенной · {summary.missing_universe}",
                     callback_data=quality_callback("section", section="missing_universe"),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text=f"📖 История · {summary.missing_story}",
+                    text=f"📖 Без истории · {summary.missing_story}",
                     callback_data=quality_callback("section", section="missing_story"),
                 ),
                 InlineKeyboardButton(
-                    text=f"📦 Пустые · {summary.empty_characters}",
+                    text=f"📦 Без материалов · {summary.empty_characters}",
                     callback_data=quality_callback("section", section="empty_characters"),
                 ),
             ],
