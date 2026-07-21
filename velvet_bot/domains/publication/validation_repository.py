@@ -35,15 +35,23 @@ class PublicationValidationRepository:
                 character_rows = await connection.fetch(
                     """
                     SELECT DISTINCT
-                        c.id, c.name, c.category, c.universe, c.story_id,
+                        c.id,
+                        c.name,
+                        c.category,
+                        c.universe,
+                        c.story_id,
                         EXISTS (
                             SELECT 1
                             FROM character_story_links AS csl
                             WHERE csl.character_id = c.id
                         ) AS has_multi_story,
-                        a.normalized_alias
+                        a.normalized_alias,
+                        COALESCE(universe.requires_story, FALSE) AS requires_story
                     FROM character_aliases AS a
                     JOIN characters AS c ON c.id = a.character_id
+                    LEFT JOIN workspace_universes AS universe
+                      ON universe.workspace_id = c.workspace_id
+                     AND universe.key = c.universe
                     WHERE c.workspace_id = $1::BIGINT
                       AND a.normalized_alias = ANY($2::TEXT[])
                     """,
@@ -73,11 +81,15 @@ class PublicationValidationRepository:
                             WHERE link.workspace_id = c.workspace_id
                               AND link.character_id = c.id
                         ) AS has_multi_story,
-                        a.normalized_alias
+                        a.normalized_alias,
+                        COALESCE(universe.requires_story, FALSE) AS requires_story
                     FROM workspace_character_aliases AS a
                     JOIN characters AS c
                       ON c.workspace_id = a.workspace_id
                      AND c.id = a.character_id
+                    LEFT JOIN workspace_universes AS universe
+                      ON universe.workspace_id = c.workspace_id
+                     AND universe.key = c.universe
                     WHERE a.workspace_id = $1::BIGINT
                       AND a.normalized_alias = ANY($2::TEXT[])
                     """,
@@ -128,6 +140,7 @@ class PublicationValidationRepository:
                     story_id=(int(row["story_id"]) if row["story_id"] is not None else None),
                     has_multi_story=bool(row["has_multi_story"]),
                     normalized_alias=str(row["normalized_alias"]),
+                    requires_story=bool(row["requires_story"]),
                 )
                 for row in character_rows
             ),
