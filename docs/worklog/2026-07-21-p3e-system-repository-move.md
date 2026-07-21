@@ -41,6 +41,10 @@
 - generated inventory имеет `candidate: null` и terminal target;
 - полный CI проходит.
 
+### Риски и ограничения
+
+Repository агрегирует PostgreSQL diagnostics поперёк нескольких таблиц. Поэтому SQL, порядок полей snapshot, mapping значений и public health-check contract не изменяются. Срез меняет только физическое расположение и import paths.
+
 ## После завершения
 
 ### Фактически сделано
@@ -61,6 +65,10 @@ PostgreSQL migrations не требуются. SQL runtime snapshot, mapping, he
 
 Полный GitHub CI проверяет unit/integration contracts, Docker build и project notes. Дополнительно Phase 18Q подтверждает public `Database.acquire()`, Phase 6 runtime проверяет system-health behavior, а generated inventory contract фиксирует завершённую P3E-структуру.
 
+### PR и commit
+
+PR: `#260 Complete P3E repository layout migration`. Итоговый merge commit фиксируется после полного зелёного CI.
+
 ### Итог P3E
 
 - repository modules: 31;
@@ -70,6 +78,10 @@ PostgreSQL migrations не требуются. SQL runtime snapshot, mapping, he
 - root: 0;
 - root Python modules: 110;
 - следующий repository candidate: отсутствует.
+
+### Незавершённое
+
+В рамках P3E незавершённых repository-layout срезов нет. Отдельно остаются P3F gradual static typing, inventory общих Telegram helpers и operational verification на Windows/staging.
 
 ### Следующий шаг
 
