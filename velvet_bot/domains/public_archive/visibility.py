@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 PUBLIC_IMAGE_MAX_BYTES = 20 * 1024 * 1024
+ACTIVE_REWORK_STATUSES = ("needs_fix", "checking", "ready_for_review")
 
 
 def public_media_visibility_sql(
@@ -9,6 +10,7 @@ def public_media_visibility_sql(
     file_alias: str = "mf",
     include_adult_restricted: bool = False,
     include_oversized_images: bool = False,
+    include_active_rework: bool = False,
 ) -> str:
     """Return the SQL predicate for media allowed to the current viewer."""
     allowed_aliases = {
@@ -40,11 +42,32 @@ def public_media_visibility_sql(
         )
         """.strip()
     )
+    rework_predicate = (
+        "TRUE"
+        if include_active_rework
+        else f"""
+        NOT EXISTS (
+            SELECT 1
+            FROM media_rework_items AS active_rework
+            WHERE active_rework.media_id = {link_alias}.media_id
+              AND active_rework.status IN (
+                    'needs_fix',
+                    'checking',
+                    'ready_for_review'
+                  )
+        )
+        """.strip()
+    )
     return f"""
         {link_alias}.is_public = TRUE
         AND ({adult_predicate})
         AND ({size_predicate})
+        AND ({rework_predicate})
     """.strip()
 
 
-__all__ = ("PUBLIC_IMAGE_MAX_BYTES", "public_media_visibility_sql")
+__all__ = (
+    "ACTIVE_REWORK_STATUSES",
+    "PUBLIC_IMAGE_MAX_BYTES",
+    "public_media_visibility_sql",
+)
