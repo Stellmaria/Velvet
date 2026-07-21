@@ -1,9 +1,9 @@
 name: temporary P3E system repository move
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/p3e-move-system-repository
+      - main
 
 permissions:
   contents: write
