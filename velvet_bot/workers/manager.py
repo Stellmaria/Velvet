@@ -186,14 +186,7 @@ class WorkerManager:
     ) -> None:
         handler = self._transient_failure_handler
         if handler is not None:
-            try:
-                await handler(error)
-            except asyncio.CancelledError:
-                raise
-            except Exception:  # p2-approved-boundary: isolate-transient-recovery-hook
-                logger.exception(
-                    "Could not recover shared resources after transient worker failure"
-                )
+            await handler(error)
 
         if (
             consecutive_failures == _TRANSIENT_ALERT_AFTER
