@@ -83,6 +83,14 @@ def main() -> None:
         raise RuntimeError(f"Expected one quality menu block, got {count}")
     path.write_text(updated, encoding="utf-8")
 
+    test_path = ROOT / "tests/test_media_rework_queue.py"
+    test_text = test_path.read_text(encoding="utf-8")
+    test_text = test_text.replace(
+        "Вернуть на проверку Qwen",
+        "Qwen-проверка",
+    )
+    test_path.write_text(test_text, encoding="utf-8")
+
 
 if __name__ == "__main__":
     main()
