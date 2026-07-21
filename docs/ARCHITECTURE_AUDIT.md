@@ -1,6 +1,6 @@
 # Актуальный аудит архитектуры Velvet
 
-Дата актуализации: 20 июля 2026 года.
+Дата актуализации: 21 июля 2026 года.
 
 ## Объём проверки
 
@@ -21,7 +21,7 @@
 
 Логический рефакторинг основных бизнес- и persistence-границ завершён. Проект использует composition root, application use cases, repositories/services, централизованный WorkerManager и проверенные Telegram/error boundaries.
 
-Физическая структура пакетов остаётся переходной: активные Telegram controllers уже перенесены в `velvet_bot/presentation/telegram/routers`, production imports больше не используют старые handler paths, но 35 aliases сохраняются для тестовой и внешней совместимости. Часть repositories и services всё ещё расположена в исторических корневых модулях, а runtime compatibility adapters удаляются отдельными проверяемыми срезами.
+Физическая структура пакетов остаётся переходной только по 110 историческим root modules и 8 explicit runtime compatibility-компонентам. Активные Telegram controllers перенесены в `velvet_bot/presentation/telegram/routers`, старые handler paths и aliases удалены полностью, а все repositories размещены в domain либо PostgreSQL infrastructure boundary.
 
 ## Закрытые архитектурные долги
 
@@ -50,12 +50,12 @@
 
 ### P2 stability
 
-P2 закрыта:
+P2 закрыта. Актуальный generated baseline:
 
-- 67 broad exception boundaries;
-- 67 approved;
+- 76 broad exception boundaries;
+- 76 approved;
 - 0 unresolved;
-- 97 callback handlers;
+- 98 callback handlers;
 - 0 late/missing acknowledgments.
 
 ### Telegram contracts
@@ -86,91 +86,50 @@ velvet_bot/
   app/                         composition root и lifecycle
   application/                 transport-neutral owner/use cases
   core/                        config, access и общие contracts
-  domains/                     часть канонических domain boundaries
-  infrastructure/              Telegram/filesystem/Krita adapters
-  presentation/telegram/       root Router, views, contracts и bundles
-  repositories/                часть исторических repository implementations
+  domains/                     30 канонических repository boundaries
+  infrastructure/              PostgreSQL/Telegram/filesystem/Krita adapters
+  presentation/telegram/       root Router, views, contracts и 4 bundles
   services/                    application/integration services
   workers/                     WorkerManager и worker boundaries
-  handlers/                    46 временных module aliases, 0 implementations
-  *.py                         compatibility и исторические domain modules
+  *.py                         110 исторических root modules для классификации
 ```
 
-Это рабочая переходная архитектура. Она безопасна по границам, но ещё не соответствует физическому критерию `docs/architecture_target.md`, согласно которому корень должен содержать только общие точки входа и тонкие compatibility facades.
+Handler compatibility слой и central/root repositories уже удалены. Оставшаяся физическая работа касается классификации root modules и 8 explicit runtime compatibility-компонентов, а не восстановления старых путей.
 
 ## P3A: источники истины
 
-Необходимо поддерживать согласованность:
-
-- `docs/project_memory.md`;
-- `docs/development_status.md`;
-- этого аудита;
-- `CHANGELOG.md`;
-- architecture/stability inventories.
-
-P2 не должна продолжать числиться незавершённой после inventory `67/67`.
+Статус: завершено. Status, memory, audit, changelog и inventories синхронизированы с `main`.
 
 ## P3B: Telegram Router composition
 
-Корневой Router должен подключать крупные последовательные bundles:
-
-1. core owner/operations;
-2. analytics;
-3. backup/quality/Velvet AI;
-4. archive/public/publication.
-
-Root composition не должен импортировать отдельные `velvet_bot.handlers.*`. Каждый активный handler должен быть зарегистрирован ровно один раз. Publication Router должен оставаться перед archive catch-all.
+Статус: завершено. Четыре ordered bundles содержат 60 активных routers без дублей; root composition не импортирует legacy handlers.
 
 ## P3C: физический перенос presentation
 
-Статус: завершено.
-
-- 46 legacy handler-файлов являются module aliases;
-- активных implementations в `velvet_bot/handlers` нет;
-- canonical controllers зарегистрированы через четыре ordered bundles;
-- callback prefixes, команды и use cases сохранены.
+Статус: завершено. Legacy handler-файлов, implementations и aliases осталось 0.
 
 ## P3D: compatibility retirement
 
-Статус: production cleanup завершён. Legacy-consumer inventory фиксирует 0 production-файлов, 0 references и 0 legacy modules. Первый compatibility-batch удалил 22 archive/reference aliases. Alias-consumer inventory фиксирует 46 оставшихся facades: 44 имеют repository references, 2 не используются. Следующие группы удаляются после миграции тестов без изменения внешних callback/command contracts.
-
-Допустимы временные категории:
-
-- schema adapters;
-- UI formatting adapters;
-- import-order adapters;
-- старые import facades.
-
-Недопустимы:
-
-- скрытые package-level assignments без потребителя;
-- неинвентаризированные monkeypatches;
-- installer, который невозможно связать с regression-тестом;
-- no-op bridge, существующий только потому, что старый тест проверяет его наличие.
-
-Неиспользуемый discussion dashboard package bridge удалён. Оставшиеся active components перечисляются в `velvet_bot/presentation/telegram/compat.py`, а consumers старых handler paths — в `docs/legacy_handler_consumer_inventory.*`.
+Handler compatibility retirement завершён. Старые handler paths не имеют consumers и удалены. Остаются 8 explicit runtime compatibility-компонентов: 7 pre-import и 1 post-import. Каждый дальнейший компонент должен стать постоянным contract либо быть удалён вместе с regression-тестом.
 
 ## P3E: repository layout
 
-Сейчас одновременно существуют:
+Статус: завершено.
 
-- `velvet_bot/domains/<domain>/repository.py`;
-- `velvet_bot/repositories/*.py`;
-- корневые `*_repository.py`.
-
-Целевое правило:
-
-- domain interface/operations находятся внутри домена;
-- PostgreSQL-specific implementation может находиться в `infrastructure/postgres`;
-- старый путь становится re-export facade и затем удаляется;
-- новый repository не создаёт ещё один вариант размещения.
+- repository modules: 31;
+- domain: 30;
+- infrastructure/postgres: 1;
+- central: 0;
+- root: 0;
+- пакет `velvet_bot/repositories` отсутствует.
 
 ## P3F: статическая типизация
 
-Открытый долг:
+Следующий кодовый срез:
 
-- начать с transport-neutral core/application/domains/services/workers;
-- использовать ограниченный baseline;
+- выбрать один transport-neutral package;
+- создать ограниченный mypy/pyright baseline;
+- блокировать новые typing errors в выбранном scope;
 - расширять scope только после зелёного CI;
 - не включать strict-mode на весь repository одним PR.
 

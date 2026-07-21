@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_from": "p3d-analytics-alias-retirement",
+  "generated_from": "p3a-status-sync",
   "root_direct_handler_import_count": 0,
   "router_bundles": [
     {
@@ -42,8 +42,8 @@
   ],
   "active_compatibility_component_count": 8,
   "next_slice": {
-    "phase": "P3E",
-    "target": "repository and root-module layout normalization",
-    "strategy": "inventory repository consumers, then migrate one domain per reviewed slice"
+    "phase": "P3F",
+    "target": "bounded static typing baseline",
+    "strategy": "type-check one transport-neutral package, gate new errors, then expand scope"
   }
 }

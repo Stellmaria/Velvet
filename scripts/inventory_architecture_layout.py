@@ -121,9 +121,9 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "post_import_compatibility_components": list(post_components),
         "active_compatibility_component_count": len(pre_components) + len(post_components),
         "next_slice": {
-            "phase": "P3E",
-            "target": "repository and root-module layout normalization",
-            "strategy": "inventory repository consumers, then migrate one domain per reviewed slice",
+            "phase": "P3F",
+            "target": "bounded static typing baseline",
+            "strategy": "type-check one transport-neutral package, gate new errors, then expand scope",
         },
     }
 
