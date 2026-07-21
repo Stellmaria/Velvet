@@ -38,11 +38,14 @@ async def get_character_media_offset(
                         ORDER BY created_at DESC, media_id DESC
                     ) - 1 AS media_offset
                 FROM character_media
-                JOIN characters AS character
-                  ON character.id = character_media.character_id
                 JOIN media_files AS mf ON mf.id = character_media.media_id
-                WHERE character.workspace_id = {safe_workspace_id}
-                  AND character_media.character_id = $1::BIGINT
+                WHERE character_id = $1::BIGINT
+                  AND EXISTS (
+                        SELECT 1
+                        FROM characters AS character
+                        WHERE character.id = character_media.character_id
+                          AND character.workspace_id = {safe_workspace_id}
+                      )
                   {visibility_filter}
             )
             SELECT media_offset
