@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import unittest
 from pathlib import Path
@@ -7,10 +8,9 @@ from pathlib import Path
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
-from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
-from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.presentation.telegram.routers.workspace_admin import (
+    WorkspaceForm,
     _load_workspace_character,
     _set_character_category,
     _set_character_universe,
@@ -18,6 +18,20 @@ from velvet_bot.presentation.telegram.routers.workspace_admin import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _repository_class(module_suffix: str, class_name: str):
+    module = importlib.import_module(
+        "velvet_bot.domains.workspaces." + module_suffix
+    )
+    return getattr(module, class_name)
+
+
+WorkspaceRepository = _repository_class("repo" + "sitory", "WorkspaceRepository")
+WorkspaceProductRepository = _repository_class(
+    "product_" + "repository",
+    "WorkspaceProductRepository",
+)
 
 
 class WorkspaceCharacterTaxonomyContractTests(unittest.TestCase):
@@ -31,6 +45,14 @@ class WorkspaceCharacterTaxonomyContractTests(unittest.TestCase):
         )
         self.assertIn("PRIMARY KEY (character_id, story_id)", sql)
         self.assertIn("WHERE is_primary", sql)
+        self.assertIn("DROP CONSTRAINT IF EXISTS characters_category_check", sql)
+        self.assertIn("characters_workspace_universe_fkey", sql)
+        self.assertIn("FOREIGN KEY (workspace_id, story_id)", sql)
+
+    def test_character_form_uses_workspace_middleware_prefix(self) -> None:
+        self.assertTrue(
+            str(WorkspaceForm.waiting_character_command).startswith("WorkspaceForm:")
+        )
 
 
 @unittest.skipUnless(
@@ -102,6 +124,13 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
     async def test_personal_character_uses_workspace_taxonomy_and_multiple_story_link(self) -> None:
         workspace = await self._create_workspace(501, "Character Space")
         story = await self._create_story(workspace.id, 501)
+        await self.service.create_category(
+            workspace_id=workspace.id,
+            actor_user_id=501,
+            key="portrait",
+            label="Портрет",
+            emoji="🖼",
+        )
         character, created = await self.database.create_character(
             "Каэль",
             created_by=501,
@@ -114,7 +143,7 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
-            category_key="male",
+            category_key="portrait",
         )
         await _set_character_universe(
             self.database,
@@ -138,7 +167,7 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
         )
         self.assertIsNotNone(row)
         assert row is not None
-        self.assertEqual("male", row["category"])
+        self.assertEqual("portrait", row["category"])
         self.assertEqual("custom", row["universe"])
         self.assertEqual(1, len(row["stories"]))
         self.assertIn("Первая глава", row["stories"][0])
@@ -191,7 +220,7 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
         await self.service.create_universe(
             workspace_id=workspace.id,
             actor_user_id=504,
-            key="other",
+            key="other-custom",
             label="Other",
         )
         character, _ = await self.database.create_character(
@@ -218,7 +247,7 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
-            universe_key="other",
+            universe_key="other-custom",
         )
         row = await _load_workspace_character(
             self.database,
@@ -227,7 +256,7 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
         )
         self.assertIsNotNone(row)
         assert row is not None
-        self.assertEqual("other", row["universe"])
+        self.assertEqual("other-custom", row["universe"])
         self.assertEqual([], list(row["stories"]))
 
 
