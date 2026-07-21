@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.character_management import (
@@ -16,10 +17,6 @@ from velvet_bot.domains.workspaces.character_management import (
     set_workspace_character_topic,
 )
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
-from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
-from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
-from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
-from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.topics import TopicReference
 
 
@@ -58,12 +55,6 @@ class PostgreSQLWorkspaceCharacterManagementTests(unittest.IsolatedAsyncioTestCa
     async def asyncSetUp(self) -> None:
         self.database = Database(os.environ["TEST_DATABASE_URL"])
         await self.database.initialize()
-        self.workspace_repository = WorkspaceRepository(self.database)
-        self.product_repository = WorkspaceProductRepository(self.database)
-        self.service = WorkspaceProductService(
-            product_repository=self.product_repository,
-            workspace_repository=self.workspace_repository,
-        )
         await self._reset()
 
     async def asyncTearDown(self) -> None:
@@ -91,14 +82,19 @@ class PostgreSQLWorkspaceCharacterManagementTests(unittest.IsolatedAsyncioTestCa
             await connection.execute("DELETE FROM user_public_workspace_preferences")
 
     async def _create_workspace(self, user_id: int, name: str):
-        await self.service.grant_creation_access(
-            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-            user_id=user_id,
-        )
-        return await self.service.create_personal_workspace(
-            owner_user_id=user_id,
-            name=name,
-        )
+        async with self.database.acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                INSERT INTO workspaces (slug, name, is_system)
+                VALUES ($1::VARCHAR, $2::VARCHAR, FALSE)
+                RETURNING id
+                """,
+                f"test-{int(user_id)}",
+                name,
+            )
+        if row is None:
+            raise RuntimeError("Не удалось создать тестовое пространство.")
+        return SimpleNamespace(id=int(row["id"]))
 
     async def test_aliases_are_unique_inside_workspace_but_reusable_elsewhere(self) -> None:
         first = await self._create_workspace(601, "First")
