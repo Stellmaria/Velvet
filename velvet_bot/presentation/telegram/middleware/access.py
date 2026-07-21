@@ -39,12 +39,13 @@ CHARACTER_EDITOR_CALLBACK_PREFIXES = MODERATOR_CALLBACK_PREFIXES
 
 ACCESS_DENIED_TEXT = (
     "<b>Доступ закрыт</b>\n\n"
-    "В открытом доступе находится только просмотр архива персонажей: "
-    "<code>/archive</code>. Остальное управление доступно владельцу."
+    "В открытом доступе находятся публичные архивы персонажей. "
+    "Создание личного архива появляется после выдачи доступа Стэл."
 )
 ACCESS_DENIED_CALLBACK_TEXT = (
-    "Эта служебная кнопка недоступна. Открыт только просмотр архива."
+    "Эта служебная кнопка недоступна. Откройте публичные архивы через /start."
 )
+_WORKSPACE_FORM_STATE_PREFIX = "WorkspaceForm:"
 
 
 def is_public_callback(callback: CallbackQuery) -> bool:
@@ -116,6 +117,15 @@ def message_requires_owner_access(
     return is_owner_mention_text(stripped, bot_username)
 
 
+async def _workspace_form_is_active(data: dict[str, Any]) -> bool:
+    state = data.get("state")
+    get_state = getattr(state, "get_state", None)
+    if get_state is None:
+        return False
+    current = await get_state()
+    return bool(current and str(current).startswith(_WORKSPACE_FORM_STATE_PREFIX))
+
+
 async def answer_access_denied(message: Message) -> None:
     if message.guest_query_id:
         result_id = hashlib.sha256(
@@ -136,7 +146,7 @@ async def answer_access_denied(message: Message) -> None:
 
 
 class OwnerAccessMiddleware(BaseMiddleware):
-    """Apply the three-level access matrix before Telegram handlers run."""
+    """Apply global-owner, moderator, public and guarded workspace access."""
 
     def __init__(self, policy: AccessPolicy) -> None:
         self.policy = policy
@@ -201,6 +211,12 @@ class OwnerAccessMiddleware(BaseMiddleware):
             event,
             self.policy.moderator_user_ids,
         ):
+            return await handler(event, data)
+
+        # Workspace callbacks start signed FSM sessions. Only messages inside one
+        # of those states bypass the global owner gate; the handler still checks
+        # creation grants, workspace membership, role and enabled module.
+        if await _workspace_form_is_active(data):
             return await handler(event, data)
 
         if not message_requires_owner_access(
