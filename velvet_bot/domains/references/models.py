@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from velvet_bot.domains.characters.models import CharacterRecord
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +21,7 @@ class CharacterReference:
     telegram_file_unique_id: str
     added_by: int | None
     created_at: datetime
+    workspace_id: int = DEFAULT_WORKSPACE_ID
 
 
 @dataclass(frozen=True, slots=True)
