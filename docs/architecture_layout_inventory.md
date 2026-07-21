@@ -8,9 +8,9 @@
 - доменных router bundles: **4**;
 - активных router imports в bundles: **59**;
 - дублирующих регистраций между bundles: **0**;
-- физических legacy handler-файлов: **1**;
+- физических legacy handler-файлов: **0**;
 - активных legacy handler implementations: **0**;
-- временных handler module aliases: **1**;
+- временных handler module aliases: **0**;
 - корневых Python-модулей `velvet_bot/*.py`: **117**;
 - файлов с `compat` в имени: **5**;
 - активных compatibility-компонентов: **8**.
@@ -24,7 +24,6 @@
 
 ## Handler module aliases
 
-- `velvet_bot/handlers/channel_analytics.py`.
 
 ## Активная compatibility-граница
 
@@ -44,9 +43,9 @@
 
 ## Следующий срез
 
-- фаза: **P3D**;
-- цель: **compatibility alias retirement and canonical import cleanup**;
-- стратегия: remove temporary handler aliases in reviewed consumer groups.
+- фаза: **P3E**;
+- цель: **repository and root-module layout normalization**;
+- стратегия: inventory repository consumers, then migrate one domain per reviewed slice.
 
 ## Правило обновления
 

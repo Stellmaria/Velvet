@@ -165,9 +165,9 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "unreferenced_aliases": unreferenced,
         "consumers": consumers,
         "next_slice": {
-            "phase": "P3D",
-            "target": "retire the next compatibility alias group",
-            "strategy": "migrate tests to canonical modules, then delete only aliases with no repository references",
+            "phase": "P3E",
+            "target": "repository and root-module layout normalization",
+            "strategy": "keep handler aliases at zero while migrating repository consumers by domain",
         },
     }
 

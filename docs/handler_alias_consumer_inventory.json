@@ -1,21 +1,15 @@
 {
   "schema_version": 1,
   "generated_from": "p3d-analytics-alias-retirement",
-  "alias_file_count": 1,
-  "consumer_file_count": 5,
-  "reference_count": 5,
-  "referenced_alias_count": 1,
+  "alias_file_count": 0,
+  "consumer_file_count": 2,
+  "reference_count": 2,
+  "referenced_alias_count": 0,
   "unreferenced_alias_count": 0,
   "dynamic_prefix_reference_count": 2,
   "missing_alias_reference_count": 0,
   "missing_alias_references": [],
-  "aliases": [
-    {
-      "module": "velvet_bot.handlers.channel_analytics",
-      "target": "velvet_bot.presentation.telegram.routers.analytics_controllers.channel",
-      "referenced": true
-    }
-  ],
+  "aliases": [],
   "unreferenced_aliases": [],
   "consumers": [
     {
@@ -29,26 +23,6 @@
       ]
     },
     {
-      "path": "tests/test_p2q_channel_analytics_boundary.py",
-      "references": [
-        {
-          "kind": "import",
-          "module": "velvet_bot.handlers.channel_analytics",
-          "line": 7
-        }
-      ]
-    },
-    {
-      "path": "tests/test_p3c_analytics_controllers.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.channel_analytics",
-          "line": 8
-        }
-      ]
-    },
-    {
       "path": "tests/test_p3c_quality_operations_controllers.py",
       "references": [
         {
@@ -57,21 +31,11 @@
           "line": 41
         }
       ]
-    },
-    {
-      "path": "tests/test_p3d_residual_handler_classification.py",
-      "references": [
-        {
-          "kind": "literal-reference",
-          "module": "velvet_bot.handlers.channel_analytics",
-          "line": 11
-        }
-      ]
     }
   ],
   "next_slice": {
-    "phase": "P3D",
-    "target": "retire the next compatibility alias group",
-    "strategy": "migrate tests to canonical modules, then delete only aliases with no repository references"
+    "phase": "P3E",
+    "target": "repository and root-module layout normalization",
+    "strategy": "keep handler aliases at zero while migrating repository consumers by domain"
   }
 }

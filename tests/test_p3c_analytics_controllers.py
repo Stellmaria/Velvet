@@ -5,11 +5,11 @@ import unittest
 from pathlib import Path
 
 
-CHANNEL_ALIAS = "velvet_bot.handlers.channel_analytics"
 CHANNEL_CANONICAL = (
     "velvet_bot.presentation.telegram.routers.analytics_controllers.channel"
 )
 RETIRED_ALIAS_NAMES = (
+    "channel_analytics",
     "analytics_dashboard",
     "analytics_dashboard_overrides",
     "analytics_discussion_overrides",
@@ -33,21 +33,11 @@ CANONICAL_MODULES = (
 
 
 class P3CAnalyticsControllersTests(unittest.TestCase):
-    def test_deferred_channel_alias_still_resolves_to_canonical_module(self) -> None:
-        self.assertIs(
-            importlib.import_module(CHANNEL_ALIAS),
-            importlib.import_module(CHANNEL_CANONICAL),
-        )
+    def test_channel_controller_is_importable_from_canonical_module(self) -> None:
+        module = importlib.import_module(CHANNEL_CANONICAL)
+        self.assertEqual(module.router.name, CHANNEL_CANONICAL)
 
-    def test_deferred_channel_file_is_only_module_alias(self) -> None:
-        path = Path(*CHANNEL_ALIAS.split(".")).with_suffix(".py")
-        source = path.read_text(encoding="utf-8")
-        self.assertIn("P3_COMPAT_MODULE_ALIAS", source)
-        self.assertIn(CHANNEL_CANONICAL, source)
-        self.assertNotIn("@router.", source)
-        self.assertLessEqual(len(source.splitlines()), 10)
-
-    def test_other_analytics_alias_files_are_retired(self) -> None:
+    def test_all_analytics_alias_files_are_retired(self) -> None:
         for name in RETIRED_ALIAS_NAMES:
             with self.subTest(alias=name):
                 self.assertFalse(Path("velvet_bot/handlers", f"{name}.py").exists())
