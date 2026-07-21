@@ -4,7 +4,7 @@ import re
 
 import velvet_bot.media_sets as media_sets
 from velvet_bot.database import Database
-from velvet_bot.media_set_actions_repository import MediaSetActionsRepository
+from velvet_bot.domains.media_sets.actions_repository import MediaSetActionsRepository
 from velvet_bot.media_sets import CreatedMediaSet
 
 _PROMPT_POST_URL_RE = re.compile(
