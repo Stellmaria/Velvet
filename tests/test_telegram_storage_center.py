@@ -103,6 +103,25 @@ class _FakeBot:
         )
 
 
+class _FakeRetryAfter(Exception):
+    def __init__(self, retry_after: int) -> None:
+        super().__init__(f"retry after {retry_after}")
+        self.retry_after = retry_after
+
+
+class _FloodOnceBot(_FakeBot):
+    def __init__(self, retry_after: int) -> None:
+        self._retry_after = retry_after
+        self._flooded = False
+        super().__init__()
+
+    async def _send(self, **kwargs):
+        if not self._flooded:
+            self._flooded = True
+            raise _FakeRetryAfter(self._retry_after)
+        return await super()._send(**kwargs)
+
+
 class TelegramStorageUploaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_local_file_is_deleted_only_after_database_index(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -151,6 +170,63 @@ class TelegramStorageUploaderTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(source.exists())
             repository.create_object.assert_awaited_once()
             repository.mark_local_deleted.assert_awaited_once_with(9)
+
+    async def test_flood_wait_retries_same_document_without_failed_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "codex-task.zip"
+            source.write_bytes(b"codex")
+            settings = SimpleNamespace(
+                chat_id=-1004459280894,
+                threads=SimpleNamespace(for_kind=lambda kind: 7),
+                staging_dir=root / "staging",
+                max_part_bytes=1024 * 1024,
+                delete_after_upload=False,
+            )
+            stored = StoredObject(
+                object_id=41,
+                kind="codex",
+                logical_key="codex:task:done",
+                sha256=sha256_file(source),
+                size_bytes=source.stat().st_size,
+                chat_id=settings.chat_id,
+                thread_id=7,
+                parts=(),
+            )
+            repository = SimpleNamespace(
+                get_existing=AsyncMock(return_value=None),
+                create_object=AsyncMock(return_value=stored),
+                mark_local_deleted=AsyncMock(),
+            )
+            bot = _FloodOnceBot(retry_after=34)
+            uploader = TelegramStorageUploader(
+                bot=bot,
+                repository=repository,
+                settings=settings,
+            )
+            candidate = StorageCandidate(
+                kind="codex",
+                path=source,
+                logical_key="codex:task:done",
+                original_name=source.name,
+            )
+            sleep = AsyncMock()
+
+            with patch(
+                "velvet_bot.domains.telegram_storage.uploader.TelegramRetryAfter",
+                _FakeRetryAfter,
+            ), patch(
+                "velvet_bot.domains.telegram_storage.uploader.asyncio.sleep",
+                new=sleep,
+            ):
+                result, deleted, freed, duplicate = await uploader.upload(candidate)
+
+            self.assertIs(result, stored)
+            self.assertEqual((deleted, freed, duplicate), (0, 0, False))
+            self.assertEqual(bot.send_document.await_count, 2)
+            sleep.assert_awaited_once_with(35.0)
+            repository.create_object.assert_awaited_once()
+            bot.delete_message.assert_not_awaited()
 
     async def test_database_failure_keeps_local_file_and_removes_orphan_message(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
