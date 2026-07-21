@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from time import monotonic
 from typing import Callable
 
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+
 
 DEFAULT_SAVE_SESSION_TTL_SECONDS = 10 * 60
 
@@ -15,6 +17,8 @@ class SaveUploadSession:
     character_name: str
     command_message_id: int
     expires_at: float
+    workspace_id: int = DEFAULT_WORKSPACE_ID
+    character_id: int | None = None
 
 
 class SaveUploadSessions:
@@ -43,6 +47,8 @@ class SaveUploadSessions:
         user_id: int,
         character_name: str,
         command_message_id: int,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+        character_id: int | None = None,
     ) -> SaveUploadSession:
         cleaned_name = character_name.strip()
         if not cleaned_name:
@@ -53,6 +59,8 @@ class SaveUploadSessions:
             character_name=cleaned_name,
             command_message_id=int(command_message_id),
             expires_at=self._clock() + self._ttl_seconds,
+            workspace_id=int(workspace_id),
+            character_id=(int(character_id) if character_id is not None else None),
         )
         self._sessions[self._key(chat_id, user_id)] = session
         return session
