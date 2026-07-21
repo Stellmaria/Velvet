@@ -16,6 +16,7 @@ from velvet_bot.archive_catalog import (
     toggle_archive_media_public_visibility,
 )
 from velvet_bot.database import Database
+from velvet_bot.domains.public_archive.models import PUBLIC_ARCHIVE_REVIEWER_ID
 from velvet_bot.image_preview import ImagePreviewError
 from velvet_bot.protected_bot import ProtectedMediaBot
 from velvet_bot.public_adult_access import has_adult_channel_access
@@ -48,6 +49,26 @@ class _PreparedMedia:
     manager_access: bool
     member_access: bool
     error: str | None = None
+
+
+def _record_target_view_before_display(*, action: str, user_id: int) -> bool:
+    """Keep regular view metrics, but delay the dedicated Stell review marker."""
+    return int(user_id) != PUBLIC_ARCHIVE_REVIEWER_ID
+
+
+def _owner_review_media_after_navigation(
+    callback_data: PublicArchiveCallback,
+    *,
+    user_id: int,
+) -> int | None:
+    """Return the card being left by Stell, never the newly opened target card."""
+    if (
+        int(user_id) == PUBLIC_ARCHIVE_REVIEWER_ID
+        and callback_data.action == "show"
+        and callback_data.media_id > 0
+    ):
+        return int(callback_data.media_id)
+    return None
 
 
 async def _member_access(
@@ -128,7 +149,11 @@ async def _prepare_media(
             member_access=member_access,
             error="Материал больше недоступен.",
         )
-    if callback_data.media_id and callback_data.media_id != page.media.id:
+    if (
+        callback_data.media_id
+        and callback_data.action != "show"
+        and callback_data.media_id != page.media.id
+    ):
         return _PreparedMedia(
             page=None,
             manager_access=manager_access,
@@ -232,15 +257,23 @@ async def handle_spoiler_aware_open(
 
     await callback.answer()
     page = prepared.page
-    try:
-        await record_public_media_view(
-            database,
-            character_id=page.character.id,
-            media_id=page.media.id,
-            user_id=callback.from_user.id,
-        )
-    except Exception:  # p2-approved-boundary: preserve-public-open-on-metric-failure
-        logger.exception("Failed to record public archive view")
+    owner_review_media_id = _owner_review_media_after_navigation(
+        callback_data,
+        user_id=callback.from_user.id,
+    )
+    if _record_target_view_before_display(
+        action=callback_data.action,
+        user_id=callback.from_user.id,
+    ):
+        try:
+            await record_public_media_view(
+                database,
+                character_id=page.character.id,
+                media_id=page.media.id,
+                user_id=callback.from_user.id,
+            )
+        except Exception:  # p2-approved-boundary: preserve-public-open-on-metric-failure
+            logger.exception("Failed to record public archive view")
 
     can_download = await _can_download(
         database,
@@ -285,6 +318,18 @@ async def handle_spoiler_aware_open(
             await callback.message.answer(str(error))
         else:
             logger.info("Public image preview unavailable: %s", error)
+        return
+
+    if owner_review_media_id is not None:
+        try:
+            await record_public_media_view(
+                database,
+                character_id=page.character.id,
+                media_id=owner_review_media_id,
+                user_id=callback.from_user.id,
+            )
+        except Exception:  # p2-approved-boundary: preserve-navigation-on-owner-review-failure
+            logger.exception("Failed to record Stell public archive review")
 
 
 async def _apply_engagement(

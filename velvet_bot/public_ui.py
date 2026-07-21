@@ -397,6 +397,7 @@ def build_public_archive_keyboard(
                     callback_data=_callback(
                         "show",
                         offset=(page.offset - 1) % page.total,
+                        media_id=media_id,
                         **common,
                     ),
                 ),
@@ -406,6 +407,7 @@ def build_public_archive_keyboard(
                     callback_data=_callback(
                         "show",
                         offset=(page.offset + 1) % page.total,
+                        media_id=media_id,
                         **common,
                     ),
                 ),
