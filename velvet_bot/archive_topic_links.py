@@ -15,7 +15,10 @@ async def resolve_archive_workspace_id(
     if not callable(acquire):
         return DEFAULT_WORKSPACE_ID
     async with acquire() as connection:
-        value = await connection.fetchval(
+        fetchval = getattr(connection, "fetchval", None)
+        if not callable(fetchval):
+            return DEFAULT_WORKSPACE_ID
+        value = await fetchval(
             """
             SELECT workspace_id
             FROM workspace_channels
@@ -141,6 +144,7 @@ async def list_characters_by_archive_topic(
                 character.id,
                 character.workspace_id,
                 character.name,
+                character.normalized_name,
                 character.created_by,
                 character.created_in_chat,
                 character.created_at,
