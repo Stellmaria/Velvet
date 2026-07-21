@@ -3,7 +3,7 @@
 - Дата: 2026-07-21
 - ID: `2026-07-21-storage-flood-control-retry`
 - Линия/фаза: production hotfix / Telegram Storage
-- Статус: `выполняется`
+- Статус: `завершено в коде`
 - Ветка: `agent/fix-storage-flood-control`
 - Базовый commit: `f0bfff96af4d087aa9485a158b08f405ce38ef74`
 
@@ -35,3 +35,31 @@
 - локальный файл удаляется только после успешной отправки и записи индекса;
 - остальные Telegram/API и database failures продолжают подниматься;
 - профильные тесты и полный CI проходят.
+
+## После завершения
+
+### Фактически сделано
+
+- все document uploads через `TelegramStorageUploader` сериализованы одним async lock;
+- между успешными отправками установлен storage-specific интервал 1.1 секунды;
+- `TelegramRetryAfter` больше не попадает в item failure boundary при первом flood response;
+- uploader ждёт `retry_after + 1 секунда` и повторяет тот же document до пяти попыток;
+- flood wait записывается на INFO, а не создаёт отдельную Error Center запись;
+- cancellation и прочие Telegram/API ошибки не подавляются;
+- существующая компенсация orphan messages и правило удаления локальных файлов сохранены.
+
+### Проверки
+
+Добавлен regression-тест, который моделирует `retry_after=34`, проверяет ожидание 35 секунд, повтор одного document, запись storage index и отсутствие orphan cleanup. Полный GitHub CI запускается в PR.
+
+### Миграции и совместимость
+
+Миграции PostgreSQL и изменения environment schema не требуются. Logical keys, Telegram thread mapping и storage object format не изменены.
+
+### Остаток
+
+Прямой watermark backfill использует отдельный Bot API send boundary. Наблюдаемая серия `#41`–`#47` возникла в общем uploader на Codex/Rework items и закрыта этим hotfix. Перенос watermark send на тот же reusable gate можно выполнить отдельным небольшим срезом, если telemetry покажет flood именно на watermark backfill.
+
+### Следующий шаг
+
+После зелёного CI и merge перейти к финальному P3D-срезу `channel_analytics`: исправить безопасное чтение optional Telegram counters, перевести остаточные тесты на canonical controller и удалить последний `velvet_bot.handlers.*` alias.
