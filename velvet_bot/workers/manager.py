@@ -7,9 +7,16 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from velvet_bot.infrastructure.transient_connections import (
+    is_transient_connection_error,
+)
+
 logger = logging.getLogger(__name__)
 
 WorkerRunner = Callable[[], Awaitable[Any]]
+TransientFailureHandler = Callable[[BaseException], Awaitable[None]]
+_TRANSIENT_ALERT_AFTER = 3
+_TRANSIENT_ALERT_REPEAT = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,13 +62,18 @@ class WorkerSnapshot:
 class WorkerManager:
     """Own periodic task lifecycle and expose immutable runtime snapshots."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        transient_failure_handler: TransientFailureHandler | None = None,
+    ) -> None:
         self._specs: dict[str, PeriodicWorkerSpec] = {}
         self._snapshots: dict[str, WorkerSnapshot] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._run_locks: dict[str, asyncio.Lock] = {}
         self._lock = asyncio.Lock()
         self._started = False
+        self._transient_failure_handler = transient_failure_handler
 
     @property
     def started(self) -> bool:
@@ -165,6 +177,34 @@ class WorkerManager:
                 return
             self._start_task(name, spec)
 
+    async def _handle_transient_failure(
+        self,
+        *,
+        spec: PeriodicWorkerSpec,
+        error: BaseException,
+        consecutive_failures: int,
+    ) -> None:
+        handler = self._transient_failure_handler
+        if handler is not None:
+            await handler(error)
+
+        if (
+            consecutive_failures == _TRANSIENT_ALERT_AFTER
+            or consecutive_failures % _TRANSIENT_ALERT_REPEAT == 0
+        ):
+            logger.error(
+                "Background workers cannot reach a network dependency; "
+                "transient outage persists"
+            )
+            return
+        logger.info(
+            "Background worker transient connection failure name=%s "
+            "consecutive=%s; retrying on the next scheduled iteration: %s",
+            spec.name,
+            consecutive_failures,
+            error,
+        )
+
     async def _execute_once(self, spec: PeriodicWorkerSpec) -> bool:
         async with self._run_locks[spec.name]:
             started_at = datetime.now(UTC)
@@ -182,16 +222,24 @@ class WorkerManager:
             except Exception as error:  # p2-approved-boundary: isolate-worker-iteration-failure
                 failed_at = datetime.now(UTC)
                 current = self._snapshots[spec.name]
+                consecutive_failures = current.consecutive_failures + 1
                 self._snapshots[spec.name] = replace(
                     current,
                     state="failed",
                     last_error_at=failed_at,
                     last_error=str(error)[:2000],
                     failed_runs=current.failed_runs + 1,
-                    consecutive_failures=current.consecutive_failures + 1,
+                    consecutive_failures=consecutive_failures,
                     next_run_at=failed_at + timedelta(seconds=spec.interval_seconds),
                 )
-                logger.exception("Background worker failed name=%s", spec.name)
+                if is_transient_connection_error(error):
+                    await self._handle_transient_failure(
+                        spec=spec,
+                        error=error,
+                        consecutive_failures=consecutive_failures,
+                    )
+                else:
+                    logger.exception("Background worker failed name=%s", spec.name)
                 return False
 
             completed_at = datetime.now(UTC)
