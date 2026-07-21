@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  mypy-core:
+  mypy-bounded:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,5 +27,20 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
 
-      - name: Type-check bounded core scope
-        run: python -m mypy
+      - name: Type-check bounded scope
+        shell: bash
+        run: |
+          set +e
+          python -m mypy > mypy-output.txt 2>&1
+          status=$?
+          cat mypy-output.txt
+          exit "$status"
+
+      - name: Upload mypy output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mypy-output
+          path: mypy-output.txt
+          if-no-files-found: error
+          retention-days: 7
