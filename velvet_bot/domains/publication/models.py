@@ -110,6 +110,7 @@ class PublicationCharacterInfo:
     story_id: int | None
     has_multi_story: bool
     normalized_alias: str
+    requires_story: bool = False
 
 
 @dataclass(frozen=True, slots=True)
