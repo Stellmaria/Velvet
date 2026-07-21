@@ -119,11 +119,14 @@ async def list_characters_by_archive_topic(
         legacy_lookup = getattr(database, "get_character_by_archive_topic", None)
         if not callable(legacy_lookup):
             return []
-        character = await legacy_lookup(
-            archive_chat_id,
-            archive_thread_id,
-            workspace_id=target_workspace_id,
-        )
+        try:
+            character = await legacy_lookup(
+                archive_chat_id,
+                archive_thread_id,
+                workspace_id=target_workspace_id,
+            )
+        except TypeError:
+            character = await legacy_lookup(archive_chat_id, archive_thread_id)
         return [character] if character is not None else []
 
     async with acquire() as connection:
