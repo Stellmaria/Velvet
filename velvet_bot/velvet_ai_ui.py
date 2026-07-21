@@ -8,14 +8,43 @@ from velvet_bot.owner_callbacks import owner_callback
 from velvet_bot.quality_ui import quality_callback
 
 
+def _empty_quality_summary() -> AIQualitySummary:
+    return AIQualitySummary(
+        pending=0,
+        processing=0,
+        ready=0,
+        errors=0,
+        skipped=0,
+        unreviewed=0,
+        accepted=0,
+        fix_required=0,
+        clean=0,
+        warnings=0,
+        critical=0,
+    )
+
+
+def _empty_rework_summary() -> MediaReworkSummary:
+    return MediaReworkSummary(
+        active=0,
+        needs_fix=0,
+        checking=0,
+        ready_for_review=0,
+        stel_priority=0,
+        qwen_only=0,
+    )
+
+
 def build_velvet_ai_menu(
     *,
     enabled: bool,
     provider: str,
     model: str,
-    quality: AIQualitySummary,
-    rework: MediaReworkSummary,
+    quality: AIQualitySummary | None = None,
+    rework: MediaReworkSummary | None = None,
 ) -> tuple[str, InlineKeyboardMarkup]:
+    quality = quality or _empty_quality_summary()
+    rework = rework or _empty_rework_summary()
     state = "включён" if enabled else "отключён"
     text = (
         "<b>🤖 Qwen · работа с архивом</b>\n\n"
