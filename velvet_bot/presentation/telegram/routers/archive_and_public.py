@@ -11,6 +11,9 @@ from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.tel
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.discussion_updates import (
     router as discussion_updates_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_admin import (
+    router as workspace_admin_router,
+)
 from velvet_bot.presentation.telegram.routers.workspaces import (
     router as workspaces_router,
 )
@@ -125,8 +128,9 @@ register_public_archive_rework(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
-# Workspace callbacks and FSM forms must be registered before /start and broad
-# owner/archive controllers.
+# Workspace policy commands, callbacks and FSM forms must run before /start and
+# broad owner/archive controllers.
+router.include_router(workspace_admin_router)
 router.include_router(workspaces_router)
 router.include_router(start_router)
 router.include_router(public_media_display_router)
