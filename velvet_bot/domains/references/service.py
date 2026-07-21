@@ -27,6 +27,12 @@ class ReferenceService:
     ) -> AddReferenceResult:
         if not media.telegram_file_id or not media.telegram_file_unique_id:
             raise ValueError("Референс не содержит Telegram file_id.")
+        if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+            return await self._repository.add(
+                character_id=character_id,
+                media=media,
+                added_by=added_by,
+            )
         return await self._repository.add(
             character_id=character_id,
             media=media,
@@ -41,6 +47,11 @@ class ReferenceService:
         reference_id: int,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> DeleteReferenceResult:
+        if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+            return await self._repository.delete(
+                character_id=character_id,
+                reference_id=reference_id,
+            )
         return await self._repository.delete(
             character_id=character_id,
             reference_id=reference_id,
@@ -53,6 +64,8 @@ class ReferenceService:
         *,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> int:
+        if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+            return await self._repository.count(character_id)
         return await self._repository.count(
             character_id,
             workspace_id=workspace_id,
@@ -65,6 +78,8 @@ class ReferenceService:
         limit: int = 50,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> list[CharacterReference]:
+        if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+            return await self._repository.list(character_id, limit=limit)
         return await self._repository.list(
             character_id,
             limit=limit,
@@ -78,6 +93,8 @@ class ReferenceService:
         *,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> ReferencePage | None:
+        if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+            return await self._repository.get_page(character_id, offset)
         return await self._repository.get_page(
             character_id,
             offset,
