@@ -7,7 +7,7 @@ from typing import Any
 # Public access includes archive viewing plus user-facing likes, subscriptions and
 # download callbacks. The download handler still enforces channel membership or
 # approved-watermark policy before sending any file.
-# `/menu` still belongs exclusively to the owner control panel.
+# `/menu` still belongs exclusively to the global owner control panel.
 PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery"})
 PUBLIC_CALLBACK_ACTIONS = frozenset(
     {
@@ -25,7 +25,31 @@ PUBLIC_CALLBACK_ACTIONS = frozenset(
         "download",
     }
 )
+PUBLIC_WORKSPACE_CALLBACK_ACTIONS = frozenset(
+    {
+        "noop",
+        "close",
+        "publics",
+        "publicselect",
+        "create",
+        "home",
+        "visibility",
+        "modules",
+        "modtoggle",
+        "modulehelp",
+        "module",
+        "taxonomy",
+        "categories",
+        "universes",
+        "stories",
+        "addcategory",
+        "adduniverse",
+        "addstory",
+        "krimport",
+    }
+)
 PUBLIC_CALLBACK_PREFIX = "pub:"
+WORKSPACE_CALLBACK_PREFIX = "wsp:"
 
 # A configured moderator may maintain character cards and archive metadata. This
 # role must never inherit owner-only system, publication, analytics, backup,
@@ -116,6 +140,8 @@ OWNER_ONLY_COMMANDS = frozenset(
         "rollback",
         "codex",
         "codex_status",
+        "workspace_grant",
+        "workspace_revoke",
     }
 )
 
@@ -156,11 +182,16 @@ def _callback_parts(value: str | None) -> tuple[str, str] | None:
 
 def is_public_callback_data(value: str | None) -> bool:
     parts = _callback_parts(value)
-    return bool(
-        parts
-        and parts[0] == "pub"
-        and parts[1] in PUBLIC_CALLBACK_ACTIONS
-    )
+    if parts is None:
+        return False
+    prefix, action = parts
+    if prefix == "pub":
+        return action in PUBLIC_CALLBACK_ACTIONS
+    if prefix == "wsp":
+        # These callbacks are only admitted to the handler. Database-backed grant,
+        # membership, ownership and module checks still decide every mutation.
+        return action in PUBLIC_WORKSPACE_CALLBACK_ACTIONS
+    return False
 
 
 def is_moderator_callback_data(value: str | None) -> bool:
@@ -218,14 +249,6 @@ class AccessPolicy:
             username=getattr(user, "username", None),
         )
 
-    def allows_moderator(self, *, user_id: int | None) -> bool:
-        return bool(user_id is not None and user_id in self.moderator_user_ids)
-
-    def allows_moderator_user(self, user: Any | None) -> bool:
-        if user is None:
-            return False
-        return self.allows_moderator(user_id=getattr(user, "id", None))
-
 
 __all__ = (
     "AccessPolicy",
@@ -243,6 +266,8 @@ __all__ = (
     "PUBLIC_CALLBACK_ACTIONS",
     "PUBLIC_CALLBACK_PREFIX",
     "PUBLIC_COMMANDS",
+    "PUBLIC_WORKSPACE_CALLBACK_ACTIONS",
+    "WORKSPACE_CALLBACK_PREFIX",
     "command_name",
     "is_moderator_callback_data",
     "is_owner_mention_text",
