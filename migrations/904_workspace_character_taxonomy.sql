@@ -11,12 +11,28 @@ ALTER TABLE characters
     DROP CONSTRAINT IF EXISTS characters_workspace_universe_fkey;
 
 ALTER TABLE characters
-    ADD CONSTRAINT characters_workspace_category_fkey
-        FOREIGN KEY (workspace_id, category)
-        REFERENCES workspace_categories(workspace_id, key),
-    ADD CONSTRAINT characters_workspace_universe_fkey
-        FOREIGN KEY (workspace_id, universe)
-        REFERENCES workspace_universes(workspace_id, key);
+    ADD CONSTRAINT characters_category_check
+        CHECK (
+            workspace_id <> 1
+            OR category IS NULL
+            OR category IN ('female', 'male', 'mf', 'mfm', 'mm', 'ff')
+        ),
+    ADD CONSTRAINT characters_universe_check
+        CHECK (
+            workspace_id <> 1
+            OR universe IS NULL
+            OR universe IN (
+                'shs',
+                'kr',
+                'lm',
+                'idm',
+                'bg3',
+                're',
+                'lagerta',
+                'original',
+                'other'
+            )
+        );
 
 CREATE TABLE IF NOT EXISTS workspace_character_story_links (
     workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
