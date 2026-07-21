@@ -1,0 +1,35 @@
+name: temporary refresh owner review inventory
+
+on:
+  push:
+    branches:
+      - agent/public-archive-owner-review-on-leave
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/public-archive-owner-review-on-leave
+          fetch-depth: 0
+
+      - name: Refresh generated inventory
+        run: |
+          python scripts/update_p2_stability_inventory.py \
+            --label public-archive-owner-review-on-leave \
+            --schema-version 46
+          rm .github/workflows/temp-refresh-owner-review-inventory.yml
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refresh P2 inventory for owner review semantics"
+          git push origin HEAD:agent/public-archive-owner-review-on-leave
