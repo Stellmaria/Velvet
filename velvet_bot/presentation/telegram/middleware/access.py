@@ -30,7 +30,11 @@ from velvet_bot.core.access import (
     is_owner_mention_text,
     is_public_callback_data,
     is_public_command_text,
+    is_workspace_member_callback_data,
+    is_workspace_member_command_text,
 )
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+from velvet_bot.domains.workspaces.service import WorkspaceAccessError
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +130,23 @@ async def _workspace_form_is_active(data: dict[str, Any]) -> bool:
     return bool(current and str(current).startswith(_WORKSPACE_FORM_STATE_PREFIX))
 
 
+async def _has_active_personal_workspace(
+    data: dict[str, Any],
+    user: User | None,
+) -> bool:
+    workspace_service = data.get("workspace_service")
+    if workspace_service is None or user is None:
+        return False
+    try:
+        workspace = await workspace_service.resolve_active_workspace(
+            user_id=int(user.id),
+            global_owner=False,
+        )
+    except WorkspaceAccessError:
+        return False
+    return int(workspace.id) != DEFAULT_WORKSPACE_ID
+
+
 async def answer_access_denied(message: Message) -> None:
     if message.guest_query_id:
         result_id = hashlib.sha256(
@@ -163,6 +184,11 @@ class OwnerAccessMiddleware(BaseMiddleware):
                 self.policy.moderator_user_ids,
             ):
                 return await handler(event, data)
+            if is_workspace_member_callback_data(event.data) and await _has_active_personal_workspace(
+                data,
+                event.from_user,
+            ):
+                return await handler(event, data)
 
             allowed = self.policy.allows_user(event.from_user)
             logger.info(
@@ -177,6 +203,8 @@ class OwnerAccessMiddleware(BaseMiddleware):
             return None
 
         if isinstance(event, InlineQuery):
+            if await _has_active_personal_workspace(data, event.from_user):
+                return await handler(event, data)
             allowed = self.policy.allows_user(event.from_user)
             logger.info(
                 "Inline access check: caller_id=%s username=%s allowed=%s",
@@ -219,13 +247,19 @@ class OwnerAccessMiddleware(BaseMiddleware):
         if await _workspace_form_is_active(data):
             return await handler(event, data)
 
+        caller = get_caller_user(event)
+        personal_route = is_workspace_member_command_text(text) or (
+            event.chat.type == ChatType.PRIVATE and command_name(text) is None
+        )
+        if personal_route and await _has_active_personal_workspace(data, caller):
+            return await handler(event, data)
+
         if not message_requires_owner_access(
             event,
             str(data.get("bot_username", "")),
         ):
             return await handler(event, data)
 
-        caller = get_caller_user(event)
         allowed = self.policy.allows_user(caller)
         if event.guest_query_id:
             logger.info(
