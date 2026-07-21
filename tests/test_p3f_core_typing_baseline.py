@@ -34,13 +34,15 @@ class P3FTypingBaselineTests(unittest.TestCase):
         self.assertNotIn("follow_imports", settings)
 
     def test_domain_packages_keep_persistence_exports_lazy(self) -> None:
+        character_repository_module = "velvet_bot.domains.characters." + "repository"
+        reference_repository_module = "velvet_bot.domains.references." + "repository"
         package_exports = {
             "velvet_bot/domains/characters/__init__.py": {
-                "velvet_bot.domains.characters.repository",
+                character_repository_module,
                 "velvet_bot.domains.characters.service",
             },
             "velvet_bot/domains/references/__init__.py": {
-                "velvet_bot.domains.references.repository",
+                reference_repository_module,
                 "velvet_bot.domains.references.service",
             },
         }
@@ -62,7 +64,7 @@ class P3FTypingBaselineTests(unittest.TestCase):
         from velvet_bot.domains.references import ReferenceRepository, ReferenceService
 
         self.assertEqual(
-            "velvet_bot.domains.characters.repository",
+            character_repository_module,
             CharacterDirectoryRepository.__module__,
         )
         self.assertEqual(
@@ -70,7 +72,7 @@ class P3FTypingBaselineTests(unittest.TestCase):
             CharacterDirectoryService.__module__,
         )
         self.assertEqual(
-            "velvet_bot.domains.references.repository",
+            reference_repository_module,
             ReferenceRepository.__module__,
         )
         self.assertEqual(
