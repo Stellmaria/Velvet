@@ -119,7 +119,7 @@ class RecoverablePollingNoiseFilter(logging.Filter):
             return True
         try:
             message = record.getMessage()
-        except Exception:
+        except (TypeError, ValueError, RuntimeError):
             message = str(record.msg)
         normalized = message.casefold()
         recoverable = (
