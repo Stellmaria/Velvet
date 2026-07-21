@@ -42,6 +42,21 @@ class PublicationService:
             return await self._validator(draft_id, owner_id)
         return await self._validator(draft_id, owner_id, workspace_id)
 
+    async def _get_draft(
+        self,
+        draft_id: int,
+        *,
+        owner_id: int | None,
+        workspace_id: int | None,
+    ) -> PublicationDraft | None:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._repository.get_draft(draft_id, owner_id=owner_id)
+        return await self._repository.get_draft(
+            draft_id,
+            owner_id=owner_id,
+            workspace_id=workspace_id,
+        )
+
     async def publish(
         self,
         draft_id: int,
@@ -50,7 +65,7 @@ class PublicationService:
         actor_id: int | None = None,
         workspace_id: int | None = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft:
-        draft = await self._repository.get_draft(
+        draft = await self._get_draft(
             draft_id,
             owner_id=owner_id,
             workspace_id=workspace_id,
@@ -58,7 +73,9 @@ class PublicationService:
         if draft is None:
             raise ValueError("Черновик не найден в выбранном пространстве.")
 
-        resolved_workspace_id = int(draft.workspace_id)
+        resolved_workspace_id = int(
+            getattr(draft, "workspace_id", DEFAULT_WORKSPACE_ID)
+        )
         if owner_id is not None:
             draft = await self._validate(draft_id, owner_id, resolved_workspace_id)
         if draft.validation_error_count:
@@ -66,11 +83,15 @@ class PublicationService:
         if draft.status == "published":
             return draft
 
-        if not await self._repository.claim_for_publishing(
-            draft_id,
-            workspace_id=resolved_workspace_id,
-        ):
-            current = await self._repository.get_draft(
+        if resolved_workspace_id == DEFAULT_WORKSPACE_ID:
+            claimed = await self._repository.claim_for_publishing(draft_id)
+        else:
+            claimed = await self._repository.claim_for_publishing(
+                draft_id,
+                workspace_id=resolved_workspace_id,
+            )
+        if not claimed:
+            current = await self._get_draft(
                 draft_id,
                 owner_id=owner_id,
                 workspace_id=resolved_workspace_id,
@@ -80,7 +101,7 @@ class PublicationService:
             raise ValueError("Черновик уже обрабатывается или отменён.")
 
         try:
-            refreshed = await self._repository.get_draft(
+            refreshed = await self._get_draft(
                 draft_id,
                 owner_id=owner_id,
                 workspace_id=resolved_workspace_id,
@@ -88,27 +109,41 @@ class PublicationService:
             if refreshed is None:
                 raise RuntimeError("Черновик исчез перед публикацией.")
             message_ids = await self._delivery.send(refreshed)
-            await self._repository.mark_published(
-                draft_id,
-                message_ids=message_ids,
-                actor_id=actor_id,
-                workspace_id=resolved_workspace_id,
-            )
+            if resolved_workspace_id == DEFAULT_WORKSPACE_ID:
+                await self._repository.mark_published(
+                    draft_id,
+                    message_ids=message_ids,
+                    actor_id=actor_id,
+                )
+            else:
+                await self._repository.mark_published(
+                    draft_id,
+                    message_ids=message_ids,
+                    actor_id=actor_id,
+                    workspace_id=resolved_workspace_id,
+                )
         except Exception as error:  # p2-approved-boundary: compensate-claimed-publication
             logger.exception(
                 "Publication failed workspace_id=%s draft_id=%s",
                 resolved_workspace_id,
                 draft_id,
             )
-            await self._repository.mark_error(
-                draft_id,
-                error=error,
-                actor_id=actor_id,
-                workspace_id=resolved_workspace_id,
-            )
+            if resolved_workspace_id == DEFAULT_WORKSPACE_ID:
+                await self._repository.mark_error(
+                    draft_id,
+                    error=error,
+                    actor_id=actor_id,
+                )
+            else:
+                await self._repository.mark_error(
+                    draft_id,
+                    error=error,
+                    actor_id=actor_id,
+                    workspace_id=resolved_workspace_id,
+                )
             raise
 
-        result = await self._repository.get_draft(
+        result = await self._get_draft(
             draft_id,
             owner_id=owner_id,
             workspace_id=resolved_workspace_id,
