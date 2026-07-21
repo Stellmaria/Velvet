@@ -36,6 +36,8 @@ class PublicationActions:
         owner_id: int | None = None,
         workspace_id: int | None = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft | None:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._drafts.get_draft(draft_id, owner_id=owner_id)
         return await self._drafts.get_draft(
             draft_id,
             owner_id=owner_id,
@@ -51,6 +53,13 @@ class PublicationActions:
         page_size: int = 6,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraftPage:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._drafts.list_drafts(
+                owner_id=owner_id,
+                statuses=statuses,
+                page=page,
+                page_size=page_size,
+            )
         return await self._drafts.list_drafts(
             owner_id=owner_id,
             statuses=statuses,
@@ -66,6 +75,8 @@ class PublicationActions:
         owner_id: int,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._validation.validate(draft_id, owner_id=owner_id)
         return await self._validation.validate(
             draft_id,
             owner_id=owner_id,
@@ -80,6 +91,12 @@ class PublicationActions:
         enabled: bool,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._commands.set_spoiler(
+                draft_id,
+                owner_id=owner_id,
+                enabled=enabled,
+            )
         return await self._commands.set_spoiler(
             draft_id,
             owner_id=owner_id,
@@ -95,6 +112,12 @@ class PublicationActions:
         text: str,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._commands.update_text(
+                draft_id,
+                owner_id=owner_id,
+                text=text,
+            )
         return await self._commands.update_text(
             draft_id,
             owner_id=owner_id,
@@ -110,6 +133,12 @@ class PublicationActions:
         scheduled_at: datetime,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._commands.schedule(
+                draft_id,
+                owner_id=owner_id,
+                scheduled_at=scheduled_at,
+            )
         return await self._commands.schedule(
             draft_id,
             owner_id=owner_id,
@@ -124,6 +153,8 @@ class PublicationActions:
         owner_id: int,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._commands.cancel(draft_id, owner_id=owner_id)
         return await self._commands.cancel(
             draft_id,
             owner_id=owner_id,
@@ -137,6 +168,8 @@ class PublicationActions:
         owner_id: int,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft:
+        if workspace_id == DEFAULT_WORKSPACE_ID:
+            return await self._commands.retry(draft_id, owner_id=owner_id)
         return await self._commands.retry(
             draft_id,
             owner_id=owner_id,
