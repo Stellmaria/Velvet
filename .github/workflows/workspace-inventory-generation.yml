@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/workspace-access-start-modules-taxonomy
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
