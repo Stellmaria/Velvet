@@ -6,7 +6,7 @@
 
 - прямые imports `velvet_bot.handlers.*` в root Router: **0**;
 - доменных router bundles: **4**;
-- активных router imports в bundles: **63**;
+- активных router imports в bundles: **64**;
 - дублирующих регистраций между bundles: **0**;
 - физических legacy handler-файлов: **0**;
 - активных legacy handler implementations: **0**;
@@ -18,7 +18,7 @@
 ## Router bundles
 
 - `velvet_bot/presentation/telegram/routers/analytics.py`: 5 routers.
-- `velvet_bot/presentation/telegram/routers/archive_and_public.py`: 37 routers.
+- `velvet_bot/presentation/telegram/routers/archive_and_public.py`: 38 routers.
 - `velvet_bot/presentation/telegram/routers/core_operations.py`: 7 routers.
 - `velvet_bot/presentation/telegram/routers/quality_operations.py`: 14 routers.
 
@@ -43,9 +43,9 @@
 
 ## Следующий срез
 
-- фаза: **P3F**;
-- цель: **bounded static typing baseline**;
-- стратегия: type-check one transport-neutral package, gate new errors, then expand scope.
+- фаза: **workspace-media-scope**;
+- цель: **workspace-aware media save and automatic archive**;
+- стратегия: resolve active workspace before character lookup and preserve system workspace compatibility.
 
 ## Правило обновления
 
