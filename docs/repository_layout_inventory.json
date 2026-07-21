@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-baseline",
-  "repository_module_count": 33,
+  "repository_module_count": 32,
   "layout_counts": {
-    "central": 3,
+    "central": 2,
     "domain": 23,
     "root": 7
   },
@@ -17,30 +17,14 @@
     "worker": 1
   },
   "repository_modules_with_production_consumers": 29,
-  "repository_modules_with_package_exports": 24,
-  "repository_modules_without_runtime_consumers": 4,
+  "repository_modules_with_package_exports": 23,
+  "repository_modules_without_runtime_consumers": 3,
   "repository_modules_without_references": 0,
   "unreferenced_repository_modules": [],
   "export_only_repository_modules": [
-    "velvet_bot.domains.media_rework.repository",
-    "velvet_bot.repositories.public_notification_repository"
+    "velvet_bot.domains.media_rework.repository"
   ],
   "modules": [
-    {
-      "module": "velvet_bot.repositories.public_notification_repository",
-      "path": "velvet_bot/repositories/public_notification_repository.py",
-      "layout": "central",
-      "domain": null,
-      "production_consumer_count": 0,
-      "test_consumer_count": 0,
-      "package_export_count": 1,
-      "reference_count": 1,
-      "production_consumers": [],
-      "test_consumers": [],
-      "package_exports": [
-        "velvet_bot/repositories/__init__.py"
-      ]
-    },
     {
       "module": "velvet_bot.repositories.publication_repository",
       "path": "velvet_bot/repositories/publication_repository.py",
@@ -626,21 +610,6 @@
   ],
   "candidate_modules": [
     {
-      "module": "velvet_bot.repositories.public_notification_repository",
-      "path": "velvet_bot/repositories/public_notification_repository.py",
-      "layout": "central",
-      "domain": null,
-      "production_consumer_count": 0,
-      "test_consumer_count": 0,
-      "package_export_count": 1,
-      "reference_count": 1,
-      "production_consumers": [],
-      "test_consumers": [],
-      "package_exports": [
-        "velvet_bot/repositories/__init__.py"
-      ]
-    },
-    {
       "module": "velvet_bot.repositories.publication_repository",
       "path": "velvet_bot/repositories/publication_repository.py",
       "layout": "central",
@@ -800,8 +769,8 @@
   ],
   "next_slice": {
     "phase": "P3E",
-    "target": "retire the first export-only repository module",
-    "candidate": "velvet_bot.repositories.public_notification_repository",
-    "strategy": "remove the unused package export and dead module, then update the generated baseline without creating a replacement facade"
+    "target": "migrate the first low-coupling repository module",
+    "candidate": "velvet_bot.repositories.publication_repository",
+    "strategy": "move one reviewed module to its domain or infrastructure boundary, keep the old path as a temporary facade, and migrate consumers before deletion"
   }
 }
