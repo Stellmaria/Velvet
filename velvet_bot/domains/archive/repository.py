@@ -4,13 +4,20 @@ from velvet_bot.database import Database
 from velvet_bot.domains.archive.models import ArchivePage, ArchivedMedia, DeletedArchiveItem
 from velvet_bot.domains.characters.models import CharacterRecord
 from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 
 class ArchiveRepository:
     """PostgreSQL boundary for character archive browsing and mutations."""
 
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self,
+        database: Database,
+        *,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> None:
         self._database = database
+        self._workspace_id = int(workspace_id)
 
     async def get_page(
         self,
@@ -31,6 +38,7 @@ class ArchiveRepository:
                 """
                 SELECT
                     id AS character_id,
+                    workspace_id,
                     name AS character_name,
                     created_by,
                     created_in_chat,
@@ -40,8 +48,10 @@ class ArchiveRepository:
                     archive_topic_url
                 FROM characters
                 WHERE id = $1::BIGINT
+                  AND workspace_id = $2::BIGINT
                 """,
                 int(character_id),
+                self._workspace_id,
             )
             if character_row is None:
                 return None
@@ -125,15 +135,22 @@ class ArchiveRepository:
         async with self._database.acquire() as connection:
             updated = await connection.fetchval(
                 """
-                UPDATE character_media
+                UPDATE character_media AS cm
                 SET prompt_post_url = $3::TEXT
-                WHERE character_id = $1::BIGINT
-                  AND media_id = $2::BIGINT
+                WHERE cm.character_id = $1::BIGINT
+                  AND cm.media_id = $2::BIGINT
+                  AND EXISTS (
+                        SELECT 1
+                        FROM characters AS c
+                        WHERE c.id = cm.character_id
+                          AND c.workspace_id = $4::BIGINT
+                      )
                 RETURNING 1
                 """,
                 int(character_id),
                 int(media_id),
                 prompt_post_url,
+                self._workspace_id,
             )
         return updated is not None
 
@@ -147,15 +164,22 @@ class ArchiveRepository:
         async with self._database.acquire() as connection:
             updated = await connection.fetchval(
                 """
-                UPDATE character_media
+                UPDATE character_media AS cm
                 SET is_spoiler = $3::BOOLEAN
-                WHERE character_id = $1::BIGINT
-                  AND media_id = $2::BIGINT
+                WHERE cm.character_id = $1::BIGINT
+                  AND cm.media_id = $2::BIGINT
+                  AND EXISTS (
+                        SELECT 1
+                        FROM characters AS c
+                        WHERE c.id = cm.character_id
+                          AND c.workspace_id = $4::BIGINT
+                      )
                 RETURNING 1
                 """,
                 int(character_id),
                 int(media_id),
                 bool(is_spoiler),
+                self._workspace_id,
             )
         return updated is not None
 
@@ -208,14 +232,21 @@ class ArchiveRepository:
         async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 f"""
-                UPDATE character_media
+                UPDATE character_media AS cm
                 SET {column} = NOT {column}
-                WHERE character_id = $1::BIGINT
-                  AND media_id = $2::BIGINT
+                WHERE cm.character_id = $1::BIGINT
+                  AND cm.media_id = $2::BIGINT
+                  AND EXISTS (
+                        SELECT 1
+                        FROM characters AS c
+                        WHERE c.id = cm.character_id
+                          AND c.workspace_id = $3::BIGINT
+                      )
                 RETURNING {column}
                 """,
                 int(character_id),
                 int(media_id),
+                self._workspace_id,
             )
         return bool(value) if value is not None else None
 
@@ -231,6 +262,7 @@ class ArchiveRepository:
                     """
                     SELECT
                         c.id AS character_id,
+                        c.workspace_id,
                         c.name AS character_name,
                         c.created_by,
                         c.created_in_chat,
@@ -262,10 +294,12 @@ class ArchiveRepository:
                     LEFT JOIN media_sets AS ms ON ms.id = mf.media_set_id
                     WHERE cm.character_id = $1::BIGINT
                       AND cm.media_id = $2::BIGINT
+                      AND c.workspace_id = $3::BIGINT
                     FOR UPDATE OF cm
                     """,
                     int(character_id),
                     int(media_id),
+                    self._workspace_id,
                 )
                 if row is None:
                     return None
@@ -335,6 +369,7 @@ class ArchiveRepository:
             archive_chat_id=row["archive_chat_id"],
             archive_thread_id=row["archive_thread_id"],
             archive_topic_url=row["archive_topic_url"],
+            workspace_id=int(row["workspace_id"]),
         )
 
     @staticmethod

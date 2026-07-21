@@ -106,6 +106,60 @@ class WorkspaceService:
                 items.insert(0, system)
         return tuple(items)
 
+    async def resolve_active_workspace(
+        self,
+        *,
+        user_id: int,
+        global_owner: bool = False,
+    ) -> Workspace:
+        stored_id = await self._repository.get_active_workspace_id(int(user_id))
+        if stored_id is not None:
+            try:
+                await self.require_role(
+                    workspace_id=stored_id,
+                    user_id=user_id,
+                    minimum_role="viewer",
+                    global_owner=global_owner,
+                )
+            except WorkspaceAccessError:
+                stored_id = None
+            else:
+                workspace = await self._repository.get(stored_id)
+                if workspace is not None:
+                    return workspace
+
+        choices = await self.list_for_user(user_id=user_id, global_owner=global_owner)
+        if not choices:
+            raise WorkspaceAccessError("У вас нет доступных пространств.")
+        selected = choices[0]
+        await self._repository.set_active_workspace_id(
+            user_id=int(user_id),
+            workspace_id=selected.id,
+        )
+        return selected
+
+    async def set_active_workspace(
+        self,
+        *,
+        workspace_id: int,
+        user_id: int,
+        global_owner: bool = False,
+    ) -> Workspace:
+        await self.require_role(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            minimum_role="viewer",
+            global_owner=global_owner,
+        )
+        workspace = await self._repository.get(int(workspace_id))
+        if workspace is None:
+            raise WorkspaceAccessError("Пространство не найдено.")
+        await self._repository.set_active_workspace_id(
+            user_id=int(user_id),
+            workspace_id=workspace.id,
+        )
+        return workspace
+
     async def require_role(
         self,
         *,

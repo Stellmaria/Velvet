@@ -34,8 +34,8 @@
 ### domain
 
 - `velvet_bot.domains.archive.preview_repository` · domain `archive`: production 4, tests 1, exports 1, refs 6.
-- `velvet_bot.domains.archive.repository` · domain `archive`: production 1, tests 1, exports 1, refs 3.
-- `velvet_bot.domains.characters.repository` · domain `characters`: production 1, tests 1, exports 1, refs 3.
+- `velvet_bot.domains.archive.repository` · domain `archive`: production 1, tests 2, exports 1, refs 4.
+- `velvet_bot.domains.characters.repository` · domain `characters`: production 1, tests 2, exports 1, refs 4.
 - `velvet_bot.domains.discussions.activity_repository` · domain `discussions`: production 2, tests 0, exports 1, refs 3.
 - `velvet_bot.domains.discussions.ingest_repository` · domain `discussions`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.discussions.insight_repository` · domain `discussions`: production 2, tests 0, exports 1, refs 3.
@@ -52,7 +52,7 @@
 - `velvet_bot.domains.media_sets.duplicate_actions_repository` · domain `media_sets`: production 0, tests 1, exports 1, refs 2.
 - `velvet_bot.domains.media_sets.quality_repository` · domain `media_sets`: production 1, tests 1, exports 0, refs 2.
 - `velvet_bot.domains.media_sets.repository` · domain `media_sets`: production 0, tests 0, exports 1, refs 1.
-- `velvet_bot.domains.public_archive.repository` · domain `public_archive`: production 1, tests 0, exports 1, refs 2.
+- `velvet_bot.domains.public_archive.repository` · domain `public_archive`: production 1, tests 1, exports 1, refs 3.
 - `velvet_bot.domains.public_archive.watermark_repository` · domain `public_archive`: production 4, tests 1, exports 0, refs 5.
 - `velvet_bot.domains.publication.draft_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
 - `velvet_bot.domains.publication.repository` · domain `publication`: production 6, tests 1, exports 1, refs 8.
@@ -63,7 +63,7 @@
 - `velvet_bot.domains.telegram_storage.backup_repository` · domain `telegram_storage`: production 0, tests 1, exports 1, refs 2.
 - `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 0, exports 1, refs 4.
 - `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 1, exports 1, refs 7.
-- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 1, tests 1, exports 1, refs 3.
+- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 1, tests 2, exports 1, refs 4.
 
 ### infrastructure
 

@@ -52,14 +52,15 @@
       "layout": "domain",
       "domain": "archive",
       "production_consumer_count": 1,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 3,
+      "reference_count": 4,
       "production_consumers": [
         "velvet_bot/domains/archive/service.py"
       ],
       "test_consumers": [
-        "tests/test_media_sets_database_integration.py"
+        "tests/test_media_sets_database_integration.py",
+        "tests/test_workspace_archive_isolation.py"
       ],
       "package_exports": [
         "velvet_bot/domains/archive/__init__.py"
@@ -71,13 +72,14 @@
       "layout": "domain",
       "domain": "characters",
       "production_consumer_count": 1,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 3,
+      "reference_count": 4,
       "production_consumers": [
         "velvet_bot/domains/characters/service.py"
       ],
       "test_consumers": [
+        "tests/test_workspace_archive_isolation.py",
         "tests/test_workspace_foundation.py"
       ],
       "package_exports": [
@@ -370,13 +372,15 @@
       "layout": "domain",
       "domain": "public_archive",
       "production_consumer_count": 1,
-      "test_consumer_count": 0,
+      "test_consumer_count": 1,
       "package_export_count": 1,
-      "reference_count": 2,
+      "reference_count": 3,
       "production_consumers": [
         "velvet_bot/domains/public_archive/service.py"
       ],
-      "test_consumers": [],
+      "test_consumers": [
+        "tests/test_workspace_archive_isolation.py"
+      ],
       "package_exports": [
         "velvet_bot/domains/public_archive/__init__.py"
       ]
@@ -581,13 +585,14 @@
       "layout": "domain",
       "domain": "workspaces",
       "production_consumer_count": 1,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 3,
+      "reference_count": 4,
       "production_consumers": [
         "velvet_bot/domains/workspaces/service.py"
       ],
       "test_consumers": [
+        "tests/test_workspace_archive_isolation.py",
         "tests/test_workspace_foundation.py"
       ],
       "package_exports": [
