@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import velvet_bot.handlers.channel_analytics as module
+import velvet_bot.presentation.telegram.routers.analytics_controllers.channel as module
 
 
 class FakeAudit:
