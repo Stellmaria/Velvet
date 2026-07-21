@@ -16,6 +16,7 @@ from velvet_bot.presentation.telegram.middleware import OwnerAccessMiddleware
 from velvet_bot.presentation.telegram.router import get_root_router
 from velvet_bot.publication_inbox_middleware import PublicationInboxMiddleware
 from velvet_bot.reference_uploads import ReferenceUploadSessions
+from velvet_bot.services.diagnostic_bundle import DiagnosticBundleService
 from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.supervisor_client import build_supervisor_client
 from velvet_bot.workers import WorkerManager
@@ -36,6 +37,7 @@ def build_dispatcher(
     reference_uploads: ReferenceUploadSessions,
     backup_service: BackupService,
     system_service: SystemHealthService,
+    diagnostic_service: DiagnosticBundleService,
     worker_manager: WorkerManager,
     error_center: ErrorIncidentCenter | None = None,
     save_upload_sessions: SaveUploadSessions | None = None,
@@ -63,6 +65,7 @@ def build_dispatcher(
         "publication_timezone": settings.publication_timezone,
         "backup_service": backup_service,
         "system_service": system_service,
+        "diagnostic_service": diagnostic_service,
         "worker_manager": worker_manager,
         "supervisor_client": supervisor_client,
     }
