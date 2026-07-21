@@ -33,20 +33,42 @@ class P3FTypingBaselineTests(unittest.TestCase):
         self.assertNotIn("ignore_errors", settings)
         self.assertNotIn("follow_imports", settings)
 
-    def test_reference_package_keeps_persistence_exports_lazy(self) -> None:
-        package_path = Path("velvet_bot/domains/references/__init__.py")
-        tree = ast.parse(package_path.read_text(encoding="utf-8"))
-        imported_modules = {
-            node.module
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom) and node.module is not None
+    def test_domain_packages_keep_persistence_exports_lazy(self) -> None:
+        package_exports = {
+            "velvet_bot/domains/characters/__init__.py": {
+                "velvet_bot.domains.characters.repository",
+                "velvet_bot.domains.characters.service",
+            },
+            "velvet_bot/domains/references/__init__.py": {
+                "velvet_bot.domains.references.repository",
+                "velvet_bot.domains.references.service",
+            },
         }
 
-        self.assertNotIn("velvet_bot.domains.references.repository", imported_modules)
-        self.assertNotIn("velvet_bot.domains.references.service", imported_modules)
+        for package_path, forbidden_modules in package_exports.items():
+            with self.subTest(package=package_path):
+                tree = ast.parse(Path(package_path).read_text(encoding="utf-8"))
+                imported_modules = {
+                    node.module
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.ImportFrom) and node.module is not None
+                }
+                self.assertTrue(forbidden_modules.isdisjoint(imported_modules))
 
+        from velvet_bot.domains.characters import (
+            CharacterDirectoryRepository,
+            CharacterDirectoryService,
+        )
         from velvet_bot.domains.references import ReferenceRepository, ReferenceService
 
+        self.assertEqual(
+            "velvet_bot.domains.characters.repository",
+            CharacterDirectoryRepository.__module__,
+        )
+        self.assertEqual(
+            "velvet_bot.domains.characters.service",
+            CharacterDirectoryService.__module__,
+        )
         self.assertEqual(
             "velvet_bot.domains.references.repository",
             ReferenceRepository.__module__,
