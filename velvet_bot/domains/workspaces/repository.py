@@ -55,6 +55,17 @@ class WorkspaceRepository:
                     """,
                     workspace_id,
                 )
+                await connection.execute(
+                    """
+                    INSERT INTO user_workspace_preferences (user_id, active_workspace_id)
+                    VALUES ($1::BIGINT, $2::BIGINT)
+                    ON CONFLICT (user_id) DO UPDATE
+                    SET active_workspace_id = EXCLUDED.active_workspace_id,
+                        updated_at = NOW()
+                    """,
+                    int(owner_user_id),
+                    workspace_id,
+                )
         return self._row_to_workspace(row)
 
     async def get(self, workspace_id: int) -> Workspace | None:
@@ -141,16 +152,57 @@ class WorkspaceRepository:
 
     async def remove_member(self, *, workspace_id: int, user_id: int) -> bool:
         async with self._database.acquire() as connection:
-            result = await connection.execute(
+            async with connection.transaction():
+                result = await connection.execute(
+                    """
+                    DELETE FROM workspace_members
+                    WHERE workspace_id = $1::BIGINT
+                      AND user_id = $2::BIGINT
+                    """,
+                    int(workspace_id),
+                    int(user_id),
+                )
+                await connection.execute(
+                    """
+                    DELETE FROM user_workspace_preferences
+                    WHERE user_id = $1::BIGINT
+                      AND active_workspace_id = $2::BIGINT
+                    """,
+                    int(user_id),
+                    int(workspace_id),
+                )
+        return result != "DELETE 0"
+
+    async def get_active_workspace_id(self, user_id: int) -> int | None:
+        async with self._database.acquire() as connection:
+            value = await connection.fetchval(
                 """
-                DELETE FROM workspace_members
-                WHERE workspace_id = $1::BIGINT
-                  AND user_id = $2::BIGINT
+                SELECT active_workspace_id
+                FROM user_workspace_preferences
+                WHERE user_id = $1::BIGINT
                 """,
-                int(workspace_id),
                 int(user_id),
             )
-        return result != "DELETE 0"
+        return int(value) if value is not None else None
+
+    async def set_active_workspace_id(
+        self,
+        *,
+        user_id: int,
+        workspace_id: int,
+    ) -> None:
+        async with self._database.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO user_workspace_preferences (user_id, active_workspace_id)
+                VALUES ($1::BIGINT, $2::BIGINT)
+                ON CONFLICT (user_id) DO UPDATE
+                SET active_workspace_id = EXCLUDED.active_workspace_id,
+                    updated_at = NOW()
+                """,
+                int(user_id),
+                int(workspace_id),
+            )
 
     async def get_settings(self, workspace_id: int) -> WorkspaceSettings | None:
         async with self._database.acquire() as connection:
@@ -225,21 +277,41 @@ class WorkspaceRepository:
         url: str | None,
     ) -> WorkspaceChannel:
         async with self._database.acquire() as connection:
-            row = await connection.fetchrow(
-                """
-                INSERT INTO workspace_channels (workspace_id, kind, chat_id, url)
-                VALUES ($1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::TEXT)
-                ON CONFLICT (workspace_id, kind) DO UPDATE
-                SET chat_id = EXCLUDED.chat_id,
-                    url = EXCLUDED.url,
-                    updated_at = NOW()
-                RETURNING workspace_id, kind, chat_id, url, created_at, updated_at
-                """,
-                int(workspace_id),
-                kind,
-                int(chat_id),
-                url,
-            )
+            async with connection.transaction():
+                await connection.execute(
+                    "SELECT pg_advisory_xact_lock($1::BIGINT)",
+                    int(chat_id),
+                )
+                conflict_workspace_id = await connection.fetchval(
+                    """
+                    SELECT workspace_id
+                    FROM workspace_channels
+                    WHERE chat_id = $1::BIGINT
+                      AND workspace_id <> $2::BIGINT
+                    LIMIT 1
+                    """,
+                    int(chat_id),
+                    int(workspace_id),
+                )
+                if conflict_workspace_id is not None:
+                    raise ValueError(
+                        "Этот Telegram-чат уже подключён к другому пространству."
+                    )
+                row = await connection.fetchrow(
+                    """
+                    INSERT INTO workspace_channels (workspace_id, kind, chat_id, url)
+                    VALUES ($1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::TEXT)
+                    ON CONFLICT (workspace_id, kind) DO UPDATE
+                    SET chat_id = EXCLUDED.chat_id,
+                        url = EXCLUDED.url,
+                        updated_at = NOW()
+                    RETURNING workspace_id, kind, chat_id, url, created_at, updated_at
+                    """,
+                    int(workspace_id),
+                    kind,
+                    int(chat_id),
+                    url,
+                )
         if row is None:
             raise RuntimeError("Не удалось сохранить канал пространства.")
         return self._row_to_channel(row)
