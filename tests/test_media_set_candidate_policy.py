@@ -6,9 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import velvet_bot.media_set_candidate_listing as listing
 import velvet_bot.media_sets as media_sets
-from velvet_bot.media_set_candidate_listing_repository import (
-    MediaSetCandidateListingRepository,
-)
+from velvet_bot.domains.media_sets import MediaSetCandidateListingRepository
 from velvet_bot.media_sets import MediaSetCandidate, MediaSetCandidateItem
 
 
