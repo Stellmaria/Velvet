@@ -4,10 +4,6 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-# Public access includes archive viewing plus user-facing likes, subscriptions and
-# download callbacks. The download handler still enforces channel membership or
-# approved-watermark policy before sending any file.
-# `/menu` still belongs exclusively to the global owner control panel.
 PUBLIC_COMMANDS = frozenset({"start", "archive", "gallery"})
 PUBLIC_CALLBACK_ACTIONS = frozenset(
     {
@@ -51,9 +47,6 @@ PUBLIC_WORKSPACE_CALLBACK_ACTIONS = frozenset(
 PUBLIC_CALLBACK_PREFIX = "pub:"
 WORKSPACE_CALLBACK_PREFIX = "wsp:"
 
-# A configured moderator may maintain character cards and archive metadata. This
-# role must never inherit owner-only system, publication, analytics, backup,
-# Supervisor, Git, or Codex operations. Real IDs are loaded through Settings.
 MODERATOR_USER_IDS: frozenset[int] = frozenset()
 MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
 MODERATOR_TAG_COMMANDS = frozenset(
@@ -100,8 +93,6 @@ MODERATOR_CALLBACK_ACTIONS = {
             "close",
         }
     ),
-    # Kept for compatibility with moderator inventories. Runtime download access
-    # is decided by public-archive membership/watermark policy.
     "pub": frozenset({"download"}),
 }
 MODERATOR_TAG_CALLBACK_ACTIONS = frozenset({"menu", "add", "del", "delok"})
@@ -109,7 +100,6 @@ MODERATOR_CALLBACK_PREFIXES = tuple(
     f"{prefix}:" for prefix in MODERATOR_CALLBACK_ACTIONS
 )
 
-# Compatibility aliases for older imports. New runtime code uses Settings.
 CHARACTER_EDITOR_USER_IDS = MODERATOR_USER_IDS
 CHARACTER_EDITOR_COMMANDS = MODERATOR_COMMANDS
 
@@ -142,6 +132,7 @@ OWNER_ONLY_COMMANDS = frozenset(
         "codex_status",
         "workspace_grant",
         "workspace_revoke",
+        "workspace_module",
     }
 )
 
@@ -188,8 +179,6 @@ def is_public_callback_data(value: str | None) -> bool:
     if prefix == "pub":
         return action in PUBLIC_CALLBACK_ACTIONS
     if prefix == "wsp":
-        # These callbacks are only admitted to the handler. Database-backed grant,
-        # membership, ownership and module checks still decide every mutation.
         return action in PUBLIC_WORKSPACE_CALLBACK_ACTIONS
     return False
 
@@ -248,6 +237,14 @@ class AccessPolicy:
             user_id=getattr(user, "id", None),
             username=getattr(user, "username", None),
         )
+
+    def allows_moderator(self, *, user_id: int | None) -> bool:
+        return bool(user_id is not None and user_id in self.moderator_user_ids)
+
+    def allows_moderator_user(self, user: Any | None) -> bool:
+        if user is None:
+            return False
+        return self.allows_moderator(user_id=getattr(user, "id", None))
 
 
 __all__ = (
