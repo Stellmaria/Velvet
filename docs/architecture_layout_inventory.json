@@ -9,7 +9,7 @@
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/archive_and_public.py",
-      "router_count": 34
+      "router_count": 36
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/core_operations.py",
@@ -20,13 +20,13 @@
       "router_count": 14
     }
   ],
-  "active_bundle_router_count": 60,
+  "active_bundle_router_count": 62,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 0,
   "legacy_handler_implementation_count": 0,
   "handler_compatibility_facade_count": 0,
   "handler_compatibility_facades": [],
-  "root_level_module_count": 110,
+  "root_level_module_count": 111,
   "compatibility_file_count": 5,
   "pre_import_compatibility_components": [
     "ai-quality-schema",

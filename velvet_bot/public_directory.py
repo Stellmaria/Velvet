@@ -19,6 +19,7 @@ from velvet_bot.domains.characters.models import (
 )
 from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
 from velvet_bot.domains.stories.models import StorySummary
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 
 def _visibility_sql(
@@ -35,12 +36,20 @@ def _visibility_sql(
     )
 
 
+def _workspace_sql(workspace_id: int) -> int:
+    # Cast once before embedding the value in generated visibility SQL. Only an
+    # integer controlled by the application reaches PostgreSQL here.
+    return int(workspace_id)
+
+
 async def list_visible_categories(
     database: Database,
     *,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[CategorySummary]:
     visibility_sql = _visibility_sql(include_restricted=include_restricted)
+    workspace = _workspace_sql(workspace_id)
     async with database.acquire() as connection:
         rows = await connection.fetch(
             f"""
@@ -49,7 +58,8 @@ async def list_visible_categories(
             JOIN character_media AS cm
               ON cm.character_id = c.id
             JOIN media_files AS mf ON mf.id = cm.media_id
-            WHERE ({visibility_sql})
+            WHERE c.workspace_id = {workspace}
+              AND ({visibility_sql})
               AND c.category IS NOT NULL
               AND c.universe IS NOT NULL
               AND (
@@ -82,9 +92,11 @@ async def list_visible_universes(
     database: Database,
     *,
     category: str,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[UniverseSummary]:
     visibility_sql = _visibility_sql(include_restricted=include_restricted)
+    workspace = _workspace_sql(workspace_id)
     async with database.acquire() as connection:
         rows = await connection.fetch(
             f"""
@@ -93,7 +105,8 @@ async def list_visible_universes(
             JOIN character_media AS cm
               ON cm.character_id = c.id
             JOIN media_files AS mf ON mf.id = cm.media_id
-            WHERE ({visibility_sql})
+            WHERE c.workspace_id = {workspace}
+              AND ({visibility_sql})
               AND c.category = $1::VARCHAR
               AND c.universe IS NOT NULL
               AND (
@@ -128,6 +141,7 @@ async def list_visible_stories(
     *,
     category: str,
     universe: str,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> list[StorySummary]:
     visibility_sql = _visibility_sql(
@@ -135,6 +149,7 @@ async def list_visible_stories(
         file_alias="file",
         include_restricted=include_restricted,
     )
+    workspace = _workspace_sql(workspace_id)
     async with database.acquire() as connection:
         rows = await connection.fetch(
             f"""
@@ -154,7 +169,8 @@ async def list_visible_stories(
             JOIN character_media AS media
               ON media.character_id = character.id
             JOIN media_files AS file ON file.id = media.media_id
-            WHERE ({visibility_sql})
+            WHERE character.workspace_id = {workspace}
+              AND ({visibility_sql})
               AND story.universe = $1::VARCHAR
               AND character.category = $2::VARCHAR
               AND character.universe = $1::VARCHAR
@@ -192,10 +208,12 @@ async def list_visible_characters(
     story_id: int | None = None,
     page: int = 0,
     page_size: int = 6,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     include_restricted: bool = False,
 ) -> CharacterDirectoryPage:
     safe_page_size = max(1, min(int(page_size), 10))
     safe_page = max(0, int(page))
+    workspace = _workspace_sql(workspace_id)
     visibility_sql = _visibility_sql(
         link_alias="media",
         file_alias="file",
@@ -212,7 +230,8 @@ async def list_visible_characters(
                     JOIN character_media AS media
                       ON media.character_id = character.id
                     JOIN media_files AS file ON file.id = media.media_id
-                    WHERE ({visibility_sql})
+                    WHERE character.workspace_id = {workspace}
+                      AND ({visibility_sql})
                       AND character.category = $1::VARCHAR
                       AND ($2::VARCHAR IS NULL OR character.universe = $2::VARCHAR)
                       AND (
@@ -258,7 +277,8 @@ async def list_visible_characters(
             JOIN character_media AS media
               ON media.character_id = character.id
             JOIN media_files AS file ON file.id = media.media_id
-            WHERE ({visibility_sql})
+            WHERE character.workspace_id = {workspace}
+              AND ({visibility_sql})
               AND character.category = $1::VARCHAR
               AND ($2::VARCHAR IS NULL OR character.universe = $2::VARCHAR)
               AND (
@@ -284,10 +304,18 @@ async def list_visible_characters(
         selected_story = None
         if story_id is not None and universe is not None:
             selected_story = await connection.fetchrow(
-                """
-                SELECT id, short_label, title
-                FROM character_stories
-                WHERE id = $1::BIGINT AND universe = $2::VARCHAR
+                f"""
+                SELECT story.id, story.short_label, story.title
+                FROM character_stories AS story
+                WHERE story.id = $1::BIGINT
+                  AND story.universe = $2::VARCHAR
+                  AND EXISTS (
+                        SELECT 1
+                        FROM character_story_links AS link
+                        JOIN characters AS character ON character.id = link.character_id
+                        WHERE link.story_id = story.id
+                          AND character.workspace_id = {workspace}
+                      )
                 """,
                 int(story_id),
                 universe,
