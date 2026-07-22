@@ -3,7 +3,7 @@
 - Дата: 2026-07-22
 - ID: `2026-07-22-workspace-owner-access-fix`
 - Линия/фаза: personal workspace owner access and navigation
-- Статус: `завершено`
+- Статус: `частично`
 - Ветка: `agent/workspace-owner-access-fix`
 - Базовый commit: `6ab1ff2d0205355bea74c3cb115bfb9dab052712`
 
@@ -56,7 +56,10 @@
 - удаление реализовано командой и кнопкой, требует подтверждение и блокирует system workspace;
 - после удаления пересчитывается start state, grant не отзывается;
 - новый router зарегистрирован перед generic workspace router;
-- `/workspace_delete` добавлен в project integrity inventory.
+- `/workspace_delete` добавлен в project integrity inventory;
+- callback acknowledgment приведён к нулю late/missing путей;
+- обновлены architecture, P2 stability и Telegram navigation inventories;
+- исправлен старый заголовок worklog, который нарушал project notes contract в текущем `main`.
 
 ### Миграции и совместимость
 
@@ -64,13 +67,18 @@
 
 ### Проверки
 
-Изменённые Python-файлы прошли синтаксическую проверку `py_compile`. GitHub Actions автоматически запускает полный набор tests, type-check, Docker build и project notes contract для PR. Первая проверка project notes ожидаемо обнаружила отсутствие обязательной записи worklog; эта запись добавлена отдельным коммитом.
+- `python -m py_compile` для изменённых Python-контроллеров — успешно;
+- generated P2 inventory: 118 callbacks, 0 late/missing, 38 guarded, 10 delegated;
+- GitHub Actions project notes contract run 915 — успешно;
+- GitHub Actions type check run 265 — успешно;
+- GitHub Actions Docker build run 1058 — успешно;
+- финальный полный tests/type-check/Docker/project-notes workflow повторно запускается после коммита, созданного не через `GITHUB_TOKEN`.
 
 ### PR и commit
 
 PR #292: `Fix personal workspace owner access and navigation`.
 
-Ветка содержит отдельные коммиты для owner controls, access policy, router wiring, integrity inventory и этой рабочей записи.
+Ветка содержит отдельные коммиты для owner controls, access policy, router wiring, integrity inventory, generated inventories и этой рабочей записи.
 
 ### Незавершённое
 
