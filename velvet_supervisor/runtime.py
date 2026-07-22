@@ -59,6 +59,7 @@ class VelvetSupervisor:
             settings.project_dir,
             timeout_seconds=settings.command_timeout_seconds,
             test_command=settings.test_command,
+            test_database_url=getattr(settings, "test_database_url", None),
         )
         self._console = RemoteCommandRegistry(settings)
         self.codex = CodexTaskManager(

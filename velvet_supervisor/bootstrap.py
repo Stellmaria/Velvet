@@ -42,6 +42,7 @@ def _run(
     cwd: Path,
     timeout: int = 300,
     check: bool = True,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     completed = subprocess.run(
         list(command),
@@ -55,7 +56,11 @@ def _run(
         timeout=timeout,
         shell=False,
         check=False,
-        env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
+        env={
+            **(os.environ if env is None else env),
+            "PYTHONUTF8": "1",
+            "PYTHONIOENCODING": "utf-8",
+        },
     )
     if check and completed.returncode:
         raise RuntimeError(
@@ -63,6 +68,16 @@ def _run(
             f"{subprocess.list2cmdline(command)}\n{completed.stdout[-5000:]}"
         )
     return completed
+
+
+def _test_environment(settings: SupervisorSettings) -> dict[str, str]:
+    environment = os.environ.copy()
+    test_database_url = getattr(settings, "test_database_url", None)
+    if test_database_url:
+        environment["TEST_DATABASE_URL"] = str(test_database_url)
+    else:
+        environment.pop("TEST_DATABASE_URL", None)
+    return environment
 
 
 def _lock_path(settings: SupervisorSettings) -> Path:
@@ -254,6 +269,7 @@ def _update_project(settings: SupervisorSettings) -> tuple[str, str, str]:
         cwd=project_dir,
         timeout=settings.command_timeout_seconds,
         check=False,
+        env=_test_environment(settings),
     )
     if tests.returncode:
         _run(("git", "reset", "--hard", old_sha), cwd=project_dir, timeout=60)

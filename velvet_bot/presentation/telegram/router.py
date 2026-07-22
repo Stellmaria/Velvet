@@ -5,6 +5,10 @@ import logging
 from aiogram import Router
 from aiogram.types import ErrorEvent
 
+from velvet_bot.infrastructure.transient_connections import (
+    is_transient_connection_error,
+)
+
 from velvet_bot.presentation.telegram.compat import (
     install_post_router_compatibility,
     install_pre_router_compatibility,
@@ -38,6 +42,12 @@ def _build_root_router() -> Router:
 
     @root.error()
     async def handle_unhandled_error(event: ErrorEvent) -> bool:
+        if is_transient_connection_error(event.exception):
+            logger.info(
+                "Transient Telegram connection error recovered: %s",
+                event.exception,
+            )
+            return True
         # The root logging handler forwards this record, traceback included, to the
         # persistent incident center. Do not send a second audit message here.
         logger.critical(

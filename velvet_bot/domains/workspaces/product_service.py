@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from uuid import uuid4
 
 from velvet_bot.domains.characters.constants import (
     CATEGORY_EMOJI,
@@ -151,7 +152,7 @@ class WorkspaceProductService:
             raise WorkspaceCreationAccessError("Разрешённое количество архивов уже создано.")
         workspace = await self._workspace_service.create_personal_workspace(
             name=name,
-            slug=f"user-{int(owner_user_id)}-{owned + 1}",
+            slug=f"user-{int(owner_user_id)}-{uuid4().hex[:12]}",
             owner_user_id=int(owner_user_id),
         )
         await self._product.initialize_modules(

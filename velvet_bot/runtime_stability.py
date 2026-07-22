@@ -53,7 +53,7 @@ def is_recoverable_aiogram_polling_record(record: logging.LogRecord) -> bool:
 
 
 async def acknowledge_legacy_polling_noise(repository: Any) -> int:
-    """Close old recoverable polling incidents so owner digests become useful again."""
+    """Close old recoverable Telegram transport incidents so owner digests stay useful."""
 
     database = getattr(repository, "_database", None)
     if database is None:
@@ -61,12 +61,14 @@ async def acknowledge_legacy_polling_noise(repository: Any) -> int:
 
     async with database.acquire() as connection:
         result = await connection.execute(
-            """
-            UPDATE error_incidents
-            SET acknowledged_at = COALESCE(acknowledged_at, NOW()),
-                acknowledged_by = COALESCE(acknowledged_by, 0)
-            WHERE acknowledged_at IS NULL
-              AND logger_name = 'aiogram.dispatcher'
+  """
+  UPDATE error_incidents
+  SET acknowledged_at = COALESCE(acknowledged_at, NOW()),
+      acknowledged_by = COALESCE(acknowledged_by, 0)
+  WHERE acknowledged_at IS NULL
+    AND (
+          (
+              logger_name = 'aiogram.dispatcher'
               AND (
                     (
                         LOWER(summary) LIKE '%failed to fetch updates%'
@@ -83,8 +85,23 @@ async def acknowledge_legacy_polling_noise(repository: Any) -> int:
                         )
                     )
                     OR LOWER(summary) LIKE 'sleep for % seconds and try again%'
-                  )
-            """
+              )
+          )
+          OR (
+              logger_name = 'velvet_bot.presentation.telegram.router'
+              AND LOWER(summary) LIKE '%unhandled bot error%'
+              AND (
+                     LOWER(summary) LIKE '%clientconnectorerror%'
+                  OR LOWER(summary) LIKE '%cannot connect to host api.telegram.org%'
+                  OR LOWER(summary) LIKE '%превышен таймаут семафора%'
+                  OR LOWER(summary) LIKE '%подключение к сети было разорвано%'
+                  OR LOWER(summary) LIKE '%semaphore timeout%'
+                  OR LOWER(summary) LIKE '%connection reset by peer%'
+                  OR LOWER(summary) LIKE '%connection timed out%'
+              )
+          )
+        )
+  """
         )
     try:
         return int(str(result).rsplit(" ", 1)[-1])
