@@ -1,0 +1,49 @@
+name: temp workspace grant sql hotfix pr
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Extract and apply hotfix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/temp_workspace_grant_sql_hotfix.yml').read_text(encoding='utf-8')
+          start_marker = "          python - <<'PY'\n"
+          end_marker = "\n          PY\n\n      - name: Commit hotfix"
+          start = source.index(start_marker) + len(start_marker)
+          end = source.index(end_marker, start)
+          lines = source[start:end].splitlines()
+          script = "\n".join(line[10:] if line.startswith("          ") else line for line in lines)
+          Path('/tmp/apply_workspace_grant_hotfix.py').write_text(script, encoding='utf-8')
+          PY
+          python /tmp/apply_workspace_grant_hotfix.py
+          rm -f .github/workflows/temp_workspace_grant_sql_hotfix_pr.yml
+
+      - name: Commit hotfix
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix reserved grant SQL alias in workspace administration"
+          git push origin HEAD:${{ github.head_ref }}
