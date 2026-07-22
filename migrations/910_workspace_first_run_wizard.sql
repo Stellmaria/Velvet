@@ -47,6 +47,41 @@ CREATE TABLE IF NOT EXISTS workspace_destinations (
 CREATE INDEX IF NOT EXISTS idx_workspace_destinations_chat
     ON workspace_destinations (chat_id, message_thread_id, workspace_id);
 
+CREATE OR REPLACE FUNCTION enforce_workspace_destination_chat_ownership()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    PERFORM pg_advisory_xact_lock(NEW.chat_id);
+
+    IF EXISTS (
+        SELECT 1
+        FROM workspace_destinations AS destination
+        WHERE destination.chat_id = NEW.chat_id
+          AND destination.workspace_id <> NEW.workspace_id
+    ) OR EXISTS (
+        SELECT 1
+        FROM workspace_channels AS channel
+        WHERE channel.chat_id = NEW.chat_id
+          AND channel.workspace_id <> NEW.workspace_id
+    ) THEN
+        RAISE EXCEPTION 'Этот Telegram-чат уже подключён к другому пространству.'
+            USING ERRCODE = '23505';
+    END IF;
+
+    RETURN NEW;
+END
+$$;
+
+DROP TRIGGER IF EXISTS trg_workspace_destination_chat_ownership
+    ON workspace_destinations;
+
+CREATE TRIGGER trg_workspace_destination_chat_ownership
+BEFORE INSERT OR UPDATE OF chat_id, workspace_id
+ON workspace_destinations
+FOR EACH ROW
+EXECUTE FUNCTION enforce_workspace_destination_chat_ownership();
+
 INSERT INTO workspace_onboarding (
     workspace_id,
     status,
