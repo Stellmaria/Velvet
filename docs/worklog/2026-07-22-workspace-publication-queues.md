@@ -95,7 +95,7 @@
 
 ### PR и commit
 
-PR создаётся после обновления generated inventory и первого полного CI. Финальный merge commit фиксируется после зелёных проверок.
+PR: `#286 Isolate publication workflows by workspace`. Финальный merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 
