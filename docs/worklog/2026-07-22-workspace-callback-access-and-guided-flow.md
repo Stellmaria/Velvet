@@ -78,7 +78,7 @@
 
 ### PR и commit
 
-Ветка: `codex/workspace-callback-recovery`. PR не создавался. Hash реализации будет внесён отдельным итоговым documentation commit после создания commit реализации.
+Ветка: `codex/workspace-callback-recovery`. Реализация и проверки: commit `b83bcd5` (`Fix personal workspace navigation and recovery`). PR не создавался; итоговая фиксация hash выполняется отдельным documentation commit.
 
 ### Незавершённое
 
