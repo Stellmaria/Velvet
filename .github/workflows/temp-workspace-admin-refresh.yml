@@ -1,0 +1,120 @@
+name: temp workspace admin refresh
+
+on:
+  push:
+    branches:
+      - agent/workspace-admin-panel-2
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-admin-panel-2
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Patch contracts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          ui = Path('velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_admin_ui.py')
+          text = ui.read_text(encoding='utf-8')
+          text = text.replace(
+              'from velvet_bot.owner_callbacks import owner_callback\n',
+              'from velvet_bot.owner_callbacks import owner_callback\n'
+              'from velvet_bot.presentation.telegram.navigation import compact_button_text\n',
+          )
+          text = text.replace(
+              'text=f"🗄 {workspace.name} · #{workspace.workspace_id}",',
+              'text=compact_button_text(\n'
+              '                        f"🗄 {workspace.name} · #{workspace.workspace_id}"\n'
+              '                    ),',
+          )
+          text = text.replace(
+              'text=(\n'
+              '                        f"{visibility} {workspace.name} · "\n'
+              '                        f"{workspace.owner_user_id} · #{workspace.workspace_id}"\n'
+              '                    ),',
+              'text=compact_button_text(\n'
+              '                        f"{visibility} {workspace.name} · "\n'
+              '                        f"{workspace.owner_user_id} · #{workspace.workspace_id}"\n'
+              '                    ),',
+          )
+          ui.write_text(text, encoding='utf-8')
+
+          controller = Path('velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_admin_panel.py')
+          text = controller.read_text(encoding='utf-8')
+          text = text.replace('<code>8179531132</code>.', '<code>123456789</code>.')
+          controller.write_text(text, encoding='utf-8')
+
+          architecture_test = Path('tests/test_p3_architecture_organization.py')
+          text = architecture_test.read_text(encoding='utf-8')
+          marker = '    "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu",\n'
+          addition = marker + '    "velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_admin_panel",\n'
+          if 'core_operations_controllers.workspace_admin_panel' not in text:
+              text = text.replace(marker, addition)
+          architecture_test.write_text(text, encoding='utf-8')
+
+          worklog = Path('docs/worklog/2026-07-22-workspace-admin-panel.md')
+          text = worklog.read_text(encoding='utf-8')
+          text = text.replace('- Статус: `в работе`', '- Статус: `частично`')
+          text = text.replace(
+              '### Фактически сделано\n\nВ работе.',
+              '### Фактически сделано\n\n'
+              '- кнопка «🏛 Пространства» открывает отдельную панель Стэл;\n'
+              '- добавлены списки grants и личных архивов с pagination;\n'
+              '- добавлена выдача доступа по Telegram ID через FSM-форму;\n'
+              '- добавлены переключатели модулей future grant;\n'
+              '- добавлены переключатели `is_allowed` существующего workspace;\n'
+              '- отключение `public_archive` также выключает публичность;\n'
+              '- persistence размещён в domain administration service;\n'
+              '- добавлены regression tests и mobile-safe подписи кнопок.'
+          )
+          text = text.replace(
+              '### Проверки\n\nБудут заполнены после CI.',
+              '### Проверки\n\n'
+              '- первый CI подтвердил успешные type-check и Docker build;\n'
+              '- unit suite выявил только generated inventory, worklog и navigation-contract хвосты;\n'
+              '- inventories и динамические подписи обновлены служебным коммитом;\n'
+              '- финальный полный CI ожидается после удаления временного workflow.'
+          )
+          text = text.replace(
+              '### PR и commit\n\nБудут заполнены после публикации.',
+              '### PR и commit\n\nPR #293: `Add button-based workspace administration for Stel`.'
+          )
+          text = text.replace(
+              '### Следующий шаг\n\nРеализовать domain read model, кнопочный owner controller и тесты.',
+              '### Следующий шаг\n\nПосле зелёного CI слить PR и выполнить живую проверку панели в Telegram.'
+          )
+          worklog.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Refresh inventories
+        run: |
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+          python scripts/update_p2_stability_inventory.py --label workspace-admin-panel --schema-version 54
+          python scripts/inventory_repository_layout.py --write --label workspace-admin-panel
+          python scripts/telegram_navigation_inventory.py --root velvet_bot --markdown docs/generated/telegram_navigation_inventory.md
+
+      - name: Commit refresh
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot tests docs
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh workspace admin contracts"
+            git push origin HEAD:agent/workspace-admin-panel-2
+          fi
