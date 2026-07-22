@@ -38,7 +38,8 @@
 ### Фактически сделано
 
 - alias `grant` заменён на `creation_grant` в обоих запросах;
-- добавлен PostgreSQL integration test для `list_creation_grants` и `get_creation_grant`.
+- добавлен PostgreSQL integration test для `list_creation_grants` и `get_creation_grant`;
+- перегенерирован repository layout inventory после добавления тестового модуля.
 
 ### Миграции и совместимость
 
@@ -46,7 +47,7 @@
 
 ### Проверки
 
-Запущен полный GitHub Actions CI с PostgreSQL integration tests.
+Запущен финальный GitHub Actions CI с PostgreSQL integration tests, type-check и Docker build.
 
 ### PR и commit
 
