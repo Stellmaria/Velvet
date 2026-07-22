@@ -88,6 +88,7 @@ class SupervisorSettings:
     codex_push_remote: str
     max_log_lines: int
     codex_model: str | None = None
+    test_database_url: str | None = None
 
     @classmethod
     def load(cls) -> "SupervisorSettings":
@@ -257,6 +258,9 @@ class SupervisorSettings:
             ),
             codex_model=(
                 os.getenv("CODEX_MODEL", "gpt-5.3-codex").strip() or None
+            ),
+            test_database_url=(
+                os.getenv("SUPERVISOR_TEST_DATABASE_URL", "").strip() or None
             ),
         )
 

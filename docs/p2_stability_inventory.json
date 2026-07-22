@@ -1,6 +1,6 @@
 {
-  "schema_version": 54,
-  "generated_from_commit": "workspace-admin-panel",
+  "schema_version": 55,
+  "generated_from_commit": "supervisor-test-slug-network-fix",
   "broad_exception_total": 82,
   "broad_exception_files": 50,
   "broad_exception_approved": 82,

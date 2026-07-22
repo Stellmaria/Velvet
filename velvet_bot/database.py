@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import re
+import sys
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,6 +18,30 @@ MAX_CHARACTER_NAME_LENGTH = 64
 _LEGACY_DUPLICATE_MIGRATION_NUMBERS = {
     "003": frozenset({"003_character_references.sql", "003_public_archive.sql"}),
 }
+_TEST_SCHEMA_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
+
+
+def _isolated_test_schema(database_url: str) -> str | None:
+    """Resolve a private PostgreSQL schema only for unittest integration runs."""
+
+    configured_url = os.getenv("TEST_DATABASE_URL", "").strip()
+    if not configured_url or database_url.strip() != configured_url:
+        return None
+    if "unittest" not in " ".join(sys.argv).casefold():
+        return None
+
+    configured_schema = os.getenv("TEST_DATABASE_SCHEMA", "").strip().casefold()
+    if configured_schema:
+        if _TEST_SCHEMA_RE.fullmatch(configured_schema) is None:
+            raise RuntimeError(
+                "TEST_DATABASE_SCHEMA должен быть безопасным PostgreSQL identifier."
+            )
+        return configured_schema
+
+    fingerprint = hashlib.sha256(
+        f"{database_url}\0{Path.cwd()}".encode("utf-8")
+    ).hexdigest()[:12]
+    return f"velvet_test_{fingerprint}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,13 +119,40 @@ class Database:
             or Path(__file__).resolve().parents[1] / "migrations"
         )
         self._pool: asyncpg.Pool | None = None
+        self._test_schema = _isolated_test_schema(database_url)
+
+    async def _prepare_test_schema(self) -> dict[str, str] | None:
+        if self._test_schema is None:
+            return None
+        try:
+            connection = await asyncpg.connect(
+                dsn=self.database_url,
+                command_timeout=60,
+            )
+            try:
+                await connection.execute(
+                    f'CREATE SCHEMA IF NOT EXISTS "{self._test_schema}"'
+                )
+            finally:
+                await connection.close()
+        except asyncpg.InsufficientPrivilegeError as error:
+            import unittest
+
+            raise unittest.SkipTest(
+                "Роль TEST_DATABASE_URL не может создать изолированную тестовую "
+                "схему. Укажите SUPERVISOR_TEST_DATABASE_URL для отдельной базы "
+                "или выдайте роли CREATE на тестовую базу."
+            ) from error
+        return {"search_path": f'"{self._test_schema}"'}
 
     async def initialize(self) -> None:
+        server_settings = await self._prepare_test_schema()
         self._pool = await asyncpg.create_pool(
             dsn=self.database_url,
             min_size=1,
             max_size=10,
             command_timeout=60,
+            server_settings=server_settings,
         )
         try:
             await self._apply_migrations()

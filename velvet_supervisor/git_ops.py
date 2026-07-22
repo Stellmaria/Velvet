@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,10 +37,12 @@ class GitRepository:
         *,
         timeout_seconds: int,
         test_command: tuple[str, ...],
+        test_database_url: str | None = None,
     ) -> None:
         self.project_dir = project_dir
         self.timeout_seconds = timeout_seconds
         self.test_command = test_command
+        self.test_database_url = test_database_url
 
     def run(
         self,
@@ -122,12 +125,23 @@ class GitRepository:
             raise ValueError("Некорректный commit SHA для отката.")
         return self.git("reset", "--hard", sha, cwd=cwd).output
 
+    def _test_environment(self) -> dict[str, str]:
+        environment = os.environ.copy()
+        if self.test_database_url:
+            environment["TEST_DATABASE_URL"] = self.test_database_url
+        else:
+            environment.pop("TEST_DATABASE_URL", None)
+        environment.setdefault("PYTHONUTF8", "1")
+        environment.setdefault("PYTHONIOENCODING", "utf-8")
+        return environment
+
     def run_tests(self, *, cwd: Path | None = None) -> CommandResult:
         return self.run(
             self.test_command,
             cwd=cwd,
             timeout_seconds=max(self.timeout_seconds, 1800),
             check=False,
+            env=self._test_environment(),
         )
 
     def create_worktree(self, task_id: str, target: Path) -> tuple[str, str]:

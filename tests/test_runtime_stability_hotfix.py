@@ -98,6 +98,8 @@ class RuntimeStabilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("telegramnetworkerror", query)
         self.assertIn("clientconnectorerror", query)
         self.assertIn("sleep for % seconds and try again", query)
+        self.assertIn("velvet_bot.presentation.telegram.router", query)
+        self.assertIn("подключение к сети было разорвано", query)
 
     async def test_missing_database_is_safe(self) -> None:
         self.assertEqual(
