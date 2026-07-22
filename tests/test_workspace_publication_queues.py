@@ -321,7 +321,7 @@ class PostgreSQLWorkspacePublicationTests(unittest.IsolatedAsyncioTestCase):
         second = await self._create_workspace(
             user_id=1402,
             name="Duplicate Second",
-            chat_id=-100730001,
+            chat_id=-100730002,
         )
         await self._insert_draft(
             first,

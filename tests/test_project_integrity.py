@@ -27,6 +27,16 @@ ALLOWED_DUPLICATE_COMMAND_ROUTES = {
     "refcancel",
     "compare_ref",
     "compare_reference",
+    "analytics",
+    "analyticsmenu",
+    "channelstats",
+    "stats",
+    "promptstats",
+    "hashtagstats",
+    "tagstats",
+    "characterstats",
+    "trackdiscussion",
+    "discussionstats",
 }
 PANEL_COMMANDS = {
     "admin",

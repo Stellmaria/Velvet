@@ -71,6 +71,8 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.supervisor.control",
     "velvet_bot.presentation.telegram.routers.system",
     "velvet_bot.presentation.telegram.routers.workspace_admin",
+    "velvet_bot.presentation.telegram.routers.workspace_analytics",
+    "velvet_bot.presentation.telegram.routers.workspace_analytics_characters",
     "velvet_bot.presentation.telegram.routers.workspace_character_management",
     "velvet_bot.presentation.telegram.routers.workspace_character_pickers",
     "velvet_bot.presentation.telegram.routers.workspace_publications",
@@ -113,6 +115,21 @@ class P3RouterOrganizationTests(unittest.TestCase):
             )
         self.assertEqual(len(modules), len(set(modules)))
         self.assertEqual(EXPECTED_ROUTER_MODULES, set(modules))
+
+    def test_workspace_analytics_precedes_legacy_controllers(self) -> None:
+        source = (BUNDLE_DIR / "analytics.py").read_text(encoding="utf-8")
+        self.assertLess(
+            source.index("router.include_router(workspace_analytics_characters_router)"),
+            source.index("router.include_router(workspace_analytics_router)"),
+        )
+        self.assertLess(
+            source.index("router.include_router(workspace_analytics_router)"),
+            source.index("router.include_router(channel_analytics_router)"),
+        )
+        self.assertLess(
+            source.index("router.include_router(workspace_analytics_router)"),
+            source.index("router.include_router(analytics_dashboard_overrides_router)"),
+        )
 
     def test_publication_router_precedes_archive_catch_all(self) -> None:
         source = (BUNDLE_DIR / "archive_and_public.py").read_text(encoding="utf-8")

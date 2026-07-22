@@ -274,7 +274,7 @@ class WorkspaceRepository:
         workspace_id: int,
         kind: WorkspaceChannelKind,
         chat_id: int,
-        url: str | None,
+        url: str | None = None,
     ) -> WorkspaceChannel:
         async with self._database.acquire() as connection:
             async with connection.transaction():

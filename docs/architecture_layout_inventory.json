@@ -5,7 +5,7 @@
   "router_bundles": [
     {
       "path": "velvet_bot/presentation/telegram/routers/analytics.py",
-      "router_count": 5
+      "router_count": 7
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/archive_and_public.py",
@@ -20,7 +20,7 @@
       "router_count": 14
     }
   ],
-  "active_bundle_router_count": 66,
+  "active_bundle_router_count": 68,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 0,
   "legacy_handler_implementation_count": 0,
