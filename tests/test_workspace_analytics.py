@@ -173,7 +173,10 @@ class PostgreSQLWorkspaceAnalyticsTests(unittest.IsolatedAsyncioTestCase):
             )
             await connection.execute(
                 """
-                INSERT INTO user_workspace_preferences (user_id, workspace_id)
+                INSERT INTO user_workspace_preferences (
+                    user_id,
+                    active_workspace_id
+                )
                 VALUES ($1::BIGINT, $2::BIGINT)
                 """,
                 user_id,
