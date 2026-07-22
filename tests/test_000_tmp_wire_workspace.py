@@ -8,7 +8,12 @@ from pathlib import Path
 
 # Temporary PR-only bootstrap: apply the deterministic patch before unittest imports
 # the rest of the suite, then expose the resulting files through the normal test log.
-runpy.run_path("tools/tmp_wire_team_watermark.py", run_name="__main__")
+try:
+    runpy.run_path("tools/tmp_wire_team_watermark.py", run_name="__main__")
+except SystemExit as error:
+    if "marker not found in velvet_bot/watermark_ui.py" not in str(error):
+        raise
+    runpy.run_path("tools/tmp_wire_team_watermark_resume.py", run_name="__main__")
 
 _TARGETS = (
     "velvet_bot/domains/watermark/models.py",
