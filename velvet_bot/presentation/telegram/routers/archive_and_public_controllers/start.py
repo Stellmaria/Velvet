@@ -1,10 +1,16 @@
 from aiogram import Router
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.access import AccessPolicy
+from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.onboarding import WorkspaceOnboardingRepository
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.owner_menu import build_owner_main_keyboard, owner_menu_text
+from velvet_bot.presentation.telegram.routers.workspace_delete import workspace_delete_callback
+from velvet_bot.presentation.telegram.routers.workspace_quick_setup import (
+    WorkspaceQuickSetupCallback,
+)
 from velvet_bot.workspace_ui import build_start_keyboard
 
 router = Router(name=__name__)
@@ -15,6 +21,7 @@ async def handle_start(
     message: Message,
     bot_username: str,
     access_policy: AccessPolicy,
+    database: Database,
     workspace_product_service: WorkspaceProductService,
 ) -> None:
     is_global_owner = access_policy.allows_user(message.from_user)
@@ -27,24 +34,50 @@ async def handle_start(
         return
 
     user_id = message.from_user.id if message.from_user else 0
-    state = await workspace_product_service.get_start_state(user_id)
+    start_state = await workspace_product_service.get_start_state(user_id)
     extra = (
         "\n\nСтэл выдала вам право создать отдельный приватный архив."
-        if state.can_create
+        if start_state.can_create
         else ""
     )
-    if state.owned_workspaces:
+    if start_state.owned_workspaces:
         extra += "\n\nУ вас есть личное пространство. Его настройки доступны отдельно."
+    keyboard = build_start_keyboard(
+        can_create=start_state.can_create,
+        has_workspace=bool(start_state.owned_workspaces),
+    )
+    rows = list(keyboard.inline_keyboard)
+    if start_state.owned_workspaces:
+        workspace = start_state.owned_workspaces[0]
+        onboarding = await WorkspaceOnboardingRepository(database).get_state(workspace.id)
+        if onboarding is None or onboarding.status != "completed":
+            extra += "\n\n⚠️ Первоначальная настройка архива ещё не завершена."
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text="⚡ Продолжить быструю настройку",
+                        callback_data=WorkspaceQuickSetupCallback(
+                            action="resume",
+                            workspace_id=workspace.id,
+                        ).pack(),
+                    )
+                ]
+            )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🗑 Удалить моё пространство",
+                    callback_data=workspace_delete_callback("request", workspace.id),
+                )
+            ]
+        )
     await message.answer(
         "<b>Velvet Archive</b>\n\n"
         "Можно просматривать только архивы, владельцы которых включили публичный "
         "режим read-only. Личные архивы создаются приватными и не пересекаются "
         "с персонажами, каналами и настройками других владельцев."
         + extra,
-        reply_markup=build_start_keyboard(
-            can_create=state.can_create,
-            has_workspace=bool(state.owned_workspaces),
-        ),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
 
