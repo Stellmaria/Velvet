@@ -1,0 +1,31 @@
+name: temp workspace admin repository inventory
+
+on:
+  push:
+    branches:
+      - agent/workspace-admin-panel-2
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-admin-panel-2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Refresh canonical repository inventory
+        run: |
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/repository_layout_inventory.json docs/repository_layout_inventory.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Restore canonical repository inventory label"
+            git push origin HEAD:agent/workspace-admin-panel-2
+          fi
