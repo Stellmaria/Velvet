@@ -17,16 +17,26 @@ def load_patch_module() -> ModuleType:
     return module
 
 
+def _dedent_one(value: str) -> str:
+    return "\n".join(
+        line[1:] if line.startswith(" ") else line
+        for line in value.split("\n")
+    )
+
+
 def compatible_replace(path: str, old: str, new: str) -> None:
     target = ROOT / path
     source = target.read_text(encoding="utf-8")
     candidates = [(old, new)]
     if "logger_name = 'velvet_bot.presentation.telegram.router'" in old:
-        candidates.append(
-            (
-                old.replace("           OR (", "          OR ("),
-                new.replace("           OR (", "          OR ("),
-            )
+        candidates.extend(
+            [
+                (
+                    old.replace("           OR (", "          OR ("),
+                    new.replace("           OR (", "          OR ("),
+                ),
+                (_dedent_one(old), _dedent_one(new)),
+            ]
         )
     for expected, replacement in candidates:
         if expected in source:
