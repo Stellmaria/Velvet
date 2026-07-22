@@ -93,6 +93,8 @@
 - блокировку forged event;
 - внутреннюю загрузку due draft worker-ом с сохранением target channel.
 
+Первый полный CI подтвердил все новые PostgreSQL-сценарии. После восстановления system-workspace SQL-контрактов и явного legacy fallback запущен финальный прогон.
+
 ### PR и commit
 
 PR: `#286 Isolate publication workflows by workspace`. Финальный merge commit фиксируется после зелёного CI.
