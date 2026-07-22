@@ -25,12 +25,6 @@ jobs:
       - name: Apply guided menu patch
         run: python tools/temp_apply_workspace_guided_menu.py
 
-      - name: Refresh generated inventories
-        run: |
-          python scripts/inventory_repository_layout.py --write
-          python scripts/update_p2_stability_inventory.py
-          python scripts/telegram_navigation_inventory.py --root velvet_bot --markdown docs/generated/telegram_navigation_inventory.md
-
       - name: Validate syntax
         run: |
           python -m compileall -q velvet_bot tests/test_workspace_guided_menu.py
