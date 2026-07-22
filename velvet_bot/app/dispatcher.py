@@ -8,6 +8,7 @@ from velvet_bot.app.save_sessions import SaveUploadSessions
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.access import AccessPolicy
+from velvet_bot.core.access.workspace_extensions import install_workspace_access_extensions
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
@@ -47,6 +48,7 @@ def build_dispatcher(
     error_center: ErrorIncidentCenter | None = None,
     save_upload_sessions: SaveUploadSessions | None = None,
 ) -> DispatcherBundle:
+    install_workspace_access_extensions()
     access_policy = AccessPolicy(
         allowed_user_ids=settings.allowed_user_ids,
         allowed_usernames=settings.allowed_usernames,
