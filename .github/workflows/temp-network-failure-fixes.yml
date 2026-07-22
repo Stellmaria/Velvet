@@ -24,21 +24,39 @@ jobs:
           python-version: '3.13'
 
       - name: Apply fixes
-        run: python tools/temp_apply_network_failure_fixes.py
+        shell: bash
+        run: |
+          set +e
+          python tools/temp_apply_network_failure_fixes.py > /tmp/patch.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            cp /tmp/patch.log tools/temp_patch_error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tools/temp_patch_error.txt
+            git commit -m "Record temporary patch failure"
+            git push origin HEAD:agent/fix-codex-403-asyncpg-network-noise
+          fi
 
       - name: Install dependencies
+        if: hashFiles('tools/temp_patch_error.txt') == ''
         run: python -m pip install -r requirements.txt
 
       - name: Run focused tests
+        if: hashFiles('tools/temp_patch_error.txt') == ''
         run: |
           python -m unittest tests.test_network_failure_handling tests.test_runtime_stability_hotfix tests.test_supervisor_dependency_sync tests.test_supervisor_codex_command -v
           python -m compileall -q velvet_bot velvet_supervisor tests/test_network_failure_handling.py
           git diff --check
 
       - name: Refresh stability inventory
+        if: hashFiles('tools/temp_patch_error.txt') == ''
         run: python scripts/update_p2_stability_inventory.py --label network-failure-fixes --schema-version 57
 
       - name: Commit fixes
+        if: hashFiles('tools/temp_patch_error.txt') == ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
