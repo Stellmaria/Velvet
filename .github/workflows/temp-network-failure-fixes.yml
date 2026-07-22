@@ -26,6 +26,16 @@ jobs:
       - name: Apply fixes
         shell: bash
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("tools/temp_apply_network_failure_fixes.py")
+          source = path.read_text(encoding="utf-8")
+          source = source.replace(
+              '"           OR (\\n               logger_name = \'velvet_bot.presentation.telegram.router\'',
+              '"          OR (\\n               logger_name = \'velvet_bot.presentation.telegram.router\'',
+          )
+          path.write_text(source, encoding="utf-8")
+          PY
           set +e
           python tools/temp_apply_network_failure_fixes.py > /tmp/patch.log 2>&1
           status=$?
@@ -38,6 +48,8 @@ jobs:
             git add tools/temp_patch_error.txt
             git commit -m "Record temporary patch failure"
             git push origin HEAD:agent/fix-codex-403-asyncpg-network-noise
+          else
+            rm -f tools/temp_patch_error.txt
           fi
 
       - name: Install dependencies
