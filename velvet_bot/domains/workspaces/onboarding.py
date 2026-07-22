@@ -172,18 +172,17 @@ class WorkspaceOnboardingReadiness:
 def required_destination_keys(
     enabled_modules: set[WorkspaceModuleKey] | frozenset[WorkspaceModuleKey],
 ) -> tuple[WorkspaceDestinationKey, ...]:
-    required: list[WorkspaceDestinationKey] = []
+    """Return only destinations required for the first usable personal archive.
+
+    A personal workspace needs one main forum archive when characters or archive are
+    enabled. Publication, analytics, discussion, public and log destinations are
+    optional integrations configured later when their owner actually uses them.
+    """
+
     if "characters" in enabled_modules or "archive" in enabled_modules:
-        required.extend(("characters", "media"))
-    if "references" in enabled_modules:
-        required.append("references")
-    if "public_archive" in enabled_modules:
-        required.append("public")
-    if "publications" in enabled_modules:
-        required.append("publications")
-    if "analytics" in enabled_modules:
-        required.append("analytics")
-    return tuple(dict.fromkeys(required))
+        return ("characters",)
+    return ()
+
 
 
 def onboarding_readiness(

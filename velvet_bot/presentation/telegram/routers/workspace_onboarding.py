@@ -201,14 +201,15 @@ def _intro_text(workspace: Workspace, *, resumed: bool) -> str:
     prefix = "Настройка продолжена" if resumed else "Пространство создано"
     return (
         f"<b>🧭 {prefix}: {escape(workspace.name)}</b>\n\n"
-        "Мастер проведёт по четырём шагам:\n"
-        "1. покажет, как устроено пространство;\n"
-        "2. даст выбрать разрешённые модули;\n"
-        "3. привяжет реальные Telegram-чаты и темы;\n"
-        "4. проверит, что включённым функциям есть куда сохранять данные.\n\n"
-        "Архив остаётся приватным, пока вы отдельно не включите публичный режим. "
-        "Настройку можно закрыть и продолжить командой <code>/workspace_setup</code>."
+        "Для обычного личного архива нужны три понятных шага:\n"
+        "1. посмотреть короткий гид;\n"
+        "2. выбрать доступные модули;\n"
+        "3. один раз подключить основной форумный чат архива.\n\n"
+        "После этого персонажи создаются по имени и ссылке на их ветку. "
+        "Каналы публикаций, аналитики, обсуждений и логов не обязательны и "
+        "настраиваются позже только при необходимости."
     )
+
 
 
 def _intro_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
@@ -216,25 +217,25 @@ def _intro_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="📘 Как всё работает",
+                    text="📘 1 · Короткий гид",
                     callback_data=_callback("guide", workspace_id),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="🧩 Шаг 2 · Выбрать модули",
+                    text="🧩 2 · Выбрать модули",
                     callback_data=_callback("modules", workspace_id),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="🧭 Шаг 3 · Чаты и темы",
+                    text="📁 3 · Основной архивный чат",
                     callback_data=_callback("destinations", workspace_id),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="✅ Проверить настройку",
+                    text="✅ Проверить готовность",
                     callback_data=_callback("summary", workspace_id),
                 )
             ],
@@ -248,65 +249,53 @@ def _intro_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
     )
 
 
+
 def _guide_text(workspace: Workspace) -> str:
     return (
         f"<b>📘 Как работает {escape(workspace.name)}</b>\n\n"
-        "<b>Персонажи</b> — профили, имена, псевдонимы, категории, вселенные и истории.\n"
-        "<b>Архив</b> — фото, видео и документы, изолированные от других пространств.\n"
-        "<b>Референсы</b> — библиотека внешности и сравнения результатов.\n"
-        "<b>Публикации</b> — черновики и отправка в выбранный канал.\n"
-        "<b>Аналитика</b> — данные только подключённых каналов этого пространства.\n"
-        "<b>Публичный архив</b> — отдельный read-only режим; сам по себе не включается.\n"
-        "<b>Команда</b> — роли owner/admin/editor/reviewer/viewer.\n\n"
-        "<b>Чаты и ветки</b>\n"
-        "Бот не может безопасно угадывать, какой из ваших чатов считать архивом. "
-        "Поэтому откройте нужный чат или конкретную тему и отправьте там команду "
-        "<code>/workspace_bind НАЗНАЧЕНИЕ</code>. Для канала, где нельзя написать "
-        "команду от себя, используйте в ЛС "
-        "<code>/workspace_bind_channel НАЗНАЧЕНИЕ @channel</code>. Бот сохранит "
-        "chat_id, текущую тему, ссылку и проверит свои права.\n\n"
-        "Настройки всегда можно пересмотреть через <code>/workspace_setup</code>, "
-        "а текущую схему — через <code>/workspace_setup_status</code>."
+        "<b>Основной архив</b> — один форумный чат, в котором находятся ветки "
+        "персонажей. Его достаточно подключить один раз.\n"
+        "<b>Персонаж</b> — имя, карточка и ссылка на конкретную ветку этого чата.\n"
+        "<b>Сохранение</b> — выберите персонажа кнопкой и отправьте фото, видео или файл.\n"
+        "<b>Структура</b> — категории, вселенные и истории создаются пошагово кнопками.\n\n"
+        "Дополнительные каналы нужны только отдельным функциям: публикациям, "
+        "аналитике, публичной витрине или логам. Они не блокируют запуск архива.\n\n"
+        "Основной чат подключается командой "
+        f"<code>/workspace_bind characters {workspace.id}</code> внутри самого чата."
     )
 
 
+
 def _guide_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
-    rows = [
-        [
-            InlineKeyboardButton(
-                text=MODULE_LABELS[key],
-                callback_data=_callback("modulehelp", workspace_id, key),
-            )
-        ]
-        for key in MODULE_LABELS
-    ]
-    rows.extend(
-        [
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Гид понятен · к модулям",
+                    text="✅ Понятно · выбрать модули",
                     callback_data=_callback("guidedone", workspace_id),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ В начало",
+                    text="↩️ В начало мастера",
                     callback_data=_callback("intro", workspace_id),
                 )
             ],
         ]
     )
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 
 def _modules_text(workspace: Workspace) -> str:
     return (
         f"<b>🧩 Модули · {escape(workspace.name)}</b>\n\n"
         "Нажмите на разрешённый модуль, чтобы включить или выключить его.\n"
-        "✅ включён · ➖ выключен · ⛔ недоступен по выданному тарифу/разрешению.\n\n"
-        "Мастер потребует назначение чата только для включённых функций. "
-        "Персонажи и архив без места хранения считаются незавершённой настройкой."
+        "✅ включён · ➖ выключен · ⛔ недоступен по разрешению Стэл.\n\n"
+        "Для первого запуска мастер потребует только один основной архивный чат, "
+        "если включены персонажи или архив. Остальные подключения остаются "
+        "необязательными."
     )
+
 
 
 def _modules_keyboard(
@@ -360,31 +349,23 @@ def _destinations_text(
     destinations: tuple[WorkspaceDestination, ...],
 ) -> str:
     configured = {item.destination_key: item for item in destinations}
-    lines = [
-        f"<b>🧭 Чаты и темы · {escape(workspace.name)}</b>",
-        "",
-        "Для каждой функции откройте нужный чат или тему и выполните указанную команду. "
-        "Одна тема может использоваться для нескольких назначений.",
-        "",
-    ]
-    for key in WORKSPACE_DESTINATION_KEYS:
-        spec = DESTINATION_SPECS[key]
-        item = configured.get(key)
-        if item is None:
-            lines.append(f"▫️ {spec.emoji} <b>{escape(spec.label)}</b> — не подключено")
-        else:
-            lines.append(
-                f"✅ {spec.emoji} <b>{escape(spec.label)}</b> — "
-                f"{escape(_destination_location(item))}"
-            )
-    lines.extend(
-        [
-            "",
-            "Команда внутри нужной темы: <code>/workspace_bind characters</code> "
-            "(замените characters на нужное назначение).",
-        ]
+    main = configured.get("characters")
+    status = (
+        "✅ " + escape(_destination_location(main))
+        if main is not None
+        else "❌ не подключён"
     )
-    return "\n".join(lines)
+    return (
+        f"<b>📁 Основной архивный чат · {escape(workspace.name)}</b>\n\n"
+        f"Статус: {status}\n\n"
+        "Нужен один форумный чат, где размещаются ветки персонажей. В основном "
+        "разделе этого чата отправьте:\n"
+        f"<code>/workspace_bind characters {workspace.id}</code>\n\n"
+        "Для каждого персонажа затем указывается имя и ссылка на его конкретную "
+        "ветку. Отдельные чаты материалов, референсов, аналитики и логов для "
+        "завершения установки не требуются."
+    )
+
 
 
 def _destinations_keyboard(
@@ -392,23 +373,18 @@ def _destinations_keyboard(
     destinations: tuple[WorkspaceDestination, ...],
 ) -> InlineKeyboardMarkup:
     configured = {item.destination_key for item in destinations}
-    rows: list[list[InlineKeyboardButton]] = []
-    for key in WORKSPACE_DESTINATION_KEYS:
-        spec = DESTINATION_SPECS[key]
-        status = "✅" if key in configured else "▫️"
-        rows.append(
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f"{status} {spec.emoji} {spec.label}"[:48],
-                    callback_data=_callback("destinationhelp", workspace_id, key),
+                    text=("✅" if "characters" in configured else "▫️")
+                    + " 📁 Как подключить основной чат",
+                    callback_data=_callback("destinationhelp", workspace_id, "characters"),
                 )
-            ]
-        )
-    rows.extend(
-        [
+            ],
             [
                 InlineKeyboardButton(
-                    text="🔄 Обновить список",
+                    text="🔄 Проверить подключение",
                     callback_data=_callback("destinations", workspace_id),
                 )
             ],
@@ -426,26 +402,27 @@ def _destinations_keyboard(
             ],
         ]
     )
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 
 def _destination_help_text(workspace: Workspace, key: WorkspaceDestinationKey) -> str:
+    if key == "characters":
+        return (
+            f"<b>📁 Основной архив · {escape(workspace.name)}</b>\n\n"
+            "1. Откройте один форумный чат архива.\n"
+            "2. Добавьте бота администратором с правом управления темами.\n"
+            "3. В основном разделе чата отправьте:\n"
+            f"<code>/workspace_bind characters {workspace.id}</code>\n\n"
+            "После этого создавайте персонажей по имени и ссылке на их ветку. "
+            "Никакие другие чаты для обычного архива не обязательны."
+        )
     spec = DESTINATION_SPECS[key]
-    extra = (
-        "Для форума бот должен быть администратором с правом управления темами."
-        if spec.requires_forum_admin
-        else "Бот проверит право публикации в выбранном чате."
-    )
     return (
-        f"<b>{spec.emoji} {escape(spec.label)} · {escape(workspace.name)}</b>\n\n"
+        f"<b>{spec.emoji} {escape(spec.label)} · необязательное подключение</b>\n\n"
         f"{escape(spec.description)}\n\n"
-        "<b>Как подключить</b>\n"
-        "1. Добавьте бота в нужный чат или канал.\n"
-        "2. Откройте конкретную тему, если нужна именно ветка форума.\n"
-        f"3. Отправьте там: <code>{escape(spec.command_hint)}</code>\n"
-        "4. Вернитесь в мастер и нажмите «Обновить список».\n\n"
-        f"{escape(extra)}"
+        f"Команда внутри нужного чата: <code>{escape(spec.command_hint)}</code>"
     )
+
 
 
 def _summary_keyboard(workspace_id: int, *, ready: bool) -> InlineKeyboardMarkup:
@@ -454,7 +431,7 @@ def _summary_keyboard(workspace_id: int, *, ready: bool) -> InlineKeyboardMarkup
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="🚀 Завершить настройку",
+                    text="🚀 Завершить установку",
                     callback_data=_callback("complete", workspace_id),
                 )
             ]
@@ -469,25 +446,26 @@ def _summary_keyboard(workspace_id: int, *, ready: bool) -> InlineKeyboardMarkup
             ],
             [
                 InlineKeyboardButton(
-                    text="🧭 Изменить чаты и темы",
+                    text="📁 Основной архивный чат",
                     callback_data=_callback("destinations", workspace_id),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="📘 Открыть гид",
+                    text="📘 Короткий гид",
                     callback_data=_callback("guide", workspace_id),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ В начало",
+                    text="↩️ В начало мастера",
                     callback_data=_callback("intro", workspace_id),
                 )
             ],
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 
 async def _summary(
@@ -1020,7 +998,7 @@ async def handle_workspace_onboarding_callback(
             callback,
             text=(
                 f"<b>🚀 {escape(workspace.name)} готово</b>\n\n"
-                "Модули подтверждены, обязательные чаты и темы подключены, права бота "
+                "Модули подтверждены, основной архивный чат подключён, права бота "
                 "проверены. Настройки можно менять через <code>/workspace_setup</code>, "
                 "а схему смотреть через <code>/workspace_setup_status</code>."
             ),

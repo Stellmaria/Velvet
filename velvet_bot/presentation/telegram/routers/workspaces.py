@@ -49,6 +49,7 @@ _WORKSPACE_CALLBACK_ACTIONS = {
     "modules",
     "modtoggle",
     "modulehelp",
+    "modulehelpmodules",
     "module",
     "taxonomy",
     "categories",
@@ -448,7 +449,7 @@ async def handle_workspace_callback(
             reply_markup=build_modules_keyboard(workspace.id, modules),
         )
         return
-    if action in {"modulehelp", "module"}:
+    if action in {"modulehelp", "modulehelpmodules", "module"}:
         module_key = _module_key(callback_data.module_key)
         if module_key is None:
             await callback.answer("Неизвестный модуль.", show_alert=True)
@@ -469,7 +470,10 @@ async def handle_workspace_callback(
         await _edit_or_answer(
             callback,
             text=text,
-            reply_markup=build_module_help_keyboard(workspace.id),
+            reply_markup=build_module_help_keyboard(
+                workspace.id,
+                parent="modules" if action == "modulehelpmodules" else "home",
+            ),
         )
         return
 
