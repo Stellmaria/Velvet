@@ -22,6 +22,7 @@ from velvet_bot.domains.workspaces.models import WorkspaceRole
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.presentation.telegram.routers.workspace_character_management import WorkspaceForm
+from velvet_bot.presentation.telegram.routers.workspace_guided_ui import guided_workspace_callback
 from velvet_bot.workspace_ui import WorkspaceCallback, workspace_callback
 
 router = Router(name=__name__)
@@ -219,12 +220,10 @@ def _character_list_text(workspace_name: str, page: CharacterPickerPage) -> str:
         f"<b>👥 Персонажи · {escape(workspace_name)}</b>\n\n"
         f"Персонажей: <b>{page.total_items}</b>\n"
         f"Страница: <b>{page.page + 1}</b> из <b>{page.total_pages}</b>\n\n"
-        "Выберите персонажа. Из карточки можно назначить категорию, "
-        "вселенную и несколько историй.\n\n"
-        "Создание и остальные редкие операции остаются доступны текстом: "
-        "<code>создать Имя</code>, <code>переименовать ID Имя</code>, "
-        "<code>алиас ID Значение</code>, <code>промт ID ссылка</code>."
+        "Выберите персонажа. Из карточки можно сохранить материал, изменить имя, "
+        "ветку, промт и алиас, а также назначить категорию, вселенную и истории."
     )
+
 
 
 def _character_button_text(item: CharacterPickerItem) -> str:
@@ -293,19 +292,30 @@ def _character_list_keyboard(
         [
             [
                 InlineKeyboardButton(
-                    text="➕ Как создать персонажа",
-                    callback_data=_callback("new", workspace_id=workspace_id),
-                )
+                    text="➕ Создать персонажа",
+                    callback_data=guided_workspace_callback(
+                        "cnew",
+                        workspace_id=workspace_id,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="💾 Сохранить",
+                    callback_data=guided_workspace_callback(
+                        "savepick",
+                        workspace_id=workspace_id,
+                    ),
+                ),
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ Назад к модулям",
-                    callback_data=workspace_callback("modules", workspace_id=workspace_id),
+                    text="↩️ Моё пространство",
+                    callback_data=workspace_callback("home", workspace_id=workspace_id),
                 )
             ],
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 
 async def build_character_module_keyboard(
@@ -436,6 +446,66 @@ def _card_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
+                    text="💾 Сохранить",
+                    callback_data=guided_workspace_callback(
+                        "save",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=list_page,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="✏️ Имя",
+                    callback_data=guided_workspace_callback(
+                        "rename",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=list_page,
+                    ),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔗 Ветка",
+                    callback_data=guided_workspace_callback(
+                        "topicedit",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=list_page,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="📝 Промт",
+                    callback_data=guided_workspace_callback(
+                        "prompt",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=list_page,
+                    ),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🏷 Добавить алиас",
+                    callback_data=guided_workspace_callback(
+                        "alias",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=list_page,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="🗑 Удалить",
+                    callback_data=guided_workspace_callback(
+                        "deleteask",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=list_page,
+                    ),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
                     text="🗂 Категория",
                     callback_data=_callback(
                         "cat",
@@ -483,6 +553,7 @@ def _card_keyboard(
             ],
         ]
     )
+
 
 
 async def _load_taxonomy_page(

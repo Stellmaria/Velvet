@@ -168,7 +168,14 @@ def build_workspace_home_keyboard(
     modules: tuple[WorkspaceModuleSetting, ...],
 ) -> InlineKeyboardMarkup:
     enabled = {item.module_key for item in modules if item.is_allowed and item.is_enabled}
-    rows: list[list[InlineKeyboardButton]] = []
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text="🧭 Быстрые действия",
+                callback_data=workspace_callback("quick", workspace_id=workspace.id),
+            )
+        ]
+    ]
     if "characters" in enabled:
         rows.append(
             [
@@ -311,7 +318,7 @@ def build_modules_keyboard(
                 InlineKeyboardButton(
                     text="ℹ️",
                     callback_data=workspace_callback(
-                        "modulehelp",
+                        "modulehelpmodules",
                         workspace_id=workspace_id,
                         module_key=item.module_key,
                     ),
@@ -329,17 +336,24 @@ def build_modules_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def build_module_help_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
+def build_module_help_keyboard(
+    workspace_id: int,
+    *,
+    parent: str = "home",
+) -> InlineKeyboardMarkup:
+    action = "modules" if parent == "modules" else "home"
+    text = "↩️ Назад к модулям" if parent == "modules" else "↩️ Моё пространство"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="↩️ Назад к модулям",
-                    callback_data=workspace_callback("modules", workspace_id=workspace_id),
+                    text=text,
+                    callback_data=workspace_callback(action, workspace_id=workspace_id),
                 )
             ]
         ]
     )
+
 
 
 def format_taxonomy(

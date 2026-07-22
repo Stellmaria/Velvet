@@ -11,6 +11,9 @@ from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.tel
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.discussion_updates import (
     router as discussion_updates_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_guided_actions import (
+    router as workspace_guided_actions_router,
+)
 from velvet_bot.presentation.telegram.routers.workspace_character_pickers import (
     router as workspace_character_pickers_router,
 )
@@ -165,6 +168,7 @@ router.include_router(workspace_onboarding_router)
 # Workspace policy commands, callbacks and FSM forms must run before /start and
 # broad owner/archive controllers. Inline pickers and automatic topic creation must
 # intercept the personal character module before its broad text-command handler.
+router.include_router(workspace_guided_actions_router)
 router.include_router(workspace_character_pickers_router)
 router.include_router(workspace_character_topic_creation_router)
 router.include_router(workspace_character_management_router)
