@@ -3,7 +3,7 @@
 - Дата: 2026-07-22
 - ID: workspace-team-watermark
 - Линия/фаза: Workspace product / team and branding
-- Статус: в работе
+- Статус: частично
 - Ветка: `agent/workspace-team-watermark`
 - Базовый commit: `8a96569d6953b5e6d72779ade5a287c5b2eabeda`
 
@@ -92,6 +92,10 @@
 - workspace-scoped membership list;
 - workspace-scoped asset;
 - immutable watermark job snapshot.
+
+### PR и commit
+
+Draft PR: `#288 Add workspace team roles and custom watermark logos`. Финальный commit и результаты проверок будут зафиксированы после записи production wiring и удаления временного bootstrap.
 
 ### Незавершённое
 
