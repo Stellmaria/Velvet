@@ -62,11 +62,11 @@
 
 ### Проверки
 
-- `.venv\\Scripts\\python.exe -m compileall -q velvet_bot tests` — успешно;
-- `.venv\\Scripts\\python.exe -m unittest discover -s tests -p test_workspace_character_taxonomy.py -v` — 3 passed, 3 PostgreSQL tests skipped без `TEST_DATABASE_URL`;
-- `.venv\\Scripts\\python.exe -m unittest discover -s tests -p test_workspace_character_management.py -v` — 2 passed, 4 PostgreSQL tests skipped;
-- `.venv\\Scripts\\python.exe -m unittest discover -s tests -p test_workspace_character_inline_pickers.py -v` — 3 passed, 3 PostgreSQL tests skipped;
-- `.venv\\Scripts\\python.exe -m unittest discover -s tests -p test_p3_architecture_organization.py -v` — 5 passed;
+- `.venv\Scripts\python.exe -m compileall -q velvet_bot tests` — успешно;
+- `.venv\Scripts\python.exe -m unittest discover -s tests -p test_workspace_character_taxonomy.py -v` — 3 passed, 3 PostgreSQL tests skipped без `TEST_DATABASE_URL`;
+- `.venv\Scripts\python.exe -m unittest discover -s tests -p test_workspace_character_management.py -v` — 2 passed, 4 PostgreSQL tests skipped;
+- `.venv\Scripts\python.exe -m unittest discover -s tests -p test_workspace_character_inline_pickers.py -v` — 3 passed, 3 PostgreSQL tests skipped;
+- `.venv\Scripts\python.exe -m unittest discover -s tests -p test_p3_architecture_organization.py -v` — 5 passed;
 - `git diff --check` — успешно.
 
 ### PR и commit
@@ -79,6 +79,6 @@
 - полный suite требует синхронизации локальной `.venv314` с `requirements.txt` (сейчас отсутствует Pillow);
 - прямой persistence остаётся в восьми других presentation modules и выносится отдельными малыми срезами.
 
-### Следующий конкретный шаг
+### Следующий шаг
 
 Вынести read-only persistence из `workspace_character_pickers.py` в существующий domain character/taxonomy contract и добавить общий boundary test для всех Telegram routers.
