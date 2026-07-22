@@ -3,10 +3,15 @@ from __future__ import annotations
 import logging
 from html import escape
 
-from aiogram import Router
+from aiogram import Bot, Router
+from aiogram.enums import ChatType
 from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 
+from velvet_bot.application.owner_analytics import (
+    load_discussion_stats,
+    register_discussion,
+)
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.analytics_access import (
@@ -16,7 +21,8 @@ from velvet_bot.domains.workspaces.analytics_access import (
     workspace_owns_discussion_chat,
 )
 from velvet_bot.domains.workspaces.analytics_ingest import ingest_workspace_channel_post
-from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, WorkspaceRole
+from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.domains.workspaces.service import WorkspaceService
 from velvet_bot.presentation.telegram.analytics_navigation import AnalyticsCallback
 from velvet_bot.presentation.telegram.routers.analytics_controllers.channel import (
@@ -29,12 +35,18 @@ from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard im
     handle_analytics_callback,
     handle_analytics_menu,
 )
+from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
+    _discussion_stats_text,
+)
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
 
 class PersonalAnalyticsWorkspaceFilter(BaseFilter):
+    def __init__(self, minimum_role: WorkspaceRole = "reviewer") -> None:
+        self.minimum_role = minimum_role
+
     async def __call__(
         self,
         event: Message | CallbackQuery,
@@ -49,7 +61,7 @@ class PersonalAnalyticsWorkspaceFilter(BaseFilter):
             database,
             workspace_service,
             user_id=int(user.id),
-            minimum_role="reviewer",
+            minimum_role=self.minimum_role,
             system_channel_ids=analytics_channel_ids,
         )
         if context.is_system:
@@ -237,6 +249,108 @@ async def handle_workspace_character_stats(
         database,
         frozenset(personal_analytics_context.channel_ids),
     )
+
+
+@router.message(
+    Command("trackdiscussion"),
+    PersonalAnalyticsWorkspaceFilter("editor"),
+)
+async def handle_workspace_track_discussion(
+    message: Message,
+    command: CommandObject,
+    database: Database,
+    bot: Bot,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(message, personal_analytics_context):
+        return
+    if message.chat.type in {ChatType.GROUP, ChatType.SUPERGROUP} and not command.args:
+        chat_id = int(message.chat.id)
+        title = message.chat.title
+        username = message.chat.username
+    else:
+        if not command.args:
+            await message.answer(
+                "Запустите команду внутри чата обсуждений или укажите ID в личке."
+            )
+            return
+        try:
+            chat_id = int(command.args.strip())
+        except ValueError:
+            await message.answer("Chat ID должен быть числом.")
+            return
+        chat = await bot.get_chat(chat_id)
+        title = chat.title
+        username = chat.username
+
+    try:
+        await WorkspaceRepository(database).upsert_channel(
+            workspace_id=personal_analytics_context.workspace_id,
+            kind="discussion",
+            chat_id=chat_id,
+            url=(f"https://t.me/{username}" if username else None),
+        )
+        result = await register_discussion(
+            database,
+            frozenset(personal_analytics_context.channel_ids),
+            chat_id=chat_id,
+            title=title,
+            username=username,
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
+    await message.answer(
+        "<b>Чат обсуждений подключён к пространству.</b>\n\n"
+        f"Название: <b>{escape(result.title or 'без названия')}</b>\n"
+        f"Chat ID: <code>{result.chat_id}</code>\n"
+        f"Связан с каналом: <code>{result.parent_channel_id}</code>"
+    )
+
+
+@router.message(
+    Command("discussionstats"),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_discussion_stats(
+    message: Message,
+    command: CommandObject,
+    database: Database,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(message, personal_analytics_context):
+        return
+    raw_value = (command.args or "").strip()
+    if raw_value:
+        try:
+            chat_id = int(raw_value)
+        except ValueError:
+            await message.answer("Chat ID должен быть числом.")
+            return
+        if not await workspace_owns_discussion_chat(
+            database,
+            workspace_id=personal_analytics_context.workspace_id,
+            chat_id=chat_id,
+        ):
+            await message.answer("Этот чат не принадлежит активному пространству.")
+            return
+    try:
+        result = await load_discussion_stats(
+            database,
+            frozenset(personal_analytics_context.channel_ids),
+            raw_value or None,
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
+    if not await workspace_owns_discussion_chat(
+        database,
+        workspace_id=personal_analytics_context.workspace_id,
+        chat_id=result.chat_id,
+    ):
+        await message.answer("Чат обсуждений не принадлежит активному пространству.")
+        return
+    await message.answer(_discussion_stats_text(result))
 
 
 @router.callback_query(
