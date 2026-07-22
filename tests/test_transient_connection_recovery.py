@@ -11,6 +11,7 @@ import asyncpg
 from velvet_bot.infrastructure.transient_connections import (
     RecoverablePollingNoiseFilter,
     install_recoverable_polling_filter,
+    is_recoverable_diagnostic_delivery,
     is_recoverable_polling_message,
     is_transient_connection_error,
     looks_like_transient_connection_message,
@@ -91,6 +92,25 @@ class TransientConnectionClassifierTests(unittest.TestCase):
             None,
         )
         self.assertTrue(is_recoverable_polling_message(message))
+        self.assertFalse(RecoverablePollingNoiseFilter().filter(record))
+
+    def test_filter_drops_transient_diagnostic_delivery_feedback(self) -> None:
+        message = (
+            "Could not deliver automatic diagnostic bundle to owner 7221553045: "
+            "Telegram server says - Bad Gateway"
+        )
+        record = logging.LogRecord(
+            "velvet_bot.services.diagnostic_bundle",
+            logging.WARNING,
+            "diagnostic_bundle.py",
+            1,
+            message,
+            (),
+            None,
+        )
+        self.assertTrue(
+            is_recoverable_diagnostic_delivery(record.name, message)
+        )
         self.assertFalse(RecoverablePollingNoiseFilter().filter(record))
 
     def test_polling_filter_keeps_non_network_error(self) -> None:
