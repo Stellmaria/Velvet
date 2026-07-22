@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -109,7 +110,33 @@ class GitRepository:
             )
 
     def fetch(self, remote: str, branch: str) -> str:
-        return self.git("fetch", "--prune", remote, branch).output
+        last: CommandResult | None = None
+        markers = (
+            "couldn't connect to server",
+            "failed to connect to github.com",
+            "could not resolve host",
+            "connection reset by peer",
+            "connection timed out",
+            "the requested url returned error: 502",
+            "the requested url returned error: 503",
+            "the requested url returned error: 504",
+        )
+        for attempt in range(3):
+            last = self.git(
+                "fetch",
+                "--prune",
+                remote,
+                branch,
+                check=False,
+            )
+            output = last.output.casefold()
+            transient = any(marker in output for marker in markers)
+            if last.returncode == 0:
+                return last.output
+            if not transient or attempt == 2:
+                raise CommandError(last.command, last.returncode, last.output)
+            time.sleep((1.0, 3.0)[min(attempt, 1)])
+        raise RuntimeError("Git fetch retry loop ended unexpectedly.")
 
     def fast_forward(self, remote: str, branch: str) -> str:
         current = self.branch_name()

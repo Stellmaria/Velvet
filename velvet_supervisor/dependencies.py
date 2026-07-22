@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,37 @@ def _run(
             "PIP_DISABLE_PIP_VERSION_CHECK": "1",
         },
     )
+
+
+_TRANSIENT_GIT_NETWORK_MARKERS = (
+    "couldn't connect to server",
+    "failed to connect to github.com",
+    "could not resolve host",
+    "connection reset by peer",
+    "connection timed out",
+    "the requested url returned error: 502",
+    "the requested url returned error: 503",
+    "the requested url returned error: 504",
+)
+
+
+def _run_git_with_retries(
+    command: tuple[str, ...],
+    *,
+    cwd: Path,
+    timeout_seconds: int,
+    attempts: int = 3,
+) -> subprocess.CompletedProcess[str]:
+    result: subprocess.CompletedProcess[str] | None = None
+    for attempt in range(max(1, attempts)):
+        result = _run(command, cwd=cwd, timeout_seconds=timeout_seconds)
+        output = (result.stdout or "").casefold()
+        transient = any(marker in output for marker in _TRANSIENT_GIT_NETWORK_MARKERS)
+        if result.returncode == 0 or not transient or attempt + 1 >= attempts:
+            return result
+        time.sleep((1.0, 3.0)[min(attempt, 1)])
+    assert result is not None
+    return result
 
 
 def _sync_text(
@@ -168,14 +200,14 @@ def sync_remote_requirements(settings: Any) -> DependencySyncResult:
     remote = str(settings.update_remote)
     branch = str(settings.update_branch)
     timeout = max(int(settings.command_timeout_seconds), 300)
-    fetch = _run(
+    fetch = _run_git_with_retries(
         ("git", "fetch", "--prune", remote, branch),
         cwd=project_dir,
         timeout_seconds=timeout,
     )
     if fetch.returncode:
         raise DependencySyncError(
-            "Не удалось получить удалённую ветку перед синхронизацией зависимостей.\n"
+            "Не удалось получить удалённую ветку после трёх попыток перед синхронизацией зависимостей.\n"
             + (fetch.stdout or "")[-5000:]
         )
     ref = f"{remote}/{branch}:requirements.txt"

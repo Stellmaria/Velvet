@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,34 @@ from .models import CodexTask, JsonStateStore, utc_now
 from .notifier import TelegramNotifier
 
 logger = logging.getLogger(__name__)
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def summarize_codex_failure(error: BaseException) -> str:
+    """Return a short actionable message instead of proxy HTML/CSS noise."""
+
+    raw = str(error).strip()
+    folded = raw.casefold()
+    if "403 forbidden" in folded and (
+        "backend-api/codex/responses" in folded or "cf-ray" in folded
+    ):
+        return (
+            "Codex получил 403 Forbidden от ChatGPT до запуска работы с кодом.\n"
+            "Вероятная причина: локальная авторизация Codex истекла либо запрос "
+            "заблокирован сетью или Cloudflare.\n\n"
+            "На компьютере Supervisor выполните `codex --login`, затем "
+            "перезапустите Supervisor и повторите задачу. Если вход уже выполнен, "
+            "проверьте доступ к chatgpt.com без проблемного VPN или прокси."
+        )
+    if "<html" in folded or "<!doctype html" in folded:
+        return (
+            "Codex вернул HTML-страницу вместо API-ответа. Это сетевой или "
+            "авторизационный отказ, а не ошибка кода проекта. Повторите вход через "
+            "`codex --login` и проверьте соединение."
+        )
+    compact = " ".join(_HTML_TAG_RE.sub(" ", raw).split())
+    return (compact[-3000:] if compact else type(error).__name__)
 
 
 class CodexTaskManager:
@@ -203,15 +232,16 @@ class CodexTaskManager:
             )
         except Exception as error:
             logger.exception("Codex task failed id=%s", task_id)
+            summary = summarize_codex_failure(error)
             self._update(
                 task_id,
                 status="error",
-                error=str(error)[:10000],
+                error=summary[:10000],
                 finished_at=utc_now(),
             )
             self._notifier.send(
                 "Ошибка задачи Codex",
-                f"Задача: {task_id}\n{str(error)[-3000:]}",
+                f"Задача: {task_id}\n{summary}",
                 level="ERROR",
             )
 
@@ -271,4 +301,4 @@ def _build_codex_prompt(user_prompt: str) -> str:
 """
 
 
-__all__ = ("CodexTaskManager",)
+__all__ = ("CodexTaskManager", "summarize_codex_failure")
