@@ -1,12 +1,12 @@
 {
-  "schema_version": 53,
-  "generated_from_commit": "workspace-owner-access-fix",
+  "schema_version": 54,
+  "generated_from_commit": "workspace-admin-panel",
   "broad_exception_total": 82,
   "broad_exception_files": 50,
   "broad_exception_approved": 82,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 118,
+  "callback_total": 119,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 38,
@@ -894,6 +894,15 @@
       "ack_line": 391,
       "pre_ack_awaits": 0,
       "total_awaits": 36,
+      "risk": "early_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_admin_panel.py",
+      "function": "handle_workspace_admin_callback",
+      "line": 337,
+      "ack_line": 344,
+      "pre_ack_awaits": 0,
+      "total_awaits": 24,
       "risk": "early_ack"
     },
     {

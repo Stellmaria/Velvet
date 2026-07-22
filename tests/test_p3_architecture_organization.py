@@ -39,6 +39,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions",
     "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_help",
     "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu",
+    "velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_admin_panel",
     "velvet_bot.presentation.telegram.routers.public_archive.catalog",
     "velvet_bot.presentation.telegram.routers.public_archive.manager",
     "velvet_bot.presentation.telegram.routers.public_archive.media_display",

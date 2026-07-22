@@ -13,6 +13,7 @@ from velvet_bot.domains.workspaces.product_models import (
     WorkspaceModuleSetting,
 )
 from velvet_bot.owner_callbacks import owner_callback
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 from velvet_bot.workspace_ui import MODULE_LABELS
 
 
@@ -181,7 +182,9 @@ def build_grant_card_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"🗄 {workspace.name} · #{workspace.workspace_id}",
+                    text=compact_button_text(
+                        f"🗄 {workspace.name} · #{workspace.workspace_id}"
+                    ),
                     callback_data=workspace_admin_callback(
                         "space",
                         user_id=grant.user_id,
@@ -269,7 +272,7 @@ def build_workspaces_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=(
+                    text=compact_button_text(
                         f"{visibility} {workspace.name} · "
                         f"{workspace.owner_user_id} · #{workspace.workspace_id}"
                     ),

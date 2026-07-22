@@ -475,7 +475,7 @@ async def handle_workspace_admin_user_id(
     if not raw.isdigit() or int(raw) <= 0:
         await message.answer(
             "Нужен положительный Telegram ID без @username. Например: "
-            "<code>8179531132</code>."
+            "<code>123456789</code>."
         )
         return
 
