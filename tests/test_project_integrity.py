@@ -78,6 +78,9 @@ PANEL_COMMANDS = {
     "console",
     "supervisor_console",
     "supervisor_self",
+    "workspace_setup",
+    "workspace_guide",
+    "workspace_setup_status",
 }
 FORM_COMMANDS = {
     "create",
@@ -139,6 +142,9 @@ DIRECT_COMMANDS = {
     "workspace_grant",
     "workspace_revoke",
     "workspace_module",
+    "workspace_bind",
+    "workspace_unbind",
+    "workspace_bind_channel",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
