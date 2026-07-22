@@ -79,6 +79,7 @@ PANEL_COMMANDS = {
     "supervisor_console",
     "supervisor_self",
     "workspace_setup",
+    "workspace_quick_setup",
     "workspace_guide",
     "workspace_setup_status",
 }
@@ -145,6 +146,7 @@ DIRECT_COMMANDS = {
     "workspace_bind",
     "workspace_unbind",
     "workspace_bind_channel",
+    "workspace_delete",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
