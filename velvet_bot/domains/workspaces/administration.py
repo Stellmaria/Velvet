@@ -115,23 +115,23 @@ class WorkspaceAdministrationService:
             rows = await connection.fetch(
                 """
                 SELECT
-                    grant.user_id,
-                    grant.allowed_modules,
-                    grant.max_workspaces,
-                    grant.is_active,
-                    grant.granted_at,
-                    grant.updated_at,
+                    creation_grant.user_id,
+                    creation_grant.allowed_modules,
+                    creation_grant.max_workspaces,
+                    creation_grant.is_active,
+                    creation_grant.granted_at,
+                    creation_grant.updated_at,
                     (
                         SELECT COUNT(*)
                         FROM workspace_members AS member
                         JOIN workspaces AS workspace
                           ON workspace.id = member.workspace_id
-                        WHERE member.user_id = grant.user_id
+                        WHERE member.user_id = creation_grant.user_id
                           AND member.role = 'owner'
                           AND NOT workspace.is_system
                     ) AS owned_workspace_count
-                FROM workspace_creation_grants AS grant
-                ORDER BY grant.is_active DESC, grant.updated_at DESC, grant.user_id
+                FROM workspace_creation_grants AS creation_grant
+                ORDER BY creation_grant.is_active DESC, creation_grant.updated_at DESC, creation_grant.user_id
                 LIMIT $1::INTEGER OFFSET $2::INTEGER
                 """,
                 safe_limit,
@@ -150,23 +150,23 @@ class WorkspaceAdministrationService:
             row = await connection.fetchrow(
                 """
                 SELECT
-                    grant.user_id,
-                    grant.allowed_modules,
-                    grant.max_workspaces,
-                    grant.is_active,
-                    grant.granted_at,
-                    grant.updated_at,
+                    creation_grant.user_id,
+                    creation_grant.allowed_modules,
+                    creation_grant.max_workspaces,
+                    creation_grant.is_active,
+                    creation_grant.granted_at,
+                    creation_grant.updated_at,
                     (
                         SELECT COUNT(*)
                         FROM workspace_members AS member
                         JOIN workspaces AS workspace
                           ON workspace.id = member.workspace_id
-                        WHERE member.user_id = grant.user_id
+                        WHERE member.user_id = creation_grant.user_id
                           AND member.role = 'owner'
                           AND NOT workspace.is_system
                     ) AS owned_workspace_count
-                FROM workspace_creation_grants AS grant
-                WHERE grant.user_id = $1::BIGINT
+                FROM workspace_creation_grants AS creation_grant
+                WHERE creation_grant.user_id = $1::BIGINT
                 """,
                 int(user_id),
             )

@@ -591,15 +591,16 @@
       "layout": "domain",
       "domain": "workspaces",
       "production_consumer_count": 3,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 0,
-      "reference_count": 4,
+      "reference_count": 5,
       "production_consumers": [
         "velvet_bot/app/dispatcher.py",
         "velvet_bot/domains/workspaces/administration.py",
         "velvet_bot/domains/workspaces/product_service.py"
       ],
       "test_consumers": [
+        "tests/test_workspace_admin_postgres.py",
         "tests/test_workspace_product_access.py"
       ],
       "package_exports": []
@@ -610,9 +611,9 @@
       "layout": "domain",
       "domain": "workspaces",
       "production_consumer_count": 5,
-      "test_consumer_count": 5,
+      "test_consumer_count": 6,
       "package_export_count": 1,
-      "reference_count": 11,
+      "reference_count": 12,
       "production_consumers": [
         "velvet_bot/app/dispatcher.py",
         "velvet_bot/domains/workspaces/administration.py",
@@ -621,6 +622,7 @@
         "velvet_bot/presentation/telegram/routers/workspace_analytics.py"
       ],
       "test_consumers": [
+        "tests/test_workspace_admin_postgres.py",
         "tests/test_workspace_analytics.py",
         "tests/test_workspace_archive_isolation.py",
         "tests/test_workspace_foundation.py",
