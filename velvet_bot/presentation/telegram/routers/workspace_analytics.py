@@ -1,0 +1,289 @@
+from __future__ import annotations
+
+import logging
+from html import escape
+
+from aiogram import Router
+from aiogram.filters import BaseFilter, Command, CommandObject
+from aiogram.types import CallbackQuery, Message
+
+from velvet_bot.audit import TelegramAuditLogger
+from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.analytics_access import (
+    AnalyticsWorkspaceContext,
+    resolve_analytics_ingest_workspace,
+    resolve_analytics_workspace_context,
+    workspace_owns_discussion_chat,
+)
+from velvet_bot.domains.workspaces.analytics_ingest import ingest_workspace_channel_post
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+from velvet_bot.domains.workspaces.service import WorkspaceService
+from velvet_bot.presentation.telegram.analytics_navigation import AnalyticsCallback
+from velvet_bot.presentation.telegram.routers.analytics_controllers.channel import (
+    handle_channel_stats,
+    handle_character_stats,
+    handle_hashtag_stats,
+    handle_prompt_stats,
+)
+from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard import (
+    handle_analytics_callback,
+    handle_analytics_menu,
+)
+
+router = Router(name=__name__)
+logger = logging.getLogger(__name__)
+
+
+class PersonalAnalyticsWorkspaceFilter(BaseFilter):
+    async def __call__(
+        self,
+        event: Message | CallbackQuery,
+        database: Database,
+        workspace_service: WorkspaceService,
+        analytics_channel_ids: frozenset[int],
+    ) -> dict[str, AnalyticsWorkspaceContext] | bool:
+        user = event.from_user
+        if user is None:
+            return False
+        context = await resolve_analytics_workspace_context(
+            database,
+            workspace_service,
+            user_id=int(user.id),
+            minimum_role="reviewer",
+            system_channel_ids=analytics_channel_ids,
+        )
+        if context.is_system:
+            return False
+        return {"personal_analytics_context": context}
+
+
+class PersonalAnalyticsIngestFilter(BaseFilter):
+    async def __call__(
+        self,
+        message: Message,
+        database: Database,
+        analytics_channel_ids: frozenset[int],
+    ) -> dict[str, int] | bool:
+        workspace_id = await resolve_analytics_ingest_workspace(
+            database,
+            chat_id=int(message.chat.id),
+            system_channel_ids=analytics_channel_ids,
+        )
+        if workspace_id is None or workspace_id == DEFAULT_WORKSPACE_ID:
+            return False
+        return {"analytics_ingest_workspace_id": workspace_id}
+
+
+async def _reject_access(
+    event: Message | CallbackQuery,
+    context: AnalyticsWorkspaceContext,
+) -> bool:
+    if context.allowed:
+        return False
+    text = context.error or "Для пространства не настроен канал аналитики."
+    if isinstance(event, CallbackQuery):
+        await event.answer(text, show_alert=True)
+    else:
+        await event.answer(escape(text))
+    return True
+
+
+async def _ingest(
+    message: Message,
+    database: Database,
+    workspace_id: int,
+    audit_logger: TelegramAuditLogger | None,
+) -> None:
+    try:
+        parsed = await ingest_workspace_channel_post(
+            database,
+            message,
+            workspace_id=workspace_id,
+        )
+        logger.info(
+            "Captured workspace channel post workspace=%s channel=%s message=%s",
+            workspace_id,
+            parsed.channel_id,
+            parsed.message_id,
+        )
+    except Exception as error:  # p2-approved-boundary: report-workspace-analytics-ingest-failure
+        logger.exception(
+            "Workspace channel analytics ingest failed workspace_id=%s chat_id=%s",
+            workspace_id,
+            message.chat.id,
+        )
+        if audit_logger is not None:
+            await audit_logger.error(
+                "Ошибка аналитики пространства",
+                error,
+                workspace_id=workspace_id,
+                channel_id=message.chat.id,
+                message_id=message.message_id,
+            )
+
+
+@router.channel_post(PersonalAnalyticsIngestFilter())
+async def handle_workspace_channel_post(
+    message: Message,
+    database: Database,
+    analytics_ingest_workspace_id: int,
+    audit_logger: TelegramAuditLogger | None = None,
+) -> None:
+    await _ingest(
+        message,
+        database,
+        analytics_ingest_workspace_id,
+        audit_logger,
+    )
+
+
+@router.edited_channel_post(PersonalAnalyticsIngestFilter())
+async def handle_workspace_edited_channel_post(
+    message: Message,
+    database: Database,
+    analytics_ingest_workspace_id: int,
+    audit_logger: TelegramAuditLogger | None = None,
+) -> None:
+    await _ingest(
+        message,
+        database,
+        analytics_ingest_workspace_id,
+        audit_logger,
+    )
+
+
+@router.message(
+    Command("analytics", "analyticsmenu"),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_analytics_menu(
+    message: Message,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(message, personal_analytics_context):
+        return
+    await handle_analytics_menu(message)
+
+
+@router.message(
+    Command("channelstats", "stats"),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_channel_stats(
+    message: Message,
+    database: Database,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(message, personal_analytics_context):
+        return
+    await handle_channel_stats(
+        message,
+        database,
+        frozenset(personal_analytics_context.channel_ids),
+    )
+
+
+@router.message(
+    Command("promptstats"),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_prompt_stats(
+    message: Message,
+    database: Database,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(message, personal_analytics_context):
+        return
+    await handle_prompt_stats(
+        message,
+        database,
+        frozenset(personal_analytics_context.channel_ids),
+    )
+
+
+@router.message(
+    Command("hashtagstats", "tagstats"),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_hashtag_stats(
+    message: Message,
+    command: CommandObject,
+    database: Database,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(message, personal_analytics_context):
+        return
+    await handle_hashtag_stats(
+        message,
+        command,
+        database,
+        frozenset(personal_analytics_context.channel_ids),
+    )
+
+
+@router.message(
+    Command("characterstats"),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_character_stats(
+    message: Message,
+    database: Database,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(message, personal_analytics_context):
+        return
+    await handle_character_stats(
+        message,
+        database,
+        frozenset(personal_analytics_context.channel_ids),
+    )
+
+
+@router.callback_query(
+    AnalyticsCallback.filter(),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_analytics_callback(
+    callback: CallbackQuery,
+    callback_data: AnalyticsCallback,
+    database: Database,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    await _handle_workspace_analytics_callback(
+        callback,
+        callback_data,
+        database,
+        personal_analytics_context,
+    )
+
+
+async def _handle_workspace_analytics_callback(
+    callback: CallbackQuery,
+    callback_data: AnalyticsCallback,
+    database: Database,
+    context: AnalyticsWorkspaceContext,
+) -> None:
+    if await _reject_access(callback, context):
+        return
+    if callback_data.action in {"discussion", "participants"}:
+        if callback_data.source_id not in context.discussion_chat_ids:
+            owns_source = await workspace_owns_discussion_chat(
+                database,
+                workspace_id=context.workspace_id,
+                chat_id=callback_data.source_id,
+            )
+            if not owns_source:
+                await callback.answer(
+                    "Этот чат обсуждения не принадлежит активному пространству.",
+                    show_alert=True,
+                )
+                return
+    await handle_analytics_callback(
+        callback,
+        callback_data,
+        database,
+        frozenset(context.channel_ids),
+    )
+
+
+__all__ = ("router",)
