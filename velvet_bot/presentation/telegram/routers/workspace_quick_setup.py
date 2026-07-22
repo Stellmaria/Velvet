@@ -73,7 +73,6 @@ def _chat_url(chat) -> str | None:
 
 def _prompt_text(workspace: Workspace, key: WorkspaceDestinationKey) -> str:
     spec = DESTINATION_SPECS[key]
-    special = ""
     if key == "characters":
         special = (
             "\n\nЭто должна быть форумная супергруппа. Боту нужны права администратора "
@@ -169,7 +168,10 @@ async def _send_next_step(
                     [
                         InlineKeyboardButton(
                             text="⚙️ Открыть пространство",
-                            callback_data=workspace_callback("home", workspace_id=workspace.id),
+                            callback_data=workspace_callback(
+                                "home",
+                                workspace_id=workspace.id,
+                            ),
                         )
                     ]
                 ]
@@ -255,6 +257,10 @@ async def handle_workspace_quick_setup_command(
             minimum_role="owner",
             global_owner=False,
         )
+        if workspace.is_system:
+            raise WorkspaceAccessError(
+                "Системное пространство нельзя настраивать этим мастером."
+            )
     except WorkspaceAccessError as error:
         await message.answer(str(error))
         return
@@ -268,7 +274,6 @@ async def handle_workspace_quick_setup_command(
     )
 
 
-@router.callback_query(WorkspaceQuickSetupCallback.filter())
 async def handle_workspace_quick_setup_callback(
     callback: CallbackQuery,
     callback_data: WorkspaceQuickSetupCallback,
@@ -351,7 +356,9 @@ async def handle_workspace_quick_setup_target(
     can_manage_topics = bool(getattr(member, "can_manage_topics", False))
     if key == "characters":
         if chat.type != ChatType.SUPERGROUP or not bool(getattr(chat, "is_forum", False)):
-            await message.answer("Для персонажей нужна форумная супергруппа с включёнными темами.")
+            await message.answer(
+                "Для персонажей нужна форумная супергруппа с включёнными темами."
+            )
             return
         if not can_manage_topics:
             await message.answer("Выдайте боту право «Управление темами».")
@@ -383,14 +390,21 @@ async def handle_workspace_quick_setup_target(
             configured_by_user_id=user_id,
         )
         if spec.channel_kind is not None:
-            await workspace_service.configure_channel(
-                workspace_id=workspace.id,
-                actor_user_id=user_id,
-                kind=spec.channel_kind,
-                chat_id=chat.id,
-                url=destination.url,
-                global_owner=False,
-            )
+            try:
+                await workspace_service.configure_channel(
+                    workspace_id=workspace.id,
+                    actor_user_id=user_id,
+                    kind=spec.channel_kind,
+                    chat_id=chat.id,
+                    url=destination.url,
+                    global_owner=False,
+                )
+            except (ValueError, WorkspaceAccessError):
+                await repository.delete_destination(
+                    workspace_id=workspace.id,
+                    destination_key=key,
+                )
+                raise
     except (ValueError, WorkspaceAccessError) as error:
         await message.answer(str(error))
         return
@@ -410,6 +424,12 @@ async def handle_workspace_quick_setup_target(
         user_id=user_id,
         workspace_product_service=workspace_product_service,
     )
+
+
+router.callback_query.register(
+    handle_workspace_quick_setup_callback,
+    WorkspaceQuickSetupCallback.filter(),
+)
 
 
 __all__ = (
