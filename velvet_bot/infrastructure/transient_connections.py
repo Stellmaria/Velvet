@@ -65,6 +65,7 @@ _TRANSIENT_TELEGRAM_BACKOFF_MARKERS: Final[tuple[str, ...]] = (
     "too many requests",
     "retry in",
 )
+_DIAGNOSTIC_BUNDLE_LOGGER: Final[str] = "velvet_bot.services.diagnostic_bundle"
 
 
 def _exception_chain(error: BaseException) -> Iterator[BaseException]:
@@ -92,6 +93,14 @@ def looks_like_transient_connection_message(value: str) -> bool:
     return any(marker in normalized for marker in _TRANSIENT_MESSAGE_MARKERS)
 
 
+def _looks_like_transient_telegram_response(normalized: str) -> bool:
+    return (
+        looks_like_transient_connection_message(normalized)
+        or any(marker in normalized for marker in _TRANSIENT_TELEGRAM_SERVER_MARKERS)
+        or any(marker in normalized for marker in _TRANSIENT_TELEGRAM_BACKOFF_MARKERS)
+    )
+
+
 def is_recoverable_polling_message(value: str) -> bool:
     """Classify aiogram polling failures that already recover through backoff."""
 
@@ -109,6 +118,18 @@ def is_recoverable_polling_message(value: str) -> bool:
         return True
     return "telegramretryafter" in normalized and any(
         marker in normalized for marker in _TRANSIENT_TELEGRAM_BACKOFF_MARKERS
+    )
+
+
+def is_recoverable_diagnostic_delivery(record_name: str, value: str) -> bool:
+    """Avoid creating a second incident when Telegram blocks the incident ZIP itself."""
+
+    if record_name != _DIAGNOSTIC_BUNDLE_LOGGER:
+        return False
+    normalized = " ".join(str(value).casefold().split())
+    return (
+        "could not deliver automatic diagnostic bundle" in normalized
+        and _looks_like_transient_telegram_response(normalized)
     )
 
 
@@ -144,16 +165,16 @@ async def recover_database_pool(database: Any, error: BaseException) -> None:
 
 
 class RecoverablePollingNoiseFilter(logging.Filter):
-    """Keep aiogram reconnect and server-backoff noise out of Error Center."""
+    """Keep expected Telegram reconnect/backoff noise out of Error Center."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if record.name != "aiogram.dispatcher":
-            return True
         try:
             message = record.getMessage()
         except (TypeError, ValueError, RuntimeError):
             message = str(record.msg)
-        return not is_recoverable_polling_message(message)
+        if record.name == "aiogram.dispatcher":
+            return not is_recoverable_polling_message(message)
+        return not is_recoverable_diagnostic_delivery(record.name, message)
 
 
 def install_recoverable_polling_filter(error_center: Any) -> bool:
@@ -169,6 +190,7 @@ def install_recoverable_polling_filter(error_center: Any) -> bool:
 __all__ = (
     "RecoverablePollingNoiseFilter",
     "install_recoverable_polling_filter",
+    "is_recoverable_diagnostic_delivery",
     "is_recoverable_polling_message",
     "is_transient_connection_error",
     "looks_like_transient_connection_message",
