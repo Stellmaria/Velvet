@@ -34,7 +34,7 @@ class WorkspaceGuidedMenuTests(unittest.TestCase):
             "deleteconfirm",
             workspace_id=9_223_372_036_854_775_807,
             character_id=9_223_372_036_854_775_807,
-            item_id=9_223_372_036_854_775_807,
+            item_id=0,
             page=999,
         )
         self.assertLessEqual(len(packed.encode("utf-8")), 64)

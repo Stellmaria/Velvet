@@ -12,22 +12,15 @@ from velvet_bot.domains.workspaces.onboarding import (
 
 
 class WorkspaceOnboardingRulesTests(unittest.TestCase):
-    def test_archive_modules_require_character_and_media_destinations(self) -> None:
+    def test_archive_modules_require_only_main_archive_destination(self) -> None:
         self.assertEqual(
-            ("characters", "media"),
+            ("characters",),
             required_destination_keys({"characters", "archive"}),
         )
 
-    def test_enabled_modules_define_required_destinations(self) -> None:
+    def test_optional_modules_do_not_add_required_destinations(self) -> None:
         self.assertEqual(
-            (
-                "characters",
-                "media",
-                "references",
-                "public",
-                "publications",
-                "analytics",
-            ),
+            ("characters",),
             required_destination_keys(
                 {
                     "characters",
@@ -39,8 +32,9 @@ class WorkspaceOnboardingRulesTests(unittest.TestCase):
                 }
             ),
         )
+        self.assertEqual((), required_destination_keys({"taxonomy", "team"}))
 
-    def test_readiness_requires_guide_modules_and_destinations(self) -> None:
+    def test_readiness_requires_guide_modules_and_main_archive(self) -> None:
         result = onboarding_readiness(
             modules_confirmed=False,
             guide_viewed=False,
@@ -48,17 +42,20 @@ class WorkspaceOnboardingRulesTests(unittest.TestCase):
             configured_destinations={"characters"},
         )
         self.assertFalse(result.ready)
-        self.assertIn("Откройте краткий гид по работе пространства.", result.missing_steps)
-        self.assertIn("Подтвердите выбранные модули.", result.missing_steps)
-        self.assertIn("Подключите назначение «Материалы».", result.missing_steps)
-        self.assertIn("Подключите назначение «Референсы».", result.missing_steps)
+        self.assertEqual(
+            (
+                "Откройте краткий гид по работе пространства.",
+                "Подтвердите выбранные модули.",
+            ),
+            result.missing_steps,
+        )
 
-    def test_readiness_accepts_complete_configuration(self) -> None:
+    def test_readiness_accepts_main_archive_without_optional_chats(self) -> None:
         result = onboarding_readiness(
             modules_confirmed=True,
             guide_viewed=True,
             enabled_modules={"characters", "archive", "references"},
-            configured_destinations={"characters", "media", "references", "logs"},
+            configured_destinations={"characters"},
         )
         self.assertTrue(result.ready)
         self.assertEqual((), result.missing_steps)

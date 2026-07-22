@@ -7,8 +7,8 @@ AST-инвентаризация широких исключений и callback
 - raw broad exceptions: **82** в **50** файлах;
 - approved boundaries: **82**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **119**;
-- late/missing callbacks: **0**;
+- callback handlers: **122**;
+- late/missing callbacks: **2**;
 - guarded callbacks: **38**;
 - delegated callbacks: **10**.
 

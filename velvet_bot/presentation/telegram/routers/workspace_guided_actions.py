@@ -5,7 +5,7 @@ from typing import cast
 from uuid import uuid4
 
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -521,7 +521,7 @@ async def _finalize_character_creation(
         try:
             topic = parse_private_topic_link(topic_value)
             await validate_topic_access(bot, topic)
-        except Exception as error:
+        except (ValueError, TelegramAPIError) as error:
             await message.answer(
                 "Не удалось проверить ссылку на ветку. Проверьте ссылку и права бота.\n"
                 f"<code>{escape(str(error))}</code>",
@@ -1293,7 +1293,7 @@ async def handle_character_topic_edit(
             character_id=character_id,
             topic=topic,
         )
-    except Exception as error:
+    except (ValueError, TelegramAPIError) as error:
         await message.answer(escape(str(error)))
         return
     await state.clear()
