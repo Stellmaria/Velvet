@@ -24,19 +24,7 @@ jobs:
           python-version: '3.13'
 
       - name: Apply fixes
-        run: |
-          rm -f tools/temp_patch_error.txt
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("tools/temp_apply_network_failure_fixes.py")
-          source = path.read_text(encoding="utf-8")
-          source = source.replace(
-              '"           OR (\\n               logger_name = \'velvet_bot.presentation.telegram.router\'',
-              '"          OR (\\n               logger_name = \'velvet_bot.presentation.telegram.router\'',
-          )
-          path.write_text(source, encoding="utf-8")
-          PY
-          python tools/temp_apply_network_failure_fixes.py
+        run: python tools/temp_apply_network_failure_fixes_v2.py
 
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
