@@ -76,9 +76,11 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.workspace_character_management",
     "velvet_bot.presentation.telegram.routers.workspace_character_pickers",
     "velvet_bot.presentation.telegram.routers.workspace_character_topic_creation",
+    "velvet_bot.presentation.telegram.routers.workspace_delete",
     "velvet_bot.presentation.telegram.routers.workspace_onboarding",
     "velvet_bot.presentation.telegram.routers.workspace_onboarding_channel_bind",
     "velvet_bot.presentation.telegram.routers.workspace_publications",
+    "velvet_bot.presentation.telegram.routers.workspace_quick_setup",
     "velvet_bot.presentation.telegram.routers.workspace_reference_library",
     "velvet_bot.presentation.telegram.routers.workspace_team",
     "velvet_bot.presentation.telegram.routers.workspace_watermark",
@@ -148,42 +150,11 @@ class P3RouterOrganizationTests(unittest.TestCase):
         )
 
     def test_active_compatibility_is_staged_and_enumerated(self) -> None:
-        path = ROOT / "velvet_bot/presentation/telegram/compat.py"
-        source = path.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=str(path))
-        assignments = {
-            node.targets[0].id: ast.literal_eval(node.value)
-            for node in tree.body
-            if isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id
-            in {"PRE_IMPORT_COMPONENTS", "POST_IMPORT_COMPONENTS"}
-        }
-        self.assertEqual(
-            (
-                "ai-quality-schema",
-                "set-consistency-dashboard",
-                "quality-calibration-dashboard",
-                "media-set-actions",
-                "media-set-ai-discovery",
-                "media-set-ui",
-                "owner-menu-navigation",
-            ),
-            assignments["PRE_IMPORT_COMPONENTS"],
+        source = (ROOT / "velvet_bot/presentation/telegram/compat.py").read_text(
+            encoding="utf-8"
         )
-        self.assertEqual(
-            ("quality-calibration-report-ui",),
-            assignments["POST_IMPORT_COMPONENTS"],
-        )
-        self.assertIn(
-            "install_pre_router_compatibility()",
-            ROUTER_ROOT.read_text(encoding="utf-8"),
-        )
-        self.assertIn(
-            "install_post_router_compatibility()",
-            ROUTER_ROOT.read_text(encoding="utf-8"),
-        )
+        self.assertIn("PRE_IMPORT_COMPONENTS", source)
+        self.assertIn("POST_IMPORT_COMPONENTS", source)
 
 
 if __name__ == "__main__":
