@@ -1,16 +1,16 @@
 {
-  "schema_version": 52,
-  "generated_from_commit": "workspace-first-run-wizard",
+  "schema_version": 53,
+  "generated_from_commit": "workspace-owner-access-fix",
   "broad_exception_total": 82,
   "broad_exception_files": 50,
   "broad_exception_approved": 82,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 110,
+  "callback_total": 118,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
-  "guarded_callback_total": 32,
-  "delegated_callback_total": 8,
+  "guarded_callback_total": 38,
+  "delegated_callback_total": 10,
   "next_slice": null,
   "broad_exceptions": [
     {
@@ -1596,6 +1596,78 @@
       "ack_line": 833,
       "pre_ack_awaits": 1,
       "total_awaits": 41,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_owner_home",
+      "line": 766,
+      "ack_line": null,
+      "pre_ack_awaits": 1,
+      "total_awaits": 1,
+      "risk": "delegated"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_archive_entry",
+      "line": 783,
+      "ack_line": 800,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_reference_entry",
+      "line": 808,
+      "ack_line": 825,
+      "pre_ack_awaits": 1,
+      "total_awaits": 3,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_personal_archive",
+      "line": 831,
+      "ack_line": 846,
+      "pre_ack_awaits": 1,
+      "total_awaits": 28,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_reference_dashboard",
+      "line": 992,
+      "ack_line": 1010,
+      "pre_ack_awaits": 1,
+      "total_awaits": 12,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_delete_prompt",
+      "line": 1087,
+      "ack_line": 1100,
+      "pre_ack_awaits": 1,
+      "total_awaits": 4,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_delete_cancel",
+      "line": 1134,
+      "ack_line": null,
+      "pre_ack_awaits": 1,
+      "total_awaits": 1,
+      "risk": "delegated"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_delete_confirm",
+      "line": 1149,
+      "ack_line": 1165,
+      "pre_ack_awaits": 1,
+      "total_awaits": 10,
       "risk": "guarded_ack"
     },
     {

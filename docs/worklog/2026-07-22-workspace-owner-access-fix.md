@@ -1,0 +1,89 @@
+# Сессия: исправление доступа владельца личного пространства
+
+- Дата: 2026-07-22
+- ID: `2026-07-22-workspace-owner-access-fix`
+- Линия/фаза: personal workspace owner access and navigation
+- Статус: `частично`
+- Ветка: `agent/workspace-owner-access-fix`
+- Базовый commit: `6ab1ff2d0205355bea74c3cb115bfb9dab052712`
+
+## Перед началом
+
+### Цель
+
+Исправить пользовательский контур личного пространства после фактической проверки в Telegram: владелец уже созданного архива должен открывать свои модули, запускать мастер подключения чатов и безопасно удалять собственное пространство без требования global-owner доступа.
+
+### Исходный контекст
+
+Пользователь с действующим grant успешно создал личное пространство и видел меню модулей. При этом кнопки архива и референсов попадали в общий справочный fallback, onboarding-команды и callbacks блокировались access middleware, а команда `/workspace_delete` возвращала общий текст «Доступ закрыт». Сам workspace и owner membership существовали корректно; проблема находилась в Telegram routing и списках разрешённых workspace-маршрутов.
+
+### Планируемый объём
+
+- разрешить владельцам активного личного пространства lifecycle-команды onboarding;
+- разрешить callback-префикс мастера первого запуска;
+- добавить в меню пространства явную кнопку настройки;
+- подключить рабочий workspace-scoped экран архива;
+- подключить рабочий workspace-scoped экран референсов;
+- реализовать удаление личного пространства с подтверждением;
+- сохранить запрет удаления системного Velvet;
+- зарегистрировать новый маршрут в integrity inventory;
+- расположить новый router раньше общего справочного workspace-handler.
+
+### Критерии готовности
+
+- `/workspace_setup`, status, bind, unbind и bind-channel доступны владельцу личного пространства;
+- onboarding callbacks не блокируются global-owner middleware;
+- кнопки «Архив» и «Референсы» открывают данные активного workspace;
+- известный character ID из другого workspace не открывается;
+- удаление требует роль owner и отдельное подтверждение;
+- системное пространство удалить невозможно;
+- после удаления grant остаётся активным и новый архив можно создать в пределах лимита;
+- project integrity, type-check, tests и Docker проходят CI.
+
+### Риски и ограничения
+
+Удаление пространства каскадно удаляет workspace-scoped настройки и таблицы, а персонажи удаляются до самой строки workspace из-за существующего `ON DELETE RESTRICT` на `characters.workspace_id`. Живая Telegram-проверка всё равно требуется после merge, поскольку Bot API поведение редактирования разных типов media нельзя полноценно проверить статическим тестом.
+
+## После завершения
+
+### Фактически сделано
+
+- расширен runtime export access policy командами настройки, привязки и удаления workspace;
+- добавлены разрешённые callback-префиксы `wob`, `wpa` и `wref`;
+- добавлен owner-only экран личного пространства с кнопками настройки и удаления;
+- архив показывает workspace-scoped персонажей, количество материалов и безопасную навигацию медиа;
+- референсы показывают workspace-scoped персонажей и открывают существующую личную библиотеку;
+- удаление реализовано командой и кнопкой, требует подтверждение и блокирует system workspace;
+- после удаления пересчитывается start state, grant не отзывается;
+- новый router зарегистрирован перед generic workspace router;
+- `/workspace_delete` добавлен в project integrity inventory;
+- callback acknowledgment приведён к нулю late/missing путей;
+- обновлены architecture, P2 stability и Telegram navigation inventories;
+- исправлен старый заголовок worklog, который нарушал project notes contract в текущем `main`.
+
+### Миграции и совместимость
+
+Новая миграция не требуется. Исправление использует существующие workspace foreign keys и каскадные ограничения. Перед удалением workspace удаляются его персонажи, после чего связанные settings, members, modules, taxonomy, destinations и preferences очищаются существующими `ON DELETE CASCADE`. Системный workspace ID `1` остаётся неизменным.
+
+### Проверки
+
+- `python -m py_compile` для изменённых Python-контроллеров — успешно;
+- generated P2 inventory: 118 callbacks, 0 late/missing, 38 guarded, 10 delegated;
+- GitHub Actions project notes contract run 915 — успешно;
+- GitHub Actions type check run 265 — успешно;
+- GitHub Actions Docker build run 1058 — успешно;
+- финальный полный tests/type-check/Docker/project-notes workflow повторно запускается после коммита, созданного не через `GITHUB_TOKEN`.
+
+### PR и commit
+
+PR #292: `Fix personal workspace owner access and navigation`.
+
+Ветка содержит отдельные коммиты для owner controls, access policy, router wiring, integrity inventory, generated inventories и этой рабочей записи.
+
+### Незавершённое
+
+После зелёного CI требуется живая проверка от имени обычного владельца личного архива: открыть модули, возобновить onboarding, привязать тестовый чат, проверить просмотр медиа и выполнить удаление тестового workspace сначала с отменой, затем с подтверждением.
+
+### Следующий шаг
+
+После эксплуатационной проверки вынести крупный owner-controls router в отдельные небольшие контроллеры home, archive, references и delete, если архитектурный аудит проекта потребует дополнительного дробления. Затем добавить полноценные кнопочные формы сохранения медиа и референсов без необходимости помнить slash-команды.
