@@ -176,5 +176,69 @@ class DiagnosticBundleTests(unittest.IsolatedAsyncioTestCase):
         bot.send_document.assert_awaited_once()
 
 
+    async def test_telegram_alert_requires_three_consecutive_failures(self) -> None:
+        repository = SimpleNamespace(unacknowledged=AsyncMock(return_value=()))
+        service = DiagnosticBundleService(
+            incident_repository=repository,
+            app_version="1.3.0",
+            owner_user_ids=frozenset({100}),
+        )
+        system_service = SimpleNamespace(
+            check=AsyncMock(
+                side_effect=(
+                    _report(status="failed", telegram_ok=False),
+                    _report(status="failed", telegram_ok=False),
+                    _report(status="failed", telegram_ok=False),
+                )
+            )
+        )
+        bot = SimpleNamespace(send_document=AsyncMock())
+        worker_manager = SimpleNamespace()
+
+        results = [
+            await service.monitor_once(
+                bot=bot,
+                system_service=system_service,
+                worker_manager=worker_manager,
+            )
+            for _ in range(3)
+        ]
+
+        self.assertEqual([0, 0, 1], results)
+        bot.send_document.assert_awaited_once()
+
+    async def test_successful_telegram_probe_resets_failure_streak(self) -> None:
+        repository = SimpleNamespace(unacknowledged=AsyncMock(return_value=()))
+        service = DiagnosticBundleService(
+            incident_repository=repository,
+            app_version="1.3.0",
+            owner_user_ids=frozenset({100}),
+        )
+        system_service = SimpleNamespace(
+            check=AsyncMock(
+                side_effect=(
+                    _report(status="failed", telegram_ok=False),
+                    _report(),
+                    _report(status="failed", telegram_ok=False),
+                    _report(status="failed", telegram_ok=False),
+                )
+            )
+        )
+        bot = SimpleNamespace(send_document=AsyncMock())
+        worker_manager = SimpleNamespace()
+
+        results = [
+            await service.monitor_once(
+                bot=bot,
+                system_service=system_service,
+                worker_manager=worker_manager,
+            )
+            for _ in range(4)
+        ]
+
+        self.assertEqual([0, 0, 0, 0], results)
+        bot.send_document.assert_not_awaited()
+
+
 if __name__ == "__main__":
     unittest.main()
