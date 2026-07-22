@@ -210,6 +210,7 @@ class WorkspaceWatermarkAssetService:
             directory / f"logo-{prepared.content_sha256[:20]}{prepared.suffix}"
         )
         temporary = self._safe_asset_path(path.with_suffix(path.suffix + ".tmp"))
+        path_existed = path.exists()
         temporary.write_bytes(prepared.payload)
         os.replace(temporary, path)
         try:
@@ -222,8 +223,9 @@ class WorkspaceWatermarkAssetService:
                 local_path=str(path),
                 uploaded_by=uploaded_by,
             )
-        except Exception:
-            path.unlink(missing_ok=True)
+        except Exception:  # p2-approved-boundary: cleanup-new-logo-after-db-failure
+            if not path_existed:
+                path.unlink(missing_ok=True)
             raise
         if previous_path and Path(previous_path).resolve(strict=False) != path:
             self._delete_owned_path(previous_path)

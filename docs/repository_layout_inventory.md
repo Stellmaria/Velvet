@@ -4,21 +4,21 @@
 
 ## Сводка
 
-- repository-модулей: **33**;
-- внутри доменов: **32**;
+- repository-модулей: **34**;
+- внутри доменов: **33**;
 - в `velvet_bot/repositories`: **0**;
 - корневых `*_repository.py`: **0**;
 - infrastructure repositories: **1**;
 - прочих repository paths: **0**;
-- repository-модулей с production consumers: **29**;
+- repository-модулей с production consumers: **30**;
 - repository-модулей с package exports: **28**;
 - repository-модулей без runtime consumers: **4**;
 - repository-модулей без любых references: **0**;
-- корневых Python-модулей: **111**.
+- корневых Python-модулей: **113**.
 
 ## Категории корневых модулей
 
-- other: **101**;
+- other: **103**;
 - report: **4**;
 - runtime: **4**;
 - service: **1**;
@@ -62,9 +62,10 @@
 - `velvet_bot.domains.stories.repository` · domain `stories`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.telegram_storage.backup_repository` · domain `telegram_storage`: production 0, tests 1, exports 1, refs 2.
 - `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 0, exports 1, refs 4.
-- `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 1, exports 1, refs 7.
+- `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 2, exports 1, refs 8.
 - `velvet_bot.domains.workspaces.product_repository` · domain `workspaces`: production 2, tests 1, exports 0, refs 3.
-- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 4, tests 4, exports 1, refs 9.
+- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 4, tests 5, exports 1, refs 10.
+- `velvet_bot.domains.workspaces.team_repository` · domain `workspaces`: production 2, tests 1, exports 0, refs 3.
 
 ### infrastructure
 

@@ -123,13 +123,17 @@ async def _workspace_logo_context(
 
 async def _require_job_workspace(
     database: Database,
-    workspace_service: WorkspaceService,
+    workspace_service: WorkspaceService | None,
     *,
     user_id: int,
     workspace_id: int,
 ) -> None:
     if int(workspace_id) == DEFAULT_WORKSPACE_ID:
         return
+    if workspace_service is None:
+        raise WorkspaceAccessError(
+            "Сервис пространства недоступен для личного watermark-задания."
+        )
     active_id, _ = await _workspace_logo_context(
         database, workspace_service, user_id=user_id
     )
@@ -380,7 +384,7 @@ async def handle_watermark_callback(
     callback_data: WatermarkCallback,
     bot: Bot,
     database: Database,
-    workspace_service: WorkspaceService,
+    workspace_service: WorkspaceService | None = None,
 ) -> None:
     action = callback_data.action
     if action != "menu" and not _watermark_enabled():

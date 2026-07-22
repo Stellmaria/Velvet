@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-complete",
-  "repository_module_count": 33,
+  "repository_module_count": 34,
   "layout_counts": {
-    "domain": 32,
+    "domain": 33,
     "infrastructure": 1
   },
-  "root_module_count": 111,
+  "root_module_count": 113,
   "root_module_categories": {
-    "other": 101,
+    "other": 103,
     "report": 4,
     "runtime": 4,
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 29,
+  "repository_modules_with_production_consumers": 30,
   "repository_modules_with_package_exports": 28,
   "repository_modules_without_runtime_consumers": 4,
   "repository_modules_without_references": 0,
@@ -567,9 +567,9 @@
       "layout": "domain",
       "domain": "watermark",
       "production_consumer_count": 5,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 7,
+      "reference_count": 8,
       "production_consumers": [
         "velvet_bot/app/workers.py",
         "velvet_bot/domains/watermark/service.py",
@@ -578,7 +578,8 @@
         "velvet_bot/presentation/telegram/routers/public_archive/watermark_actions.py"
       ],
       "test_consumers": [
-        "tests/test_watermark_repository_integration.py"
+        "tests/test_watermark_repository_integration.py",
+        "tests/test_workspace_team_watermark.py"
       ],
       "package_exports": [
         "velvet_bot/domains/watermark/__init__.py"
@@ -608,9 +609,9 @@
       "layout": "domain",
       "domain": "workspaces",
       "production_consumer_count": 4,
-      "test_consumer_count": 4,
+      "test_consumer_count": 5,
       "package_export_count": 1,
-      "reference_count": 9,
+      "reference_count": 10,
       "production_consumers": [
         "velvet_bot/app/dispatcher.py",
         "velvet_bot/domains/workspaces/product_service.py",
@@ -621,11 +622,30 @@
         "tests/test_workspace_analytics.py",
         "tests/test_workspace_archive_isolation.py",
         "tests/test_workspace_foundation.py",
-        "tests/test_workspace_product_access.py"
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_team_watermark.py"
       ],
       "package_exports": [
         "velvet_bot/domains/workspaces/__init__.py"
       ]
+    },
+    {
+      "module": "velvet_bot.domains.workspaces.team_repository",
+      "path": "velvet_bot/domains/workspaces/team_repository.py",
+      "layout": "domain",
+      "domain": "workspaces",
+      "production_consumer_count": 2,
+      "test_consumer_count": 1,
+      "package_export_count": 0,
+      "reference_count": 3,
+      "production_consumers": [
+        "velvet_bot/domains/workspaces/team_service.py",
+        "velvet_bot/presentation/telegram/routers/workspace_team.py"
+      ],
+      "test_consumers": [
+        "tests/test_workspace_team_watermark.py"
+      ],
+      "package_exports": []
     },
     {
       "module": "velvet_bot.infrastructure.postgres.system_repository",
