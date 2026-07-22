@@ -136,8 +136,8 @@ domain/repository/presentation без SQL в handlers.
 ### PR и commit
 
 - PR не создавался;
-- implementation commit будет зафиксирован после завершения этой записи;
-- итоговый documentation commit добавит точный hash реализации.
+- implementation commit: `8acc4b5` (`Align personal workspace media contracts`);
+- итоговый documentation commit фиксирует эту ссылку и чистое состояние ветки.
 
 ### Незавершённое
 
