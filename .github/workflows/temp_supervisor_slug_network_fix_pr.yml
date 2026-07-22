@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Extract and run patch script
+      - name: Extract patch script
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -36,7 +36,19 @@ jobs:
           script = textwrap.dedent(source[start:end])
           Path('/tmp/apply_fix.py').write_text(script, encoding='utf-8')
           PY
-          python /tmp/apply_fix.py
+
+      - name: Run patch script
+        run: |
+          set -o pipefail
+          python /tmp/apply_fix.py 2>&1 | tee /tmp/supervisor-fix.log
+
+      - name: Upload patch log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supervisor-fix-log
+          path: /tmp/supervisor-fix.log
+          if-no-files-found: warn
 
       - name: Refresh generated inventories
         run: |
