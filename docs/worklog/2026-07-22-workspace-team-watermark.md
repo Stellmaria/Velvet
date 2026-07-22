@@ -62,7 +62,7 @@
 - добавлена миграция `909_workspace_team_watermarks.sql`;
 - `workspace_watermark_assets` хранит один активный asset на пространство;
 - watermark jobs получили workspace ID и immutable logo snapshot;
-- DB-trigger `protect_last_workspace_owner` закрывает удаление и понижение последнего владельца;
+- DB-trigger `protect_last_workspace_owner` закрывает удаление и понижение последнего владельца, но пропускает каскадное удаление самого workspace;
 - `WorkspaceTeamRepository` и `WorkspaceTeamService` реализуют tenant и role policy;
 - Telegram UI команды поддерживает список, добавление, смену роли и удаление;
 - SVG проходит XML sanitization и не может использовать внешние ресурсы;
@@ -72,7 +72,9 @@
 - Krita bridge schema v2 передаёт logo kind/path/dimensions/name;
 - Krita plugin встраивает custom SVG или PNG в отдельный vector layer;
 - legacy system workflow использует builtin logo по умолчанию;
-- access policy получил guarded `wteam:`, `wlogo:` и `wm:` routes.
+- access policy получил guarded `wteam:`, `wlogo:` и `wm:` routes;
+- compatibility callback допускает старый системный вызов без `WorkspaceService`;
+- architecture, repository, Telegram navigation и P2 inventories пересобраны на финальном production tree.
 
 ### Миграции и совместимость
 
@@ -93,16 +95,17 @@
 - workspace-scoped asset;
 - immutable watermark job snapshot.
 
+До финального connector-head отдельно подтверждены type-check, Docker build, project notes contract и backup restore drill. Полный повторный CI запущен после пересборки inventories и compatibility fixes.
+
 ### PR и commit
 
-Draft PR: `#288 Add workspace team roles and custom watermark logos`. Финальный commit и результаты проверок будут зафиксированы после записи production wiring и удаления временного bootstrap.
+Draft PR: `#288 Add workspace team roles and custom watermark logos`. Production wiring, compatibility fixes и generated inventories находятся в ветке; финальный merge commit фиксируется после зелёного повторного CI.
 
 ### Незавершённое
 
-- generated architecture/navigation/P2 inventories обновляются после стабилизации production diff;
-- финальный PR CI и merge commit фиксируются после устранения найденных несовместимостей;
+- финальный PR CI и merge commit;
 - tenant-aware Telegram export import остаётся отдельным следующим срезом.
 
 ### Следующий шаг
 
-После зелёного CI удалить временный bootstrap, обновить generated inventories, перевести PR в ready и слить в `main`.
+После зелёного CI перевести PR в ready и слить в `main`.
