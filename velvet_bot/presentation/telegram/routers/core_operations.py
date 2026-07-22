@@ -17,6 +17,9 @@ from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_menu import (
     router as owner_menu_router,
 )
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_admin_panel import (
+    router as workspace_admin_panel_router,
+)
 from velvet_bot.presentation.telegram.routers.supervisor.control import (
     router as supervisor_control_router,
 )
@@ -27,6 +30,7 @@ router.include_router(error_center_router)
 router.include_router(diagnostics_router)
 router.include_router(owner_actions_router)
 router.include_router(owner_help_router)
+router.include_router(workspace_admin_panel_router)
 router.include_router(owner_menu_router)
 router.include_router(supervisor_control_router)
 router.include_router(system_center_router)
