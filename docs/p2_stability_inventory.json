@@ -152,7 +152,7 @@
     {
       "path": "velvet_bot/domains/publication/service.py",
       "function": "publish",
-      "line": 97,
+      "line": 125,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-claimed-publication"
@@ -160,7 +160,7 @@
     {
       "path": "velvet_bot/domains/publication/service.py",
       "function": "process_due_once",
-      "line": 131,
+      "line": 166,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-scheduled-draft"
