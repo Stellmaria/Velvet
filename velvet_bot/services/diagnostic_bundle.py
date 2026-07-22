@@ -31,6 +31,7 @@ _MAX_INCIDENTS = 20
 _MAX_LOG_ENTRIES = 500
 _AUTO_REPEAT_COOLDOWN = timedelta(hours=6)
 _AUTO_GLOBAL_COOLDOWN = timedelta(minutes=30)
+_AUTO_TELEGRAM_FAILURE_THRESHOLD = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +100,7 @@ class DiagnosticBundleService:
         self._last_auto_signature: str | None = None
         self._last_auto_sent_at: datetime | None = None
         self._last_auto_any_at: datetime | None = None
+        self._telegram_failure_streak = 0
 
     def start(self) -> None:
         if self._logging_started:
@@ -354,8 +356,18 @@ class DiagnosticBundleService:
         reasons: list[str] = []
         if not report.database_ok:
             reasons.append("PostgreSQL недоступна")
-        if not report.telegram_ok:
-            reasons.append("Telegram API недоступен")
+        if report.telegram_ok:
+            self._telegram_failure_streak = 0
+        else:
+            self._telegram_failure_streak += 1
+            if (
+                self._telegram_failure_streak
+                >= _AUTO_TELEGRAM_FAILURE_THRESHOLD
+            ):
+                reasons.append(
+                    "Telegram API недоступен "
+                    f"({_AUTO_TELEGRAM_FAILURE_THRESHOLD} проверки подряд)"
+                )
         if report.disk.free_percent < 5:
             reasons.append(f"свободно на диске {report.disk.free_percent:.1f}%")
         failed_workers = [
