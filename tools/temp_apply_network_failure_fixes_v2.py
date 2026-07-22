@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
-
-import tools.temp_apply_network_failure_fixes as patch
+from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_patch_module() -> ModuleType:
+    path = ROOT / "tools/temp_apply_network_failure_fixes.py"
+    spec = importlib.util.spec_from_file_location("temp_apply_network_failure_fixes", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load temporary patch module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def compatible_replace(path: str, old: str, new: str) -> None:
@@ -26,6 +36,7 @@ def compatible_replace(path: str, old: str, new: str) -> None:
 
 
 def main() -> None:
+    patch = load_patch_module()
     patch.replace = compatible_replace
     patch.patch_runtime_stability()
     patch.patch_codex()
