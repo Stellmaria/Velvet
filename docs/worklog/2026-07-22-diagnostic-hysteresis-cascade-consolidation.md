@@ -27,4 +27,4 @@
 
 ## Проверка
 
-Добавлены unit tests в `tests/test_owner_diagnostic_bundles.py`. Полный CI выполняется после открытия PR.
+Добавлены unit tests в `tests/test_owner_diagnostic_bundles.py`. После удаления одноразовых workflow выполнен отдельный чистый push для полного CI.
