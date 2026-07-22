@@ -1,0 +1,37 @@
+name: temporary workspace analytics inventory regeneration
+
+on:
+  push:
+    branches:
+      - agent/workspace-analytics
+    paths:
+      - .github/workflows/tmp-regenerate-workspace-analytics-inventories.yml
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-analytics
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Regenerate canonical inventories
+        run: |
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+          python scripts/telegram_navigation_inventory.py --root velvet_bot --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/update_p2_stability_inventory.py --label workspace-analytics --schema-version 51
+      - name: Commit generated files and remove temporary workflow
+        run: |
+          rm .github/workflows/tmp-regenerate-workspace-analytics-inventories.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Regenerate workspace analytics inventories"
+          git push origin HEAD:agent/workspace-analytics
