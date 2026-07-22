@@ -39,6 +39,10 @@ class WorkspaceAnalyticsContractTests(unittest.TestCase):
             ROOT / "velvet_bot/presentation/telegram/routers/analytics.py"
         ).read_text(encoding="utf-8")
         self.assertLess(
+            source.index("router.include_router(workspace_analytics_characters_router)"),
+            source.index("router.include_router(workspace_analytics_router)"),
+        )
+        self.assertLess(
             source.index("router.include_router(workspace_analytics_router)"),
             source.index("router.include_router(channel_analytics_router)"),
         )
@@ -66,12 +70,12 @@ class WorkspaceAnalyticsContractTests(unittest.TestCase):
         self.assertNotIn("SELECT id, name, normalized_name FROM characters", source)
 
     def test_character_dashboard_reads_workspace_primary_story(self) -> None:
-        source = (ROOT / "velvet_bot/analytics_dashboard.py").read_text(
-            encoding="utf-8"
-        )
+        source = (
+            ROOT / "velvet_bot/domains/workspaces/analytics_queries.py"
+        ).read_text(encoding="utf-8")
         self.assertIn("workspace_character_story_links", source)
         self.assertIn("workspace_stories", source)
-        self.assertIn("COALESCE(ws.short_label, s.short_label)", source)
+        self.assertIn("c.workspace_id = $2::BIGINT", source)
 
     def test_callback_rechecks_discussion_ownership(self) -> None:
         source = (
@@ -80,6 +84,7 @@ class WorkspaceAnalyticsContractTests(unittest.TestCase):
         self.assertIn("workspace_owns_discussion_chat", source)
         self.assertIn('callback_data.action in {"discussion", "participants"}', source)
         self.assertIn('PersonalAnalyticsWorkspaceFilter("editor")', source)
+        self.assertIn("allowed_ids = set(context.discussion_chat_ids)", source)
 
 
 @unittest.skipUnless(
@@ -111,9 +116,7 @@ class PostgreSQLWorkspaceAnalyticsTests(unittest.IsolatedAsyncioTestCase):
                 RESTART IDENTITY CASCADE
                 """
             )
-            await connection.execute(
-                "DELETE FROM tracked_channels"
-            )
+            await connection.execute("DELETE FROM tracked_channels")
             await connection.execute(
                 "DELETE FROM workspaces WHERE id <> $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
@@ -192,12 +195,16 @@ class PostgreSQLWorkspaceAnalyticsTests(unittest.IsolatedAsyncioTestCase):
             kind="publication",
             chat_id=-100810001,
         )
-        with self.assertRaises(asyncpg.UniqueViolationError):
-            await repository.upsert_channel(
-                workspace_id=second.id,
-                kind="analytics",
-                chat_id=-100810001,
-            )
+        async with self.database.acquire() as connection:
+            with self.assertRaises(asyncpg.UniqueViolationError):
+                await connection.execute(
+                    """
+                    INSERT INTO workspace_channels (workspace_id, kind, chat_id)
+                    VALUES ($1::BIGINT, 'analytics', $2::BIGINT)
+                    """,
+                    second.id,
+                    -100810001,
+                )
 
     async def test_context_prioritizes_analytics_and_scopes_discussions(self) -> None:
         workspace = await self._create_workspace(
