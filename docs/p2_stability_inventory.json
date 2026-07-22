@@ -1,16 +1,16 @@
 {
-  "schema_version": 50,
-  "generated_from_commit": "workspace-publication-queues",
-  "broad_exception_total": 79,
-  "broad_exception_files": 47,
-  "broad_exception_approved": 79,
+  "schema_version": 51,
+  "generated_from_commit": "workspace-analytics",
+  "broad_exception_total": 80,
+  "broad_exception_files": 48,
+  "broad_exception_approved": 80,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 103,
+  "callback_total": 105,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 27,
-  "delegated_callback_total": 6,
+  "delegated_callback_total": 8,
   "next_slice": null,
   "broad_exceptions": [
     {
@@ -516,6 +516,14 @@
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-supervisor-console-watcher"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_analytics.py",
+      "function": "_ingest",
+      "line": 128,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "report-workspace-analytics-ingest-failure"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_publications.py",
@@ -1528,6 +1536,24 @@
       "pre_ack_awaits": 0,
       "total_awaits": 14,
       "risk": "early_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_analytics.py",
+      "function": "handle_workspace_analytics_callback",
+      "line": 366,
+      "ack_line": null,
+      "pre_ack_awaits": 1,
+      "total_awaits": 1,
+      "risk": "delegated"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_analytics_characters.py",
+      "function": "handle_workspace_character_dashboard",
+      "line": 63,
+      "ack_line": null,
+      "pre_ack_awaits": 1,
+      "total_awaits": 1,
+      "risk": "delegated"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_character_pickers.py",

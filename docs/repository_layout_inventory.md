@@ -64,7 +64,7 @@
 - `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 0, exports 1, refs 4.
 - `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 1, exports 1, refs 7.
 - `velvet_bot.domains.workspaces.product_repository` · domain `workspaces`: production 2, tests 1, exports 0, refs 3.
-- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 3, tests 3, exports 1, refs 7.
+- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 4, tests 4, exports 1, refs 9.
 
 ### infrastructure
 

@@ -4,13 +4,13 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **79** в **47** файлах;
-- approved boundaries: **79**;
+- raw broad exceptions: **80** в **48** файлах;
+- approved boundaries: **80**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **103**;
+- callback handlers: **105**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **27**;
-- delegated callbacks: **6**.
+- delegated callbacks: **8**.
 
 ## Approved broad boundaries
 
@@ -77,6 +77,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/references/comparison.py:282` `handle_reference_comparison`: report-reference-comparison-failure.
 - `velvet_bot/presentation/telegram/routers/references/comparison_help.py:255` `handle_reference_comparison_reply`: compensate-reference-comparison-form-job.
 - `velvet_bot/presentation/telegram/routers/supervisor/console.py:174` `_watch_console_operation`: isolate-supervisor-console-watcher.
+- `velvet_bot/presentation/telegram/routers/workspace_analytics.py:128` `_ingest`: report-workspace-analytics-ingest-failure.
 - `velvet_bot/presentation/telegram/routers/workspace_publications.py:400` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
 - `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:978` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
 - `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
