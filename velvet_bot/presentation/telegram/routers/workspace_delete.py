@@ -96,7 +96,6 @@ async def handle_workspace_delete_command(
         await message.answer(str(error))
 
 
-@router.callback_query(WorkspaceDeleteCallback.filter())
 async def handle_workspace_delete_callback(
     callback: CallbackQuery,
     callback_data: WorkspaceDeleteCallback,
@@ -153,6 +152,12 @@ async def handle_workspace_delete_callback(
             ),
         )
     await callback.answer("Пространство удалено.")
+
+
+router.callback_query.register(
+    handle_workspace_delete_callback,
+    WorkspaceDeleteCallback.filter(),
+)
 
 
 __all__ = (
