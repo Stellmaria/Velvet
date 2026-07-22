@@ -281,8 +281,19 @@ def build_workspace_home_keyboard(
                     ),
                 )
             ],
-            [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))],
         ]
+    )
+    if not workspace.is_system:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🗑 Удалить пространство",
+                    callback_data=f"wsdel:request:{workspace.id}",
+                )
+            ]
+        )
+    rows.append(
+        [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
