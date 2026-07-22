@@ -422,17 +422,6 @@ async def handle_watermark_callback(
     service = _build_service(bot, database)
     owner_user_id = callback.from_user.id
     job_id = callback_data.job_id
-    try:
-        current = await service.get_current(job_id, owner_user_id=owner_user_id)
-        await _require_job_workspace(
-            database,
-            workspace_service,
-            user_id=owner_user_id,
-            workspace_id=current.job.workspace_id,
-        )
-    except (WorkspaceAccessError, ValueError) as error:
-        await callback.answer(str(error), show_alert=True)
-        return
 
     if action == "archive_edit":
         try:
@@ -440,7 +429,18 @@ async def handle_watermark_callback(
                 job_id,
                 owner_user_id=owner_user_id,
             )
-        except ValueError:
+            await _require_job_workspace(
+                database,
+                workspace_service,
+                user_id=owner_user_id,
+                workspace_id=getattr(
+                    item.job,
+                    "workspace_id",
+                    DEFAULT_WORKSPACE_ID,
+                ),
+            )
+        except (WorkspaceAccessError, ValueError):
+            # Do not reveal whether an archive job exists for another owner/workspace.
             await callback.answer("Архивное задание не найдено.", show_alert=True)
             return
         if item.job.archive_media_id is None:
@@ -453,6 +453,22 @@ async def handle_watermark_callback(
             item,
             keyboard=build_archive_watermark_edit_keyboard(item),
         )
+        return
+
+    try:
+        current = await service.get_current(job_id, owner_user_id=owner_user_id)
+        await _require_job_workspace(
+            database,
+            workspace_service,
+            user_id=owner_user_id,
+            workspace_id=getattr(
+                current.job,
+                "workspace_id",
+                DEFAULT_WORKSPACE_ID,
+            ),
+        )
+    except (WorkspaceAccessError, ValueError) as error:
+        await callback.answer(str(error), show_alert=True)
         return
 
     if action == "custom_color":

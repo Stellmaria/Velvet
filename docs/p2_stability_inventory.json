@@ -885,7 +885,7 @@
       "line": 382,
       "ack_line": 391,
       "pre_ack_awaits": 0,
-      "total_awaits": 35,
+      "total_awaits": 36,
       "risk": "early_ack"
     },
     {

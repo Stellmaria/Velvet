@@ -57,14 +57,9 @@ class PostgreSQLWorkspaceArchiveIsolationTests(unittest.IsolatedAsyncioTestCase)
         async with self.database.acquire() as connection:
             await connection.execute("TRUNCATE characters RESTART IDENTITY CASCADE")
             await connection.execute("DELETE FROM user_workspace_preferences")
-            await connection.execute(
-                "DELETE FROM workspace_members WHERE workspace_id <> $1::BIGINT",
-                DEFAULT_WORKSPACE_ID,
-            )
-            await connection.execute(
-                "DELETE FROM workspace_channels WHERE workspace_id <> $1::BIGINT",
-                DEFAULT_WORKSPACE_ID,
-            )
+            # Deleting the workspace is the product operation. Memberships,
+            # channels and the rest of the tenant graph are removed by FK cascades.
+            # Direct owner deletion is intentionally blocked by migration 909.
             await connection.execute(
                 "DELETE FROM workspaces WHERE id <> $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
