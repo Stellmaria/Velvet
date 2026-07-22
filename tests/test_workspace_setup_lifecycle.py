@@ -45,12 +45,17 @@ class WorkspaceSetupSourceContractTests(unittest.TestCase):
         self.assertLess(quick, onboarding)
         self.assertLess(quick, legacy)
 
-    def test_start_exposes_resume_and_remove_actions(self) -> None:
-        source = Path(
+    def test_start_and_workspace_home_expose_remove_action(self) -> None:
+        start_source = Path(
             "velvet_bot/presentation/telegram/routers/archive_and_public_controllers/start.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("Продолжить быструю настройку", source)
-        self.assertIn("Удалить моё пространство", source)
+        self.assertIn("Продолжить быструю настройку", start_source)
+        self.assertIn("Удалить моё пространство", start_source)
+
+        workspace_ui = Path("velvet_bot/workspace_ui.py").read_text(encoding="utf-8")
+        self.assertIn("🗑 Удалить пространство", workspace_ui)
+        self.assertIn('callback_data=f"wsdel:request:{workspace.id}"', workspace_ui)
+        self.assertIn("if not workspace.is_system", workspace_ui)
 
     def test_lifecycle_migration_cascades_blocking_foreign_keys(self) -> None:
         migration = Path("migrations/911_workspace_self_delete.sql").read_text(
@@ -64,7 +69,7 @@ class WorkspaceSetupSourceContractTests(unittest.TestCase):
         source = Path(
             "velvet_bot/presentation/telegram/routers/workspace_delete.py"
         ).read_text(encoding="utf-8")
-        self.assertIn('workspace_delete_callback("confirm"', source)
+        self.assertIn('action="confirm"', source)
         self.assertIn("удалить безвозвратно", source)
         service = Path("velvet_bot/domains/workspaces/deletion.py").read_text(
             encoding="utf-8"
