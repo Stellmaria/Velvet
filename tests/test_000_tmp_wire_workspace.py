@@ -13,7 +13,12 @@ try:
 except SystemExit as error:
     if "marker not found in velvet_bot/watermark_ui.py" not in str(error):
         raise
-    runpy.run_path("tools/tmp_wire_team_watermark_resume.py", run_name="__main__")
+    try:
+        runpy.run_path("tools/tmp_wire_team_watermark_resume.py", run_name="__main__")
+    except FileNotFoundError as missing:
+        if "test_p3_router_organization.py" not in str(missing):
+            raise
+        runpy.run_path("tools/tmp_wire_team_watermark_finish.py", run_name="__main__")
 
 _TARGETS = (
     "velvet_bot/domains/watermark/models.py",
@@ -26,7 +31,7 @@ _TARGETS = (
     "velvet_bot/presentation/telegram/routers/archive_and_public.py",
     "velvet_bot/core/access/policy.py",
     "velvet_bot/presentation/telegram/routers/workspace_team.py",
-    "tests/test_p3_router_organization.py",
+    "tests/test_p3_architecture_organization.py",
     "tools/krita/README.md",
     "docs/krita_watermark.md",
 )
