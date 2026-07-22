@@ -1,0 +1,185 @@
+name: temp workspace grant sql hotfix
+
+on:
+  push:
+    branches:
+      - agent/workspace-grant-sql-hotfix
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-grant-sql-hotfix
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Apply SQL alias fix and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('velvet_bot/domains/workspaces/administration.py')
+          source = source_path.read_text(encoding='utf-8')
+          old_alias_count = source.count('grant.')
+          old_from_count = source.count('AS grant')
+          if old_alias_count < 10 or old_from_count != 2:
+              raise SystemExit(
+                  f'unexpected grant alias counts: grant.={old_alias_count}, AS grant={old_from_count}'
+              )
+          source = source.replace('grant.', 'creation_grant.')
+          source = source.replace('AS grant', 'AS creation_grant')
+          source_path.write_text(source, encoding='utf-8')
+
+          test_path = Path('tests/test_workspace_admin_postgres.py')
+          test_path.write_text('''from __future__ import annotations
+
+import os
+import unittest
+
+from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.administration import WorkspaceAdministrationService
+from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
+from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
+from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
+from velvet_bot.domains.workspaces.repository import WorkspaceRepository
+
+
+@unittest.skipUnless(
+    os.getenv("TEST_DATABASE_URL"),
+    "TEST_DATABASE_URL is required for PostgreSQL integration tests",
+)
+class PostgreSQLWorkspaceAdministrationTests(unittest.IsolatedAsyncioTestCase):
+    TEST_USER_ID = 98001
+
+    async def asyncSetUp(self) -> None:
+        self.database = Database(os.environ["TEST_DATABASE_URL"])
+        await self.database.initialize()
+        await self._cleanup()
+
+    async def asyncTearDown(self) -> None:
+        await self._cleanup()
+        await self.database.close()
+
+    async def _cleanup(self) -> None:
+        async with self.database.acquire() as connection:
+            await connection.execute(
+                "DELETE FROM workspace_creation_grants WHERE user_id = $1::BIGINT",
+                self.TEST_USER_ID,
+            )
+
+    async def test_list_and_get_creation_grants_execute_on_postgresql(self) -> None:
+        product_service = WorkspaceProductService(
+            product_repository=WorkspaceProductRepository(self.database),
+            workspace_repository=WorkspaceRepository(self.database),
+        )
+        await product_service.grant_creation_access(
+            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+            user_id=self.TEST_USER_ID,
+            allowed_modules=("characters", "archive"),
+        )
+
+        administration = WorkspaceAdministrationService(self.database)
+        item = await administration.get_creation_grant(
+            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+            user_id=self.TEST_USER_ID,
+        )
+        self.assertIsNotNone(item)
+        assert item is not None
+        self.assertEqual(self.TEST_USER_ID, item.user_id)
+        self.assertEqual(("characters", "archive"), item.allowed_modules)
+
+        listed = await administration.list_creation_grants(
+            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+            limit=50,
+        )
+        self.assertIn(self.TEST_USER_ID, {grant.user_id for grant in listed})
+
+
+if __name__ == "__main__":
+    unittest.main()
+''', encoding='utf-8')
+
+          worklog = Path('docs/worklog/2026-07-22-workspace-grant-sql-alias-hotfix.md')
+          worklog.write_text('''# Сессия: SQL alias creation grant
+
+- Дата: 2026-07-22
+- ID: `2026-07-22-workspace-grant-sql-alias-hotfix`
+- Линия/фаза: workspace administration hotfix
+- Статус: `готово`
+- Ветка: `agent/workspace-grant-sql-hotfix`
+- Базовый commit: `main`
+
+## Перед началом
+
+### Цель
+
+Устранить падение панели Стэл с `PostgresSyntaxError` около ключевого слова `grant`.
+
+### Исходный контекст
+
+Методы `list_creation_grants` и `get_creation_grant` использовали зарезервированное PostgreSQL слово `grant` как SQL alias. Ошибка проявлялась отдельно через `fetch` и `fetchrow`, но имела одну корневую причину.
+
+### Планируемый объём
+
+- переименовать alias во всех запросах доменного сервиса;
+- выполнить оба запроса на настоящем PostgreSQL;
+- не менять схему базы и публичный контракт панели.
+
+### Критерии готовности
+
+- список разрешений открывается без SQL syntax error;
+- карточка разрешения открывается без SQL syntax error;
+- полный CI проходит.
+
+### Риски и ограничения
+
+Миграция не требуется, меняется только текст SELECT-запросов.
+
+## После завершения
+
+### Фактически сделано
+
+- alias `grant` заменён на `creation_grant` в обоих запросах;
+- добавлен PostgreSQL integration test для `list_creation_grants` и `get_creation_grant`.
+
+### Миграции и совместимость
+
+Миграции отсутствуют. Формат данных и Telegram callbacks не менялись.
+
+### Проверки
+
+Ожидается полный GitHub Actions CI.
+
+### PR и commit
+
+Будут указаны после публикации.
+
+### Незавершённое
+
+После merge требуется повторно открыть панель `🏛 Пространства` и отметить инцидент #63 прочитанным.
+
+### Следующий шаг
+
+Слить hotfix после зелёного CI и выполнить Supervisor Update.
+''', encoding='utf-8')
+
+          Path('.github/workflows/temp_workspace_grant_sql_hotfix.yml').unlink()
+          PY
+
+      - name: Commit hotfix
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot tests docs .github/workflows/temp_workspace_grant_sql_hotfix.yml
+          git commit -m "Fix reserved grant SQL alias in workspace administration"
+          git push origin HEAD:agent/workspace-grant-sql-hotfix
