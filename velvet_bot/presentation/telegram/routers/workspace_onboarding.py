@@ -261,8 +261,10 @@ def _guide_text(workspace: Workspace) -> str:
         "<b>Чаты и ветки</b>\n"
         "Бот не может безопасно угадывать, какой из ваших чатов считать архивом. "
         "Поэтому откройте нужный чат или конкретную тему и отправьте там команду "
-        "<code>/workspace_bind НАЗНАЧЕНИЕ</code>. Бот сохранит chat_id, текущую тему, "
-        "ссылку и проверит свои права.\n\n"
+        "<code>/workspace_bind НАЗНАЧЕНИЕ</code>. Для канала, где нельзя написать "
+        "команду от себя, используйте в ЛС "
+        "<code>/workspace_bind_channel НАЗНАЧЕНИЕ @channel</code>. Бот сохранит "
+        "chat_id, текущую тему, ссылку и проверит свои права.\n\n"
         "Настройки всегда можно пересмотреть через <code>/workspace_setup</code>, "
         "а текущую схему — через <code>/workspace_setup_status</code>."
     )
@@ -703,7 +705,13 @@ async def handle_workspace_bind(
         return
     can_manage_topics = bool(getattr(member, "can_manage_topics", False))
     is_forum = bool(getattr(message.chat, "is_forum", False))
-    if spec.requires_forum_admin and is_forum and not can_manage_topics:
+    if spec.requires_forum_admin and not is_forum:
+        await message.answer(
+            "Назначение «Персонажи» должно быть форумной супергруппой. "
+            "Включите темы в настройках группы и повторите команду."
+        )
+        return
+    if spec.requires_forum_admin and not can_manage_topics:
         await message.answer(
             "Для веток персонажей выдайте боту право «Управление темами» и повторите команду."
         )
@@ -722,10 +730,10 @@ async def handle_workspace_bind(
         workspace_id=workspace.id,
         destination_key=key,
         chat_id=message.chat.id,
-        message_thread_id=message.message_thread_id,
+        message_thread_id=(None if key == "characters" else message.message_thread_id),
         chat_type=_chat_type_value(message),
         chat_title=getattr(message.chat, "title", None),
-        topic_title=_topic_title(message),
+        topic_title=(None if key == "characters" else _topic_title(message)),
         url=_message_url(message),
         bot_status=status,
         can_post=can_post,
@@ -997,7 +1005,6 @@ async def handle_workspace_onboarding_callback(
             workspace_product_service=workspace_product_service,
         )
         if not ready:
-            await callback.answer("Настройка ещё не завершена.", show_alert=True)
             await _edit_or_answer(
                 callback,
                 text=text,

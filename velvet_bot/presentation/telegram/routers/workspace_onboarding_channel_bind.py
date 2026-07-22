@@ -107,6 +107,13 @@ async def handle_workspace_bind_channel(
         if item.is_allowed and item.is_enabled
     }
     spec = DESTINATION_SPECS[key]
+    if key == "characters":
+        await message.answer(
+            "Форум персонажей подключается из самой супергруппы командой "
+            "<code>/workspace_bind characters</code>. Канал не поддерживает "
+            "персональные темы персонажей."
+        )
+        return
     if spec.module_keys and not any(item in enabled for item in spec.module_keys):
         await message.answer(
             f"Сначала включите модуль для назначения «{escape(spec.label)}» в "

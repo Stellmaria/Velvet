@@ -49,8 +49,8 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         label="Персонажи",
         emoji="👥",
         description=(
-            "Базовый чат или тема архива персонажей. Здесь бот сможет создавать "
-            "или связывать персональные ветки персонажей."
+            "Форумный чат архива персонажей. При создании персонажа бот создаёт "
+            "в нём персональную тему и направляет туда копии сохранённых материалов."
         ),
         command_hint="/workspace_bind characters",
         module_keys=("characters", "archive"),
