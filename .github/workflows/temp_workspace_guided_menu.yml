@@ -1,9 +1,9 @@
 name: temp workspace guided menu
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/workspace-guided-menu-navigation
+      - main
 
 permissions:
   contents: write
