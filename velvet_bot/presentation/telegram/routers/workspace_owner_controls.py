@@ -737,9 +737,9 @@ async def _delete_workspace_data(
     return character_count
 
 
-@router.callback_query(WorkspaceCallback.filter(F.action == "home"))
-async def handle_workspace_owner_home(
+async def _handle_workspace_owner_home(
     callback: CallbackQuery,
+    *,
     callback_data: WorkspaceCallback,
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
@@ -760,6 +760,21 @@ async def handle_workspace_owner_home(
         )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
+
+
+@router.callback_query(WorkspaceCallback.filter(F.action == "home"))
+async def handle_workspace_owner_home(
+    callback: CallbackQuery,
+    callback_data: WorkspaceCallback,
+    workspace_service: WorkspaceService,
+    workspace_product_service: WorkspaceProductService,
+) -> None:
+    await _handle_workspace_owner_home(
+        callback,
+        callback_data=callback_data,
+        workspace_service=workspace_service,
+        workspace_product_service=workspace_product_service,
+    )
 
 
 @router.callback_query(
@@ -1090,9 +1105,9 @@ async def handle_workspace_delete_prompt(
     await _show_workspace_delete_confirmation(callback, workspace=workspace)
 
 
-@router.callback_query(WorkspaceCallback.filter(F.action == "deletecancel"))
-async def handle_workspace_delete_cancel(
+async def _handle_workspace_delete_cancel(
     callback: CallbackQuery,
+    *,
     callback_data: WorkspaceCallback,
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
@@ -1113,6 +1128,21 @@ async def handle_workspace_delete_cancel(
         )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
+
+
+@router.callback_query(WorkspaceCallback.filter(F.action == "deletecancel"))
+async def handle_workspace_delete_cancel(
+    callback: CallbackQuery,
+    callback_data: WorkspaceCallback,
+    workspace_service: WorkspaceService,
+    workspace_product_service: WorkspaceProductService,
+) -> None:
+    await _handle_workspace_delete_cancel(
+        callback,
+        callback_data=callback_data,
+        workspace_service=workspace_service,
+        workspace_product_service=workspace_product_service,
+    )
 
 
 @router.callback_query(WorkspaceCallback.filter(F.action == "deleteconfirm"))

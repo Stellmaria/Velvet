@@ -34,6 +34,7 @@ OWNER_COMMAND_GROUPS: tuple[
             ("workspace_bind", "привязать текущий чат или тему к назначению"),
             ("workspace_bind_channel", "привязать канал из ЛС по @username или chat_id"),
             ("workspace_unbind", "удалить назначение чата или темы"),
+            ("workspace_delete", "удалить личное пространство с подтверждением"),
         ),
     ),
     (
