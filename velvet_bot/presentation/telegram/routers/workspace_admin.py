@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
-from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, WorkspaceRole
 from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
@@ -47,29 +47,9 @@ def _is_global_owner(user_id: int) -> bool:
     return int(user_id) == GLOBAL_WORKSPACE_CREATOR_ID
 
 
-async def _module_enabled(
-    database: Database,
-    *,
-    workspace_id: int,
-    module_key: str,
-) -> bool:
-    async with database.acquire() as connection:
-        value = await connection.fetchval(
-            """
-            SELECT is_allowed AND is_enabled
-            FROM workspace_modules
-            WHERE workspace_id = $1::BIGINT
-              AND module_key = $2::VARCHAR
-            """,
-            int(workspace_id),
-            module_key,
-        )
-    return bool(value)
-
-
 async def _require_character_access(
     *,
-    database: Database,
+    workspace_product_service: WorkspaceProductService,
     workspace_service: WorkspaceService,
     workspace_id: int,
     user_id: int,
@@ -81,8 +61,7 @@ async def _require_character_access(
         minimum_role=cast(WorkspaceRole, minimum_role),
         global_owner=_is_global_owner(user_id),
     )
-    if not await _module_enabled(
-        database,
+    if not await workspace_product_service.is_module_enabled(
         workspace_id=workspace_id,
         module_key="characters",
     ):
@@ -99,329 +78,28 @@ def _story_text(value: str) -> str:
 
 
 def _classification_text(row) -> str:
-    category = escape(str(row["category"])) if row["category"] else "не выбрана"
-    universe = escape(str(row["universe"])) if row["universe"] else "не выбрана"
+    category = escape(str(row.category)) if row.category else "не выбрана"
+    universe = escape(str(row.universe)) if row.universe else "не выбрана"
     return f"{category} / {universe}"
 
 
-async def _list_workspace_characters(
-    database: Database,
-    *,
-    workspace_id: int,
-):
-    async with database.acquire() as connection:
-        return await connection.fetch(
-            """
-            SELECT
-                character.id,
-                character.name,
-                character.category,
-                character.universe,
-                COALESCE(
-                    ARRAY_AGG(
-                        story.id::TEXT || '|' ||
-                        CASE WHEN link.is_primary THEN '1' ELSE '0' END || '|' ||
-                        story.short_label || '|' || story.title
-                        ORDER BY
-                            link.is_primary DESC,
-                            story.sort_order,
-                            story.title,
-                            story.id
-                    ) FILTER (WHERE story.id IS NOT NULL),
-                    ARRAY[]::TEXT[]
-                ) AS stories
-            FROM characters AS character
-            LEFT JOIN workspace_character_story_links AS link
-              ON link.workspace_id = character.workspace_id
-             AND link.character_id = character.id
-            LEFT JOIN workspace_stories AS story
-              ON story.workspace_id = link.workspace_id
-             AND story.id = link.story_id
-            WHERE character.workspace_id = $1::BIGINT
-            GROUP BY character.id
-            ORDER BY character.normalized_name, character.id
-            """,
-            int(workspace_id),
-        )
-
-
-async def _load_workspace_character(
-    database: Database,
-    *,
-    workspace_id: int,
-    character_id: int,
-):
-    async with database.acquire() as connection:
-        return await connection.fetchrow(
-            """
-            SELECT
-                character.id,
-                character.name,
-                character.category,
-                character.universe,
-                COALESCE(
-                    ARRAY_AGG(
-                        story.id::TEXT || '|' ||
-                        CASE WHEN link.is_primary THEN '1' ELSE '0' END || '|' ||
-                        story.short_label || '|' || story.title
-                        ORDER BY
-                            link.is_primary DESC,
-                            story.sort_order,
-                            story.title,
-                            story.id
-                    ) FILTER (WHERE story.id IS NOT NULL),
-                    ARRAY[]::TEXT[]
-                ) AS stories
-            FROM characters AS character
-            LEFT JOIN workspace_character_story_links AS link
-              ON link.workspace_id = character.workspace_id
-             AND link.character_id = character.id
-            LEFT JOIN workspace_stories AS story
-              ON story.workspace_id = link.workspace_id
-             AND story.id = link.story_id
-            WHERE character.workspace_id = $1::BIGINT
-              AND character.id = $2::BIGINT
-            GROUP BY character.id
-            """,
-            int(workspace_id),
-            int(character_id),
-        )
-
-
-async def _set_character_category(
-    database: Database,
-    *,
-    workspace_id: int,
-    character_id: int,
-    category_key: str | None,
-) -> None:
-    async with database.acquire() as connection:
-        if category_key is not None:
-            exists = await connection.fetchval(
-                """
-                SELECT TRUE
-                FROM workspace_categories
-                WHERE workspace_id = $1::BIGINT
-                  AND key = $2::VARCHAR
-                  AND is_enabled
-                """,
-                int(workspace_id),
-                category_key,
-            )
-            if not exists:
-                raise ValueError("Категория не найдена в структуре этого архива.")
-        result = await connection.execute(
-            """
-            UPDATE characters
-            SET category = $3::VARCHAR
-            WHERE workspace_id = $1::BIGINT
-              AND id = $2::BIGINT
-            """,
-            int(workspace_id),
-            int(character_id),
-            category_key,
-        )
-    if result == "UPDATE 0":
-        raise ValueError("Персонаж не найден в этом архиве.")
-
-
-async def _set_character_universe(
-    database: Database,
-    *,
-    workspace_id: int,
-    character_id: int,
-    universe_key: str | None,
-) -> None:
-    async with database.acquire() as connection:
-        async with connection.transaction():
-            if universe_key is not None:
-                exists = await connection.fetchval(
-                    """
-                    SELECT TRUE
-                    FROM workspace_universes
-                    WHERE workspace_id = $1::BIGINT
-                      AND key = $2::VARCHAR
-                      AND is_enabled
-                    """,
-                    int(workspace_id),
-                    universe_key,
-                )
-                if not exists:
-                    raise ValueError("Вселенная не найдена в структуре этого архива.")
-            result = await connection.execute(
-                """
-                UPDATE characters
-                SET universe = $3::VARCHAR,
-                    story_id = NULL
-                WHERE workspace_id = $1::BIGINT
-                  AND id = $2::BIGINT
-                """,
-                int(workspace_id),
-                int(character_id),
-                universe_key,
-            )
-            if result == "UPDATE 0":
-                raise ValueError("Персонаж не найден в этом архиве.")
-            await connection.execute(
-                """
-                DELETE FROM workspace_character_story_links
-                WHERE workspace_id = $1::BIGINT
-                  AND character_id = $2::BIGINT
-                """,
-                int(workspace_id),
-                int(character_id),
-            )
-
-
-async def _toggle_character_story(
-    database: Database,
-    *,
-    workspace_id: int,
-    character_id: int,
-    story_id: int,
-    assigned_by_user_id: int,
-) -> bool:
-    async with database.acquire() as connection:
-        async with connection.transaction():
-            character = await connection.fetchrow(
-                """
-                SELECT id, universe
-                FROM characters
-                WHERE workspace_id = $1::BIGINT
-                  AND id = $2::BIGINT
-                FOR UPDATE
-                """,
-                int(workspace_id),
-                int(character_id),
-            )
-            story = await connection.fetchrow(
-                """
-                SELECT id, universe_key
-                FROM workspace_stories
-                WHERE workspace_id = $1::BIGINT
-                  AND id = $2::BIGINT
-                  AND is_enabled
-                """,
-                int(workspace_id),
-                int(story_id),
-            )
-            if character is None:
-                raise ValueError("Персонаж не найден в этом архиве.")
-            if story is None:
-                raise ValueError("История не найдена в структуре этого архива.")
-            if character["universe"] != story["universe_key"]:
-                raise ValueError("Сначала назначьте персонажу вселенную этой истории.")
-
-            existing = await connection.fetchrow(
-                """
-                SELECT is_primary
-                FROM workspace_character_story_links
-                WHERE workspace_id = $1::BIGINT
-                  AND character_id = $2::BIGINT
-                  AND story_id = $3::BIGINT
-                """,
-                int(workspace_id),
-                int(character_id),
-                int(story_id),
-            )
-            if existing is not None:
-                await connection.execute(
-                    """
-                    DELETE FROM workspace_character_story_links
-                    WHERE workspace_id = $1::BIGINT
-                      AND character_id = $2::BIGINT
-                      AND story_id = $3::BIGINT
-                    """,
-                    int(workspace_id),
-                    int(character_id),
-                    int(story_id),
-                )
-                if bool(existing["is_primary"]):
-                    next_story_id = await connection.fetchval(
-                        """
-                        SELECT link.story_id
-                        FROM workspace_character_story_links AS link
-                        JOIN workspace_stories AS story ON story.id = link.story_id
-                        WHERE link.workspace_id = $1::BIGINT
-                          AND link.character_id = $2::BIGINT
-                        ORDER BY story.sort_order, story.title, story.id
-                        LIMIT 1
-                        """,
-                        int(workspace_id),
-                        int(character_id),
-                    )
-                    if next_story_id is not None:
-                        await connection.execute(
-                            """
-                            UPDATE workspace_character_story_links
-                            SET is_primary = TRUE
-                            WHERE workspace_id = $1::BIGINT
-                              AND character_id = $2::BIGINT
-                              AND story_id = $3::BIGINT
-                            """,
-                            int(workspace_id),
-                            int(character_id),
-                            int(next_story_id),
-                        )
-                return False
-
-            has_primary = bool(
-                await connection.fetchval(
-                    """
-                    SELECT TRUE
-                    FROM workspace_character_story_links
-                    WHERE workspace_id = $1::BIGINT
-                      AND character_id = $2::BIGINT
-                      AND is_primary
-                    LIMIT 1
-                    """,
-                    int(workspace_id),
-                    int(character_id),
-                )
-            )
-            await connection.execute(
-                """
-                INSERT INTO workspace_character_story_links (
-                    workspace_id,
-                    character_id,
-                    story_id,
-                    is_primary,
-                    assigned_by_user_id
-                )
-                VALUES (
-                    $1::BIGINT,
-                    $2::BIGINT,
-                    $3::BIGINT,
-                    $4::BOOLEAN,
-                    $5::BIGINT
-                )
-                """,
-                int(workspace_id),
-                int(character_id),
-                int(story_id),
-                not has_primary,
-                int(assigned_by_user_id),
-            )
-            return True
-
-
 async def _format_character_panel(
-    database: Database,
+    workspace_characters: WorkspaceCharacterService,
     *,
     workspace_id: int,
     workspace_name: str,
 ) -> str:
-    rows = await _list_workspace_characters(database, workspace_id=workspace_id)
+    rows = await workspace_characters.list(workspace_id=workspace_id)
     lines = [
         f"<b>👥 Персонажи · {escape(workspace_name)}</b>",
         "",
     ]
     if rows:
         for row in rows[:25]:
-            stories = row["stories"] or ()
+            stories = row.stories
             story_mark = f" · 📖 {len(stories)}" if stories else ""
             lines.append(
-                f"• <code>#{int(row['id'])}</code> <b>{escape(str(row['name']))}</b>"
+                f"• <code>#{row.id}</code> <b>{escape(row.name)}</b>"
                 f" · {_classification_text(row)}{story_mark}"
             )
         if len(rows) > 25:
@@ -449,56 +127,42 @@ async def _format_character_panel(
 
 
 async def _format_taxonomy(
-    database: Database,
+    workspace_product_service: WorkspaceProductService,
     *,
     workspace_id: int,
 ) -> str:
-    async with database.acquire() as connection:
-        categories = await connection.fetch(
-            """
-            SELECT key, label, emoji
-            FROM workspace_categories
-            WHERE workspace_id = $1::BIGINT AND is_enabled
-            ORDER BY sort_order, label, id
-            """,
-            int(workspace_id),
+    categories = tuple(
+        item
+        for item in await workspace_product_service.list_categories(workspace_id)
+        if item.is_enabled
+    )
+    universes = tuple(
+        item
+        for item in await workspace_product_service.list_universes(workspace_id)
+        if item.is_enabled
+    )
+    stories = tuple(
+        item
+        for item in await workspace_product_service.list_stories(
+            workspace_id=workspace_id
         )
-        universes = await connection.fetch(
-            """
-            SELECT key, label, emoji, requires_story
-            FROM workspace_universes
-            WHERE workspace_id = $1::BIGINT AND is_enabled
-            ORDER BY sort_order, label, id
-            """,
-            int(workspace_id),
-        )
-        stories = await connection.fetch(
-            """
-            SELECT id, universe_key, short_label, title
-            FROM workspace_stories
-            WHERE workspace_id = $1::BIGINT AND is_enabled
-            ORDER BY universe_key, sort_order, title, id
-            """,
-            int(workspace_id),
-        )
+        if item.is_enabled
+    )
     lines = ["<b>🗂 Структура архива</b>", "", "<b>Категории</b>"]
     lines.extend(
-        f"{escape(str(row['emoji']))} <code>{escape(str(row['key']))}</code> · "
-        f"{escape(str(row['label']))}"
+        f"{escape(row.emoji)} <code>{escape(row.key)}</code> · {escape(row.label)}"
         for row in categories
     )
     lines.extend(["", "<b>Вселенные</b>"])
     lines.extend(
-        f"{escape(str(row['emoji']))} <code>{escape(str(row['key']))}</code> · "
-        f"{escape(str(row['label']))}"
-        + (" · история обязательна" if row["requires_story"] else "")
+        f"{escape(row.emoji)} <code>{escape(row.key)}</code> · {escape(row.label)}"
+        + (" · история обязательна" if row.requires_story else "")
         for row in universes
     )
     lines.extend(["", "<b>Истории</b>"])
     lines.extend(
-        f"📖 <code>{int(row['id'])}</code> · "
-        f"{escape(str(row['universe_key']))} · "
-        f"{escape(str(row['short_label']))} · {escape(str(row['title']))}"
+        f"📖 <code>{row.id}</code> · {escape(row.universe_key)} · "
+        f"{escape(row.short_label)} · {escape(row.title)}"
         for row in stories[:60]
     )
     if len(stories) > 60:
@@ -509,13 +173,12 @@ async def _format_taxonomy(
 
 
 async def _format_character_card(
-    database: Database,
+    workspace_characters: WorkspaceCharacterService,
     *,
     workspace_id: int,
     character_id: int,
 ) -> str:
-    row = await _load_workspace_character(
-        database,
+    row = await workspace_characters.load(
         workspace_id=workspace_id,
         character_id=character_id,
     )
@@ -524,14 +187,18 @@ async def _format_character_card(
     lines = [
         "<b>Карточка персонажа</b>",
         "",
-        f"Имя: <b>{escape(str(row['name']))}</b>",
-        f"ID: <code>{int(row['id'])}</code>",
+        f"Имя: <b>{escape(row.name)}</b>",
+        f"ID: <code>{row.id}</code>",
         f"Категория / вселенная: {_classification_text(row)}",
         "",
         "<b>Истории</b>",
     ]
-    stories = row["stories"] or ()
-    lines.extend(_story_text(value) for value in stories)
+    stories = row.stories
+    lines.extend(
+        f"{'⭐' if story.is_primary else '📖'} <code>{story.id}</code> "
+        f"{escape(story.short_label)} · {escape(story.title)}"
+        for story in stories
+    )
     if not stories:
         lines.append("Не назначены.")
     return "\n".join(lines)
@@ -541,7 +208,8 @@ async def handle_workspace_character_module(
     callback: CallbackQuery,
     callback_data: WorkspaceCallback,
     state: FSMContext,
-    database: Database,
+    workspace_characters: WorkspaceCharacterService,
+    workspace_product_service: WorkspaceProductService,
     workspace_service: WorkspaceService,
 ) -> None:
     user_id = callback.from_user.id
@@ -558,7 +226,7 @@ async def handle_workspace_character_module(
             )
             return
         await _require_character_access(
-            database=database,
+            workspace_product_service=workspace_product_service,
             workspace_service=workspace_service,
             workspace_id=workspace.id,
             user_id=user_id,
@@ -574,7 +242,7 @@ async def handle_workspace_character_module(
         workspace_name=workspace.name,
     )
     text = await _format_character_panel(
-        database,
+        workspace_characters,
         workspace_id=workspace.id,
         workspace_name=workspace.name,
     )
@@ -639,7 +307,8 @@ async def handle_workspace_character_back(
 async def handle_workspace_character_message(
     message: Message,
     state: FSMContext,
-    database: Database,
+    workspace_characters: WorkspaceCharacterService,
+    workspace_product_service: WorkspaceProductService,
     workspace_service: WorkspaceService,
 ) -> None:
     data = await state.get_data()
@@ -652,7 +321,7 @@ async def handle_workspace_character_message(
         return
     try:
         await _require_character_access(
-            database=database,
+            workspace_product_service=workspace_product_service,
             workspace_service=workspace_service,
             workspace_id=workspace_id,
             user_id=user_id,
@@ -674,7 +343,7 @@ async def handle_workspace_character_message(
         if action in {"список", "list"}:
             await message.answer(
                 await _format_character_panel(
-                    database,
+                    workspace_characters,
                     workspace_id=workspace_id,
                     workspace_name=workspace_name,
                 )
@@ -682,14 +351,17 @@ async def handle_workspace_character_message(
             return
         if action in {"структура", "taxonomy"}:
             await message.answer(
-                await _format_taxonomy(database, workspace_id=workspace_id)
+                await _format_taxonomy(
+                    workspace_product_service,
+                    workspace_id=workspace_id,
+                )
             )
             return
         if action in {"создать", "create"}:
             if not tail:
                 raise ValueError("После «создать» укажите имя персонажа.")
-            character, created = await database.create_character(
-                tail,
+            character, created = await workspace_characters.create(
+                name=tail,
                 created_by=user_id,
                 created_in_chat=message.chat.id,
                 workspace_id=workspace_id,
@@ -710,7 +382,7 @@ async def handle_workspace_character_message(
                 raise ValueError("Формат: <code>карточка ID</code>")
             await message.answer(
                 await _format_character_card(
-                    database,
+                    workspace_characters,
                     workspace_id=workspace_id,
                     character_id=int(tail),
                 )
@@ -720,8 +392,7 @@ async def handle_workspace_character_message(
             if len(parts) != 2 or not parts[0].isdigit():
                 raise ValueError("Формат: <code>категория ID key</code>")
             key = None if parts[1] in {"-", "нет", "off"} else parts[1].casefold()
-            await _set_character_category(
-                database,
+            await workspace_characters.set_category(
                 workspace_id=workspace_id,
                 character_id=int(parts[0]),
                 category_key=key,
@@ -732,8 +403,7 @@ async def handle_workspace_character_message(
             if len(parts) != 2 or not parts[0].isdigit():
                 raise ValueError("Формат: <code>вселенная ID key</code>")
             key = None if parts[1] in {"-", "нет", "off"} else parts[1].casefold()
-            await _set_character_universe(
-                database,
+            await workspace_characters.set_universe(
                 workspace_id=workspace_id,
                 character_id=int(parts[0]),
                 universe_key=key,
@@ -745,8 +415,7 @@ async def handle_workspace_character_message(
         if action in {"история", "story"}:
             if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
                 raise ValueError("Формат: <code>история ID story_id</code>")
-            assigned = await _toggle_character_story(
-                database,
+            assigned = await workspace_characters.toggle_story(
                 workspace_id=workspace_id,
                 character_id=int(parts[0]),
                 story_id=int(parts[1]),
@@ -838,9 +507,5 @@ router.message.register(
 
 
 __all__ = (
-    "_load_workspace_character",
-    "_set_character_category",
-    "_set_character_universe",
-    "_toggle_character_story",
     "router",
 )

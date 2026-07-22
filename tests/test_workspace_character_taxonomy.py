@@ -9,12 +9,14 @@ from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
+from velvet_bot.domains.workspaces.character_management import (
+    load_workspace_character,
+    set_workspace_character_category,
+    set_workspace_character_universe,
+    toggle_workspace_character_story,
+)
 from velvet_bot.presentation.telegram.routers.workspace_admin import (
     WorkspaceForm,
-    _load_workspace_character,
-    _set_character_category,
-    _set_character_universe,
-    _toggle_character_story,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +55,18 @@ class WorkspaceCharacterTaxonomyContractTests(unittest.TestCase):
         state_name = WorkspaceForm.waiting_character_command.state
         self.assertIsNotNone(state_name)
         self.assertTrue(str(state_name).startswith("WorkspaceForm:"))
+
+    def test_character_router_uses_application_services_not_database(self) -> None:
+        source = (
+            ROOT / "velvet_bot/presentation/telegram/routers/workspace_admin.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("WorkspaceCharacterService", source)
+        self.assertNotIn("from velvet_bot.database", source)
+        self.assertNotIn("database.acquire()", source)
+        self.assertNotIn("SELECT ", source)
+        self.assertNotIn("INSERT ", source)
+        self.assertNotIn("UPDATE ", source)
+        self.assertNotIn("DELETE ", source)
 
 
 @unittest.skipUnless(
@@ -139,19 +153,19 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
         )
         self.assertTrue(created)
 
-        await _set_character_category(
+        await set_workspace_character_category(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
             category_key="portrait",
         )
-        await _set_character_universe(
+        await set_workspace_character_universe(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
             universe_key="custom",
         )
-        assigned = await _toggle_character_story(
+        assigned = await toggle_workspace_character_story(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
@@ -160,19 +174,19 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
         )
         self.assertTrue(assigned)
 
-        row = await _load_workspace_character(
+        row = await load_workspace_character(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
         )
         self.assertIsNotNone(row)
         assert row is not None
-        self.assertEqual("portrait", row["category"])
-        self.assertEqual("custom", row["universe"])
-        self.assertEqual(1, len(row["stories"]))
-        self.assertIn("Первая глава", row["stories"][0])
+        self.assertEqual("portrait", row.category)
+        self.assertEqual("custom", row.universe)
+        self.assertEqual(1, len(row.stories))
+        self.assertEqual("Первая глава", row.stories[0].title)
 
-        removed = await _toggle_character_story(
+        removed = await toggle_workspace_character_story(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
@@ -198,7 +212,7 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
             label="Custom",
             requires_story=True,
         )
-        await _set_character_universe(
+        await set_workspace_character_universe(
             self.database,
             workspace_id=first.id,
             character_id=character.id,
@@ -206,7 +220,7 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
         )
 
         with self.assertRaisesRegex(ValueError, "История не найдена"):
-            await _toggle_character_story(
+            await toggle_workspace_character_story(
                 self.database,
                 workspace_id=first.id,
                 character_id=character.id,
@@ -229,13 +243,13 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
             created_in_chat=1003,
             workspace_id=workspace.id,
         )
-        await _set_character_universe(
+        await set_workspace_character_universe(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
             universe_key="custom",
         )
-        await _toggle_character_story(
+        await toggle_workspace_character_story(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
@@ -243,21 +257,21 @@ class PostgreSQLWorkspaceCharacterTaxonomyTests(unittest.IsolatedAsyncioTestCase
             assigned_by_user_id=504,
         )
 
-        await _set_character_universe(
+        await set_workspace_character_universe(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
             universe_key="other-custom",
         )
-        row = await _load_workspace_character(
+        row = await load_workspace_character(
             self.database,
             workspace_id=workspace.id,
             character_id=character.id,
         )
         self.assertIsNotNone(row)
         assert row is not None
-        self.assertEqual("other-custom", row["universe"])
-        self.assertEqual([], list(row["stories"]))
+        self.assertEqual("other-custom", row.universe)
+        self.assertEqual([], list(row.stories))
 
 
 if __name__ == "__main__":

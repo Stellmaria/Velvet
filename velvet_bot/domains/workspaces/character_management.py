@@ -879,6 +879,97 @@ async def set_workspace_character_topic(
                 raise ValueError("Персонаж не найден в этом архиве.")
 
 
+class WorkspaceCharacterService:
+    """Application-facing operations for workspace character management."""
+
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    async def create(
+        self,
+        *,
+        workspace_id: int,
+        name: str,
+        created_by: int | None,
+        created_in_chat: int | None,
+    ) -> tuple[WorkspaceCharacterRecord, bool]:
+        return await create_workspace_character(
+            self._database,
+            workspace_id=workspace_id,
+            name=name,
+            created_by=created_by,
+            created_in_chat=created_in_chat,
+        )
+
+    async def list(
+        self,
+        *,
+        workspace_id: int,
+        limit: int = 100,
+    ) -> tuple[WorkspaceCharacterRecord, ...]:
+        return await list_workspace_characters(
+            self._database,
+            workspace_id=workspace_id,
+            limit=limit,
+        )
+
+    async def load(
+        self,
+        *,
+        workspace_id: int,
+        character_id: int,
+    ) -> WorkspaceCharacterRecord | None:
+        return await load_workspace_character(
+            self._database,
+            workspace_id=workspace_id,
+            character_id=character_id,
+        )
+
+    async def set_category(
+        self,
+        *,
+        workspace_id: int,
+        character_id: int,
+        category_key: str | None,
+    ) -> None:
+        await set_workspace_character_category(
+            self._database,
+            workspace_id=workspace_id,
+            character_id=character_id,
+            category_key=category_key,
+        )
+
+    async def set_universe(
+        self,
+        *,
+        workspace_id: int,
+        character_id: int,
+        universe_key: str | None,
+    ) -> None:
+        await set_workspace_character_universe(
+            self._database,
+            workspace_id=workspace_id,
+            character_id=character_id,
+            universe_key=universe_key,
+        )
+
+    async def toggle_story(
+        self,
+        *,
+        workspace_id: int,
+        character_id: int,
+        story_id: int,
+        assigned_by_user_id: int,
+    ) -> bool:
+        return await toggle_workspace_character_story(
+            self._database,
+            workspace_id=workspace_id,
+            character_id=character_id,
+            story_id=story_id,
+            assigned_by_user_id=assigned_by_user_id,
+        )
+
+
 def _row_to_character(
     row,
     *,
@@ -904,6 +995,7 @@ __all__ = (
     "DeletedWorkspaceCharacter",
     "WorkspaceCharacterAlias",
     "WorkspaceCharacterRecord",
+    "WorkspaceCharacterService",
     "WorkspaceCharacterStory",
     "add_workspace_character_alias",
     "create_workspace_character",

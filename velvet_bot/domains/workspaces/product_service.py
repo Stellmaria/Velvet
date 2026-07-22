@@ -281,6 +281,21 @@ class WorkspaceProductService:
             )
         return setting
 
+    async def is_module_enabled(
+        self,
+        *,
+        workspace_id: int,
+        module_key: WorkspaceModuleKey,
+    ) -> bool:
+        """Return the effective module state after caller access was verified."""
+        if module_key not in WORKSPACE_MODULE_KEYS:
+            raise ValueError("Неизвестный модуль.")
+        modules = await self._product.list_modules(int(workspace_id))
+        return any(
+            item.module_key == module_key and item.is_allowed and item.is_enabled
+            for item in modules
+        )
+
     async def _require_taxonomy_access(
         self,
         *,
