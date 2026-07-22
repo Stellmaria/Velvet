@@ -16,61 +16,73 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: agent/workspace-first-run-wizard
-      - name: Patch wizard validation
+      - name: Patch conflict handling
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          wizard_path = Path("velvet_bot/presentation/telegram/routers/workspace_onboarding.py")
-          wizard = wizard_path.read_text(encoding="utf-8")
-
-          old_forum = '''    if spec.requires_forum_admin and is_forum and not can_manage_topics:\n        await message.answer(\n            "Для веток персонажей выдайте боту право «Управление темами» и повторите команду."\n        )\n        return\n'''
-          new_forum = '''    if spec.requires_forum_admin and not is_forum:\n        await message.answer(\n            "Назначение «Персонажи» должно быть форумной супергруппой. "\n            "Включите темы в настройках группы и повторите команду."\n        )\n        return\n    if spec.requires_forum_admin and not can_manage_topics:\n        await message.answer(\n            "Для веток персонажей выдайте боту право «Управление темами» и повторите команду."\n        )\n        return\n'''
-          if old_forum in wizard:
-              wizard = wizard.replace(old_forum, new_forum, 1)
-
-          wizard = wizard.replace(
-              "message_thread_id=message.message_thread_id,",
-              "message_thread_id=(None if key == \"characters\" else message.message_thread_id),",
-              1,
-          )
-          wizard = wizard.replace(
-              "topic_title=_topic_title(message),",
-              "topic_title=(None if key == \"characters\" else _topic_title(message)),",
-              1,
-          )
-
-          old_double = '''        if not ready:\n            await callback.answer("Настройка ещё не завершена.", show_alert=True)\n            await _edit_or_answer(\n                callback,\n                text=text,\n                reply_markup=_summary_keyboard(workspace.id, ready=False),\n            )\n            return\n'''
-          new_double = '''        if not ready:\n            await _edit_or_answer(\n                callback,\n                text=text,\n                reply_markup=_summary_keyboard(workspace.id, ready=False),\n            )\n            return\n'''
-          if old_double in wizard:
-              wizard = wizard.replace(old_double, new_double, 1)
-
-          old_guide = '''        "Поэтому откройте нужный чат или конкретную тему и отправьте там команду "\n        "<code>/workspace_bind НАЗНАЧЕНИЕ</code>. Бот сохранит chat_id, текущую тему, "\n        "ссылку и проверит свои права.\\n\\n"\n'''
-          new_guide = '''        "Поэтому откройте нужный чат или конкретную тему и отправьте там команду "\n        "<code>/workspace_bind НАЗНАЧЕНИЕ</code>. Для канала, где нельзя написать "\n        "команду от себя, используйте в ЛС "\n        "<code>/workspace_bind_channel НАЗНАЧЕНИЕ @channel</code>. Бот сохранит "\n        "chat_id, текущую тему, ссылку и проверит свои права.\\n\\n"\n'''
-          if old_guide in wizard:
-              wizard = wizard.replace(old_guide, new_guide, 1)
-
-          wizard_path.write_text(wizard, encoding="utf-8")
-
-          channel_path = Path(
-              "velvet_bot/presentation/telegram/routers/"
-              "workspace_onboarding_channel_bind.py"
-          )
-          channel = channel_path.read_text(encoding="utf-8")
-          marker = '''    spec = DESTINATION_SPECS[key]\n    if spec.module_keys and not any(item in enabled for item in spec.module_keys):\n'''
-          replacement = '''    spec = DESTINATION_SPECS[key]\n    if key == "characters":\n        await message.answer(\n            "Форум персонажей подключается из самой супергруппы командой "\n            "<code>/workspace_bind characters</code>. Канал не поддерживает "\n            "персональные темы персонажей."\n        )\n        return\n    if spec.module_keys and not any(item in enabled for item in spec.module_keys):\n'''
-          if marker in channel:
-              channel = channel.replace(marker, replacement, 1)
-          channel_path.write_text(channel, encoding="utf-8")
-
           domain_path = Path("velvet_bot/domains/workspaces/onboarding.py")
           domain = domain_path.read_text(encoding="utf-8")
-          old_description = '''            "Базовый чат или тема архива персонажей. Здесь бот сможет создавать "\n            "или связывать персональные ветки персонажей."\n'''
-          new_description = '''            "Форумный чат архива персонажей. При создании персонажа бот создаёт "\n            "в нём персональную тему и направляет туда копии сохранённых материалов."\n'''
-          if old_description in domain:
-              domain = domain.replace(old_description, new_description, 1)
+          if "import asyncpg\n" not in domain:
+              domain = domain.replace(
+                  "from __future__ import annotations\n\n",
+                  "from __future__ import annotations\n\nimport asyncpg\n\n",
+                  1,
+              )
+
+          method = domain.index("    async def upsert_destination(")
+          next_method = domain.index("    async def delete_destination(", method)
+          segment = domain[method:next_method]
+          if "except asyncpg.UniqueViolationError" not in segment:
+              body_start = domain.index(
+                  "        async with self._database.acquire() as connection:",
+                  method,
+              )
+              body_end = domain.index("        if row is None:", body_start)
+              block = domain[body_start:body_end]
+              indented = "".join(
+                  ("    " + line if line.strip() else line)
+                  for line in block.splitlines(keepends=True)
+              )
+              replacement = (
+                  "        try:\n"
+                  + indented
+                  + "        except asyncpg.UniqueViolationError as error:\n"
+                  + "            raise ValueError(\n"
+                  + "                \"Этот Telegram-чат уже подключён к другому пространству.\"\n"
+                  + "            ) from error\n"
+              )
+              domain = domain[:body_start] + replacement + domain[body_end:]
           domain_path.write_text(domain, encoding="utf-8")
+
+          def wrap_upsert(path: Path) -> None:
+              text = path.read_text(encoding="utf-8")
+              marker = "    destination = await repository.upsert_destination("
+              if marker not in text or "Этот Telegram-чат уже подключён" in text:
+                  return
+              start = text.index(marker)
+              end = text.index("\n    )", start) + len("\n    )")
+              block = text[start:end]
+              indented = "\n".join("    " + line for line in block.splitlines())
+              wrapped = (
+                  "    try:\n"
+                  + indented
+                  + "\n    except ValueError as error:\n"
+                  + "        await message.answer(escape(str(error)))\n"
+                  + "        return"
+              )
+              path.write_text(text[:start] + wrapped + text[end:], encoding="utf-8")
+
+          wrap_upsert(
+              Path("velvet_bot/presentation/telegram/routers/workspace_onboarding.py")
+          )
+          wrap_upsert(
+              Path(
+                  "velvet_bot/presentation/telegram/routers/"
+                  "workspace_onboarding_channel_bind.py"
+              )
+          )
           PY
       - name: Commit patch
         shell: bash
@@ -78,12 +90,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            velvet_bot/domains/workspaces/onboarding.py \
             velvet_bot/presentation/telegram/routers/workspace_onboarding.py \
-            velvet_bot/presentation/telegram/routers/workspace_onboarding_channel_bind.py \
-            velvet_bot/domains/workspaces/onboarding.py
+            velvet_bot/presentation/telegram/routers/workspace_onboarding_channel_bind.py
           if git diff --cached --quiet; then
-            echo "Forum guards already applied."
+            echo "Conflict handling already applied."
             exit 0
           fi
-          git commit -m "Enforce forum destinations for character branches"
+          git commit -m "Handle workspace destination ownership conflicts"
           git push origin HEAD:agent/workspace-first-run-wizard
