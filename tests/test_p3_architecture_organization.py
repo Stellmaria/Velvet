@@ -73,6 +73,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.workspace_admin",
     "velvet_bot.presentation.telegram.routers.workspace_character_management",
     "velvet_bot.presentation.telegram.routers.workspace_character_pickers",
+    "velvet_bot.presentation.telegram.routers.workspace_publications",
     "velvet_bot.presentation.telegram.routers.workspace_reference_library",
     "velvet_bot.presentation.telegram.routers.workspaces",
 }
@@ -115,6 +116,10 @@ class P3RouterOrganizationTests(unittest.TestCase):
 
     def test_publication_router_precedes_archive_catch_all(self) -> None:
         source = (BUNDLE_DIR / "archive_and_public.py").read_text(encoding="utf-8")
+        self.assertLess(
+            source.index("router.include_router(workspace_publications_router)"),
+            source.index("router.include_router(publication_center_router)"),
+        )
         self.assertLess(
             source.index("router.include_router(publication_center_router)"),
             source.index("router.include_router(archive_router)"),

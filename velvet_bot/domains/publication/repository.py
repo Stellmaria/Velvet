@@ -10,10 +10,11 @@ from velvet_bot.domains.publication.models import (
     PublicationIssue,
     PublicationItem,
 )
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 
 class PublicationRepository:
-    """PostgreSQL boundary for publication drafts, events and queue transitions."""
+    """PostgreSQL boundary for workspace-isolated publication drafts and queues."""
 
     def __init__(self, database: Database) -> None:
         self._database = database
@@ -23,29 +24,65 @@ class PublicationRepository:
         draft_id: int,
         *,
         owner_id: int | None = None,
+        workspace_id: int | None = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraft | None:
         async with self._database.acquire() as connection:
-            row = await connection.fetchrow(
-                """
-                SELECT *
-                FROM publication_drafts
-                WHERE id = $1::BIGINT
-                  AND ($2::BIGINT IS NULL OR owner_id = $2::BIGINT)
-                """,
-                int(draft_id),
-                owner_id,
-            )
+            if workspace_id == DEFAULT_WORKSPACE_ID:
+                row = await connection.fetchrow(
+                    """
+                    SELECT *
+                    FROM publication_drafts
+                    WHERE id = $1::BIGINT
+                      AND ($2::BIGINT IS NULL OR owner_id = $2::BIGINT)
+                    """,
+                    int(draft_id),
+                    owner_id,
+                )
+            else:
+                row = await connection.fetchrow(
+                    """
+                    SELECT *
+                    FROM publication_drafts
+                    WHERE id = $1::BIGINT
+                      AND ($3::BIGINT IS NULL OR workspace_id = $3::BIGINT)
+                      AND (
+                          $3::BIGINT IS NULL
+                          OR $3::BIGINT <> 1
+                          OR $2::BIGINT IS NULL
+                          OR owner_id = $2::BIGINT
+                      )
+                    """,
+                    int(draft_id),
+                    owner_id,
+                    workspace_id,
+                )
             if row is None:
                 return None
-            item_rows = await connection.fetch(
-                """
-                SELECT *
-                FROM publication_draft_items
-                WHERE draft_id = $1::BIGINT
-                ORDER BY position
-                """,
-                int(draft_id),
+            resolved_workspace_id = int(
+                row.get("workspace_id", DEFAULT_WORKSPACE_ID)
             )
+            if resolved_workspace_id == DEFAULT_WORKSPACE_ID:
+                item_rows = await connection.fetch(
+                    """
+                    SELECT *
+                    FROM publication_draft_items
+                    WHERE draft_id = $1::BIGINT
+                    ORDER BY position
+                    """,
+                    int(draft_id),
+                )
+            else:
+                item_rows = await connection.fetch(
+                    """
+                    SELECT *
+                    FROM publication_draft_items
+                    WHERE workspace_id = $1::BIGINT
+                      AND draft_id = $2::BIGINT
+                    ORDER BY position
+                    """,
+                    resolved_workspace_id,
+                    int(draft_id),
+                )
         return self._row_to_draft(row, item_rows)
 
     async def list_drafts(
@@ -55,50 +92,98 @@ class PublicationRepository:
         statuses: tuple[str, ...],
         page: int = 0,
         page_size: int = 6,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
     ) -> PublicationDraftPage:
         safe_size = max(1, min(int(page_size), 10))
         safe_page = max(0, int(page))
         async with self._database.acquire() as connection:
-            total = int(
-                await connection.fetchval(
+            if workspace_id == DEFAULT_WORKSPACE_ID:
+                total = int(
+                    await connection.fetchval(
+                        """
+                        SELECT COUNT(*)
+                        FROM publication_drafts
+                        WHERE owner_id = $1::BIGINT
+                          AND status = ANY($2::VARCHAR[])
+                        """,
+                        int(owner_id),
+                        list(statuses),
+                    )
+                    or 0
+                )
+            else:
+                total = int(
+                    await connection.fetchval(
+                        """
+                        SELECT COUNT(*)
+                        FROM publication_drafts
+                        WHERE workspace_id = $1::BIGINT
+                          AND status = ANY($2::VARCHAR[])
+                        """,
+                        int(workspace_id),
+                        list(statuses),
+                    )
+                    or 0
+                )
+            total_pages = max(1, (total + safe_size - 1) // safe_size)
+            normalized_page = min(safe_page, total_pages - 1)
+            if workspace_id == DEFAULT_WORKSPACE_ID:
+                rows = await connection.fetch(
                     """
-                    SELECT COUNT(*)
+                    SELECT *
                     FROM publication_drafts
                     WHERE owner_id = $1::BIGINT
                       AND status = ANY($2::VARCHAR[])
+                    ORDER BY COALESCE(scheduled_at, updated_at) DESC, id DESC
+                    OFFSET $3::INTEGER LIMIT $4::INTEGER
                     """,
                     int(owner_id),
                     list(statuses),
+                    normalized_page * safe_size,
+                    safe_size,
                 )
-                or 0
-            )
-            total_pages = max(1, (total + safe_size - 1) // safe_size)
-            normalized_page = min(safe_page, total_pages - 1)
-            rows = await connection.fetch(
-                """
-                SELECT *
-                FROM publication_drafts
-                WHERE owner_id = $1::BIGINT
-                  AND status = ANY($2::VARCHAR[])
-                ORDER BY COALESCE(scheduled_at, updated_at) DESC, id DESC
-                OFFSET $3::INTEGER LIMIT $4::INTEGER
-                """,
-                int(owner_id),
-                list(statuses),
-                normalized_page * safe_size,
-                safe_size,
-            )
-            drafts: list[PublicationDraft] = []
-            for row in rows:
-                item_rows = await connection.fetch(
+            else:
+                rows = await connection.fetch(
                     """
                     SELECT *
-                    FROM publication_draft_items
-                    WHERE draft_id = $1::BIGINT
-                    ORDER BY position
+                    FROM publication_drafts
+                    WHERE workspace_id = $1::BIGINT
+                      AND status = ANY($2::VARCHAR[])
+                    ORDER BY COALESCE(scheduled_at, updated_at) DESC, id DESC
+                    OFFSET $3::INTEGER LIMIT $4::INTEGER
                     """,
-                    int(row["id"]),
+                    int(workspace_id),
+                    list(statuses),
+                    normalized_page * safe_size,
+                    safe_size,
                 )
+            drafts: list[PublicationDraft] = []
+            for row in rows:
+                resolved_workspace_id = int(
+                    row.get("workspace_id", DEFAULT_WORKSPACE_ID)
+                )
+                if resolved_workspace_id == DEFAULT_WORKSPACE_ID:
+                    item_rows = await connection.fetch(
+                        """
+                        SELECT *
+                        FROM publication_draft_items
+                        WHERE draft_id = $1::BIGINT
+                        ORDER BY position
+                        """,
+                        int(row["id"]),
+                    )
+                else:
+                    item_rows = await connection.fetch(
+                        """
+                        SELECT *
+                        FROM publication_draft_items
+                        WHERE workspace_id = $1::BIGINT
+                          AND draft_id = $2::BIGINT
+                        ORDER BY position
+                        """,
+                        resolved_workspace_id,
+                        int(row["id"]),
+                    )
                 drafts.append(self._row_to_draft(row, item_rows))
         return PublicationDraftPage(
             items=tuple(drafts),
@@ -107,20 +192,41 @@ class PublicationRepository:
             total_items=total,
         )
 
-    async def claim_for_publishing(self, draft_id: int) -> bool:
+    async def claim_for_publishing(
+        self,
+        draft_id: int,
+        *,
+        workspace_id: int | None = DEFAULT_WORKSPACE_ID,
+    ) -> bool:
         async with self._database.acquire() as connection:
-            status = await connection.execute(
-                """
-                UPDATE publication_drafts
-                SET status = 'publishing',
-                    attempt_count = attempt_count + 1,
-                    last_error = NULL,
-                    updated_at = NOW()
-                WHERE id = $1::BIGINT
-                  AND status IN ('draft', 'checked', 'scheduled', 'error')
-                """,
-                int(draft_id),
-            )
+            if workspace_id == DEFAULT_WORKSPACE_ID:
+                status = await connection.execute(
+                    """
+                    UPDATE publication_drafts
+                    SET status = 'publishing',
+                        attempt_count = attempt_count + 1,
+                        last_error = NULL,
+                        updated_at = NOW()
+                    WHERE id = $1::BIGINT
+                      AND status IN ('draft', 'checked', 'scheduled', 'error')
+                    """,
+                    int(draft_id),
+                )
+            else:
+                status = await connection.execute(
+                    """
+                    UPDATE publication_drafts
+                    SET status = 'publishing',
+                        attempt_count = attempt_count + 1,
+                        last_error = NULL,
+                        updated_at = NOW()
+                    WHERE id = $1::BIGINT
+                      AND ($2::BIGINT IS NULL OR workspace_id = $2::BIGINT)
+                      AND status IN ('draft', 'checked', 'scheduled', 'error')
+                    """,
+                    int(draft_id),
+                    workspace_id,
+                )
         return status != "UPDATE 0"
 
     async def mark_published(
@@ -129,31 +235,62 @@ class PublicationRepository:
         *,
         message_ids: list[int],
         actor_id: int | None,
+        workspace_id: int | None = DEFAULT_WORKSPACE_ID,
     ) -> None:
         details = json.dumps({"message_ids": message_ids}, ensure_ascii=False)
         async with self._database.acquire() as connection:
             async with connection.transaction():
-                await connection.execute(
-                    """
-                    UPDATE publication_drafts
-                    SET status = 'published',
-                        published_at = NOW(),
-                        published_message_ids = $2::BIGINT[],
-                        scheduled_at = NULL,
-                        last_error = NULL,
-                        updated_at = NOW()
-                    WHERE id = $1::BIGINT
-                    """,
-                    int(draft_id),
-                    [int(value) for value in message_ids],
-                )
-                await self._log_event_on_connection(
-                    connection,
-                    draft_id=int(draft_id),
-                    event_type="published",
-                    actor_id=actor_id,
-                    details_json=details,
-                )
+                if workspace_id == DEFAULT_WORKSPACE_ID:
+                    await connection.execute(
+                        """
+                        UPDATE publication_drafts
+                        SET status = 'published',
+                            published_at = NOW(),
+                            published_message_ids = $2::BIGINT[],
+                            scheduled_at = NULL,
+                            last_error = NULL,
+                            updated_at = NOW()
+                        WHERE id = $1::BIGINT
+                        """,
+                        int(draft_id),
+                        [int(value) for value in message_ids],
+                    )
+                    await self._log_event_on_connection(
+                        connection,
+                        workspace_id=None,
+                        draft_id=int(draft_id),
+                        event_type="published",
+                        actor_id=actor_id,
+                        details_json=details,
+                    )
+                else:
+                    row = await connection.fetchrow(
+                        """
+                        UPDATE publication_drafts
+                        SET status = 'published',
+                            published_at = NOW(),
+                            published_message_ids = $2::BIGINT[],
+                            scheduled_at = NULL,
+                            last_error = NULL,
+                            updated_at = NOW()
+                        WHERE id = $1::BIGINT
+                          AND ($3::BIGINT IS NULL OR workspace_id = $3::BIGINT)
+                        RETURNING workspace_id
+                        """,
+                        int(draft_id),
+                        [int(value) for value in message_ids],
+                        workspace_id,
+                    )
+                    if row is None:
+                        raise ValueError("Черновик не найден в выбранном пространстве.")
+                    await self._log_event_on_connection(
+                        connection,
+                        workspace_id=int(row["workspace_id"]),
+                        draft_id=int(draft_id),
+                        event_type="published",
+                        actor_id=actor_id,
+                        details_json=details,
+                    )
 
     async def mark_error(
         self,
@@ -161,29 +298,57 @@ class PublicationRepository:
         *,
         error: Exception | str,
         actor_id: int | None,
+        workspace_id: int | None = DEFAULT_WORKSPACE_ID,
     ) -> None:
         message = str(error)[:4000]
         details = json.dumps({"error": message}, ensure_ascii=False)
         async with self._database.acquire() as connection:
             async with connection.transaction():
-                await connection.execute(
-                    """
-                    UPDATE publication_drafts
-                    SET status = 'error',
-                        last_error = $2::TEXT,
-                        updated_at = NOW()
-                    WHERE id = $1::BIGINT
-                    """,
-                    int(draft_id),
-                    message,
-                )
-                await self._log_event_on_connection(
-                    connection,
-                    draft_id=int(draft_id),
-                    event_type="error",
-                    actor_id=actor_id,
-                    details_json=details,
-                )
+                if workspace_id == DEFAULT_WORKSPACE_ID:
+                    await connection.execute(
+                        """
+                        UPDATE publication_drafts
+                        SET status = 'error',
+                            last_error = $2::TEXT,
+                            updated_at = NOW()
+                        WHERE id = $1::BIGINT
+                        """,
+                        int(draft_id),
+                        message,
+                    )
+                    await self._log_event_on_connection(
+                        connection,
+                        workspace_id=None,
+                        draft_id=int(draft_id),
+                        event_type="error",
+                        actor_id=actor_id,
+                        details_json=details,
+                    )
+                else:
+                    row = await connection.fetchrow(
+                        """
+                        UPDATE publication_drafts
+                        SET status = 'error',
+                            last_error = $2::TEXT,
+                            updated_at = NOW()
+                        WHERE id = $1::BIGINT
+                          AND ($3::BIGINT IS NULL OR workspace_id = $3::BIGINT)
+                        RETURNING workspace_id
+                        """,
+                        int(draft_id),
+                        message,
+                        workspace_id,
+                    )
+                    if row is None:
+                        return
+                    await self._log_event_on_connection(
+                        connection,
+                        workspace_id=int(row["workspace_id"]),
+                        draft_id=int(draft_id),
+                        event_type="error",
+                        actor_id=actor_id,
+                        details_json=details,
+                    )
 
     async def list_due_draft_ids(self, *, limit: int = 5) -> list[int]:
         safe_limit = max(1, min(int(limit), 20))
@@ -220,23 +385,39 @@ class PublicationRepository:
     async def _log_event_on_connection(
         connection,
         *,
+        workspace_id: int | None,
         draft_id: int,
         event_type: str,
         actor_id: int | None,
         details_json: str,
     ) -> None:
-        await connection.execute(
-            """
-            INSERT INTO publication_events (
-                draft_id, event_type, actor_id, details
+        if workspace_id is None:
+            await connection.execute(
+                """
+                INSERT INTO publication_events (
+                    draft_id, event_type, actor_id, details
+                )
+                VALUES ($1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::JSONB)
+                """,
+                int(draft_id),
+                event_type,
+                actor_id,
+                details_json,
             )
-            VALUES ($1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::JSONB)
-            """,
-            draft_id,
-            event_type,
-            actor_id,
-            details_json,
-        )
+        else:
+            await connection.execute(
+                """
+                INSERT INTO publication_events (
+                    workspace_id, draft_id, event_type, actor_id, details
+                )
+                VALUES ($1::BIGINT, $2::BIGINT, $3::VARCHAR, $4::BIGINT, $5::JSONB)
+                """,
+                int(workspace_id),
+                int(draft_id),
+                event_type,
+                actor_id,
+                details_json,
+            )
 
     @staticmethod
     def _row_to_issue(value: Any) -> PublicationIssue:
@@ -267,6 +448,7 @@ class PublicationRepository:
             file_size=(int(row["file_size"]) if row["file_size"] is not None else None),
             source_message_id=row["source_message_id"],
             has_spoiler=bool(row["has_spoiler"]),
+            workspace_id=int(row.get("workspace_id", DEFAULT_WORKSPACE_ID)),
         )
 
     @classmethod
@@ -303,6 +485,7 @@ class PublicationRepository:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             items=tuple(cls._row_to_item(item) for item in item_rows),
+            workspace_id=int(row.get("workspace_id", DEFAULT_WORKSPACE_ID)),
         )
 
 

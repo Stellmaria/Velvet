@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+
 
 @dataclass(frozen=True, slots=True)
 class PublicationIssue:
@@ -33,6 +35,7 @@ class PublicationItem:
     file_size: int | None
     source_message_id: int | None
     has_spoiler: bool
+    workspace_id: int = DEFAULT_WORKSPACE_ID
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +63,7 @@ class PublicationDraft:
     created_at: datetime
     updated_at: datetime
     items: tuple[PublicationItem, ...]
+    workspace_id: int = DEFAULT_WORKSPACE_ID
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +92,7 @@ class PublicationInboxPayload:
     file_name: str | None
     file_size: int | None
     has_spoiler: bool
+    workspace_id: int = DEFAULT_WORKSPACE_ID
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +110,7 @@ class PublicationCharacterInfo:
     story_id: int | None
     has_multi_story: bool
     normalized_alias: str
+    requires_story: bool = False
 
 
 @dataclass(frozen=True, slots=True)

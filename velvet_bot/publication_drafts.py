@@ -11,6 +11,7 @@ from velvet_bot.domains.publication import (
     PublicationDraftPage,
     PublicationRepository,
 )
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.infrastructure.telegram import publication_payload_from_message
 
 
@@ -19,10 +20,15 @@ async def capture_publication_inbox(
     message: Message,
     *,
     owner_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> None:
     service = build_publication_draft_service(database)
     await service.capture(
-        publication_payload_from_message(message, owner_id=owner_id)
+        publication_payload_from_message(
+            message,
+            owner_id=owner_id,
+            workspace_id=workspace_id,
+        )
     )
 
 
@@ -32,10 +38,15 @@ async def create_draft_from_message(
     *,
     owner_id: int,
     target_chat_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraft:
     service = build_publication_draft_service(database)
     return await service.create_from_payload(
-        publication_payload_from_message(message, owner_id=owner_id),
+        publication_payload_from_message(
+            message,
+            owner_id=owner_id,
+            workspace_id=workspace_id,
+        ),
         target_chat_id=target_chat_id,
     )
 
@@ -45,10 +56,12 @@ async def get_publication_draft(
     draft_id: int,
     *,
     owner_id: int | None = None,
+    workspace_id: int | None = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraft | None:
     return await PublicationRepository(database).get_draft(
         draft_id,
         owner_id=owner_id,
+        workspace_id=workspace_id,
     )
 
 
@@ -59,12 +72,14 @@ async def list_publication_drafts(
     statuses: tuple[str, ...],
     page: int = 0,
     page_size: int = 6,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraftPage:
     return await PublicationRepository(database).list_drafts(
         owner_id=owner_id,
         statuses=statuses,
         page=page,
         page_size=page_size,
+        workspace_id=workspace_id,
     )
 
 
@@ -74,11 +89,13 @@ async def set_publication_spoiler(
     *,
     owner_id: int,
     enabled: bool,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraft:
     return await build_publication_draft_service(database).set_spoiler(
         draft_id,
         owner_id=owner_id,
         enabled=enabled,
+        workspace_id=workspace_id,
     )
 
 
@@ -88,11 +105,13 @@ async def update_publication_text(
     *,
     owner_id: int,
     text: str,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraft:
     return await build_publication_draft_service(database).update_text(
         draft_id,
         owner_id=owner_id,
         text=text,
+        workspace_id=workspace_id,
     )
 
 
@@ -102,11 +121,13 @@ async def schedule_publication(
     *,
     owner_id: int,
     scheduled_at: datetime,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraft:
     return await build_publication_draft_service(database).schedule(
         draft_id,
         owner_id=owner_id,
         scheduled_at=scheduled_at,
+        workspace_id=workspace_id,
     )
 
 
@@ -115,10 +136,12 @@ async def cancel_publication(
     draft_id: int,
     *,
     owner_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraft:
     return await build_publication_draft_service(database).cancel(
         draft_id,
         owner_id=owner_id,
+        workspace_id=workspace_id,
     )
 
 
@@ -127,10 +150,12 @@ async def retry_publication(
     draft_id: int,
     *,
     owner_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicationDraft:
     return await build_publication_draft_service(database).retry(
         draft_id,
         owner_id=owner_id,
+        workspace_id=workspace_id,
     )
 
 

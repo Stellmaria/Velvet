@@ -20,6 +20,9 @@ from velvet_bot.presentation.telegram.routers.workspace_character_management imp
 from velvet_bot.presentation.telegram.routers.workspace_reference_library import (
     router as workspace_reference_library_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_publications import (
+    router as workspace_publications_router,
+)
 from velvet_bot.presentation.telegram.routers.workspace_admin import (
     router as workspace_admin_router,
 )
@@ -175,7 +178,9 @@ router.include_router(references_router)
 router.include_router(inline_help_router)
 router.include_router(guest_archive_router)
 router.include_router(spoiler_save_router)
-# Publication commands must stay before archive.py's catch-all topic handler.
+# Personal publication capture stays after reference/save handlers, but before
+# the legacy system publication center and archive catch-all.
+router.include_router(workspace_publications_router)
 router.include_router(publication_center_router)
 router.include_router(archive_router)
 

@@ -54,9 +54,9 @@
 - `velvet_bot.domains.media_sets.repository` · domain `media_sets`: production 0, tests 0, exports 1, refs 1.
 - `velvet_bot.domains.public_archive.repository` · domain `public_archive`: production 1, tests 1, exports 1, refs 3.
 - `velvet_bot.domains.public_archive.watermark_repository` · domain `public_archive`: production 4, tests 1, exports 0, refs 5.
-- `velvet_bot.domains.publication.draft_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
-- `velvet_bot.domains.publication.repository` · domain `publication`: production 6, tests 1, exports 1, refs 8.
-- `velvet_bot.domains.publication.validation_repository` · domain `publication`: production 2, tests 1, exports 1, refs 4.
+- `velvet_bot.domains.publication.draft_repository` · domain `publication`: production 2, tests 2, exports 1, refs 5.
+- `velvet_bot.domains.publication.repository` · domain `publication`: production 6, tests 2, exports 1, refs 9.
+- `velvet_bot.domains.publication.validation_repository` · domain `publication`: production 2, tests 2, exports 1, refs 5.
 - `velvet_bot.domains.references.comparison_repository` · domain `references`: production 2, tests 2, exports 0, refs 4.
 - `velvet_bot.domains.references.repository` · domain `references`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.stories.repository` · domain `stories`: production 1, tests 0, exports 1, refs 2.

@@ -38,7 +38,7 @@ class P3CPublicationControllersTests(unittest.TestCase):
             source,
         )
 
-    def test_bundle_keeps_publication_before_archive_catch_all(self) -> None:
+    def test_bundle_keeps_workspace_and_legacy_publication_before_archive(self) -> None:
         path = ROOT / "velvet_bot/presentation/telegram/routers/archive_and_public.py"
         source = path.read_text(encoding="utf-8")
         self.assertIn(
@@ -46,10 +46,14 @@ class P3CPublicationControllersTests(unittest.TestCase):
             source,
         )
         self.assertLess(
+            source.index("router.include_router(workspace_publications_router)"),
+            source.index("router.include_router(publication_center_router)"),
+        )
+        self.assertLess(
             source.index("router.include_router(publication_center_router)"),
             source.index("router.include_router(archive_router)"),
         )
-        self.assertEqual(39, source.count("router.include_router("))
+        self.assertEqual(40, source.count("router.include_router("))
 
 
 if __name__ == "__main__":

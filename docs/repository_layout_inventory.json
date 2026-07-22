@@ -411,15 +411,16 @@
       "layout": "domain",
       "domain": "publication",
       "production_consumer_count": 2,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 4,
+      "reference_count": 5,
       "production_consumers": [
         "velvet_bot/app/publication_drafts.py",
         "velvet_bot/domains/publication/draft_service.py"
       ],
       "test_consumers": [
-        "tests/test_phase18p_publication_draft_boundary.py"
+        "tests/test_phase18p_publication_draft_boundary.py",
+        "tests/test_workspace_publication_queues.py"
       ],
       "package_exports": [
         "velvet_bot/domains/publication/__init__.py"
@@ -431,9 +432,9 @@
       "layout": "domain",
       "domain": "publication",
       "production_consumer_count": 6,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 8,
+      "reference_count": 9,
       "production_consumers": [
         "velvet_bot/app/publication_drafts.py",
         "velvet_bot/domains/publication/draft_repository.py",
@@ -443,7 +444,8 @@
         "velvet_bot/domains/publication/validation_service.py"
       ],
       "test_consumers": [
-        "tests/test_phase6_publication_repository.py"
+        "tests/test_phase6_publication_repository.py",
+        "tests/test_workspace_publication_queues.py"
       ],
       "package_exports": [
         "velvet_bot/domains/publication/__init__.py"
@@ -455,15 +457,16 @@
       "layout": "domain",
       "domain": "publication",
       "production_consumer_count": 2,
-      "test_consumer_count": 1,
+      "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 4,
+      "reference_count": 5,
       "production_consumers": [
         "velvet_bot/domains/publication/validation_service.py",
         "velvet_bot/publication_validation.py"
       ],
       "test_consumers": [
-        "tests/test_phase18o_publication_validation_boundary.py"
+        "tests/test_phase18o_publication_validation_boundary.py",
+        "tests/test_workspace_publication_queues.py"
       ],
       "package_exports": [
         "velvet_bot/domains/publication/__init__.py"

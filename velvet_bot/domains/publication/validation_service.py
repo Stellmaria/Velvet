@@ -18,9 +18,9 @@ from velvet_bot.domains.publication.repository import PublicationRepository
 from velvet_bot.domains.publication.validation_repository import (
     PublicationValidationRepository,
 )
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.post_classification import classify_post
 
-_STORY_REQUIRED_UNIVERSES = frozenset({"shs", "kr", "lm", "idm", "lagerta"})
 _ADULT_RE = re.compile(
     r"(?:^|[^\w])(?:18\+|nsfw|art\s*nude|nude|ню|обнаж|эрот|без\s+одежд)",
     re.IGNORECASE,
@@ -29,7 +29,7 @@ _URL_CANDIDATE_RE = re.compile(r"(?:https?://|t\.me/)[^\s<>]+", re.IGNORECASE)
 
 
 class PublicationValidationService:
-    """Validate publication content without opening PostgreSQL connections directly."""
+    """Validate publication content inside its workspace taxonomy."""
 
     def __init__(
         self,
@@ -40,10 +40,20 @@ class PublicationValidationService:
         self._drafts = drafts
         self._validation = validation
 
-    async def validate(self, draft_id: int, *, owner_id: int) -> PublicationDraft:
-        draft = await self._drafts.get_draft(draft_id, owner_id=owner_id)
+    async def validate(
+        self,
+        draft_id: int,
+        *,
+        owner_id: int,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> PublicationDraft:
+        draft = await self._drafts.get_draft(
+            draft_id,
+            owner_id=owner_id,
+            workspace_id=workspace_id,
+        )
         if draft is None:
-            raise ValueError("Черновик не найден.")
+            raise ValueError("Черновик не найден в выбранном пространстве.")
 
         text = draft.text_content.strip()
         hashtags = extract_hashtags(text)
@@ -253,9 +263,8 @@ class PublicationValidationService:
                 missing_category.append(item.name)
             if not item.universe:
                 missing_universe.append(item.name)
-            elif item.universe in _STORY_REQUIRED_UNIVERSES:
-                if item.story_id is None and not item.has_multi_story:
-                    missing_story.append(item.name)
+            elif item.requires_story and item.story_id is None and not item.has_multi_story:
+                missing_story.append(item.name)
 
         if missing_category:
             issues.append(

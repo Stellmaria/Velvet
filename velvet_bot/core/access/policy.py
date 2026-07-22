@@ -47,6 +47,50 @@ PUBLIC_WORKSPACE_CALLBACK_ACTIONS = frozenset(
 PUBLIC_CALLBACK_PREFIX = "pub:"
 WORKSPACE_CALLBACK_PREFIX = "wsp:"
 
+# These routes are not public. The access middleware lets them through only when
+# the caller has an active personal workspace; the target handler then rechecks
+# membership, role, module state and tenant ownership.
+WORKSPACE_MEMBER_COMMANDS = frozenset(
+    {
+        "characters",
+        "create",
+        "crete",
+        "category",
+        "cat",
+        "universe",
+        "world",
+        "series",
+        "story",
+        "stories",
+        "storylist",
+        "storyadd",
+        "save",
+        "save18",
+        "savecancel",
+        "refadd",
+        "refdel",
+        "refs",
+        "ref",
+        "refdone",
+        "refcancel",
+        "compare_ref",
+        "compare_reference",
+        "publish",
+        "publishing",
+        "publications",
+        "checkpost",
+        "prompt",
+        "setprompt",
+        "aliasadd",
+        "tagadd",
+        "aliases",
+        "tags",
+        "aliasdel",
+        "tagdel",
+    }
+)
+WORKSPACE_MEMBER_CALLBACK_PREFIXES = ("wsp:", "wch:", "ref:", "pubq:")
+
 MODERATOR_USER_IDS: frozenset[int] = frozenset()
 MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
 MODERATOR_TAG_COMMANDS = frozenset(
@@ -157,6 +201,11 @@ def is_public_command_text(text: str) -> bool:
     return bool(command and command in PUBLIC_COMMANDS)
 
 
+def is_workspace_member_command_text(text: str) -> bool:
+    command = command_name(text)
+    return bool(command and command in WORKSPACE_MEMBER_COMMANDS)
+
+
 def is_owner_only_command_text(text: str) -> bool:
     command = command_name(text)
     return bool(command and command in OWNER_ONLY_COMMANDS)
@@ -181,6 +230,13 @@ def is_public_callback_data(value: str | None) -> bool:
     if prefix == "wsp":
         return action in PUBLIC_WORKSPACE_CALLBACK_ACTIONS
     return False
+
+
+def is_workspace_member_callback_data(value: str | None) -> bool:
+    return bool(
+        value
+        and any(value.startswith(prefix) for prefix in WORKSPACE_MEMBER_CALLBACK_PREFIXES)
+    )
 
 
 def is_moderator_callback_data(value: str | None) -> bool:
@@ -265,6 +321,8 @@ __all__ = (
     "PUBLIC_COMMANDS",
     "PUBLIC_WORKSPACE_CALLBACK_ACTIONS",
     "WORKSPACE_CALLBACK_PREFIX",
+    "WORKSPACE_MEMBER_CALLBACK_PREFIXES",
+    "WORKSPACE_MEMBER_COMMANDS",
     "command_name",
     "is_moderator_callback_data",
     "is_owner_mention_text",
@@ -272,5 +330,7 @@ __all__ = (
     "is_public_callback_data",
     "is_public_command_text",
     "is_save_mention_text",
+    "is_workspace_member_callback_data",
+    "is_workspace_member_command_text",
     "normalize_username",
 )
