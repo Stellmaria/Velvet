@@ -3,7 +3,7 @@
 - Дата: 2026-07-22
 - ID: workspace-team-watermark
 - Линия/фаза: Workspace product / team and branding
-- Статус: частично
+- Статус: завершено
 - Ветка: `agent/workspace-team-watermark`
 - Базовый commit: `8a96569d6953b5e6d72779ade5a287c5b2eabeda`
 
@@ -97,17 +97,22 @@
 - workspace-scoped asset;
 - immutable watermark job snapshot.
 
-До финального connector-head отдельно подтверждены type-check, Docker build, project notes contract и backup restore drill. Последний чистый CI запущен после archive callback и workspace cleanup compatibility fixes.
+Финальный connector-head прошёл:
+
+- `1133` unit/integration tests;
+- type-check;
+- Docker build;
+- project notes contract;
+- backup dump/restore drill.
 
 ### PR и commit
 
-Draft PR: `#288 Add workspace team roles and custom watermark logos`. Production wiring, compatibility fixes и generated inventories находятся в ветке; финальный merge commit фиксируется после зелёного повторного CI.
+PR: `#288 Add workspace team roles and custom watermark logos`. Финальный merge commit фиксируется после ready/merge операции.
 
 ### Незавершённое
 
-- финальный PR CI и merge commit;
-- tenant-aware Telegram export import остаётся отдельным следующим срезом.
+В рамках этого среза незавершённых пунктов нет. Tenant-aware Telegram export import остаётся отдельным следующим этапом workspace product.
 
 ### Следующий шаг
 
-После зелёного CI перевести PR в ready и слить в `main`.
+Перевести PR в ready, слить в `main`, затем продолжить tenant-aware Telegram export import.
