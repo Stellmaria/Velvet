@@ -73,9 +73,10 @@ class PublicationService:
         if draft is None:
             raise ValueError("Черновик не найден в выбранном пространстве.")
 
-        resolved_workspace_id = int(
-            getattr(draft, "workspace_id", DEFAULT_WORKSPACE_ID)
-        )
+        if hasattr(draft, "workspace_id"):
+            resolved_workspace_id = int(draft.workspace_id)
+        else:
+            resolved_workspace_id = DEFAULT_WORKSPACE_ID
         if owner_id is not None:
             draft = await self._validate(draft_id, owner_id, resolved_workspace_id)
         if draft.validation_error_count:
