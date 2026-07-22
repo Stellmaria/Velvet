@@ -28,6 +28,12 @@ class WatermarkRepository:
         source_file_unique_id: str | None,
         source_path: str,
         settings: WatermarkSettings,
+        workspace_id: int = 1,
+        logo_kind: str = "builtin",
+        logo_path: str | None = None,
+        logo_width: float | None = None,
+        logo_height: float | None = None,
+        logo_name: str | None = None,
     ) -> WatermarkWorkItem:
         settings = settings.normalized()
         async with self._database.acquire() as connection:
@@ -36,9 +42,14 @@ class WatermarkRepository:
                     """
                     INSERT INTO watermark_jobs (
                         owner_user_id, chat_id, source_message_id,
-                        source_file_id, source_file_unique_id, source_path
+                        source_file_id, source_file_unique_id, source_path,
+                        workspace_id, logo_kind, logo_path, logo_width,
+                        logo_height, logo_name
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                    VALUES (
+                        $1, $2, $3, $4, $5, $6,
+                        $7, $8, $9, $10, $11, $12
+                    )
                     RETURNING *
                     """,
                     owner_user_id,
@@ -47,6 +58,12 @@ class WatermarkRepository:
                     source_file_id,
                     source_file_unique_id,
                     source_path,
+                    int(workspace_id),
+                    logo_kind,
+                    logo_path,
+                    logo_width,
+                    logo_height,
+                    logo_name,
                 )
                 if job_row is None:
                     raise RuntimeError("Не удалось создать задание водяного знака.")
@@ -425,6 +442,28 @@ class WatermarkRepository:
             final_path=str(row["final_path"]) if row["final_path"] is not None else None,
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            workspace_id=(int(row["workspace_id"]) if "workspace_id" in row else 1),
+            logo_kind=(str(row["logo_kind"]) if "logo_kind" in row else "builtin"),
+            logo_path=(
+                str(row["logo_path"])
+                if "logo_path" in row and row["logo_path"] is not None
+                else None
+            ),
+            logo_width=(
+                float(row["logo_width"])
+                if "logo_width" in row and row["logo_width"] is not None
+                else None
+            ),
+            logo_height=(
+                float(row["logo_height"])
+                if "logo_height" in row and row["logo_height"] is not None
+                else None
+            ),
+            logo_name=(
+                str(row["logo_name"])
+                if "logo_name" in row and row["logo_name"] is not None
+                else None
+            ),
         )
 
     @classmethod

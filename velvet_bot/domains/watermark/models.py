@@ -60,6 +60,12 @@ class WatermarkJob:
     final_path: str | None
     created_at: datetime
     updated_at: datetime
+    workspace_id: int = 1
+    logo_kind: str = "builtin"
+    logo_path: str | None = None
+    logo_width: float | None = None
+    logo_height: float | None = None
+    logo_name: str | None = None
 
     @property
     def archive_media_id(self) -> int | None:

@@ -4,12 +4,12 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **80** в **48** файлах;
-- approved boundaries: **80**;
+- raw broad exceptions: **81** в **49** файлах;
+- approved boundaries: **81**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **105**;
+- callback handlers: **109**;
 - late/missing callbacks: **0**;
-- guarded callbacks: **27**;
+- guarded callbacks: **31**;
 - delegated callbacks: **8**.
 
 ## Approved broad boundaries
@@ -39,6 +39,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/domains/telegram_storage/service.py:463` `_migrate_backups`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:610` `_migrate_codex`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/uploader.py:187` `upload`: isolate-telegram-storage-operation.
+- `velvet_bot/domains/workspaces/watermark_assets.py:226` `store`: cleanup-new-logo-after-db-failure.
 - `velvet_bot/error_center.py:99` `capture_log_record`: fallback-log-record-message.
 - `velvet_bot/error_center.py:337` `_is_recoverable_aiogram_polling_record`: fallback-polling-record-message.
 - `velvet_bot/error_center.py:364` `emit`: isolate-error-logging-handler.

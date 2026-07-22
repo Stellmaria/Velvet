@@ -89,6 +89,7 @@ WORKSPACE_MEMBER_COMMANDS = frozenset(
         "characterstats",
         "trackdiscussion",
         "discussionstats",
+        "watermark",
         "prompt",
         "setprompt",
         "aliasadd",
@@ -99,7 +100,9 @@ WORKSPACE_MEMBER_COMMANDS = frozenset(
         "tagdel",
     }
 )
-WORKSPACE_MEMBER_CALLBACK_PREFIXES = ("wsp:", "wch:", "ref:", "pubq:", "dash:")
+WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
+    "wsp:", "wch:", "ref:", "pubq:", "dash:", "wteam:", "wlogo:", "wm:"
+)
 
 MODERATOR_USER_IDS: frozenset[int] = frozenset()
 MODERATOR_COMMANDS = frozenset({"characters", "prompt", "setprompt"})
