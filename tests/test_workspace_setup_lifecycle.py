@@ -64,7 +64,7 @@ class WorkspaceSetupSourceContractTests(unittest.TestCase):
         source = Path(
             "velvet_bot/presentation/telegram/routers/workspace_delete.py"
         ).read_text(encoding="utf-8")
-        self.assertIn('action="confirm"', source)
+        self.assertIn('workspace_delete_callback("confirm"', source)
         self.assertIn("удалить безвозвратно", source)
         service = Path("velvet_bot/domains/workspaces/deletion.py").read_text(
             encoding="utf-8"
