@@ -101,6 +101,16 @@ BEGIN
         RETURN NEW;
     END IF;
 
+    -- ON DELETE CASCADE from workspaces is cleanup, not a membership mutation.
+    -- The parent row is no longer visible to this trigger during the cascade.
+    IF TG_OP = 'DELETE' AND NOT EXISTS (
+        SELECT 1
+        FROM workspaces
+        WHERE id = OLD.workspace_id
+    ) THEN
+        RETURN OLD;
+    END IF;
+
     PERFORM pg_advisory_xact_lock(OLD.workspace_id);
     SELECT COUNT(*)
     INTO remaining_owners
