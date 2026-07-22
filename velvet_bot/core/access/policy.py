@@ -87,6 +87,8 @@ WORKSPACE_MEMBER_COMMANDS = frozenset(
         "hashtagstats",
         "tagstats",
         "characterstats",
+        "trackdiscussion",
+        "discussionstats",
         "prompt",
         "setprompt",
         "aliasadd",
