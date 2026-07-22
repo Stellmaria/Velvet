@@ -17,6 +17,9 @@ from velvet_bot.owner_callbacks import (
     owner_action_callback,
     owner_callback,
 )
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_admin_ui import (
+    workspace_admin_callback,
+)
 from velvet_bot.presentation.telegram.routers.supervisor.control import SupervisorCallback
 from velvet_bot.presentation.telegram.routers.system import SystemCallback
 from velvet_bot.public_ui import PublicArchiveCallback
@@ -41,7 +44,7 @@ def build_owner_main_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="🏛 Пространства",
-                    callback_data=workspace_callback("home", workspace_id=1),
+                    callback_data=workspace_admin_callback("home"),
                 ),
                 InlineKeyboardButton(
                     text="🌐 Публичные архивы",
@@ -131,8 +134,11 @@ def owner_help_text() -> str:
         "🖼 <b>Архив</b> — публичный просмотр материалов.\n"
         "👥 <b>Персонажи</b> — карточки, категории, вселенные, истории, промты "
         "и переходы к медиа.\n"
-        "🏛 <b>Пространства</b> — приватность, модули, пользовательские категории, "
-        "вселенные и истории. Доступ на создание выдаётся по Telegram ID.\n"
+        "🏛 <b>Пространства</b> — отдельная панель Стэл: выдача права создать "
+        "личный архив, список пользователей и пространств, а также разрешение "
+        "или запрет каждого модуля кнопками.\n"
+        "🌐 <b>Публичные архивы</b> — просмотр пространств, владельцы которых "
+        "включили публичный read-only режим.\n"
         "💧 <b>Водяной знак</b> — отправка изображения в локальную Krita, "
         "preview, выбор угла, цвета, прозрачности, размера и отступа.\n"
         "🧰 <b>Все действия</b> — формы создания персонажей, тем, историй, "

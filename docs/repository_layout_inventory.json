@@ -590,12 +590,13 @@
       "path": "velvet_bot/domains/workspaces/product_repository.py",
       "layout": "domain",
       "domain": "workspaces",
-      "production_consumer_count": 2,
+      "production_consumer_count": 3,
       "test_consumer_count": 1,
       "package_export_count": 0,
-      "reference_count": 3,
+      "reference_count": 4,
       "production_consumers": [
         "velvet_bot/app/dispatcher.py",
+        "velvet_bot/domains/workspaces/administration.py",
         "velvet_bot/domains/workspaces/product_service.py"
       ],
       "test_consumers": [
@@ -608,12 +609,13 @@
       "path": "velvet_bot/domains/workspaces/repository.py",
       "layout": "domain",
       "domain": "workspaces",
-      "production_consumer_count": 4,
+      "production_consumer_count": 5,
       "test_consumer_count": 5,
       "package_export_count": 1,
-      "reference_count": 10,
+      "reference_count": 11,
       "production_consumers": [
         "velvet_bot/app/dispatcher.py",
+        "velvet_bot/domains/workspaces/administration.py",
         "velvet_bot/domains/workspaces/product_service.py",
         "velvet_bot/domains/workspaces/service.py",
         "velvet_bot/presentation/telegram/routers/workspace_analytics.py"
