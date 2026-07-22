@@ -74,6 +74,8 @@
 - legacy system workflow использует builtin logo по умолчанию;
 - access policy получил guarded `wteam:`, `wlogo:` и `wm:` routes;
 - compatibility callback допускает старый системный вызов без `WorkspaceService`;
+- archive edit выполняет один owner-checked lookup и одинаково скрывает отсутствующее и чужое задание;
+- тестовая очистка workspace использует продуктовый FK cascade вместо прямого удаления последнего owner;
 - architecture, repository, Telegram navigation и P2 inventories пересобраны на финальном production tree.
 
 ### Миграции и совместимость
@@ -95,7 +97,7 @@
 - workspace-scoped asset;
 - immutable watermark job snapshot.
 
-До финального connector-head отдельно подтверждены type-check, Docker build, project notes contract и backup restore drill. Полный повторный CI запущен после пересборки inventories и compatibility fixes.
+До финального connector-head отдельно подтверждены type-check, Docker build, project notes contract и backup restore drill. Последний чистый CI запущен после archive callback и workspace cleanup compatibility fixes.
 
 ### PR и commit
 
