@@ -132,7 +132,7 @@ async def ensure_character_archive_topic(
             topic=None,
             error=f"Telegram не создал тему персонажа: {error}",
         )
-    except Exception:
+    except Exception:  # p2-approved-boundary: cleanup-orphan-character-topic
         if created_topic is not None:
             try:
                 await bot.delete_forum_topic(
