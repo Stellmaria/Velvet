@@ -31,8 +31,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/calibrated_ai_quality.py:121` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/discussion_analytics_middleware.py:36` `__call__`: isolate-discussion-analytics-ingest.
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
-- `velvet_bot/domains/publication/service.py:125` `publish`: compensate-claimed-publication.
-- `velvet_bot/domains/publication/service.py:166` `process_due_once`: isolate-scheduled-draft.
+- `velvet_bot/domains/publication/service.py:126` `publish`: compensate-claimed-publication.
+- `velvet_bot/domains/publication/service.py:167` `process_due_once`: isolate-scheduled-draft.
 - `velvet_bot/domains/telegram_storage/service.py:114` `run`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:166` `_upload_candidate`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:282` `_migrate_watermarks`: isolate-telegram-storage-operation.
