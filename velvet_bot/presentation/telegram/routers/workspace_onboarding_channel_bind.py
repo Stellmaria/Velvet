@@ -145,20 +145,24 @@ async def handle_workspace_bind_channel(
     url = f"https://t.me/{username}" if username else None
     repository = WorkspaceOnboardingRepository(database)
     await repository.ensure_started(workspace_id=workspace.id, user_id=user_id)
-    destination = await repository.upsert_destination(
-        workspace_id=workspace.id,
-        destination_key=key,
-        chat_id=chat.id,
-        message_thread_id=None,
-        chat_type=str(getattr(chat.type, "value", chat.type)),
-        chat_title=getattr(chat, "title", None),
-        topic_title=None,
-        url=url,
-        bot_status=status,
-        can_post=can_post or chat.type != ChatType.CHANNEL,
-        can_manage_topics=bool(getattr(member, "can_manage_topics", False)),
-        configured_by_user_id=user_id,
-    )
+    try:
+        destination = await repository.upsert_destination(
+            workspace_id=workspace.id,
+            destination_key=key,
+            chat_id=chat.id,
+            message_thread_id=None,
+            chat_type=str(getattr(chat.type, "value", chat.type)),
+            chat_title=getattr(chat, "title", None),
+            topic_title=None,
+            url=url,
+            bot_status=status,
+            can_post=can_post or chat.type != ChatType.CHANNEL,
+            can_manage_topics=bool(getattr(member, "can_manage_topics", False)),
+            configured_by_user_id=user_id,
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
     if spec.channel_kind is not None:
         try:
             await workspace_service.configure_channel(

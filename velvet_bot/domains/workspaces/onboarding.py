@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncpg
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Final, Literal, TypeAlias
@@ -330,56 +332,61 @@ class WorkspaceOnboardingRepository:
         can_manage_topics: bool,
         configured_by_user_id: int,
     ) -> WorkspaceDestination:
-        async with self._database.acquire() as connection:
-            row = await connection.fetchrow(
-                """
-                INSERT INTO workspace_destinations (
-                    workspace_id,
+        try:
+            async with self._database.acquire() as connection:
+                row = await connection.fetchrow(
+                    """
+                    INSERT INTO workspace_destinations (
+                        workspace_id,
+                        destination_key,
+                        chat_id,
+                        message_thread_id,
+                        chat_type,
+                        chat_title,
+                        topic_title,
+                        url,
+                        bot_status,
+                        can_post,
+                        can_manage_topics,
+                        configured_by_user_id
+                    )
+                    VALUES (
+                        $1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::BIGINT,
+                        $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::TEXT,
+                        $9::VARCHAR, $10::BOOLEAN, $11::BOOLEAN, $12::BIGINT
+                    )
+                    ON CONFLICT (workspace_id, destination_key) DO UPDATE
+                    SET chat_id = EXCLUDED.chat_id,
+                        message_thread_id = EXCLUDED.message_thread_id,
+                        chat_type = EXCLUDED.chat_type,
+                        chat_title = EXCLUDED.chat_title,
+                        topic_title = EXCLUDED.topic_title,
+                        url = EXCLUDED.url,
+                        bot_status = EXCLUDED.bot_status,
+                        can_post = EXCLUDED.can_post,
+                        can_manage_topics = EXCLUDED.can_manage_topics,
+                        configured_by_user_id = EXCLUDED.configured_by_user_id,
+                        verified_at = NOW(),
+                        updated_at = NOW()
+                    RETURNING *
+                    """,
+                    int(workspace_id),
                     destination_key,
-                    chat_id,
-                    message_thread_id,
-                    chat_type,
-                    chat_title,
-                    topic_title,
+                    int(chat_id),
+                    int(message_thread_id) if message_thread_id is not None else None,
+                    chat_type[:32],
+                    chat_title[:255] if chat_title else None,
+                    topic_title[:255] if topic_title else None,
                     url,
-                    bot_status,
-                    can_post,
-                    can_manage_topics,
-                    configured_by_user_id
+                    bot_status[:32],
+                    bool(can_post),
+                    bool(can_manage_topics),
+                    int(configured_by_user_id),
                 )
-                VALUES (
-                    $1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::BIGINT,
-                    $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::TEXT,
-                    $9::VARCHAR, $10::BOOLEAN, $11::BOOLEAN, $12::BIGINT
-                )
-                ON CONFLICT (workspace_id, destination_key) DO UPDATE
-                SET chat_id = EXCLUDED.chat_id,
-                    message_thread_id = EXCLUDED.message_thread_id,
-                    chat_type = EXCLUDED.chat_type,
-                    chat_title = EXCLUDED.chat_title,
-                    topic_title = EXCLUDED.topic_title,
-                    url = EXCLUDED.url,
-                    bot_status = EXCLUDED.bot_status,
-                    can_post = EXCLUDED.can_post,
-                    can_manage_topics = EXCLUDED.can_manage_topics,
-                    configured_by_user_id = EXCLUDED.configured_by_user_id,
-                    verified_at = NOW(),
-                    updated_at = NOW()
-                RETURNING *
-                """,
-                int(workspace_id),
-                destination_key,
-                int(chat_id),
-                int(message_thread_id) if message_thread_id is not None else None,
-                chat_type[:32],
-                chat_title[:255] if chat_title else None,
-                topic_title[:255] if topic_title else None,
-                url,
-                bot_status[:32],
-                bool(can_post),
-                bool(can_manage_topics),
-                int(configured_by_user_id),
-            )
+        except asyncpg.UniqueViolationError as error:
+            raise ValueError(
+                "Этот Telegram-чат уже подключён к другому пространству."
+            ) from error
         if row is None:
             raise RuntimeError("Не удалось сохранить назначение пространства.")
         return self._row_to_destination(row)

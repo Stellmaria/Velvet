@@ -726,20 +726,24 @@ async def handle_workspace_bind(
         return
     repository = WorkspaceOnboardingRepository(database)
     await repository.ensure_started(workspace_id=workspace.id, user_id=user_id)
-    destination = await repository.upsert_destination(
-        workspace_id=workspace.id,
-        destination_key=key,
-        chat_id=message.chat.id,
-        message_thread_id=(None if key == "characters" else message.message_thread_id),
-        chat_type=_chat_type_value(message),
-        chat_title=getattr(message.chat, "title", None),
-        topic_title=(None if key == "characters" else _topic_title(message)),
-        url=_message_url(message),
-        bot_status=status,
-        can_post=can_post,
-        can_manage_topics=can_manage_topics,
-        configured_by_user_id=user_id,
-    )
+    try:
+        destination = await repository.upsert_destination(
+            workspace_id=workspace.id,
+            destination_key=key,
+            chat_id=message.chat.id,
+            message_thread_id=(None if key == "characters" else message.message_thread_id),
+            chat_type=_chat_type_value(message),
+            chat_title=getattr(message.chat, "title", None),
+            topic_title=(None if key == "characters" else _topic_title(message)),
+            url=_message_url(message),
+            bot_status=status,
+            can_post=can_post,
+            can_manage_topics=can_manage_topics,
+            configured_by_user_id=user_id,
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
     if spec.channel_kind is not None:
         try:
             await workspace_service.configure_channel(
