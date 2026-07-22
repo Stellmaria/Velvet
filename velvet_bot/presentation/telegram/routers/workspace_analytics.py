@@ -6,7 +6,12 @@ from html import escape
 from aiogram import Bot, Router
 from aiogram.enums import ChatType
 from aiogram.filters import BaseFilter, Command, CommandObject
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from velvet_bot.application.owner_analytics import (
     load_discussion_stats,
@@ -25,6 +30,7 @@ from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, Workspace
 from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.domains.workspaces.service import WorkspaceService
 from velvet_bot.presentation.telegram.analytics_navigation import AnalyticsCallback
+from velvet_bot.presentation.telegram.navigation import compact_button_text
 from velvet_bot.presentation.telegram.routers.analytics_controllers.channel import (
     handle_channel_stats,
     handle_character_stats,
@@ -38,6 +44,7 @@ from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard im
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
     _discussion_stats_text,
 )
+from velvet_bot.telegram_export_import import list_tracked_discussions
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -321,34 +328,33 @@ async def handle_workspace_discussion_stats(
     if await _reject_access(message, personal_analytics_context):
         return
     raw_value = (command.args or "").strip()
-    if raw_value:
-        try:
-            chat_id = int(raw_value)
-        except ValueError:
-            await message.answer("Chat ID должен быть числом.")
+    if not raw_value:
+        if not personal_analytics_context.discussion_chat_ids:
+            await message.answer(
+                "Чат обсуждений ещё не подключён к активному пространству."
+            )
             return
-        if not await workspace_owns_discussion_chat(
-            database,
-            workspace_id=personal_analytics_context.workspace_id,
-            chat_id=chat_id,
-        ):
-            await message.answer("Этот чат не принадлежит активному пространству.")
-            return
+        raw_value = str(personal_analytics_context.discussion_chat_ids[0])
     try:
-        result = await load_discussion_stats(
-            database,
-            frozenset(personal_analytics_context.channel_ids),
-            raw_value or None,
-        )
-    except ValueError as error:
-        await message.answer(escape(str(error)))
+        chat_id = int(raw_value)
+    except ValueError:
+        await message.answer("Chat ID должен быть числом.")
         return
     if not await workspace_owns_discussion_chat(
         database,
         workspace_id=personal_analytics_context.workspace_id,
-        chat_id=result.chat_id,
+        chat_id=chat_id,
     ):
-        await message.answer("Чат обсуждений не принадлежит активному пространству.")
+        await message.answer("Этот чат не принадлежит активному пространству.")
+        return
+    try:
+        result = await load_discussion_stats(
+            database,
+            frozenset(personal_analytics_context.channel_ids),
+            raw_value,
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
         return
     await message.answer(_discussion_stats_text(result))
 
@@ -371,6 +377,58 @@ async def handle_workspace_analytics_callback(
     )
 
 
+async def _show_workspace_discussions(
+    callback: CallbackQuery,
+    database: Database,
+    context: AnalyticsWorkspaceContext,
+    callback_data: AnalyticsCallback,
+) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    sources = await list_tracked_discussions(
+        database,
+        parent_channel_id=context.primary_channel_id,
+    )
+    allowed_ids = set(context.discussion_chat_ids)
+    filtered = [source for source in sources if int(source[0]) in allowed_ids]
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=compact_button_text(f"💬 {title or chat_id}"),
+                callback_data=AnalyticsCallback(
+                    action="discussion",
+                    period=callback_data.period,
+                    source_id=int(chat_id),
+                ).pack(),
+            )
+        ]
+        for chat_id, title, _ in filtered
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="↩️ Аналитика",
+                callback_data=AnalyticsCallback(
+                    action="menu",
+                    period=callback_data.period,
+                ).pack(),
+            )
+        ]
+    )
+    text = "<b>Обсуждения пространства</b>\n\n"
+    text += (
+        "Выберите подключённый чат."
+        if filtered
+        else "К активному пространству пока не подключён чат обсуждений."
+    )
+    await callback.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+    await callback.answer()
+
+
 async def _handle_workspace_analytics_callback(
     callback: CallbackQuery,
     callback_data: AnalyticsCallback,
@@ -378,6 +436,14 @@ async def _handle_workspace_analytics_callback(
     context: AnalyticsWorkspaceContext,
 ) -> None:
     if await _reject_access(callback, context):
+        return
+    if callback_data.action == "discussions":
+        await _show_workspace_discussions(
+            callback,
+            database,
+            context,
+            callback_data,
+        )
         return
     if callback_data.action in {"discussion", "participants"}:
         if callback_data.source_id not in context.discussion_chat_ids:
