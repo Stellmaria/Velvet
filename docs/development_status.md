@@ -172,8 +172,8 @@ Production legacy-consumer inventory закрыт: 0 файлов, 0 references 
 
 Статус: завершено.
 
-- repository modules: 31;
-- domain repositories: 30;
+- repository modules: 34;
+- domain repositories: 33;
 - infrastructure PostgreSQL adapters: 1;
 - central repositories: 0;
 - root repositories: 0;

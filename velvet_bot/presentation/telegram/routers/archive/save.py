@@ -238,8 +238,10 @@ async def _start_save_session(
         "перешлите фото, видео, анимации либо изображения/видео как файлы. "
         "Можно прислать альбом и затем продолжить следующими сообщениями — "
         "каждый поддерживаемый файл сохранится выбранному персонажу.\n\n"
-        "После последнего файла нажмите «Завершить загрузку». Сессия также "
-        "закроется через 10 минут бездействия или по <code>/savecancel</code>.",
+        "После последнего файла нажмите «Закончить загрузку». Ниже также можно "
+        "открыть карточку, выбрать другого персонажа или отменить режим — уже "
+        "сохранённые файлы при отмене не удаляются. Сессия закроется через "
+        "10 минут бездействия или по <code>/savecancel</code>.",
         reply_markup=_batch_save_keyboard(
             workspace_id=target_workspace_id,
             character_id=int(getattr(character, "id", 0) or 0),
@@ -252,29 +254,55 @@ def _batch_save_keyboard(
     workspace_id: int,
     character_id: int,
 ) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+    rows = [
+        [
+            InlineKeyboardButton(
+                text="✅ Закончить загрузку",
+                callback_data=guided_workspace_callback(
+                    "savefinish",
+                    workspace_id=workspace_id,
+                    character_id=character_id,
+                ),
+            )
+        ]
+    ]
+    if workspace_id != DEFAULT_WORKSPACE_ID:
+        rows.extend(
             [
-                InlineKeyboardButton(
-                    text="✅ Завершить загрузку",
-                    callback_data=guided_workspace_callback(
-                        "savecancel",
-                        workspace_id=workspace_id,
-                        character_id=character_id,
-                    ),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="👤 Сменить персонажа",
-                    callback_data=guided_workspace_callback(
-                        "savepick",
-                        workspace_id=workspace_id,
-                    ),
-                )
-            ],
+                [
+                    InlineKeyboardButton(
+                        text="↩️ Открыть карточку",
+                        callback_data=guided_workspace_callback(
+                            "saveopen",
+                            workspace_id=workspace_id,
+                            character_id=character_id,
+                        ),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="👤 Другой персонаж",
+                        callback_data=guided_workspace_callback(
+                            "savepick",
+                            workspace_id=workspace_id,
+                        ),
+                    )
+                ],
+            ]
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="✖ Отменить режим",
+                callback_data=guided_workspace_callback(
+                    "saveabort",
+                    workspace_id=workspace_id,
+                    character_id=character_id,
+                ),
+            )
         ]
     )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _has_context_media(message: Message) -> bool:

@@ -85,14 +85,32 @@ class WorkspaceOwnerMediaKeyboardTests(unittest.TestCase):
                 character_id=7,
                 offset=0,
                 media_id=11,
-                downloads_mode="disabled",
+                download_audience="disabled",
+                download_variant="watermark",
             )
         )
-        self.assertIn("✅ 🚫 Запретить скачивание", labels)
-        self.assertIn("💧 Только watermark-копия", labels)
-        self.assertIn("📥 Разрешить оригинал", labels)
-        self.assertIn("🔔 Оригинал после подписки", labels)
+        self.assertIn("✅ 🚫 Никто", labels)
+        self.assertIn("🌐 Все читатели", labels)
+        self.assertIn("🔐 Подписчики канала", labels)
+        self.assertIn("✅ 🖼 Только с watermark", labels)
+        self.assertIn("📦 Оригинал", labels)
         self.assertIn("🔌 Каналы доступа", labels)
+
+    def test_private_owner_like_is_presented_as_personal_mark(self) -> None:
+        state = SimpleNamespace(liked_by_user=True, like_count=99, subscribed=False)
+
+        labels = _texts(
+            _archive_navigation(
+                self._page(),
+                workspace_id=5,
+                owner_access=True,
+                public_state=state,
+                personal_like=True,
+            )
+        )
+
+        self.assertIn("❤️ Личная отметка", labels)
+        self.assertNotIn("❤️ 99", labels)
 
 
 class WorkspacePublicAccessTests(unittest.IsolatedAsyncioTestCase):
@@ -124,13 +142,13 @@ class WorkspacePublicAccessTests(unittest.IsolatedAsyncioTestCase):
             channel_id=-10077,
         )
 
-    async def test_subscription_download_checks_workspace_public_channel(self) -> None:
+    async def test_subscription_download_checks_selected_download_channel(self) -> None:
         product = SimpleNamespace(
             get_settings=AsyncMock(
-                return_value=SimpleNamespace(downloads_mode="subscription")
+                return_value=SimpleNamespace(download_audience="subscribers")
             ),
             list_channels=AsyncMock(
-                return_value=(SimpleNamespace(kind="public", chat_id=-10088),)
+                return_value=(SimpleNamespace(kind="download", chat_id=-10088),)
             ),
         )
         bot = SimpleNamespace()
@@ -165,33 +183,39 @@ class _Acquire:
 
 class WorkspaceDownloadPolicyTests(unittest.IsolatedAsyncioTestCase):
     @staticmethod
-    def _repository(mode: str, *, watermark_ready: bool = True):
+    def _repository(
+        audience: str,
+        variant: str = "watermark",
+        *,
+        watermark_ready: bool = True,
+    ):
         connection = SimpleNamespace(
-            fetchval=AsyncMock(return_value=mode),
             fetchrow=AsyncMock(
                 return_value={
                     "telegram_file_id": "watermarked-file",
                     "source_telegram_file_id": "original-file",
                     "watermark_applied": watermark_ready,
                     "watermark_approved": watermark_ready,
+                    "download_audience": audience,
+                    "download_variant": variant,
                 }
             ),
         )
         database = SimpleNamespace(acquire=lambda: _Acquire(connection))
         return PublicArchiveRepository(database, workspace_id=5)
 
-    async def test_personal_download_modes_select_the_expected_variant(self) -> None:
+    async def test_audience_and_variant_are_independent(self) -> None:
         disabled = await self._repository("disabled").resolve_download_source(
             character_id=7, media_id=11, member_access=False
         )
-        original = await self._repository("original").resolve_download_source(
+        original = await self._repository("all", "original").resolve_download_source(
             character_id=7, media_id=11, member_access=False
         )
-        watermark = await self._repository("watermark").resolve_download_source(
+        watermark = await self._repository("all", "watermark").resolve_download_source(
             character_id=7, media_id=11, member_access=False
         )
         denied_subscription = await self._repository(
-            "subscription"
+            "subscribers", "watermark"
         ).resolve_download_source(
             character_id=7,
             media_id=11,
@@ -199,7 +223,7 @@ class WorkspaceDownloadPolicyTests(unittest.IsolatedAsyncioTestCase):
             download_access=False,
         )
         allowed_subscription = await self._repository(
-            "subscription"
+            "subscribers", "watermark"
         ).resolve_download_source(
             character_id=7,
             media_id=11,
@@ -218,7 +242,7 @@ class WorkspaceDownloadPolicyTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIsNone(denied_subscription)
         self.assertEqual(
-            ("original-file", "original"),
+            ("watermarked-file", "watermarked"),
             (allowed_subscription.telegram_file_id, allowed_subscription.variant),
         )
 
@@ -259,7 +283,12 @@ class WorkspaceMediaControlsContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn('"protect_content": True', owner)
         self.assertIn("media_rework_items AS active_rework", visibility)
-        self.assertIn("временно скрыта", owner)
+        manual = (
+            ROOT / "velvet_bot/domains/media_rework/manual.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("скрыта из", owner)
+        self.assertIn("SET is_public = FALSE", manual)
+        self.assertIn("MediaReworkRepository(database).is_active", owner)
 
     def test_workspace_fast_watermark_snapshots_workspace_and_logo(self) -> None:
         source = (
@@ -281,9 +310,22 @@ class WorkspaceMediaControlsContractTests(unittest.TestCase):
             "пакетную загрузку",
             "Промт",
             "не заменяя оригинал",
-            "временно скрывает",
+            "владелец возвращает работу",
         ):
             self.assertIn(phrase, source)
+
+    def test_alignment_migration_adds_independent_policy_and_destinations(self) -> None:
+        migration = (
+            ROOT / "migrations/913_workspace_media_contract_alignment.sql"
+        ).read_text(encoding="utf-8")
+        for token in (
+            "download_audience",
+            "download_variant",
+            "'downloads'",
+            "'watermarks'",
+            "workspace_media_owner_favorites",
+        ):
+            self.assertIn(token, migration)
 
 
 if __name__ == "__main__":

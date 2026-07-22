@@ -52,11 +52,13 @@ class ManualReworkRequestTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertTrue(changed)
-        self.assertEqual(2, connection.execute.await_count)
-        first_sql = connection.execute.await_args_list[0].args[0]
-        second_sql = connection.execute.await_args_list[1].args[0]
-        self.assertIn("INSERT INTO media_rework_items", first_sql)
-        self.assertIn("INSERT INTO media_rework_events", second_sql)
+        self.assertEqual(3, connection.execute.await_count)
+        hide_sql = connection.execute.await_args_list[0].args[0]
+        item_sql = connection.execute.await_args_list[1].args[0]
+        event_sql = connection.execute.await_args_list[2].args[0]
+        self.assertIn("SET is_public = FALSE", hide_sql)
+        self.assertIn("INSERT INTO media_rework_items", item_sql)
+        self.assertIn("INSERT INTO media_rework_events", event_sql)
 
     async def test_repeated_active_admin_request_is_idempotent(self) -> None:
         connection = SimpleNamespace(
@@ -75,7 +77,11 @@ class ManualReworkRequestTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertFalse(changed)
-        connection.execute.assert_not_awaited()
+        connection.execute.assert_awaited_once()
+        self.assertIn(
+            "SET is_public = FALSE",
+            connection.execute.await_args.args[0],
+        )
 
 
 if __name__ == "__main__":

@@ -51,7 +51,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/channel.py:166` `_capture_channel_post`: report-channel-ingest-failure.
 - `velvet_bot/presentation/telegram/routers/archive/guest.py:155` `_archive_guest_media`: report-guest-topic-delivery-failure.
 - `velvet_bot/presentation/telegram/routers/archive/guest.py:250` `handle_guest_archive`: report-guest-request-failure.
-- `velvet_bot/presentation/telegram/routers/archive/save.py:567` `handle_new_archive_topic_media`: report-topic-auto-archive-failure.
+- `velvet_bot/presentation/telegram/routers/archive/save.py:595` `handle_new_archive_topic_media`: report-topic-auto-archive-failure.
 - `velvet_bot/presentation/telegram/routers/archive_and_public_controllers/admin_media_display.py:38` `build_admin_display_media`: fallback-admin-edit-preview.
 - `velvet_bot/presentation/telegram/routers/archive_and_public_controllers/admin_media_display.py:88` `send_admin_archive_page`: fallback-admin-send-preview.
 - `velvet_bot/presentation/telegram/routers/archive_and_public_controllers/media_browser.py:69` `_build_display_input_media`: fallback-full-size-preview.
@@ -67,7 +67,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:382` `handle_spoiler_aware_open`: preserve-navigation-on-owner-review-failure.
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:428` `_apply_engagement`: report-public-engagement-write-failure.
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:461` `_apply_engagement`: preserve-engagement-on-ui-refresh-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:576` `handle_public_download`: report-public-download-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:577` `handle_public_download`: report-public-download-failure.
 - `velvet_bot/presentation/telegram/routers/publication/center.py:570` `handle_publication_callback`: report-publication-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/backup_center.py:393` `handle_backup_callback`: report-backup-callback-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:320` `handle_quality_upload_reply`: compensate-manual-quality-job.

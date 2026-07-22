@@ -5,7 +5,9 @@ from velvet_bot.domains.workspaces.models import (
     Workspace,
     WorkspaceChannel,
     WorkspaceChannelKind,
+    WorkspaceDownloadAudience,
     WorkspaceDownloadsMode,
+    WorkspaceDownloadVariant,
     WorkspaceMembership,
     WorkspaceRole,
     WorkspaceSettings,
@@ -213,6 +215,8 @@ class WorkspaceRepository:
                     timezone,
                     public_archive_enabled,
                     downloads_mode,
+                    download_audience,
+                    download_variant,
                     qwen_enabled,
                     created_at,
                     updated_at
@@ -230,6 +234,8 @@ class WorkspaceRepository:
         timezone: str,
         public_archive_enabled: bool,
         downloads_mode: WorkspaceDownloadsMode,
+        download_audience: WorkspaceDownloadAudience,
+        download_variant: WorkspaceDownloadVariant,
         qwen_enabled: bool,
     ) -> WorkspaceSettings:
         async with self._database.acquire() as connection:
@@ -240,13 +246,20 @@ class WorkspaceRepository:
                     timezone,
                     public_archive_enabled,
                     downloads_mode,
+                    download_audience,
+                    download_variant,
                     qwen_enabled
                 )
-                VALUES ($1::BIGINT, $2::VARCHAR, $3::BOOLEAN, $4::VARCHAR, $5::BOOLEAN)
+                VALUES (
+                    $1::BIGINT, $2::VARCHAR, $3::BOOLEAN, $4::VARCHAR,
+                    $5::VARCHAR, $6::VARCHAR, $7::BOOLEAN
+                )
                 ON CONFLICT (workspace_id) DO UPDATE
                 SET timezone = EXCLUDED.timezone,
                     public_archive_enabled = EXCLUDED.public_archive_enabled,
                     downloads_mode = EXCLUDED.downloads_mode,
+                    download_audience = EXCLUDED.download_audience,
+                    download_variant = EXCLUDED.download_variant,
                     qwen_enabled = EXCLUDED.qwen_enabled,
                     updated_at = NOW()
                 RETURNING
@@ -254,6 +267,8 @@ class WorkspaceRepository:
                     timezone,
                     public_archive_enabled,
                     downloads_mode,
+                    download_audience,
+                    download_variant,
                     qwen_enabled,
                     created_at,
                     updated_at
@@ -262,6 +277,8 @@ class WorkspaceRepository:
                 timezone,
                 bool(public_archive_enabled),
                 downloads_mode,
+                download_audience,
+                download_variant,
                 bool(qwen_enabled),
             )
         if row is None:
@@ -360,6 +377,8 @@ class WorkspaceRepository:
             qwen_enabled=bool(row["qwen_enabled"]),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            download_audience=str(row["download_audience"]),
+            download_variant=str(row["download_variant"]),
         )
 
     @staticmethod

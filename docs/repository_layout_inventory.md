@@ -10,9 +10,9 @@
 - корневых `*_repository.py`: **0**;
 - infrastructure repositories: **1**;
 - прочих repository paths: **0**;
-- repository-модулей с production consumers: **30**;
+- repository-модулей с production consumers: **31**;
 - repository-модулей с package exports: **28**;
-- repository-модулей без runtime consumers: **4**;
+- repository-модулей без runtime consumers: **3**;
 - repository-модулей без любых references: **0**;
 - корневых Python-модулей: **113**.
 
@@ -45,7 +45,7 @@
 - `velvet_bot.domains.discussions.repository` · domain `discussions`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.media_quality.repository` · domain `media_quality`: production 2, tests 0, exports 1, refs 3.
 - `velvet_bot.domains.media_quality.reset_repository` · domain `media_quality`: production 1, tests 1, exports 0, refs 2.
-- `velvet_bot.domains.media_rework.repository` · domain `media_rework`: production 0, tests 0, exports 1, refs 1.
+- `velvet_bot.domains.media_rework.repository` · domain `media_rework`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.media_sets.actions_repository` · domain `media_sets`: production 1, tests 1, exports 1, refs 4.
 - `velvet_bot.domains.media_sets.ai_repository` · domain `media_sets`: production 1, tests 1, exports 1, refs 3.
 - `velvet_bot.domains.media_sets.discovery_repository` · domain `media_sets`: production 1, tests 1, exports 1, refs 4.

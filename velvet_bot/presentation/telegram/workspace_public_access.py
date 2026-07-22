@@ -89,11 +89,13 @@ async def has_workspace_download_access(
     if workspace_product_service is None:
         return False
     settings = await workspace_product_service.get_settings(workspace_id)
-    if settings.downloads_mode != "subscription":
+    if settings.download_audience == "disabled":
+        return False
+    if settings.download_audience == "all":
         return True
     channel_id = await workspace_channel_id(
         workspace_id=workspace_id,
-        kind="public",
+        kind="download",
         workspace_product_service=workspace_product_service,
     )
     if channel_id is None:

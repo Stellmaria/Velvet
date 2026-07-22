@@ -16,6 +16,8 @@ WorkspaceDestinationKey: TypeAlias = Literal[
     "references",
     "public",
     "adult",
+    "downloads",
+    "watermarks",
     "publications",
     "discussion",
     "analytics",
@@ -28,6 +30,8 @@ WORKSPACE_DESTINATION_KEYS: Final[tuple[WorkspaceDestinationKey, ...]] = (
     "references",
     "public",
     "adult",
+    "downloads",
+    "watermarks",
     "publications",
     "discussion",
     "analytics",
@@ -108,6 +112,32 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         command_hint="/workspace_bind_channel adult @channel",
         module_keys=("public_archive",),
         channel_kind="adult",
+    ),
+    "downloads": WorkspaceDestinationSpec(
+        key="downloads",
+        label="Проверка скачивания",
+        emoji="🔐",
+        description=(
+            "Канал, участие в котором бот проверяет для режима «Только "
+            "подписчики». Это независимая настройка и не обязана совпадать с "
+            "каналом публичного архива."
+        ),
+        command_hint="/workspace_bind downloads",
+        module_keys=("public_archive",),
+        channel_kind="download",
+    ),
+    "watermarks": WorkspaceDestinationSpec(
+        key="watermarks",
+        label="Watermark-копии",
+        emoji="💧",
+        description=(
+            "Закрытый канал или форумная тема для подтверждённых PNG с "
+            "watermark. Оригиналы продолжают храниться в персональных темах "
+            "форума персонажей."
+        ),
+        command_hint="/workspace_bind watermarks",
+        module_keys=("watermark",),
+        channel_kind=None,
     ),
     "publications": WorkspaceDestinationSpec(
         key="publications",

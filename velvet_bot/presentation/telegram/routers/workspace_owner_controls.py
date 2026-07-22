@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import io
+from dataclasses import replace
 from html import escape
-from typing import cast
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
@@ -29,11 +29,15 @@ from velvet_bot.archive_ui import build_input_media, format_archive_caption, for
 from velvet_bot.character_resolution import load_character_by_id
 from velvet_bot.database import Database
 from velvet_bot.domains.media_rework.manual import request_manual_rework
+from velvet_bot.domains.media_rework.repository import MediaReworkRepository
 from velvet_bot.domains.workspaces.models import (
     Workspace,
-    WorkspaceDownloadsMode,
     WorkspaceRole,
 )
+from velvet_bot.domains.workspaces.media_preferences import (
+    WorkspaceMediaPreferenceRepository,
+)
+from velvet_bot.domains.workspaces.onboarding import WorkspaceOnboardingRepository
 from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
     WorkspaceModuleKey,
@@ -80,17 +84,23 @@ _ROLE_LABELS = {
     "admin": "администратор",
     "owner": "владелец",
 }
-_DOWNLOAD_MODE_LABELS = {
+_DOWNLOAD_AUDIENCE_LABELS = {
     "disabled": "🚫 запрещено",
-    "watermark": "💧 только одобренная watermark-копия",
-    "original": "📥 оригинал доступен всем читателям",
-    "subscription": "🔔 оригинал после подписки на публичный канал",
+    "all": "🌐 всем читателям архива",
+    "subscribers": "🔐 подписчикам выбранного канала",
 }
-_DOWNLOAD_ACTION_MODES = {
-    "dldisabled": "disabled",
-    "dlwatermark": "watermark",
-    "dloriginal": "original",
-    "dlsubscription": "subscription",
+_DOWNLOAD_VARIANT_LABELS = {
+    "watermark": "🖼 одобренная watermark-копия",
+    "original": "📦 сохранённый оригинал",
+}
+_DOWNLOAD_AUDIENCE_ACTIONS = {
+    "dlaudnone": "disabled",
+    "dlaudall": "all",
+    "dlaudsub": "subscribers",
+}
+_DOWNLOAD_VARIANT_ACTIONS = {
+    "dlvarwm": "watermark",
+    "dlvarorig": "original",
 }
 
 
@@ -522,6 +532,7 @@ def _archive_navigation(
     public_state=None,
     public_enabled: bool = False,
     has_watermark_asset: bool = False,
+    personal_like: bool = False,
 ) -> InlineKeyboardMarkup:
     if page.media is None:
         return InlineKeyboardMarkup(inline_keyboard=[])
@@ -567,11 +578,21 @@ def _archive_navigation(
         rows = [[counter]]
 
     if owner_access and public_state is not None:
+        if personal_like:
+            like_label = (
+                "❤️ Личная отметка"
+                if public_state.liked_by_user
+                else "🤍 Личная отметка"
+            )
+        else:
+            like_label = (
+                ("❤️" if public_state.liked_by_user else "🤍")
+                + f" {public_state.like_count}"
+            )
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=("❤️" if public_state.liked_by_user else "🤍")
-                    + f" {public_state.like_count}",
+                    text=like_label,
                     callback_data=_archive_callback(
                         "like",
                         workspace_id=workspace_id,
@@ -791,7 +812,7 @@ async def _archive_ui_context(
     owner_access: bool,
 ):
     if not owner_access or page.media is None:
-        return None, False, False
+        return None, False, False, False
     state = await get_public_media_state(
         database,
         character_id=page.character.id,
@@ -800,8 +821,23 @@ async def _archive_ui_context(
         workspace_id=workspace_id,
     )
     settings = await workspace_product_service.get_settings(workspace_id)
+    personal_like = not settings.public_archive_enabled or not page.media.is_public
+    if personal_like:
+        favorite = await WorkspaceMediaPreferenceRepository(database).is_favorite(
+            workspace_id=workspace_id,
+            character_id=page.character.id,
+            media_id=page.media.id,
+            user_id=user_id,
+        )
+        state = replace(state, liked_by_user=favorite, like_count=0)
     asset = await WorkspaceWatermarkAssetRepository(database).get(workspace_id)
-    return state, settings.public_archive_enabled, asset is not None
+    destinations = await WorkspaceOnboardingRepository(database).list_destinations(
+        workspace_id
+    )
+    watermark_ready = asset is not None and any(
+        item.destination_key == "watermarks" for item in destinations
+    )
+    return state, settings.public_archive_enabled, watermark_ready, personal_like
 
 
 def _workspace_archive_caption(page) -> str:
@@ -832,7 +868,7 @@ async def _send_archive_page(
 ) -> Message:
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
-    public_state, public_enabled, has_watermark_asset = await _archive_ui_context(
+    public_state, public_enabled, has_watermark_asset, personal_like = await _archive_ui_context(
         database=database,
         workspace_product_service=workspace_product_service,
         workspace_id=workspace_id,
@@ -850,6 +886,7 @@ async def _send_archive_page(
             public_state=public_state,
             public_enabled=public_enabled,
             has_watermark_asset=has_watermark_asset,
+            personal_like=personal_like,
         ),
         "protect_content": True,
     }
@@ -879,7 +916,7 @@ async def _replace_archive_page(
     if not isinstance(callback.message, Message):
         await callback.answer("Сообщение архива больше недоступно.", show_alert=True)
         return
-    public_state, public_enabled, has_watermark_asset = await _archive_ui_context(
+    public_state, public_enabled, has_watermark_asset, personal_like = await _archive_ui_context(
         database=database,
         workspace_product_service=workspace_product_service,
         workspace_id=workspace_id,
@@ -896,7 +933,8 @@ async def _replace_archive_page(
                 owner_access=owner_access,
                 public_state=public_state,
                 public_enabled=public_enabled,
-                has_watermark_asset=has_watermark_asset,
+            has_watermark_asset=has_watermark_asset,
+            personal_like=personal_like,
             ),
         )
     except TelegramBadRequest:
@@ -1245,19 +1283,59 @@ def _media_settings_keyboard(
     character_id: int,
     offset: int,
     media_id: int,
-    downloads_mode: str,
+    download_audience: str,
+    download_variant: str,
 ) -> InlineKeyboardMarkup:
     rows = []
-    for action, mode, label in (
-        ("dldisabled", "disabled", "🚫 Запретить скачивание"),
-        ("dlwatermark", "watermark", "💧 Только watermark-копия"),
-        ("dloriginal", "original", "📥 Разрешить оригинал"),
-        ("dlsubscription", "subscription", "🔔 Оригинал после подписки"),
+    common = {
+        "workspace_id": workspace_id,
+        "character_id": character_id,
+        "offset": offset,
+        "media_id": media_id,
+    }
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="Кто может скачивать",
+                callback_data=_archive_callback("noop", **common),
+            )
+        ]
+    )
+    for action, audience, label in (
+        ("dlaudnone", "disabled", "🚫 Никто"),
+        ("dlaudall", "all", "🌐 Все читатели"),
+        ("dlaudsub", "subscribers", "🔐 Подписчики канала"),
     ):
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=("✅ " if downloads_mode == mode else "") + label,
+                    text=("✅ " if download_audience == audience else "") + label,
+                    callback_data=_archive_callback(
+                        action,
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        offset=offset,
+                        media_id=media_id,
+                    ),
+                )
+            ]
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="Какую версию выдавать",
+                callback_data=_archive_callback("noop", **common),
+            )
+        ]
+    )
+    for action, variant, label in (
+        ("dlvarwm", "watermark", "🖼 Только с watermark"),
+        ("dlvarorig", "original", "📦 Оригинал"),
+    ):
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=("✅ " if download_variant == variant else "") + label,
                     callback_data=_archive_callback(
                         action,
                         workspace_id=workspace_id,
@@ -1316,18 +1394,32 @@ async def _show_media_settings(
     settings = await workspace_product_service.get_settings(workspace.id)
     channels = await workspace_product_service.list_channels(workspace.id)
     channel_kinds = {item.kind for item in channels}
+    destinations = await WorkspaceOnboardingRepository(database).list_destinations(
+        workspace.id
+    )
+    destination_keys = {item.destination_key for item in destinations}
     watermark_asset = await WorkspaceWatermarkAssetRepository(database).get(workspace.id)
     text = (
         f"<b>⚙️ Доступ к медиа · {escape(workspace.name)}</b>\n\n"
-        f"Публичный архив: <b>{'включён' if settings.public_archive_enabled else 'выключен'}</b>\n"
-        f"Скачивание читателем: <b>{_DOWNLOAD_MODE_LABELS[settings.downloads_mode]}</b>\n"
-        f"Публичный канал для проверки подписки: <b>{'подключён' if 'public' in channel_kinds else 'не подключён'}</b>\n"
+        "Публичный архив: "
+        f"<b>{'включён' if settings.public_archive_enabled else 'выключен'}</b>\n"
+        "Кто может скачивать: "
+        f"<b>{_DOWNLOAD_AUDIENCE_LABELS[settings.download_audience]}</b>\n"
+        "Какую версию выдавать: "
+        f"<b>{_DOWNLOAD_VARIANT_LABELS[settings.download_variant]}</b>\n"
+        "Канал проверки скачивания: "
+        f"<b>{'подключён' if 'download' in channel_kinds else 'не подключён'}</b>\n"
         f"Канал +18: <b>{'подключён' if 'adult' in channel_kinds else 'не подключён'}</b>\n"
+        "Оригиналы: "
+        f"<b>{'форум персонажей подключён' if 'characters' in destination_keys else 'форум персонажей не подключён'}</b>\n"
+        "Watermark-копии: "
+        f"<b>{'назначение подключено' if 'watermarks' in destination_keys else 'назначение не подключено'}</b>\n"
         f"Шаблон watermark: <b>{'настроен' if watermark_asset is not None else 'не настроен'}</b>\n\n"
         "По умолчанию карточки отправляются с защитой Telegram от пересылки и "
         "сохранения. Кнопка скачивания появляется у читателя только когда это "
-        "разрешает выбранный режим. Оригинал в архиве не заменяется: watermark "
-        "хранится отдельной версией.\n\n"
+        "разрешают оба параметра. Оригинал хранится в теме персонажа и не "
+        "заменяется: подтверждённый watermark сохраняется отдельным Telegram-файлом "
+        "в выбранном назначении.\n\n"
         "⚠️ Для изображений больше 20 МБ cloud Bot API может не построить превью. "
         "Владелец всё равно видит кнопку оригинала; читатель получает файл только "
         "когда политика скачивания это разрешает."
@@ -1340,7 +1432,8 @@ async def _show_media_settings(
         character_id=page.character.id,
         offset=page.offset,
         media_id=page.media.id,
-        downloads_mode=settings.downloads_mode,
+        download_audience=settings.download_audience,
+        download_variant=settings.download_variant,
     )
     if callback.message.text:
         try:
@@ -1368,11 +1461,12 @@ async def _show_media_help(callback: CallbackQuery, *, workspace_id: int, page) 
         "добавляются после создания через «Загрузить медиа».\n\n"
         "<b>Лайк</b> и <b>Подписаться</b> доступны владельцу и читателям "
         "публичного архива. <b>Скачать оригинал</b> всегда доступно владельцу; "
-        "для читателей кнопкой «Доступ и скачивание» выбирается запрет, "
-        "watermark-копия, оригинал или оригинал после проверки подписки.\n\n"
+        "для читателей кнопкой «Доступ и скачивание» отдельно выбираются "
+        "аудитория и версия файла. По умолчанию скачивание запрещено.\n\n"
         "<b>Быстрый watermark</b> создаёт отдельную версию, не заменяя оригинал. "
-        "<b>Доработка</b> кладёт материал в общую очередь и временно скрывает "
-        "его из публичной выдачи. <b>Скрыть</b>, <b>+18</b> и <b>Блюр</b> "
+        "<b>Доработка</b> кладёт материал в общую очередь и скрывает его из "
+        "публичной выдачи. После проверки владелец возвращает работу кнопкой "
+        "«Вернуть в публичный». <b>Скрыть</b>, <b>+18</b> и <b>Блюр</b> "
         "управляют видимостью конкретного материала."
     )
     keyboard = InlineKeyboardMarkup(
@@ -1445,7 +1539,8 @@ async def handle_workspace_personal_archive(
         "blur",
         "settings",
         "mediahelp",
-        *_DOWNLOAD_ACTION_MODES,
+        *_DOWNLOAD_AUDIENCE_ACTIONS,
+        *_DOWNLOAD_VARIANT_ACTIONS,
     }
     if action == "close":
         if isinstance(callback.message, Message):
@@ -1572,24 +1667,36 @@ async def handle_workspace_personal_archive(
     if action == "mediahelp":
         await _show_media_help(callback, workspace_id=workspace.id, page=page)
         return
-    if action in _DOWNLOAD_ACTION_MODES:
-        mode = _DOWNLOAD_ACTION_MODES[action]
+    if action in _DOWNLOAD_AUDIENCE_ACTIONS or action in _DOWNLOAD_VARIANT_ACTIONS:
+        settings = await workspace_product_service.get_settings(workspace.id)
+        audience = _DOWNLOAD_AUDIENCE_ACTIONS.get(
+            action,
+            settings.download_audience,
+        )
+        variant = _DOWNLOAD_VARIANT_ACTIONS.get(
+            action,
+            settings.download_variant,
+        )
         channels = await workspace_product_service.list_channels(workspace.id)
         channel_kinds = {item.kind for item in channels}
+        destinations = await WorkspaceOnboardingRepository(database).list_destinations(
+            workspace.id
+        )
+        destination_keys = {item.destination_key for item in destinations}
         watermark_asset = await WorkspaceWatermarkAssetRepository(database).get(
             workspace.id
         )
-        if mode == "subscription" and "public" not in channel_kinds:
+        if audience == "subscribers" and "download" not in channel_kinds:
             await _show_media_settings(
                 callback,
                 database=database,
                 workspace_product_service=workspace_product_service,
                 workspace=workspace,
                 page=page,
-                alert="Сначала подключите публичный канал для проверки подписки.",
+                alert="Сначала подключите канал «Проверка скачивания».",
             )
             return
-        if mode == "watermark" and watermark_asset is None:
+        if audience != "disabled" and variant == "watermark" and watermark_asset is None:
             await _show_media_settings(
                 callback,
                 database=database,
@@ -1599,10 +1706,25 @@ async def handle_workspace_personal_archive(
                 alert="Сначала загрузите шаблон watermark.",
             )
             return
-        await workspace_product_service.set_downloads_mode(
+        if (
+            audience != "disabled"
+            and variant == "watermark"
+            and "watermarks" not in destination_keys
+        ):
+            await _show_media_settings(
+                callback,
+                database=database,
+                workspace_product_service=workspace_product_service,
+                workspace=workspace,
+                page=page,
+                alert="Сначала подключите назначение «Watermark-копии».",
+            )
+            return
+        await workspace_product_service.set_download_policy(
             workspace_id=workspace.id,
             actor_user_id=callback.from_user.id,
-            downloads_mode=cast(WorkspaceDownloadsMode, mode),
+            download_audience=audience,
+            download_variant=variant,
             global_owner=_is_global_owner(callback.from_user.id),
         )
         await _show_media_settings(
@@ -1628,14 +1750,30 @@ async def handle_workspace_personal_archive(
         return
     if action in {"like", "sub"}:
         if action == "like":
-            liked, _ = await toggle_public_like(
-                database,
-                character_id=page.character.id,
-                media_id=page.media.id,
-                user_id=callback.from_user.id,
-                workspace_id=workspace.id,
-            )
-            result_text = "Лайк поставлен." if liked else "Лайк снят."
+            settings = await workspace_product_service.get_settings(workspace.id)
+            if not settings.public_archive_enabled or not page.media.is_public:
+                liked = await WorkspaceMediaPreferenceRepository(
+                    database
+                ).toggle_favorite(
+                    workspace_id=workspace.id,
+                    character_id=page.character.id,
+                    media_id=page.media.id,
+                    user_id=callback.from_user.id,
+                )
+                result_text = (
+                    "Личная отметка поставлена. Она не входит в публичные лайки."
+                    if liked
+                    else "Личная отметка снята."
+                )
+            else:
+                liked, _ = await toggle_public_like(
+                    database,
+                    character_id=page.character.id,
+                    media_id=page.media.id,
+                    user_id=callback.from_user.id,
+                    workspace_id=workspace.id,
+                )
+                result_text = "Лайк поставлен." if liked else "Лайк снят."
         else:
             subscribed = await toggle_character_subscription(
                 database,
@@ -1659,11 +1797,17 @@ async def handle_workspace_personal_archive(
         return
     if action == "watermark":
         asset = await WorkspaceWatermarkAssetRepository(database).get(workspace.id)
+        destinations = await WorkspaceOnboardingRepository(database).list_destinations(
+            workspace.id
+        )
+        has_storage = any(
+            item.destination_key == "watermarks" for item in destinations
+        )
         module_enabled = await workspace_product_service.is_module_enabled(
             workspace_id=workspace.id,
             module_key="watermark",
         )
-        if not module_enabled or asset is None:
+        if not module_enabled or asset is None or not has_storage:
             await _show_media_settings(
                 callback,
                 database=database,
@@ -1674,6 +1818,8 @@ async def handle_workspace_personal_archive(
                     "Сначала включите модуль watermark и загрузите шаблон."
                     if not module_enabled
                     else "Сначала загрузите шаблон watermark."
+                    if asset is None
+                    else "Сначала подключите назначение «Watermark-копии»."
                 ),
             )
             return
@@ -1691,11 +1837,12 @@ async def handle_workspace_personal_archive(
             database,
             media_id=page.media.id,
             user_id=callback.from_user.id,
+            reason="Владелец пространства отправил работу на доработку.",
         )
         await callback.answer(
             (
-                "Работа отправлена в общую очередь доработки и временно скрыта "
-                "из публичной выдачи."
+                "Работа отправлена в общую очередь доработки и скрыта из "
+                "публичной выдачи. После проверки верните её отдельной кнопкой."
                 if changed
                 else "Работа уже находится в очереди доработки."
             ),
@@ -1707,6 +1854,16 @@ async def handle_workspace_personal_archive(
         if not settings.public_archive_enabled:
             await callback.answer(
                 "Сначала включите публичный архив в настройках пространства.",
+                show_alert=True,
+            )
+            return
+        if (
+            not page.media.is_public
+            and await MediaReworkRepository(database).is_active(page.media.id)
+        ):
+            await callback.answer(
+                "Сначала завершите проверку в очереди доработки, затем верните "
+                "материал в публичный архив.",
                 show_alert=True,
             )
             return

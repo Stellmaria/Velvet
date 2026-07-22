@@ -17,6 +17,7 @@ WorkspaceRole: TypeAlias = Literal[
 WorkspaceChannelKind: TypeAlias = Literal[
     "archive",
     "public",
+    "download",
     "publication",
     "adult",
     "discussion",
@@ -29,6 +30,8 @@ WorkspaceDownloadsMode: TypeAlias = Literal[
     "original",
     "subscription",
 ]
+WorkspaceDownloadAudience: TypeAlias = Literal["disabled", "all", "subscribers"]
+WorkspaceDownloadVariant: TypeAlias = Literal["watermark", "original"]
 
 WORKSPACE_ROLES: Final[tuple[WorkspaceRole, ...]] = (
     "owner",
@@ -40,6 +43,7 @@ WORKSPACE_ROLES: Final[tuple[WorkspaceRole, ...]] = (
 WORKSPACE_CHANNEL_KINDS: Final[tuple[WorkspaceChannelKind, ...]] = (
     "archive",
     "public",
+    "download",
     "publication",
     "adult",
     "discussion",
@@ -51,6 +55,15 @@ WORKSPACE_DOWNLOAD_MODES: Final[tuple[WorkspaceDownloadsMode, ...]] = (
     "watermark",
     "original",
     "subscription",
+)
+WORKSPACE_DOWNLOAD_AUDIENCES: Final[tuple[WorkspaceDownloadAudience, ...]] = (
+    "disabled",
+    "all",
+    "subscribers",
+)
+WORKSPACE_DOWNLOAD_VARIANTS: Final[tuple[WorkspaceDownloadVariant, ...]] = (
+    "watermark",
+    "original",
 )
 
 
@@ -82,6 +95,8 @@ class WorkspaceSettings:
     qwen_enabled: bool
     created_at: datetime
     updated_at: datetime
+    download_audience: WorkspaceDownloadAudience = "disabled"
+    download_variant: WorkspaceDownloadVariant = "watermark"
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,12 +113,16 @@ __all__ = (
     "DEFAULT_WORKSPACE_ID",
     "SYSTEM_WORKSPACE_SLUG",
     "WORKSPACE_CHANNEL_KINDS",
+    "WORKSPACE_DOWNLOAD_AUDIENCES",
     "WORKSPACE_DOWNLOAD_MODES",
+    "WORKSPACE_DOWNLOAD_VARIANTS",
     "WORKSPACE_ROLES",
     "Workspace",
     "WorkspaceChannel",
     "WorkspaceChannelKind",
+    "WorkspaceDownloadAudience",
     "WorkspaceDownloadsMode",
+    "WorkspaceDownloadVariant",
     "WorkspaceMembership",
     "WorkspaceRole",
     "WorkspaceSettings",

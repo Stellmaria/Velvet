@@ -532,24 +532,25 @@ async def handle_public_download(
         workspace_id=prepared.workspace_id,
     )
     if source is None:
-        mode = "watermark"
+        audience = "all"
+        variant = "watermark"
         if (
             workspace_product_service is not None
             and prepared.workspace_id != DEFAULT_WORKSPACE_ID
         ):
-            mode = (
-                await workspace_product_service.get_settings(
-                    prepared.workspace_id
-                )
-            ).downloads_mode
-        denied = {
-            "disabled": "Владелец архива запретил скачивание.",
-            "subscription": (
-                "Скачивание доступно после подписки на настроенный канал владельца."
-            ),
-            "watermark": "Скачивание откроется после одобрения watermark-копии.",
-            "original": "Файл временно недоступен для скачивания.",
-        }.get(mode, "Файл недоступен для скачивания.")
+            settings = await workspace_product_service.get_settings(
+                prepared.workspace_id
+            )
+            audience = settings.download_audience
+            variant = settings.download_variant
+        if audience == "disabled":
+            denied = "Владелец архива запретил скачивание."
+        elif audience == "subscribers" and not download_access:
+            denied = "Скачивание доступно после подписки на выбранный канал."
+        elif variant == "watermark":
+            denied = "Скачивание откроется после одобрения watermark-копии."
+        else:
+            denied = "Файл временно недоступен для скачивания."
         await callback.answer(
             denied,
             show_alert=True,

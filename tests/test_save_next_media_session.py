@@ -226,6 +226,27 @@ class SaveNextMediaHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(sessions.get(chat_id=10, user_id=20))
         self.assertIn("файлы не были добавлены", message.answer.await_args.args[0])
 
+    def test_personal_batch_keyboard_exposes_all_exit_paths(self) -> None:
+        keyboard = save_router._batch_save_keyboard(
+            workspace_id=5,
+            character_id=7,
+        )
+        labels = [
+            button.text
+            for row in keyboard.inline_keyboard
+            for button in row
+        ]
+
+        self.assertEqual(
+            [
+                "✅ Закончить загрузку",
+                "↩️ Открыть карточку",
+                "👤 Другой персонаж",
+                "✖ Отменить режим",
+            ],
+            labels,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

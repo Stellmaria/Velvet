@@ -171,25 +171,23 @@ class PublicArchiveRepository:
             include_oversized_images=True,
         )
         async with self._database.acquire() as connection:
-            downloads_mode = (
-                await connection.fetchval(
-                    """
-                    SELECT downloads_mode
-                    FROM workspace_settings
-                    WHERE workspace_id = $1::BIGINT
-                    """,
-                    self._workspace_id,
-                )
-                if self._workspace_id != 1
-                else None
-            )
             row = await connection.fetchrow(
                 f"""
                 SELECT
                     mf.telegram_file_id,
                     mf.source_telegram_file_id,
                     mf.watermark_applied,
-                    mf.watermark_approved
+                    mf.watermark_approved,
+                    COALESCE((
+                        SELECT download_audience
+                        FROM workspace_settings
+                        WHERE workspace_id = $3::BIGINT
+                    ), 'disabled') AS download_audience,
+                    COALESCE((
+                        SELECT download_variant
+                        FROM workspace_settings
+                        WHERE workspace_id = $3::BIGINT
+                    ), 'watermark') AS download_variant
                 FROM character_media AS cm
                 JOIN characters AS c ON c.id = cm.character_id
                 JOIN media_files AS mf ON mf.id = cm.media_id
@@ -205,27 +203,22 @@ class PublicArchiveRepository:
         if row is None:
             return None
         if self._workspace_id != 1:
-            mode = str(downloads_mode or "disabled")
-            if mode == "disabled":
+            audience = str(row["download_audience"] or "disabled")
+            variant = str(row["download_variant"] or "watermark")
+            if audience == "disabled":
                 return None
-            if mode == "original":
-                return PublicDownloadSource(
-                    telegram_file_id=str(
-                        row["source_telegram_file_id"] or row["telegram_file_id"]
-                    ),
-                    variant="original",
-                )
-            if mode == "subscription":
+            if audience == "subscribers":
                 allowed = member_access if download_access is None else download_access
                 if not allowed:
                     return None
+            if variant == "original":
                 return PublicDownloadSource(
                     telegram_file_id=str(
                         row["source_telegram_file_id"] or row["telegram_file_id"]
                     ),
                     variant="original",
                 )
-            if mode != "watermark":
+            if variant != "watermark":
                 return None
         if self._workspace_id == 1 and member_access:
             return PublicDownloadSource(

@@ -6,6 +6,8 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.domains.watermark.models import WatermarkWorkItem
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+from velvet_bot.workspace_watermark_ui import watermark_asset_callback
 
 
 class WatermarkCallback(CallbackData, prefix="wm"):
@@ -64,20 +66,43 @@ def build_archive_watermark_review_keyboard(
     item: WatermarkWorkItem,
 ) -> InlineKeyboardMarkup:
     job_id = item.job.id
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [_button("✅ Оставить и заменить в архиве", "archive_approve", job_id)],
-            [_button("⚙️ Изменить стандартный шаблон", "archive_edit", job_id)],
-            [_button("✖ Отмена", "cancel", job_id)],
-        ]
-    )
+    rows = [
+        [_button("✅ Использовать watermark", "archive_approve", job_id)],
+        [_button("🔄 Переделать", "archive_edit", job_id)],
+    ]
+    if item.job.workspace_id != DEFAULT_WORKSPACE_ID:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🎨 Изменить шаблон",
+                    callback_data=watermark_asset_callback(
+                        "show",
+                        workspace_id=item.job.workspace_id,
+                    ),
+                )
+            ]
+        )
+    rows.append([_button("✖ Отмена", "cancel", job_id)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def build_archive_watermark_edit_keyboard(
     item: WatermarkWorkItem,
 ) -> InlineKeyboardMarkup:
     rows = _settings_rows(item)
-    rows.append([_button("✅ Оставить и заменить в архиве", "archive_approve", item.job.id)])
+    rows.append([_button("✅ Использовать watermark", "archive_approve", item.job.id)])
+    if item.job.workspace_id != DEFAULT_WORKSPACE_ID:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🎨 Изменить шаблон",
+                    callback_data=watermark_asset_callback(
+                        "show",
+                        workspace_id=item.job.workspace_id,
+                    ),
+                )
+            ]
+        )
     rows.append([_button("✖ Отмена", "cancel", item.job.id)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

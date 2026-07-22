@@ -13,7 +13,9 @@ from velvet_bot.domains.workspaces.models import (
     DEFAULT_WORKSPACE_ID,
     Workspace,
     WorkspaceChannel,
+    WorkspaceDownloadAudience,
     WorkspaceDownloadsMode,
+    WorkspaceDownloadVariant,
     WorkspaceRole,
     WorkspaceSettings,
 )
@@ -252,6 +254,28 @@ class WorkspaceProductService:
             global_owner=global_owner,
         )
 
+    async def set_download_policy(
+        self,
+        *,
+        workspace_id: int,
+        actor_user_id: int,
+        download_audience: WorkspaceDownloadAudience,
+        download_variant: WorkspaceDownloadVariant,
+        global_owner: bool = False,
+    ) -> WorkspaceSettings:
+        settings = await self.get_settings(workspace_id)
+        return await self._workspace_service.update_settings(
+            workspace_id=int(workspace_id),
+            actor_user_id=int(actor_user_id),
+            timezone=settings.timezone,
+            public_archive_enabled=settings.public_archive_enabled,
+            downloads_mode=settings.downloads_mode,
+            download_audience=download_audience,
+            download_variant=download_variant,
+            qwen_enabled=settings.qwen_enabled,
+            global_owner=global_owner,
+        )
+
     async def set_public_archive_enabled(
         self,
         *,
@@ -275,6 +299,8 @@ class WorkspaceProductService:
             timezone=settings.timezone,
             public_archive_enabled=bool(enabled),
             downloads_mode=settings.downloads_mode,
+            download_audience=settings.download_audience,
+            download_variant=settings.download_variant,
             qwen_enabled=settings.qwen_enabled,
             global_owner=global_owner,
         )

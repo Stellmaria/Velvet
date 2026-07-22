@@ -68,6 +68,8 @@ _PAGE_SIZE = 8
 _OPTIONAL_DESTINATION_KEYS: tuple[WorkspaceDestinationKey, ...] = (
     "public",
     "adult",
+    "downloads",
+    "watermarks",
     "publications",
     "discussion",
     "analytics",
@@ -513,6 +515,61 @@ def _character_card_callback(workspace_id: int, character_id: int, page: int = 0
     ).pack()
 
 
+def _active_save_keyboard(
+    *,
+    workspace_id: int,
+    character_id: int,
+    page: int = 0,
+) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Закончить загрузку",
+                    callback_data=guided_workspace_callback(
+                        "savefinish",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=page,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Открыть карточку",
+                    callback_data=guided_workspace_callback(
+                        "saveopen",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=page,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="👤 Другой персонаж",
+                    callback_data=guided_workspace_callback(
+                        "savepick",
+                        workspace_id=workspace_id,
+                        page=page,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="✖ Отменить режим",
+                    callback_data=guided_workspace_callback(
+                        "saveabort",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=page,
+                    ),
+                )
+            ],
+        ]
+    )
+
+
 def _character_list_callback(workspace_id: int, page: int = 0) -> str:
     return WorkspaceCharacterPickerCallback(
         action="list",
@@ -929,50 +986,51 @@ async def handle_guided_workspace_callback(
                     "Отправьте или перешлите несколько фото, видео, анимаций либо "
                     "документов. Можно отправить Telegram-альбом: каждое сообщение "
                     "сохранится в текущем пространстве.\n\n"
-                    "После последнего файла обязательно нажмите «Завершить загрузку». "
-                    "Ожидание действует 10 минут после последнего файла."
+                    "После последнего файла нажмите «Закончить загрузку». "
+                    "Открытие карточки не останавливает режим, а отмена не удаляет "
+                    "уже сохранённые материалы. Ожидание действует 10 минут после "
+                    "последнего файла."
                 ),
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="✅ Завершить загрузку",
-                                callback_data=guided_workspace_callback(
-                                    "savecancel",
-                                    workspace_id=workspace.id,
-                                    character_id=character.id,
-                                    page=callback_data.page,
-                                ),
-                            )
-                        ],
-                        [
-                            InlineKeyboardButton(
-                                text="↩️ К карточке",
-                                callback_data=_character_card_callback(
-                                    workspace.id,
-                                    character.id,
-                                    callback_data.page,
-                                ),
-                            )
-                        ],
-                    ]
+                reply_markup=_active_save_keyboard(
+                    workspace_id=workspace.id,
+                    character_id=character.id,
+                    page=callback_data.page,
                 ),
             )
             return
-        if action == "savecancel":
+        if action == "saveopen":
+            await _render_card(
+                callback,
+                database=database,
+                workspace_id=workspace.id,
+                character_id=callback_data.character_id,
+                list_page=callback_data.page,
+                answer="Режим загрузки остаётся активным.",
+            )
+            return
+        if action in {"savefinish", "savecancel", "saveabort"}:
             stopped = None
             if isinstance(callback.message, Message):
                 stopped = save_upload_sessions.stop(
                     chat_id=callback.message.chat.id,
                     user_id=callback.from_user.id,
                 )
+            if action == "saveabort":
+                text = (
+                    "Режим загрузки отменён. Уже сохранённые материалы не удалены. "
+                    f"Обработано файлов: <b>{stopped.saved_count}</b>."
+                    if stopped is not None
+                    else "Активного режима загрузки уже нет."
+                )
+            else:
+                text = (
+                    f"Загрузка завершена. Обработано файлов: <b>{stopped.saved_count}</b>."
+                    if stopped is not None
+                    else "Активного режима загрузки уже нет."
+                )
             await _edit(
                 callback,
-                text=(
-                    f"Загрузка завершена. Обработано файлов: <b>{stopped.saved_count}</b>."
-                    if stopped is not None and stopped.saved_count
-                    else "Загрузка отменена: файлы не были добавлены."
-                ),
+                text=text,
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
