@@ -75,6 +75,7 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.workspace_analytics_characters",
     "velvet_bot.presentation.telegram.routers.workspace_character_management",
     "velvet_bot.presentation.telegram.routers.workspace_character_pickers",
+    "velvet_bot.presentation.telegram.routers.workspace_character_topic_creation",
     "velvet_bot.presentation.telegram.routers.workspace_onboarding",
     "velvet_bot.presentation.telegram.routers.workspace_onboarding_channel_bind",
     "velvet_bot.presentation.telegram.routers.workspace_publications",
