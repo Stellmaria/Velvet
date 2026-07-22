@@ -14,6 +14,10 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 from PIL import Image, UnidentifiedImageError
 
 from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
+from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
+from velvet_bot.domains.workspaces.watermark_assets import WorkspaceWatermarkAssetRepository
 from velvet_bot.domains.public_archive.watermark_repository import (
     PublicArchiveWatermarkRepository,
 )
@@ -78,6 +82,63 @@ def _build_service(bot: Bot, database: Database) -> WatermarkService:
     )
 
 
+def _is_global_owner(user_id: int) -> bool:
+    return int(user_id) == GLOBAL_WORKSPACE_CREATOR_ID
+
+
+async def _workspace_logo_context(
+    database: Database,
+    workspace_service: WorkspaceService,
+    *,
+    user_id: int,
+):
+    global_owner = _is_global_owner(user_id)
+    workspace = await workspace_service.resolve_active_workspace(
+        user_id=user_id,
+        global_owner=global_owner,
+    )
+    if workspace.id == DEFAULT_WORKSPACE_ID:
+        return DEFAULT_WORKSPACE_ID, None
+    await workspace_service.require_role(
+        workspace_id=workspace.id,
+        user_id=user_id,
+        minimum_role="editor",
+        global_owner=global_owner,
+    )
+    async with database.acquire() as connection:
+        enabled = await connection.fetchval(
+            """
+            SELECT is_allowed AND is_enabled
+            FROM workspace_modules
+            WHERE workspace_id = $1::BIGINT
+              AND module_key = 'watermark'
+            """,
+            workspace.id,
+        )
+    if not enabled:
+        raise WorkspaceAccessError("Модуль watermark выключен или не разрешён Стэл.")
+    asset = await WorkspaceWatermarkAssetRepository(database).get(workspace.id)
+    return workspace.id, asset
+
+
+async def _require_job_workspace(
+    database: Database,
+    workspace_service: WorkspaceService,
+    *,
+    user_id: int,
+    workspace_id: int,
+) -> None:
+    if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+        return
+    active_id, _ = await _workspace_logo_context(
+        database, workspace_service, user_id=user_id
+    )
+    if active_id != int(workspace_id):
+        raise WorkspaceAccessError(
+            "Задание относится не к активному пространству. Откройте его заново."
+        )
+
+
 async def _wake_krita() -> str | None:
     client = build_krita_supervisor_client()
     if client is None:
@@ -128,8 +189,19 @@ async def _create_job_from_message(
     message: Message,
     source_message: Message,
     bot: Bot,
+    database: Database,
+    workspace_service: WorkspaceService,
     watermark_service: WatermarkService,
 ) -> WatermarkWorkItem | None:
+    try:
+        workspace_id, logo_asset = await _workspace_logo_context(
+            database,
+            workspace_service,
+            user_id=int(message.from_user.id),
+        )
+    except WorkspaceAccessError as error:
+        await message.answer(f"❌ {escape(str(error))}")
+        return None
     source = _source_file(source_message)
     if source is None:
         await message.answer(
@@ -170,6 +242,12 @@ async def _create_job_from_message(
         source_file_id=file_id,
         source_file_unique_id=file_unique_id,
         source_path=str(source_path),
+        workspace_id=workspace_id,
+        logo_kind=(logo_asset.asset_kind if logo_asset is not None else "builtin"),
+        logo_path=(logo_asset.local_path if logo_asset is not None else None),
+        logo_width=(logo_asset.width if logo_asset is not None else None),
+        logo_height=(logo_asset.height if logo_asset is not None else None),
+        logo_name=(logo_asset.file_name if logo_asset is not None else None),
     )
     control = await message.answer(
         format_watermark_caption(item, status_text="поставлено в очередь"),
@@ -208,6 +286,7 @@ async def handle_watermark_command(
     message: Message,
     bot: Bot,
     database: Database,
+    workspace_service: WorkspaceService,
 ) -> None:
     if not _watermark_enabled():
         await message.answer("Krita bridge выключен. Включите KRITA_WATERMARK_ENABLED=true.")
@@ -230,6 +309,8 @@ async def handle_watermark_command(
         message=message,
         source_message=source,
         bot=bot,
+        database=database,
+        workspace_service=workspace_service,
         watermark_service=_build_service(bot, database),
     )
 
@@ -239,6 +320,7 @@ async def handle_watermark_form_image(
     message: Message,
     bot: Bot,
     database: Database,
+    workspace_service: WorkspaceService,
 ) -> None:
     if not _watermark_enabled():
         await message.answer("Krita bridge выключен.")
@@ -247,6 +329,8 @@ async def handle_watermark_form_image(
         message=message,
         source_message=message,
         bot=bot,
+        database=database,
+        workspace_service=workspace_service,
         watermark_service=_build_service(bot, database),
     )
 
@@ -257,6 +341,7 @@ async def handle_watermark_custom_color(
     watermark_job_id: int,
     bot: Bot,
     database: Database,
+    workspace_service: WorkspaceService,
 ) -> None:
     if not _watermark_enabled():
         await message.answer("Krita bridge выключен.")
@@ -265,6 +350,15 @@ async def handle_watermark_custom_color(
     service = _build_service(bot, database)
     color = (message.text or "").strip()
     try:
+        current = await service.get_current(
+            watermark_job_id, owner_user_id=message.from_user.id
+        )
+        await _require_job_workspace(
+            database,
+            workspace_service,
+            user_id=message.from_user.id,
+            workspace_id=current.job.workspace_id,
+        )
         item = await service.revise(
             watermark_job_id,
             owner_user_id=message.from_user.id,
@@ -286,6 +380,7 @@ async def handle_watermark_callback(
     callback_data: WatermarkCallback,
     bot: Bot,
     database: Database,
+    workspace_service: WorkspaceService,
 ) -> None:
     action = callback_data.action
     if action != "menu" and not _watermark_enabled():
@@ -323,6 +418,17 @@ async def handle_watermark_callback(
     service = _build_service(bot, database)
     owner_user_id = callback.from_user.id
     job_id = callback_data.job_id
+    try:
+        current = await service.get_current(job_id, owner_user_id=owner_user_id)
+        await _require_job_workspace(
+            database,
+            workspace_service,
+            user_id=owner_user_id,
+            workspace_id=current.job.workspace_id,
+        )
+    except (WorkspaceAccessError, ValueError) as error:
+        await callback.answer(str(error), show_alert=True)
+        return
 
     if action == "archive_edit":
         try:

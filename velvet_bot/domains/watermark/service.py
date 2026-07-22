@@ -63,6 +63,12 @@ class WatermarkService:
         source_file_id: str,
         source_file_unique_id: str | None,
         source_path: str,
+        workspace_id: int = 1,
+        logo_kind: str = "builtin",
+        logo_path: str | None = None,
+        logo_width: float | None = None,
+        logo_height: float | None = None,
+        logo_name: str | None = None,
     ) -> WatermarkWorkItem:
         return await self._repository.create_job(
             owner_user_id=owner_user_id,
@@ -72,6 +78,12 @@ class WatermarkService:
             source_file_unique_id=source_file_unique_id,
             source_path=source_path,
             settings=WatermarkSettings(),
+            workspace_id=workspace_id,
+            logo_kind=logo_kind,
+            logo_path=logo_path,
+            logo_width=logo_width,
+            logo_height=logo_height,
+            logo_name=logo_name,
         )
 
     async def get_current(self, job_id: int, *, owner_user_id: int) -> WatermarkWorkItem:

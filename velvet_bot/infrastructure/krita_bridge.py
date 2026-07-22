@@ -32,6 +32,7 @@ class KritaBridgePaths:
     outputs: Path
     sources: Path
     previews: Path
+    assets: Path
 
     @classmethod
     def build(cls, root: str | Path) -> "KritaBridgePaths":
@@ -43,6 +44,7 @@ class KritaBridgePaths:
             outputs=root_path / "outputs",
             sources=root_path / "sources",
             previews=root_path / "previews",
+            assets=root_path / "assets",
         )
         for path in asdict(paths).values():
             Path(path).mkdir(parents=True, exist_ok=True)
@@ -96,12 +98,30 @@ class KritaBridge:
         output_path = self.paths.ensure_in(output_path, self.paths.outputs)
         response_path = self.paths.ensure_in(response_path, self.paths.responses)
 
+        logo: dict[str, Any] = {
+            "kind": item.job.logo_kind,
+            "name": item.job.logo_name,
+        }
+        if item.job.logo_kind != "builtin":
+            if not item.job.logo_path or not item.job.logo_width or not item.job.logo_height:
+                raise ValueError("Custom watermark job не содержит полного snapshot логотипа.")
+            logo_path = self.paths.ensure_in(item.job.logo_path, self.paths.assets)
+            if not logo_path.is_file():
+                raise ValueError("Файл пользовательского логотипа не найден.")
+            logo.update(
+                path=str(logo_path),
+                width=float(item.job.logo_width),
+                height=float(item.job.logo_height),
+            )
+
         payload: dict[str, Any] = {
-            "schema_version": 1,
+            "schema_version": 2,
             "request_id": f"wm-{job_id}-r{revision}",
             "job_id": job_id,
             "revision": revision,
+            "workspace_id": item.job.workspace_id,
             "bridge_root": str(self.paths.root),
+            "logo": logo,
             "source_path": str(source_path),
             "output_path": str(output_path),
             "response_path": str(response_path),

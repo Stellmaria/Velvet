@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -208,7 +210,7 @@ class VelvetLogoExtension(Extension):
 
     def _set_bridge_root(self, value: str) -> None:
         root = Path(value).expanduser().resolve()
-        for name in ("requests", "responses", "outputs", "sources", "previews"):
+        for name in ("requests", "responses", "outputs", "sources", "previews", "assets"):
             (root / name).mkdir(parents=True, exist_ok=True)
         self._bridge_root = root
         Krita.instance().writeSetting(self.SETTINGS_GROUP, "bridge_dir", str(root))
@@ -263,7 +265,7 @@ class VelvetLogoExtension(Extension):
                 document.refreshProjection()
             else:
                 settings = self._normalize(request.get("settings") or {})
-                self._apply(document, settings)
+                self._apply(document, settings, request.get("logo") or {})
                 response["applied_settings"] = settings
             self._export(document, output_path)
             response.update(status="ok", output_path=str(output_path))
@@ -296,17 +298,24 @@ class VelvetLogoExtension(Extension):
         temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         os.replace(temporary, path)
 
-    def _apply(self, document, raw_settings: dict[str, Any]) -> None:
+    def _apply(
+        self,
+        document,
+        raw_settings: dict[str, Any],
+        logo: dict[str, Any] | None = None,
+    ) -> None:
         settings = self._normalize(raw_settings)
+        logo = logo or {"kind": "builtin"}
         color = settings["color"]
-        if color == "auto":
+        if logo.get("kind", "builtin") == "builtin" and color == "auto":
             color = self._auto_color(document, settings)
         settings = dict(settings, color=color)
         self._remove_layers(document)
         root = document.rootNode()
-        layer = document.createVectorLayer(f"{self.LAYER_PREFIX} ({color})")
+        logo_name = str(logo.get("name") or logo.get("kind") or "builtin")
+        layer = document.createVectorLayer(f"{self.LAYER_PREFIX} ({logo_name})")
         root.addChildNode(layer, None)
-        shapes = layer.addShapesFromSvg(self._build_svg(document, settings))
+        shapes = layer.addShapesFromSvg(self._build_svg(document, settings, logo))
         if not shapes:
             root.removeChildNode(layer)
             raise RuntimeError("Krita не смогла импортировать SVG логотипа.")
@@ -316,27 +325,72 @@ class VelvetLogoExtension(Extension):
         document.setModified(True)
         document.refreshProjection()
 
-    def _build_svg(self, document, settings: dict[str, Any]) -> str:
+    def _build_svg(
+        self,
+        document,
+        settings: dict[str, Any],
+        logo: dict[str, Any] | None = None,
+    ) -> str:
+        logo = logo or {"kind": "builtin"}
         width = float(document.width())
         height = float(document.height())
         points = 72.0 / float(document.resolution() or 72.0)
         canvas_width, canvas_height = width * points, height * points
+        kind = str(logo.get("kind") or "builtin").casefold()
         logo_width = width * settings["size"] / 100.0 * points
-        logo_height = logo_width * self.LOGO_ASPECT
         margin = width * settings["margin"] / 100.0 * points
         vertical, horizontal = self._parts(settings["position"])
+        if kind == "builtin":
+            logo_height = logo_width * self.LOGO_ASPECT
+            x = self._axis(horizontal, canvas_width, logo_width, margin)
+            y = self._axis(vertical, canvas_height, logo_height, margin)
+            scale = logo_width / 1055.0
+            start = LOGO_SVG.index("<path")
+            path = LOGO_SVG[start:LOGO_SVG.index("/>", start) + 2].replace(
+                "#000000", settings["color"]
+            )
+            return (
+                f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_width}pt" '
+                f'height="{canvas_height}pt" viewBox="0 0 {canvas_width} {canvas_height}">'
+                f'<g transform="translate({x} {y}) scale({scale}) translate(-99 -250)">'
+                f"{path}</g></svg>"
+            )
+
+        source = self._safe_path(logo.get("path"), required=True)
+        assert source is not None
+        assets_root = (self._bridge_root / "assets").resolve()
+        try:
+            source.relative_to(assets_root)
+        except ValueError as error:
+            raise ValueError("Пользовательский логотип находится вне assets.") from error
+        source_width = float(logo.get("width") or 0)
+        source_height = float(logo.get("height") or 0)
+        if source_width <= 0 or source_height <= 0:
+            raise ValueError("Некорректные размеры пользовательского логотипа.")
+        logo_height = logo_width * source_height / source_width
         x = self._axis(horizontal, canvas_width, logo_width, margin)
         y = self._axis(vertical, canvas_height, logo_height, margin)
-        scale = logo_width / 1055.0
-        start = LOGO_SVG.index("<path")
-        path = LOGO_SVG[start:LOGO_SVG.index("/>", start) + 2].replace(
-            "#000000", settings["color"]
-        )
+        if kind == "png":
+            encoded = base64.b64encode(source.read_bytes()).decode("ascii")
+            body = (
+                f'<image x="{x}" y="{y}" width="{logo_width}" height="{logo_height}" '
+                f'preserveAspectRatio="xMidYMid meet" href="data:image/png;base64,{encoded}" />'
+            )
+        elif kind == "svg":
+            root = ET.fromstring(source.read_bytes())
+            inner = "".join(ET.tostring(child, encoding="unicode") for child in list(root))
+            view_box = root.attrib.get("viewBox") or f"0 0 {source_width} {source_height}"
+            body = (
+                f'<svg x="{x}" y="{y}" width="{logo_width}" height="{logo_height}" '
+                f'viewBox="{view_box}" preserveAspectRatio="xMidYMid meet">{inner}</svg>'
+            )
+        else:
+            raise ValueError("Неизвестный тип пользовательского логотипа.")
         return (
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_width}pt" '
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'xmlns:xlink="http://www.w3.org/1999/xlink" width="{canvas_width}pt" '
             f'height="{canvas_height}pt" viewBox="0 0 {canvas_width} {canvas_height}">'
-            f'<g transform="translate({x} {y}) scale({scale}) translate(-99 -250)">'
-            f"{path}</g></svg>"
+            f"{body}</svg>"
         )
 
     def _auto_color(self, document, settings: dict[str, Any]) -> str:

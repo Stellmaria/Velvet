@@ -196,6 +196,33 @@ async def handle_team_callback(
             )
         await callback.answer()
         return
+    if action == "addrole":
+        try:
+            role = cast(WorkspaceRole, callback_data.role)
+            if role not in ROLE_LABELS:
+                raise ValueError("Неизвестная роль команды.")
+            await service.add_member(
+                workspace_id=workspace.id,
+                actor_user_id=actor_id,
+                user_id=callback_data.user_id,
+                role=role,
+                global_owner=_is_global_owner(actor_id),
+            )
+        except (WorkspaceAccessError, ValueError) as error:
+            await callback.answer(str(error), show_alert=True)
+            return
+        await callback.answer(f"Участник добавлен: {ROLE_LABELS[role]}.")
+        members = await service.list_members(
+            workspace_id=workspace.id,
+            actor_user_id=actor_id,
+            global_owner=_is_global_owner(actor_id),
+        )
+        await _edit(
+            callback,
+            text=format_team(workspace_name=workspace.name, members=members),
+            reply_markup=build_team_keyboard(workspace_id=workspace.id, members=members),
+        )
+        return
 
     target = await repository.get_member(
         workspace_id=workspace.id,
@@ -322,43 +349,6 @@ async def handle_team_user_id(
             user_id=target_user_id,
             actor_role=actor.role,
         ),
-    )
-
-
-@router.callback_query(WorkspaceTeamCallback.filter(F.action == "addrole"))
-async def handle_add_member_role(
-    callback: CallbackQuery,
-    callback_data: WorkspaceTeamCallback,
-    database: Database,
-    workspace_service: WorkspaceService,
-) -> None:
-    actor_id = int(callback.from_user.id)
-    try:
-        workspace, _ = await _require_context(
-            database=database,
-            workspaces=workspace_service,
-            workspace_id=callback_data.workspace_id,
-            actor_user_id=actor_id,
-        )
-        role = cast(WorkspaceRole, callback_data.role)
-        if role not in ROLE_LABELS:
-            raise ValueError("Неизвестная роль команды.")
-        await _team_service(database, workspace_service).add_member(
-            workspace_id=workspace.id,
-            actor_user_id=actor_id,
-            user_id=callback_data.user_id,
-            role=role,
-            global_owner=_is_global_owner(actor_id),
-        )
-    except (WorkspaceAccessError, ValueError) as error:
-        await callback.answer(str(error), show_alert=True)
-        return
-    await callback.answer(f"Участник добавлен: {ROLE_LABELS[role]}.")
-    await _show_team(
-        callback,
-        database=database,
-        workspaces=workspace_service,
-        workspace_id=workspace.id,
     )
 
 
