@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from aiogram import Router
 
+from velvet_bot.presentation.telegram.routers.workspace_analytics import (
+    router as workspace_analytics_router,
+)
 from velvet_bot.presentation.telegram.routers.analytics_controllers.channel import (
     router as channel_analytics_router,
 )
@@ -19,6 +22,9 @@ from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard im
 )
 
 router = Router(name=__name__)
+# Personal workspace ingestion and dashboard handlers must run before global
+# system analytics and management overrides.
+router.include_router(workspace_analytics_router)
 router.include_router(channel_analytics_router)
 router.include_router(analytics_dashboard_overrides_router)
 router.include_router(analytics_discussion_overrides_router)
