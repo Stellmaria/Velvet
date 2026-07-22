@@ -20,13 +20,19 @@ _EXTRA_WORKSPACE_CALLBACK_PREFIXES = ("wob:", "wqs:", "wsdel:")
 def install_workspace_access_extensions() -> None:
     """Register personal-workspace onboarding routes before polling starts."""
 
-    policy.WORKSPACE_MEMBER_COMMANDS = frozenset(
-        set(policy.WORKSPACE_MEMBER_COMMANDS) | set(_EXTRA_WORKSPACE_COMMANDS)
+    setattr(
+        policy,
+        "WORKSPACE_MEMBER_COMMANDS",
+        frozenset(set(policy.WORKSPACE_MEMBER_COMMANDS) | set(_EXTRA_WORKSPACE_COMMANDS)),
     )
-    policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES = tuple(
-        dict.fromkeys(
-            (*policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES, *_EXTRA_WORKSPACE_CALLBACK_PREFIXES)
-        )
+    setattr(
+        policy,
+        "WORKSPACE_MEMBER_CALLBACK_PREFIXES",
+        tuple(
+            dict.fromkeys(
+                (*policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES, *_EXTRA_WORKSPACE_CALLBACK_PREFIXES)
+            )
+        ),
     )
 
 
