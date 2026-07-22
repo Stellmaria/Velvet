@@ -1,0 +1,600 @@
+name: temp supervisor test slug network fix
+
+on:
+  push:
+    branches:
+      - agent/supervisor-test-slug-network-fix
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/supervisor-test-slug-network-fix
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Apply fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'Pattern not found in {path}: {old[:120]!r}')
+              target.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          def replace_regex(path: str, pattern: str, replacement: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding='utf-8')
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'Regex count {count} in {path}: {pattern[:120]!r}')
+              target.write_text(updated, encoding='utf-8')
+
+          # Database integration tests use a dedicated schema. This path is only
+          # activated by unittest when the exact TEST_DATABASE_URL is opened.
+          replace_once(
+              'velvet_bot/database.py',
+              'import hashlib\nimport unicodedata\n',
+              'import hashlib\nimport os\nimport re\nimport sys\nimport unicodedata\n',
+          )
+          replace_once(
+              'velvet_bot/database.py',
+              '_LEGACY_DUPLICATE_MIGRATION_NUMBERS = {\n'
+              '    "003": frozenset({"003_character_references.sql", "003_public_archive.sql"}),\n'
+              '}\n\n',
+              '_LEGACY_DUPLICATE_MIGRATION_NUMBERS = {\n'
+              '    "003": frozenset({"003_character_references.sql", "003_public_archive.sql"}),\n'
+              '}\n'
+              '_TEST_SCHEMA_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")\n\n\n'
+              'def _isolated_test_schema(database_url: str) -> str | None:\n'
+              '    """Resolve a private PostgreSQL schema only for unittest integration runs."""\n\n'
+              '    configured_url = os.getenv("TEST_DATABASE_URL", "").strip()\n'
+              '    if not configured_url or database_url.strip() != configured_url:\n'
+              '        return None\n'
+              '    if "unittest" not in " ".join(sys.argv).casefold():\n'
+              '        return None\n\n'
+              '    configured_schema = os.getenv("TEST_DATABASE_SCHEMA", "").strip().casefold()\n'
+              '    if configured_schema:\n'
+              '        if _TEST_SCHEMA_RE.fullmatch(configured_schema) is None:\n'
+              '            raise RuntimeError(\n'
+              '                "TEST_DATABASE_SCHEMA должен быть безопасным PostgreSQL identifier."\n'
+              '            )\n'
+              '        return configured_schema\n\n'
+              '    fingerprint = hashlib.sha256(\n'
+              '        f"{database_url}\\0{Path.cwd()}".encode("utf-8")\n'
+              '    ).hexdigest()[:12]\n'
+              '    return f"velvet_test_{fingerprint}"\n\n',
+          )
+          replace_once(
+              'velvet_bot/database.py',
+              '        self._pool: asyncpg.Pool | None = None\n\n'
+              '    async def initialize(self) -> None:\n'
+              '        self._pool = await asyncpg.create_pool(\n'
+              '            dsn=self.database_url,\n'
+              '            min_size=1,\n'
+              '            max_size=10,\n'
+              '            command_timeout=60,\n'
+              '        )\n',
+              '        self._pool: asyncpg.Pool | None = None\n'
+              '        self._test_schema = _isolated_test_schema(database_url)\n\n'
+              '    async def _prepare_test_schema(self) -> dict[str, str] | None:\n'
+              '        if self._test_schema is None:\n'
+              '            return None\n'
+              '        try:\n'
+              '            connection = await asyncpg.connect(\n'
+              '                dsn=self.database_url,\n'
+              '                command_timeout=60,\n'
+              '            )\n'
+              '            try:\n'
+              '                await connection.execute(\n'
+              '                    f\'CREATE SCHEMA IF NOT EXISTS "{self._test_schema}"\'\n'
+              '                )\n'
+              '            finally:\n'
+              '                await connection.close()\n'
+              '        except asyncpg.InsufficientPrivilegeError as error:\n'
+              '            import unittest\n\n'
+              '            raise unittest.SkipTest(\n'
+              '                "Роль TEST_DATABASE_URL не может создать изолированную тестовую "\n'
+              '                "схему. Укажите SUPERVISOR_TEST_DATABASE_URL для отдельной базы "\n'
+              '                "или выдайте роли CREATE на тестовую базу."\n'
+              '            ) from error\n'
+              '        return {"search_path": f\'"{self._test_schema}"\'}\n\n'
+              '    async def initialize(self) -> None:\n'
+              '        server_settings = await self._prepare_test_schema()\n'
+              '        self._pool = await asyncpg.create_pool(\n'
+              '            dsn=self.database_url,\n'
+              '            min_size=1,\n'
+              '            max_size=10,\n'
+              '            command_timeout=60,\n'
+              '            server_settings=server_settings,\n'
+              '        )\n',
+          )
+
+          # Personal workspace slugs no longer depend on a count that can be stale
+          # after deletion, missing membership, or simultaneous creation requests.
+          replace_once(
+              'velvet_bot/domains/workspaces/product_service.py',
+              'from dataclasses import dataclass\n',
+              'from dataclasses import dataclass\nfrom uuid import uuid4\n',
+          )
+          replace_once(
+              'velvet_bot/domains/workspaces/product_service.py',
+              '            slug=f"user-{int(owner_user_id)}-{owned + 1}",\n',
+              '            slug=f"user-{int(owner_user_id)}-{uuid4().hex[:12]}",\n',
+          )
+
+          # Transient Telegram transport failures are handled and logged at INFO,
+          # while real handler defects remain CRITICAL incidents.
+          replace_once(
+              'velvet_bot/presentation/telegram/router.py',
+              'from aiogram.types import ErrorEvent\n\n',
+              'from aiogram.types import ErrorEvent\n\n'
+              'from velvet_bot.infrastructure.transient_connections import (\n'
+              '    is_transient_connection_error,\n'
+              ')\n\n',
+          )
+          replace_once(
+              'velvet_bot/presentation/telegram/router.py',
+              '    async def handle_unhandled_error(event: ErrorEvent) -> bool:\n'
+              '        # The root logging handler forwards this record, traceback included, to the\n'
+              '        # persistent incident center. Do not send a second audit message here.\n'
+              '        logger.critical(\n',
+              '    async def handle_unhandled_error(event: ErrorEvent) -> bool:\n'
+              '        if is_transient_connection_error(event.exception):\n'
+              '            logger.info(\n'
+              '                "Transient Telegram connection error recovered: %s",\n'
+              '                event.exception,\n'
+              '            )\n'
+              '            return True\n'
+              '        # The root logging handler forwards this record, traceback included, to the\n'
+              '        # persistent incident center. Do not send a second audit message here.\n'
+              '        logger.critical(\n',
+          )
+
+          replace_regex(
+              'velvet_bot/runtime_stability.py',
+              r'async def acknowledge_legacy_polling_noise\(repository: Any\) -> int:\n.*?\n\ndef install_runtime_stability',
+              '''async def acknowledge_legacy_polling_noise(repository: Any) -> int:
+    """Close old recoverable Telegram transport incidents so owner digests stay useful."""
+
+    database = getattr(repository, "_database", None)
+    if database is None:
+        return 0
+
+    async with database.acquire() as connection:
+        result = await connection.execute(
+            """
+            UPDATE error_incidents
+            SET acknowledged_at = COALESCE(acknowledged_at, NOW()),
+                acknowledged_by = COALESCE(acknowledged_by, 0)
+            WHERE acknowledged_at IS NULL
+              AND (
+                    (
+                        logger_name = 'aiogram.dispatcher'
+                        AND (
+                              (
+                                  LOWER(summary) LIKE '%failed to fetch updates%'
+                                  AND LOWER(summary) LIKE '%telegramnetworkerror%'
+                                  AND (
+                                         LOWER(summary) LIKE '%serverdisconnectederror%'
+                                      OR LOWER(summary) LIKE '%server disconnected%'
+                                      OR LOWER(summary) LIKE '%clientconnectorerror%'
+                                      OR LOWER(summary) LIKE '%cannot connect to host api.telegram.org%'
+                                      OR LOWER(summary) LIKE '%превышен таймаут семафора%'
+                                      OR LOWER(summary) LIKE '%semaphore timeout%'
+                                      OR LOWER(summary) LIKE '%connection reset by peer%'
+                                      OR LOWER(summary) LIKE '%connection timed out%'
+                                  )
+                              )
+                              OR LOWER(summary) LIKE 'sleep for % seconds and try again%'
+                        )
+                    )
+                    OR (
+                        logger_name = 'velvet_bot.presentation.telegram.router'
+                        AND LOWER(summary) LIKE '%unhandled bot error%'
+                        AND (
+                               LOWER(summary) LIKE '%clientconnectorerror%'
+                            OR LOWER(summary) LIKE '%cannot connect to host api.telegram.org%'
+                            OR LOWER(summary) LIKE '%превышен таймаут семафора%'
+                            OR LOWER(summary) LIKE '%подключение к сети было разорвано%'
+                            OR LOWER(summary) LIKE '%semaphore timeout%'
+                            OR LOWER(summary) LIKE '%connection reset by peer%'
+                            OR LOWER(summary) LIKE '%connection timed out%'
+                        )
+                    )
+                  )
+            """
+        )
+    try:
+        return int(str(result).rsplit(" ", 1)[-1])
+    except (TypeError, ValueError):
+        return 0
+
+
+def install_runtime_stability''',
+          )
+
+          # Supervisor post-update tests no longer inherit TEST_DATABASE_URL from
+          # the bot process. A dedicated DSN must be explicitly configured.
+          replace_once(
+              'velvet_supervisor/config.py',
+              '    codex_model: str | None = None\n',
+              '    codex_model: str | None = None\n'
+              '    test_database_url: str | None = None\n',
+          )
+          replace_once(
+              'velvet_supervisor/config.py',
+              '            codex_model=(\n'
+              '                os.getenv("CODEX_MODEL", "gpt-5.3-codex").strip() or None\n'
+              '            ),\n',
+              '            codex_model=(\n'
+              '                os.getenv("CODEX_MODEL", "gpt-5.3-codex").strip() or None\n'
+              '            ),\n'
+              '            test_database_url=(\n'
+              '                os.getenv("SUPERVISOR_TEST_DATABASE_URL", "").strip() or None\n'
+              '            ),\n',
+          )
+
+          replace_once(
+              'velvet_supervisor/git_ops.py',
+              'from __future__ import annotations\n\nimport subprocess\n',
+              'from __future__ import annotations\n\nimport os\nimport subprocess\n',
+          )
+          replace_once(
+              'velvet_supervisor/git_ops.py',
+              '        test_command: tuple[str, ...],\n'
+              '    ) -> None:\n'
+              '        self.project_dir = project_dir\n'
+              '        self.timeout_seconds = timeout_seconds\n'
+              '        self.test_command = test_command\n',
+              '        test_command: tuple[str, ...],\n'
+              '        test_database_url: str | None = None,\n'
+              '    ) -> None:\n'
+              '        self.project_dir = project_dir\n'
+              '        self.timeout_seconds = timeout_seconds\n'
+              '        self.test_command = test_command\n'
+              '        self.test_database_url = test_database_url\n',
+          )
+          replace_once(
+              'velvet_supervisor/git_ops.py',
+              '    def run_tests(self, *, cwd: Path | None = None) -> CommandResult:\n'
+              '        return self.run(\n'
+              '            self.test_command,\n'
+              '            cwd=cwd,\n'
+              '            timeout_seconds=max(self.timeout_seconds, 1800),\n'
+              '            check=False,\n'
+              '        )\n',
+              '    def _test_environment(self) -> dict[str, str]:\n'
+              '        environment = os.environ.copy()\n'
+              '        if self.test_database_url:\n'
+              '            environment["TEST_DATABASE_URL"] = self.test_database_url\n'
+              '        else:\n'
+              '            environment.pop("TEST_DATABASE_URL", None)\n'
+              '        environment.setdefault("PYTHONUTF8", "1")\n'
+              '        environment.setdefault("PYTHONIOENCODING", "utf-8")\n'
+              '        return environment\n\n'
+              '    def run_tests(self, *, cwd: Path | None = None) -> CommandResult:\n'
+              '        return self.run(\n'
+              '            self.test_command,\n'
+              '            cwd=cwd,\n'
+              '            timeout_seconds=max(self.timeout_seconds, 1800),\n'
+              '            check=False,\n'
+              '            env=self._test_environment(),\n'
+              '        )\n',
+          )
+          replace_once(
+              'velvet_supervisor/runtime.py',
+              '            test_command=settings.test_command,\n'
+              '        )\n',
+              '            test_command=settings.test_command,\n'
+              '            test_database_url=getattr(settings, "test_database_url", None),\n'
+              '        )\n',
+          )
+
+          replace_once(
+              'velvet_supervisor/bootstrap.py',
+              '    check: bool = True,\n'
+              ') -> subprocess.CompletedProcess[str]:\n'
+              '    completed = subprocess.run(\n',
+              '    check: bool = True,\n'
+              '    env: dict[str, str] | None = None,\n'
+              ') -> subprocess.CompletedProcess[str]:\n'
+              '    completed = subprocess.run(\n',
+          )
+          replace_once(
+              'velvet_supervisor/bootstrap.py',
+              '        env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},\n',
+              '        env={\n'
+              '            **(os.environ if env is None else env),\n'
+              '            "PYTHONUTF8": "1",\n'
+              '            "PYTHONIOENCODING": "utf-8",\n'
+              '        },\n',
+          )
+          replace_once(
+              'velvet_supervisor/bootstrap.py',
+              'def _lock_path(settings: SupervisorSettings) -> Path:\n',
+              'def _test_environment(settings: SupervisorSettings) -> dict[str, str]:\n'
+              '    environment = os.environ.copy()\n'
+              '    test_database_url = getattr(settings, "test_database_url", None)\n'
+              '    if test_database_url:\n'
+              '        environment["TEST_DATABASE_URL"] = str(test_database_url)\n'
+              '    else:\n'
+              '        environment.pop("TEST_DATABASE_URL", None)\n'
+              '    return environment\n\n\n'
+              'def _lock_path(settings: SupervisorSettings) -> Path:\n',
+          )
+          replace_once(
+              'velvet_supervisor/bootstrap.py',
+              '        timeout=settings.command_timeout_seconds,\n'
+              '        check=False,\n'
+              '    )\n'
+              '    if tests.returncode:\n',
+              '        timeout=settings.command_timeout_seconds,\n'
+              '        check=False,\n'
+              '        env=_test_environment(settings),\n'
+              '    )\n'
+              '    if tests.returncode:\n',
+          )
+
+          replace_once(
+              '.env.example',
+              'SUPERVISOR_TEST_COMMAND=".venv314\\Scripts\\python.exe" -m unittest discover -s tests -v\n',
+              'SUPERVISOR_TEST_COMMAND=".venv314\\Scripts\\python.exe" -m unittest discover -s tests -v\n'
+              '# Отдельная тестовая БД для PostgreSQL integration tests во время update.\n'
+              '# Если не задана, Supervisor запускает только тесты без TEST_DATABASE_URL.\n'
+              'SUPERVISOR_TEST_DATABASE_URL=\n'
+              '# Необязательное имя изолированной схемы внутри тестовой БД.\n'
+              'TEST_DATABASE_SCHEMA=\n',
+          )
+
+          # Extend runtime stability assertions for root handler transport noise.
+          replace_once(
+              'tests/test_runtime_stability_hotfix.py',
+              '        self.assertIn("sleep for % seconds and try again", query)\n',
+              '        self.assertIn("sleep for % seconds and try again", query)\n'
+              '        self.assertIn("velvet_bot.presentation.telegram.router", query)\n'
+              '        self.assertIn("подключение к сети было разорвано", query)\n',
+          )
+
+          Path('tests/test_supervisor_test_database_isolation.py').write_text(
+              '''from __future__ import annotations
+
+import os
+import sys
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from velvet_bot.database import _isolated_test_schema
+from velvet_supervisor.git_ops import GitRepository
+
+
+class IsolatedPostgresSchemaTests(unittest.TestCase):
+    def test_unittest_gets_private_schema(self) -> None:
+        url = "postgresql://tester:secret@localhost/velvet_test"
+        with patch.dict(os.environ, {"TEST_DATABASE_URL": url}, clear=False), patch.object(
+            sys, "argv", ["python", "-m", "unittest", "discover"]
+        ):
+            schema = _isolated_test_schema(url)
+        self.assertIsNotNone(schema)
+        assert schema is not None
+        self.assertTrue(schema.startswith("velvet_test_"))
+        self.assertLessEqual(len(schema), 63)
+
+    def test_production_process_does_not_switch_schema(self) -> None:
+        url = "postgresql://tester:secret@localhost/velvet_test"
+        with patch.dict(os.environ, {"TEST_DATABASE_URL": url}, clear=False), patch.object(
+            sys, "argv", ["python", "main.py"]
+        ):
+            self.assertIsNone(_isolated_test_schema(url))
+
+    def test_invalid_explicit_schema_is_rejected(self) -> None:
+        url = "postgresql://tester:secret@localhost/velvet_test"
+        with patch.dict(
+            os.environ,
+            {"TEST_DATABASE_URL": url, "TEST_DATABASE_SCHEMA": "bad-schema;drop"},
+            clear=False,
+        ), patch.object(sys, "argv", ["python", "-m", "unittest"]):
+            with self.assertRaisesRegex(RuntimeError, "identifier"):
+                _isolated_test_schema(url)
+
+
+class SupervisorTestEnvironmentTests(unittest.TestCase):
+    def _repository(self, test_database_url: str | None) -> GitRepository:
+        return GitRepository(
+            Path("."),
+            timeout_seconds=30,
+            test_command=("python", "-m", "unittest"),
+            test_database_url=test_database_url,
+        )
+
+    def test_inherited_test_database_is_removed(self) -> None:
+        completed = SimpleNamespace(returncode=0, stdout="ok")
+        with patch.dict(
+            os.environ, {"TEST_DATABASE_URL": "postgresql://wrong/database"}, clear=False
+        ), patch("velvet_supervisor.git_ops.subprocess.run", return_value=completed) as runner:
+            self._repository(None).run_tests()
+        environment = runner.call_args.kwargs["env"]
+        self.assertNotIn("TEST_DATABASE_URL", environment)
+
+    def test_explicit_supervisor_test_database_is_forwarded(self) -> None:
+        completed = SimpleNamespace(returncode=0, stdout="ok")
+        dedicated = "postgresql://tester/dedicated"
+        with patch("velvet_supervisor.git_ops.subprocess.run", return_value=completed) as runner:
+            self._repository(dedicated).run_tests()
+        self.assertEqual(dedicated, runner.call_args.kwargs["env"]["TEST_DATABASE_URL"])
+
+
+if __name__ == "__main__":
+    unittest.main()
+''',
+              encoding='utf-8',
+          )
+
+          Path('tests/test_workspace_slug_generation.py').write_text(
+              '''from __future__ import annotations
+
+import unittest
+from datetime import UTC, datetime
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+from velvet_bot.domains.workspaces.models import Workspace
+from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
+
+
+class WorkspaceSlugGenerationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_repeated_creation_does_not_reuse_count_based_slug(self) -> None:
+        now = datetime.now(UTC)
+        product = SimpleNamespace(
+            get_creation_grant=AsyncMock(
+                return_value=SimpleNamespace(
+                    is_active=True,
+                    max_workspaces=2,
+                    allowed_modules=("characters",),
+                    granted_by_user_id=7221553045,
+                )
+            ),
+            count_owned_personal_workspaces=AsyncMock(return_value=0),
+            initialize_modules=AsyncMock(),
+            upsert_category=AsyncMock(),
+        )
+        workspaces = SimpleNamespace(
+            create=AsyncMock(
+                side_effect=(
+                    Workspace(10, "first", "First", False, now, now),
+                    Workspace(11, "second", "Second", False, now, now),
+                )
+            ),
+            get_settings=AsyncMock(
+                return_value=SimpleNamespace(public_archive_enabled=False)
+            ),
+        )
+        service = WorkspaceProductService(
+            product_repository=product,
+            workspace_repository=workspaces,
+        )
+
+        await service.create_personal_workspace(owner_user_id=1830672477, name="First")
+        await service.create_personal_workspace(owner_user_id=1830672477, name="Second")
+
+        slugs = [call.kwargs["slug"] for call in workspaces.create.await_args_list]
+        self.assertEqual(2, len(slugs))
+        self.assertNotEqual(slugs[0], slugs[1])
+        self.assertTrue(all(slug.startswith("user-1830672477-") for slug in slugs))
+
+
+if __name__ == "__main__":
+    unittest.main()
+''',
+              encoding='utf-8',
+          )
+
+          Path('docs/worklog/2026-07-22-supervisor-test-slug-network-fix.md').write_text(
+              '''# Сессия: Supervisor test DB, workspace slug и Telegram network noise
+
+- Дата: 2026-07-22
+- ID: `2026-07-22-supervisor-test-slug-network-fix`
+- Линия/фаза: deployment reliability hotfix
+- Статус: `частично`
+- Ветка: `agent/supervisor-test-slug-network-fix`
+- Базовый commit: `7f824a1836aff68639f0e4a817204344119a3835`
+
+## Перед началом
+
+### Цель
+
+Разблокировать обновление через Supervisor при локальном `TEST_DATABASE_URL` без прав на `public`, устранить повтор slug личного архива после удаления и убрать временные Telegram network failures из CRITICAL-инцидентов.
+
+### Исходный контекст
+
+Supervisor после fast-forward запускал все 1162 теста с унаследованным `TEST_DATABASE_URL`. Локальная PostgreSQL-роль не имела CREATE в `public`, поэтому 81 integration test падал до выполнения сценария и update откатывался. Создание нового личного архива использовало `owned + 1`, из-за чего существующий или осиротевший slug `user-<id>-1` вызывал unique violation. Ошибки ClientConnectorError из root ErrorEvent логировались как CRITICAL, хотя соединение Telegram восстанавливается повтором.
+
+### Планируемый объём
+
+- изолировать PostgreSQL integration tests в отдельной схеме;
+- не наследовать `TEST_DATABASE_URL` в Supervisor без явного `SUPERVISOR_TEST_DATABASE_URL`;
+- сохранить совместимость первого update, который выполняет старая версия Supervisor;
+- заменить count-based slug на collision-resistant значение;
+- классифицировать временные Telegram transport exceptions до CRITICAL-логирования;
+- автоматически закрыть старые непросмотренные сетевые инциденты;
+- добавить regression tests и обновить generated inventories.
+
+### Критерии готовности
+
+- старый Supervisor способен принять commit без доступа к `public`;
+- production bot никогда автоматически не переключается в тестовую схему;
+- повторное создание архива не повторяет slug;
+- ClientConnectorError и WinError 121/1236 не создают CRITICAL incident;
+- реальные исключения обработчиков остаются CRITICAL;
+- tests, type-check, Docker и project notes contract проходят.
+
+### Риски и ограничения
+
+Для полноценного локального запуска PostgreSQL integration tests роль должна иметь CREATE на отдельной тестовой базе или использовать готовую `TEST_DATABASE_SCHEMA`. Если это невозможно, unittest корректно помечает такие integration cases как skipped вместо 81 ложной ошибки. GitHub CI продолжает выполнять их на выделенном PostgreSQL.
+
+## После завершения
+
+### Фактически сделано
+
+- добавлена unittest-only изоляция PostgreSQL схемы;
+- добавлен явный `SUPERVISOR_TEST_DATABASE_URL`;
+- унаследованный `TEST_DATABASE_URL` удаляется из post-update test subprocess;
+- workspace slug переведён на UUID suffix;
+- transient Telegram ErrorEvent логируется на INFO;
+- старые сетевые root incidents включены в startup cleanup;
+- добавлены regression tests.
+
+### Миграции и совместимость
+
+SQL-миграция не требуется. Production `DATABASE_URL` и его search_path не меняются. Изоляция включается только при запуске `unittest` и точном совпадении DSN с `TEST_DATABASE_URL`.
+
+### Проверки
+
+Ожидается полный GitHub Actions CI.
+
+### PR и commit
+
+Будут заполнены после публикации.
+
+### Незавершённое
+
+После merge требуется повторить Supervisor update на Windows и проверить автоматическое закрытие сетевых инцидентов #60 и #62. Исправленный incident #61 можно отметить прочитанным после успешного повторного создания архива.
+
+### Следующий шаг
+
+После зелёного CI слить hotfix и повторить update через Supervisor.
+''',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Refresh generated inventories
+        run: |
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+          python scripts/update_p2_stability_inventory.py --label supervisor-test-slug-network-fix --schema-version 55
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+          python scripts/telegram_navigation_inventory.py --root velvet_bot --markdown docs/generated/telegram_navigation_inventory.md
+
+      - name: Commit fixes
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot velvet_supervisor tests docs .env.example
+          git commit -m "Fix Supervisor tests workspace slugs and network noise"
+          git push origin HEAD:agent/supervisor-test-slug-network-fix
