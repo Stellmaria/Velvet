@@ -115,8 +115,9 @@ Telegram media group доставляется несколькими updates и 
 
 ### PR и commit
 
-PR не создавался. Implementation commit создаётся после финальной проверки
-этой записи; его hash будет добавлен отдельным documentation commit.
+PR не создавался. Implementation commit:
+`a9dfd1c Add workspace media controls and batch uploads`. Итоговая ссылка на
+commit добавлена отдельным documentation commit этой же ветки.
 
 ### Незавершённое
 
