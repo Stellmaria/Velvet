@@ -2,13 +2,10 @@ name: regenerate workspace inventories
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches:
       - agent/workspace-first-run-wizard
-    paths:
-      - .github/workflows/regenerate-workspace-inventories.yml
-      - velvet_bot/presentation/telegram/routers/workspace_onboarding.py
-      - scripts/update_p2_stability_inventory.py
 
 permissions:
   contents: read
