@@ -55,7 +55,7 @@ def build_workspace_watermark_keyboard(
     rows = [
         [
             InlineKeyboardButton(
-                text="📤 Загрузить или заменить логотип",
+                text="📤 Загрузить / заменить",
                 callback_data=watermark_asset_callback(
                     "upload",
                     workspace_id=workspace_id,
@@ -64,7 +64,7 @@ def build_workspace_watermark_keyboard(
         ],
         [
             InlineKeyboardButton(
-                text="🖼 Создать watermark с логотипом",
+                text="🖼 Создать watermark",
                 callback_data=watermark_asset_callback(
                     "create",
                     workspace_id=workspace_id,
@@ -76,7 +76,7 @@ def build_workspace_watermark_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="↩️ Вернуть стандартный Velvet",
+                    text="↩️ Вернуть Velvet",
                     callback_data=watermark_asset_callback(
                         "reset",
                         workspace_id=workspace_id,
@@ -100,7 +100,7 @@ def build_reset_confirmation_keyboard(workspace_id: int) -> InlineKeyboardMarkup
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Да, использовать стандартный Velvet",
+                    text="Да, вернуть Velvet",
                     callback_data=watermark_asset_callback(
                         "resetok",
                         workspace_id=workspace_id,
