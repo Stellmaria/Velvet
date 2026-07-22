@@ -67,6 +67,7 @@ _PAGE_SIZE = 8
 # are not presented as if they routed data automatically.
 _OPTIONAL_DESTINATION_KEYS: tuple[WorkspaceDestinationKey, ...] = (
     "public",
+    "adult",
     "publications",
     "discussion",
     "analytics",
@@ -890,6 +891,11 @@ async def handle_guided_workspace_callback(
             return
         if action == "savepick":
             await state.clear()
+            if isinstance(callback.message, Message):
+                save_upload_sessions.stop(
+                    chat_id=callback.message.chat.id,
+                    user_id=callback.from_user.id,
+                )
             await _render_save_picker(
                 callback,
                 database=database,
@@ -919,15 +925,18 @@ async def handle_guided_workspace_callback(
             await _edit(
                 callback,
                 text=(
-                    f"<b>💾 Ожидаю файл для {escape(character.name)}</b>\n\n"
-                    "Отправьте или перешлите фото, видео, анимацию либо документ. "
-                    "Файл сохранится в текущем пространстве. Ожидание действует 10 минут."
+                    f"<b>💾 Пакетная загрузка для {escape(character.name)}</b>\n\n"
+                    "Отправьте или перешлите несколько фото, видео, анимаций либо "
+                    "документов. Можно отправить Telegram-альбом: каждое сообщение "
+                    "сохранится в текущем пространстве.\n\n"
+                    "После последнего файла обязательно нажмите «Завершить загрузку». "
+                    "Ожидание действует 10 минут после последнего файла."
                 ),
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
                             InlineKeyboardButton(
-                                text="✖ Отменить сохранение",
+                                text="✅ Завершить загрузку",
                                 callback_data=guided_workspace_callback(
                                     "savecancel",
                                     workspace_id=workspace.id,
@@ -951,14 +960,19 @@ async def handle_guided_workspace_callback(
             )
             return
         if action == "savecancel":
+            stopped = None
             if isinstance(callback.message, Message):
-                save_upload_sessions.stop(
+                stopped = save_upload_sessions.stop(
                     chat_id=callback.message.chat.id,
                     user_id=callback.from_user.id,
                 )
             await _edit(
                 callback,
-                text="Сохранение отменено.",
+                text=(
+                    f"Загрузка завершена. Обработано файлов: <b>{stopped.saved_count}</b>."
+                    if stopped is not None and stopped.saved_count
+                    else "Загрузка отменена: файлы не были добавлены."
+                ),
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
@@ -1014,7 +1028,11 @@ async def handle_guided_workspace_callback(
             prompts = {
                 "rename": "Отправьте новое имя персонажа.",
                 "topicedit": "Отправьте ссылку на ветку персонажа.",
-                "prompt": "Отправьте ссылку на пост с промтом.",
+                "prompt": (
+                    "Отправьте ссылку на пост с основным промтом персонажа. "
+                    "Она появится в карточке и будет использоваться как справочная "
+                    "ссылка в AI-проверках; изображения эта кнопка не загружает."
+                ),
                 "alias": "Отправьте новый алиас персонажа.",
             }
             await state.set_state(state_map[action])

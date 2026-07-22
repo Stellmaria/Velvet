@@ -23,7 +23,12 @@ WorkspaceChannelKind: TypeAlias = Literal[
     "logs",
     "analytics",
 ]
-WorkspaceDownloadsMode: TypeAlias = Literal["disabled", "watermark", "original"]
+WorkspaceDownloadsMode: TypeAlias = Literal[
+    "disabled",
+    "watermark",
+    "original",
+    "subscription",
+]
 
 WORKSPACE_ROLES: Final[tuple[WorkspaceRole, ...]] = (
     "owner",
@@ -45,6 +50,7 @@ WORKSPACE_DOWNLOAD_MODES: Final[tuple[WorkspaceDownloadsMode, ...]] = (
     "disabled",
     "watermark",
     "original",
+    "subscription",
 )
 
 

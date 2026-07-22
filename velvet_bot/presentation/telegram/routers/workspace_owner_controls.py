@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 from html import escape
+from typing import cast
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
@@ -8,21 +10,53 @@ from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    BufferedInputFile,
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
-from velvet_bot.archive_catalog import delete_archive_item, get_archive_page
+from velvet_bot.archive_catalog import (
+    delete_archive_item,
+    get_archive_page,
+    toggle_archive_media_adult_requirement,
+    toggle_archive_media_public_visibility,
+    toggle_archive_media_spoiler,
+)
 from velvet_bot.archive_ui import build_input_media, format_archive_caption, format_delete_caption
 from velvet_bot.character_resolution import load_character_by_id
 from velvet_bot.database import Database
-from velvet_bot.domains.workspaces.models import Workspace, WorkspaceRole
+from velvet_bot.domains.media_rework.manual import request_manual_rework
+from velvet_bot.domains.workspaces.models import (
+    Workspace,
+    WorkspaceDownloadsMode,
+    WorkspaceRole,
+)
 from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
     WorkspaceModuleKey,
 )
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
+from velvet_bot.domains.workspaces.watermark_assets import (
+    WorkspaceWatermarkAssetRepository,
+)
+from velvet_bot.protected_bot import ProtectedMediaBot
+from velvet_bot.public_catalog import (
+    get_public_media_state,
+    toggle_character_subscription,
+    toggle_public_like,
+)
 from velvet_bot.presentation.telegram.routers.references.albums import (
     send_reference_collection,
+)
+from velvet_bot.presentation.telegram.routers.public_archive.watermark_actions import (
+    enqueue_archive_watermark,
+)
+from velvet_bot.presentation.telegram.routers.workspace_guided_ui import (
+    guided_workspace_callback,
 )
 from velvet_bot.presentation.telegram.routers.workspace_onboarding import (
     WorkspaceOnboardingCallback,
@@ -45,6 +79,18 @@ _ROLE_LABELS = {
     "editor": "редактор",
     "admin": "администратор",
     "owner": "владелец",
+}
+_DOWNLOAD_MODE_LABELS = {
+    "disabled": "🚫 запрещено",
+    "watermark": "💧 только одобренная watermark-копия",
+    "original": "📥 оригинал доступен всем читателям",
+    "subscription": "🔔 оригинал после подписки на публичный канал",
+}
+_DOWNLOAD_ACTION_MODES = {
+    "dldisabled": "disabled",
+    "dlwatermark": "watermark",
+    "dloriginal": "original",
+    "dlsubscription": "subscription",
 }
 
 
@@ -468,7 +514,15 @@ async def _render_archive_dashboard(
     await callback.answer()
 
 
-def _archive_navigation(page, *, workspace_id: int) -> InlineKeyboardMarkup:
+def _archive_navigation(
+    page,
+    *,
+    workspace_id: int,
+    owner_access: bool = False,
+    public_state=None,
+    public_enabled: bool = False,
+    has_watermark_asset: bool = False,
+) -> InlineKeyboardMarkup:
     if page.media is None:
         return InlineKeyboardMarkup(inline_keyboard=[])
 
@@ -512,6 +566,152 @@ def _archive_navigation(page, *, workspace_id: int) -> InlineKeyboardMarkup:
     else:
         rows = [[counter]]
 
+    if owner_access and public_state is not None:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=("❤️" if public_state.liked_by_user else "🤍")
+                    + f" {public_state.like_count}",
+                    callback_data=_archive_callback(
+                        "like",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text=(
+                        "🔕 Отписаться"
+                        if public_state.subscribed
+                        else "🔔 Подписаться"
+                    ),
+                    callback_data=_archive_callback(
+                        "sub",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                ),
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="❓ Что делают кнопки",
+                    callback_data=_archive_callback(
+                        "mediahelp",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="📥 Скачать оригинал",
+                    callback_data=_archive_callback(
+                        "download",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text=(
+                        "⚡ Быстрый watermark"
+                        if has_watermark_asset
+                        else "⚙️ Настроить watermark"
+                    ),
+                    callback_data=_archive_callback(
+                        "watermark",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                ),
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🛠 Отправить на доработку",
+                    callback_data=_archive_callback(
+                        "rework",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                )
+            ]
+        )
+        visibility_row: list[InlineKeyboardButton] = []
+        if public_enabled:
+            visibility_row.append(
+                InlineKeyboardButton(
+                    text=(
+                        "👁 Вернуть в публичный"
+                        if not page.media.is_public
+                        else "🙈 Скрыть из публичного"
+                    ),
+                    callback_data=_archive_callback(
+                        "public",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                )
+            )
+        visibility_row.append(
+            InlineKeyboardButton(
+                text=(
+                    "🔞 Снять +18"
+                    if page.media.requires_adult_channel
+                    else "🔞 Пометить +18"
+                ),
+                callback_data=_archive_callback(
+                    "adult",
+                    workspace_id=workspace_id,
+                    character_id=page.character.id,
+                    offset=page.offset,
+                    media_id=media_id,
+                ),
+            )
+        )
+        rows.append(visibility_row)
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=("🌫 Убрать блюр" if page.media.is_spoiler else "🌫 Включить блюр"),
+                    callback_data=_archive_callback(
+                        "blur",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="⚙️ Доступ и скачивание",
+                    callback_data=_archive_callback(
+                        "settings",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media_id,
+                    ),
+                ),
+            ]
+        )
+
     final_row: list[InlineKeyboardButton] = []
     if page.character.archive_topic_url:
         final_row.append(
@@ -520,8 +720,8 @@ def _archive_navigation(page, *, workspace_id: int) -> InlineKeyboardMarkup:
                 url=page.character.archive_topic_url,
             )
         )
-    final_row.extend(
-        [
+    if owner_access:
+        final_row.append(
             InlineKeyboardButton(
                 text="🗑 Удалить",
                 callback_data=_archive_callback(
@@ -531,7 +731,10 @@ def _archive_navigation(page, *, workspace_id: int) -> InlineKeyboardMarkup:
                     offset=page.offset,
                     media_id=media_id,
                 ),
-            ),
+            )
+        )
+    final_row.extend(
+        [
             InlineKeyboardButton(
                 text="✖ Закрыть",
                 callback_data=_archive_callback(
@@ -578,19 +781,77 @@ def _archive_delete_keyboard(page, *, workspace_id: int) -> InlineKeyboardMarkup
     )
 
 
+async def _archive_ui_context(
+    *,
+    database: Database,
+    workspace_product_service: WorkspaceProductService,
+    workspace_id: int,
+    user_id: int,
+    page,
+    owner_access: bool,
+):
+    if not owner_access or page.media is None:
+        return None, False, False
+    state = await get_public_media_state(
+        database,
+        character_id=page.character.id,
+        media_id=page.media.id,
+        user_id=user_id,
+        workspace_id=workspace_id,
+    )
+    settings = await workspace_product_service.get_settings(workspace_id)
+    asset = await WorkspaceWatermarkAssetRepository(database).get(workspace_id)
+    return state, settings.public_archive_enabled, asset is not None
+
+
+def _workspace_archive_caption(page) -> str:
+    caption = format_archive_caption(page)
+    if (
+        page.media is not None
+        and page.media.is_image_document
+        and page.media.file_size is not None
+        and page.media.file_size > 20 * 1024 * 1024
+    ):
+        caption += (
+            "\n\n⚠️ Файл больше 20 МБ. Cloud Bot API не всегда может сделать "
+            "из него превью; владелец может получить оригинал кнопкой «Скачать»."
+        )
+    return caption
+
+
 async def _send_archive_page(
     bot: Bot,
     *,
+    database: Database,
+    workspace_product_service: WorkspaceProductService,
     chat_id: int,
+    user_id: int,
     workspace_id: int,
     page,
+    owner_access: bool,
 ) -> Message:
     if page.media is None:
         raise ValueError("Архив персонажа пуст.")
+    public_state, public_enabled, has_watermark_asset = await _archive_ui_context(
+        database=database,
+        workspace_product_service=workspace_product_service,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        page=page,
+        owner_access=owner_access,
+    )
     common = {
         "chat_id": chat_id,
-        "caption": format_archive_caption(page),
-        "reply_markup": _archive_navigation(page, workspace_id=workspace_id),
+        "caption": _workspace_archive_caption(page),
+        "reply_markup": _archive_navigation(
+            page,
+            workspace_id=workspace_id,
+            owner_access=owner_access,
+            public_state=public_state,
+            public_enabled=public_enabled,
+            has_watermark_asset=has_watermark_asset,
+        ),
+        "protect_content": True,
     }
     if page.media.media_type == "photo":
         return await bot.send_photo(photo=page.media.telegram_file_id, **common)
@@ -605,8 +866,12 @@ async def _replace_archive_page(
     callback: CallbackQuery,
     bot: Bot,
     *,
+    database: Database,
+    workspace_product_service: WorkspaceProductService,
+    user_id: int,
     workspace_id: int,
     page,
+    owner_access: bool,
 ) -> None:
     if page.media is None:
         await callback.answer("Архив персонажа пуст.", show_alert=True)
@@ -614,18 +879,37 @@ async def _replace_archive_page(
     if not isinstance(callback.message, Message):
         await callback.answer("Сообщение архива больше недоступно.", show_alert=True)
         return
+    public_state, public_enabled, has_watermark_asset = await _archive_ui_context(
+        database=database,
+        workspace_product_service=workspace_product_service,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        page=page,
+        owner_access=owner_access,
+    )
     try:
         await callback.message.edit_media(
-            media=build_input_media(page.media, format_archive_caption(page)),
-            reply_markup=_archive_navigation(page, workspace_id=workspace_id),
+            media=build_input_media(page.media, _workspace_archive_caption(page)),
+            reply_markup=_archive_navigation(
+                page,
+                workspace_id=workspace_id,
+                owner_access=owner_access,
+                public_state=public_state,
+                public_enabled=public_enabled,
+                has_watermark_asset=has_watermark_asset,
+            ),
         )
     except TelegramBadRequest:
         try:
             await _send_archive_page(
                 bot,
+                database=database,
+                workspace_product_service=workspace_product_service,
                 chat_id=callback.message.chat.id,
+                user_id=user_id,
                 workspace_id=workspace_id,
                 page=page,
+                owner_access=owner_access,
             )
             await callback.message.delete()
         except (TelegramAPIError, TelegramBadRequest):
@@ -955,6 +1239,189 @@ async def handle_workspace_reference_entry(
     await _render_reference_dashboard(callback, database=database, workspace=workspace)
 
 
+def _media_settings_keyboard(
+    *,
+    workspace_id: int,
+    character_id: int,
+    offset: int,
+    media_id: int,
+    downloads_mode: str,
+) -> InlineKeyboardMarkup:
+    rows = []
+    for action, mode, label in (
+        ("dldisabled", "disabled", "🚫 Запретить скачивание"),
+        ("dlwatermark", "watermark", "💧 Только watermark-копия"),
+        ("dloriginal", "original", "📥 Разрешить оригинал"),
+        ("dlsubscription", "subscription", "🔔 Оригинал после подписки"),
+    ):
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=("✅ " if downloads_mode == mode else "") + label,
+                    callback_data=_archive_callback(
+                        action,
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        offset=offset,
+                        media_id=media_id,
+                    ),
+                )
+            ]
+        )
+    rows.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    text="🔌 Каналы доступа",
+                    callback_data=guided_workspace_callback(
+                        "connections",
+                        workspace_id=workspace_id,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="💧 Настроить watermark",
+                    callback_data=workspace_callback(
+                        "module",
+                        workspace_id=workspace_id,
+                        module_key="watermark",
+                    ),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ К материалу",
+                    callback_data=_archive_callback(
+                        "show",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        offset=offset,
+                        media_id=media_id,
+                    ),
+                )
+            ],
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _show_media_settings(
+    callback: CallbackQuery,
+    *,
+    database: Database,
+    workspace_product_service: WorkspaceProductService,
+    workspace: Workspace,
+    page,
+    alert: str | None = None,
+) -> None:
+    settings = await workspace_product_service.get_settings(workspace.id)
+    channels = await workspace_product_service.list_channels(workspace.id)
+    channel_kinds = {item.kind for item in channels}
+    watermark_asset = await WorkspaceWatermarkAssetRepository(database).get(workspace.id)
+    text = (
+        f"<b>⚙️ Доступ к медиа · {escape(workspace.name)}</b>\n\n"
+        f"Публичный архив: <b>{'включён' if settings.public_archive_enabled else 'выключен'}</b>\n"
+        f"Скачивание читателем: <b>{_DOWNLOAD_MODE_LABELS[settings.downloads_mode]}</b>\n"
+        f"Публичный канал для проверки подписки: <b>{'подключён' if 'public' in channel_kinds else 'не подключён'}</b>\n"
+        f"Канал +18: <b>{'подключён' if 'adult' in channel_kinds else 'не подключён'}</b>\n"
+        f"Шаблон watermark: <b>{'настроен' if watermark_asset is not None else 'не настроен'}</b>\n\n"
+        "По умолчанию карточки отправляются с защитой Telegram от пересылки и "
+        "сохранения. Кнопка скачивания появляется у читателя только когда это "
+        "разрешает выбранный режим. Оригинал в архиве не заменяется: watermark "
+        "хранится отдельной версией.\n\n"
+        "⚠️ Для изображений больше 20 МБ cloud Bot API может не построить превью. "
+        "Владелец всё равно видит кнопку оригинала; читатель получает файл только "
+        "когда политика скачивания это разрешает."
+    )
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    keyboard = _media_settings_keyboard(
+        workspace_id=workspace.id,
+        character_id=page.character.id,
+        offset=page.offset,
+        media_id=page.media.id,
+        downloads_mode=settings.downloads_mode,
+    )
+    if callback.message.text:
+        try:
+            await callback.message.edit_text(text, reply_markup=keyboard)
+        except TelegramBadRequest as exc:
+            if "message is not modified" not in str(exc).lower():
+                raise
+    else:
+        await callback.message.answer(text, reply_markup=keyboard)
+    await callback.answer(alert)
+
+
+async def _show_media_help(callback: CallbackQuery, *, workspace_id: int, page) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    text = (
+        "<b>Справка по карточке персонажа</b>\n\n"
+        "<b>Промт</b> — ссылка на исходный промт персонажа. Она нужна как "
+        "творческий референс и для AI-проверок; изображения эта кнопка не загружает.\n\n"
+        "<b>Сохранить / Загрузить медиа</b> — выбирает персонажа и включает "
+        "пакетную загрузку. Можно прислать несколько фото, альбом, видео и "
+        "документы подряд, затем нажать «Завершить загрузку».\n\n"
+        "<b>+ Создать персонажа</b> — создаёт карточку и архивную ветку; медиа "
+        "добавляются после создания через «Загрузить медиа».\n\n"
+        "<b>Лайк</b> и <b>Подписаться</b> доступны владельцу и читателям "
+        "публичного архива. <b>Скачать оригинал</b> всегда доступно владельцу; "
+        "для читателей кнопкой «Доступ и скачивание» выбирается запрет, "
+        "watermark-копия, оригинал или оригинал после проверки подписки.\n\n"
+        "<b>Быстрый watermark</b> создаёт отдельную версию, не заменяя оригинал. "
+        "<b>Доработка</b> кладёт материал в общую очередь и временно скрывает "
+        "его из публичной выдачи. <b>Скрыть</b>, <b>+18</b> и <b>Блюр</b> "
+        "управляют видимостью конкретного материала."
+    )
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="↩️ К материалу",
+                    callback_data=_archive_callback(
+                        "show",
+                        workspace_id=workspace_id,
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=page.media.id,
+                    ),
+                )
+            ]
+        ]
+    )
+    await callback.message.answer(text, reply_markup=keyboard)
+    await callback.answer()
+
+
+async def _send_owner_original(bot: Bot, *, user_id: int, media) -> None:
+    source_file_id = getattr(
+        media,
+        "original_download_file_id",
+        getattr(media, "source_telegram_file_id", None) or media.telegram_file_id,
+    )
+    if isinstance(bot, ProtectedMediaBot):
+        bot.allow_unprotected_private_user(user_id)
+    if media.media_type == "document":
+        await bot.send_document(
+            chat_id=user_id,
+            document=source_file_id,
+            caption="Оригинал из вашего личного архива",
+        )
+        return
+    payload = io.BytesIO()
+    await bot.download(source_file_id, destination=payload, seek=True)
+    raw = payload.getvalue()
+    if not raw:
+        raise RuntimeError("Telegram вернул пустой файл.")
+    await bot.send_document(
+        chat_id=user_id,
+        document=BufferedInputFile(raw, filename=media.display_file_name),
+        caption="Оригинал из вашего личного архива",
+    )
+
+
 @router.callback_query(WorkspacePersonalArchiveCallback.filter())
 async def handle_workspace_personal_archive(
     callback: CallbackQuery,
@@ -965,6 +1432,21 @@ async def handle_workspace_personal_archive(
     workspace_product_service: WorkspaceProductService,
 ) -> None:
     action = callback_data.action
+    owner_actions = {
+        "delete",
+        "deleteconfirm",
+        "like",
+        "sub",
+        "download",
+        "watermark",
+        "rework",
+        "public",
+        "adult",
+        "blur",
+        "settings",
+        "mediahelp",
+        *_DOWNLOAD_ACTION_MODES,
+    }
     if action == "close":
         if isinstance(callback.message, Message):
             try:
@@ -980,14 +1462,24 @@ async def handle_workspace_personal_archive(
             user_id=callback.from_user.id,
             workspace_id=callback_data.workspace_id,
             module_key="archive",
-            minimum_role=(
-                "editor"
-                if action in {"delete", "deleteconfirm"}
-                else "viewer"
-            ),
+            minimum_role="viewer",
         )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
+        return
+
+    membership = await workspace_service.require_role(
+        workspace_id=workspace.id,
+        user_id=callback.from_user.id,
+        minimum_role="viewer",
+        global_owner=_is_global_owner(callback.from_user.id),
+    )
+    owner_access = membership.role == "owner" or _is_global_owner(callback.from_user.id)
+    if action in owner_actions and not owner_access:
+        await callback.answer(
+            "Эта кнопка доступна только владельцу пространства.",
+            show_alert=True,
+        )
         return
 
     if action == "noop":
@@ -1001,8 +1493,9 @@ async def handle_workspace_personal_archive(
         return
     if action == "help":
         await callback.answer(
-            "Ответьте командой /save Имя на фото, видео или документ. "
-            "Материал сохранится в активное личное пространство.",
+            "Выберите персонажа кнопкой «Сохранить», затем присылайте несколько "
+            "фото, видео или документов подряд. После последнего файла нажмите "
+            "«Завершить загрузку».",
             show_alert=True,
         )
         return
@@ -1021,6 +1514,16 @@ async def handle_workspace_personal_archive(
     if page.media is None:
         await callback.answer("Архив персонажа пока пуст.", show_alert=True)
         return
+    if (
+        callback_data.media_id
+        and action not in {"open", "show"}
+        and callback_data.media_id != page.media.id
+    ):
+        await callback.answer(
+            "Архив изменился. Откройте материал заново.",
+            show_alert=True,
+        )
+        return
 
     if action == "open":
         if not isinstance(callback.message, Message):
@@ -1029,9 +1532,13 @@ async def handle_workspace_personal_archive(
         try:
             await _send_archive_page(
                 bot,
+                database=database,
+                workspace_product_service=workspace_product_service,
                 chat_id=callback.message.chat.id,
+                user_id=callback.from_user.id,
                 workspace_id=workspace.id,
                 page=page,
+                owner_access=owner_access,
             )
         except TelegramAPIError:
             await callback.answer(
@@ -1045,8 +1552,217 @@ async def handle_workspace_personal_archive(
         await _replace_archive_page(
             callback,
             bot,
+            database=database,
+            workspace_product_service=workspace_product_service,
+            user_id=callback.from_user.id,
             workspace_id=workspace.id,
             page=page,
+            owner_access=owner_access,
+        )
+        return
+    if action == "settings":
+        await _show_media_settings(
+            callback,
+            database=database,
+            workspace_product_service=workspace_product_service,
+            workspace=workspace,
+            page=page,
+        )
+        return
+    if action == "mediahelp":
+        await _show_media_help(callback, workspace_id=workspace.id, page=page)
+        return
+    if action in _DOWNLOAD_ACTION_MODES:
+        mode = _DOWNLOAD_ACTION_MODES[action]
+        channels = await workspace_product_service.list_channels(workspace.id)
+        channel_kinds = {item.kind for item in channels}
+        watermark_asset = await WorkspaceWatermarkAssetRepository(database).get(
+            workspace.id
+        )
+        if mode == "subscription" and "public" not in channel_kinds:
+            await _show_media_settings(
+                callback,
+                database=database,
+                workspace_product_service=workspace_product_service,
+                workspace=workspace,
+                page=page,
+                alert="Сначала подключите публичный канал для проверки подписки.",
+            )
+            return
+        if mode == "watermark" and watermark_asset is None:
+            await _show_media_settings(
+                callback,
+                database=database,
+                workspace_product_service=workspace_product_service,
+                workspace=workspace,
+                page=page,
+                alert="Сначала загрузите шаблон watermark.",
+            )
+            return
+        await workspace_product_service.set_downloads_mode(
+            workspace_id=workspace.id,
+            actor_user_id=callback.from_user.id,
+            downloads_mode=cast(WorkspaceDownloadsMode, mode),
+            global_owner=_is_global_owner(callback.from_user.id),
+        )
+        await _show_media_settings(
+            callback,
+            database=database,
+            workspace_product_service=workspace_product_service,
+            workspace=workspace,
+            page=page,
+            alert="Настройка скачивания сохранена.",
+        )
+        return
+    if action == "download":
+        try:
+            await _send_owner_original(
+                bot,
+                user_id=callback.from_user.id,
+                media=page.media,
+            )
+        except (TelegramAPIError, RuntimeError):
+            await callback.answer("Не удалось отправить оригинал.", show_alert=True)
+            return
+        await callback.answer("Оригинал отправлен вам в личный чат.")
+        return
+    if action in {"like", "sub"}:
+        if action == "like":
+            liked, _ = await toggle_public_like(
+                database,
+                character_id=page.character.id,
+                media_id=page.media.id,
+                user_id=callback.from_user.id,
+                workspace_id=workspace.id,
+            )
+            result_text = "Лайк поставлен." if liked else "Лайк снят."
+        else:
+            subscribed = await toggle_character_subscription(
+                database,
+                character_id=page.character.id,
+                user_id=callback.from_user.id,
+                workspace_id=workspace.id,
+            )
+            result_text = "Подписка включена." if subscribed else "Подписка отключена."
+        await _replace_archive_page(
+            callback,
+            bot,
+            database=database,
+            workspace_product_service=workspace_product_service,
+            user_id=callback.from_user.id,
+            workspace_id=workspace.id,
+            page=page,
+            owner_access=True,
+        )
+        if isinstance(callback.message, Message):
+            await callback.message.answer(result_text)
+        return
+    if action == "watermark":
+        asset = await WorkspaceWatermarkAssetRepository(database).get(workspace.id)
+        module_enabled = await workspace_product_service.is_module_enabled(
+            workspace_id=workspace.id,
+            module_key="watermark",
+        )
+        if not module_enabled or asset is None:
+            await _show_media_settings(
+                callback,
+                database=database,
+                workspace_product_service=workspace_product_service,
+                workspace=workspace,
+                page=page,
+                alert=(
+                    "Сначала включите модуль watermark и загрузите шаблон."
+                    if not module_enabled
+                    else "Сначала загрузите шаблон watermark."
+                ),
+            )
+            return
+        await enqueue_archive_watermark(
+            callback=callback,
+            callback_data=callback_data,
+            database=database,
+            bot=bot,
+            workspace_id=workspace.id,
+            logo_asset=asset,
+        )
+        return
+    if action == "rework":
+        changed = await request_manual_rework(
+            database,
+            media_id=page.media.id,
+            user_id=callback.from_user.id,
+        )
+        await callback.answer(
+            (
+                "Работа отправлена в общую очередь доработки и временно скрыта "
+                "из публичной выдачи."
+                if changed
+                else "Работа уже находится в очереди доработки."
+            ),
+            show_alert=True,
+        )
+        return
+    if action == "public":
+        settings = await workspace_product_service.get_settings(workspace.id)
+        if not settings.public_archive_enabled:
+            await callback.answer(
+                "Сначала включите публичный архив в настройках пространства.",
+                show_alert=True,
+            )
+            return
+        await toggle_archive_media_public_visibility(
+            database,
+            character_id=page.character.id,
+            media_id=page.media.id,
+            workspace_id=workspace.id,
+        )
+    elif action == "adult":
+        if not page.media.requires_adult_channel:
+            channels = await workspace_product_service.list_channels(workspace.id)
+            if not any(item.kind == "adult" for item in channels):
+                await _show_media_settings(
+                    callback,
+                    database=database,
+                    workspace_product_service=workspace_product_service,
+                    workspace=workspace,
+                    page=page,
+                    alert="Сначала подключите закрытый канал +18.",
+                )
+                return
+        await toggle_archive_media_adult_requirement(
+            database,
+            character_id=page.character.id,
+            media_id=page.media.id,
+            workspace_id=workspace.id,
+        )
+    elif action == "blur":
+        await toggle_archive_media_spoiler(
+            database,
+            character_id=page.character.id,
+            media_id=page.media.id,
+            workspace_id=workspace.id,
+        )
+    if action in {"public", "adult", "blur"}:
+        updated = await get_archive_page(
+            database,
+            page.character.id,
+            page.offset,
+            workspace_id=workspace.id,
+            include_adult_restricted=True,
+            include_oversized_images=True,
+        )
+        if updated is None or updated.media is None:
+            await callback.answer("Материал больше недоступен.", show_alert=True)
+            return
+        await _replace_archive_page(
+            callback,
+            bot,
+            database=database,
+            workspace_product_service=workspace_product_service,
+            user_id=callback.from_user.id,
+            workspace_id=workspace.id,
+            page=updated,
+            owner_access=True,
         )
         return
     if action == "delete":
@@ -1109,8 +1825,12 @@ async def handle_workspace_personal_archive(
         await _replace_archive_page(
             callback,
             bot,
+            database=database,
+            workspace_product_service=workspace_product_service,
+            user_id=callback.from_user.id,
             workspace_id=workspace.id,
             page=next_page,
+            owner_access=True,
         )
         return
     await callback.answer("Неизвестное действие.", show_alert=True)

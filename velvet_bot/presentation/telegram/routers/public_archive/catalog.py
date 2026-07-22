@@ -8,7 +8,6 @@ from aiogram.types import CallbackQuery, Message
 from velvet_bot.access import AccessPolicy
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
-from velvet_bot.public_adult_access import has_adult_channel_access
 from velvet_bot.public_catalog import (
     list_public_categories,
     list_public_characters,
@@ -16,6 +15,7 @@ from velvet_bot.public_catalog import (
     list_public_universes,
 )
 from velvet_bot.public_manager_access import has_public_manager_access
+from velvet_bot.presentation.telegram.workspace_public_access import has_workspace_adult_access
 from velvet_bot.public_ui import (
     PublicArchiveCallback,
     build_public_category_menu,
@@ -40,13 +40,17 @@ async def _include_restricted(
     adult_channel_id: int,
     access_policy: AccessPolicy,
     user,
+    workspace_id: int,
+    workspace_product_service: WorkspaceProductService,
 ) -> bool:
-    if has_public_manager_access(user, access_policy):
-        return True
-    return await has_adult_channel_access(
-        bot,
-        user_id,
-        channel_id=adult_channel_id,
+    manager_access = has_public_manager_access(user, access_policy)
+    return await has_workspace_adult_access(
+        bot=bot,
+        user_id=user_id,
+        workspace_id=workspace_id,
+        manager_access=manager_access,
+        default_adult_channel_id=adult_channel_id,
+        workspace_product_service=workspace_product_service,
     )
 
 
@@ -279,6 +283,8 @@ async def handle_public_archive_menu(
         adult_channel_id=adult_channel_id,
         access_policy=access_policy,
         user=message.from_user,
+        workspace_id=workspace_id,
+        workspace_product_service=workspace_product_service,
     )
     summaries = await list_public_categories(
         database,
@@ -325,6 +331,8 @@ async def handle_public_archive_callback(
         adult_channel_id=adult_channel_id,
         access_policy=access_policy,
         user=callback.from_user,
+        workspace_id=workspace_id,
+        workspace_product_service=workspace_product_service,
     )
 
     if action == "categories":

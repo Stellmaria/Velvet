@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from time import monotonic
 from typing import Callable
 
@@ -19,10 +19,11 @@ class SaveUploadSession:
     expires_at: float
     workspace_id: int = DEFAULT_WORKSPACE_ID
     character_id: int | None = None
+    saved_count: int = 0
 
 
 class SaveUploadSessions:
-    """Keep short-lived one-shot media save sessions in application memory."""
+    """Keep short-lived batch media save sessions in application memory."""
 
     def __init__(
         self,
@@ -64,6 +65,19 @@ class SaveUploadSessions:
         )
         self._sessions[self._key(chat_id, user_id)] = session
         return session
+
+    def record_saved(self, *, chat_id: int, user_id: int) -> SaveUploadSession | None:
+        """Record one processed upload and extend the active batch TTL."""
+        current = self.get(chat_id=chat_id, user_id=user_id)
+        if current is None:
+            return None
+        updated = replace(
+            current,
+            saved_count=current.saved_count + 1,
+            expires_at=self._clock() + self._ttl_seconds,
+        )
+        self._sessions[self._key(chat_id, user_id)] = updated
+        return updated
 
     def get(self, *, chat_id: int, user_id: int) -> SaveUploadSession | None:
         key = self._key(chat_id, user_id)

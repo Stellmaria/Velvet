@@ -46,6 +46,16 @@ async def actual_character_filters(
 
 def build_viewer_caption(page: ArchivePage, state, *, manager_access: bool = False) -> str:
     caption = format_public_archive_caption(page, state)
+    if (
+        page.media is not None
+        and page.media.is_image_document
+        and getattr(page.media, "file_size", None) is not None
+        and getattr(page.media, "file_size", 0) > 20 * 1024 * 1024
+    ):
+        caption += (
+            "\n⚠️ Файл больше 20 МБ показан защищённым документом. Отдельная "
+            "кнопка скачивания доступна только по правилам владельца архива."
+        )
     if not manager_access or page.media is None:
         return caption
     visibility = "показывается" if page.media.is_public else "скрыт"

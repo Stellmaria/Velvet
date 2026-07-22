@@ -231,6 +231,7 @@ async def resolve_public_download_source(
     character_id: int,
     media_id: int,
     member_access: bool,
+    download_access: bool | None = None,
     workspace_id: int = DEFAULT_WORKSPACE_ID,
 ) -> PublicDownloadSource | None:
     return await build_public_archive_service(
@@ -240,6 +241,7 @@ async def resolve_public_download_source(
         character_id=character_id,
         media_id=media_id,
         member_access=member_access,
+        download_access=download_access,
     )
 
 

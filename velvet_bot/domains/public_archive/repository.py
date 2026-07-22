@@ -164,12 +164,25 @@ class PublicArchiveRepository:
         character_id: int,
         media_id: int,
         member_access: bool,
+        download_access: bool | None = None,
     ) -> PublicDownloadSource | None:
         visibility_sql = public_media_visibility_sql(
             include_adult_restricted=True,
             include_oversized_images=True,
         )
         async with self._database.acquire() as connection:
+            downloads_mode = (
+                await connection.fetchval(
+                    """
+                    SELECT downloads_mode
+                    FROM workspace_settings
+                    WHERE workspace_id = $1::BIGINT
+                    """,
+                    self._workspace_id,
+                )
+                if self._workspace_id != 1
+                else None
+            )
             row = await connection.fetchrow(
                 f"""
                 SELECT
@@ -191,7 +204,30 @@ class PublicArchiveRepository:
             )
         if row is None:
             return None
-        if member_access:
+        if self._workspace_id != 1:
+            mode = str(downloads_mode or "disabled")
+            if mode == "disabled":
+                return None
+            if mode == "original":
+                return PublicDownloadSource(
+                    telegram_file_id=str(
+                        row["source_telegram_file_id"] or row["telegram_file_id"]
+                    ),
+                    variant="original",
+                )
+            if mode == "subscription":
+                allowed = member_access if download_access is None else download_access
+                if not allowed:
+                    return None
+                return PublicDownloadSource(
+                    telegram_file_id=str(
+                        row["source_telegram_file_id"] or row["telegram_file_id"]
+                    ),
+                    variant="original",
+                )
+            if mode != "watermark":
+                return None
+        if self._workspace_id == 1 and member_access:
             return PublicDownloadSource(
                 telegram_file_id=str(
                     row["source_telegram_file_id"] or row["telegram_file_id"]

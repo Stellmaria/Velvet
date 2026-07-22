@@ -13,6 +13,7 @@ async def get_character_media_offset(
     workspace_id: int = DEFAULT_WORKSPACE_ID,
     public_only: bool = False,
     include_restricted: bool = False,
+    include_oversized: bool | None = None,
 ) -> int | None:
     """Return the newest-first offset of one visible character-media link."""
     visibility_filter = (
@@ -21,7 +22,11 @@ async def get_character_media_offset(
             link_alias="character_media",
             file_alias="mf",
             include_adult_restricted=include_restricted,
-            include_oversized_images=include_restricted,
+            include_oversized_images=(
+                include_restricted
+                if include_oversized is None
+                else bool(include_oversized)
+            ),
         )
         + ")"
         if public_only

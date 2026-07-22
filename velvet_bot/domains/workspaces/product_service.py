@@ -9,7 +9,14 @@ from velvet_bot.domains.characters.constants import (
     CATEGORY_LABELS,
     CATEGORY_ORDER,
 )
-from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, Workspace
+from velvet_bot.domains.workspaces.models import (
+    DEFAULT_WORKSPACE_ID,
+    Workspace,
+    WorkspaceChannel,
+    WorkspaceDownloadsMode,
+    WorkspaceRole,
+    WorkspaceSettings,
+)
 from velvet_bot.domains.workspaces.product_models import (
     DEFAULT_PERSONAL_MODULE_KEYS,
     GLOBAL_WORKSPACE_CREATOR_ID,
@@ -201,6 +208,49 @@ class WorkspaceProductService:
 
     async def public_workspace_id_for_user(self, user_id: int) -> int:
         return await self._product.get_public_browse_workspace_id(int(user_id))
+
+    async def get_settings(self, workspace_id: int) -> WorkspaceSettings:
+        settings = await self._workspaces.get_settings(int(workspace_id))
+        if settings is None:
+            raise ValueError("Настройки пространства не найдены.")
+        return settings
+
+    async def list_channels(self, workspace_id: int) -> tuple[WorkspaceChannel, ...]:
+        return await self._workspaces.list_channels(int(workspace_id))
+
+    async def require_role(
+        self,
+        *,
+        workspace_id: int,
+        actor_user_id: int,
+        minimum_role: WorkspaceRole,
+        global_owner: bool = False,
+    ):
+        return await self._workspace_service.require_role(
+            workspace_id=int(workspace_id),
+            user_id=int(actor_user_id),
+            minimum_role=minimum_role,
+            global_owner=global_owner,
+        )
+
+    async def set_downloads_mode(
+        self,
+        *,
+        workspace_id: int,
+        actor_user_id: int,
+        downloads_mode: WorkspaceDownloadsMode,
+        global_owner: bool = False,
+    ) -> WorkspaceSettings:
+        settings = await self.get_settings(workspace_id)
+        return await self._workspace_service.update_settings(
+            workspace_id=int(workspace_id),
+            actor_user_id=int(actor_user_id),
+            timezone=settings.timezone,
+            public_archive_enabled=settings.public_archive_enabled,
+            downloads_mode=downloads_mode,
+            qwen_enabled=settings.qwen_enabled,
+            global_owner=global_owner,
+        )
 
     async def set_public_archive_enabled(
         self,

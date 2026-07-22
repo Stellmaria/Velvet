@@ -15,6 +15,7 @@ WorkspaceDestinationKey: TypeAlias = Literal[
     "media",
     "references",
     "public",
+    "adult",
     "publications",
     "discussion",
     "analytics",
@@ -26,6 +27,7 @@ WORKSPACE_DESTINATION_KEYS: Final[tuple[WorkspaceDestinationKey, ...]] = (
     "media",
     "references",
     "public",
+    "adult",
     "publications",
     "discussion",
     "analytics",
@@ -94,6 +96,18 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         command_hint="/workspace_bind public",
         module_keys=("public_archive",),
         channel_kind="public",
+    ),
+    "adult": WorkspaceDestinationSpec(
+        key="adult",
+        label="Канал +18",
+        emoji="🔞",
+        description=(
+            "Закрытый канал, участие в котором бот проверяет перед показом "
+            "материалов с отметкой +18. Бот должен быть администратором канала."
+        ),
+        command_hint="/workspace_bind_channel adult @channel",
+        module_keys=("public_archive",),
+        channel_kind="adult",
     ),
     "publications": WorkspaceDestinationSpec(
         key="publications",

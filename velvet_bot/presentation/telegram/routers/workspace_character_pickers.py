@@ -299,7 +299,7 @@ def _character_list_keyboard(
                     ),
                 ),
                 InlineKeyboardButton(
-                    text="💾 Сохранить",
+                    text="💾 Загрузить медиа",
                     callback_data=guided_workspace_callback(
                         "savepick",
                         workspace_id=workspace_id,
@@ -475,7 +475,7 @@ def _card_keyboard(
                     ),
                 ),
                 InlineKeyboardButton(
-                    text="📝 Промт",
+                    text="📝 Ссылка на промт",
                     callback_data=guided_workspace_callback(
                         "prompt",
                         workspace_id=workspace_id,
