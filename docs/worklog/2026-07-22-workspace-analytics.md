@@ -64,8 +64,8 @@ Channel analytics хранилась по физическому Telegram `chann
 - live ingest source определяется через `workspace_channels` и enabled analytics module;
 - personal channel posts разрешают characters только через `workspace_character_aliases`;
 - system ingestion остаётся в legacy `channel_analytics.ingest_channel_post`;
-- character usage/dashboard использует workspace primary story с fallback на legacy story;
-- personal analytics router зарегистрирован раньше всех legacy analytics controllers;
+- character usage/dashboard использует workspace primary story через отдельный query boundary;
+- personal character router и общий personal analytics router зарегистрированы раньше legacy controllers;
 - команды channel/prompt/hashtag/character stats используют channel IDs активного workspace;
 - dashboard `dash:` callbacks доступны personal workspace, `dashm:` остаётся global owner only;
 - discussion callbacks повторно проверяют `workspace_channels(kind='discussion')`;
@@ -85,7 +85,7 @@ Channel analytics хранилась по физическому Telegram `chann
 Добавлены contract и PostgreSQL regression tests на:
 
 - DB-trigger и advisory lock;
-- порядок personal router перед legacy analytics;
+- порядок personal routers перед legacy analytics;
 - guarded `dash:` без открытия `dashm:`;
 - workspace alias ingestion;
 - workspace primary story в statistics;
@@ -98,7 +98,7 @@ Channel analytics хранилась по физическому Telegram `chann
 
 ### PR и commit
 
-PR создаётся после завершения generated inventory. Финальный merge commit фиксируется после зелёного CI.
+PR: `#287 Add workspace-scoped analytics dashboards`. Generated inventories обновлены. Финальный merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 
