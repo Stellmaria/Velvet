@@ -96,6 +96,8 @@ Channel analytics хранилась по физическому Telegram `chann
 - disabled analytics module;
 - одинаковый alias в соседних workspace.
 
+Финальная совместимость восстановлена: `WorkspaceRepository.upsert_channel()` принимает отсутствующий URL как `None`, старый duplicate-draft тест больше не нарушает эксклюзивное владение Telegram-чатом, а integrity allowlist учитывает filter-disambiguated personal analytics routes.
+
 ### PR и commit
 
 PR: `#287 Add workspace-scoped analytics dashboards`. Generated inventories обновлены. Финальный merge commit фиксируется после зелёного CI.
