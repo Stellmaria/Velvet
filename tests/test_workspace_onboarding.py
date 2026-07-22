@@ -70,6 +70,11 @@ class WorkspaceOnboardingRulesTests(unittest.TestCase):
             self.assertTrue(spec.description)
             self.assertTrue(spec.label)
 
+    def test_character_destination_requires_forum_topic_management(self) -> None:
+        spec = DESTINATION_SPECS["characters"]
+        self.assertTrue(spec.requires_forum_admin)
+        self.assertIn("персональную тему", spec.description)
+
 
 class WorkspaceOnboardingSourceContractTests(unittest.TestCase):
     def test_migration_persists_progress_and_forum_threads(self) -> None:
@@ -106,6 +111,8 @@ class WorkspaceOnboardingSourceContractTests(unittest.TestCase):
         self.assertIn("WorkspaceForm.waiting_workspace_name", source)
         self.assertIn("get_chat_member", source)
         self.assertIn("message.message_thread_id", source)
+        self.assertIn("должно быть форумной супергруппой", source)
+        self.assertIn("can_manage_topics", source)
 
 
 if __name__ == "__main__":
