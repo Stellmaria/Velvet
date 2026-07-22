@@ -27,6 +27,16 @@ _BACKOFF_MARKERS = (
     " seconds and try again",
 )
 
+_ASYNCIO_CLOSE_NETWORK_MARKERS = (
+    "connectionabortederror",
+    "connectionreseterror",
+    "brokenpipeerror",
+    "подключение к сети было разорвано",
+    "connection was closed in the middle of operation",
+    "connection reset by peer",
+)
+_LOOP_GUARD_INSTALLED: set[int] = set()
+
 
 def _record_message(record: logging.LogRecord) -> str:
     try:
@@ -36,12 +46,18 @@ def _record_message(record: logging.LogRecord) -> str:
 
 
 def is_recoverable_aiogram_polling_record(record: logging.LogRecord) -> bool:
-    """Return True for transient Telegram polling noise that aiogram retries itself."""
+    """Return True for transient transport noise already handled by a retry loop."""
 
+    message = _record_message(record)
+    if record.name == "asyncio":
+        return (
+            "task exception was never retrieved" in message
+            and "connection.close()" in message
+            and any(marker in message for marker in _ASYNCIO_CLOSE_NETWORK_MARKERS)
+        )
     if record.name != "aiogram.dispatcher":
         return False
 
-    message = _record_message(record)
     if all(marker in message for marker in _BACKOFF_MARKERS):
         return True
 
@@ -50,6 +66,50 @@ def is_recoverable_aiogram_polling_record(record: logging.LogRecord) -> bool:
         and "telegramnetworkerror" in message
         and any(marker in message for marker in _NETWORK_FAILURE_MARKERS)
     )
+
+
+def is_recoverable_asyncio_connection_close_context(
+    context: dict[str, Any],
+) -> bool:
+    """Identify asyncpg close tasks that fail only because the socket already died."""
+
+    message = str(context.get("message") or "").casefold()
+    future = context.get("future") or context.get("task")
+    future_text = repr(future).casefold()
+    error = context.get("exception")
+    error_text = f"{type(error).__name__}: {error}".casefold() if error else ""
+    return (
+        "task exception was never retrieved" in message
+        and "connection.close()" in future_text
+        and any(marker in error_text for marker in _ASYNCIO_CLOSE_NETWORK_MARKERS)
+    )
+
+
+def install_asyncio_exception_guard(loop: asyncio.AbstractEventLoop) -> None:
+    """Suppress only the known asyncpg close-after-network-drop task failure."""
+
+    identity = id(loop)
+    if identity in _LOOP_GUARD_INSTALLED:
+        return
+    previous = loop.get_exception_handler()
+
+    def handle(
+        current_loop: asyncio.AbstractEventLoop,
+        context: dict[str, Any],
+    ) -> None:
+        if is_recoverable_asyncio_connection_close_context(context):
+            logger.info(
+                "Ignored transient asyncpg connection close failure: %s",
+                context.get("exception"),
+            )
+            return
+        if previous is not None:
+            previous(current_loop, context)
+        else:
+            current_loop.default_exception_handler(context)
+
+    loop.set_exception_handler(handle)
+    _LOOP_GUARD_INSTALLED.add(identity)
 
 
 async def acknowledge_legacy_polling_noise(repository: Any) -> int:
@@ -100,6 +160,17 @@ async def acknowledge_legacy_polling_noise(repository: Any) -> int:
                   OR LOWER(summary) LIKE '%connection timed out%'
               )
           )
+          OR (
+              logger_name = 'asyncio'
+              AND LOWER(summary) LIKE '%task exception was never retrieved%'
+              AND LOWER(summary) LIKE '%connection.close()%'
+              AND (
+                     LOWER(summary) LIKE '%connectionabortederror%'
+                  OR LOWER(summary) LIKE '%connectionreseterror%'
+                  OR LOWER(summary) LIKE '%подключение к сети было разорвано%'
+                  OR LOWER(summary) LIKE '%connection was closed in the middle of operation%'
+              )
+          )
         )
   """
         )
@@ -124,6 +195,7 @@ def install_runtime_stability() -> None:
     _ORIGINAL_ERROR_CENTER_START = error_center.ErrorIncidentCenter.start
 
     async def start_with_polling_cleanup(self) -> None:
+        install_asyncio_exception_guard(asyncio.get_running_loop())
         try:
             closed = await acknowledge_legacy_polling_noise(self._repository)
             if closed:
@@ -152,6 +224,8 @@ def install_runtime_stability() -> None:
 
 __all__ = (
     "acknowledge_legacy_polling_noise",
+    "install_asyncio_exception_guard",
     "install_runtime_stability",
     "is_recoverable_aiogram_polling_record",
+    "is_recoverable_asyncio_connection_close_context",
 )

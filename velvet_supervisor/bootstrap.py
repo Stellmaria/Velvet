@@ -70,6 +70,41 @@ def _run(
     return completed
 
 
+_TRANSIENT_GIT_NETWORK_MARKERS = (
+    "couldn't connect to server",
+    "failed to connect to github.com",
+    "could not resolve host",
+    "connection reset by peer",
+    "connection timed out",
+    "the requested url returned error: 502",
+    "the requested url returned error: 503",
+    "the requested url returned error: 504",
+)
+
+
+def _run_git_with_retries(
+    command: Sequence[str],
+    *,
+    cwd: Path,
+    timeout: int,
+) -> subprocess.CompletedProcess[str]:
+    completed: subprocess.CompletedProcess[str] | None = None
+    for attempt in range(3):
+        completed = _run(command, cwd=cwd, timeout=timeout, check=False)
+        output = (completed.stdout or "").casefold()
+        transient = any(marker in output for marker in _TRANSIENT_GIT_NETWORK_MARKERS)
+        if completed.returncode == 0:
+            return completed
+        if not transient or attempt == 2:
+            raise RuntimeError(
+                f"Команда завершилась с кодом {completed.returncode}: "
+                f"{subprocess.list2cmdline(command)}\n{completed.stdout[-5000:]}"
+            )
+        time.sleep((1.0, 3.0)[min(attempt, 1)])
+    assert completed is not None
+    return completed
+
+
 def _test_environment(settings: SupervisorSettings) -> dict[str, str]:
     environment = os.environ.copy()
     test_database_url = getattr(settings, "test_database_url", None)
@@ -239,7 +274,7 @@ def _update_project(settings: SupervisorSettings) -> tuple[str, str, str]:
 
     old_sha = _git_head(project_dir)
     _run(("git", "switch", settings.update_branch), cwd=project_dir, timeout=60)
-    _run(
+    _run_git_with_retries(
         ("git", "fetch", settings.update_remote),
         cwd=project_dir,
         timeout=settings.command_timeout_seconds,
@@ -255,7 +290,7 @@ def _update_project(settings: SupervisorSettings) -> tuple[str, str, str]:
         raise RuntimeError(
             "Локальная ветка разошлась с удалённой. Автоматический self-update остановлен."
         )
-    _run(
+    _run_git_with_retries(
         ("git", "pull", "--ff-only", settings.update_remote, settings.update_branch),
         cwd=project_dir,
         timeout=settings.command_timeout_seconds,
