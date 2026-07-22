@@ -11,7 +11,6 @@ from aiogram.types import Message
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.character_management import create_workspace_character
 from velvet_bot.domains.workspaces.character_topics import ensure_character_archive_topic
-from velvet_bot.domains.workspaces.models import WorkspaceRole
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.presentation.telegram.routers.workspace_character_management import (
@@ -65,7 +64,7 @@ async def handle_workspace_character_create_with_topic(
         await workspace_service.require_role(
             workspace_id=workspace_id,
             user_id=user_id,
-            minimum_role=WorkspaceRole.EDITOR,
+            minimum_role="editor",
             global_owner=_is_global_owner(user_id),
         )
         if not await _characters_enabled(database, workspace_id=workspace_id):
