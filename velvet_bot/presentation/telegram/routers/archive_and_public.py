@@ -20,6 +20,12 @@ from velvet_bot.presentation.telegram.routers.workspace_character_topic_creation
 from velvet_bot.presentation.telegram.routers.workspace_character_management import (
     router as workspace_character_management_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_delete import (
+    router as workspace_delete_router,
+)
+from velvet_bot.presentation.telegram.routers.workspace_quick_setup import (
+    router as workspace_quick_setup_router,
+)
 from velvet_bot.presentation.telegram.routers.workspace_onboarding_channel_bind import (
     router as workspace_onboarding_channel_bind_router,
 )
@@ -155,8 +161,11 @@ register_public_archive_rework(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
-# Workspace onboarding must intercept the first workspace-name FSM response before
-# the legacy workspace router and must own setup/binding commands before broad handlers.
+# Quick setup must intercept the first workspace-name response before the older
+# onboarding and legacy workspace handlers. Deletion must also run before broad routes.
+router.include_router(workspace_quick_setup_router)
+router.include_router(workspace_delete_router)
+# Workspace onboarding must own setup/binding commands before broad handlers.
 router.include_router(workspace_onboarding_channel_bind_router)
 router.include_router(workspace_onboarding_router)
 # Workspace policy commands, callbacks and FSM forms must run before /start and
