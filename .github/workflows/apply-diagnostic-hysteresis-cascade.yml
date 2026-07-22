@@ -1,0 +1,229 @@
+name: Apply diagnostic hysteresis and cascade migration
+
+on:
+  push:
+    branches:
+      - agent/fix-diagnostic-hysteresis-cascade
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-diagnostic-hysteresis-cascade
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Apply focused patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          service_path = Path('velvet_bot/services/diagnostic_bundle.py')
+          service = service_path.read_text(encoding='utf-8')
+
+          constant_old = '_AUTO_GLOBAL_COOLDOWN = timedelta(minutes=30)\n'
+          constant_new = (
+              '_AUTO_GLOBAL_COOLDOWN = timedelta(minutes=30)\n'
+              '_AUTO_TELEGRAM_FAILURE_THRESHOLD = 3\n'
+          )
+          if '_AUTO_TELEGRAM_FAILURE_THRESHOLD' not in service:
+              if constant_old not in service:
+                  raise SystemExit('diagnostic constant anchor not found')
+              service = service.replace(constant_old, constant_new, 1)
+
+          state_old = '        self._last_auto_any_at: datetime | None = None\n'
+          state_new = (
+              '        self._last_auto_any_at: datetime | None = None\n'
+              '        self._telegram_failure_streak = 0\n'
+          )
+          if 'self._telegram_failure_streak = 0' not in service:
+              if state_old not in service:
+                  raise SystemExit('diagnostic state anchor not found')
+              service = service.replace(state_old, state_new, 1)
+
+          telegram_old = (
+              '        if not report.telegram_ok:\n'
+              '            reasons.append("Telegram API недоступен")\n'
+          )
+          telegram_new = (
+              '        if report.telegram_ok:\n'
+              '            self._telegram_failure_streak = 0\n'
+              '        else:\n'
+              '            self._telegram_failure_streak += 1\n'
+              '            if (\n'
+              '                self._telegram_failure_streak\n'
+              '                >= _AUTO_TELEGRAM_FAILURE_THRESHOLD\n'
+              '            ):\n'
+              '                reasons.append(\n'
+              '                    "Telegram API недоступен "\n'
+              '                    f"({_AUTO_TELEGRAM_FAILURE_THRESHOLD} проверки подряд)"\n'
+              '                )\n'
+          )
+          if '>= _AUTO_TELEGRAM_FAILURE_THRESHOLD' not in service:
+              if telegram_old not in service:
+                  raise SystemExit('telegram trigger anchor not found')
+              service = service.replace(telegram_old, telegram_new, 1)
+
+          service_path.write_text(service, encoding='utf-8')
+
+          test_path = Path('tests/test_owner_diagnostic_bundles.py')
+          tests = test_path.read_text(encoding='utf-8')
+          test_name = 'test_telegram_alert_requires_three_consecutive_failures'
+          if test_name not in tests:
+              anchor = '\n\nif __name__ == "__main__":\n'
+              if anchor not in tests:
+                  raise SystemExit('diagnostic test anchor not found')
+              addition = '''
+
+    async def test_telegram_alert_requires_three_consecutive_failures(self) -> None:
+        repository = SimpleNamespace(unacknowledged=AsyncMock(return_value=()))
+        service = DiagnosticBundleService(
+            incident_repository=repository,
+            app_version="1.3.0",
+            owner_user_ids=frozenset({100}),
+        )
+        system_service = SimpleNamespace(
+            check=AsyncMock(
+                side_effect=(
+                    _report(status="failed", telegram_ok=False),
+                    _report(status="failed", telegram_ok=False),
+                    _report(status="failed", telegram_ok=False),
+                )
+            )
+        )
+        bot = SimpleNamespace(send_document=AsyncMock())
+        worker_manager = SimpleNamespace()
+
+        results = [
+            await service.monitor_once(
+                bot=bot,
+                system_service=system_service,
+                worker_manager=worker_manager,
+            )
+            for _ in range(3)
+        ]
+
+        self.assertEqual([0, 0, 1], results)
+        bot.send_document.assert_awaited_once()
+
+    async def test_successful_telegram_probe_resets_failure_streak(self) -> None:
+        repository = SimpleNamespace(unacknowledged=AsyncMock(return_value=()))
+        service = DiagnosticBundleService(
+            incident_repository=repository,
+            app_version="1.3.0",
+            owner_user_ids=frozenset({100}),
+        )
+        system_service = SimpleNamespace(
+            check=AsyncMock(
+                side_effect=(
+                    _report(status="failed", telegram_ok=False),
+                    _report(),
+                    _report(status="failed", telegram_ok=False),
+                    _report(status="failed", telegram_ok=False),
+                )
+            )
+        )
+        bot = SimpleNamespace(send_document=AsyncMock())
+        worker_manager = SimpleNamespace()
+
+        results = [
+            await service.monitor_once(
+                bot=bot,
+                system_service=system_service,
+                worker_manager=worker_manager,
+            )
+            for _ in range(4)
+        ]
+
+        self.assertEqual([0, 0, 0, 0], results)
+        bot.send_document.assert_not_awaited()
+'''
+              tests = tests.replace(anchor, addition + anchor, 1)
+              test_path.write_text(tests, encoding='utf-8')
+
+          migration_path = Path('migrations/911_workspace_self_delete.sql')
+          if not migration_path.exists():
+              migration_path.write_text(
+                  '''ALTER TABLE characters
+    DROP CONSTRAINT IF EXISTS characters_workspace_id_fkey;
+
+ALTER TABLE characters
+    ADD CONSTRAINT characters_workspace_id_fkey
+    FOREIGN KEY (workspace_id)
+    REFERENCES workspaces(id)
+    ON DELETE CASCADE;
+
+ALTER TABLE watermark_jobs
+    DROP CONSTRAINT IF EXISTS watermark_jobs_workspace_id_fkey;
+
+ALTER TABLE watermark_jobs
+    ADD CONSTRAINT watermark_jobs_workspace_id_fkey
+    FOREIGN KEY (workspace_id)
+    REFERENCES workspaces(id)
+    ON DELETE CASCADE;
+''',
+                  encoding='utf-8',
+              )
+
+          worklog_path = Path('docs/worklog/2026-07-22-diagnostic-hysteresis-cascade-consolidation.md')
+          worklog_path.write_text(
+              '''# Сессия: устойчивость диагностики и консолидация веток
+
+- Дата: 2026-07-22
+- ID: `2026-07-22-diagnostic-hysteresis-cascade-consolidation`
+- Линия/фаза: production diagnostics and workspace lifecycle
+- Статус: `завершено`
+- Ветка: `agent/fix-diagnostic-hysteresis-cascade`
+
+## Цель
+
+Не отправлять владельцу автоматический диагностический ZIP из-за одного кратковременного сбоя Telegram API и перенести на актуальный `main` оставшуюся полезную миграцию из конфликтующей ветки PR #291.
+
+## Фактически сделано
+
+- одиночный неуспешный Telegram health probe больше не создаёт автоматическую тревогу;
+- тревога Telegram формируется только после трёх последовательных неуспешных проверок;
+- успешная проверка сбрасывает накопленный счётчик;
+- критические инциденты, PostgreSQL, диск, workers и backup продолжают запускать диагностику без задержки;
+- добавлены regression tests для порога и сброса счётчика;
+- перенесена миграция `911_workspace_self_delete.sql` с `ON DELETE CASCADE` для персонажей и watermark jobs;
+- старый quick setup из PR #291 не переносился, потому что его уже заменил более новый guided onboarding в `main`;
+- старое отдельное удаление пространства не переносилось, потому что актуальный owner controls уже содержит подтверждение и удаление.
+
+## Совместимость
+
+Формат diagnostic bundle и `.env` не меняются. Миграция additive и применяется обычным migrator перед polling.
+
+## Проверка
+
+Добавлены unit tests в `tests/test_owner_diagnostic_bundles.py`. Полный CI выполняется после открытия PR.
+''',
+              encoding='utf-8',
+          )
+
+          workflow = Path('.github/workflows/apply-diagnostic-hysteresis-cascade.yml')
+          workflow.unlink()
+          PY
+
+      - name: Validate syntax
+        run: |
+          python -m py_compile velvet_bot/services/diagnostic_bundle.py tests/test_owner_diagnostic_bundles.py
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Require sustained Telegram failure before diagnostics"
+          git push origin HEAD:agent/fix-diagnostic-hysteresis-cascade
