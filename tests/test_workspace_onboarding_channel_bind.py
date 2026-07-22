@@ -22,9 +22,20 @@ class WorkspaceOnboardingChannelBindContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn('Command("workspace_bind_channel")', source)
         self.assertIn("bot.get_chat", source)
-        self.assertIn("bot.get_chat_member", source)
+        self.assertIn("bot.get_chat_member(chat.id, me.id)", source)
+        self.assertIn("bot.get_chat_member(chat.id, user_id)", source)
+        self.assertIn('caller_status not in {"administrator", "creator"}', source)
         self.assertIn("can_post_messages", source)
-        self.assertIn("workspace_service.configure_channel", source)
+        self.assertIn("repository.configure_destination", source)
+        self.assertIn("channel_kind=spec.channel_kind", source)
+
+    def test_in_chat_binding_requires_caller_to_be_telegram_admin(self) -> None:
+        source = Path(
+            "velvet_bot/presentation/telegram/routers/workspace_onboarding.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("bot.get_chat_member(message.chat.id, me.id)", source)
+        self.assertIn("bot.get_chat_member(message.chat.id, user_id)", source)
+        self.assertIn('caller_status not in {"administrator", "creator"}', source)
 
     def test_migration_blocks_cross_workspace_chat_reuse(self) -> None:
         migration = Path("migrations/910_workspace_first_run_wizard.sql").read_text(

@@ -33,6 +33,7 @@ from velvet_bot.presentation.telegram.routers.workspace_reference_library import
     router as workspace_reference_library_router,
 )
 from velvet_bot.presentation.telegram.routers.workspace_publications import (
+    entry_router as workspace_publication_entry_router,
     router as workspace_publications_router,
 )
 from velvet_bot.presentation.telegram.routers.workspace_admin import (
@@ -161,6 +162,9 @@ register_public_archive_rework(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
+# `/start` is deliberately before all workspace form routers: it is the visible
+# recovery action when a previous button or upload session was interrupted.
+router.include_router(start_router)
 # Workspace onboarding must intercept the first workspace-name FSM response before
 # the legacy workspace router and must own setup/binding commands before broad handlers.
 router.include_router(workspace_onboarding_channel_bind_router)
@@ -177,8 +181,10 @@ router.include_router(workspace_admin_router)
 router.include_router(workspace_team_router)
 router.include_router(workspace_watermark_router)
 router.include_router(workspace_owner_controls_router)
+# The tenant publication entry must precede generic `wsp:module` help. The
+# publication capture router remains below reference/save flows.
+router.include_router(workspace_publication_entry_router)
 router.include_router(workspaces_router)
-router.include_router(start_router)
 router.include_router(public_media_display_router)
 # Virtual universe groups must run before generic setuni/puni/menu handlers.
 router.include_router(game_universes_router)

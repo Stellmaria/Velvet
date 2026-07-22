@@ -14,7 +14,7 @@ from velvet_bot.core.access.policy import (
     PUBLIC_CALLBACK_ACTIONS,
     PUBLIC_CALLBACK_PREFIX,
     PUBLIC_COMMANDS,
-    WORKSPACE_MEMBER_CALLBACK_PREFIXES as _BASE_WORKSPACE_MEMBER_CALLBACK_PREFIXES,
+    WORKSPACE_MEMBER_CALLBACK_PREFIXES,
     WORKSPACE_MEMBER_COMMANDS as _BASE_WORKSPACE_MEMBER_COMMANDS,
     command_name,
     is_moderator_callback_data,
@@ -23,6 +23,7 @@ from velvet_bot.core.access.policy import (
     is_public_callback_data,
     is_public_command_text,
     is_save_mention_text,
+    is_workspace_member_fsm_state_name,
     normalize_username,
 )
 
@@ -38,12 +39,6 @@ WORKSPACE_MEMBER_COMMANDS = _BASE_WORKSPACE_MEMBER_COMMANDS | frozenset(
         "workspace_unbind",
         "workspace_delete",
     }
-)
-WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
-    *_BASE_WORKSPACE_MEMBER_CALLBACK_PREFIXES,
-    "wob:",
-    "wpa:",
-    "wref:",
 )
 
 
@@ -88,6 +83,7 @@ __all__ = (
     "is_public_command_text",
     "is_save_mention_text",
     "is_workspace_member_callback_data",
+    "is_workspace_member_fsm_state_name",
     "is_workspace_member_command_text",
     "normalize_username",
 )

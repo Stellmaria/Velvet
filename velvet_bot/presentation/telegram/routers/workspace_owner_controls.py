@@ -31,12 +31,21 @@ from velvet_bot.reference_catalog import list_character_references
 from velvet_bot.workspace_ui import (
     WorkspaceCallback,
     build_start_keyboard,
+    build_workspace_member_home_keyboard,
     build_workspace_home_keyboard,
+    build_workspace_selector_keyboard,
     format_workspace_home,
     workspace_callback,
 )
 
 router = Router(name=__name__)
+_ROLE_LABELS = {
+    "viewer": "наблюдатель",
+    "reviewer": "проверяющий",
+    "editor": "редактор",
+    "admin": "администратор",
+    "owner": "владелец",
+}
 
 
 class WorkspacePersonalArchiveCallback(CallbackData, prefix="wpa"):
@@ -244,6 +253,92 @@ async def _render_home(
                     modules=modules,
                 ),
             )
+    await callback.answer()
+
+
+async def _render_member_home(
+    callback: CallbackQuery,
+    *,
+    workspace: Workspace,
+    user_id: int,
+    workspace_service: WorkspaceService,
+    workspace_product_service: WorkspaceProductService,
+) -> None:
+    membership = await workspace_service.require_role(
+        workspace_id=workspace.id,
+        user_id=user_id,
+        minimum_role="viewer",
+        global_owner=_is_global_owner(user_id),
+    )
+    modules = await workspace_product_service.list_modules_for_member(
+        workspace_id=workspace.id,
+        actor_user_id=user_id,
+        global_owner=_is_global_owner(user_id),
+    )
+    settings = await workspace_product_service._workspaces.get_settings(workspace.id)
+    if settings is None:
+        await callback.answer("Настройки пространства не найдены.", show_alert=True)
+        return
+    allowed_modules = sum(item.is_allowed for item in modules)
+    enabled_modules = sum(item.is_allowed and item.is_enabled for item in modules)
+    role_label = _ROLE_LABELS.get(membership.role, membership.role)
+    text = (
+        format_workspace_home(
+            workspace,
+            public_enabled=settings.public_archive_enabled,
+            enabled_modules=enabled_modules,
+            allowed_modules=allowed_modules,
+        )
+        + f"\nРоль: <b>{escape(role_label)}</b>\n\n"
+        "Показаны только разделы, доступные по вашей роли. Настройка модулей, "
+        "публичность и удаление остаются у владельца."
+    )
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    keyboard = build_workspace_member_home_keyboard(
+        workspace,
+        role=membership.role,
+        modules=modules,
+    )
+    try:
+        await callback.message.edit_text(text, reply_markup=keyboard)
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error).casefold():
+            await callback.message.answer(text, reply_markup=keyboard)
+    await callback.answer()
+
+
+async def _render_workspace_selector(
+    callback: CallbackQuery,
+    *,
+    user_id: int,
+    state: FSMContext,
+    workspace_product_service: WorkspaceProductService,
+) -> None:
+    await state.clear()
+    start_state = await workspace_product_service.get_start_state(user_id)
+    if not start_state.owned_workspaces and not start_state.member_workspaces:
+        await callback.answer("У вас пока нет личных или командных пространств.", show_alert=True)
+        return
+    text = (
+        "<b>🗂 Пространства</b>\n\n"
+        "⚙️ — ваш личный архив: доступны настройки и управление.\n"
+        "🤝 — пространство команды: показаны только разделы, разрешённые вашей ролью.\n\n"
+        "Выберите пространство, с которым хотите работать сейчас."
+    )
+    keyboard = build_workspace_selector_keyboard(
+        owned_workspaces=start_state.owned_workspaces,
+        member_workspaces=start_state.member_workspaces,
+    )
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    try:
+        await callback.message.edit_text(text, reply_markup=keyboard)
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error).casefold():
+            await callback.message.answer(text, reply_markup=keyboard)
     await callback.answer()
 
 
@@ -741,23 +836,40 @@ async def _handle_workspace_owner_home(
     callback: CallbackQuery,
     *,
     callback_data: WorkspaceCallback,
+    state: FSMContext,
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
 ) -> None:
+    await state.clear()
     try:
         workspace = await _resolve_workspace(
             workspace_service=workspace_service,
             user_id=callback.from_user.id,
             workspace_id=callback_data.workspace_id,
-            minimum_role="owner",
+            minimum_role="viewer",
         )
-        await _render_home(
-            callback,
-            workspace=workspace,
+        membership = await workspace_service.require_role(
+            workspace_id=workspace.id,
             user_id=callback.from_user.id,
-            workspace_service=workspace_service,
-            workspace_product_service=workspace_product_service,
+            minimum_role="viewer",
+            global_owner=_is_global_owner(callback.from_user.id),
         )
+        if membership.role == "owner":
+            await _render_home(
+                callback,
+                workspace=workspace,
+                user_id=callback.from_user.id,
+                workspace_service=workspace_service,
+                workspace_product_service=workspace_product_service,
+            )
+        else:
+            await _render_member_home(
+                callback,
+                workspace=workspace,
+                user_id=callback.from_user.id,
+                workspace_service=workspace_service,
+                workspace_product_service=workspace_product_service,
+            )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
 
@@ -766,13 +878,29 @@ async def _handle_workspace_owner_home(
 async def handle_workspace_owner_home(
     callback: CallbackQuery,
     callback_data: WorkspaceCallback,
+    state: FSMContext,
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
 ) -> None:
     await _handle_workspace_owner_home(
         callback,
         callback_data=callback_data,
+        state=state,
         workspace_service=workspace_service,
+        workspace_product_service=workspace_product_service,
+    )
+
+
+@router.callback_query(WorkspaceCallback.filter(F.action == "spaces"))
+async def handle_workspace_selector(
+    callback: CallbackQuery,
+    state: FSMContext,
+    workspace_product_service: WorkspaceProductService,
+) -> None:
+    await _render_workspace_selector(
+        callback,
+        user_id=callback.from_user.id,
+        state=state,
         workspace_product_service=workspace_product_service,
     )
 
@@ -1179,6 +1307,7 @@ async def handle_workspace_delete_confirm(
 
     await state.clear()
     start_state = await workspace_product_service.get_start_state(callback.from_user.id)
+    personal_count = len(start_state.owned_workspaces) + len(start_state.member_workspaces)
     text = (
         f"<b>Пространство «{escape(workspace.name)}» удалено</b>\n\n"
         f"Удалено персонажей: <b>{deleted_characters}</b>.\n"
@@ -1190,7 +1319,9 @@ async def handle_workspace_delete_confirm(
                 text,
                 reply_markup=build_start_keyboard(
                     can_create=start_state.can_create,
-                    has_workspace=bool(start_state.owned_workspaces),
+                    has_workspace=bool(personal_count),
+                    workspace_count=personal_count,
+                    has_owned_workspace=bool(start_state.owned_workspaces),
                 ),
             )
         except TelegramBadRequest:
@@ -1198,7 +1329,9 @@ async def handle_workspace_delete_confirm(
                 text,
                 reply_markup=build_start_keyboard(
                     can_create=start_state.can_create,
-                    has_workspace=bool(start_state.owned_workspaces),
+                    has_workspace=bool(personal_count),
+                    workspace_count=personal_count,
+                    has_owned_workspace=bool(start_state.owned_workspaces),
                 ),
             )
     await callback.answer("Пространство удалено.")

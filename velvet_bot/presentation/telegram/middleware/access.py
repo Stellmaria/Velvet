@@ -32,6 +32,7 @@ from velvet_bot.core.access import (
     is_public_command_text,
     is_workspace_member_callback_data,
     is_workspace_member_command_text,
+    is_workspace_member_fsm_state_name,
 )
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError
@@ -49,9 +50,6 @@ ACCESS_DENIED_TEXT = (
 ACCESS_DENIED_CALLBACK_TEXT = (
     "Эта служебная кнопка недоступна. Откройте публичные архивы через /start."
 )
-_WORKSPACE_FORM_STATE_PREFIX = "WorkspaceForm:"
-
-
 def is_public_callback(callback: CallbackQuery) -> bool:
     return is_public_callback_data(callback.data)
 
@@ -127,7 +125,7 @@ async def _workspace_form_is_active(data: dict[str, Any]) -> bool:
     if get_state is None:
         return False
     current = await get_state()
-    return bool(current and str(current).startswith(_WORKSPACE_FORM_STATE_PREFIX))
+    return is_workspace_member_fsm_state_name(current)
 
 
 async def _has_active_personal_workspace(
@@ -241,13 +239,16 @@ class OwnerAccessMiddleware(BaseMiddleware):
         ):
             return await handler(event, data)
 
-        # Workspace callbacks start signed FSM sessions. Only messages inside one
-        # of those states bypass the global owner gate; the handler still checks
-        # creation grants, workspace membership, role and enabled module.
-        if await _workspace_form_is_active(data):
+        caller = get_caller_user(event)
+        # Workspace callbacks start signed FSM sessions. Continue only a known
+        # personal-workspace state and only while the caller still has an active
+        # personal workspace; target handlers perform their own role/module checks.
+        if await _workspace_form_is_active(data) and await _has_active_personal_workspace(
+            data,
+            caller,
+        ):
             return await handler(event, data)
 
-        caller = get_caller_user(event)
         personal_route = is_workspace_member_command_text(text) or (
             event.chat.type == ChatType.PRIVATE and command_name(text) is None
         )

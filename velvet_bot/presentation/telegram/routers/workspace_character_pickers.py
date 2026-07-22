@@ -1000,12 +1000,10 @@ async def handle_workspace_character_picker_entry(
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
         return
-    await state.set_state(WorkspaceForm.waiting_character_command)
-    await state.update_data(
-        workspace_id=int(callback_data.workspace_id),
-        workspace_name=workspace_name,
-        pending_delete_id=None,
-    )
+    # The picker is button-first. Earlier versions silently entered the legacy
+    # free-text command mode here, so a failed button left a user trapped in an
+    # unrelated FSM state. Opening the picker now also recovers any old state.
+    await state.clear()
     await _render_list(
         callback,
         database=database,

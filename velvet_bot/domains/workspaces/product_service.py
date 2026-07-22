@@ -41,6 +41,7 @@ class WorkspaceStartState:
     can_create: bool
     owned_workspaces: tuple[Workspace, ...]
     public_workspaces: tuple[Workspace, ...]
+    member_workspaces: tuple[Workspace, ...] = ()
 
 
 def normalize_taxonomy_key(value: str) -> str:
@@ -130,10 +131,21 @@ class WorkspaceProductService:
         return owned < grant.max_workspaces
 
     async def get_start_state(self, user_id: int) -> WorkspaceStartState:
+        owned = await self._product.list_owned_personal_workspaces(int(user_id))
+        owned_ids = {item.id for item in owned}
+        available = await self._workspace_service.list_for_user(
+            user_id=int(user_id),
+            global_owner=False,
+        )
         return WorkspaceStartState(
             can_create=await self.can_create_workspace(int(user_id)),
-            owned_workspaces=await self._product.list_owned_personal_workspaces(int(user_id)),
+            owned_workspaces=owned,
             public_workspaces=await self._product.list_public_workspaces(),
+            member_workspaces=tuple(
+                item
+                for item in available
+                if not item.is_system and item.id not in owned_ids
+            ),
         )
 
     async def create_personal_workspace(
@@ -228,6 +240,22 @@ class WorkspaceProductService:
             workspace_id=int(workspace_id),
             user_id=int(actor_user_id),
             minimum_role="owner",
+            global_owner=global_owner,
+        )
+        return await self._product.list_modules(int(workspace_id))
+
+    async def list_modules_for_member(
+        self,
+        *,
+        workspace_id: int,
+        actor_user_id: int,
+        global_owner: bool = False,
+    ) -> tuple[WorkspaceModuleSetting, ...]:
+        """Return visible module availability after a read-only membership check."""
+        await self._workspace_service.require_role(
+            workspace_id=int(workspace_id),
+            user_id=int(actor_user_id),
+            minimum_role="viewer",
             global_owner=global_owner,
         )
         return await self._product.list_modules(int(workspace_id))
