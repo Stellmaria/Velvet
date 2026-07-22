@@ -1,0 +1,69 @@
+name: refresh workspace wizard inventories
+
+on:
+  push:
+    branches:
+      - agent/workspace-first-run-wizard
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-first-run-wizard
+      - name: Patch architecture contracts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          architecture = Path("tests/test_p3_architecture_organization.py")
+          text = architecture.read_text(encoding="utf-8")
+          marker = '''    "velvet_bot.presentation.telegram.routers.workspace_character_management",\n    "velvet_bot.presentation.telegram.routers.workspace_character_pickers",\n'''
+          replacement = '''    "velvet_bot.presentation.telegram.routers.workspace_character_management",\n    "velvet_bot.presentation.telegram.routers.workspace_character_pickers",\n    "velvet_bot.presentation.telegram.routers.workspace_character_topic_creation",\n'''
+          if marker in text and "workspace_character_topic_creation" not in text:
+              text = text.replace(marker, replacement, 1)
+          architecture.write_text(text, encoding="utf-8")
+
+          bundle_test = Path("tests/test_p3c_publication_controllers.py")
+          text = bundle_test.read_text(encoding="utf-8")
+          text = text.replace(
+              'self.assertEqual(44, source.count("router.include_router("))',
+              'self.assertEqual(45, source.count("router.include_router("))',
+              1,
+          )
+          bundle_test.write_text(text, encoding="utf-8")
+          PY
+      - name: Regenerate exact inventories
+        shell: bash
+        run: |
+          python scripts/inventory_architecture_layout.py --write --label workspace-first-run-wizard
+          python scripts/telegram_navigation_inventory.py \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/update_p2_stability_inventory.py \
+            --label workspace-first-run-wizard \
+            --schema-version 52
+      - name: Commit refreshed contracts
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            tests/test_p3_architecture_organization.py \
+            tests/test_p3c_publication_controllers.py \
+            docs/architecture_layout_inventory.json \
+            docs/architecture_layout_inventory.md \
+            docs/generated/telegram_navigation_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md
+          if git diff --cached --quiet; then
+            echo "Inventories already current."
+            exit 0
+          fi
+          git commit -m "Refresh final workspace wizard inventories"
+          git push origin HEAD:agent/workspace-first-run-wizard
