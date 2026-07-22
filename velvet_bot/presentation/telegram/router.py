@@ -8,7 +8,6 @@ from aiogram.types import ErrorEvent
 from velvet_bot.infrastructure.transient_connections import (
     is_transient_connection_error,
 )
-
 from velvet_bot.presentation.telegram.compat import (
     install_post_router_compatibility,
     install_pre_router_compatibility,
@@ -16,6 +15,18 @@ from velvet_bot.presentation.telegram.compat import (
 
 logger = logging.getLogger(__name__)
 _ROOT_ROUTER: Router | None = None
+_TELEGRAM_TRANSPORT_MARKERS = (
+    "api.telegram.org",
+    "telegramnetworkerror",
+    "http client says",
+)
+
+
+def _is_transient_telegram_error(error: BaseException) -> bool:
+    message = " ".join(str(error).casefold().split())
+    return is_transient_connection_error(error) and any(
+        marker in message for marker in _TELEGRAM_TRANSPORT_MARKERS
+    )
 
 
 def _build_root_router() -> Router:
@@ -42,7 +53,7 @@ def _build_root_router() -> Router:
 
     @root.error()
     async def handle_unhandled_error(event: ErrorEvent) -> bool:
-        if is_transient_connection_error(event.exception):
+        if _is_transient_telegram_error(event.exception):
             logger.info(
                 "Transient Telegram connection error recovered: %s",
                 event.exception,
