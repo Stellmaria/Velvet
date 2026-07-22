@@ -36,7 +36,8 @@ from velvet_bot.domains.workspaces.product_service import (
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.presentation.telegram.routers.workspace_character_pickers import (
     WorkspaceCharacterPickerCallback,
-    build_character_module_keyboard,
+    _render_card,
+    _render_list,
 )
 from velvet_bot.presentation.telegram.routers.workspace_guided_ui import (
     GuidedWorkspaceCallback,
@@ -58,6 +59,9 @@ from velvet_bot.workspace_ui import (
 
 router = Router(name=__name__)
 _PAGE_SIZE = 8
+_OPTIONAL_DESTINATION_KEYS = tuple(
+    key for key in WORKSPACE_DESTINATION_KEYS if key not in {"characters", "media"}
+)
 
 
 class GuidedWorkspaceForm(StatesGroup):
@@ -242,29 +246,49 @@ async def _render_quick(
     )
 
 
-def _connections_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+def _connections_keyboard(
+    workspace_id: int,
+    configured: frozenset[str],
+) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text=("✅" if "characters" in configured else "▫️")
+                + " 📁 Основной архив",
+                callback_data=guided_workspace_callback(
+                    "mainchat",
+                    workspace_id=workspace_id,
+                ),
+            )
+        ]
+    ]
+    for index, key in enumerate(_OPTIONAL_DESTINATION_KEYS, start=1):
+        spec = DESTINATION_SPECS[key]
+        rows.append(
             [
                 InlineKeyboardButton(
-                    text="📁 Основной архив",
+                    text=("✅" if key in configured else "▫️")
+                    + f" {spec.emoji} {spec.label}"[:54],
                     callback_data=guided_workspace_callback(
-                        "mainchat",
+                        "conhelp",
                         workspace_id=workspace_id,
+                        item_id=index,
                     ),
                 )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="↩️ Быстрые действия",
-                    callback_data=guided_workspace_callback(
-                        "quick",
-                        workspace_id=workspace_id,
-                    ),
-                )
-            ],
+            ]
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="↩️ Быстрые действия",
+                callback_data=guided_workspace_callback(
+                    "quick",
+                    workspace_id=workspace_id,
+                ),
+            )
         ]
     )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _render_connections(
@@ -303,7 +327,7 @@ async def _render_connections(
             "<b>Необязательные подключения</b>\n"
             + "\n".join(optional_lines)
         ),
-        reply_markup=_connections_keyboard(workspace.id),
+        reply_markup=_connections_keyboard(workspace.id, frozenset(configured)),
     )
 
 
@@ -781,6 +805,28 @@ async def handle_guided_workspace_callback(
             await state.clear()
             await _render_main_chat(callback, workspace)
             return
+        if action == "conhelp":
+            index = int(callback_data.item_id) - 1
+            if index < 0 or index >= len(_OPTIONAL_DESTINATION_KEYS):
+                raise ValueError("Подключение больше недоступно.")
+            key = _OPTIONAL_DESTINATION_KEYS[index]
+            spec = DESTINATION_SPECS[key]
+            await _edit(
+                callback,
+                text=(
+                    f"<b>{spec.emoji} {escape(spec.label)} · необязательно</b>\n\n"
+                    f"{escape(spec.description)}\n\n"
+                    "Подключайте этот чат только когда используете соответствующий "
+                    "модуль. Команда отправляется внутри выбранного чата:\n"
+                    f"<code>{escape(spec.command_hint)}</code>"
+                ),
+                reply_markup=build_prompt_back_keyboard(
+                    workspace_id=workspace.id,
+                    action="connections",
+                    text="↩️ К подключениям",
+                ),
+            )
+            return
         if action == "savepick":
             await state.clear()
             await _render_save_picker(
@@ -1028,35 +1074,23 @@ async def handle_guided_workspace_callback(
             return
         if action == "backlist":
             await state.clear()
-            await _edit(
+            await _render_list(
                 callback,
-                text=f"<b>👥 Персонажи · {escape(workspace.name)}</b>",
-                reply_markup=await build_character_module_keyboard(
-                    database,
-                    workspace_id=workspace.id,
-                ),
+                database=database,
+                workspace_id=workspace.id,
+                workspace_name=workspace.name,
+                page_number=callback_data.page,
             )
             return
         if action == "backcard":
             await state.clear()
-            await callback.answer()
-            if isinstance(callback.message, Message):
-                await callback.message.edit_reply_markup(
-                    reply_markup=InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [
-                                InlineKeyboardButton(
-                                    text="👤 Вернуться к карточке",
-                                    callback_data=_character_card_callback(
-                                        workspace.id,
-                                        callback_data.character_id,
-                                        callback_data.page,
-                                    ),
-                                )
-                            ]
-                        ]
-                    )
-                )
+            await _render_card(
+                callback,
+                database=database,
+                workspace_id=workspace.id,
+                character_id=callback_data.character_id,
+                list_page=callback_data.page,
+            )
             return
         if action == "backtax":
             await state.clear()

@@ -94,8 +94,15 @@ class WorkspaceGuidedMenuTests(unittest.TestCase):
             / "velvet_bot/presentation/telegram/routers/workspace_character_pickers.py"
         ).read_text(encoding="utf-8")
         ui = (ROOT / "velvet_bot/workspace_ui.py").read_text(encoding="utf-8")
+        guided = (
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py"
+        ).read_text(encoding="utf-8")
         self.assertIn('workspace_callback("home", workspace_id=workspace_id)', picker)
         self.assertIn('workspace_callback("taxonomy", workspace_id=workspace_id)', ui)
+        self.assertIn("await _render_list(", guided)
+        self.assertIn("await _render_card(", guided)
+        self.assertNotIn("👤 Вернуться к карточке", guided)
         self.assertNotIn("➕ Как создать персонажа", picker)
 
     def test_onboarding_no_longer_demands_every_destination(self) -> None:
