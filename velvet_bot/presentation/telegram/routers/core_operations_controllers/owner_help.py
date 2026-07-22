@@ -28,6 +28,12 @@ OWNER_COMMAND_GROUPS: tuple[
             ("workspace_grant", "выдать Telegram ID право создать личный архив"),
             ("workspace_revoke", "отозвать неиспользованное право создания"),
             ("workspace_module", "разрешить или запретить модуль пространства"),
+            ("workspace_setup", "открыть или продолжить мастер настройки"),
+            ("workspace_guide", "показать гид по устройству пространства"),
+            ("workspace_setup_status", "проверить готовность модулей, чатов и тем"),
+            ("workspace_bind", "привязать текущий чат или тему к назначению"),
+            ("workspace_bind_channel", "привязать канал из ЛС по @username или chat_id"),
+            ("workspace_unbind", "удалить назначение чата или темы"),
         ),
     ),
     (
