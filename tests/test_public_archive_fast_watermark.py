@@ -43,7 +43,7 @@ class _AsyncContext:
         return None
 
 
-def _work_item(*, source_message_id: int = -77) -> WatermarkWorkItem:
+def _work_item(*, source_message_id: int = -77, workspace_id: int = 1) -> WatermarkWorkItem:
     now = datetime.now(UTC)
     settings = WatermarkSettings()
     return WatermarkWorkItem(
@@ -62,6 +62,7 @@ def _work_item(*, source_message_id: int = -77) -> WatermarkWorkItem:
             final_path=None,
             created_at=now,
             updated_at=now,
+            workspace_id=workspace_id,
         ),
         revision=WatermarkRevision(
             job_id=12,
@@ -95,8 +96,8 @@ class WatermarkTemplateTests(unittest.TestCase):
     def test_archive_preview_starts_with_keep_or_edit_decision(self) -> None:
         keyboard = build_watermark_keyboard(_work_item())
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
-        self.assertIn("✅ Оставить и заменить в архиве", labels)
-        self.assertIn("⚙️ Изменить стандартный шаблон", labels)
+        self.assertIn("✅ Использовать watermark", labels)
+        self.assertIn("🔄 Переделать", labels)
         self.assertNotIn("✅ Скачать PNG без сжатия", labels)
 
         expanded = build_archive_watermark_edit_keyboard(_work_item())
@@ -104,7 +105,13 @@ class WatermarkTemplateTests(unittest.TestCase):
             button.text for row in expanded.inline_keyboard for button in row
         ]
         self.assertIn("◐ Авто", expanded_labels)
-        self.assertIn("✅ Оставить и заменить в архиве", expanded_labels)
+        self.assertIn("✅ Использовать watermark", expanded_labels)
+
+        personal = build_watermark_keyboard(_work_item(workspace_id=5))
+        personal_labels = [
+            button.text for row in personal.inline_keyboard for button in row
+        ]
+        self.assertIn("🎨 Изменить шаблон", personal_labels)
 
 
 class ArchiveOutputQualityTests(unittest.TestCase):

@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from velvet_bot.domains.watermark.archive_output import ArchiveWatermarkOutput
 from velvet_bot.domains.watermark.models import (
@@ -22,6 +24,9 @@ from velvet_bot.domains.watermark.telegram_storage import (
     storage_message_link,
 )
 from velvet_bot.infrastructure.krita_bridge import KritaBridge
+from velvet_bot.presentation.telegram.archive_watermark_storage import (
+    _storage_settings_for_job,
+)
 
 
 def _item(source_path: Path, *, job_id: int = 12, revision: int = 2) -> WatermarkWorkItem:
@@ -158,6 +163,27 @@ class WatermarkTelegramStorageTests(unittest.TestCase):
         self.assertIn("store_archive_watermark", handler)
         self.assertIn("cleanup_watermark_job_files", handler)
         self.assertNotIn("callback.message.answer_document", handler)
+
+
+class WorkspaceWatermarkStorageTests(unittest.IsolatedAsyncioTestCase):
+    async def test_personal_job_uses_configured_channel_and_topic(self) -> None:
+        destination = SimpleNamespace(
+            destination_key="watermarks",
+            chat_id=-10077,
+            message_thread_id=19,
+        )
+        with patch(
+            "velvet_bot.presentation.telegram.archive_watermark_storage."
+            "WorkspaceOnboardingRepository.list_destinations",
+            new=AsyncMock(return_value=(destination,)),
+        ):
+            settings = await _storage_settings_for_job(
+                SimpleNamespace(),
+                workspace_id=5,
+            )
+
+        self.assertEqual(-10077, settings.chat_id)
+        self.assertEqual(19, settings.thread_id)
 
 
 if __name__ == "__main__":

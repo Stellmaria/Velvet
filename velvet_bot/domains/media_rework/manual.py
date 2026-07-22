@@ -25,6 +25,14 @@ async def request_manual_rework(
                 """,
                 int(media_id),
             )
+            await connection.execute(
+                """
+                UPDATE character_media
+                SET is_public = FALSE
+                WHERE media_id = $1::BIGINT
+                """,
+                int(media_id),
+            )
             if (
                 existing is not None
                 and str(existing["status"]) in _ACTIVE_STATUSES

@@ -25,7 +25,11 @@ def _open_image_document_as_file(
 ) -> bool:
     media = page.media
     return bool(
-        (manager_access or member_access)
+        (
+            manager_access
+            or member_access
+            or int(getattr(page.character, "workspace_id", 1)) != 1
+        )
         and media is not None
         and media.is_image_document
         and media.file_size is not None

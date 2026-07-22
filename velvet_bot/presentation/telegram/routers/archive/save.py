@@ -6,7 +6,7 @@ from html import escape
 
 from aiogram import Bot, F, Router
 from aiogram.filters import BaseFilter, Command, CommandObject
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.app.save_sessions import SaveUploadSession, SaveUploadSessions
 from velvet_bot.archive_topic_links import list_characters_by_archive_topic
@@ -20,6 +20,9 @@ from velvet_bot.media import MediaDescriptor, extract_media
 from velvet_bot.media_preview_persistence import set_media_preview
 from velvet_bot.presentation.telegram.routers.archive.parsing import (
     parse_guest_save_character,
+)
+from velvet_bot.presentation.telegram.routers.workspace_guided_ui import (
+    guided_workspace_callback,
 )
 from velvet_bot.services.media_save import save_media_from_message
 
@@ -230,12 +233,76 @@ async def _start_save_session(
         command_message_id=message.message_id,
     )
     await message.answer(
-        f"<b>Ожидаю файл для {escape(character.name)}.</b>\n\n"
+        f"<b>Пакетная загрузка для {escape(character.name)}</b>\n\n"
         "Пространство зафиксировано для этой сессии. Теперь отправьте или "
-        "перешлите одно фото, видео, анимацию либо изображение/видео как файл. "
-        "Оно автоматически сохранится в выбранный архив.\n\n"
-        "Ожидание действует 10 минут. Отмена: <code>/savecancel</code>."
+        "перешлите фото, видео, анимации либо изображения/видео как файлы. "
+        "Можно прислать альбом и затем продолжить следующими сообщениями — "
+        "каждый поддерживаемый файл сохранится выбранному персонажу.\n\n"
+        "После последнего файла нажмите «Закончить загрузку». Ниже также можно "
+        "открыть карточку, выбрать другого персонажа или отменить режим — уже "
+        "сохранённые файлы при отмене не удаляются. Сессия закроется через "
+        "10 минут бездействия или по <code>/savecancel</code>.",
+        reply_markup=_batch_save_keyboard(
+            workspace_id=target_workspace_id,
+            character_id=int(getattr(character, "id", 0) or 0),
+        ),
     )
+
+
+def _batch_save_keyboard(
+    *,
+    workspace_id: int,
+    character_id: int,
+) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text="✅ Закончить загрузку",
+                callback_data=guided_workspace_callback(
+                    "savefinish",
+                    workspace_id=workspace_id,
+                    character_id=character_id,
+                ),
+            )
+        ]
+    ]
+    if workspace_id != DEFAULT_WORKSPACE_ID:
+        rows.extend(
+            [
+                [
+                    InlineKeyboardButton(
+                        text="↩️ Открыть карточку",
+                        callback_data=guided_workspace_callback(
+                            "saveopen",
+                            workspace_id=workspace_id,
+                            character_id=character_id,
+                        ),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="👤 Другой персонаж",
+                        callback_data=guided_workspace_callback(
+                            "savepick",
+                            workspace_id=workspace_id,
+                        ),
+                    )
+                ],
+            ]
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="✖ Отменить режим",
+                callback_data=guided_workspace_callback(
+                    "saveabort",
+                    workspace_id=workspace_id,
+                    character_id=character_id,
+                ),
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _has_context_media(message: Message) -> bool:
@@ -258,9 +325,16 @@ async def handle_save_cancel(
     if stopped is None:
         await message.answer("Активного ожидания файла нет.")
         return
-    await message.answer(
-        f"Ожидание файла для <b>{escape(stopped.character_name)}</b> отменено."
-    )
+    if stopped.saved_count:
+        await message.answer(
+            f"Загрузка для <b>{escape(stopped.character_name)}</b> завершена. "
+            f"Обработано файлов: <b>{stopped.saved_count}</b>."
+        )
+    else:
+        await message.answer(
+            f"Загрузка для <b>{escape(stopped.character_name)}</b> отменена: "
+            "файлы не были добавлены."
+        )
 
 
 @router.message(Command("save"))
@@ -396,7 +470,7 @@ async def handle_pending_save_upload(
             await message.answer(escape(str(error)))
             return
 
-    active = save_upload_sessions.stop(chat_id=message.chat.id, user_id=user_id)
+    active = save_upload_sessions.get(chat_id=message.chat.id, user_id=user_id)
     if active is None:
         await message.answer(
             "Ожидание файла уже истекло. Повторите команду <code>/save Имя</code>."
@@ -428,13 +502,30 @@ async def handle_pending_save_upload(
     if character is not None:
         save_kwargs["resolved_character"] = character
 
-    await message.answer(
-        await save_media_from_message(
+    result = await save_media_from_message(
             database,
             bot,
             audit_logger,
             **save_kwargs,
         )
+    updated = save_upload_sessions.record_saved(
+        chat_id=message.chat.id,
+        user_id=user_id,
+    )
+    if updated is None:
+        await message.answer(
+            result
+            + "\n\nСессия успела завершиться. Чтобы продолжить, снова выберите «Сохранить»."
+        )
+        return
+    await message.answer(
+        result
+        + f"\n\n<b>Пакетная загрузка продолжается.</b> Обработано: "
+        f"<b>{updated.saved_count}</b>. Пришлите следующий файл или завершите загрузку.",
+        reply_markup=_batch_save_keyboard(
+            workspace_id=updated.workspace_id,
+            character_id=int(updated.character_id or 0),
+        ),
     )
 
 

@@ -117,11 +117,13 @@ class PublicArchiveService:
         character_id: int,
         media_id: int,
         member_access: bool,
+        download_access: bool | None = None,
     ) -> PublicDownloadSource | None:
         return await self._repository.resolve_download_source(
             character_id=character_id,
             media_id=media_id,
             member_access=member_access,
+            download_access=download_access,
         )
 
     async def record_download(

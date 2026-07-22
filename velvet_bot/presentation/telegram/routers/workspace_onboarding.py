@@ -205,7 +205,8 @@ def _intro_text(workspace: Workspace, *, resumed: bool) -> str:
         "1. посмотреть короткий гид;\n"
         "2. выбрать доступные модули;\n"
         "3. один раз подключить основной форумный чат архива.\n\n"
-        "После этого персонажи создаются по имени и ссылке на их ветку. "
+        "После этого персонажи создаются кнопкой по имени: бот сам создаёт для "
+        "каждого отдельную тему в подключённом форуме и сохраняет связь с ней. "
         "Каналы публикаций, аналитики, обсуждений и логов не обязательны и "
         "настраиваются позже только при необходимости."
     )
@@ -255,11 +256,16 @@ def _guide_text(workspace: Workspace) -> str:
         f"<b>📘 Как работает {escape(workspace.name)}</b>\n\n"
         "<b>Основной архив</b> — один форумный чат, в котором находятся ветки "
         "персонажей. Его достаточно подключить один раз.\n"
-        "<b>Персонаж</b> — имя, карточка и ссылка на конкретную ветку этого чата.\n"
-        "<b>Сохранение</b> — выберите персонажа кнопкой и отправьте фото, видео или файл.\n"
+        "<b>Персонаж</b> — имя и карточка. После создания бот сам открывает в "
+        "основном форуме тему с именем персонажа и сохраняет её связь.\n"
+        "<b>Сохранение</b> — выберите персонажа кнопкой и отправьте фото, видео или файл; "
+        "запись останется в изолированном архиве пространства и будет скопирована в тему.\n"
         "<b>Структура</b> — категории, вселенные и истории создаются пошагово кнопками.\n\n"
-        "Дополнительные каналы нужны только отдельным функциям: публикациям, "
-        "аналитике, публичной витрине или логам. Они не блокируют запуск архива.\n\n"
+        "Не нужно заранее создавать темы вручную: ручная ссылка нужна только для "
+        "исправления или переноса уже существующей темы.\n\n"
+        "Дополнительные каналы нужны только отдельным функциям: канал публикаций "
+        "для очереди, обсуждение для статистики и каналы public/analytics для "
+        "channel posts. Они не блокируют запуск архива.\n\n"
         "Основной чат подключается командой "
         f"<code>/workspace_bind characters {workspace.id}</code> внутри самого чата."
     )
@@ -361,9 +367,9 @@ def _destinations_text(
         "Нужен один форумный чат, где размещаются ветки персонажей. В основном "
         "разделе этого чата отправьте:\n"
         f"<code>/workspace_bind characters {workspace.id}</code>\n\n"
-        "Для каждого персонажа затем указывается имя и ссылка на его конкретную "
-        "ветку. Отдельные чаты материалов, референсов, аналитики и логов для "
-        "завершения установки не требуются."
+        "После этого кнопка создания персонажа сама создаёт и закрепляет отдельную "
+        "ветку с его именем. Отдельные чаты материалов, референсов, аналитики и "
+        "логов для завершения установки не требуются."
     )
 
 
@@ -413,8 +419,8 @@ def _destination_help_text(workspace: Workspace, key: WorkspaceDestinationKey) -
             "2. Добавьте бота администратором с правом управления темами.\n"
             "3. В основном разделе чата отправьте:\n"
             f"<code>/workspace_bind characters {workspace.id}</code>\n\n"
-            "После этого создавайте персонажей по имени и ссылке на их ветку. "
-            "Никакие другие чаты для обычного архива не обязательны."
+            "После этого создавайте персонажей кнопкой: бот сам создаёт и связывает "
+            "их темы. Никакие другие чаты для обычного архива не обязательны."
         )
     spec = DESTINATION_SPECS[key]
     return (
@@ -670,8 +676,19 @@ async def handle_workspace_bind(
     try:
         me = await bot.get_me()
         member = await bot.get_chat_member(message.chat.id, me.id)
+        caller_member = await bot.get_chat_member(message.chat.id, user_id)
     except TelegramAPIError as error:
-        await message.answer(f"Не удалось проверить права бота: {escape(str(error))}")
+        await message.answer(
+            "Не удалось проверить права бота или ваши права в чате: "
+            + escape(str(error))
+        )
+        return
+    caller_status = _status_value(caller_member)
+    if caller_status not in {"administrator", "creator"}:
+        await message.answer(
+            "Подключить чат может только его администратор или владелец. "
+            "Попросите администратора выполнить эту команду."
+        )
         return
     status = _status_value(member)
     is_admin = status in {"administrator", "creator"}
@@ -705,7 +722,7 @@ async def handle_workspace_bind(
     repository = WorkspaceOnboardingRepository(database)
     await repository.ensure_started(workspace_id=workspace.id, user_id=user_id)
     try:
-        destination = await repository.upsert_destination(
+        destination = await repository.configure_destination(
             workspace_id=workspace.id,
             destination_key=key,
             chat_id=message.chat.id,
@@ -718,27 +735,11 @@ async def handle_workspace_bind(
             can_post=can_post,
             can_manage_topics=can_manage_topics,
             configured_by_user_id=user_id,
+            channel_kind=spec.channel_kind,
         )
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
-    if spec.channel_kind is not None:
-        try:
-            await workspace_service.configure_channel(
-                workspace_id=workspace.id,
-                actor_user_id=user_id,
-                kind=spec.channel_kind,
-                chat_id=message.chat.id,
-                url=destination.url,
-                global_owner=_is_global_owner(user_id),
-            )
-        except (ValueError, WorkspaceAccessError) as error:
-            await repository.delete_destination(
-                workspace_id=workspace.id,
-                destination_key=key,
-            )
-            await message.answer(str(error))
-            return
     thread = (
         f"\nТема: <code>{destination.message_thread_id}</code>"
         if destination.message_thread_id is not None
@@ -781,12 +782,14 @@ async def handle_workspace_unbind(
     except WorkspaceAccessError as error:
         await message.answer(str(error))
         return
-    changed = await WorkspaceOnboardingRepository(database).delete_destination(
+    spec = DESTINATION_SPECS[key]
+    changed = await WorkspaceOnboardingRepository(database).unbind_destination(
         workspace_id=workspace.id,
         destination_key=key,
+        channel_kind=spec.channel_kind,
     )
     await message.answer(
-        "Назначение удалено из мастера настройки."
+        "Назначение и связанная рабочая привязка удалены."
         if changed
         else "Такое назначение не было подключено."
     )

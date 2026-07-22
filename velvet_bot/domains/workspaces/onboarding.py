@@ -15,6 +15,9 @@ WorkspaceDestinationKey: TypeAlias = Literal[
     "media",
     "references",
     "public",
+    "adult",
+    "downloads",
+    "watermarks",
     "publications",
     "discussion",
     "analytics",
@@ -26,6 +29,9 @@ WORKSPACE_DESTINATION_KEYS: Final[tuple[WorkspaceDestinationKey, ...]] = (
     "media",
     "references",
     "public",
+    "adult",
+    "downloads",
+    "watermarks",
     "publications",
     "discussion",
     "analytics",
@@ -64,8 +70,8 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         label="Материалы",
         emoji="🖼",
         description=(
-            "Тема для общих фото, видео и документов, которые ещё не разложены "
-            "по персональным веткам."
+            "Служебная отметка для уже существующего чата. Текущий поток сохранения "
+            "не копирует сюда неразобранные материалы автоматически."
         ),
         command_hint="/workspace_bind media",
         module_keys=("archive",),
@@ -75,7 +81,10 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         key="references",
         label="Референсы",
         emoji="🧬",
-        description="Чат или тема для библиотеки референсов и результатов сравнения.",
+        description=(
+            "Служебная отметка для чата команды. Референсы хранятся в библиотеке "
+            "персонажа; автоматическое копирование в этот чат пока не выполняется."
+        ),
         command_hint="/workspace_bind references",
         module_keys=("references",),
         channel_kind=None,
@@ -84,10 +93,51 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         key="public",
         label="Публичный архив",
         emoji="🌐",
-        description="Канал или тема, связанная с публичной read-only витриной пространства.",
+        description=(
+            "Канал публичных постов для сбора статистики. Включение публичной "
+            "витрины в боте не публикует материалы в этот канал автоматически."
+        ),
         command_hint="/workspace_bind public",
         module_keys=("public_archive",),
         channel_kind="public",
+    ),
+    "adult": WorkspaceDestinationSpec(
+        key="adult",
+        label="Канал +18",
+        emoji="🔞",
+        description=(
+            "Закрытый канал, участие в котором бот проверяет перед показом "
+            "материалов с отметкой +18. Бот должен быть администратором канала."
+        ),
+        command_hint="/workspace_bind_channel adult @channel",
+        module_keys=("public_archive",),
+        channel_kind="adult",
+    ),
+    "downloads": WorkspaceDestinationSpec(
+        key="downloads",
+        label="Проверка скачивания",
+        emoji="🔐",
+        description=(
+            "Канал, участие в котором бот проверяет для режима «Только "
+            "подписчики». Это независимая настройка и не обязана совпадать с "
+            "каналом публичного архива."
+        ),
+        command_hint="/workspace_bind downloads",
+        module_keys=("public_archive",),
+        channel_kind="download",
+    ),
+    "watermarks": WorkspaceDestinationSpec(
+        key="watermarks",
+        label="Watermark-копии",
+        emoji="💧",
+        description=(
+            "Закрытый канал или форумная тема для подтверждённых PNG с "
+            "watermark. Оригиналы продолжают храниться в персональных темах "
+            "форума персонажей."
+        ),
+        command_hint="/workspace_bind watermarks",
+        module_keys=("watermark",),
+        channel_kind=None,
     ),
     "publications": WorkspaceDestinationSpec(
         key="publications",
@@ -111,7 +161,10 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         key="analytics",
         label="Аналитика",
         emoji="📊",
-        description="Канал или тема, из которой пространство получает аналитику.",
+        description=(
+            "Канал-источник статистики. Бот обрабатывает channel posts; отдельная "
+            "форумная тема не становится самостоятельным источником аналитики."
+        ),
         command_hint="/workspace_bind analytics",
         module_keys=("analytics",),
         channel_kind="analytics",
@@ -120,7 +173,10 @@ DESTINATION_SPECS: Final[dict[WorkspaceDestinationKey, WorkspaceDestinationSpec]
         key="logs",
         label="Логи пространства",
         emoji="🧾",
-        description="Необязательная тема для рабочих уведомлений именно этого пространства.",
+        description=(
+            "Служебная отметка для будущих уведомлений. В текущем личном потоке "
+            "бот не отправляет туда сообщения автоматически."
+        ),
         command_hint="/workspace_bind logs",
         module_keys=(),
         channel_kind="logs",
@@ -315,6 +371,73 @@ class WorkspaceOnboardingRepository:
                 int(user_id),
             )
 
+    @staticmethod
+    async def _upsert_destination_row(
+        connection,
+        *,
+        workspace_id: int,
+        destination_key: WorkspaceDestinationKey,
+        chat_id: int,
+        message_thread_id: int | None,
+        chat_type: str,
+        chat_title: str | None,
+        topic_title: str | None,
+        url: str | None,
+        bot_status: str,
+        can_post: bool,
+        can_manage_topics: bool,
+        configured_by_user_id: int,
+    ):
+        return await connection.fetchrow(
+            """
+            INSERT INTO workspace_destinations (
+                workspace_id,
+                destination_key,
+                chat_id,
+                message_thread_id,
+                chat_type,
+                chat_title,
+                topic_title,
+                url,
+                bot_status,
+                can_post,
+                can_manage_topics,
+                configured_by_user_id
+            )
+            VALUES (
+                $1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::BIGINT,
+                $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::TEXT,
+                $9::VARCHAR, $10::BOOLEAN, $11::BOOLEAN, $12::BIGINT
+            )
+            ON CONFLICT (workspace_id, destination_key) DO UPDATE
+            SET chat_id = EXCLUDED.chat_id,
+                message_thread_id = EXCLUDED.message_thread_id,
+                chat_type = EXCLUDED.chat_type,
+                chat_title = EXCLUDED.chat_title,
+                topic_title = EXCLUDED.topic_title,
+                url = EXCLUDED.url,
+                bot_status = EXCLUDED.bot_status,
+                can_post = EXCLUDED.can_post,
+                can_manage_topics = EXCLUDED.can_manage_topics,
+                configured_by_user_id = EXCLUDED.configured_by_user_id,
+                verified_at = NOW(),
+                updated_at = NOW()
+            RETURNING *
+            """,
+            int(workspace_id),
+            destination_key,
+            int(chat_id),
+            int(message_thread_id) if message_thread_id is not None else None,
+            chat_type[:32],
+            chat_title[:255] if chat_title else None,
+            topic_title[:255] if topic_title else None,
+            url,
+            bot_status[:32],
+            bool(can_post),
+            bool(can_manage_topics),
+            int(configured_by_user_id),
+        )
+
     async def upsert_destination(
         self,
         *,
@@ -333,55 +456,99 @@ class WorkspaceOnboardingRepository:
     ) -> WorkspaceDestination:
         try:
             async with self._database.acquire() as connection:
-                row = await connection.fetchrow(
-                    """
-                    INSERT INTO workspace_destinations (
-                        workspace_id,
-                        destination_key,
-                        chat_id,
-                        message_thread_id,
-                        chat_type,
-                        chat_title,
-                        topic_title,
-                        url,
-                        bot_status,
-                        can_post,
-                        can_manage_topics,
-                        configured_by_user_id
-                    )
-                    VALUES (
-                        $1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::BIGINT,
-                        $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::TEXT,
-                        $9::VARCHAR, $10::BOOLEAN, $11::BOOLEAN, $12::BIGINT
-                    )
-                    ON CONFLICT (workspace_id, destination_key) DO UPDATE
-                    SET chat_id = EXCLUDED.chat_id,
-                        message_thread_id = EXCLUDED.message_thread_id,
-                        chat_type = EXCLUDED.chat_type,
-                        chat_title = EXCLUDED.chat_title,
-                        topic_title = EXCLUDED.topic_title,
-                        url = EXCLUDED.url,
-                        bot_status = EXCLUDED.bot_status,
-                        can_post = EXCLUDED.can_post,
-                        can_manage_topics = EXCLUDED.can_manage_topics,
-                        configured_by_user_id = EXCLUDED.configured_by_user_id,
-                        verified_at = NOW(),
-                        updated_at = NOW()
-                    RETURNING *
-                    """,
-                    int(workspace_id),
-                    destination_key,
-                    int(chat_id),
-                    int(message_thread_id) if message_thread_id is not None else None,
-                    chat_type[:32],
-                    chat_title[:255] if chat_title else None,
-                    topic_title[:255] if topic_title else None,
-                    url,
-                    bot_status[:32],
-                    bool(can_post),
-                    bool(can_manage_topics),
-                    int(configured_by_user_id),
+                row = await self._upsert_destination_row(
+                    connection,
+                    workspace_id=workspace_id,
+                    destination_key=destination_key,
+                    chat_id=chat_id,
+                    message_thread_id=message_thread_id,
+                    chat_type=chat_type,
+                    chat_title=chat_title,
+                    topic_title=topic_title,
+                    url=url,
+                    bot_status=bot_status,
+                    can_post=can_post,
+                    can_manage_topics=can_manage_topics,
+                    configured_by_user_id=configured_by_user_id,
                 )
+        except asyncpg.UniqueViolationError as error:
+            raise ValueError(
+                "Этот Telegram-чат уже подключён к другому пространству."
+            ) from error
+        if row is None:
+            raise RuntimeError("Не удалось сохранить назначение пространства.")
+        return self._row_to_destination(row)
+
+    async def configure_destination(
+        self,
+        *,
+        workspace_id: int,
+        destination_key: WorkspaceDestinationKey,
+        chat_id: int,
+        message_thread_id: int | None,
+        chat_type: str,
+        chat_title: str | None,
+        topic_title: str | None,
+        url: str | None,
+        bot_status: str,
+        can_post: bool,
+        can_manage_topics: bool,
+        configured_by_user_id: int,
+        channel_kind: WorkspaceChannelKind | None,
+    ) -> WorkspaceDestination:
+        """Persist wizard metadata and runtime routing atomically for one chat."""
+        try:
+            async with self._database.acquire() as connection:
+                async with connection.transaction():
+                    row = await self._upsert_destination_row(
+                        connection,
+                        workspace_id=workspace_id,
+                        destination_key=destination_key,
+                        chat_id=chat_id,
+                        message_thread_id=message_thread_id,
+                        chat_type=chat_type,
+                        chat_title=chat_title,
+                        topic_title=topic_title,
+                        url=url,
+                        bot_status=bot_status,
+                        can_post=can_post,
+                        can_manage_topics=can_manage_topics,
+                        configured_by_user_id=configured_by_user_id,
+                    )
+                    if channel_kind is not None:
+                        await connection.execute(
+                            "SELECT pg_advisory_xact_lock($1::BIGINT)",
+                            int(chat_id),
+                        )
+                        conflict_workspace_id = await connection.fetchval(
+                            """
+                            SELECT workspace_id
+                            FROM workspace_channels
+                            WHERE chat_id = $1::BIGINT
+                              AND workspace_id <> $2::BIGINT
+                            LIMIT 1
+                            """,
+                            int(chat_id),
+                            int(workspace_id),
+                        )
+                        if conflict_workspace_id is not None:
+                            raise ValueError(
+                                "Этот Telegram-чат уже подключён к другому пространству."
+                            )
+                        await connection.execute(
+                            """
+                            INSERT INTO workspace_channels (workspace_id, kind, chat_id, url)
+                            VALUES ($1::BIGINT, $2::VARCHAR, $3::BIGINT, $4::TEXT)
+                            ON CONFLICT (workspace_id, kind) DO UPDATE
+                            SET chat_id = EXCLUDED.chat_id,
+                                url = EXCLUDED.url,
+                                updated_at = NOW()
+                            """,
+                            int(workspace_id),
+                            channel_kind,
+                            int(chat_id),
+                            url,
+                        )
         except asyncpg.UniqueViolationError as error:
             raise ValueError(
                 "Этот Telegram-чат уже подключён к другому пространству."
@@ -407,6 +574,44 @@ class WorkspaceOnboardingRepository:
                 destination_key,
             )
         return result != "DELETE 0"
+
+    async def unbind_destination(
+        self,
+        *,
+        workspace_id: int,
+        destination_key: WorkspaceDestinationKey,
+        channel_kind: WorkspaceChannelKind | None,
+    ) -> bool:
+        """Remove an onboarding destination and its runtime channel as one change.
+
+        `workspace_destinations` is the wizard's verified Telegram metadata,
+        while `workspace_channels` is consumed by archive/publication/analytics
+        workflows. Keeping the delete transactional prevents a supposedly
+        disconnected channel from remaining active in those workflows.
+        """
+        async with self._database.acquire() as connection:
+            async with connection.transaction():
+                destination_result = await connection.execute(
+                    """
+                    DELETE FROM workspace_destinations
+                    WHERE workspace_id = $1::BIGINT
+                      AND destination_key = $2::VARCHAR
+                    """,
+                    int(workspace_id),
+                    destination_key,
+                )
+                channel_result = "DELETE 0"
+                if channel_kind is not None:
+                    channel_result = await connection.execute(
+                        """
+                        DELETE FROM workspace_channels
+                        WHERE workspace_id = $1::BIGINT
+                          AND kind = $2::VARCHAR
+                        """,
+                        int(workspace_id),
+                        channel_kind,
+                    )
+        return destination_result != "DELETE 0" or channel_result != "DELETE 0"
 
     async def list_destinations(
         self,

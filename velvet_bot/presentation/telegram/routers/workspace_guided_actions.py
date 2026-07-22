@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -22,10 +23,12 @@ from velvet_bot.domains.workspaces.character_management import (
     set_workspace_character_prompt_url,
     set_workspace_character_topic,
 )
+from velvet_bot.domains.workspaces.character_topics import ensure_character_archive_topic
 from velvet_bot.domains.workspaces.models import Workspace, WorkspaceRole
 from velvet_bot.domains.workspaces.onboarding import (
     DESTINATION_SPECS,
     WORKSPACE_DESTINATION_KEYS,
+    WorkspaceDestinationKey,
     WorkspaceOnboardingRepository,
 )
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
@@ -59,8 +62,17 @@ from velvet_bot.workspace_ui import (
 
 router = Router(name=__name__)
 _PAGE_SIZE = 8
-_OPTIONAL_DESTINATION_KEYS = tuple(
-    key for key in WORKSPACE_DESTINATION_KEYS if key not in {"characters", "media"}
+# Show only integrations with an active runtime consumer. Historical metadata
+# destinations remain readable through status/commands for compatibility, but
+# are not presented as if they routed data automatically.
+_OPTIONAL_DESTINATION_KEYS: tuple[WorkspaceDestinationKey, ...] = (
+    "public",
+    "adult",
+    "downloads",
+    "watermarks",
+    "publications",
+    "discussion",
+    "analytics",
 )
 
 
@@ -141,7 +153,7 @@ async def _enabled_modules(
     workspace_id: int,
     user_id: int,
 ) -> frozenset[str]:
-    modules = await workspace_product_service.list_modules(
+    modules = await workspace_product_service.list_modules_for_member(
         workspace_id=int(workspace_id),
         actor_user_id=int(user_id),
         global_owner=_is_global_owner(user_id),
@@ -156,25 +168,27 @@ async def _enabled_modules(
 def _quick_keyboard(workspace_id: int, enabled: frozenset[str]) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     if "characters" in enabled:
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text="👥 Персонажи",
-                    callback_data=workspace_callback(
-                        "module",
-                        workspace_id=workspace_id,
-                        module_key="characters",
-                    ),
+        character_row = [
+            InlineKeyboardButton(
+                text="👥 Персонажи",
+                callback_data=workspace_callback(
+                    "module",
+                    workspace_id=workspace_id,
+                    module_key="characters",
                 ),
+            )
+        ]
+        if "archive" in enabled:
+            character_row.append(
                 InlineKeyboardButton(
                     text="💾 Сохранить",
                     callback_data=guided_workspace_callback(
                         "savepick",
                         workspace_id=workspace_id,
                     ),
-                ),
-            ]
-        )
+                )
+            )
+        rows.append(character_row)
     if "taxonomy" in enabled:
         rows.append(
             [
@@ -239,8 +253,10 @@ async def _render_quick(
             f"<b>🧭 {escape(workspace.name)} · быстрые действия</b>\n\n"
             "Основные операции собраны кнопками. Команды остаются запасным способом, "
             "но запоминать их для обычной работы больше не требуется.\n\n"
-            "Для запуска архива достаточно один раз подключить основной форумный чат, "
-            "а затем создавать персонажей по имени и ссылке на их ветку."
+            "Для запуска нужен один основной форумный чат. После его подключения бот "
+            "сам создаёт отдельную тему для каждого нового персонажа и сохраняет её "
+            "привязку внутри этого пространства. Материалы остаются в архиве персонажа "
+            "и копируются в его тему; данные других пространств не смешиваются."
         ),
         reply_markup=_quick_keyboard(workspace.id, enabled),
     )
@@ -310,9 +326,7 @@ async def _render_connections(
         else "❌ не подключён"
     )
     optional_lines: list[str] = []
-    for key in WORKSPACE_DESTINATION_KEYS:
-        if key in {"characters", "media"}:
-            continue
+    for key in _OPTIONAL_DESTINATION_KEYS:
         spec = DESTINATION_SPECS[key]
         marker = "✅" if key in configured else "▫️"
         optional_lines.append(f"{marker} {spec.emoji} {escape(spec.label)}")
@@ -322,8 +336,12 @@ async def _render_connections(
             f"<b>🔌 Подключения · {escape(workspace.name)}</b>\n\n"
             f"<b>Основной архив:</b> {main_status}\n\n"
             "Для обычного личного архива нужен только основной форумный чат. "
-            "Отдельные каналы публикаций, аналитики, обсуждений и логов подключаются "
-            "только когда вы действительно используете эти функции.\n\n"
+            "Подключения ниже имеют рабочее назначение: канал публикаций — для "
+            "очереди, обсуждение — для статистики реакций, а public/analytics — "
+            "для статистики channel posts. Они не нужны для обычного архива.\n\n"
+            "Персонажи, категории, истории и ссылки на темы хранятся в изолированной "
+            "базе этого пространства. Файлы сохраняются в архиве выбранного персонажа "
+            "и при настроенном форуме копируются в его персональную тему.\n\n"
             "<b>Необязательные подключения</b>\n"
             + "\n".join(optional_lines)
         ),
@@ -356,8 +374,10 @@ async def _render_main_chat(callback: CallbackQuery, workspace: Workspace) -> No
             "2. Добавьте бота администратором с правом управления темами.\n"
             "3. В основном разделе этого чата отправьте:\n"
             f"<code>/workspace_bind characters {workspace.id}</code>\n\n"
-            "Этого достаточно для установки. Для каждого персонажа затем указывается "
-            "его имя и ссылка на конкретную ветку. Остальные чаты не обязательны."
+            "Этого достаточно для установки. Для каждого нового персонажа бот сам "
+            "создаст отдельную тему с его именем и сохранит связь. Не создавайте "
+            "такие темы вручную: ссылку можно изменить позднее из карточки персонажа. "
+            "Остальные чаты не обязательны."
         ),
         reply_markup=_main_chat_keyboard(workspace.id),
     )
@@ -495,6 +515,61 @@ def _character_card_callback(workspace_id: int, character_id: int, page: int = 0
     ).pack()
 
 
+def _active_save_keyboard(
+    *,
+    workspace_id: int,
+    character_id: int,
+    page: int = 0,
+) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Закончить загрузку",
+                    callback_data=guided_workspace_callback(
+                        "savefinish",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=page,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Открыть карточку",
+                    callback_data=guided_workspace_callback(
+                        "saveopen",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=page,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="👤 Другой персонаж",
+                    callback_data=guided_workspace_callback(
+                        "savepick",
+                        workspace_id=workspace_id,
+                        page=page,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="✖ Отменить режим",
+                    callback_data=guided_workspace_callback(
+                        "saveabort",
+                        workspace_id=workspace_id,
+                        character_id=character_id,
+                        page=page,
+                    ),
+                )
+            ],
+        ]
+    )
+
+
 def _character_list_callback(workspace_id: int, page: int = 0) -> str:
     return WorkspaceCharacterPickerCallback(
         action="list",
@@ -555,6 +630,7 @@ async def _finalize_character_creation(
                 ),
             )
             return
+    provision = None
     try:
         character, created = await create_workspace_character(
             database,
@@ -570,20 +646,42 @@ async def _finalize_character_creation(
                 character_id=character.id,
                 topic=topic,
             )
+        else:
+            provision = await ensure_character_archive_topic(
+                bot=bot,
+                database=database,
+                workspace_id=workspace_id,
+                character=character,
+            )
+            topic = provision.topic
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
     await state.clear()
+    topic_text = (
+        f'<a href="{escape(topic.url, quote=True)}">Открыть тему персонажа</a>'
+        if topic is not None
+        else (
+            "<b>⚠️ Тема пока не создана</b>\n"
+            + escape(provision.error)
+            if provision is not None and provision.error
+            else "Тему можно назначить из карточки персонажа."
+        )
+    )
+    creation_note = (
+        "Тема создана автоматически и привязана к персонажу."
+        if provision is not None and provision.created
+        else "Тема уже была привязана к персонажу."
+        if provision is not None and topic is not None
+        else ""
+    )
     await message.answer(
         (
             "<b>Персонаж создан</b>" if created else "<b>Персонаж уже существовал</b>"
         )
         + f"\n\nИмя: <b>{escape(character.name)}</b>\n"
-        + (
-            f'<a href="{escape(topic.url, quote=True)}">Открыть ветку персонажа</a>'
-            if topic is not None
-            else "Ветка пока не назначена. Её можно добавить из карточки персонажа."
-        ),
+        + (f"{creation_note}\n" if creation_note else "")
+        + topic_text,
         reply_markup=_after_character_keyboard(workspace_id, character.id),
         disable_web_page_preview=True,
     )
@@ -702,10 +800,12 @@ async def _start_story(
 async def handle_workspace_quick_entry(
     callback: CallbackQuery,
     callback_data: WorkspaceCallback,
+    state: FSMContext,
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
 ) -> None:
     try:
+        await state.clear()
         workspace = await _resolve_workspace(
             workspace_id=callback_data.workspace_id,
             user_id=callback.from_user.id,
@@ -719,6 +819,25 @@ async def handle_workspace_quick_entry(
         )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
+
+
+@router.message(Command("cancel"))
+async def handle_workspace_cancel(
+    message: Message,
+    state: FSMContext,
+    save_upload_sessions: SaveUploadSessions,
+) -> None:
+    """Provide a visible escape hatch for every workspace interaction."""
+    await state.clear()
+    if message.from_user is not None:
+        save_upload_sessions.stop(
+            chat_id=message.chat.id,
+            user_id=message.from_user.id,
+        )
+    await message.answer(
+        "Текущее действие отменено. Откройте /start, затем «Моё пространство», "
+        "чтобы продолжить с нужного раздела."
+    )
 
 
 @router.callback_query(
@@ -829,6 +948,11 @@ async def handle_guided_workspace_callback(
             return
         if action == "savepick":
             await state.clear()
+            if isinstance(callback.message, Message):
+                save_upload_sessions.stop(
+                    chat_id=callback.message.chat.id,
+                    user_id=callback.from_user.id,
+                )
             await _render_save_picker(
                 callback,
                 database=database,
@@ -858,46 +982,55 @@ async def handle_guided_workspace_callback(
             await _edit(
                 callback,
                 text=(
-                    f"<b>💾 Ожидаю файл для {escape(character.name)}</b>\n\n"
-                    "Отправьте или перешлите фото, видео, анимацию либо документ. "
-                    "Файл сохранится в текущем пространстве. Ожидание действует 10 минут."
+                    f"<b>💾 Пакетная загрузка для {escape(character.name)}</b>\n\n"
+                    "Отправьте или перешлите несколько фото, видео, анимаций либо "
+                    "документов. Можно отправить Telegram-альбом: каждое сообщение "
+                    "сохранится в текущем пространстве.\n\n"
+                    "После последнего файла нажмите «Закончить загрузку». "
+                    "Открытие карточки не останавливает режим, а отмена не удаляет "
+                    "уже сохранённые материалы. Ожидание действует 10 минут после "
+                    "последнего файла."
                 ),
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="✖ Отменить сохранение",
-                                callback_data=guided_workspace_callback(
-                                    "savecancel",
-                                    workspace_id=workspace.id,
-                                    character_id=character.id,
-                                    page=callback_data.page,
-                                ),
-                            )
-                        ],
-                        [
-                            InlineKeyboardButton(
-                                text="↩️ К карточке",
-                                callback_data=_character_card_callback(
-                                    workspace.id,
-                                    character.id,
-                                    callback_data.page,
-                                ),
-                            )
-                        ],
-                    ]
+                reply_markup=_active_save_keyboard(
+                    workspace_id=workspace.id,
+                    character_id=character.id,
+                    page=callback_data.page,
                 ),
             )
             return
-        if action == "savecancel":
+        if action == "saveopen":
+            await _render_card(
+                callback,
+                database=database,
+                workspace_id=workspace.id,
+                character_id=callback_data.character_id,
+                list_page=callback_data.page,
+                answer="Режим загрузки остаётся активным.",
+            )
+            return
+        if action in {"savefinish", "savecancel", "saveabort"}:
+            stopped = None
             if isinstance(callback.message, Message):
-                save_upload_sessions.stop(
+                stopped = save_upload_sessions.stop(
                     chat_id=callback.message.chat.id,
                     user_id=callback.from_user.id,
                 )
+            if action == "saveabort":
+                text = (
+                    "Режим загрузки отменён. Уже сохранённые материалы не удалены. "
+                    f"Обработано файлов: <b>{stopped.saved_count}</b>."
+                    if stopped is not None
+                    else "Активного режима загрузки уже нет."
+                )
+            else:
+                text = (
+                    f"Загрузка завершена. Обработано файлов: <b>{stopped.saved_count}</b>."
+                    if stopped is not None
+                    else "Активного режима загрузки уже нет."
+                )
             await _edit(
                 callback,
-                text="Сохранение отменено.",
+                text=text,
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
@@ -953,7 +1086,11 @@ async def handle_guided_workspace_callback(
             prompts = {
                 "rename": "Отправьте новое имя персонажа.",
                 "topicedit": "Отправьте ссылку на ветку персонажа.",
-                "prompt": "Отправьте ссылку на пост с промтом.",
+                "prompt": (
+                    "Отправьте ссылку на пост с основным промтом персонажа. "
+                    "Она появится в карточке и будет использоваться как справочная "
+                    "ссылка в AI-проверках; изображения эта кнопка не загружает."
+                ),
                 "alias": "Отправьте новый алиас персонажа.",
             }
             await state.set_state(state_map[action])
@@ -1209,6 +1346,8 @@ async def handle_guided_workspace_callback(
 async def handle_character_name(
     message: Message,
     state: FSMContext,
+    database: Database,
+    bot: Bot,
 ) -> None:
     name = " ".join((message.text or "").split())
     data = await state.get_data()
@@ -1216,34 +1355,13 @@ async def handle_character_name(
     if not name:
         await message.answer("Имя не может быть пустым.")
         return
-    await state.set_state(GuidedWorkspaceForm.character_topic)
     await state.update_data(character_name=name)
-    await message.answer(
-        "<b>Ссылка на ветку персонажа</b>\n\n"
-        "Отправьте ссылку на конкретную тему форумного чата. Это та же логика, "
-        "что у <code>/create Имя ссылка</code>.",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="➖ Без ветки пока",
-                        callback_data=guided_workspace_callback(
-                            "characterskiptopic",
-                            workspace_id=workspace_id,
-                        ),
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        text="↩️ К списку персонажей",
-                        callback_data=guided_workspace_callback(
-                            "backlist",
-                            workspace_id=workspace_id,
-                        ),
-                    )
-                ],
-            ]
-        ),
+    await _finalize_character_creation(
+        message,
+        state,
+        database,
+        bot,
+        topic_value=None,
     )
 
 

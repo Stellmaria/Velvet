@@ -14,13 +14,12 @@
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 30,
+  "repository_modules_with_production_consumers": 31,
   "repository_modules_with_package_exports": 28,
-  "repository_modules_without_runtime_consumers": 4,
+  "repository_modules_without_runtime_consumers": 3,
   "repository_modules_without_references": 0,
   "unreferenced_repository_modules": [],
   "export_only_repository_modules": [
-    "velvet_bot.domains.media_rework.repository",
     "velvet_bot.domains.media_sets.repository"
   ],
   "modules": [
@@ -250,11 +249,13 @@
       "path": "velvet_bot/domains/media_rework/repository.py",
       "layout": "domain",
       "domain": "media_rework",
-      "production_consumer_count": 0,
+      "production_consumer_count": 1,
       "test_consumer_count": 0,
       "package_export_count": 1,
-      "reference_count": 1,
-      "production_consumers": [],
+      "reference_count": 2,
+      "production_consumers": [
+        "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py"
+      ],
       "test_consumers": [],
       "package_exports": [
         "velvet_bot/domains/media_rework/__init__.py"

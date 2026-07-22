@@ -164,6 +164,7 @@ class PublicArchiveRepository:
         character_id: int,
         media_id: int,
         member_access: bool,
+        download_access: bool | None = None,
     ) -> PublicDownloadSource | None:
         visibility_sql = public_media_visibility_sql(
             include_adult_restricted=True,
@@ -176,7 +177,17 @@ class PublicArchiveRepository:
                     mf.telegram_file_id,
                     mf.source_telegram_file_id,
                     mf.watermark_applied,
-                    mf.watermark_approved
+                    mf.watermark_approved,
+                    COALESCE((
+                        SELECT download_audience
+                        FROM workspace_settings
+                        WHERE workspace_id = $3::BIGINT
+                    ), 'disabled') AS download_audience,
+                    COALESCE((
+                        SELECT download_variant
+                        FROM workspace_settings
+                        WHERE workspace_id = $3::BIGINT
+                    ), 'watermark') AS download_variant
                 FROM character_media AS cm
                 JOIN characters AS c ON c.id = cm.character_id
                 JOIN media_files AS mf ON mf.id = cm.media_id
@@ -191,7 +202,25 @@ class PublicArchiveRepository:
             )
         if row is None:
             return None
-        if member_access:
+        if self._workspace_id != 1:
+            audience = str(row["download_audience"] or "disabled")
+            variant = str(row["download_variant"] or "watermark")
+            if audience == "disabled":
+                return None
+            if audience == "subscribers":
+                allowed = member_access if download_access is None else download_access
+                if not allowed:
+                    return None
+            if variant == "original":
+                return PublicDownloadSource(
+                    telegram_file_id=str(
+                        row["source_telegram_file_id"] or row["telegram_file_id"]
+                    ),
+                    variant="original",
+                )
+            if variant != "watermark":
+                return None
+        if self._workspace_id == 1 and member_access:
             return PublicDownloadSource(
                 telegram_file_id=str(
                     row["source_telegram_file_id"] or row["telegram_file_id"]

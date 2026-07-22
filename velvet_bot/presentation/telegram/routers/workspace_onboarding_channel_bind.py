@@ -124,9 +124,17 @@ async def handle_workspace_bind_channel(
         chat = await bot.get_chat(_target(parts[2]))
         me = await bot.get_me()
         member = await bot.get_chat_member(chat.id, me.id)
+        caller_member = await bot.get_chat_member(chat.id, user_id)
     except TelegramAPIError as error:
         await message.answer(
             "Не удалось открыть канал или проверить права бота: " + escape(str(error))
+        )
+        return
+    caller_status = _status_value(caller_member)
+    if caller_status not in {"administrator", "creator"}:
+        await message.answer(
+            "Подключить канал может только его администратор или владелец. "
+            "Попросите администратора выполнить привязку."
         )
         return
     status = _status_value(member)
@@ -146,7 +154,7 @@ async def handle_workspace_bind_channel(
     repository = WorkspaceOnboardingRepository(database)
     await repository.ensure_started(workspace_id=workspace.id, user_id=user_id)
     try:
-        destination = await repository.upsert_destination(
+        destination = await repository.configure_destination(
             workspace_id=workspace.id,
             destination_key=key,
             chat_id=chat.id,
@@ -159,27 +167,11 @@ async def handle_workspace_bind_channel(
             can_post=can_post or chat.type != ChatType.CHANNEL,
             can_manage_topics=bool(getattr(member, "can_manage_topics", False)),
             configured_by_user_id=user_id,
+            channel_kind=spec.channel_kind,
         )
     except ValueError as error:
         await message.answer(escape(str(error)))
         return
-    if spec.channel_kind is not None:
-        try:
-            await workspace_service.configure_channel(
-                workspace_id=workspace.id,
-                actor_user_id=user_id,
-                kind=spec.channel_kind,
-                chat_id=chat.id,
-                url=url,
-                global_owner=global_owner,
-            )
-        except (ValueError, WorkspaceAccessError) as error:
-            await repository.delete_destination(
-                workspace_id=workspace.id,
-                destination_key=key,
-            )
-            await message.answer(str(error))
-            return
     await message.answer(
         f"<b>✅ {escape(spec.label)} подключено</b>\n\n"
         f"Пространство: <b>{escape(workspace.name)}</b>\n"

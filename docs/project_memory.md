@@ -218,9 +218,9 @@ Production legacy-consumer inventory закрыт на 0/0/0, а `velvet_bot.han
 
 Статус: завершено.
 
-Repository inventory фиксирует 31 module:
+Repository inventory фиксирует 34 module:
 
-- 30 domain repositories;
+- 33 domain repositories;
 - 1 PostgreSQL infrastructure adapter;
 - 0 central repositories;
 - 0 root repositories.
@@ -267,7 +267,7 @@ Repository inventory фиксирует 31 module:
 - новые SQL/DB access из Telegram controllers запрещены;
 - P2 broad exception/callback inventory 0 unresolved;
 - P3 handler compatibility aliases 0;
-- P3 repository layout 30 domain + 1 infrastructure, root/central 0;
+- P3 repository layout 33 domain + 1 infrastructure, root/central 0;
 - CI, Docker, diagnostics, backup drill workflow и release foundation.
 
 Не закрыты эксплуатационно:

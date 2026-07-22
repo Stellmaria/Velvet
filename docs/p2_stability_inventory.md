@@ -7,10 +7,10 @@ AST-инвентаризация широких исключений и callback
 - raw broad exceptions: **82** в **50** файлах;
 - approved boundaries: **82**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **122**;
+- callback handlers: **126**;
 - late/missing callbacks: **2**;
-- guarded callbacks: **38**;
-- delegated callbacks: **10**.
+- guarded callbacks: **39**;
+- delegated callbacks: **11**.
 
 ## Approved broad boundaries
 
@@ -51,7 +51,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/channel.py:166` `_capture_channel_post`: report-channel-ingest-failure.
 - `velvet_bot/presentation/telegram/routers/archive/guest.py:155` `_archive_guest_media`: report-guest-topic-delivery-failure.
 - `velvet_bot/presentation/telegram/routers/archive/guest.py:250` `handle_guest_archive`: report-guest-request-failure.
-- `velvet_bot/presentation/telegram/routers/archive/save.py:504` `handle_new_archive_topic_media`: report-topic-auto-archive-failure.
+- `velvet_bot/presentation/telegram/routers/archive/save.py:595` `handle_new_archive_topic_media`: report-topic-auto-archive-failure.
 - `velvet_bot/presentation/telegram/routers/archive_and_public_controllers/admin_media_display.py:38` `build_admin_display_media`: fallback-admin-edit-preview.
 - `velvet_bot/presentation/telegram/routers/archive_and_public_controllers/admin_media_display.py:88` `send_admin_archive_page`: fallback-admin-send-preview.
 - `velvet_bot/presentation/telegram/routers/archive_and_public_controllers/media_browser.py:69` `_build_display_input_media`: fallback-full-size-preview.
@@ -62,12 +62,12 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/characters/profiles.py:115` `handle_bind_character_topic`: report-character-topic-failure.
 - `velvet_bot/presentation/telegram/routers/core_operations_controllers/error_center.py:56` `acknowledge_all_errors_callback`: best-effort-error-markup-cleanup.
 - `velvet_bot/presentation/telegram/routers/public_archive/manager.py:163` `handle_public_manager`: report-manager-download-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:148` `_prepare_media`: report-public-media-prepare-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:297` `handle_spoiler_aware_open`: preserve-public-open-on-metric-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:355` `handle_spoiler_aware_open`: preserve-navigation-on-owner-review-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:401` `_apply_engagement`: report-public-engagement-write-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:425` `_apply_engagement`: preserve-engagement-on-ui-refresh-failure.
-- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:513` `handle_public_download`: report-public-download-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:164` `_prepare_media`: report-public-media-prepare-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:315` `handle_spoiler_aware_open`: preserve-public-open-on-metric-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:382` `handle_spoiler_aware_open`: preserve-navigation-on-owner-review-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:428` `_apply_engagement`: report-public-engagement-write-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:461` `_apply_engagement`: preserve-engagement-on-ui-refresh-failure.
+- `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:577` `handle_public_download`: report-public-download-failure.
 - `velvet_bot/presentation/telegram/routers/publication/center.py:570` `handle_publication_callback`: report-publication-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/backup_center.py:393` `handle_backup_callback`: report-backup-callback-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:320` `handle_quality_upload_reply`: compensate-manual-quality-job.
@@ -79,17 +79,17 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/references/comparison.py:282` `handle_reference_comparison`: report-reference-comparison-failure.
 - `velvet_bot/presentation/telegram/routers/references/comparison_help.py:255` `handle_reference_comparison_reply`: compensate-reference-comparison-form-job.
 - `velvet_bot/presentation/telegram/routers/supervisor/console.py:174` `_watch_console_operation`: isolate-supervisor-console-watcher.
-- `velvet_bot/presentation/telegram/routers/workspace_analytics.py:128` `_ingest`: report-workspace-analytics-ingest-failure.
-- `velvet_bot/presentation/telegram/routers/workspace_publications.py:400` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
-- `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:978` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
+- `velvet_bot/presentation/telegram/routers/workspace_analytics.py:132` `_ingest`: report-workspace-analytics-ingest-failure.
+- `velvet_bot/presentation/telegram/routers/workspace_publications.py:459` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
+- `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:1032` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
 - `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/storage_center.py:294` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
-- `velvet_bot/public_archive_display.py:128` `build_viewer_input_media`: fallback-viewer-edit-preview.
-- `velvet_bot/public_archive_display.py:195` `send_viewer_archive_page`: fallback-viewer-send-preview.
+- `velvet_bot/public_archive_display.py:138` `build_viewer_input_media`: fallback-viewer-edit-preview.
+- `velvet_bot/public_archive_display.py:205` `send_viewer_archive_page`: fallback-viewer-send-preview.
 - `velvet_bot/public_notifications.py:60` `run_public_notification_worker`: isolate-public-notification-worker-iteration.
 - `velvet_bot/publication_inbox_middleware.py:60` `_capture`: best-effort-publication-inbox-capture.
 - `velvet_bot/publication_worker.py:65` `run_publication_worker`: isolate-publication-worker-iteration.
-- `velvet_bot/services/diagnostic_bundle.py:75` `emit`: isolate-diagnostic-log-buffer.
+- `velvet_bot/services/diagnostic_bundle.py:76` `emit`: isolate-diagnostic-log-buffer.
 - `velvet_bot/services/media_save.py:55` `save_media_from_message`: report-media-save-failure.
 - `velvet_bot/services/media_save.py:261` `_place_in_topic`: isolate-media-topic-delivery.
 - `velvet_bot/services/system_health.py:126` `check`: isolate-database-health-probe.

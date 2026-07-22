@@ -21,7 +21,10 @@ def _visibility_exists_sql(
         link_alias="cm",
         file_alias="mf",
         include_adult_restricted=include_restricted,
-        include_oversized_images=include_restricted,
+        # Personal archives can show a protected Telegram document even when
+        # cloud Bot API cannot build a photo preview. Download remains a
+        # separate owner policy.
+        include_oversized_images=True,
     )
     return f"""
         EXISTS (
@@ -84,7 +87,7 @@ def _media_count_sql(
             link_alias="cm",
             file_alias="mf",
             include_adult_restricted=include_restricted,
-            include_oversized_images=include_restricted,
+            include_oversized_images=True,
         )
     return f"""
         (

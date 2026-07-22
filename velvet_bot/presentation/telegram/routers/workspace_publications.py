@@ -36,7 +36,12 @@ from velvet_bot.presentation.telegram.routers.publication.center import (
 )
 from velvet_bot.publication_drafts import capture_publication_inbox
 from velvet_bot.services.telegram_publications import create_publication_draft
+from velvet_bot.presentation.telegram.routers.workspace_guided_ui import (
+    guided_workspace_callback,
+)
+from velvet_bot.workspace_ui import WorkspaceCallback
 
+entry_router = Router(name=f"{__name__}.entry")
 router = Router(name=__name__)
 
 
@@ -195,6 +200,60 @@ async def handle_workspace_publication_center(
         _center_text(),
         reply_markup=_center_keyboard(),
     )
+
+
+@entry_router.callback_query(
+    WorkspaceCallback.filter(
+        (F.action == "module") & (F.module_key == "publications")
+    ),
+    PersonalPublicationWorkspaceFilter(),
+)
+async def handle_workspace_publication_entry(
+    callback: CallbackQuery,
+    callback_data: WorkspaceCallback,
+    personal_publication_context: PublicationWorkspaceContext,
+) -> None:
+    """Open the real tenant-aware publication center from workspace home."""
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    if callback_data.workspace_id != personal_publication_context.workspace_id:
+        await callback.answer(
+            "Кнопка относится к другому пространству. Откройте меню заново.",
+            show_alert=True,
+        )
+        return
+    if (
+        personal_publication_context.error is not None
+        or personal_publication_context.target_chat_id is None
+    ):
+        await _safe_edit(
+            callback.message,
+            "<b>📣 Публикации пока не подключены</b>\n\n"
+            + escape(
+                personal_publication_context.error
+                or "Для этого пространства не выбран канал публикаций."
+            )
+            + "\n\nПодключите канал в разделе «Дополнительные подключения». "
+            "После этого здесь появятся черновики, проверка и очередь.",
+            InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="🔌 Открыть подключения",
+                            callback_data=guided_workspace_callback(
+                                "connections",
+                                workspace_id=personal_publication_context.workspace_id,
+                            ),
+                        )
+                    ]
+                ]
+            ),
+        )
+        await callback.answer()
+        return
+    await _safe_edit(callback.message, _center_text(), _center_keyboard())
+    await callback.answer()
 
 
 @router.message(
@@ -533,4 +592,4 @@ async def capture_workspace_publication_input(
     )
 
 
-__all__ = ("router",)
+__all__ = ("entry_router", "router")

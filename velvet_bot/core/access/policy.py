@@ -42,6 +42,8 @@ PUBLIC_WORKSPACE_CALLBACK_ACTIONS = frozenset(
         "adduniverse",
         "addstory",
         "krimport",
+        "quick",
+        "spaces",
     }
 )
 PUBLIC_CALLBACK_PREFIX = "pub:"
@@ -67,6 +69,7 @@ WORKSPACE_MEMBER_COMMANDS = frozenset(
         "save",
         "save18",
         "savecancel",
+        "cancel",
         "refadd",
         "refdel",
         "refs",
@@ -101,7 +104,28 @@ WORKSPACE_MEMBER_COMMANDS = frozenset(
     }
 )
 WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
-    "wsp:", "wch:", "ref:", "pubq:", "dash:", "wteam:", "wlogo:", "wm:"
+    "wsp:",
+    "wch:",
+    "wqa:",
+    "wob:",
+    "wpa:",
+    "wref:",
+    "ref:",
+    "pubq:",
+    "dash:",
+    "wteam:",
+    "wlogo:",
+    "wm:",
+)
+
+# These are the only FSM classes which can continue a personal-workspace
+# interaction without passing the global-owner message gate. A matching handler
+# still rechecks active membership and module policy where it writes data.
+WORKSPACE_MEMBER_FSM_STATE_PREFIXES = (
+    "WorkspaceForm:",
+    "GuidedWorkspaceForm:",
+    "WorkspaceTeamForm:",
+    "WorkspaceWatermarkForm:",
 )
 
 MODERATOR_USER_IDS: frozenset[int] = frozenset()
@@ -252,6 +276,16 @@ def is_workspace_member_callback_data(value: str | None) -> bool:
     )
 
 
+def is_workspace_member_fsm_state_name(value: object | None) -> bool:
+    return bool(
+        value
+        and any(
+            str(value).startswith(prefix)
+            for prefix in WORKSPACE_MEMBER_FSM_STATE_PREFIXES
+        )
+    )
+
+
 def is_moderator_callback_data(value: str | None) -> bool:
     parts = _callback_parts(value)
     if parts is None:
@@ -335,6 +369,7 @@ __all__ = (
     "PUBLIC_WORKSPACE_CALLBACK_ACTIONS",
     "WORKSPACE_CALLBACK_PREFIX",
     "WORKSPACE_MEMBER_CALLBACK_PREFIXES",
+    "WORKSPACE_MEMBER_FSM_STATE_PREFIXES",
     "WORKSPACE_MEMBER_COMMANDS",
     "command_name",
     "is_moderator_callback_data",
@@ -344,6 +379,7 @@ __all__ = (
     "is_public_command_text",
     "is_save_mention_text",
     "is_workspace_member_callback_data",
+    "is_workspace_member_fsm_state_name",
     "is_workspace_member_command_text",
     "normalize_username",
 )

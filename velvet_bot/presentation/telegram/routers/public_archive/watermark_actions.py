@@ -16,6 +16,7 @@ from velvet_bot.database import Database
 from velvet_bot.domains.public_archive.watermark_repository import (
     PublicArchiveWatermarkRepository,
 )
+from velvet_bot.domains.workspaces.watermark_assets import WorkspaceWatermarkAsset
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
@@ -84,6 +85,23 @@ async def handle_manager_fast_watermark(
     if not has_public_manager_access(callback.from_user, access_policy):
         await callback.answer("Управление watermark для вас закрыто.", show_alert=True)
         return
+    await enqueue_archive_watermark(
+        callback=callback,
+        callback_data=callback_data,
+        database=database,
+        bot=bot,
+    )
+
+
+async def enqueue_archive_watermark(
+    *,
+    callback: CallbackQuery,
+    callback_data,
+    database: Database,
+    bot: Bot,
+    workspace_id: int = 1,
+    logo_asset: WorkspaceWatermarkAsset | None = None,
+) -> None:
     if not _watermark_enabled():
         await callback.answer(
             "Krita bridge выключен. Включите KRITA_WATERMARK_ENABLED=true.",
@@ -98,6 +116,7 @@ async def handle_manager_fast_watermark(
         database,
         callback_data.character_id,
         callback_data.offset,
+        workspace_id=workspace_id,
     )
     if page is None or page.media is None:
         await callback.answer("Материал больше недоступен.", show_alert=True)
@@ -118,7 +137,7 @@ async def handle_manager_fast_watermark(
     service = _build_service(bot, database)
     source_path = service.bridge.paths.ensure_in(
         service.bridge.paths.sources
-        / f"archive-media-{source.media_id}-{uuid4().hex}{suffix}",
+        / f"archive-media-{workspace_id}-{source.media_id}-{uuid4().hex}{suffix}",
         service.bridge.paths.sources,
     )
     try:
@@ -147,6 +166,12 @@ async def handle_manager_fast_watermark(
         source_file_id=source.telegram_file_id,
         source_file_unique_id=None,
         source_path=str(source_path),
+        workspace_id=workspace_id,
+        logo_kind=(logo_asset.asset_kind if logo_asset is not None else "builtin"),
+        logo_path=(logo_asset.local_path if logo_asset is not None else None),
+        logo_width=(logo_asset.width if logo_asset is not None else None),
+        logo_height=(logo_asset.height if logo_asset is not None else None),
+        logo_name=(logo_asset.file_name if logo_asset is not None else None),
     )
     status = "поставлено в очередь"
     if wake_error:
@@ -159,4 +184,4 @@ async def handle_manager_fast_watermark(
     await callback.answer("Watermark поставлен в очередь.")
 
 
-__all__ = ("handle_manager_fast_watermark",)
+__all__ = ("enqueue_archive_watermark", "handle_manager_fast_watermark")

@@ -63,6 +63,26 @@ class MediaReworkRepository:
     def __init__(self, database: Database) -> None:
         self._database = database
 
+    async def is_active(self, media_id: int) -> bool:
+        async with self._database.acquire() as connection:
+            return bool(
+                await connection.fetchval(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM media_rework_items
+                        WHERE media_id = $1::BIGINT
+                          AND status IN (
+                              'needs_fix',
+                              'checking',
+                              'ready_for_review'
+                          )
+                    )
+                    """,
+                    int(media_id),
+                )
+            )
+
     @staticmethod
     def _item_from_row(row: Any) -> MediaReworkItem:
         names = row["character_names"] or []

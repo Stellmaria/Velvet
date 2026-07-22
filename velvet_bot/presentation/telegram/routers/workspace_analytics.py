@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from html import escape
 
-from aiogram import Bot, Router
+from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
 from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.types import (
@@ -31,6 +31,9 @@ from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.domains.workspaces.service import WorkspaceService
 from velvet_bot.presentation.telegram.analytics_navigation import AnalyticsCallback
 from velvet_bot.presentation.telegram.navigation import compact_button_text
+from velvet_bot.presentation.telegram.routers.workspace_guided_ui import (
+    guided_workspace_callback,
+)
 from velvet_bot.presentation.telegram.routers.analytics_controllers.channel import (
     handle_channel_stats,
     handle_character_stats,
@@ -45,6 +48,7 @@ from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.tel
     _discussion_stats_text,
 )
 from velvet_bot.telegram_export_import import list_tracked_discussions
+from velvet_bot.workspace_ui import WorkspaceCallback
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -182,6 +186,54 @@ async def handle_workspace_analytics_menu(
     if await _reject_access(message, personal_analytics_context):
         return
     await handle_analytics_menu(message)
+
+
+@router.callback_query(
+    WorkspaceCallback.filter((F.action == "module") & (F.module_key == "analytics")),
+    PersonalAnalyticsWorkspaceFilter(),
+)
+async def handle_workspace_analytics_entry(
+    callback: CallbackQuery,
+    callback_data: WorkspaceCallback,
+    personal_analytics_context: AnalyticsWorkspaceContext,
+) -> None:
+    """Enter scoped analytics from the visible workspace module button."""
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    if callback_data.workspace_id != personal_analytics_context.workspace_id:
+        await callback.answer(
+            "Кнопка относится к другому пространству. Откройте меню заново.",
+            show_alert=True,
+        )
+        return
+    if not personal_analytics_context.allowed:
+        await callback.message.answer(
+            "<b>📊 Аналитика пока не подключена</b>\n\n"
+            + escape(
+                personal_analytics_context.error
+                or "Для этого пространства не подключён канал аналитики."
+            )
+            + "\n\nВыберите канал аналитики в дополнительных подключениях. После "
+            "этого бот будет собирать только публикации этого пространства.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="🔌 Открыть подключения",
+                            callback_data=guided_workspace_callback(
+                                "connections",
+                                workspace_id=personal_analytics_context.workspace_id,
+                            ),
+                        )
+                    ]
+                ]
+            ),
+        )
+        await callback.answer()
+        return
+    await handle_analytics_menu(callback.message)
+    await callback.answer()
 
 
 @router.message(

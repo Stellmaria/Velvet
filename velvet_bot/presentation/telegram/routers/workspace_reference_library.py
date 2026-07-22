@@ -13,6 +13,8 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.types import (
     CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     InlineQuery,
     InlineQueryResultArticle,
     InlineQueryResultCachedPhoto,
@@ -69,6 +71,7 @@ from velvet_bot.reference_ui import (
     format_reference_caption,
 )
 from velvet_bot.reference_uploads import ReferenceUploadSession, ReferenceUploadSessions
+from velvet_bot.workspace_ui import WorkspaceCallback
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -190,6 +193,57 @@ async def _reject_access(
     else:
         await event.answer(escape(context.error))
     return True
+
+
+@router.callback_query(
+    WorkspaceCallback.filter((F.action == "module") & (F.module_key == "qwen")),
+    PersonalReferenceWorkspaceFilter("reviewer", require_qwen=True),
+)
+async def handle_workspace_qwen_entry(
+    callback: CallbackQuery,
+    callback_data: WorkspaceCallback,
+    personal_reference_context: PersonalReferenceContext,
+) -> None:
+    """Expose only the tenant-safe Qwen reference workflow, never system jobs."""
+    if await _reject_access(callback, personal_reference_context):
+        return
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    if callback_data.workspace_id != personal_reference_context.workspace_id:
+        await callback.answer(
+            "Кнопка относится к другому пространству. Откройте меню заново.",
+            show_alert=True,
+        )
+        return
+    text = (
+        "<b>🤖 Qwen · личное пространство</b>\n\n"
+        "Qwen сравнивает результат с референсами персонажа из этого пространства. "
+        "Откройте библиотеку референсов, выберите персонажа и используйте сравнение "
+        "на карточке референса.\n\n"
+        "Системный Quality Center, общая AI-очередь и медиасеты Velvet Anatomy "
+        "сюда не попадают."
+    )
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🧬 Открыть референсы",
+                    callback_data=WorkspaceCallback(
+                        action="module",
+                        workspace_id=personal_reference_context.workspace_id,
+                        module_key="references",
+                    ).pack(),
+                )
+            ]
+        ]
+    )
+    try:
+        await callback.message.edit_text(text, reply_markup=keyboard)
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error).casefold():
+            await callback.message.answer(text, reply_markup=keyboard)
+    await callback.answer()
 
 
 async def _resolve_collection(

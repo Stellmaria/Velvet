@@ -13,6 +13,8 @@ from velvet_bot.database import Database
 from velvet_bot.domains.public_archive.watermark_repository import (
     PublicArchiveWatermarkRepository,
 )
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+from velvet_bot.domains.workspaces.onboarding import WorkspaceOnboardingRepository
 from velvet_bot.domains.watermark.archive_output import (
     prepare_archive_watermark_output,
 )
@@ -91,6 +93,30 @@ async def _safe_finish_card(callback: CallbackQuery, text: str) -> None:
     except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             raise
+
+
+async def _storage_settings_for_job(
+    database: Database,
+    *,
+    workspace_id: int,
+) -> WatermarkStorageSettings:
+    if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+        return WatermarkStorageSettings.from_env()
+    destinations = await WorkspaceOnboardingRepository(database).list_destinations(
+        int(workspace_id)
+    )
+    destination = next(
+        (item for item in destinations if item.destination_key == "watermarks"),
+        None,
+    )
+    if destination is None:
+        raise ValueError(
+            "Сначала подключите канал или тему «Watermark-копии» в настройках пространства."
+        )
+    return WatermarkStorageSettings(
+        chat_id=destination.chat_id,
+        thread_id=destination.message_thread_id,
+    )
 
 
 async def handle_watermark_storage_lookup(
@@ -187,7 +213,10 @@ async def handle_archive_watermark_storage_approve(
         if source is None:
             raise ValueError("Исходный материал публичного архива больше не найден.")
 
-        storage_settings = WatermarkStorageSettings.from_env()
+        storage_settings = await _storage_settings_for_job(
+            database,
+            workspace_id=item.job.workspace_id,
+        )
         stored = await store_archive_watermark(
             bot=bot,
             item=item,

@@ -71,6 +71,25 @@ class SaveUploadSessionsTests(unittest.TestCase):
         self.assertIs(sessions.get(chat_id=1, user_id=2), replacement)
         self.assertEqual(replacement.character_name, "Кайн")
 
+    def test_record_saved_keeps_batch_active_and_extends_ttl(self) -> None:
+        now = [100.0]
+        sessions = SaveUploadSessions(ttl_seconds=10, clock=lambda: now[0])
+        sessions.start(
+            chat_id=1,
+            user_id=2,
+            character_name="Артур",
+            command_message_id=3,
+        )
+        now[0] = 108.0
+
+        updated = sessions.record_saved(chat_id=1, user_id=2)
+
+        self.assertIsNotNone(updated)
+        assert updated is not None
+        self.assertEqual(updated.saved_count, 1)
+        self.assertEqual(updated.expires_at, 118.0)
+        self.assertIs(sessions.get(chat_id=1, user_id=2), updated)
+
 
 class SaveNextMediaHandlerTests(unittest.IsolatedAsyncioTestCase):
     async def test_pending_filter_matches_only_active_scope(self) -> None:
@@ -90,7 +109,7 @@ class SaveNextMediaHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(matched["save_upload_session"].character_name, "Артур")
         self.assertFalse(missing)
 
-    async def test_supported_photo_is_saved_and_session_consumed(self) -> None:
+    async def test_supported_photo_is_saved_and_batch_session_remains_active(self) -> None:
         sessions = SaveUploadSessions(ttl_seconds=60, clock=lambda: 100.0)
         session = sessions.start(
             chat_id=10,
@@ -122,11 +141,16 @@ class SaveNextMediaHandlerTests(unittest.IsolatedAsyncioTestCase):
                 SimpleNamespace(),
             )
 
-        self.assertIsNone(sessions.get(chat_id=10, user_id=20))
+        active = sessions.get(chat_id=10, user_id=20)
+        self.assertIsNotNone(active)
+        assert active is not None
+        self.assertEqual(active.saved_count, 1)
         save_media.assert_awaited_once()
         self.assertEqual(save_media.await_args.kwargs["character_name"], "Артур")
         self.assertIs(save_media.await_args.kwargs["source_message"], message)
-        message.answer.assert_awaited_once_with("saved")
+        self.assertIn("saved", message.answer.await_args.args[0])
+        self.assertIn("Пакетная загрузка продолжается", message.answer.await_args.args[0])
+        self.assertIsNotNone(message.answer.await_args.kwargs["reply_markup"])
 
     async def test_unsupported_document_keeps_session_active(self) -> None:
         sessions = SaveUploadSessions(ttl_seconds=60, clock=lambda: 100.0)
@@ -200,7 +224,28 @@ class SaveNextMediaHandlerTests(unittest.IsolatedAsyncioTestCase):
         await save_router.handle_save_cancel(message, sessions)
 
         self.assertIsNone(sessions.get(chat_id=10, user_id=20))
-        self.assertIn("отменено", message.answer.await_args.args[0])
+        self.assertIn("файлы не были добавлены", message.answer.await_args.args[0])
+
+    def test_personal_batch_keyboard_exposes_all_exit_paths(self) -> None:
+        keyboard = save_router._batch_save_keyboard(
+            workspace_id=5,
+            character_id=7,
+        )
+        labels = [
+            button.text
+            for row in keyboard.inline_keyboard
+            for button in row
+        ]
+
+        self.assertEqual(
+            [
+                "✅ Закончить загрузку",
+                "↩️ Открыть карточку",
+                "👤 Другой персонаж",
+                "✖ Отменить режим",
+            ],
+            labels,
+        )
 
 
 if __name__ == "__main__":

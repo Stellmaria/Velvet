@@ -1,16 +1,16 @@
 {
-  "schema_version": 57,
-  "generated_from_commit": "network-failure-fixes",
+  "schema_version": 60,
+  "generated_from_commit": "workspace-media-contract-alignment",
   "broad_exception_total": 82,
   "broad_exception_files": 50,
   "broad_exception_approved": 82,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 122,
+  "callback_total": 126,
   "risky_callback_total": 2,
   "risky_callback_files": 1,
-  "guarded_callback_total": 38,
-  "delegated_callback_total": 10,
+  "guarded_callback_total": 39,
+  "delegated_callback_total": 11,
   "next_slice": null,
   "broad_exceptions": [
     {
@@ -312,7 +312,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/archive/save.py",
       "function": "handle_new_archive_topic_media",
-      "line": 504,
+      "line": 595,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-topic-auto-archive-failure"
@@ -400,7 +400,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "_prepare_media",
-      "line": 148,
+      "line": 164,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-public-media-prepare-failure"
@@ -408,7 +408,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "handle_spoiler_aware_open",
-      "line": 297,
+      "line": 315,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "preserve-public-open-on-metric-failure"
@@ -416,7 +416,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "handle_spoiler_aware_open",
-      "line": 355,
+      "line": 382,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "preserve-navigation-on-owner-review-failure"
@@ -424,7 +424,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "_apply_engagement",
-      "line": 401,
+      "line": 428,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-public-engagement-write-failure"
@@ -432,7 +432,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "_apply_engagement",
-      "line": 425,
+      "line": 461,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "preserve-engagement-on-ui-refresh-failure"
@@ -440,7 +440,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "handle_public_download",
-      "line": 513,
+      "line": 577,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-public-download-failure"
@@ -536,7 +536,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_analytics.py",
       "function": "_ingest",
-      "line": 128,
+      "line": 132,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-workspace-analytics-ingest-failure"
@@ -544,7 +544,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_publications.py",
       "function": "_handle_workspace_publication_callback",
-      "line": 400,
+      "line": 459,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-workspace-publication-failure"
@@ -552,7 +552,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
       "function": "handle_workspace_reference_comparison",
-      "line": 978,
+      "line": 1032,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-workspace-reference-comparison"
@@ -576,7 +576,7 @@
     {
       "path": "velvet_bot/public_archive_display.py",
       "function": "build_viewer_input_media",
-      "line": 128,
+      "line": 138,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "fallback-viewer-edit-preview"
@@ -584,7 +584,7 @@
     {
       "path": "velvet_bot/public_archive_display.py",
       "function": "send_viewer_archive_page",
-      "line": 195,
+      "line": 205,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "fallback-viewer-send-preview"
@@ -616,7 +616,7 @@
     {
       "path": "velvet_bot/services/diagnostic_bundle.py",
       "function": "emit",
-      "line": 75,
+      "line": 76,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-diagnostic-log-buffer"
@@ -908,8 +908,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/catalog.py",
       "function": "handle_public_archive_callback",
-      "line": 297,
-      "ack_line": 308,
+      "line": 303,
+      "ack_line": 314,
       "pre_ack_awaits": 0,
       "total_awaits": 25,
       "risk": "early_ack"
@@ -926,17 +926,17 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "handle_spoiler_aware_open",
-      "line": 250,
-      "ack_line": 270,
+      "line": 268,
+      "ack_line": 288,
       "pre_ack_awaits": 1,
-      "total_awaits": 10,
+      "total_awaits": 11,
       "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/media_display.py",
       "function": "handle_like_and_subscription",
-      "line": 434,
-      "ack_line": 452,
+      "line": 470,
+      "ack_line": 488,
       "pre_ack_awaits": 1,
       "total_awaits": 2,
       "risk": "guarded_ack"
@@ -944,10 +944,10 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/notification_open.py",
       "function": "handle_exact_notification_media",
-      "line": 29,
-      "ack_line": 37,
+      "line": 33,
+      "ack_line": 42,
       "pre_ack_awaits": 0,
-      "total_awaits": 12,
+      "total_awaits": 14,
       "risk": "early_ack"
     },
     {
@@ -1564,8 +1564,17 @@
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_analytics.py",
+      "function": "handle_workspace_analytics_entry",
+      "line": 195,
+      "ack_line": 202,
+      "pre_ack_awaits": 0,
+      "total_awaits": 6,
+      "risk": "early_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_analytics.py",
       "function": "handle_workspace_analytics_callback",
-      "line": 366,
+      "line": 418,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
@@ -1586,14 +1595,14 @@
       "line": 986,
       "ack_line": 1001,
       "pre_ack_awaits": 1,
-      "total_awaits": 5,
+      "total_awaits": 4,
       "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_character_pickers.py",
       "function": "handle_workspace_character_picker",
-      "line": 1019,
-      "ack_line": 1034,
+      "line": 1017,
+      "ack_line": 1032,
       "pre_ack_awaits": 1,
       "total_awaits": 17,
       "risk": "guarded_ack"
@@ -1601,17 +1610,17 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py",
       "function": "handle_workspace_quick_entry",
-      "line": 702,
-      "ack_line": 721,
-      "pre_ack_awaits": 2,
-      "total_awaits": 3,
+      "line": 800,
+      "ack_line": 821,
+      "pre_ack_awaits": 3,
+      "total_awaits": 4,
       "risk": "late_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py",
       "function": "handle_guided_taxonomy_entry",
-      "line": 727,
-      "ack_line": 752,
+      "line": 846,
+      "ack_line": 871,
       "pre_ack_awaits": 4,
       "total_awaits": 5,
       "risk": "late_ack"
@@ -1619,17 +1628,17 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py",
       "function": "handle_guided_workspace_callback",
-      "line": 756,
-      "ack_line": 768,
+      "line": 875,
+      "ack_line": 887,
       "pre_ack_awaits": 0,
-      "total_awaits": 56,
+      "total_awaits": 57,
       "risk": "early_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_onboarding.py",
       "function": "handle_workspace_onboarding_callback",
-      "line": 796,
-      "ack_line": 811,
+      "line": 799,
+      "ack_line": 814,
       "pre_ack_awaits": 1,
       "total_awaits": 41,
       "risk": "guarded_ack"
@@ -1637,7 +1646,16 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_owner_home",
-      "line": 766,
+      "line": 1200,
+      "ack_line": null,
+      "pre_ack_awaits": 1,
+      "total_awaits": 1,
+      "risk": "delegated"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+      "function": "handle_workspace_selector",
+      "line": 1217,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
@@ -1646,8 +1664,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_archive_entry",
-      "line": 783,
-      "ack_line": 800,
+      "line": 1233,
+      "ack_line": 1250,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
       "risk": "guarded_ack"
@@ -1655,8 +1673,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_reference_entry",
-      "line": 808,
-      "ack_line": 825,
+      "line": 1258,
+      "ack_line": 1275,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
       "risk": "guarded_ack"
@@ -1664,17 +1682,17 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_personal_archive",
-      "line": 831,
-      "ack_line": 846,
+      "line": 1520,
+      "ack_line": 1551,
       "pre_ack_awaits": 1,
-      "total_awaits": 28,
+      "total_awaits": 70,
       "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_reference_dashboard",
-      "line": 992,
-      "ack_line": 1010,
+      "line": 1997,
+      "ack_line": 2015,
       "pre_ack_awaits": 1,
       "total_awaits": 12,
       "risk": "guarded_ack"
@@ -1682,8 +1700,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_delete_prompt",
-      "line": 1087,
-      "ack_line": 1100,
+      "line": 2092,
+      "ack_line": 2105,
       "pre_ack_awaits": 1,
       "total_awaits": 4,
       "risk": "guarded_ack"
@@ -1691,7 +1709,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_delete_cancel",
-      "line": 1134,
+      "line": 2139,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
@@ -1700,16 +1718,25 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
       "function": "handle_workspace_delete_confirm",
-      "line": 1149,
-      "ack_line": 1165,
+      "line": 2154,
+      "ack_line": 2170,
       "pre_ack_awaits": 1,
       "total_awaits": 10,
       "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_publications.py",
+      "function": "handle_workspace_publication_entry",
+      "line": 211,
+      "ack_line": 218,
+      "pre_ack_awaits": 0,
+      "total_awaits": 6,
+      "risk": "early_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_publications.py",
       "function": "handle_workspace_publication_callback",
-      "line": 237,
+      "line": 296,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
@@ -1717,8 +1744,17 @@
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
+      "function": "handle_workspace_qwen_entry",
+      "line": 202,
+      "ack_line": 211,
+      "pre_ack_awaits": 1,
+      "total_awaits": 6,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
       "function": "handle_workspace_reference_callback",
-      "line": 655,
+      "line": 709,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,

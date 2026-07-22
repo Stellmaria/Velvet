@@ -6,12 +6,16 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from velvet_bot.domains.workspaces.models import (
     DEFAULT_WORKSPACE_ID,
     WORKSPACE_CHANNEL_KINDS,
+    WORKSPACE_DOWNLOAD_AUDIENCES,
     WORKSPACE_DOWNLOAD_MODES,
+    WORKSPACE_DOWNLOAD_VARIANTS,
     WORKSPACE_ROLES,
     Workspace,
     WorkspaceChannel,
     WorkspaceChannelKind,
+    WorkspaceDownloadAudience,
     WorkspaceDownloadsMode,
+    WorkspaceDownloadVariant,
     WorkspaceMembership,
     WorkspaceRole,
     WorkspaceSettings,
@@ -264,10 +268,41 @@ class WorkspaceService:
         public_archive_enabled: bool,
         downloads_mode: WorkspaceDownloadsMode,
         qwen_enabled: bool,
+        download_audience: WorkspaceDownloadAudience | None = None,
+        download_variant: WorkspaceDownloadVariant | None = None,
         global_owner: bool = False,
     ) -> WorkspaceSettings:
         if downloads_mode not in WORKSPACE_DOWNLOAD_MODES:
             raise ValueError("Неизвестный режим скачивания.")
+        if download_audience is None:
+            audience: WorkspaceDownloadAudience = (
+                "disabled"
+                if downloads_mode == "disabled"
+                else "subscribers"
+                if downloads_mode == "subscription"
+                else "all"
+            )
+        else:
+            audience = download_audience
+        if download_variant is None:
+            variant: WorkspaceDownloadVariant = (
+                "original"
+                if downloads_mode in {"original", "subscription"}
+                else "watermark"
+            )
+        else:
+            variant = download_variant
+        if audience not in WORKSPACE_DOWNLOAD_AUDIENCES:
+            raise ValueError("Неизвестная аудитория скачивания.")
+        if variant not in WORKSPACE_DOWNLOAD_VARIANTS:
+            raise ValueError("Неизвестная версия скачивания.")
+        legacy_mode: WorkspaceDownloadsMode = (
+            "disabled"
+            if audience == "disabled"
+            else "subscription"
+            if audience == "subscribers"
+            else variant
+        )
         await self.require_role(
             workspace_id=workspace_id,
             user_id=actor_user_id,
@@ -278,7 +313,9 @@ class WorkspaceService:
             workspace_id=int(workspace_id),
             timezone=validate_timezone(timezone),
             public_archive_enabled=bool(public_archive_enabled),
-            downloads_mode=downloads_mode,
+            downloads_mode=legacy_mode,
+            download_audience=audience,
+            download_variant=variant,
             qwen_enabled=bool(qwen_enabled),
         )
 
