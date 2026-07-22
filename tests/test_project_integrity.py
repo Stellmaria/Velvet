@@ -145,6 +145,7 @@ DIRECT_COMMANDS = {
     "workspace_bind",
     "workspace_unbind",
     "workspace_bind_channel",
+    "workspace_delete",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
