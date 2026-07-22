@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
+from aiogram.exceptions import (
+    TelegramAPIError,
+    TelegramNetworkError,
+    TelegramRetryAfter,
+    TelegramServerError,
+)
 from aiogram.types import FSInputFile
 
 from velvet_bot.domains.telegram_storage.files import (
@@ -29,7 +34,9 @@ logger = logging.getLogger(__name__)
 class TelegramStorageUploader:
     _MIN_SEND_INTERVAL_SECONDS = 1.1
     _FLOOD_RETRY_CUSHION_SECONDS = 1.0
-    _MAX_FLOOD_RETRIES = 5
+    _MAX_SEND_ATTEMPTS = 5
+    _TRANSIENT_RETRY_BASE_SECONDS = 2.0
+    _TRANSIENT_RETRY_MAX_SECONDS = 30.0
 
     def __init__(
         self,
@@ -78,11 +85,11 @@ class TelegramStorageUploader:
         async with self._send_lock:
             await self._wait_for_send_slot()
             loop = asyncio.get_running_loop()
-            for attempt in range(1, self._MAX_FLOOD_RETRIES + 1):
+            for attempt in range(1, self._MAX_SEND_ATTEMPTS + 1):
                 try:
                     message = await self._bot.send_document(**kwargs)
                 except TelegramRetryAfter as error:
-                    if attempt >= self._MAX_FLOOD_RETRIES:
+                    if attempt >= self._MAX_SEND_ATTEMPTS:
                         raise
                     delay = max(float(error.retry_after), 0.0) + (
                         self._FLOOD_RETRY_CUSHION_SECONDS
@@ -94,7 +101,26 @@ class TelegramStorageUploader:
                         kwargs.get("chat_id"),
                         delay,
                         attempt,
-                        self._MAX_FLOOD_RETRIES,
+                        self._MAX_SEND_ATTEMPTS,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                except (TelegramNetworkError, TelegramServerError) as error:
+                    if attempt >= self._MAX_SEND_ATTEMPTS:
+                        raise
+                    delay = min(
+                        self._TRANSIENT_RETRY_BASE_SECONDS * (2 ** (attempt - 1)),
+                        self._TRANSIENT_RETRY_MAX_SECONDS,
+                    )
+                    self._next_send_at = max(self._next_send_at, loop.time() + delay)
+                    logger.info(
+                        "Telegram storage transient send failure chat=%s delay=%.1fs "
+                        "attempt=%s/%s error=%s",
+                        kwargs.get("chat_id"),
+                        delay,
+                        attempt,
+                        self._MAX_SEND_ATTEMPTS,
+                        error,
                     )
                     await asyncio.sleep(delay)
                     continue

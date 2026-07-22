@@ -11,6 +11,8 @@ import asyncpg
 from velvet_bot.infrastructure.transient_connections import (
     RecoverablePollingNoiseFilter,
     install_recoverable_polling_filter,
+    is_recoverable_diagnostic_delivery,
+    is_recoverable_polling_message,
     is_transient_connection_error,
     looks_like_transient_connection_message,
     recover_database_pool,
@@ -32,6 +34,13 @@ class TransientConnectionClassifierTests(unittest.TestCase):
             )
         )
 
+    def test_request_timeout_message_is_transient(self) -> None:
+        self.assertTrue(
+            looks_like_transient_connection_message(
+                "TelegramNetworkError: HTTP Client says - Request timeout error"
+            )
+        )
+
     def test_regular_application_error_is_not_transient(self) -> None:
         self.assertFalse(is_transient_connection_error(ValueError("bad payload")))
 
@@ -47,6 +56,60 @@ class TransientConnectionClassifierTests(unittest.TestCase):
             ),
             (),
             None,
+        )
+        self.assertFalse(RecoverablePollingNoiseFilter().filter(record))
+
+    def test_polling_filter_drops_bad_gateway_record(self) -> None:
+        message = (
+            "Failed to fetch updates - TelegramServerError: "
+            "Telegram server says - Bad Gateway"
+        )
+        record = logging.LogRecord(
+            "aiogram.dispatcher",
+            logging.ERROR,
+            "dispatcher.py",
+            1,
+            message,
+            (),
+            None,
+        )
+        self.assertTrue(is_recoverable_polling_message(message))
+        self.assertFalse(RecoverablePollingNoiseFilter().filter(record))
+
+    def test_polling_filter_drops_retry_after_record(self) -> None:
+        message = (
+            "Failed to fetch updates - TelegramRetryAfter: Telegram server says - "
+            "Flood control exceeded on method 'GetUpdates'. Retry in 5 seconds. "
+            "Original description: Too Many Requests: retry after 5"
+        )
+        record = logging.LogRecord(
+            "aiogram.dispatcher",
+            logging.ERROR,
+            "dispatcher.py",
+            1,
+            message,
+            (),
+            None,
+        )
+        self.assertTrue(is_recoverable_polling_message(message))
+        self.assertFalse(RecoverablePollingNoiseFilter().filter(record))
+
+    def test_filter_drops_transient_diagnostic_delivery_feedback(self) -> None:
+        message = (
+            "Could not deliver automatic diagnostic bundle to owner 7221553045: "
+            "Telegram server says - Bad Gateway"
+        )
+        record = logging.LogRecord(
+            "velvet_bot.services.diagnostic_bundle",
+            logging.WARNING,
+            "diagnostic_bundle.py",
+            1,
+            message,
+            (),
+            None,
+        )
+        self.assertTrue(
+            is_recoverable_diagnostic_delivery(record.name, message)
         )
         self.assertFalse(RecoverablePollingNoiseFilter().filter(record))
 
