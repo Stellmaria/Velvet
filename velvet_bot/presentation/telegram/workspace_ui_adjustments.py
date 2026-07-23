@@ -5,9 +5,18 @@ from html import escape
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.presentation.telegram.routers import workspace_character_pickers
+from velvet_bot.presentation.telegram.routers import workspace_guided_actions
 from velvet_bot.presentation.telegram.routers import workspace_owner_controls
+from velvet_bot.presentation.telegram.routers import workspace_watermark
 from velvet_bot.presentation.telegram.routers import workspaces
+from velvet_bot.presentation.telegram.routers.workspace_taxonomy_admin import (
+    taxonomy_admin_callback,
+)
+from velvet_bot.presentation.telegram.routers.workspace_watermark_templates import (
+    template_callback,
+)
 from velvet_bot import workspace_ui
+from velvet_bot import workspace_watermark_ui
 
 _applied = False
 
@@ -91,6 +100,43 @@ def _media_card_keyboard(*args, **kwargs) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def _taxonomy_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
+    keyboard = _original_taxonomy_keyboard(workspace_id)
+    rows = [list(row) for row in keyboard.inline_keyboard]
+    manage_row = [
+        InlineKeyboardButton(
+            text="🛠 Изменить / удалить",
+            callback_data=taxonomy_admin_callback(
+                "manage",
+                workspace_id=workspace_id,
+            ),
+        )
+    ]
+    rows.insert(max(0, len(rows) - 1), manage_row)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _watermark_keyboard(*, workspace_id: int, has_asset: bool) -> InlineKeyboardMarkup:
+    keyboard = _original_watermark_keyboard(
+        workspace_id=workspace_id,
+        has_asset=has_asset,
+    )
+    rows = [list(row) for row in keyboard.inline_keyboard]
+    rows.insert(
+        1,
+        [
+            InlineKeyboardButton(
+                text="🧩 Настроить шаблон",
+                callback_data=template_callback(
+                    "show",
+                    workspace_id=workspace_id,
+                ),
+            )
+        ],
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 async def _show_media_help(
     callback: CallbackQuery,
     *,
@@ -108,9 +154,8 @@ async def _show_media_help(
         "этого персонажа.\n\n"
         "<b>Скачать оригинал</b> — отправляет владельцу сохранённый исходный файл.\n\n"
         "<b>Быстрый watermark</b> — создаёт отдельную копию с текущим логотипом "
-        "пространства и открывает настройки положения, прозрачности, размера и "
-        "отступа. Оригинал не заменяется. Если логотип ещё не загружен, бот "
-        "предложит открыть настройку watermark.\n\n"
+        "пространства и шаблоном положения, прозрачности, размера и отступа. "
+        "Оригинал не заменяется до явного подтверждения.\n\n"
         "<b>Отправить на доработку</b> — помещает работу в очередь проверки и "
         "временно скрывает её из публичной выдачи.\n\n"
         "<b>Скрыть из публичного / Вернуть в публичный</b> — меняет видимость "
@@ -120,9 +165,7 @@ async def _show_media_help(
         "<b>Доступ и скачивание</b> — задаёт, кто может скачать материал и какую "
         "версию бот выдаёт читателям.\n\n"
         "<b>Ветка</b> открывает тему персонажа. <b>Удалить</b> безвозвратно удаляет "
-        "текущий материал. <b>Закрыть</b> закрывает карточку.\n\n"
-        "Некоторые кнопки появляются только после включения публичного режима "
-        "или подключения нужного канала."
+        "текущий материал. <b>Закрыть</b> закрывает карточку."
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -161,11 +204,19 @@ def apply_workspace_ui_adjustments() -> None:
     workspace_owner_controls.format_workspace_home = _workspace_home_text
     workspaces.format_workspace_home = _workspace_home_text
 
+    workspace_ui.build_taxonomy_keyboard = _taxonomy_keyboard
+    workspace_guided_actions.build_taxonomy_keyboard = _taxonomy_keyboard
+
+    workspace_watermark_ui.build_workspace_watermark_keyboard = _watermark_keyboard
+    workspace_watermark.build_workspace_watermark_keyboard = _watermark_keyboard
+
 
 _original_character_card_text = workspace_character_pickers._card_text
 _original_character_card_keyboard = workspace_character_pickers._card_keyboard
 _original_character_list_text = workspace_character_pickers._character_list_text
 _original_media_card_keyboard = workspace_owner_controls._archive_navigation
+_original_taxonomy_keyboard = workspace_ui.build_taxonomy_keyboard
+_original_watermark_keyboard = workspace_watermark_ui.build_workspace_watermark_keyboard
 
 
 __all__ = ("apply_workspace_ui_adjustments",)
