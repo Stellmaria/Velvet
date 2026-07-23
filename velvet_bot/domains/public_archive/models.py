@@ -36,6 +36,7 @@ class PendingPublicNotification:
     character_name: str
     media_id: int
     user_id: int
+    workspace_id: int = 1
 
 
 __all__ = (
