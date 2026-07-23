@@ -35,7 +35,7 @@ class WorkspaceReworkIsolationContractTests(unittest.TestCase):
         self.assertIn("rework_character.workspace_id", visibility)
         self.assertIn("workspace_id = $1::BIGINT", repository)
         self.assertIn("character.workspace_id = $2::BIGINT", manual)
-        self.assertIn("workspace_id=workspace.id", manual.replace(" ", ""))
+        self.assertIn("scoped_workspace_id", manual)
 
     def test_personal_router_precedes_generic_owner_controls(self) -> None:
         bundle = Path(
