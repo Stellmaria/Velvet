@@ -50,6 +50,11 @@ def public_media_visibility_sql(
             SELECT 1
             FROM media_rework_items AS active_rework
             WHERE active_rework.media_id = {link_alias}.media_id
+              AND active_rework.workspace_id = (
+                    SELECT rework_character.workspace_id
+                    FROM characters AS rework_character
+                    WHERE rework_character.id = {link_alias}.character_id
+                  )
               AND active_rework.status IN (
                     'needs_fix',
                     'checking',

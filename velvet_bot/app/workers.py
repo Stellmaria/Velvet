@@ -18,6 +18,7 @@ from velvet_bot.database import Database
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
+from velvet_bot.domains.workspaces.qwen_repository import WorkspaceQwenRepository
 from velvet_bot.error_center import ErrorIncidentCenter
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
 from velvet_bot.infrastructure.transient_connections import (
@@ -34,6 +35,7 @@ from velvet_bot.resilient_ai_vision import (
 )
 from velvet_bot.services.diagnostic_bundle import DiagnosticBundleService
 from velvet_bot.services.system_health import SystemHealthService
+from velvet_bot.services.workspace_qwen_quality import WorkspaceQwenQualityService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
 from velvet_bot.workers.iterations import process_backup_once
 
@@ -156,6 +158,18 @@ def build_worker_manager(
             max_attempts=settings.ai_vision_max_attempts,
         )
         quality_service.set_cache_chat_id(cache_chat_id)
+        workspace_quality_service = WorkspaceQwenQualityService(
+            bot=bot,
+            repository=WorkspaceQwenRepository(database),
+            client=QualityVisionClient(
+                provider=settings.ai_vision_provider,
+                base_url=settings.ai_vision_base_url,
+                model=settings.ai_vision_model,
+                api_key=settings.ai_vision_api_key,
+                timeout_seconds=settings.ai_vision_timeout_seconds,
+            ),
+            max_attempts=settings.ai_vision_max_attempts,
+        )
         manager.register(
             PeriodicWorkerSpec(
                 name="ai-vision",
@@ -177,6 +191,18 @@ def build_worker_manager(
                 description="Qwen-проверка качества изображений",
                 interval_seconds=10,
                 runner=partial(_run_ai_locked, ai_lock, quality_service.process_once),
+            )
+        )
+        manager.register(
+            PeriodicWorkerSpec(
+                name="workspace-qwen-quality",
+                description="Qwen-проверка личных пространств",
+                interval_seconds=11,
+                runner=partial(
+                    _run_ai_locked,
+                    ai_lock,
+                    workspace_quality_service.process_once,
+                ),
             )
         )
     if error_center is not None:

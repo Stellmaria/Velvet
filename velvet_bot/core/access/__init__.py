@@ -14,7 +14,7 @@ from velvet_bot.core.access.policy import (
     PUBLIC_CALLBACK_ACTIONS,
     PUBLIC_CALLBACK_PREFIX,
     PUBLIC_COMMANDS,
-    WORKSPACE_MEMBER_CALLBACK_PREFIXES,
+    WORKSPACE_MEMBER_CALLBACK_PREFIXES as _BASE_WORKSPACE_MEMBER_CALLBACK_PREFIXES,
     WORKSPACE_MEMBER_COMMANDS as _BASE_WORKSPACE_MEMBER_COMMANDS,
     command_name,
     is_moderator_callback_data,
@@ -23,7 +23,7 @@ from velvet_bot.core.access.policy import (
     is_public_callback_data,
     is_public_command_text,
     is_save_mention_text,
-    is_workspace_member_fsm_state_name,
+    is_workspace_member_fsm_state_name as _base_workspace_member_fsm_state_name,
     normalize_username,
 )
 
@@ -38,7 +38,15 @@ WORKSPACE_MEMBER_COMMANDS = _BASE_WORKSPACE_MEMBER_COMMANDS | frozenset(
         "workspace_bind_channel",
         "workspace_unbind",
         "workspace_delete",
+        "myarchive",
+        "archive_shortcuts",
+        "taxonomy_manage",
+        "structure_manage",
     }
+)
+WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
+    *_BASE_WORKSPACE_MEMBER_CALLBACK_PREFIXES,
+    "wq:",
 )
 
 
@@ -54,6 +62,13 @@ def is_workspace_member_callback_data(value: str | None) -> bool:
             value.startswith(prefix)
             for prefix in WORKSPACE_MEMBER_CALLBACK_PREFIXES
         )
+    )
+
+
+def is_workspace_member_fsm_state_name(value: object | None) -> bool:
+    return bool(
+        _base_workspace_member_fsm_state_name(value)
+        or (value and str(value).startswith("WorkspaceQwenForm:"))
     )
 
 

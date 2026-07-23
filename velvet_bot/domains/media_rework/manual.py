@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 _ACTIVE_STATUSES = ("needs_fix", "checking", "ready_for_review")
 
@@ -10,28 +11,54 @@ async def request_manual_rework(
     *,
     media_id: int,
     user_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
     reason: str = "Стэл отправила работу на доработку из публичного архива.",
 ) -> bool:
-    """Create or reopen one admin rework item without duplicating active requests."""
+    """Create or reopen one workspace-scoped admin rework item."""
 
+    scoped_workspace_id = int(workspace_id)
     async with database.acquire() as connection:
         async with connection.transaction():
+            linked = await connection.fetchval(
+                """
+                SELECT TRUE
+                FROM character_media AS link
+                JOIN characters AS character ON character.id = link.character_id
+                WHERE link.media_id = $1::BIGINT
+                  AND character.workspace_id = $2::BIGINT
+                LIMIT 1
+                """,
+                int(media_id),
+                scoped_workspace_id,
+            )
+            if not linked:
+                raise ValueError("Материал не принадлежит выбранному пространству.")
+
             existing = await connection.fetchrow(
                 """
                 SELECT status, source
                 FROM media_rework_items
-                WHERE media_id = $1::BIGINT
+                WHERE workspace_id = $1::BIGINT
+                  AND media_id = $2::BIGINT
                 FOR UPDATE
                 """,
+                scoped_workspace_id,
                 int(media_id),
             )
             await connection.execute(
                 """
-                UPDATE character_media
+                UPDATE character_media AS link
                 SET is_public = FALSE
-                WHERE media_id = $1::BIGINT
+                WHERE link.media_id = $1::BIGINT
+                  AND EXISTS (
+                        SELECT 1
+                        FROM characters AS character
+                        WHERE character.id = link.character_id
+                          AND character.workspace_id = $2::BIGINT
+                      )
                 """,
                 int(media_id),
+                scoped_workspace_id,
             )
             if (
                 existing is not None
@@ -44,6 +71,7 @@ async def request_manual_rework(
                 await connection.execute(
                     """
                     INSERT INTO media_rework_items (
+                        workspace_id,
                         media_id,
                         status,
                         source,
@@ -54,14 +82,16 @@ async def request_manual_rework(
                     )
                     VALUES (
                         $1::BIGINT,
+                        $2::BIGINT,
                         'needs_fix',
                         'admin',
-                        $3::TEXT,
-                        $2::BIGINT,
-                        $2::BIGINT,
+                        $4::TEXT,
+                        $3::BIGINT,
+                        $3::BIGINT,
                         NOW()
                     )
                     """,
+                    scoped_workspace_id,
                     int(media_id),
                     int(user_id),
                     reason,
@@ -72,14 +102,16 @@ async def request_manual_rework(
                     """
                     UPDATE media_rework_items
                     SET status = 'needs_fix',
-                        source = $3::VARCHAR,
-                        reason = $4::TEXT,
-                        requested_by = $2::BIGINT,
-                        last_action_by = $2::BIGINT,
+                        source = $4::VARCHAR,
+                        reason = $5::TEXT,
+                        requested_by = $3::BIGINT,
+                        last_action_by = $3::BIGINT,
                         resolved_at = NULL,
                         updated_at = NOW()
-                    WHERE media_id = $1::BIGINT
+                    WHERE workspace_id = $1::BIGINT
+                      AND media_id = $2::BIGINT
                     """,
+                    scoped_workspace_id,
                     int(media_id),
                     int(user_id),
                     source,
@@ -89,6 +121,7 @@ async def request_manual_rework(
             await connection.execute(
                 """
                 INSERT INTO media_rework_events (
+                    workspace_id,
                     media_id,
                     action,
                     source,
@@ -97,12 +130,14 @@ async def request_manual_rework(
                 )
                 VALUES (
                     $1::BIGINT,
+                    $2::BIGINT,
                     'admin_flagged',
                     'admin',
-                    $2::BIGINT,
-                    $3::TEXT
+                    $3::BIGINT,
+                    $4::TEXT
                 )
                 """,
+                scoped_workspace_id,
                 int(media_id),
                 int(user_id),
                 reason,

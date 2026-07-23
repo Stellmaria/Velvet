@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from velvet_bot.database import Database
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 
 _ACTIVE_STATUSES = ("needs_fix", "checking", "ready_for_review")
 
@@ -21,6 +22,7 @@ class MediaReworkSummary:
 
 @dataclass(frozen=True, slots=True)
 class MediaReworkItem:
+    workspace_id: int
     media_id: int
     file_name: str
     media_type: str
@@ -60,8 +62,14 @@ def _decode_json(value: Any) -> dict[str, Any] | None:
 
 
 class MediaReworkRepository:
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self,
+        database: Database,
+        *,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> None:
         self._database = database
+        self._workspace_id = int(workspace_id)
 
     async def is_active(self, media_id: int) -> bool:
         async with self._database.acquire() as connection:
@@ -71,7 +79,8 @@ class MediaReworkRepository:
                     SELECT EXISTS (
                         SELECT 1
                         FROM media_rework_items
-                        WHERE media_id = $1::BIGINT
+                        WHERE workspace_id = $1::BIGINT
+                          AND media_id = $2::BIGINT
                           AND status IN (
                               'needs_fix',
                               'checking',
@@ -79,6 +88,7 @@ class MediaReworkRepository:
                           )
                     )
                     """,
+                    self._workspace_id,
                     int(media_id),
                 )
             )
@@ -87,6 +97,7 @@ class MediaReworkRepository:
     def _item_from_row(row: Any) -> MediaReworkItem:
         names = row["character_names"] or []
         return MediaReworkItem(
+            workspace_id=int(row["workspace_id"]),
             media_id=int(row["media_id"]),
             file_name=str(row["file_name"] or f"media-{row['media_id']}"),
             media_type=str(row["media_type"]),
@@ -135,7 +146,9 @@ class MediaReworkRepository:
                           AND source = 'qwen'
                     ) AS qwen_only
                 FROM media_rework_items
-                """
+                WHERE workspace_id = $1::BIGINT
+                """,
+                self._workspace_id,
             )
         return MediaReworkSummary(
             active=int(row["active"] or 0),
@@ -159,8 +172,10 @@ class MediaReworkRepository:
                     """
                     SELECT COUNT(*)
                     FROM media_rework_items
-                    WHERE status IN ('needs_fix', 'checking', 'ready_for_review')
-                    """
+                    WHERE workspace_id = $1::BIGINT
+                      AND status IN ('needs_fix', 'checking', 'ready_for_review')
+                    """,
+                    self._workspace_id,
                 )
                 or 0
             )
@@ -180,9 +195,12 @@ class MediaReworkRepository:
                 JOIN media_files AS mf ON mf.id = r.media_id
                 LEFT JOIN media_ai_quality_checks AS q ON q.media_id = r.media_id
                 LEFT JOIN character_media AS cm ON cm.media_id = r.media_id
-                LEFT JOIN characters AS c ON c.id = cm.character_id
-                WHERE r.status IN ('needs_fix', 'checking', 'ready_for_review')
-                GROUP BY r.media_id, mf.id, q.media_id
+                LEFT JOIN characters AS c
+                  ON c.id = cm.character_id
+                 AND c.workspace_id = r.workspace_id
+                WHERE r.workspace_id = $1::BIGINT
+                  AND r.status IN ('needs_fix', 'checking', 'ready_for_review')
+                GROUP BY r.workspace_id, r.media_id, mf.id, q.media_id
                 ORDER BY
                     CASE WHEN r.source IN ('admin', 'mixed') THEN 1 ELSE 0 END DESC,
                     CASE r.status
@@ -192,8 +210,9 @@ class MediaReworkRepository:
                     END DESC,
                     r.updated_at DESC,
                     r.media_id DESC
-                OFFSET $1::INTEGER LIMIT $2::INTEGER
+                OFFSET $2::INTEGER LIMIT $3::INTEGER
                 """,
+                self._workspace_id,
                 safe_page * safe_size,
                 safe_size,
             )
@@ -220,10 +239,14 @@ class MediaReworkRepository:
                 JOIN media_files AS mf ON mf.id = r.media_id
                 LEFT JOIN media_ai_quality_checks AS q ON q.media_id = r.media_id
                 LEFT JOIN character_media AS cm ON cm.media_id = r.media_id
-                LEFT JOIN characters AS c ON c.id = cm.character_id
-                WHERE r.media_id = $1::BIGINT
-                GROUP BY r.media_id, mf.id, q.media_id
+                LEFT JOIN characters AS c
+                  ON c.id = cm.character_id
+                 AND c.workspace_id = r.workspace_id
+                WHERE r.workspace_id = $1::BIGINT
+                  AND r.media_id = $2::BIGINT
+                GROUP BY r.workspace_id, r.media_id, mf.id, q.media_id
                 """,
+                self._workspace_id,
                 int(media_id),
             )
         return self._item_from_row(row) if row is not None else None
@@ -257,21 +280,23 @@ class MediaReworkRepository:
                 row = await connection.fetchrow(
                     """
                     UPDATE media_rework_items
-                    SET status = $2::VARCHAR,
-                        last_action_by = $3::BIGINT,
+                    SET status = $3::VARCHAR,
+                        last_action_by = $4::BIGINT,
                         resolved_at = NOW(),
                         updated_at = NOW()
-                    WHERE media_id = $1::BIGINT
+                    WHERE workspace_id = $1::BIGINT
+                      AND media_id = $2::BIGINT
                       AND status IN ('needs_fix', 'checking', 'ready_for_review')
                     RETURNING source
                     """,
+                    self._workspace_id,
                     int(media_id),
                     status,
                     int(user_id),
                 )
                 if row is None:
                     return False
-                if status == "accepted":
+                if status == "accepted" and self._workspace_id == DEFAULT_WORKSPACE_ID:
                     await connection.execute(
                         """
                         UPDATE media_ai_quality_checks
@@ -288,9 +313,21 @@ class MediaReworkRepository:
                 await connection.execute(
                     """
                     INSERT INTO media_rework_events (
-                        media_id, action, source, actor_user_id
-                    ) VALUES ($1::BIGINT, $2::VARCHAR, 'admin', $3::BIGINT)
+                        workspace_id,
+                        media_id,
+                        action,
+                        source,
+                        actor_user_id
+                    )
+                    VALUES (
+                        $1::BIGINT,
+                        $2::BIGINT,
+                        $3::VARCHAR,
+                        'admin',
+                        $4::BIGINT
+                    )
                     """,
+                    self._workspace_id,
                     int(media_id),
                     action,
                     int(user_id),
@@ -298,19 +335,23 @@ class MediaReworkRepository:
         return True
 
     async def retry(self, media_id: int, user_id: int) -> bool:
+        if self._workspace_id != DEFAULT_WORKSPACE_ID:
+            return False
         async with self._database.acquire() as connection:
             async with connection.transaction():
                 row = await connection.fetchrow(
                     """
                     UPDATE media_rework_items
                     SET status = 'checking',
-                        last_action_by = $2::BIGINT,
+                        last_action_by = $3::BIGINT,
                         resolved_at = NULL,
                         updated_at = NOW()
-                    WHERE media_id = $1::BIGINT
+                    WHERE workspace_id = $1::BIGINT
+                      AND media_id = $2::BIGINT
                       AND status IN ('needs_fix', 'ready_for_review')
                     RETURNING media_id
                     """,
+                    self._workspace_id,
                     int(media_id),
                     int(user_id),
                 )
@@ -341,9 +382,21 @@ class MediaReworkRepository:
                 await connection.execute(
                     """
                     INSERT INTO media_rework_events (
-                        media_id, action, source, actor_user_id
-                    ) VALUES ($1::BIGINT, 'recheck_requested', 'admin', $2::BIGINT)
+                        workspace_id,
+                        media_id,
+                        action,
+                        source,
+                        actor_user_id
+                    )
+                    VALUES (
+                        $1::BIGINT,
+                        $2::BIGINT,
+                        'recheck_requested',
+                        'admin',
+                        $3::BIGINT
+                    )
                     """,
+                    self._workspace_id,
                     int(media_id),
                     int(user_id),
                 )

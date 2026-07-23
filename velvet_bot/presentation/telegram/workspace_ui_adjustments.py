@@ -95,6 +95,34 @@ def _media_card_keyboard(*args, **kwargs) -> InlineKeyboardMarkup:
             help_row = normalized
         else:
             rows.append(normalized)
+
+    page = args[0] if args else kwargs.get("page")
+    media = getattr(page, "media", None)
+    image_media = bool(
+        media is not None
+        and (
+            getattr(media, "media_type", None) == "photo"
+            or bool(getattr(media, "is_image_document", False))
+        )
+    )
+    if image_media and not any(
+        button.text == "🤖 Qwen-проверка" for row in rows for button in row
+    ):
+        rows.insert(
+            max(0, len(rows) - 1),
+            [
+                InlineKeyboardButton(
+                    text="🤖 Qwen-проверка",
+                    callback_data=workspace_owner_controls._archive_callback(
+                        "qwen",
+                        workspace_id=int(kwargs.get("workspace_id") or 0),
+                        character_id=page.character.id,
+                        offset=page.offset,
+                        media_id=media.id,
+                    ),
+                )
+            ],
+        )
     if help_row is not None:
         rows.insert(max(0, len(rows) - 1), help_row)
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -160,10 +188,16 @@ async def _show_media_help(
         "<b>Быстрый watermark</b> — создаёт отдельную копию с текущим логотипом "
         "пространства и шаблоном положения, прозрачности, размера и отступа. "
         "Оригинал не заменяется до явного подтверждения.\n\n"
-        "<b>Отправить на доработку</b> — помещает работу в очередь проверки и "
-        "временно скрывает её из публичной выдачи.\n\n"
+        "<b>Qwen-проверка</b> — ставит текущее изображение в изолированную очередь "
+        "этого пространства. Проверяющий видит технический отчёт; редактор или "
+        "владелец может принять работу либо отправить её на доработку.\n\n"
+        "<b>Отправить на доработку</b> — первое нажатие создаёт заявку только внутри "
+        "текущего пространства и скрывает материал из его публичной выдачи. Повторное "
+        "нажатие той же кнопки завершает заявку. После этого материал остаётся скрытым, "
+        "пока владелец отдельно не нажмёт «Вернуть в публичный».\n\n"
         "<b>Скрыть из публичного / Вернуть в публичный</b> — меняет видимость "
-        "конкретной работы, когда публичный архив включён.\n\n"
+        "конкретной работы. Вернуть материал нельзя, пока его заявка на доработку "
+        "в этом пространстве активна.\n\n"
         "<b>Пометить +18</b> — ограничивает показ подписчиками подключённого канала "
         "+18. <b>Включить блюр</b> — закрывает превью предупреждением.\n\n"
         "<b>Доступ и скачивание</b> — задаёт, кто может скачать материал и какую "

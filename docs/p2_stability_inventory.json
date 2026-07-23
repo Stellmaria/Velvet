@@ -1,9 +1,9 @@
 {
-  "schema_version": 61,
-  "generated_from_commit": "workspace-card-reference-fixes",
-  "broad_exception_total": 82,
-  "broad_exception_files": 50,
-  "broad_exception_approved": 82,
+  "schema_version": 62,
+  "generated_from_commit": "workspace-qwen-product",
+  "broad_exception_total": 86,
+  "broad_exception_files": 52,
+  "broad_exception_approved": 86,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
   "callback_total": 128,
@@ -574,6 +574,22 @@
       "reason": "isolate-telegram-storage-operation"
     },
     {
+      "path": "velvet_bot/presentation/telegram/workspace_qwen.py",
+      "function": "handle_workspace_qwen_prompt_image",
+      "line": 1094,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "workspace-qwen-prompt-result"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/workspace_qwen.py",
+      "function": "handle_workspace_qwen_visual_image",
+      "line": 1179,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "workspace-qwen-visual"
+    },
+    {
       "path": "velvet_bot/public_archive_display.py",
       "function": "build_viewer_input_media",
       "line": 138,
@@ -652,6 +668,22 @@
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-health-probe"
+    },
+    {
+      "path": "velvet_bot/services/workspace_qwen_quality.py",
+      "function": "_download_target",
+      "line": 107,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "workspace-qwen-file-fallback"
+    },
+    {
+      "path": "velvet_bot/services/workspace_qwen_quality.py",
+      "function": "process_once",
+      "line": 156,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "compensate-workspace-qwen-check"
     },
     {
       "path": "velvet_bot/workers/manager.py",
@@ -1799,8 +1831,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_watermark.py",
       "function": "handle_watermark_module",
-      "line": 137,
-      "ack_line": 151,
+      "line": 159,
+      "ack_line": 173,
       "pre_ack_awaits": 1,
       "total_awaits": 2,
       "risk": "guarded_ack"
@@ -1808,10 +1840,10 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_watermark.py",
       "function": "handle_workspace_watermark_callback",
-      "line": 155,
-      "ack_line": 171,
+      "line": 177,
+      "ack_line": 193,
       "pre_ack_awaits": 1,
-      "total_awaits": 15,
+      "total_awaits": 18,
       "risk": "guarded_ack"
     },
     {

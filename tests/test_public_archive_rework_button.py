@@ -39,6 +39,7 @@ class PublicArchiveReworkContractTests(unittest.TestCase):
 class ManualReworkRequestTests(unittest.IsolatedAsyncioTestCase):
     async def test_new_manual_request_creates_item_and_event(self) -> None:
         connection = SimpleNamespace(
+            fetchval=AsyncMock(return_value=True),
             fetchrow=AsyncMock(return_value=None),
             execute=AsyncMock(),
             transaction=lambda: _AsyncContext(None),
@@ -49,6 +50,7 @@ class ManualReworkRequestTests(unittest.IsolatedAsyncioTestCase):
             database,
             media_id=77,
             user_id=7221553045,
+            workspace_id=9,
         )
 
         self.assertTrue(changed)
@@ -57,11 +59,15 @@ class ManualReworkRequestTests(unittest.IsolatedAsyncioTestCase):
         item_sql = connection.execute.await_args_list[1].args[0]
         event_sql = connection.execute.await_args_list[2].args[0]
         self.assertIn("SET is_public = FALSE", hide_sql)
+        self.assertIn("character.workspace_id = $2::BIGINT", hide_sql)
         self.assertIn("INSERT INTO media_rework_items", item_sql)
+        self.assertIn("workspace_id", item_sql)
         self.assertIn("INSERT INTO media_rework_events", event_sql)
+        self.assertIn("workspace_id", event_sql)
 
     async def test_repeated_active_admin_request_is_idempotent(self) -> None:
         connection = SimpleNamespace(
+            fetchval=AsyncMock(return_value=True),
             fetchrow=AsyncMock(
                 return_value={"status": "needs_fix", "source": "admin"}
             ),
@@ -74,6 +80,7 @@ class ManualReworkRequestTests(unittest.IsolatedAsyncioTestCase):
             database,
             media_id=77,
             user_id=7221553045,
+            workspace_id=9,
         )
 
         self.assertFalse(changed)
@@ -82,6 +89,26 @@ class ManualReworkRequestTests(unittest.IsolatedAsyncioTestCase):
             "SET is_public = FALSE",
             connection.execute.await_args.args[0],
         )
+
+    async def test_request_rejects_media_outside_workspace(self) -> None:
+        connection = SimpleNamespace(
+            fetchval=AsyncMock(return_value=None),
+            fetchrow=AsyncMock(),
+            execute=AsyncMock(),
+            transaction=lambda: _AsyncContext(None),
+        )
+        database = SimpleNamespace(acquire=lambda: _AsyncContext(connection))
+
+        with self.assertRaisesRegex(ValueError, "не принадлежит"):
+            await request_manual_rework(
+                database,
+                media_id=77,
+                user_id=7221553045,
+                workspace_id=9,
+            )
+
+        connection.fetchrow.assert_not_awaited()
+        connection.execute.assert_not_awaited()
 
 
 if __name__ == "__main__":

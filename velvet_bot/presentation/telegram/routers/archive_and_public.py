@@ -190,21 +190,23 @@ router.include_router(start_router)
 # the legacy workspace router and must own setup/binding commands before broad handlers.
 router.include_router(workspace_onboarding_channel_bind_router)
 router.include_router(workspace_onboarding_router)
-# Workspace policy commands, callbacks and FSM forms must run before /start and
-# broad owner/archive controllers. Inline pickers and automatic topic creation must
+# Workspace policy commands, callbacks and FSM forms must run before broad
+# owner/archive controllers. Inline pickers and automatic topic creation must
 # intercept the personal character module before its broad text-command handler.
 router.include_router(workspace_taxonomy_admin_router)
 router.include_router(workspace_guided_actions_router)
 router.include_router(workspace_character_pickers_router)
 router.include_router(workspace_character_topic_creation_router)
 router.include_router(workspace_character_management_router)
+# Personal Qwen, scoped rework/public callbacks and its FSM must win before the
+# older reference-only Qwen entry and before generic owner archive callbacks.
+router.include_router(workspace_watermark_archive_only_router)
 # Button-first reference management must intercept personal reference cards and
 # replacement uploads before the command-compatible reference router.
 router.include_router(workspace_reference_buttons_router)
 router.include_router(workspace_reference_library_router)
 router.include_router(workspace_admin_router)
 router.include_router(workspace_team_router)
-router.include_router(workspace_watermark_archive_only_router)
 router.include_router(workspace_watermark_templates_router)
 router.include_router(workspace_watermark_router)
 router.include_router(workspace_owner_controls_router)

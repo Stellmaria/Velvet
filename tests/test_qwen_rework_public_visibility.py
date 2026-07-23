@@ -7,6 +7,7 @@ from pathlib import Path
 from velvet_bot.database import Database
 from velvet_bot.domains.archive import ArchiveRepository
 from velvet_bot.domains.media_rework import MediaReworkRepository
+from velvet_bot.domains.media_rework.manual import request_manual_rework
 from velvet_bot.domains.public_archive import PublicArchiveRepository
 from velvet_bot.domains.public_archive.visibility import public_media_visibility_sql
 from velvet_bot.media import MediaDescriptor
@@ -19,6 +20,8 @@ class QwenReworkVisibilityContractTests(unittest.TestCase):
 
         self.assertIn("NOT EXISTS", public_sql)
         self.assertIn("media_rework_items", public_sql)
+        self.assertIn("active_rework.workspace_id", public_sql)
+        self.assertIn("rework_character.workspace_id", public_sql)
         for status in ("needs_fix", "checking", "ready_for_review"):
             self.assertIn(status, public_sql)
         self.assertNotIn("media_rework_items", manager_sql)
@@ -46,6 +49,31 @@ class QwenReworkVisibilityContractTests(unittest.TestCase):
         self.assertIn("AS stel_priority", source)
         self.assertIn("AS qwen_only", source)
 
+    def test_workspace_rework_migration_uses_composite_identity(self) -> None:
+        migration = Path(
+            "migrations/z002_workspace_media_rework_isolation.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("PRIMARY KEY (workspace_id, media_id)", migration)
+        self.assertIn("FOREIGN KEY (workspace_id, media_id)", migration)
+        self.assertIn("ON CONFLICT (workspace_id, media_id)", migration)
+        self.assertIn("WHERE workspace_id = 1", migration)
+
+    def test_personal_rework_callbacks_run_before_generic_owner_controls(self) -> None:
+        bundle = Path(
+            "velvet_bot/presentation/telegram/routers/archive_and_public.py"
+        ).read_text(encoding="utf-8")
+        guard = Path(
+            "velvet_bot/presentation/telegram/routers/"
+            "workspace_watermark_archive_only.py"
+        ).read_text(encoding="utf-8")
+        self.assertLess(
+            bundle.index("workspace_watermark_archive_only_router"),
+            bundle.index("workspace_owner_controls_router"),
+        )
+        self.assertIn('F.action == "rework"', guard)
+        self.assertIn('F.action == "public"', guard)
+        self.assertIn("workspace_id=workspace.id", guard)
+
 
 @unittest.skipUnless(
     os.getenv("TEST_DATABASE_URL"),
@@ -67,6 +95,7 @@ class QwenReworkVisibilityIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 RESTART IDENTITY CASCADE
                 """
             )
+            await connection.execute("DELETE FROM workspaces WHERE id <> 1")
 
         self.character, _ = await self.database.create_character(
             "Qwen Visibility Test",
@@ -185,6 +214,130 @@ class QwenReworkVisibilityIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 member_access=True,
             )
         )
+
+    async def test_personal_hold_does_not_hide_system_link_or_queue(self) -> None:
+        async with self.database.acquire() as connection:
+            workspace_id = int(
+                await connection.fetchval(
+                    """
+                    INSERT INTO workspaces (slug, name, is_system)
+                    VALUES ('rework-isolation', 'Rework Isolation', FALSE)
+                    RETURNING id
+                    """
+                )
+            )
+        personal_character, _ = await self.database.create_character(
+            "Qwen Visibility Personal",
+            created_by=9001,
+            created_in_chat=9001,
+            workspace_id=workspace_id,
+        )
+        personal_saved = await self.database.save_character_media(
+            personal_character,
+            MediaDescriptor(
+                telegram_file_id="qwen-public-file",
+                telegram_file_unique_id="qwen-public-unique",
+                original_file_name="qwen-public.png",
+                storage_file_name="qwen-public-storage.png",
+                media_type="document",
+                mime_type="image/png",
+                file_size=2048,
+            ),
+            saved_by=9001,
+            saved_in_chat=9001,
+            source_chat_id=9001,
+            source_message_id=201,
+            source_thread_id=None,
+            command_message_id=200,
+        )
+        self.assertEqual(self.media_id, personal_saved.media_id)
+
+        self.assertTrue(
+            await request_manual_rework(
+                self.database,
+                media_id=self.media_id,
+                user_id=9001,
+                workspace_id=workspace_id,
+                reason="Personal workspace hold",
+            )
+        )
+
+        async with self.database.acquire() as connection:
+            links = await connection.fetch(
+                """
+                SELECT character.workspace_id, link.is_public
+                FROM character_media AS link
+                JOIN characters AS character ON character.id = link.character_id
+                WHERE link.media_id = $1::BIGINT
+                ORDER BY character.workspace_id
+                """,
+                self.media_id,
+            )
+            queues = await connection.fetch(
+                """
+                SELECT workspace_id, status
+                FROM media_rework_items
+                WHERE media_id = $1::BIGINT
+                ORDER BY workspace_id
+                """,
+                self.media_id,
+            )
+
+        self.assertEqual(
+            [(1, True), (workspace_id, False)],
+            [(int(row["workspace_id"]), bool(row["is_public"])) for row in links],
+        )
+        self.assertEqual(
+            [(workspace_id, "needs_fix")],
+            [(int(row["workspace_id"]), str(row["status"])) for row in queues],
+        )
+
+        system_rework = MediaReworkRepository(self.database, workspace_id=1)
+        personal_rework = MediaReworkRepository(
+            self.database,
+            workspace_id=workspace_id,
+        )
+        self.assertFalse(await system_rework.is_active(self.media_id))
+        self.assertTrue(await personal_rework.is_active(self.media_id))
+
+        system_page = await ArchiveRepository(
+            self.database,
+            workspace_id=1,
+        ).get_page(
+            character_id=self.character.id,
+            offset=0,
+            public_only=True,
+            include_adult_restricted=True,
+            include_oversized_images=True,
+        )
+        personal_page = await ArchiveRepository(
+            self.database,
+            workspace_id=workspace_id,
+        ).get_page(
+            character_id=personal_character.id,
+            offset=0,
+            public_only=True,
+            include_adult_restricted=True,
+            include_oversized_images=True,
+        )
+        self.assertIsNotNone(system_page)
+        self.assertIsNotNone(system_page.media)
+        self.assertIsNotNone(personal_page)
+        self.assertIsNone(personal_page.media)
+
+        self.assertTrue(await personal_rework.accept(self.media_id, 9001))
+        personal_after = await ArchiveRepository(
+            self.database,
+            workspace_id=workspace_id,
+        ).get_page(
+            character_id=personal_character.id,
+            offset=0,
+            public_only=True,
+            include_adult_restricted=True,
+            include_oversized_images=True,
+        )
+        self.assertIsNotNone(personal_after)
+        self.assertIsNone(personal_after.media)
 
 
 if __name__ == "__main__":

@@ -4,8 +4,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **82** в **50** файлах;
-- approved boundaries: **82**;
+- raw broad exceptions: **86** в **52** файлах;
+- approved boundaries: **86**;
 - unresolved broad exceptions: **0** в **0** файлах;
 - callback handlers: **128**;
 - late/missing callbacks: **3**;
@@ -84,6 +84,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:1032` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
 - `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/storage_center.py:294` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
+- `velvet_bot/presentation/telegram/workspace_qwen.py:1094` `handle_workspace_qwen_prompt_image`: workspace-qwen-prompt-result.
+- `velvet_bot/presentation/telegram/workspace_qwen.py:1179` `handle_workspace_qwen_visual_image`: workspace-qwen-visual.
 - `velvet_bot/public_archive_display.py:138` `build_viewer_input_media`: fallback-viewer-edit-preview.
 - `velvet_bot/public_archive_display.py:205` `send_viewer_archive_page`: fallback-viewer-send-preview.
 - `velvet_bot/public_notifications.py:60` `run_public_notification_worker`: isolate-public-notification-worker-iteration.
@@ -94,6 +96,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py:261` `_place_in_topic`: isolate-media-topic-delivery.
 - `velvet_bot/services/system_health.py:126` `check`: isolate-database-health-probe.
 - `velvet_bot/services/system_health.py:138` `check`: isolate-telegram-health-probe.
+- `velvet_bot/services/workspace_qwen_quality.py:107` `_download_target`: workspace-qwen-file-fallback.
+- `velvet_bot/services/workspace_qwen_quality.py:156` `process_once`: compensate-workspace-qwen-check.
 - `velvet_bot/workers/manager.py:222` `_execute_once`: isolate-worker-iteration-failure.
 - `velvet_bot/workers/manager.py:267` `_run_periodic`: isolate-worker-loop-failure.
 
