@@ -16,7 +16,7 @@ class WorkspaceCreationAccessRegressionTests(unittest.TestCase):
 
         self.assertIn("_workspace_creation_name_form_is_active", source)
         self.assertIn('endswith(":waiting_workspace_name")', source)
-        self.assertIn("create_personal_workspace", source)
+        self.assertIn("or await _has_active_personal_workspace", source)
 
 
 class WorkspaceCardTextContractTests(unittest.TestCase):
