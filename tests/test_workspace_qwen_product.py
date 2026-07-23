@@ -26,6 +26,8 @@ class WorkspaceQwenProductTests(unittest.TestCase):
         self.assertIn("module.module_key = 'qwen'", source)
         self.assertIn("settings.qwen_enabled", source)
         self.assertIn("FOR UPDATE OF q SKIP LOCKED", source)
+        self.assertIn("q.updated_at < NOW() - INTERVAL '15 minutes'", source)
+        self.assertIn("stage = 'interrupted'", source)
         self.assertIn("character.workspace_id = $1::BIGINT", source)
 
     def test_worker_uses_shared_local_ai_lock(self) -> None:
@@ -47,6 +49,7 @@ class WorkspaceQwenProductTests(unittest.TestCase):
         self.assertIn('minimum_role: WorkspaceRole = "reviewer"', source)
         self.assertIn('"editor": 2', source)
         self.assertIn("_can_decide(membership)", source)
+        self.assertIn("Полную проверку архива может запускать редактор", source)
 
     def test_archive_card_has_qwen_button_and_early_handler(self) -> None:
         adjustment = (

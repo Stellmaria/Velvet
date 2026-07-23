@@ -351,11 +351,13 @@ class WorkspaceQwenRepository:
                         WHERE module.is_allowed
                           AND module.is_enabled
                           AND settings.qwen_enabled
+                          AND q.attempt_count < $1::SMALLINT
                           AND (
                                 q.status = 'pending'
+                                OR q.status = 'error'
                                 OR (
-                                    q.status = 'error'
-                                    AND q.attempt_count < $1::SMALLINT
+                                    q.status = 'processing'
+                                    AND q.updated_at < NOW() - INTERVAL '15 minutes'
                                 )
                               )
                         ORDER BY q.updated_at, q.workspace_id, q.media_id
@@ -816,6 +818,23 @@ class WorkspaceQwenRepository:
     ) -> WorkspaceQwenJobPage:
         safe_size = max(1, min(int(page_size), 12))
         async with self._database.acquire() as connection:
+            await connection.execute(
+                """
+                UPDATE workspace_qwen_jobs
+                SET status = 'error',
+                    stage = 'interrupted',
+                    error_message = COALESCE(
+                        error_message,
+                        'Задание было прервано перезапуском бота.'
+                    ),
+                    finished_at = NOW(),
+                    updated_at = NOW()
+                WHERE workspace_id = $1::BIGINT
+                  AND status = 'processing'
+                  AND updated_at < NOW() - INTERVAL '30 minutes'
+                """,
+                int(workspace_id),
+            )
             total = int(
                 await connection.fetchval(
                     """

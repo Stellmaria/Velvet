@@ -775,6 +775,13 @@ async def handle_workspace_qwen_callback(
         await render_workspace_qwen_menu(callback, workspace=workspace, repository=repository)
         return
     if action == "audit":
+        if not _can_decide(membership):
+            await callback.answer(
+                "Полную проверку архива может запускать редактор, "
+                "администратор или владелец.",
+                show_alert=True,
+            )
+            return
         queued = await repository.enqueue_archive(workspace_id=workspace.id)
         job_id = await repository.create_job(
             workspace_id=workspace.id,
@@ -877,6 +884,12 @@ async def handle_workspace_qwen_callback(
             decision=decision,
             user_id=callback.from_user.id,
         )
+        if not changed:
+            await callback.answer(
+                "Проверка уже изменилась. Откройте отчёт заново.",
+                show_alert=True,
+            )
+            return
         rework = MediaReworkRepository(database, workspace_id=workspace.id)
         if action == "fix":
             await request_manual_rework(
@@ -905,8 +918,6 @@ async def handle_workspace_qwen_callback(
                 section=callback_data.section or "review",
             ),
         )
-        if not changed:
-            await callback.answer("Решение уже было сохранено.", show_alert=True)
         return
     if action == "prompt":
         await state.set_state(WorkspaceQwenForm.prompt_text)
