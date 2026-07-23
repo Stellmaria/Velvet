@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 from velvet_bot.app.save_sessions import SaveUploadSessions
 from velvet_bot.core.access import is_workspace_member_command_text
-from velvet_bot.presentation.telegram.routers.archive import save_modes
+from velvet_bot.presentation.telegram import save_mode_runtime as save_modes
 
 
 def _message(
