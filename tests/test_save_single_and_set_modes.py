@@ -114,7 +114,7 @@ class PendingSaveModeTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch.object(
-            save_modes,
+            save_modes.legacy_save,
             "save_media_from_message",
             new=AsyncMock(return_value="saved"),
         ):
@@ -151,7 +151,7 @@ class PendingSaveModeTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch.object(
-            save_modes,
+            save_modes.legacy_save,
             "save_media_from_message",
             new=AsyncMock(return_value="saved"),
         ):
