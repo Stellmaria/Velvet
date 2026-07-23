@@ -162,6 +162,13 @@ from velvet_bot.presentation.telegram.routers.archive.spoiler import (
 from velvet_bot.presentation.telegram.routers.publication.safe import (
     router as publication_center_router,
 )
+from velvet_bot.presentation.telegram.save_mode_runtime import (
+    install_save_command_modes,
+    register_save_mode_handlers,
+)
+
+install_save_command_modes()
+
 from velvet_bot.presentation.telegram.routers.archive.save import (
     PendingSaveUploadFilter,
     handle_pending_save_upload,
@@ -172,13 +179,16 @@ install_workspace_watermark_templates()
 apply_workspace_ui_adjustments()
 
 router = Router(name=__name__)
-# Bundle-level handlers run before child routers. An active `/save` session must
-# therefore win before broad reference photo/document handlers.
+# Bundle-level handlers run before child routers. Any active single or set save
+# session must therefore win before broad reference photo/document handlers.
 router.message.register(
     handle_pending_save_upload,
     F.photo | F.video | F.animation | F.document,
     PendingSaveUploadFilter(),
 )
+# `/save` without attached media opens one-file mode, while `/save_set` opens a
+# batch. Register this on the existing bundle instead of adding another router.
+register_save_mode_handlers(router)
 register_public_archive_rework(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
