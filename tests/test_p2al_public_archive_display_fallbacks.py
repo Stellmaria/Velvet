@@ -101,6 +101,27 @@ class PublicArchiveDisplayFallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(result, fallback)
         self.assertEqual(calls, [(self.media, 'viewer caption')])
 
+    async def test_edit_expected_preview_error_is_info_and_falls_back(self) -> None:
+        fallback = object()
+
+        async def fail_preview(bot, media):
+            raise module.ImagePreviewError('file exceeds Bot API limit')
+
+        module.build_image_document_preview = fail_preview
+        module.build_input_media = lambda media, caption: fallback
+
+        with self.assertLogs(module.logger, level='INFO') as captured:
+            result = await module.build_viewer_input_media(
+                object(),
+                self.page,
+                object(),
+            )
+
+        self.assertIs(result, fallback)
+        self.assertTrue(
+            any('falling back to document' in line for line in captured.output)
+        )
+
     async def test_edit_preview_cancellation_is_not_swallowed(self) -> None:
         async def cancel_preview(bot, media):
             raise asyncio.CancelledError
@@ -157,6 +178,29 @@ class PublicArchiveDisplayFallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call['chat_id'], 23)
         self.assertEqual(call['caption'], 'viewer caption')
         self.assertEqual(call['reply_markup'], 'viewer keyboard')
+
+    async def test_send_expected_preview_error_is_info_and_falls_back_to_document(self) -> None:
+        async def fail_preview(bot, media):
+            raise module.ImagePreviewError('file exceeds Bot API limit')
+
+        module.build_image_document_preview = fail_preview
+        bot = FakeBot()
+
+        with self.assertLogs(module.logger, level='INFO') as captured:
+            result = await module.send_viewer_archive_page(
+                bot=bot,
+                database=object(),
+                chat_id=23,
+                page=self.page,
+                viewer_user_id=17,
+            )
+
+        self.assertEqual(result, 'document-message')
+        self.assertEqual(bot.photo_calls, [])
+        self.assertEqual(len(bot.document_calls), 1)
+        self.assertTrue(
+            any('falling back to document' in line for line in captured.output)
+        )
 
     async def test_send_photo_telegram_failure_falls_back_to_document(self) -> None:
         async def build_preview(bot, media):
