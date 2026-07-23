@@ -1,15 +1,15 @@
 {
-  "schema_version": 62,
-  "generated_from_commit": "workspace-qwen-product",
+  "schema_version": 63,
+  "generated_from_commit": "workspace-commands-watermark-drafts",
   "broad_exception_total": 86,
   "broad_exception_files": 52,
   "broad_exception_approved": 86,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 128,
+  "callback_total": 130,
   "risky_callback_total": 3,
   "risky_callback_files": 2,
-  "guarded_callback_total": 40,
+  "guarded_callback_total": 41,
   "delegated_callback_total": 11,
   "next_slice": null,
   "broad_exceptions": [
@@ -279,8 +279,8 @@
     },
     {
       "path": "velvet_bot/presentation/telegram/public_notifications.py",
-      "function": "process_once",
-      "line": 80,
+      "function": "deliver",
+      "line": 92,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-public-notification-delivery"
@@ -576,7 +576,7 @@
     {
       "path": "velvet_bot/presentation/telegram/workspace_qwen.py",
       "function": "handle_workspace_qwen_prompt_image",
-      "line": 1094,
+      "line": 1105,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "workspace-qwen-prompt-result"
@@ -584,7 +584,7 @@
     {
       "path": "velvet_bot/presentation/telegram/workspace_qwen.py",
       "function": "handle_workspace_qwen_visual_image",
-      "line": 1179,
+      "line": 1190,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "workspace-qwen-visual"
@@ -592,7 +592,7 @@
     {
       "path": "velvet_bot/public_archive_display.py",
       "function": "build_viewer_input_media",
-      "line": 138,
+      "line": 144,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "fallback-viewer-edit-preview"
@@ -600,7 +600,7 @@
     {
       "path": "velvet_bot/public_archive_display.py",
       "function": "send_viewer_archive_page",
-      "line": 205,
+      "line": 217,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "fallback-viewer-send-preview"
@@ -913,8 +913,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/owner_menu.py",
       "function": "handle_owner_menu_callback",
-      "line": 47,
-      "ack_line": 52,
+      "line": 52,
+      "ack_line": 57,
       "pre_ack_awaits": 0,
       "total_awaits": 9,
       "risk": "early_ack"
@@ -935,6 +935,24 @@
       "ack_line": 344,
       "pre_ack_awaits": 0,
       "total_awaits": 24,
+      "risk": "early_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_product_experience.py",
+      "function": "handle_workspace_help_toggle",
+      "line": 683,
+      "ack_line": 697,
+      "pre_ack_awaits": 1,
+      "total_awaits": 12,
+      "risk": "guarded_ack"
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_product_experience.py",
+      "function": "handle_watermark_draft_callback",
+      "line": 811,
+      "ack_line": 821,
+      "pre_ack_awaits": 0,
+      "total_awaits": 20,
       "risk": "early_ack"
     },
     {
@@ -976,10 +994,10 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/public_archive/notification_open.py",
       "function": "handle_exact_notification_media",
-      "line": 33,
-      "ack_line": 42,
+      "line": 202,
+      "ack_line": 210,
       "pre_ack_awaits": 0,
-      "total_awaits": 14,
+      "total_awaits": 3,
       "risk": "early_ack"
     },
     {

@@ -7,9 +7,9 @@ AST-инвентаризация широких исключений и callback
 - raw broad exceptions: **86** в **52** файлах;
 - approved boundaries: **86**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **128**;
+- callback handlers: **130**;
 - late/missing callbacks: **3**;
-- guarded callbacks: **40**;
+- guarded callbacks: **41**;
 - delegated callbacks: **11**.
 
 ## Approved broad boundaries
@@ -47,7 +47,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/error_center.py:462` `_consume`: isolate-error-incident-item.
 - `velvet_bot/infrastructure/telegram/archive_previews.py:84` `resolve`: fallback-full-quality-archive-preview.
 - `velvet_bot/media_quality.py:103` `run_media_quality_worker`: isolate-media-quality-worker-iteration.
-- `velvet_bot/presentation/telegram/public_notifications.py:80` `process_once`: isolate-public-notification-delivery.
+- `velvet_bot/presentation/telegram/public_notifications.py:92` `deliver`: isolate-public-notification-delivery.
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/channel.py:166` `_capture_channel_post`: report-channel-ingest-failure.
 - `velvet_bot/presentation/telegram/routers/archive/guest.py:155` `_archive_guest_media`: report-guest-topic-delivery-failure.
 - `velvet_bot/presentation/telegram/routers/archive/guest.py:250` `handle_guest_archive`: report-guest-request-failure.
@@ -84,10 +84,10 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:1032` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
 - `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/storage_center.py:294` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
-- `velvet_bot/presentation/telegram/workspace_qwen.py:1094` `handle_workspace_qwen_prompt_image`: workspace-qwen-prompt-result.
-- `velvet_bot/presentation/telegram/workspace_qwen.py:1179` `handle_workspace_qwen_visual_image`: workspace-qwen-visual.
-- `velvet_bot/public_archive_display.py:138` `build_viewer_input_media`: fallback-viewer-edit-preview.
-- `velvet_bot/public_archive_display.py:205` `send_viewer_archive_page`: fallback-viewer-send-preview.
+- `velvet_bot/presentation/telegram/workspace_qwen.py:1105` `handle_workspace_qwen_prompt_image`: workspace-qwen-prompt-result.
+- `velvet_bot/presentation/telegram/workspace_qwen.py:1190` `handle_workspace_qwen_visual_image`: workspace-qwen-visual.
+- `velvet_bot/public_archive_display.py:144` `build_viewer_input_media`: fallback-viewer-edit-preview.
+- `velvet_bot/public_archive_display.py:217` `send_viewer_archive_page`: fallback-viewer-send-preview.
 - `velvet_bot/public_notifications.py:60` `run_public_notification_worker`: isolate-public-notification-worker-iteration.
 - `velvet_bot/publication_inbox_middleware.py:60` `_capture`: best-effort-publication-inbox-capture.
 - `velvet_bot/publication_worker.py:65` `run_publication_worker`: isolate-publication-worker-iteration.
