@@ -20,7 +20,12 @@ from velvet_bot.presentation.telegram.storage_scheduler import register_storage_
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark import (
     router as watermark_router,
 )
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_product_experience import (
+    install_workspace_product_experience,
+    router as workspace_product_experience_router,
+)
 
+install_workspace_product_experience()
 router = Router(name=__name__)
 
 
@@ -83,6 +88,7 @@ async def handle_owner_menu_callback(
 register_storage_center(router)
 register_storage_scheduler(router)
 register_archive_watermark_storage_handler(router)
+router.include_router(workspace_product_experience_router)
 router.include_router(watermark_router)
 
 __all__ = ("router", "show_owner_menu")

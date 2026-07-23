@@ -568,15 +568,16 @@
       "path": "velvet_bot/domains/watermark/repository.py",
       "layout": "domain",
       "domain": "watermark",
-      "production_consumer_count": 5,
+      "production_consumer_count": 6,
       "test_consumer_count": 2,
       "package_export_count": 1,
-      "reference_count": 8,
+      "reference_count": 9,
       "production_consumers": [
         "velvet_bot/app/workers.py",
         "velvet_bot/domains/watermark/service.py",
         "velvet_bot/presentation/telegram/archive_watermark_storage.py",
         "velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py",
+        "velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_product_experience.py",
         "velvet_bot/presentation/telegram/routers/public_archive/watermark_actions.py"
       ],
       "test_consumers": [
