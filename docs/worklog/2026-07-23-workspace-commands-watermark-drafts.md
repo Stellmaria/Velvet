@@ -60,7 +60,8 @@ GitHub Actions проверяет Python, PostgreSQL, миграции и ста
 - изменения параметров создают новый draft и не будят Krita;
 - отдельная кнопка переводит текущий draft в `pending` и только тогда запускает Krita;
 - готовые previews продолжают использовать прежние approve/download keyboards;
-- добавлены контрактные тесты команд, подсказок, callback доступа, миграции и draft keyboard.
+- добавлены контрактные тесты команд, подсказок, callback доступа, миграции и draft keyboard;
+- штатными генераторами обновлены P2 stability, repository layout и Telegram navigation inventories.
 
 ### Миграции и совместимость
 
@@ -68,20 +69,28 @@ GitHub Actions проверяет Python, PostgreSQL, миграции и ста
 
 ### Проверки
 
-Первый CI head `906d164cf5b619622f6cbd813d41b6e00b0c826d` подтвердил успешные type check, Docker build и backup restore drill. Unit suite дошёл до завершения и выявил только пять ожидаемых контрактных расхождений: два дублирующих slash routes и три устаревших generated inventories. Slash-дубли устранены без расширения allowlist. Машинные инвентари обновляются на финальном head.
+Проверенный implementation head `aa0c48c5f5a58c9d07b901c8b4d0a5df9a0cc1d2`:
+
+- tests `1770`: success;
+- type check `423`: success;
+- Docker build `1189`: success;
+- backup restore drill `386`: success;
+- project notes contract `1053`: success;
+- Telegram navigation inventory: **435** Python-файлов, **826** inline-кнопок, **0** нарушений;
+- P2 stability inventory: **130** callback handlers, прежние **3** late/missing callbacks.
+
+Первый CI корректно поймал два дублирующих slash route и устаревшие generated inventories. Slash-дубли устранены фильтрами активного пространства без расширения integrity allowlist, инвентари пересобраны их штатными скриптами.
 
 ### PR и commit
 
-Draft PR `#309 Expose workspace commands and defer watermark generation`. Текущий рабочий head после устранения slash-конфликтов: `16066d24e90b507c550a117a9ce6bb790f85c343`.
+Draft PR `#309 Expose workspace commands and defer watermark generation`. Проверенный implementation head: `aa0c48c5f5a58c9d07b901c8b4d0a5df9a0cc1d2`; следующий commit меняет только эту рабочую запись.
 
 ### Незавершённое
 
-- обновить generated inventories после окончательной формы router;
-- получить полный зелёный CI;
 - перевести PR из draft и слить в `main`;
 - выполнить Supervisor update;
 - проверить реальные Telegram command menus и оба watermark workflow с Krita.
 
 ### Следующий шаг
 
-После зелёного CI пройти в Telegram: открыть личное пространство → проверить команды → скрыть и вернуть подсказки → открыть шаблон watermark → загрузить изображение → последовательно изменить несколько параметров → убедиться, что Krita не запускается → нажать `Сгенерировать preview` → проверить approve/download для системного и пользовательского пространства.
+После merge пройти в Telegram: открыть личное пространство → проверить команды → скрыть и вернуть подсказки → открыть шаблон watermark → загрузить изображение → последовательно изменить несколько параметров → убедиться, что Krita не запускается → нажать `Сгенерировать preview` → проверить approve/download для системного и пользовательского пространства.
