@@ -81,6 +81,10 @@ PANEL_COMMANDS = {
     "workspace_setup",
     "workspace_guide",
     "workspace_setup_status",
+    "myarchive",
+    "archive_shortcuts",
+    "taxonomy_manage",
+    "structure_manage",
 }
 FORM_COMMANDS = {
     "create",
