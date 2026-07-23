@@ -42,6 +42,7 @@ WORKSPACE_MEMBER_COMMANDS = _BASE_WORKSPACE_MEMBER_COMMANDS | frozenset(
         "archive_shortcuts",
         "taxonomy_manage",
         "structure_manage",
+        "save_set",
     }
 )
 WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
