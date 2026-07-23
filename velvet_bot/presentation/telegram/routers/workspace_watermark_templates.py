@@ -248,7 +248,6 @@ def _colors_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
     )
 
 
-@router.callback_query(WorkspaceWatermarkTemplateCallback.filter())
 async def handle_workspace_watermark_template(
     callback: CallbackQuery,
     callback_data: WorkspaceWatermarkTemplateCallback,
@@ -354,6 +353,12 @@ async def handle_workspace_watermark_template(
         await callback.answer(str(error), show_alert=True)
         return
     await _show(callback, workspace=workspace, repository=repository)
+
+
+router.callback_query.register(
+    handle_workspace_watermark_template,
+    WorkspaceWatermarkTemplateCallback.filter(),
+)
 
 
 __all__ = ("router", "template_callback")
