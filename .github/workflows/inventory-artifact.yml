@@ -1,0 +1,33 @@
+name: inventory artifact
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Generate inventories
+        run: |
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+          python scripts/update_p2_stability_inventory.py --label workspace-card-reference-fixes --schema-version 61
+          python scripts/telegram_navigation_inventory.py --root velvet_bot --markdown docs/generated/telegram_navigation_inventory.md
+      - name: Upload inventories
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-inventories
+          path: |
+            docs/architecture_layout_inventory.json
+            docs/architecture_layout_inventory.md
+            docs/p2_stability_inventory.json
+            docs/p2_stability_inventory.md
+            docs/generated/telegram_navigation_inventory.md
