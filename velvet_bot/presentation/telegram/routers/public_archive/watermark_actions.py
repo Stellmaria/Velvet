@@ -19,6 +19,7 @@ from velvet_bot.domains.public_archive.watermark_repository import (
 from velvet_bot.domains.workspaces.watermark_assets import WorkspaceWatermarkAsset
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
+from velvet_bot.image_preview import BOT_API_DOWNLOAD_MAX_BYTES
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
 from velvet_bot.krita_supervisor import build_krita_supervisor_client
 from velvet_bot.public_manager_access import has_public_manager_access
@@ -132,6 +133,18 @@ async def enqueue_archive_watermark(
     suffix = _source_suffix(source.file_name, source.mime_type)
     if suffix is None:
         await callback.answer("Формат изображения не поддерживается Krita bridge.", show_alert=True)
+        return
+    if source.file_size is not None and source.file_size > BOT_API_DOWNLOAD_MAX_BYTES:
+        logger.debug(
+            "Skipped public archive watermark download above Bot API limit media=%s size=%s",
+            source.media_id,
+            source.file_size,
+        )
+        await callback.answer(
+            "Исходник больше 20 МБ: облачный Bot API не может скачать его для "
+            "watermark. Нужен локальный исходник.",
+            show_alert=True,
+        )
         return
 
     service = _build_service(bot, database)
