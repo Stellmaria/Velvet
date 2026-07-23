@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+from typing import Any
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -52,6 +53,38 @@ def _global_owner(user_id: int) -> bool:
     return int(user_id) == GLOBAL_WORKSPACE_CREATOR_ID
 
 
+def _kind_label(item_type: str) -> str:
+    return {
+        "category": "Категория",
+        "universe": "Вселенная",
+        "story": "История",
+    }.get(item_type, "Элемент")
+
+
+def _item_select(item_type: str) -> str:
+    if item_type == "category":
+        return """
+            SELECT id, key, label AS name, emoji, is_enabled,
+                   NULL::VARCHAR AS universe_key
+            FROM workspace_categories
+            WHERE workspace_id = $1::BIGINT AND id = $2::BIGINT
+        """
+    if item_type == "universe":
+        return """
+            SELECT id, key, label AS name, emoji, is_enabled,
+                   NULL::VARCHAR AS universe_key
+            FROM workspace_universes
+            WHERE workspace_id = $1::BIGINT AND id = $2::BIGINT
+        """
+    if item_type == "story":
+        return """
+            SELECT id, key, title AS name, emoji, is_enabled, universe_key
+            FROM workspace_stories
+            WHERE workspace_id = $1::BIGINT AND id = $2::BIGINT
+        """
+    raise ValueError("Неизвестный тип структуры.")
+
+
 async def _require_workspace(
     workspace_service: WorkspaceService,
     *,
@@ -64,7 +97,9 @@ async def _require_workspace(
         global_owner=_global_owner(user_id),
     )
     if workspace.is_system:
-        raise WorkspaceAccessError("Системная структура Velvet редактируется отдельными инструментами.")
+        raise WorkspaceAccessError(
+            "Системная структура Velvet редактируется отдельными инструментами."
+        )
     await workspace_service.require_role(
         workspace_id=workspace.id,
         user_id=int(user_id),
@@ -105,7 +140,7 @@ async def _active_personal_workspace(
     )
 
 
-async def _rows(database: Database, workspace_id: int, item_type: str):
+async def _rows(database: Database, workspace_id: int, item_type: str) -> Any:
     async with database.acquire() as connection:
         if item_type == "category":
             return await connection.fetch(
@@ -140,47 +175,18 @@ async def _rows(database: Database, workspace_id: int, item_type: str):
     raise ValueError("Неизвестный тип структуры.")
 
 
-async def _item(database: Database, workspace_id: int, item_type: str, item_id: int):
+async def _item(
+    database: Database,
+    workspace_id: int,
+    item_type: str,
+    item_id: int,
+) -> Any:
     async with database.acquire() as connection:
-        if item_type == "category":
-            return await connection.fetchrow(
-                """
-                SELECT id, key, label AS name, emoji, is_enabled, NULL::VARCHAR AS universe_key
-                FROM workspace_categories
-                WHERE workspace_id = $1::BIGINT AND id = $2::BIGINT
-                """,
-                int(workspace_id),
-                int(item_id),
-            )
-        if item_type == "universe":
-            return await connection.fetchrow(
-                """
-                SELECT id, key, label AS name, emoji, is_enabled, NULL::VARCHAR AS universe_key
-                FROM workspace_universes
-                WHERE workspace_id = $1::BIGINT AND id = $2::BIGINT
-                """,
-                int(workspace_id),
-                int(item_id),
-            )
-        if item_type == "story":
-            return await connection.fetchrow(
-                """
-                SELECT id, key, title AS name, emoji, is_enabled, universe_key
-                FROM workspace_stories
-                WHERE workspace_id = $1::BIGINT AND id = $2::BIGINT
-                """,
-                int(workspace_id),
-                int(item_id),
-            )
-    raise ValueError("Неизвестный тип структуры.")
-
-
-def _kind_label(item_type: str) -> str:
-    return {
-        "category": "Категория",
-        "universe": "Вселенная",
-        "story": "История",
-    }.get(item_type, "Элемент")
+        return await connection.fetchrow(
+            _item_select(item_type),
+            int(workspace_id),
+            int(item_id),
+        )
 
 
 def _manage_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
@@ -211,7 +217,9 @@ def _manage_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="↩️ Структура архива",
-                    callback_data=workspace_callback("taxonomy", workspace_id=workspace_id),
+                    callback_data=workspace_callback(
+                        "taxonomy", workspace_id=workspace_id
+                    ),
                 )
             ],
         ]
@@ -288,7 +296,9 @@ async def _render_list(
         [
             InlineKeyboardButton(
                 text="↩️ Управление структурой",
-                callback_data=taxonomy_admin_callback("manage", workspace_id=workspace_id),
+                callback_data=taxonomy_admin_callback(
+                    "manage", workspace_id=workspace_id
+                ),
             )
         ]
     )
@@ -376,18 +386,24 @@ async def _delete_item(
 ) -> bool:
     async with database.acquire() as connection:
         async with connection.transaction():
-            row = await _item(database, workspace_id, item_type, item_id)
+            row = await connection.fetchrow(
+                _item_select(item_type),
+                int(workspace_id),
+                int(item_id),
+            )
             if row is None:
                 return False
             key = str(row["key"])
             if item_type == "category":
                 await connection.execute(
-                    "UPDATE characters SET category = NULL WHERE workspace_id = $1 AND category = $2",
+                    "UPDATE characters SET category = NULL "
+                    "WHERE workspace_id = $1 AND category = $2",
                     int(workspace_id),
                     key,
                 )
                 result = await connection.execute(
-                    "DELETE FROM workspace_categories WHERE workspace_id = $1 AND id = $2",
+                    "DELETE FROM workspace_categories "
+                    "WHERE workspace_id = $1 AND id = $2",
                     int(workspace_id),
                     int(item_id),
                 )
@@ -402,13 +418,15 @@ async def _delete_item(
                     key,
                 )
                 result = await connection.execute(
-                    "DELETE FROM workspace_universes WHERE workspace_id = $1 AND id = $2",
+                    "DELETE FROM workspace_universes "
+                    "WHERE workspace_id = $1 AND id = $2",
                     int(workspace_id),
                     int(item_id),
                 )
             elif item_type == "story":
                 result = await connection.execute(
-                    "DELETE FROM workspace_stories WHERE workspace_id = $1 AND id = $2",
+                    "DELETE FROM workspace_stories "
+                    "WHERE workspace_id = $1 AND id = $2",
                     int(workspace_id),
                     int(item_id),
                 )
@@ -428,10 +446,16 @@ async def _update_item(
 ) -> bool:
     if field == "name":
         column = "title" if item_type == "story" else "label"
-        cleaned = normalize_taxonomy_label(value, limit=192 if item_type == "story" else 96)
+        cleaned = normalize_taxonomy_label(
+            value,
+            limit=192 if item_type == "story" else 96,
+        )
     elif field == "emoji":
         column = "emoji"
-        cleaned = normalize_emoji(value, fallback="📖" if item_type == "story" else "📁")
+        cleaned = normalize_emoji(
+            value,
+            fallback="📖" if item_type == "story" else "📁",
+        )
     else:
         raise ValueError("Неизвестное поле структуры.")
     table = {
@@ -502,7 +526,6 @@ async def handle_taxonomy_manage_command(
     await _render_manage(message, workspace)
 
 
-@router.callback_query(WorkspaceTaxonomyAdminCallback.filter())
 async def handle_taxonomy_admin_callback(
     callback: CallbackQuery,
     callback_data: WorkspaceTaxonomyAdminCallback,
@@ -601,13 +624,12 @@ async def handle_taxonomy_admin_callback(
             )
             return
         if callback_data.action == "deleteok":
-            deleted = await _delete_item(
+            await _delete_item(
                 database,
                 workspace_id=workspace.id,
                 item_type=callback_data.item_type,
                 item_id=callback_data.item_id,
             )
-            await callback.answer("Удалено." if deleted else "Элемент уже удалён.")
             await _render_list(
                 callback,
                 database=database,
@@ -681,6 +703,12 @@ async def handle_taxonomy_admin_form(
             ]
         ),
     )
+
+
+router.callback_query.register(
+    handle_taxonomy_admin_callback,
+    WorkspaceTaxonomyAdminCallback.filter(),
+)
 
 
 __all__ = (
