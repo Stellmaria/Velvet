@@ -48,6 +48,9 @@ from velvet_bot.presentation.telegram.routers.workspace_team import (
 from velvet_bot.presentation.telegram.routers.workspace_taxonomy_admin import (
     router as workspace_taxonomy_admin_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_watermark_archive_only import (
+    router as workspace_watermark_archive_only_router,
+)
 from velvet_bot.presentation.telegram.routers.workspace_watermark_templates import (
     router as workspace_watermark_templates_router,
 )
@@ -201,6 +204,7 @@ router.include_router(workspace_reference_buttons_router)
 router.include_router(workspace_reference_library_router)
 router.include_router(workspace_admin_router)
 router.include_router(workspace_team_router)
+router.include_router(workspace_watermark_archive_only_router)
 router.include_router(workspace_watermark_templates_router)
 router.include_router(workspace_watermark_router)
 router.include_router(workspace_owner_controls_router)
