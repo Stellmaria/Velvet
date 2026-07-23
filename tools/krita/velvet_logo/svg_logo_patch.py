@@ -1,73 +1,135 @@
 from __future__ import annotations
 
-import base64
+import math
+import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from PyQt5.QtCore import QBuffer, QByteArray, QIODevice
-from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtSvg import QSvgRenderer
+
+PATCH_VERSION = "2.1.1"
+_SVG_NS = "http://www.w3.org/2000/svg"
+_XLINK_NS = "http://www.w3.org/1999/xlink"
+_XML_NS = "http://www.w3.org/XML/1998/namespace"
+_NUMBER_SPLIT_RE = re.compile(r"[\s,]+")
 
 
-PATCH_VERSION = "2.1.0"
-_MAX_RASTER_SIDE = 4096.0
+def _local_name(value: str) -> tuple[str | None, str]:
+    if value.startswith("{") and "}" in value:
+        namespace, local = value[1:].split("}", 1)
+        return namespace, local
+    return None, value
 
 
-def _render_svg_to_png(raw: bytes, *, width: float, height: float) -> bytes:
-    renderer = QSvgRenderer(QByteArray(raw))
-    if not renderer.isValid():
-        raise RuntimeError(
-            f"SVG логотип не удалось прочитать (Krita plugin {PATCH_VERSION})."
-        )
+def _strip_namespaces(node: ET.Element) -> None:
+    _, local_tag = _local_name(str(node.tag))
+    node.tag = local_tag
 
-    scale = min(1.0, _MAX_RASTER_SIDE / max(width, height))
-    pixel_width = max(1, int(round(width * scale)))
-    pixel_height = max(1, int(round(height * scale)))
-    image = QImage(
-        pixel_width,
-        pixel_height,
-        QImage.Format_ARGB32_Premultiplied,
+    normalized: dict[str, str] = {}
+    for raw_name, value in node.attrib.items():
+        namespace, local_name = _local_name(str(raw_name))
+        if namespace == _XLINK_NS and local_name == "href":
+            normalized["href"] = value
+        elif namespace == _XML_NS:
+            normalized[f"xml:{local_name}"] = value
+        else:
+            normalized[local_name] = value
+    node.attrib.clear()
+    node.attrib.update(normalized)
+
+    for child in list(node):
+        _strip_namespaces(child)
+
+
+def _view_box(
+    root: ET.Element,
+    *,
+    source_width: float,
+    source_height: float,
+) -> tuple[float, float, float, float]:
+    raw = str(root.attrib.get("viewBox") or "").strip()
+    if raw:
+        parts = [part for part in _NUMBER_SPLIT_RE.split(raw) if part]
+        if len(parts) == 4:
+            try:
+                min_x, min_y, width, height = (float(part) for part in parts)
+            except ValueError:
+                pass
+            else:
+                if (
+                    all(math.isfinite(value) for value in (min_x, min_y, width, height))
+                    and width > 0
+                    and height > 0
+                ):
+                    return min_x, min_y, width, height
+    return 0.0, 0.0, source_width, source_height
+
+
+def _serialize_children(root: ET.Element) -> tuple[str, str]:
+    definitions: list[str] = []
+    visible: list[str] = []
+    for child in list(root):
+        payload = ET.tostring(child, encoding="unicode", short_empty_elements=True)
+        if str(child.tag).casefold() in {"defs", "style", "metadata", "title", "desc"}:
+            definitions.append(payload)
+        else:
+            visible.append(payload)
+    if not visible:
+        raise ValueError("SVG логотип не содержит видимых элементов.")
+    return "".join(definitions), "".join(visible)
+
+
+def _flatten_svg(
+    raw: bytes,
+    *,
+    x: float,
+    y: float,
+    logo_width: float,
+    logo_height: float,
+    source_width: float,
+    source_height: float,
+) -> str:
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as error:
+        raise ValueError("SVG логотип не удалось разобрать.") from error
+
+    _, root_name = _local_name(str(root.tag))
+    if root_name.casefold() != "svg":
+        raise ValueError("Файл не содержит корневой элемент SVG.")
+
+    min_x, min_y, view_width, view_height = _view_box(
+        root,
+        source_width=source_width,
+        source_height=source_height,
     )
-    image.fill(0)
+    _strip_namespaces(root)
+    definitions, visible = _serialize_children(root)
 
-    painter = QPainter(image)
-    try:
-        renderer.render(painter)
-    finally:
-        painter.end()
-
-    buffer = QBuffer()
-    if not buffer.open(QIODevice.WriteOnly):
-        raise RuntimeError(
-            f"Не удалось подготовить PNG логотипа (Krita plugin {PATCH_VERSION})."
-        )
-    try:
-        if not image.save(buffer, "PNG"):
-            raise RuntimeError(
-                f"Не удалось сохранить PNG логотипа (Krita plugin {PATCH_VERSION})."
-            )
-        payload = bytes(buffer.data())
-    finally:
-        buffer.close()
-    if not payload:
-        raise RuntimeError(
-            f"Получен пустой PNG логотипа (Krita plugin {PATCH_VERSION})."
-        )
-    return payload
+    scale = min(logo_width / view_width, logo_height / view_height)
+    rendered_width = view_width * scale
+    rendered_height = view_height * scale
+    offset_x = x + (logo_width - rendered_width) / 2.0
+    offset_y = y + (logo_height - rendered_height) / 2.0
+    transform = (
+        f"translate({offset_x:.8g} {offset_y:.8g}) "
+        f"scale({scale:.8g}) "
+        f"translate({-min_x:.8g} {-min_y:.8g})"
+    )
+    return f"{definitions}<g transform=\"{transform}\">{visible}</g>"
 
 
 def install_svg_logo_patch(extension_class) -> None:
-    """Make custom SVG assets deterministic for Krita's addShapesFromSvg API.
+    """Flatten custom SVG assets before Krita's addShapesFromSvg API.
 
-    Krita is inconsistent when one SVG document is nested inside another. The bot
-    still validates and stores the original SVG, but the desktop plugin renders it
-    to a transparent PNG first and embeds that PNG into the normal wrapper used by
-    the already working custom-PNG path.
+    Krita can reject nested SVG documents and desktop builds may become unstable when
+    PyQt's QtSvg rasterizer is loaded inside the plugin process. The bridge therefore
+    keeps the source as vector data, removes XML namespace prefixes and places the
+    source children into one transformed group in the outer document.
     """
 
-    if getattr(extension_class, "_velvet_svg_raster_patch", False):
+    if getattr(extension_class, "_velvet_svg_flatten_patch", False):
         return
-
     original_build_svg = extension_class._build_svg
 
     def build_svg(
@@ -94,13 +156,6 @@ def install_svg_logo_patch(extension_class) -> None:
         if source_width <= 0 or source_height <= 0:
             raise ValueError("Некорректные размеры пользовательского логотипа.")
 
-        png = _render_svg_to_png(
-            source.read_bytes(),
-            width=source_width,
-            height=source_height,
-        )
-        encoded = base64.b64encode(png).decode("ascii")
-
         width = float(document.width())
         height = float(document.height())
         points = 72.0 / float(document.resolution() or 72.0)
@@ -111,20 +166,30 @@ def install_svg_logo_patch(extension_class) -> None:
         vertical, horizontal = self._parts(settings["position"])
         x = self._axis(horizontal, canvas_width, logo_width, margin)
         y = self._axis(vertical, canvas_height, logo_height, margin)
-        body = (
-            f'<image x="{x}" y="{y}" width="{logo_width}" height="{logo_height}" '
-            f'preserveAspectRatio="xMidYMid meet" '
-            f'href="data:image/png;base64,{encoded}" />'
-        )
+
+        try:
+            body = _flatten_svg(
+                source.read_bytes(),
+                x=x,
+                y=y,
+                logo_width=logo_width,
+                logo_height=logo_height,
+                source_width=source_width,
+                source_height=source_height,
+            )
+        except (OSError, ValueError) as error:
+            raise RuntimeError(
+                f"SVG логотип не удалось подготовить (Krita plugin {PATCH_VERSION}): {error}"
+            ) from error
+
         return (
-            f'<svg xmlns="http://www.w3.org/2000/svg" '
-            f'xmlns:xlink="http://www.w3.org/1999/xlink" width="{canvas_width}pt" '
-            f'height="{canvas_height}pt" viewBox="0 0 {canvas_width} {canvas_height}">'
-            f"{body}</svg>"
+            f'<svg xmlns="{_SVG_NS}" xmlns:xlink="{_XLINK_NS}" '
+            f'width="{canvas_width}pt" height="{canvas_height}pt" '
+            f'viewBox="0 0 {canvas_width} {canvas_height}">{body}</svg>'
         )
 
     extension_class._build_svg = build_svg
-    extension_class._velvet_svg_raster_patch = True
+    extension_class._velvet_svg_flatten_patch = True
     extension_class.PLUGIN_VERSION = PATCH_VERSION
 
 

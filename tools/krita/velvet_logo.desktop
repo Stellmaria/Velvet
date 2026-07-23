@@ -3,6 +3,6 @@ Type=Service
 ServiceTypes=Krita/PythonPlugin
 X-KDE-Library=velvet_logo
 X-Python-2-Compatible=false
-X-Velvet-Plugin-Version=2.1.0
+X-Velvet-Plugin-Version=2.1.1
 Name=Velvet Anatomy Logo
 Comment=Places the Velvet Anatomy logo consistently on any canvas.
