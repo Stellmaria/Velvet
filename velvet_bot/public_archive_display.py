@@ -11,7 +11,7 @@ from velvet_bot.archive_catalog import ArchivePage
 from velvet_bot.archive_ui import build_input_media
 from velvet_bot.character_directory import get_character_directory_item
 from velvet_bot.database import Database
-from velvet_bot.image_preview import build_image_document_preview
+from velvet_bot.image_preview import ImagePreviewError, build_image_document_preview
 from velvet_bot.public_catalog import get_public_media_state
 from velvet_bot.public_manager_ui import build_manager_archive_keyboard
 from velvet_bot.public_ui import build_public_archive_keyboard, format_public_archive_caption
@@ -135,6 +135,12 @@ async def build_viewer_input_media(
                 parse_mode=ParseMode.HTML,
                 has_spoiler=page.media.is_spoiler,
             )
+        except ImagePreviewError as error:
+            logger.info(
+                "Public image preview unavailable; falling back to document media=%s: %s",
+                page.media.id,
+                error,
+            )
         except Exception:  # p2-approved-boundary: fallback-viewer-edit-preview
             logger.exception("Failed to prepare compressed public image preview")
     return build_input_media(page.media, caption)
@@ -199,6 +205,12 @@ async def send_viewer_archive_page(
                 photo=upload,
                 has_spoiler=page.media.is_spoiler,
                 **common,
+            )
+        except ImagePreviewError as error:
+            logger.info(
+                "Compressed public preview unavailable; falling back to document media=%s: %s",
+                page.media.id,
+                error,
             )
         except TelegramAPIError as error:
             logger.info("Compressed public preview fallback to document: %s", error)
