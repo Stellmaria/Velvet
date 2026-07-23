@@ -162,18 +162,23 @@ from velvet_bot.presentation.telegram.routers.archive.spoiler import (
 from velvet_bot.presentation.telegram.routers.publication.safe import (
     router as publication_center_router,
 )
+from velvet_bot.presentation.telegram.routers.archive.save_modes import (
+    handle_pending_save_upload,
+    install_save_command_modes,
+    router as save_modes_router,
+)
 from velvet_bot.presentation.telegram.routers.archive.save import (
     PendingSaveUploadFilter,
-    handle_pending_save_upload,
     router as archive_router,
 )
 
 install_workspace_watermark_templates()
+install_save_command_modes()
 apply_workspace_ui_adjustments()
 
 router = Router(name=__name__)
-# Bundle-level handlers run before child routers. An active `/save` session must
-# therefore win before broad reference photo/document handlers.
+# Bundle-level handlers run before child routers. Any active single or set save
+# session must therefore win before broad reference photo/document handlers.
 router.message.register(
     handle_pending_save_upload,
     F.photo | F.video | F.animation | F.document,
@@ -186,6 +191,9 @@ router.include_router(discussion_updates_router)
 # `/start` is deliberately before all workspace form routers: it is the visible
 # recovery action when a previous button or upload session was interrupted.
 router.include_router(start_router)
+# `/save` without attached media opens one-file mode, while `/save_set` opens a
+# batch. This router must precede legacy `/save` and guided archive controllers.
+router.include_router(save_modes_router)
 # Workspace onboarding must intercept the first workspace-name FSM response before
 # the legacy workspace router and must own setup/binding commands before broad handlers.
 router.include_router(workspace_onboarding_channel_bind_router)
