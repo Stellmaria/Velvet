@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from aiogram import F, Router
 
+from velvet_bot.domains.watermark.workspace_template_runtime import (
+    install_workspace_watermark_templates,
+)
 from velvet_bot.presentation.telegram.public_archive_rework import (
     register_public_archive_rework,
 )
@@ -41,6 +44,12 @@ from velvet_bot.presentation.telegram.routers.workspace_admin import (
 )
 from velvet_bot.presentation.telegram.routers.workspace_team import (
     router as workspace_team_router,
+)
+from velvet_bot.presentation.telegram.routers.workspace_taxonomy_admin import (
+    router as workspace_taxonomy_admin_router,
+)
+from velvet_bot.presentation.telegram.routers.workspace_watermark_templates import (
+    router as workspace_watermark_templates_router,
 )
 from velvet_bot.presentation.telegram.routers.workspace_watermark import (
     router as workspace_watermark_router,
@@ -156,6 +165,7 @@ from velvet_bot.presentation.telegram.routers.archive.save import (
     router as archive_router,
 )
 
+install_workspace_watermark_templates()
 apply_workspace_ui_adjustments()
 
 router = Router(name=__name__)
@@ -180,6 +190,7 @@ router.include_router(workspace_onboarding_router)
 # Workspace policy commands, callbacks and FSM forms must run before /start and
 # broad owner/archive controllers. Inline pickers and automatic topic creation must
 # intercept the personal character module before its broad text-command handler.
+router.include_router(workspace_taxonomy_admin_router)
 router.include_router(workspace_guided_actions_router)
 router.include_router(workspace_character_pickers_router)
 router.include_router(workspace_character_topic_creation_router)
@@ -190,6 +201,7 @@ router.include_router(workspace_reference_buttons_router)
 router.include_router(workspace_reference_library_router)
 router.include_router(workspace_admin_router)
 router.include_router(workspace_team_router)
+router.include_router(workspace_watermark_templates_router)
 router.include_router(workspace_watermark_router)
 router.include_router(workspace_owner_controls_router)
 # The tenant publication entry must precede generic `wsp:module` help. The
