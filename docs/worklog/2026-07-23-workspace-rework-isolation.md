@@ -1,8 +1,8 @@
-# Сессия: workspace rework isolation
+# Сессия: workspace rework isolation и пользовательский Qwen
 
 - Дата: 2026-07-23
 - ID: `2026-07-23-workspace-rework-isolation`
-- Линия/фаза: personal workspace media controls
+- Линия/фаза: personal workspace media controls и Qwen product
 - Статус: `частично`
 - Ветка: `agent/workspace-rework-isolation`
 - Базовый commit: `f6ef9ed2f9e24b11d63a0635791eacba583f51a0`
@@ -11,76 +11,86 @@
 
 ### Цель
 
-Изолировать очередь доработки по пользовательским пространствам. Заявка владельца личного архива должна скрывать и блокировать материал только в его пространстве, не затрагивая системный архив или другой workspace, даже когда один дедуплицированный `media_id` связан с несколькими персонажами.
+Изолировать очередь доработки и дать участникам личных пространств полноценный Qwen без доступа к системному Quality Center Velvet. Проверки, решения, калибровка, история и отчёты одного workspace не должны пересекаться с системным или соседним архивом, даже если физический `media_id` дедуплицирован и используется в нескольких пространствах.
 
 ### Исходный контекст
 
-`media_rework_items` имела глобальный первичный ключ только по `media_id`, `request_manual_rework()` скрывала все строки `character_media` этого файла, а публичная видимость исключала материал при любой активной заявке независимо от workspace. Кнопка личной карточки отправляла материал в общую очередь, а завершить такую заявку из пользовательского пространства было нельзя.
+`media_rework_items` имела глобальный первичный ключ только по `media_id`, а ручная заявка скрывала все связи файла. Пользовательский модуль Qwen показывал только переход к сравнению с референсом. Полная проверка качества использовала глобальную таблицу `media_ai_quality_checks`, поэтому безопасно открыть её личным пространствам было нельзя. Системные промт-сравнение, палитра, композиция и история AI-заданий также не имели workspace boundary.
 
 ### Планируемый объём
 
-- добавить `workspace_id` в элементы и события очереди;
-- заменить первичный ключ на `(workspace_id, media_id)`;
-- сохранить системный Qwen-trigger в workspace `1`;
-- ограничить ручное скрытие только связями текущего пространства;
-- сделать repository workspace-scoped с совместимым default `1`;
-- исключать материал из публичной выдачи только при активной заявке его workspace;
-- перехватить личные actions `rework` и `public` раньше generic owner handler;
-- превратить кнопку в понятный цикл «начать / завершить»;
-- запретить возврат в публичный архив до завершения scoped-заявки;
-- проверить один общий media ID, связанный с двумя пространствами.
+- изолировать rework items и events по `(workspace_id, media_id)`;
+- сохранить системный Quality Center и его trigger в workspace `1`;
+- добавить отдельное workspace-хранилище Qwen checks, feedback и job history;
+- запускать локальный Qwen worker только для разрешённых и включённых пространств;
+- дать reviewer+ просмотр и запуск анализа;
+- дать editor+ решения «принять» и «на доработку»;
+- добавить карточную проверку текущего архивного изображения;
+- добавить проверку всего архива, очереди и разделы отчётов;
+- добавить пользовательские workflows «промт против результата» и «палитра и композиция»;
+- сохранить workspace-safe сравнение с референсом;
+- добавить workspace-specific calibration по решениям редакторов;
+- не открывать пользователям системную AI-очередь, медиасеты или калибровку Стэл.
 
 ### Критерии готовности
 
-- один `media_id` может иметь независимые rework items в разных workspaces;
-- личная заявка не скрывает системную или соседнюю связь файла;
-- system Quality Center продолжает работать через workspace `1`;
-- повторное нажатие владельца завершает scoped-заявку;
-- завершение не публикует материал автоматически;
-- возврат в публичный архив заблокирован только активной заявкой текущего workspace;
+- один `media_id` имеет независимые rework и Qwen records в разных workspaces;
+- личная заявка и решение не скрывают и не меняют системную или соседнюю связь;
+- Qwen worker не берёт задания выключенного или запрещённого пространства;
+- reviewer может запустить и прочитать отчёт, но не принять редакторское решение;
+- editor/admin/owner может принять материал или отправить его на scoped-доработку;
+- prompt/result, palette/composition и history сохраняются только в текущем workspace;
+- system Quality Center продолжает работать через старые таблицы без изменения API;
 - fresh migration order проходит на чистой PostgreSQL;
 - tests, type check, Docker build, backup restore drill и project notes contract проходят.
 
 ### Риски и ограничения
 
-Личный rework пока не запускает отдельную Qwen-перепроверку: retry остаётся системной операцией workspace `1`, поскольку global `media_ai_quality_checks` всё ещё имеет один ключ на `media_id`. Личное пространство получает безопасный manual hold и ручное завершение. Полная workspace-scoped AI-проверка потребует отдельной миграции quality checks.
+Desktop Ollama/Qwen не проверяется GitHub Actions. CI подтверждает схему, роуты, типы и контейнер, но после merge потребуется живой тест с реально запущенной моделью. Пользовательский Qwen использует тот же локальный GPU lock, поэтому системная и пользовательская задачи выполняются последовательно, а не устраивают конкурс на уничтожение видеопамяти.
 
 ## После завершения
 
 ### Фактически сделано
 
-- новая миграция `z002_workspace_media_rework_isolation.sql` выполняется после `z001` на чистой базе;
-- `media_rework_items` и `media_rework_events` получили обязательный `workspace_id` с backfill в system workspace `1`;
-- item primary key и event foreign key стали составными;
-- quality trigger переписан на system workspace `1` и composite conflict target;
-- `request_manual_rework()` проверяет принадлежность файла и скрывает только ссылки выбранного workspace;
-- `MediaReworkRepository` принимает workspace и изолирует summary/list/get/is_active/resolve;
-- Qwen accept/retry остаются доступными только системному workspace;
-- public visibility сопоставляет активную заявку с workspace персонажа;
-- добавлен ранний router личной карточки для начала/завершения доработки и безопасного возврата в public;
-- кнопка и справка описывают двухэтапный lifecycle;
-- интеграционный тест связывает один `media_id` с system и personal workspace и проверяет независимость видимости и очереди.
+- migration `z002_workspace_media_rework_isolation.sql` добавляет workspace scope в rework items/events и составные ключи;
+- ручное скрытие и публичная видимость ограничены текущим workspace;
+- migration `z003_workspace_qwen_product.sql` создаёт `workspace_qwen_checks`, `workspace_qwen_feedback` и `workspace_qwen_jobs`;
+- quality check primary key равен `(workspace_id, media_id)`;
+- feedback-trigger сохраняет решение и калибровочный outcome только своего workspace;
+- repository проверяет принадлежность изображения пространству, ведёт очередь, отчёты, решения, ошибки, калибровку и историю;
+- worker выбирает задания только при `module.is_allowed`, `module.is_enabled` и `workspace_settings.qwen_enabled`;
+- system и personal Qwen используют один local AI lock;
+- в Qwen-меню личного пространства добавлены проверки архива, полный аудит, prompt/result, palette/composition, references и history;
+- на карточке архивного изображения появилась кнопка `🤖 Qwen-проверка`;
+- reviewer+ может запускать и читать проверки;
+- editor+ может принять результат или создать workspace-scoped rework hold;
+- повторная проверка существующей scoped-доработки переводит её в `ready_for_review` после завершения Qwen;
+- prompt/result и palette/composition выполняются немедленно, сохраняют workspace job и доступны в истории;
+- старый reference comparison остаётся workspace-scoped и открывается из общего Qwen-меню;
+- callback prefix и FSM формы добавлены в guarded workspace access middleware;
+- старый reference-only Qwen entry перехватывается новым ранним personal router до generic owner controls.
 
 ### Миграции и совместимость
 
-Добавлена additive migration `z002_workspace_media_rework_isolation.sql`. Старый `z001` не изменяется. Все старые вызовы repository и manual request без workspace продолжают использовать system workspace `1`. Существующие system queue handlers сохраняют API.
+Добавлены additive migrations `z002_workspace_media_rework_isolation.sql` и `z003_workspace_qwen_product.sql`. Глобальные таблицы системного Quality Center не изменялись. Старые system repository/service/worker и команды Стэл продолжают использовать прежние API. Личный Qwen хранится отдельно, поэтому одинаковый `media_id` может безопасно иметь разные отчёты и решения.
 
 ### Проверки
 
-GitHub Actions будут запущены после открытия draft PR. Особое внимание требуется fresh database migration, PostgreSQL integration cases, router inventories и backup restore drill.
+Первый расширенный head `96a0a732cf001df176bc01f2ded0a7483b93495e`: type check `398` и project notes `1034` прошли; tests `1745`, Docker build `1165` и backup restore drill `369` ещё выполнялись на момент записи. Финальные номера и исправления будут добавлены после полного зелёного запуска.
 
 ### PR и commit
 
-Draft PR будет открыт из `agent/workspace-rework-isolation` в `main`. Финальный head, номера CI и merge commit будут добавлены после зелёного полного workflow.
+Draft PR `#307` расширен с rework isolation до полного personal workspace Qwen product. Финальный head и merge commit будут записаны после CI.
 
 ### Незавершённое
 
-- открыть draft PR;
-- исправить замечания tests/type check/Docker/backup restore/project notes;
-- после merge выполнить `Supervisor → Update` и проверить применение `z002`;
-- провести живой сценарий двумя workspace;
-- отдельно спроектировать workspace-scoped Qwen recheck, если он нужен владельцам личных архивов.
+- дождаться всех workflow для расширенного Qwen head;
+- исправить возможные failures и обновить generated inventories;
+- перевести draft PR в ready и слить в `main`;
+- выполнить `Supervisor → Update`, применить `z002` и `z003`;
+- провести живой сценарий с reviewer и editor в личном workspace;
+- проверить один quality report, prompt/result, palette/composition и history на реальном Ollama/Qwen.
 
 ### Следующий шаг
 
-Открыть PR и проверить сценарий: общий Telegram-файл сохранён в system и personal workspace → personal owner ставит hold → system material остаётся публичным → personal owner завершает hold → отдельно возвращает personal material в public.
+Получить зелёный CI, слить PR, затем в Telegram включить пользователю модуль Qwen, открыть личный архив, нажать Qwen на изображении и проверить, что отчёт и решение остаются только в выбранном workspace.
