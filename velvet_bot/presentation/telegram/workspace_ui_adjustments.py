@@ -76,9 +76,12 @@ def _workspace_home_text(
 
 
 def _media_card_keyboard(*args, **kwargs) -> InlineKeyboardMarkup:
+    qwen_access = bool(
+        kwargs.pop("qwen_access", kwargs.get("owner_access", False))
+    )
     keyboard = _original_media_card_keyboard(*args, **kwargs)
-    help_row: list[InlineKeyboardButton] | None = None
     rows: list[list[InlineKeyboardButton]] = []
+    help_row: list[InlineKeyboardButton] | None = None
     for row in keyboard.inline_keyboard:
         normalized: list[InlineKeyboardButton] = []
         for button in row:
@@ -105,7 +108,7 @@ def _media_card_keyboard(*args, **kwargs) -> InlineKeyboardMarkup:
             or bool(getattr(media, "is_image_document", False))
         )
     )
-    if image_media and not any(
+    if image_media and qwen_access and not any(
         button.text == "🤖 Qwen-проверка" for row in rows for button in row
     ):
         rows.insert(
@@ -182,12 +185,13 @@ async def _show_media_help(
         "<b>Справка по кнопкам материала</b>\n\n"
         "<b>Лайк / Личная отметка</b> — отмечает текущую работу. В приватном "
         "архиве это личная отметка владельца; в публичном учитывается обычный лайк.\n\n"
-        "<b>Подписаться</b> — включает или отключает уведомления о новых материалах "
-        "этого персонажа.\n\n"
+        "<b>Подписаться</b> — включает или отключает уведомления о новых публичных "
+        "материалах этого персонажа.\n\n"
         "<b>Скачать оригинал</b> — отправляет владельцу сохранённый исходный файл.\n\n"
         "<b>Быстрый watermark</b> — создаёт отдельную копию с текущим логотипом "
         "пространства и шаблоном положения, прозрачности, размера и отступа. "
-        "Оригинал не заменяется до явного подтверждения.\n\n"
+        "Оригинал не заменяется. Если отдельное назначение для копий не подключено, "
+        "после подтверждения готовый PNG возвращается в текущий чат.\n\n"
         "<b>Qwen-проверка</b> — ставит текущее изображение в изолированную очередь "
         "этого пространства. Проверяющий видит технический отчёт; редактор или "
         "владелец может принять работу либо отправить её на доработку.\n\n"
