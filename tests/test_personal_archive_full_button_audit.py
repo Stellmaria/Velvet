@@ -15,14 +15,11 @@ from velvet_bot.presentation.telegram.routers.workspace_watermark_archive_only i
     _download_policy_error,
     _watermark_prerequisite_error,
 )
-from velvet_bot.presentation.telegram.workspace_ui_adjustments import (
-    _media_card_keyboard,
-)
+from velvet_bot.presentation.telegram.workspace_ui_adjustments import _media_card_keyboard
 from velvet_bot.workspace_ui import (
     build_workspace_home_keyboard,
     build_workspace_member_home_keyboard,
 )
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,25 +33,17 @@ def _rows(keyboard) -> list[list[str]]:
 
 
 def _actions(keyboard, prefix: str) -> set[str]:
-    result: set[str] = set()
-    for row in keyboard.inline_keyboard:
-        for button in row:
-            data = str(button.callback_data or "")
-            if data.startswith(prefix + ":"):
-                result.add(data.split(":", maxsplit=2)[1])
-    return result
+    return {
+        str(button.callback_data).split(":", maxsplit=2)[1]
+        for row in keyboard.inline_keyboard
+        for button in row
+        if str(button.callback_data or "").startswith(prefix + ":")
+    }
 
 
-def _workspace(workspace_id: int = 7) -> Workspace:
+def _workspace() -> Workspace:
     now = datetime.now(UTC)
-    return Workspace(
-        workspace_id,
-        f"space-{workspace_id}",
-        "Личный архив",
-        False,
-        now,
-        now,
-    )
+    return Workspace(7, "space-7", "Личный архив", False, now, now)
 
 
 def _modules(*keys: str) -> tuple[WorkspaceModuleSetting, ...]:
@@ -77,10 +66,7 @@ def _archive_page(*, media_type: str = "photo", image_document: bool = False):
     return SimpleNamespace(
         offset=0,
         total=2,
-        character=SimpleNamespace(
-            id=71,
-            archive_topic_url="https://t.me/c/1/2",
-        ),
+        character=SimpleNamespace(id=71, archive_topic_url="https://t.me/c/1/2"),
         media=SimpleNamespace(
             id=111,
             media_type=media_type,
@@ -92,25 +78,40 @@ def _archive_page(*, media_type: str = "photo", image_document: bool = False):
     )
 
 
+def _owner_card(*, media_type: str = "photo"):
+    return _media_card_keyboard(
+        _archive_page(media_type=media_type),
+        workspace_id=7,
+        owner_access=True,
+        public_state=SimpleNamespace(
+            liked_by_user=False,
+            like_count=3,
+            subscribed=False,
+        ),
+        public_enabled=True,
+        has_watermark_asset=True,
+        personal_like=False,
+    )
+
+
 class PersonalArchiveHomeAuditTests(unittest.TestCase):
     def test_owner_home_exposes_every_enabled_product_module(self) -> None:
-        modules = _modules(
-            "characters",
-            "archive",
-            "taxonomy",
-            "references",
-            "public_archive",
-            "watermark",
-            "qwen",
-            "publications",
-            "analytics",
-            "team",
-        )
         labels = _labels(
             build_workspace_home_keyboard(
                 _workspace(),
                 public_enabled=False,
-                modules=modules,
+                modules=_modules(
+                    "characters",
+                    "archive",
+                    "taxonomy",
+                    "references",
+                    "public_archive",
+                    "watermark",
+                    "qwen",
+                    "publications",
+                    "analytics",
+                    "team",
+                ),
             )
         )
         for expected in (
@@ -130,7 +131,7 @@ class PersonalArchiveHomeAuditTests(unittest.TestCase):
         ):
             self.assertIn(expected, labels)
 
-    def test_reviewer_home_is_read_only_except_review_tools(self) -> None:
+    def test_reviewer_home_only_exposes_read_and_review_tools(self) -> None:
         labels = _labels(
             build_workspace_member_home_keyboard(
                 _workspace(),
@@ -167,20 +168,7 @@ class PersonalArchiveHomeAuditTests(unittest.TestCase):
 
 class PersonalArchiveMediaCardAuditTests(unittest.TestCase):
     def test_owner_image_card_exposes_complete_action_matrix(self) -> None:
-        keyboard = _media_card_keyboard(
-            _archive_page(),
-            workspace_id=7,
-            owner_access=True,
-            public_state=SimpleNamespace(
-                liked_by_user=False,
-                like_count=3,
-                subscribed=False,
-            ),
-            public_enabled=True,
-            has_watermark_asset=True,
-            personal_like=False,
-        )
-        labels = _labels(keyboard)
+        keyboard = _owner_card()
         for expected in (
             "◀️",
             "▶️",
@@ -199,12 +187,11 @@ class PersonalArchiveMediaCardAuditTests(unittest.TestCase):
             "🗑 Удалить",
             "✖ Закрыть",
         ):
-            self.assertIn(expected, labels)
-
-        actions = _actions(keyboard, "wpa")
+            self.assertIn(expected, _labels(keyboard))
         self.assertEqual(
             {
                 "show",
+                "noop",
                 "like",
                 "sub",
                 "download",
@@ -219,34 +206,22 @@ class PersonalArchiveMediaCardAuditTests(unittest.TestCase):
                 "delete",
                 "close",
             },
-            actions,
+            _actions(keyboard, "wpa"),
         )
 
-    def test_help_is_at_bottom_immediately_before_final_navigation(self) -> None:
-        rows = _rows(
-            _media_card_keyboard(
-                _archive_page(),
-                workspace_id=7,
-                owner_access=True,
-                public_state=SimpleNamespace(
-                    liked_by_user=False,
-                    like_count=0,
-                    subscribed=False,
-                ),
-                public_enabled=True,
-                has_watermark_asset=False,
-            )
-        )
+    def test_help_is_penultimate_and_final_row_recovers_or_closes(self) -> None:
+        rows = _rows(_owner_card())
         self.assertEqual(["❓ Что делают кнопки"], rows[-2])
         self.assertIn("✖ Закрыть", rows[-1])
 
     def test_viewer_card_hides_owner_and_qwen_actions(self) -> None:
-        keyboard = _media_card_keyboard(
-            _archive_page(),
-            workspace_id=7,
-            owner_access=False,
+        labels = _labels(
+            _media_card_keyboard(
+                _archive_page(),
+                workspace_id=7,
+                owner_access=False,
+            )
         )
-        labels = _labels(keyboard)
         for forbidden in (
             "📥 Скачать оригинал",
             "⚡ Быстрый watermark",
@@ -260,23 +235,11 @@ class PersonalArchiveMediaCardAuditTests(unittest.TestCase):
     def test_qwen_button_is_not_added_to_video_or_animation(self) -> None:
         for media_type in ("video", "animation"):
             with self.subTest(media_type=media_type):
-                labels = _labels(
-                    _media_card_keyboard(
-                        _archive_page(media_type=media_type),
-                        workspace_id=7,
-                        owner_access=True,
-                        public_state=SimpleNamespace(
-                            liked_by_user=False,
-                            like_count=0,
-                            subscribed=False,
-                        ),
-                    )
-                )
-                self.assertNotIn("🤖 Qwen-проверка", labels)
+                self.assertNotIn("🤖 Qwen-проверка", _labels(_owner_card(media_type=media_type)))
 
 
 class PersonalReferenceButtonAuditTests(unittest.TestCase):
-    def test_reference_card_has_add_replace_delete_compare_and_recovery(self) -> None:
+    def test_reference_card_has_full_management_and_recovery(self) -> None:
         page = SimpleNamespace(
             offset=0,
             total=2,
@@ -296,7 +259,7 @@ class PersonalReferenceButtonAuditTests(unittest.TestCase):
         ):
             self.assertIn(expected, labels)
 
-    def test_empty_reference_card_still_has_add_and_exit(self) -> None:
+    def test_empty_reference_card_keeps_add_and_exit(self) -> None:
         labels = _labels(_empty_reference_keyboard(71))
         self.assertIn("➕ Добавить референсы", labels)
         self.assertIn("↩️ К персонажам", labels)
@@ -304,7 +267,7 @@ class PersonalReferenceButtonAuditTests(unittest.TestCase):
 
 
 class PersonalArchivePolicyAuditTests(unittest.TestCase):
-    def test_watermark_requires_module_and_asset_but_not_storage_destination(self) -> None:
+    def test_watermark_needs_module_and_asset_not_storage_destination(self) -> None:
         self.assertIsNone(
             _watermark_prerequisite_error(module_enabled=True, has_asset=True)
         )
@@ -317,7 +280,7 @@ class PersonalArchivePolicyAuditTests(unittest.TestCase):
             _watermark_prerequisite_error(module_enabled=True, has_asset=False),
         )
 
-    def test_download_policy_keeps_real_prerequisites_only(self) -> None:
+    def test_download_policy_keeps_only_real_prerequisites(self) -> None:
         self.assertIsNone(
             _download_policy_error(
                 audience="all",
@@ -345,7 +308,7 @@ class PersonalArchivePolicyAuditTests(unittest.TestCase):
             ),
         )
 
-    def test_high_risk_actions_are_intercepted_before_generic_owner_handler(self) -> None:
+    def test_high_risk_actions_run_before_generic_owner_handler(self) -> None:
         bundle = (
             ROOT / "velvet_bot/presentation/telegram/routers/archive_and_public.py"
         ).read_text(encoding="utf-8")
@@ -364,10 +327,10 @@ class PersonalArchivePolicyAuditTests(unittest.TestCase):
         self.assertIn("register_workspace_qwen(router)", early)
         self.assertIn("workspace_id=workspace.id", early)
 
-    def test_subscription_delivery_is_workspace_scoped(self) -> None:
-        dispatcher = (
-            ROOT / "velvet_bot/app/public_notifications.py"
-        ).read_text(encoding="utf-8")
+    def test_subscription_delivery_and_open_are_workspace_scoped(self) -> None:
+        dispatcher = (ROOT / "velvet_bot/app/public_notifications.py").read_text(
+            encoding="utf-8"
+        )
         notification_open = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/public_archive/"
@@ -376,9 +339,9 @@ class PersonalArchivePolicyAuditTests(unittest.TestCase):
         self.assertIn("WorkspacePublicNotificationDispatcher", dispatcher)
         self.assertIn("public_archive_enabled", dispatcher)
         self.assertIn("workspace_id", notification_open)
-        self.assertIn("set_public_browse_workspace", notification_open)
+        self.assertIn("select_public_workspace", notification_open)
 
-    def test_runtime_help_only_documents_buttons_on_the_media_card(self) -> None:
+    def test_runtime_help_only_documents_current_card_buttons(self) -> None:
         source = (
             ROOT / "velvet_bot/presentation/telegram/workspace_ui_adjustments.py"
         ).read_text(encoding="utf-8")
@@ -396,7 +359,11 @@ class PersonalArchivePolicyAuditTests(unittest.TestCase):
             "Закрыть",
         ):
             self.assertIn(expected, help_text)
-        for stale in ("+ Создать персонажа", "Сохранить / Загрузить медиа", "Промт</b>"):
+        for stale in (
+            "+ Создать персонажа",
+            "Сохранить / Загрузить медиа",
+            "Промт</b>",
+        ):
             self.assertNotIn(stale, help_text)
 
 
