@@ -1,0 +1,40 @@
+name: regenerate workspace inventories
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Regenerate inventories
+        run: |
+          python scripts/update_p2_stability_inventory.py --label workspace-commands-watermark-drafts --schema-version 63
+          python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+          python scripts/telegram_navigation_inventory.py --root velvet_bot --markdown docs/generated/telegram_navigation_inventory.md
+
+      - name: Upload generated inventories
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-generated-inventories
+          path: |
+            docs/p2_stability_inventory.json
+            docs/p2_stability_inventory.md
+            docs/repository_layout_inventory.json
+            docs/repository_layout_inventory.md
+            docs/generated/telegram_navigation_inventory.md
+          if-no-files-found: error
+          retention-days: 1
