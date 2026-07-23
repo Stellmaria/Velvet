@@ -115,43 +115,31 @@ def _template_keyboard(workspace_id: int, settings) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="➖ Прозрачность",
+                    text=f"➖ Прозрачность · {settings.opacity}%",
                     callback_data=template_callback("opacity-", workspace_id=workspace_id),
                 ),
                 InlineKeyboardButton(
-                    text=f"{settings.opacity}%",
-                    callback_data=template_callback("noop", workspace_id=workspace_id),
-                ),
-                InlineKeyboardButton(
-                    text="➕ Прозрачность",
+                    text=f"➕ Прозрачность · {settings.opacity}%",
                     callback_data=template_callback("opacity+", workspace_id=workspace_id),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="➖ Размер",
+                    text=f"➖ Размер · {settings.size:.1f}%",
                     callback_data=template_callback("size-", workspace_id=workspace_id),
                 ),
                 InlineKeyboardButton(
-                    text=f"{settings.size:.1f}%",
-                    callback_data=template_callback("noop", workspace_id=workspace_id),
-                ),
-                InlineKeyboardButton(
-                    text="➕ Размер",
+                    text=f"➕ Размер · {settings.size:.1f}%",
                     callback_data=template_callback("size+", workspace_id=workspace_id),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="➖ Отступ",
+                    text=f"➖ Отступ · {settings.margin:.1f}%",
                     callback_data=template_callback("margin-", workspace_id=workspace_id),
                 ),
                 InlineKeyboardButton(
-                    text=f"{settings.margin:.1f}%",
-                    callback_data=template_callback("noop", workspace_id=workspace_id),
-                ),
-                InlineKeyboardButton(
-                    text="➕ Отступ",
+                    text=f"➕ Отступ · {settings.margin:.1f}%",
                     callback_data=template_callback("margin+", workspace_id=workspace_id),
                 ),
             ],
