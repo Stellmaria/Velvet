@@ -43,24 +43,29 @@
 
 ### Фактически сделано
 
-Ожидает реализации и CI.
+- удалён QtSvg/QImage/QPainter raster path из desktop plugin;
+- пользовательский SVG теперь очищается от XML namespace prefixes и встраивается как один плоский transformed group;
+- `defs`, style, metadata и внутренние `url(#id)` сохраняются;
+- установка SVG compatibility patch обёрнута в fail-open защиту, поэтому ошибка patch не блокирует запуск Krita;
+- версия plugin поднята до 2.1.1;
+- статические и функциональные regression tests проверяют отсутствие nested SVG, QtSvg и namespace prefixes.
 
 ### Миграции и совместимость
 
-Миграции базы данных не требуются. Формат bridge request и сохранённые логотипы не меняются.
+Миграции базы данных не требуются. Формат bridge request и сохранённые логотипы не меняются. PNG и встроенный логотип продолжают использовать прежний путь.
 
 ### Проверки
 
-Ожидаются.
+CI ещё не запускался. После открытия PR требуется дождаться tests, type check, Docker build и project notes contract.
 
 ### PR и commit
 
-Pull request ещё не открыт.
+Pull request ещё не открыт. Текущий head: `092c6220d9a37d4ac450bf711e2a394553326089`.
 
 ### Незавершённое
 
-Нужно обновить plugin, тесты, собрать ZIP и пройти CI.
+Нужны CI, merge, сборка ZIP plugin 2.1.1 и живая проверка запуска Krita и одного SVG watermark-задания.
 
 ### Следующий шаг
 
-Реализовать безопасное flatten-преобразование SVG, открыть PR и после merge переустановить plugin 2.1.1 в Krita.
+Открыть PR, пройти CI, слить в `main`, затем полностью удалить/заменить plugin 2.1.0 установленным ZIP 2.1.1.
