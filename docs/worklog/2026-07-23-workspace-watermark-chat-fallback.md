@@ -60,15 +60,18 @@
 
 ### Проверки
 
-Локальный checkout и `gh` в среде недоступны. Проверки будут выполнены GitHub Actions после открытия pull request.
+Первый CI head `44906cdce70e1bd62040c7cf4a3073f3dd280b67`: type check `376` прошёл; project notes contract `1012` обнаружил отсутствующий обязательный раздел `PR и commit` в этой записи. Раздел добавлен отдельным исправлением. Tests `1723` и Docker build `1143` на момент исправления продолжали выполняться; финальные повторные результаты будут записаны после нового head.
+
+### PR и commit
+
+Draft pull request: `#305 Allow personal watermark fallback without storage destination`. Текущий head меняется по мере исправления CI. Финальный merge commit появится после зелёных проверок и снятия draft-статуса.
 
 ### Незавершённое
 
-- открыть draft PR;
-- дождаться tests, type check, Docker build и project notes contract;
-- исправить возможные замечания CI;
+- дождаться повторных tests, type check, Docker build и project notes contract;
+- исправить возможные оставшиеся замечания CI;
 - после merge выполнить `Supervisor → Update` и живой watermark smoke test без destination `Watermark-копии`.
 
 ### Следующий шаг
 
-Открыть draft PR в `main`, проверить CI, затем пройти сценарий: архивное изображение → быстрый watermark → approve → PNG в текущем чате → публичное скачивание watermark-версии.
+Проверить новый CI head, затем пройти сценарий: архивное изображение → быстрый watermark → approve → PNG в текущем чате → публичное скачивание watermark-версии.
