@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class KritaSvgWatermarkHotfixTests(unittest.TestCase):
-    def test_plugin_installs_svg_raster_patch_before_extension(self) -> None:
+    def test_plugin_installs_svg_patch_before_extension_and_fails_open(self) -> None:
         init_source = (ROOT / "tools/krita/velvet_logo/__init__.py").read_text(
             encoding="utf-8"
         )
@@ -17,15 +17,28 @@ class KritaSvgWatermarkHotfixTests(unittest.TestCase):
             init_source.index("install_svg_logo_patch(VelvetLogoExtension)"),
             init_source.index("Krita.instance().addExtension"),
         )
+        self.assertIn("except Exception as error", init_source)
+        self.assertIn("SVG compatibility patch disabled", init_source)
 
-    def test_custom_svg_is_rendered_to_transparent_png(self) -> None:
+    def test_custom_svg_uses_safe_vector_flattening_without_qtsvg(self) -> None:
         source = (ROOT / "tools/krita/velvet_logo/svg_logo_patch.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn("QSvgRenderer", source)
-        self.assertIn("QImage.Format_ARGB32_Premultiplied", source)
-        self.assertIn('href="data:image/png;base64,', source)
-        self.assertIn('PATCH_VERSION = "2.1.0"', source)
+        self.assertNotIn("PyQt5.QtSvg", source)
+        self.assertNotIn("QSvgRenderer", source)
+        self.assertNotIn("QImage", source)
+        self.assertNotIn('href="data:image/png;base64,', source)
+        self.assertIn("_flatten_svg", source)
+        self.assertIn("_strip_namespaces", source)
+        self.assertIn("translate(", source)
+        self.assertIn("scale(", source)
+        self.assertIn('PATCH_VERSION = "2.1.1"', source)
+
+    def test_desktop_metadata_exposes_safe_plugin_version(self) -> None:
+        source = (ROOT / "tools/krita/velvet_logo.desktop").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("X-Velvet-Plugin-Version=2.1.1", source)
 
     def test_workspace_watermark_accepts_next_photo_without_reply(self) -> None:
         ui = (ROOT / "velvet_bot/workspace_watermark_ui.py").read_text(
