@@ -2,6 +2,9 @@ ALTER TABLE characters
     ALTER COLUMN category TYPE VARCHAR(64),
     ALTER COLUMN universe TYPE VARCHAR(64);
 
+ALTER TABLE workspace_stories
+    ADD COLUMN IF NOT EXISTS emoji VARCHAR(16) NOT NULL DEFAULT '📖';
+
 CREATE TABLE IF NOT EXISTS workspace_watermark_templates (
     workspace_id BIGINT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
     position VARCHAR(32) NOT NULL DEFAULT 'bottom_right',
