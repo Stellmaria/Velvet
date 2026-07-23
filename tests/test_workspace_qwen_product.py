@@ -45,7 +45,8 @@ class WorkspaceQwenProductTests(unittest.TestCase):
         self.assertIn("🧬 Сравнение с референсом", source)
         self.assertIn("📜 История Qwen", source)
         self.assertIn('minimum_role: WorkspaceRole = "reviewer"', source)
-        self.assertIn('minimum_role="editor"', source)
+        self.assertIn('"editor": 2', source)
+        self.assertIn("_can_decide(membership)", source)
 
     def test_archive_card_has_qwen_button_and_early_handler(self) -> None:
         adjustment = (
