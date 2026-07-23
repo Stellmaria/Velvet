@@ -43,7 +43,7 @@
 - подписки личных публичных архивов обрабатываются worker и открывают точный workspace/media;
 - rework/public/Qwen/watermark/download policy проходят через ранний scoped router;
 - reference card имеет add/replace/delete/compare/back/close;
-- tests, type check, Docker build, backup restore drill и project notes contract проходят.
+- tests, type check, Docker build и project notes contract проходят.
 
 ### Риски и ограничения
 
@@ -56,7 +56,7 @@ GitHub Actions проверяет маршрутизацию, роли, схем
 - зелёный PR `#306` переведён из draft и слит в `main`; merge commit `f12219fd223595b5aaea8824f843a0c8a7bfde57`;
 - worker подписок теперь сканирует system и все публичные personal workspaces;
 - кнопка уведомления содержит точные `workspace_id`, `character_id`, `media_id`;
-- текущая audit-ветка основана уже на merged subscription delivery;
+- audit-ветка основана уже на merged subscription delivery;
 - watermark fallback из конфликтующего PR `#305` вручную объединён с Qwen/rework/public router;
 - быстрый watermark требует только разрешённый модуль и загруженный asset;
 - без destination `Watermark-копии` подтверждённый PNG возвращается в текущий чат;
@@ -73,16 +73,22 @@ GitHub Actions проверяет маршрутизацию, роли, схем
 
 ### Проверки
 
-GitHub Actions будут запущены после открытия draft PR. Финальные run numbers и количество тестов будут внесены после зелёного head.
+Финальный проверенный head `d8e8561d6540452fe36787f1126787b60bacd218`:
+
+- tests `1757`: **1258 tests**, success;
+- type check `410`: success;
+- Docker build `1177`: success;
+- project notes contract `1044`: success.
+
+Первый test run `1756` корректно поймал две ошибки самого нового audit-теста: отсутствующий ожидаемый `noop` у счётчика карточки и устаревшее имя service-метода в static contract. Контракт исправлен, повторный полный запуск зелёный.
 
 ### PR и commit
 
-Draft PR будет открыт из `codex/personal-archive-full-audit` в `main`. Финальный head и merge commit будут записаны после CI.
+PR `#308 Audit every personal archive button and workflow`. Финальный head перед merge будет обновлён записью CI; merge commit добавляется после слияния.
 
 ### Незавершённое
 
-- дождаться полного CI и исправить возможные type/test/inventory failures;
-- слить audit PR в `main`;
+- слить PR `#308` в `main`;
 - закрыть конфликтующий PR `#305` как перенесённый в общий аудит;
 - выполнить `Supervisor → Update`;
 - пройти живой Telegram smoke test владельцем, reviewer и обычным читателем;
@@ -90,4 +96,4 @@ Draft PR будет открыт из `codex/personal-archive-full-audit` в `ma
 
 ### Следующий шаг
 
-Открыть draft PR, получить зелёный CI, затем проверить в Telegram цепочку: создать персонажа → пакетно сохранить материалы → открыть карточку → пройти каждую кнопку → включить public → подписаться вторым аккаунтом → получить уведомление → проверить watermark fallback → Qwen → rework → возврат в public.
+После merge проверить в Telegram цепочку: создать персонажа → пакетно сохранить материалы → открыть карточку → пройти каждую кнопку → включить public → подписаться вторым аккаунтом → получить уведомление → проверить watermark fallback → Qwen → rework → возврат в public.
