@@ -32,11 +32,11 @@ class LikeToggleResult:
 
 @dataclass(frozen=True, slots=True)
 class PendingPublicNotification:
-    workspace_id: int
     character_id: int
     character_name: str
     media_id: int
     user_id: int
+    workspace_id: int = 1
 
 
 __all__ = (
