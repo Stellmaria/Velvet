@@ -71,10 +71,21 @@ def _media_card_keyboard(*args, **kwargs) -> InlineKeyboardMarkup:
     help_row: list[InlineKeyboardButton] | None = None
     rows: list[list[InlineKeyboardButton]] = []
     for row in keyboard.inline_keyboard:
-        if any(button.text == "❓ Что делают кнопки" for button in row):
-            help_row = list(row)
+        normalized: list[InlineKeyboardButton] = []
+        for button in row:
+            if button.text in {"⚡ Быстрый watermark", "⚙️ Настроить watermark"}:
+                normalized.append(
+                    InlineKeyboardButton(
+                        text="⚡ Быстрый watermark",
+                        callback_data=button.callback_data,
+                    )
+                )
+            else:
+                normalized.append(button)
+        if any(button.text == "❓ Что делают кнопки" for button in normalized):
+            help_row = normalized
         else:
-            rows.append(list(row))
+            rows.append(normalized)
     if help_row is not None:
         rows.insert(max(0, len(rows) - 1), help_row)
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -96,9 +107,10 @@ async def _show_media_help(
         "<b>Подписаться</b> — включает или отключает уведомления о новых материалах "
         "этого персонажа.\n\n"
         "<b>Скачать оригинал</b> — отправляет владельцу сохранённый исходный файл.\n\n"
-        "<b>Быстрый watermark</b> — создаёт отдельную копию с настроенным знаком, "
-        "не заменяя оригинал. Если шаблон или место хранения не настроены, кнопка "
-        "откроет соответствующие настройки.\n\n"
+        "<b>Быстрый watermark</b> — создаёт отдельную копию с текущим логотипом "
+        "пространства и открывает настройки положения, прозрачности, размера и "
+        "отступа. Оригинал не заменяется. Если логотип ещё не загружен, бот "
+        "предложит открыть настройку watermark.\n\n"
         "<b>Отправить на доработку</b> — помещает работу в очередь проверки и "
         "временно скрывает её из публичной выдачи.\n\n"
         "<b>Скрыть из публичного / Вернуть в публичный</b> — меняет видимость "
@@ -109,8 +121,8 @@ async def _show_media_help(
         "версию бот выдаёт читателям.\n\n"
         "<b>Ветка</b> открывает тему персонажа. <b>Удалить</b> безвозвратно удаляет "
         "текущий материал. <b>Закрыть</b> закрывает карточку.\n\n"
-        "Некоторые кнопки появляются только после включения публичного режима, "
-        "watermark или подключения нужного канала."
+        "Некоторые кнопки появляются только после включения публичного режима "
+        "или подключения нужного канала."
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
