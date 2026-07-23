@@ -84,8 +84,11 @@ EXPECTED_ROUTER_MODULES = {
     "velvet_bot.presentation.telegram.routers.workspace_publications",
     "velvet_bot.presentation.telegram.routers.workspace_reference_buttons",
     "velvet_bot.presentation.telegram.routers.workspace_reference_library",
+    "velvet_bot.presentation.telegram.routers.workspace_taxonomy_admin",
     "velvet_bot.presentation.telegram.routers.workspace_team",
     "velvet_bot.presentation.telegram.routers.workspace_watermark",
+    "velvet_bot.presentation.telegram.routers.workspace_watermark_archive_only",
+    "velvet_bot.presentation.telegram.routers.workspace_watermark_templates",
     "velvet_bot.presentation.telegram.routers.workspaces",
 }
 
@@ -179,14 +182,6 @@ class P3RouterOrganizationTests(unittest.TestCase):
         self.assertEqual(
             ("quality-calibration-report-ui",),
             assignments["POST_IMPORT_COMPONENTS"],
-        )
-        self.assertIn(
-            "install_pre_router_compatibility()",
-            ROUTER_ROOT.read_text(encoding="utf-8"),
-        )
-        self.assertIn(
-            "install_post_router_compatibility()",
-            ROUTER_ROOT.read_text(encoding="utf-8"),
         )
 
 

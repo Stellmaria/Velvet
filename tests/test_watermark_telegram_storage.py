@@ -25,7 +25,7 @@ from velvet_bot.domains.watermark.telegram_storage import (
 )
 from velvet_bot.infrastructure.krita_bridge import KritaBridge
 from velvet_bot.presentation.telegram.archive_watermark_storage import (
-    _storage_settings_for_job,
+    _configured_storage_settings,
 )
 
 
@@ -177,13 +177,27 @@ class WorkspaceWatermarkStorageTests(unittest.IsolatedAsyncioTestCase):
             "WorkspaceOnboardingRepository.list_destinations",
             new=AsyncMock(return_value=(destination,)),
         ):
-            settings = await _storage_settings_for_job(
+            settings = await _configured_storage_settings(
                 SimpleNamespace(),
                 workspace_id=5,
             )
 
+        self.assertIsNotNone(settings)
+        assert settings is not None
         self.assertEqual(-10077, settings.chat_id)
         self.assertEqual(19, settings.thread_id)
+
+    async def test_personal_job_without_destination_uses_runtime_fallback(self) -> None:
+        with patch(
+            "velvet_bot.presentation.telegram.archive_watermark_storage."
+            "WorkspaceOnboardingRepository.list_destinations",
+            new=AsyncMock(return_value=()),
+        ):
+            settings = await _configured_storage_settings(
+                SimpleNamespace(),
+                workspace_id=5,
+            )
+        self.assertIsNone(settings)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@
 
 - прямые imports `velvet_bot.handlers.*` в root Router: **0**;
 - доменных router bundles: **4**;
-- активных router imports в bundles: **77**;
+- активных router imports в bundles: **80**;
 - дублирующих регистраций между bundles: **0**;
 - физических legacy handler-файлов: **0**;
 - активных legacy handler implementations: **0**;
@@ -18,7 +18,7 @@
 ## Router bundles
 
 - `velvet_bot/presentation/telegram/routers/analytics.py`: 7 routers.
-- `velvet_bot/presentation/telegram/routers/archive_and_public.py`: 48 routers.
+- `velvet_bot/presentation/telegram/routers/archive_and_public.py`: 51 routers.
 - `velvet_bot/presentation/telegram/routers/core_operations.py`: 8 routers.
 - `velvet_bot/presentation/telegram/routers/quality_operations.py`: 14 routers.
 
