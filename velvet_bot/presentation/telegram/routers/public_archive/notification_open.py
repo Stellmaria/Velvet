@@ -132,7 +132,6 @@ async def _open_exact_notification_media(
     await callback.answer()
 
 
-@router.callback_query(PublicNotificationCallback.filter())
 async def handle_workspace_notification_media(
     callback: CallbackQuery,
     callback_data: PublicNotificationCallback,
@@ -191,6 +190,12 @@ async def handle_exact_notification_media(
         adult_channel_id=adult_channel_id,
         workspace_product_service=workspace_product_service,
     )
+
+
+router.callback_query.register(
+    handle_workspace_notification_media,
+    PublicNotificationCallback.filter(),
+)
 
 
 __all__ = ("router",)
