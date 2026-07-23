@@ -35,6 +35,7 @@ async def _open_exact_notification_media(
     character_id: int,
     media_id: int,
     workspace_id: int,
+    menu_page: int,
     database: Database,
     bot: Bot,
     adult_channel_id: int,
@@ -119,7 +120,7 @@ async def _open_exact_notification_media(
             viewer_user_id=callback.from_user.id,
             member_access=member_access,
             can_download=download_source is not None,
-            menu_page=0,
+            menu_page=max(0, int(menu_page)),
         )
     except TelegramBadRequest:
         logger.exception("Failed to open exact notification media")
@@ -157,6 +158,7 @@ async def handle_workspace_notification_media(
         character_id=callback_data.character_id,
         media_id=callback_data.media_id,
         workspace_id=workspace_id,
+        menu_page=0,
         database=database,
         bot=bot,
         adult_channel_id=adult_channel_id,
@@ -183,6 +185,7 @@ async def handle_exact_notification_media(
         character_id=callback_data.character_id,
         media_id=callback_data.media_id,
         workspace_id=workspace_id,
+        menu_page=callback_data.page,
         database=database,
         bot=bot,
         adult_channel_id=adult_channel_id,
