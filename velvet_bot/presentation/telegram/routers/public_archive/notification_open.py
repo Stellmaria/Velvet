@@ -29,6 +29,20 @@ router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
 
+async def _respond(
+    callback: CallbackQuery,
+    text: str | None = None,
+    *,
+    show_alert: bool = False,
+    acknowledged: bool = False,
+) -> None:
+    if not acknowledged:
+        await callback.answer(text, show_alert=show_alert)
+        return
+    if text and isinstance(callback.message, Message):
+        await callback.message.answer(text)
+
+
 async def _open_exact_notification_media(
     *,
     callback: CallbackQuery,
@@ -40,9 +54,15 @@ async def _open_exact_notification_media(
     bot: Bot,
     adult_channel_id: int,
     workspace_product_service: WorkspaceProductService,
+    acknowledged: bool = False,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Уведомление больше недоступно.", show_alert=True)
+        await _respond(
+            callback,
+            "Уведомление больше недоступно.",
+            show_alert=True,
+            acknowledged=acknowledged,
+        )
         return
 
     member_access = await has_workspace_adult_access(
@@ -63,9 +83,11 @@ async def _open_exact_notification_media(
         workspace_id=workspace_id,
     )
     if offset is None:
-        await callback.answer(
+        await _respond(
+            callback,
             "Это изображение удалено или скрыто из публичного архива.",
             show_alert=True,
+            acknowledged=acknowledged,
         )
         return
 
@@ -79,12 +101,19 @@ async def _open_exact_notification_media(
         workspace_id=workspace_id,
     )
     if page is None or page.media is None:
-        await callback.answer("Материал больше недоступен.", show_alert=True)
+        await _respond(
+            callback,
+            "Материал больше недоступен.",
+            show_alert=True,
+            acknowledged=acknowledged,
+        )
         return
     if page.media.requires_adult_channel and not member_access:
-        await callback.answer(
+        await _respond(
+            callback,
             "Этот материал доступен только участникам настроенного канала +18.",
             show_alert=True,
+            acknowledged=acknowledged,
         )
         return
 
@@ -124,12 +153,14 @@ async def _open_exact_notification_media(
         )
     except TelegramBadRequest:
         logger.exception("Failed to open exact notification media")
-        await callback.answer(
+        await _respond(
+            callback,
             "Telegram больше не может открыть этот материал.",
             show_alert=True,
+            acknowledged=acknowledged,
         )
         return
-    await callback.answer()
+    await _respond(callback, acknowledged=acknowledged)
 
 
 async def handle_workspace_notification_media(
@@ -176,6 +207,7 @@ async def handle_exact_notification_media(
     adult_channel_id: int,
     workspace_product_service: WorkspaceProductService,
 ) -> None:
+    await callback.answer()
     workspace_id = await workspace_product_service.public_workspace_id_for_user(
         callback.from_user.id
     )
@@ -189,6 +221,7 @@ async def handle_exact_notification_media(
         bot=bot,
         adult_channel_id=adult_channel_id,
         workspace_product_service=workspace_product_service,
+        acknowledged=True,
     )
 
 
