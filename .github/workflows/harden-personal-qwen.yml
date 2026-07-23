@@ -1,0 +1,87 @@
+name: harden personal qwen
+
+on:
+  push:
+    branches:
+      - agent/workspace-rework-isolation
+    paths:
+      - .github/workflows/harden-personal-qwen.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/workspace-rework-isolation
+          fetch-depth: 0
+
+      - name: Apply targeted reliability fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          repository = Path("velvet_bot/domains/workspaces/qwen_repository.py")
+          text = repository.read_text(encoding="utf-8")
+          old = """                          AND (\n                                q.status = 'pending'\n                                OR (\n                                    q.status = 'error'\n                                    AND q.attempt_count < $1::SMALLINT\n                                )\n                              )\n"""
+          new = """                          AND q.attempt_count < $1::SMALLINT\n                          AND (\n                                q.status = 'pending'\n                                OR q.status = 'error'\n                                OR (\n                                    q.status = 'processing'\n                                    AND q.updated_at < NOW() - INTERVAL '15 minutes'\n                                )\n                              )\n"""
+          if old not in text:
+              raise SystemExit("claim_next status block not found")
+          text = text.replace(old, new, 1)
+
+          old = """        safe_size = max(1, min(int(page_size), 12))\n        async with self._database.acquire() as connection:\n            total = int(\n"""
+          new = """        safe_size = max(1, min(int(page_size), 12))\n        async with self._database.acquire() as connection:\n            await connection.execute(\n                \"\"\"\n                UPDATE workspace_qwen_jobs\n                SET status = 'error',\n                    stage = 'interrupted',\n                    error_message = COALESCE(\n                        error_message,\n                        'Задание было прервано перезапуском бота.'\n                    ),\n                    finished_at = NOW(),\n                    updated_at = NOW()\n                WHERE workspace_id = $1::BIGINT\n                  AND status = 'processing'\n                  AND updated_at < NOW() - INTERVAL '30 minutes'\n                \"\"\",\n                int(workspace_id),\n            )\n            total = int(\n"""
+          if old not in text:
+              raise SystemExit("list_jobs opening block not found")
+          text = text.replace(old, new, 1)
+          repository.write_text(text, encoding="utf-8")
+
+          router = Path("velvet_bot/presentation/telegram/workspace_qwen.py")
+          text = router.read_text(encoding="utf-8")
+          old = """    if action == \"audit\":\n        queued = await repository.enqueue_archive(workspace_id=workspace.id)\n"""
+          new = """    if action == \"audit\":\n        if not _can_decide(membership):\n            await callback.answer(\n                \"Полную проверку архива может запускать редактор, \"\n                \"администратор или владелец.\",\n                show_alert=True,\n            )\n            return\n        queued = await repository.enqueue_archive(workspace_id=workspace.id)\n"""
+          if old not in text:
+              raise SystemExit("audit action block not found")
+          text = text.replace(old, new, 1)
+
+          old = """        changed = await repository.set_decision(\n            workspace_id=workspace.id,\n            media_id=check.media_id,\n            decision=decision,\n            user_id=callback.from_user.id,\n        )\n        rework = MediaReworkRepository(database, workspace_id=workspace.id)\n"""
+          new = """        changed = await repository.set_decision(\n            workspace_id=workspace.id,\n            media_id=check.media_id,\n            decision=decision,\n            user_id=callback.from_user.id,\n        )\n        if not changed:\n            await callback.answer(\n                \"Проверка уже изменилась. Откройте отчёт заново.\",\n                show_alert=True,\n            )\n            return\n        rework = MediaReworkRepository(database, workspace_id=workspace.id)\n"""
+          if old not in text:
+              raise SystemExit("decision block not found")
+          text = text.replace(old, new, 1)
+          old = """        if not changed:\n            await callback.answer(\"Решение уже было сохранено.\", show_alert=True)\n        return\n"""
+          if old not in text:
+              raise SystemExit("late duplicate callback answer not found")
+          text = text.replace(old, "        return\n", 1)
+          router.write_text(text, encoding="utf-8")
+
+          tests = Path("tests/test_workspace_qwen_product.py")
+          text = tests.read_text(encoding="utf-8")
+          old = """        self.assertIn(\"FOR UPDATE OF q SKIP LOCKED\", source)\n        self.assertIn(\"character.workspace_id = $1::BIGINT\", source)\n"""
+          new = """        self.assertIn(\"FOR UPDATE OF q SKIP LOCKED\", source)\n        self.assertIn(\"q.updated_at < NOW() - INTERVAL '15 minutes'\", source)\n        self.assertIn(\"stage = 'interrupted'\", source)\n        self.assertIn(\"character.workspace_id = $1::BIGINT\", source)\n"""
+          if old not in text:
+              raise SystemExit("repository test block not found")
+          text = text.replace(old, new, 1)
+          old = """        self.assertIn(\"_can_decide(membership)\", source)\n"""
+          new = """        self.assertIn(\"_can_decide(membership)\", source)\n        self.assertIn(\"Полную проверку архива может запускать редактор\", source)\n"""
+          if old not in text:
+              raise SystemExit("menu role test block not found")
+          text = text.replace(old, new, 1)
+          tests.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Remove one-shot workflow and commit
+        run: |
+          rm .github/workflows/harden-personal-qwen.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/domains/workspaces/qwen_repository.py \
+                  velvet_bot/presentation/telegram/workspace_qwen.py \
+                  tests/test_workspace_qwen_product.py \
+                  .github/workflows/harden-personal-qwen.yml
+          git commit -m "Harden personal Qwen recovery and roles"
+          git push origin HEAD:agent/workspace-rework-isolation
