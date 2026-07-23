@@ -162,18 +162,20 @@ from velvet_bot.presentation.telegram.routers.archive.spoiler import (
 from velvet_bot.presentation.telegram.routers.publication.safe import (
     router as publication_center_router,
 )
-from velvet_bot.presentation.telegram.routers.archive.save_modes import (
-    handle_pending_save_upload,
+from velvet_bot.presentation.telegram.save_mode_runtime import (
     install_save_command_modes,
-    router as save_modes_router,
+    register_save_mode_handlers,
 )
+
+install_save_command_modes()
+
 from velvet_bot.presentation.telegram.routers.archive.save import (
     PendingSaveUploadFilter,
+    handle_pending_save_upload,
     router as archive_router,
 )
 
 install_workspace_watermark_templates()
-install_save_command_modes()
 apply_workspace_ui_adjustments()
 
 router = Router(name=__name__)
@@ -184,6 +186,9 @@ router.message.register(
     F.photo | F.video | F.animation | F.document,
     PendingSaveUploadFilter(),
 )
+# `/save` without attached media opens one-file mode, while `/save_set` opens a
+# batch. Register this on the existing bundle instead of adding another router.
+register_save_mode_handlers(router)
 register_public_archive_rework(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
@@ -191,9 +196,6 @@ router.include_router(discussion_updates_router)
 # `/start` is deliberately before all workspace form routers: it is the visible
 # recovery action when a previous button or upload session was interrupted.
 router.include_router(start_router)
-# `/save` without attached media opens one-file mode, while `/save_set` opens a
-# batch. This router must precede legacy `/save` and guided archive controllers.
-router.include_router(save_modes_router)
 # Workspace onboarding must intercept the first workspace-name FSM response before
 # the legacy workspace router and must own setup/binding commands before broad handlers.
 router.include_router(workspace_onboarding_channel_bind_router)
