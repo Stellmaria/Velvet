@@ -59,6 +59,9 @@ RETIRED_CENTRAL_SYSTEM_REPOSITORY = (
 CANONICAL_SYSTEM_REPOSITORY = (
     "velvet_bot.infrastructure.postgres." + "system_repository"
 )
+CANONICAL_WORKSPACE_QWEN_REPOSITORY = (
+    "velvet_bot.domains.workspaces." + "qwen_repository"
+)
 
 
 class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
@@ -98,6 +101,7 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
         self.assertIn(CANONICAL_ACTIONS_REPOSITORY, modules)
         self.assertIn(CANONICAL_DISCOVERY_REPOSITORY, modules)
         self.assertIn(CANONICAL_SYSTEM_REPOSITORY, modules)
+        self.assertIn(CANONICAL_WORKSPACE_QWEN_REPOSITORY, modules)
         self.assertFalse((ROOT / "velvet_bot/repositories/__init__.py").exists())
         self.assertFalse(
             (ROOT / "velvet_bot/repositories/system_repository.py").exists()
@@ -156,12 +160,15 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
                 / "velvet_bot/infrastructure/postgres/system_repository.py"
             ).is_file()
         )
+        self.assertTrue(
+            (ROOT / "velvet_bot/domains/workspaces/qwen_repository.py").is_file()
+        )
 
     def test_repository_layout_migration_is_complete(self) -> None:
         inventory = build_inventory(label=LABEL)
 
-        self.assertEqual(34, inventory["repository_module_count"])
-        self.assertEqual(33, inventory["layout_counts"]["domain"])
+        self.assertEqual(35, inventory["repository_module_count"])
+        self.assertEqual(34, inventory["layout_counts"]["domain"])
         self.assertEqual(1, inventory["layout_counts"]["infrastructure"])
         self.assertEqual(0, inventory["layout_counts"].get("central", 0))
         self.assertEqual(0, inventory["layout_counts"].get("root", 0))
