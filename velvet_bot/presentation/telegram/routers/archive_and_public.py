@@ -57,9 +57,6 @@ from velvet_bot.presentation.telegram.routers.workspace_watermark_templates impo
 from velvet_bot.presentation.telegram.routers.workspace_watermark import (
     router as workspace_watermark_router,
 )
-from velvet_bot.presentation.telegram.routers.workspace_rework_isolation import (
-    router as workspace_rework_isolation_router,
-)
 from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
     router as workspace_owner_controls_router,
 )
@@ -210,7 +207,6 @@ router.include_router(workspace_team_router)
 router.include_router(workspace_watermark_archive_only_router)
 router.include_router(workspace_watermark_templates_router)
 router.include_router(workspace_watermark_router)
-router.include_router(workspace_rework_isolation_router)
 router.include_router(workspace_owner_controls_router)
 # The tenant publication entry must precede generic `wsp:module` help. The
 # publication capture router remains below reference/save flows.
