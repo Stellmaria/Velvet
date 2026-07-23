@@ -40,6 +40,32 @@ class ReferenceService:
             workspace_id=workspace_id,
         )
 
+    async def replace(
+        self,
+        *,
+        character_id: int,
+        reference_id: int,
+        media: ReferenceMediaPayload,
+        added_by: int | None,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> CharacterReference:
+        if not media.telegram_file_id or not media.telegram_file_unique_id:
+            raise ValueError("Референс не содержит Telegram file_id.")
+        if int(workspace_id) == DEFAULT_WORKSPACE_ID:
+            return await self._repository.replace(
+                character_id=character_id,
+                reference_id=reference_id,
+                media=media,
+                added_by=added_by,
+            )
+        return await self._repository.replace(
+            character_id=character_id,
+            reference_id=reference_id,
+            media=media,
+            added_by=added_by,
+            workspace_id=workspace_id,
+        )
+
     async def delete(
         self,
         *,
