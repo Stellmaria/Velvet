@@ -121,7 +121,11 @@ def _watermark_keyboard(*, workspace_id: int, has_asset: bool) -> InlineKeyboard
         workspace_id=workspace_id,
         has_asset=has_asset,
     )
-    rows = [list(row) for row in keyboard.inline_keyboard]
+    rows = [
+        [button for button in row if button.text != "⚡ Быстрый watermark"]
+        for row in keyboard.inline_keyboard
+    ]
+    rows = [row for row in rows if row]
     rows.insert(
         1,
         [
