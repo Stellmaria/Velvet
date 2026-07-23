@@ -11,6 +11,8 @@ class ReferenceUploadSession:
     character_name: str
     workspace_id: int = DEFAULT_WORKSPACE_ID
     added_count: int = 0
+    replace_reference_id: int | None = None
+    replace_offset: int = 0
 
 
 class ReferenceUploadSessions:
@@ -26,11 +28,19 @@ class ReferenceUploadSessions:
         character_id: int,
         character_name: str,
         workspace_id: int = DEFAULT_WORKSPACE_ID,
+        replace_reference_id: int | None = None,
+        replace_offset: int = 0,
     ) -> ReferenceUploadSession:
         session = ReferenceUploadSession(
             character_id=int(character_id),
             character_name=character_name,
             workspace_id=int(workspace_id),
+            replace_reference_id=(
+                int(replace_reference_id)
+                if replace_reference_id is not None
+                else None
+            ),
+            replace_offset=max(0, int(replace_offset)),
         )
         self._sessions[int(user_id)] = session
         return session

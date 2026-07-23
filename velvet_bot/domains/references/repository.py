@@ -106,6 +106,57 @@ class ReferenceRepository:
             total=total,
         )
 
+    async def replace(
+        self,
+        *,
+        character_id: int,
+        reference_id: int,
+        media: ReferenceMediaPayload,
+        added_by: int | None,
+        workspace_id: int = DEFAULT_WORKSPACE_ID,
+    ) -> CharacterReference:
+        async with self._database.acquire() as connection:
+            async with connection.transaction():
+                duplicate_id = await connection.fetchval(
+                    """
+                    SELECT id
+                    FROM character_references
+                    WHERE workspace_id = $1::BIGINT
+                      AND character_id = $2::BIGINT
+                      AND telegram_file_unique_id = $3::TEXT
+                      AND id <> $4::BIGINT
+                    """,
+                    int(workspace_id),
+                    int(character_id),
+                    media.telegram_file_unique_id,
+                    int(reference_id),
+                )
+                if duplicate_id is not None:
+                    raise ValueError(
+                        "Этот файл уже сохранён как другой референс персонажа."
+                    )
+                row = await connection.fetchrow(
+                    f"""
+                    UPDATE character_references
+                    SET telegram_file_id = $4::TEXT,
+                        telegram_file_unique_id = $5::TEXT,
+                        added_by = $6::BIGINT
+                    WHERE workspace_id = $1::BIGINT
+                      AND character_id = $2::BIGINT
+                      AND id = $3::BIGINT
+                    RETURNING {_REFERENCE_SELECT}
+                    """,
+                    int(workspace_id),
+                    int(character_id),
+                    int(reference_id),
+                    media.telegram_file_id,
+                    media.telegram_file_unique_id,
+                    added_by,
+                )
+                if row is None:
+                    raise ValueError("Референс больше не найден в этом пространстве.")
+        return self._row_to_reference(row)
+
     async def delete(
         self,
         *,

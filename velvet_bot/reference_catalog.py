@@ -35,6 +35,29 @@ async def add_character_reference(
     )
 
 
+async def replace_character_reference(
+    database: Database,
+    character: Character,
+    reference_id: int,
+    photo: PhotoSize,
+    *,
+    added_by: int | None,
+    workspace_id: int | None = None,
+) -> CharacterReference:
+    target_workspace_id = (
+        int(workspace_id)
+        if workspace_id is not None
+        else int(getattr(character, "workspace_id", DEFAULT_WORKSPACE_ID))
+    )
+    return await build_reference_service(database).replace(
+        character_id=character.id,
+        reference_id=int(reference_id),
+        media=reference_payload_from_photo(photo),
+        added_by=added_by,
+        workspace_id=target_workspace_id,
+    )
+
+
 async def delete_character_reference(
     database: Database,
     character_id: int,
@@ -99,4 +122,5 @@ __all__ = (
     "delete_character_reference",
     "get_reference_page",
     "list_character_references",
+    "replace_character_reference",
 )
