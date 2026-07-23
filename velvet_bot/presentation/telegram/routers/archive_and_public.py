@@ -51,6 +51,12 @@ from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
 from velvet_bot.presentation.telegram.routers.workspaces import (
     router as workspaces_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_reference_buttons import (
+    router as workspace_reference_buttons_router,
+)
+from velvet_bot.presentation.telegram.workspace_ui_adjustments import (
+    apply_workspace_ui_adjustments,
+)
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.start import (
     router as start_router,
 )
@@ -150,6 +156,8 @@ from velvet_bot.presentation.telegram.routers.archive.save import (
     router as archive_router,
 )
 
+apply_workspace_ui_adjustments()
+
 router = Router(name=__name__)
 # Bundle-level handlers run before child routers. An active `/save` session must
 # therefore win before broad reference photo/document handlers.
@@ -176,6 +184,9 @@ router.include_router(workspace_guided_actions_router)
 router.include_router(workspace_character_pickers_router)
 router.include_router(workspace_character_topic_creation_router)
 router.include_router(workspace_character_management_router)
+# Button-first reference management must intercept personal reference cards and
+# replacement uploads before the command-compatible reference router.
+router.include_router(workspace_reference_buttons_router)
 router.include_router(workspace_reference_library_router)
 router.include_router(workspace_admin_router)
 router.include_router(workspace_team_router)
