@@ -17,6 +17,7 @@ class WorkspaceWatermarkCallback(CallbackData, prefix="wlogo"):
 
 class WorkspaceWatermarkForm(StatesGroup):
     waiting_asset = State()
+    waiting_source = State()
 
 
 def watermark_asset_callback(action: str, *, workspace_id: int) -> str:
@@ -64,7 +65,7 @@ def build_workspace_watermark_keyboard(
         ],
         [
             InlineKeyboardButton(
-                text="🖼 Создать watermark",
+                text="⚡ Быстрый watermark",
                 callback_data=watermark_asset_callback(
                     "create",
                     workspace_id=workspace_id,
@@ -93,6 +94,22 @@ def build_workspace_watermark_keyboard(
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_workspace_watermark_input_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✖ Отмена",
+                    callback_data=watermark_asset_callback(
+                        "show",
+                        workspace_id=workspace_id,
+                    ),
+                )
+            ]
+        ]
+    )
 
 
 def build_reset_confirmation_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
@@ -124,6 +141,7 @@ __all__ = (
     "WorkspaceWatermarkCallback",
     "WorkspaceWatermarkForm",
     "build_reset_confirmation_keyboard",
+    "build_workspace_watermark_input_keyboard",
     "build_workspace_watermark_keyboard",
     "format_workspace_watermark",
     "watermark_asset_callback",
