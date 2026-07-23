@@ -7,6 +7,7 @@ from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.presentation.telegram.routers import workspace_owner_controls as owner_controls
+from velvet_bot.presentation.telegram.workspace_qwen import register_workspace_qwen
 from velvet_bot.workspace_watermark_ui import WorkspaceWatermarkCallback
 
 
@@ -210,6 +211,7 @@ async def handle_removed_standalone_quick_watermark(callback: CallbackQuery) -> 
     )
 
 
+register_workspace_qwen(router)
 router.callback_query.register(
     handle_workspace_rework_action,
     owner_controls.WorkspacePersonalArchiveCallback.filter(F.action == "rework"),
