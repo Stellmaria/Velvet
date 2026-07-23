@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import velvet_bot.app.public_notifications as app_module
 import velvet_bot.presentation.telegram.public_notifications as delivery_module
@@ -145,7 +146,7 @@ class _Acquire:
 class WorkspaceNotificationDispatcherTests(unittest.IsolatedAsyncioTestCase):
     async def test_worker_scans_system_and_public_personal_workspaces_with_one_limit(self) -> None:
         connection = SimpleNamespace(
-            fetch=unittest.mock.AsyncMock(return_value=[{"id": 1}, {"id": 5}])
+            fetch=AsyncMock(return_value=[{"id": 1}, {"id": 5}])
         )
         database = SimpleNamespace(acquire=lambda: _Acquire(connection))
         services = {
@@ -190,7 +191,10 @@ class WorkspaceNotificationDispatcherTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(services[1].list_limits, [2])
         self.assertEqual(services[5].list_limits, [1])
         self.assertEqual(
-            [(workspace_id, [item.workspace_id for item in batch]) for workspace_id, batch in delivered_batches],
+            [
+                (workspace_id, [item.workspace_id for item in batch])
+                for workspace_id, batch in delivered_batches
+            ],
             [(1, [1]), (5, [5])],
         )
 
