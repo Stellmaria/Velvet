@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-complete",
-  "repository_module_count": 34,
+  "repository_module_count": 35,
   "layout_counts": {
-    "domain": 33,
+    "domain": 34,
     "infrastructure": 1
   },
   "root_module_count": 113,
@@ -14,7 +14,7 @@
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 31,
+  "repository_modules_with_production_consumers": 32,
   "repository_modules_with_package_exports": 28,
   "repository_modules_without_runtime_consumers": 3,
   "repository_modules_without_references": 0,
@@ -249,12 +249,13 @@
       "path": "velvet_bot/domains/media_rework/repository.py",
       "layout": "domain",
       "domain": "media_rework",
-      "production_consumer_count": 1,
+      "production_consumer_count": 2,
       "test_consumer_count": 0,
       "package_export_count": 1,
-      "reference_count": 2,
+      "reference_count": 3,
       "production_consumers": [
-        "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py"
+        "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+        "velvet_bot/presentation/telegram/workspace_qwen.py"
       ],
       "test_consumers": [],
       "package_exports": [
@@ -604,6 +605,23 @@
         "tests/test_workspace_admin_postgres.py",
         "tests/test_workspace_product_access.py"
       ],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.domains.workspaces.qwen_repository",
+      "path": "velvet_bot/domains/workspaces/qwen_repository.py",
+      "layout": "domain",
+      "domain": "workspaces",
+      "production_consumer_count": 3,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 3,
+      "production_consumers": [
+        "velvet_bot/app/workers.py",
+        "velvet_bot/presentation/telegram/workspace_qwen.py",
+        "velvet_bot/services/workspace_qwen_quality.py"
+      ],
+      "test_consumers": [],
       "package_exports": []
     },
     {

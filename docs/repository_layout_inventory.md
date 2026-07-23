@@ -4,13 +4,13 @@
 
 ## Сводка
 
-- repository-модулей: **34**;
-- внутри доменов: **33**;
+- repository-модулей: **35**;
+- внутри доменов: **34**;
 - в `velvet_bot/repositories`: **0**;
 - корневых `*_repository.py`: **0**;
 - infrastructure repositories: **1**;
 - прочих repository paths: **0**;
-- repository-модулей с production consumers: **31**;
+- repository-модулей с production consumers: **32**;
 - repository-модулей с package exports: **28**;
 - repository-модулей без runtime consumers: **3**;
 - repository-модулей без любых references: **0**;
@@ -45,7 +45,7 @@
 - `velvet_bot.domains.discussions.repository` · domain `discussions`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.media_quality.repository` · domain `media_quality`: production 2, tests 0, exports 1, refs 3.
 - `velvet_bot.domains.media_quality.reset_repository` · domain `media_quality`: production 1, tests 1, exports 0, refs 2.
-- `velvet_bot.domains.media_rework.repository` · domain `media_rework`: production 1, tests 0, exports 1, refs 2.
+- `velvet_bot.domains.media_rework.repository` · domain `media_rework`: production 2, tests 0, exports 1, refs 3.
 - `velvet_bot.domains.media_sets.actions_repository` · domain `media_sets`: production 1, tests 1, exports 1, refs 4.
 - `velvet_bot.domains.media_sets.ai_repository` · domain `media_sets`: production 1, tests 1, exports 1, refs 3.
 - `velvet_bot.domains.media_sets.discovery_repository` · domain `media_sets`: production 1, tests 1, exports 1, refs 4.
@@ -64,6 +64,7 @@
 - `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 0, exports 1, refs 4.
 - `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 2, exports 1, refs 8.
 - `velvet_bot.domains.workspaces.product_repository` · domain `workspaces`: production 3, tests 2, exports 0, refs 5.
+- `velvet_bot.domains.workspaces.qwen_repository` · domain `workspaces`: production 3, tests 0, exports 0, refs 3.
 - `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 5, tests 6, exports 1, refs 12.
 - `velvet_bot.domains.workspaces.team_repository` · domain `workspaces`: production 2, tests 1, exports 0, refs 3.
 
