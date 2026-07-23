@@ -16,6 +16,7 @@ from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
     WorkspacePersonalArchiveCallback,
     _DOWNLOAD_AUDIENCE_ACTIONS,
     _DOWNLOAD_VARIANT_ACTIONS,
+    _is_global_owner,
     _require_personal_module,
     _show_media_settings,
 )
@@ -201,7 +202,7 @@ async def handle_workspace_download_policy_without_storage_requirement(
         actor_user_id=callback.from_user.id,
         download_audience=audience,
         download_variant=variant,
-        global_owner=False,
+        global_owner=_is_global_owner(callback.from_user.id),
     )
     await _show_media_settings(
         callback,
