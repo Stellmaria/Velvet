@@ -8,28 +8,50 @@ from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
+from velvet_bot.archive_catalog import get_archive_page
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.models import Workspace
-from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
+from velvet_bot.domains.workspaces.product_models import (
+    GLOBAL_WORKSPACE_CREATOR_ID,
+)
+from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.domains.workspaces.watermark_assets import (
     WorkspaceWatermarkAssetRepository,
     WorkspaceWatermarkAssetService,
 )
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
-from velvet_bot.workspace_ui import WorkspaceCallback
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark import (
+    _build_service as _build_watermark_service,
+    _create_job_from_message,
+    _watermark_enabled,
+)
+from velvet_bot.presentation.telegram.routers.public_archive.watermark_actions import (
+    enqueue_archive_watermark,
+)
+from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
+    WorkspacePersonalArchiveCallback,
+    _is_global_owner as _is_workspace_global_owner,
+    _require_personal_module,
+)
+from velvet_bot.workspace_ui import WorkspaceCallback, workspace_callback
 from velvet_bot.workspace_watermark_ui import (
     WorkspaceWatermarkCallback,
     WorkspaceWatermarkForm,
     build_reset_confirmation_keyboard,
+    build_workspace_watermark_input_keyboard,
     build_workspace_watermark_keyboard,
     format_workspace_watermark,
 )
 
 router = Router(name=__name__)
-_INPUT_MARKER = "#watermark-input"
 
 
 def _is_global_owner(user_id: int) -> bool:
@@ -221,16 +243,68 @@ async def handle_workspace_watermark_callback(
         )
         return
     if action == "create":
+        if not _watermark_enabled():
+            await callback.answer(
+                "Krita bridge выключен. Включите KRITA_WATERMARK_ENABLED=true.",
+                show_alert=True,
+            )
+            return
+        await state.set_state(WorkspaceWatermarkForm.waiting_source)
+        await state.update_data(workspace_id=workspace.id)
         if isinstance(callback.message, Message):
             await callback.message.answer(
-                "<b>Создание watermark</b>\n\n"
-                "Ответьте изображением на это сообщение. Бот возьмёт текущий логотип "
-                "активного пространства и зафиксирует его в новом задании.\n\n"
-                f"<code>{_INPUT_MARKER}</code>"
+                "<b>⚡ Быстрый watermark</b>\n\n"
+                "Просто отправьте следующим сообщением фото или изображение-файл. "
+                "Бот возьмёт текущий логотип этого пространства, создаст отдельную "
+                "копию и покажет кнопки положения, прозрачности, размера и отступа. "
+                "Оригинал не изменяется.",
+                reply_markup=build_workspace_watermark_input_keyboard(workspace.id),
             )
         await callback.answer()
         return
     await callback.answer("Неизвестное действие логотипа.", show_alert=True)
+
+
+@router.message(
+    StateFilter(WorkspaceWatermarkForm.waiting_source),
+    F.photo | F.document,
+)
+async def handle_workspace_watermark_source(
+    message: Message,
+    state: FSMContext,
+    bot: Bot,
+    database: Database,
+    workspace_service: WorkspaceService,
+) -> None:
+    actor_id = int(message.from_user.id) if message.from_user else 0
+    data = await state.get_data()
+    workspace_id = int(data.get("workspace_id") or 0)
+    try:
+        await _require_context(
+            database=database,
+            workspaces=workspace_service,
+            workspace_id=workspace_id,
+            actor_user_id=actor_id,
+        )
+    except WorkspaceAccessError as error:
+        await state.clear()
+        await message.answer(escape(str(error)))
+        return
+    if not _watermark_enabled():
+        await state.clear()
+        await message.answer("Krita bridge выключен.")
+        return
+
+    item = await _create_job_from_message(
+        message=message,
+        source_message=message,
+        bot=bot,
+        database=database,
+        workspace_service=workspace_service,
+        watermark_service=_build_watermark_service(bot, database),
+    )
+    if item is not None:
+        await state.clear()
 
 
 @router.message(
@@ -308,6 +382,108 @@ async def handle_workspace_watermark_upload(
             has_asset=True,
         ),
     )
+
+
+async def handle_workspace_archive_fast_watermark(
+    callback: CallbackQuery,
+    callback_data: WorkspacePersonalArchiveCallback,
+    database: Database,
+    bot: Bot,
+    workspace_service: WorkspaceService,
+    workspace_product_service: WorkspaceProductService,
+) -> None:
+    try:
+        workspace = await _require_personal_module(
+            workspace_service=workspace_service,
+            workspace_product_service=workspace_product_service,
+            user_id=callback.from_user.id,
+            workspace_id=callback_data.workspace_id,
+            module_key="archive",
+            minimum_role="viewer",
+        )
+    except WorkspaceAccessError as error:
+        await callback.answer(str(error), show_alert=True)
+        return
+
+    membership = await workspace_service.require_role(
+        workspace_id=workspace.id,
+        user_id=callback.from_user.id,
+        minimum_role="viewer",
+        global_owner=_is_workspace_global_owner(callback.from_user.id),
+    )
+    if membership.role != "owner" and not _is_workspace_global_owner(
+        callback.from_user.id
+    ):
+        await callback.answer(
+            "Быстрый watermark доступен только владельцу пространства.",
+            show_alert=True,
+        )
+        return
+
+    page = await get_archive_page(
+        database,
+        callback_data.character_id,
+        callback_data.offset,
+        workspace_id=workspace.id,
+        include_adult_restricted=True,
+        include_oversized_images=True,
+    )
+    if page is None or page.media is None:
+        await callback.answer("Материал больше недоступен.", show_alert=True)
+        return
+    if callback_data.media_id and callback_data.media_id != page.media.id:
+        await callback.answer(
+            "Архив изменился. Откройте материал заново.",
+            show_alert=True,
+        )
+        return
+
+    module_enabled = await workspace_product_service.is_module_enabled(
+        workspace_id=workspace.id,
+        module_key="watermark",
+    )
+    asset = await WorkspaceWatermarkAssetRepository(database).get(workspace.id)
+    if not module_enabled or asset is None:
+        if isinstance(callback.message, Message):
+            reason = (
+                "Сначала включите модуль watermark."
+                if not module_enabled
+                else "Сначала загрузите логотип пространства."
+            )
+            await callback.message.answer(
+                f"<b>Быстрый watermark пока не настроен</b>\n\n{reason}",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="⚙️ Настроить watermark",
+                                callback_data=workspace_callback(
+                                    "module",
+                                    workspace_id=workspace.id,
+                                    module_key="watermark",
+                                ),
+                            )
+                        ]
+                    ]
+                ),
+            )
+        await callback.answer("Откройте настройки watermark.", show_alert=True)
+        return
+
+    await enqueue_archive_watermark(
+        callback=callback,
+        callback_data=callback_data,
+        database=database,
+        bot=bot,
+        workspace_id=workspace.id,
+        logo_asset=asset,
+    )
+
+
+router.callback_query.register(
+    handle_workspace_archive_fast_watermark,
+    WorkspacePersonalArchiveCallback.filter(F.action == "watermark"),
+)
 
 
 __all__ = ("router",)
