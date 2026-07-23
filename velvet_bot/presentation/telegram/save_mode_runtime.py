@@ -21,7 +21,6 @@ from velvet_bot.presentation.telegram.routers.archive import save as legacy_save
 from velvet_bot.presentation.telegram.routers.core_operations_controllers import (
     workspace_product_experience,
 )
-from velvet_bot.services.media_save import save_media_from_message
 
 _INSTALLED = False
 _REGISTERED_ROUTER_IDS: set[int] = set()
@@ -261,7 +260,7 @@ async def handle_pending_save_upload(
     if character is not None:
         save_kwargs["resolved_character"] = character
 
-    result = await save_media_from_message(
+    result = await legacy_save.save_media_from_message(
         database,
         bot,
         audit_logger,
