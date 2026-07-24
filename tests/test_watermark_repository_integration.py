@@ -166,6 +166,25 @@ class WatermarkRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(draft.job.id, claimed.job.id)
         self.assertEqual("processing", claimed.revision.status)
 
+    async def test_stale_draft_revision_cannot_be_queued(self) -> None:
+        first = await self._create_job(
+            source_message_id=35,
+            revision_status="draft",
+        )
+        current = await self.repository.create_revision(
+            first.job.id,
+            settings=WatermarkSettings(position="top_right"),
+            revision_status="draft",
+        )
+        self.assertEqual(2, current.revision.revision)
+
+        with self.assertRaisesRegex(ValueError, "Черновик уже изменился"):
+            await self.repository.queue_revision(
+                job_id=first.job.id,
+                revision=first.revision.revision,
+            )
+        self.assertIsNone(await self.repository.claim_pending())
+
     async def test_approved_job_is_idempotently_protected_from_cancel(self) -> None:
         first = await self._create_job(source_message_id=32)
         await self._claim_and_ready(

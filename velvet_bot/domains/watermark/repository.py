@@ -162,7 +162,7 @@ class WatermarkRepository:
             async with connection.transaction():
                 result = await connection.execute(
                     """
-                    UPDATE watermark_revisions
+                    UPDATE watermark_revisions AS revision
                     SET status = 'pending',
                         request_path = NULL,
                         output_path = NULL,
@@ -170,9 +170,12 @@ class WatermarkRepository:
                         telegram_preview_file_id = NULL,
                         error = NULL,
                         completed_at = NULL
-                    WHERE job_id = $1
-                      AND revision = $2
-                      AND status IN ('draft', 'error')
+                    FROM watermark_jobs AS job
+                    WHERE revision.job_id = $1
+                      AND revision.revision = $2
+                      AND revision.status IN ('draft', 'error')
+                      AND job.id = revision.job_id
+                      AND job.current_revision = revision.revision
                     """,
                     int(job_id),
                     int(revision),

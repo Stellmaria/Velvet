@@ -20,7 +20,6 @@ from aiogram.types import (
 from velvet_bot import watermark_ui
 from velvet_bot.database import Database
 from velvet_bot.domains.watermark.models import WatermarkWorkItem
-from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
