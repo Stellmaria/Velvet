@@ -82,16 +82,20 @@ core = Path(
     "velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py"
 )
 text = core.read_text(encoding="utf-8")
-text = text.replace(
-    "from velvet_bot.krita_supervisor import build_krita_supervisor_client\n",
-    "from velvet_bot.krita_supervisor import wake_krita\n",
-    1,
-)
-text = text.replace("from velvet_bot.supervisor_client import SupervisorClientError\n", "", 1)
+for old, new in (
+    (
+        "from velvet_bot.krita_supervisor import build_krita_supervisor_client\n",
+        "from velvet_bot.krita_supervisor import wake_krita\n",
+    ),
+    ("from velvet_bot.supervisor_client import SupervisorClientError\n", ""),
+):
+    if old not in text:
+        raise RuntimeError(f"Missing core import: {old!r}")
+    text = text.replace(old, new, 1)
 start = text.index("async def _wake_krita()")
 end = text.index("class WatermarkInputReplyFilter")
 text = text[:start] + text[end:]
-old = """    wake_error = await _wake_krita()
+old = r'''    wake_error = await _wake_krita()
     if wake_error:
         await message.answer(
             "⚠️ Не удалось автоматически запустить Krita. "
@@ -99,16 +103,15 @@ old = """    wake_error = await _wake_krita()
             f"<code>{escape(wake_error[:800])}</code>"
         )
 
-"""
+'''
 if old not in text:
     raise RuntimeError("Missing early Krita wake in job creation")
 text = text.replace(old, "", 1)
-text = text.replace(
-    "format_watermark_caption(item, status_text=\"поставлено в очередь\")",
-    "format_watermark_caption(item)",
-    1,
-)
-old = """    if source is None:
+old = 'format_watermark_caption(item, status_text="поставлено в очередь")'
+if old not in text:
+    raise RuntimeError("Missing draft creation caption")
+text = text.replace(old, "format_watermark_caption(item)", 1)
+old = r'''    if source is None:
         wake_error = await _wake_krita()
         warning = (
             f"\n\n⚠️ Автозапуск Krita: <code>{escape(wake_error[:500])}</code>"
@@ -121,24 +124,28 @@ old = """    if source is None:
             + warning
         )
         return
-"""
-new = """    if source is None:
+'''
+new = r'''    if source is None:
         await message.answer(
             "Ответьте командой <code>/watermark</code> на изображение. "
             "Команда является аварийным резервом; обычный вход доступен из меню. "
             "Krita запустится только после кнопки генерации."
         )
         return
-"""
+'''
 if old not in text:
     raise RuntimeError("Missing watermark command wake block")
 text = text.replace(old, new, 1)
+old = "    await _wake_krita()\n    service = _build_service(bot, database)\n"
+if old not in text:
+    raise RuntimeError("Missing custom color wake call")
 text = text.replace(
-    "    await _wake_krita()\n    service = _build_service(bot, database)\n",
-    "    await wake_krita(context=\"watermark color revision\")\n    service = _build_service(bot, database)\n",
+    old,
+    '    await wake_krita(context="watermark color revision")\n'
+    "    service = _build_service(bot, database)\n",
     1,
 )
-old = """    if action in {"start", "help"}:
+old = r'''    if action in {"start", "help"}:
         wake_error = await _wake_krita()
         await callback.answer()
         if isinstance(callback.message, Message):
@@ -157,8 +164,8 @@ old = """    if action in {"start", "help"}:
                 reply_markup=build_watermark_start_keyboard(),
             )
         return
-"""
-new = """    if action in {"start", "help"}:
+'''
+new = r'''    if action in {"start", "help"}:
         await callback.answer()
         if isinstance(callback.message, Message):
             await callback.message.answer(
@@ -170,36 +177,43 @@ new = """    if action in {"start", "help"}:
                 reply_markup=build_watermark_start_keyboard(),
             )
         return
-"""
+'''
 if old not in text:
     raise RuntimeError("Missing start/help Krita wake block")
 text = text.replace(old, new, 1)
-text = text.replace(
-    """    if action != "cancel":
+old = '''    if action != "cancel":
         await _wake_krita()
-""",
-    """    if action != "cancel":
+'''
+new = '''    if action != "cancel":
         await wake_krita(context="watermark revision")
-""",
-    1,
-)
+'''
+if old not in text:
+    raise RuntimeError("Missing revision wake block")
+text = text.replace(old, new, 1)
 core.write_text(text, encoding="utf-8")
 
 public_actions = Path(
     "velvet_bot/presentation/telegram/routers/public_archive/watermark_actions.py"
 )
 text = public_actions.read_text(encoding="utf-8")
-text = text.replace(
-    "from velvet_bot.krita_supervisor import build_krita_supervisor_client\n",
-    "from velvet_bot.krita_supervisor import wake_krita\n",
-    1,
-)
-text = text.replace("from velvet_bot.supervisor_client import SupervisorClientError\n", "", 1)
+for old, new in (
+    (
+        "from velvet_bot.krita_supervisor import build_krita_supervisor_client\n",
+        "from velvet_bot.krita_supervisor import wake_krita\n",
+    ),
+    ("from velvet_bot.supervisor_client import SupervisorClientError\n", ""),
+):
+    if old not in text:
+        raise RuntimeError(f"Missing public archive import: {old!r}")
+    text = text.replace(old, new, 1)
 start = text.index("async def _wake_krita()")
 end = text.index("def _source_suffix")
 text = text[:start] + text[end:]
+old = "wake_error = await _wake_krita()"
+if old not in text:
+    raise RuntimeError("Missing public archive wake call")
 text = text.replace(
-    "wake_error = await _wake_krita()",
+    old,
     'wake_error = await wake_krita(context="public archive watermark")',
     1,
 )
@@ -211,23 +225,30 @@ controller = Path(
 )
 text = controller.read_text(encoding="utf-8")
 if "from velvet_bot.krita_supervisor import wake_krita\n" not in text:
-    text = text.replace(
-        "from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService\n",
-        "from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService\n"
-        "from velvet_bot.krita_supervisor import wake_krita\n",
-        1,
+    anchor = (
+        "from velvet_bot.domains.workspaces.service import "
+        "WorkspaceAccessError, WorkspaceService\n"
     )
-text = text.replace("_ORIGINAL_CORE_WAKE_KRITA = core_watermark._wake_krita\n", "", 1)
-old = """async def _defer_krita_start() -> str | None:
+    if anchor not in text:
+        raise RuntimeError("Missing workspace service import anchor")
+    text = text.replace(anchor, anchor + "from velvet_bot.krita_supervisor import wake_krita\n", 1)
+old = "_ORIGINAL_CORE_WAKE_KRITA = core_watermark._wake_krita\n"
+if old not in text:
+    raise RuntimeError("Missing original core wake alias")
+text = text.replace(old, "", 1)
+old = '''async def _defer_krita_start() -> str | None:
     return None
 
 
-"""
+'''
 if old not in text:
     raise RuntimeError("Missing deferred Krita helper")
 text = text.replace(old, "", 1)
+old = "wake_error = await _ORIGINAL_CORE_WAKE_KRITA()"
+if old not in text:
+    raise RuntimeError("Missing workspace preview wake call")
 text = text.replace(
-    "wake_error = await _ORIGINAL_CORE_WAKE_KRITA()",
+    old,
     'wake_error = await wake_krita(context="workspace watermark preview")',
     1,
 )
