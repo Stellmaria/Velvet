@@ -5,7 +5,7 @@ from typing import Any
 
 from aiogram import Bot, Router
 from aiogram.filters import BaseFilter
-from aiogram.types import BotCommand, Message
+from aiogram.types import Message
 
 from velvet_bot.app.save_sessions import (
     SaveUploadMode,
@@ -18,13 +18,9 @@ from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.media import extract_media
 from velvet_bot.presentation.telegram.routers.archive import save as legacy_save
-from velvet_bot.presentation.telegram.routers.core_operations_controllers import (
-    workspace_product_experience,
-)
 
 _INSTALLED = False
 _REGISTERED_ROUTER_IDS: set[int] = set()
-_ORIGINAL_WORKSPACE_COMMANDS = workspace_product_experience._workspace_commands
 
 
 class SaveModeCommandFilter(BaseFilter):
@@ -46,38 +42,11 @@ class SaveModeCommandFilter(BaseFilter):
         }
 
 
-def _workspace_commands_with_save_modes(role: str) -> tuple[BotCommand, ...]:
-    commands = list(_ORIGINAL_WORKSPACE_COMMANDS(role))
-    if workspace_product_experience._ROLE_RANK.get(role, 0) < 30:
-        return tuple(commands)
-
-    result: list[BotCommand] = []
-    inserted_set = False
-    for command in commands:
-        if command.command == "save":
-            result.append(
-                BotCommand(command="save", description="Сохранить один файл")
-            )
-            result.append(
-                BotCommand(command="save_set", description="Пакетная загрузка файлов")
-            )
-            inserted_set = True
-            continue
-        result.append(command)
-    if not inserted_set:
-        result.append(BotCommand(command="save", description="Сохранить один файл"))
-        result.append(
-            BotCommand(command="save_set", description="Пакетная загрузка файлов")
-        )
-    return tuple(result)
-
-
 def install_save_command_modes() -> None:
     global _INSTALLED
     if _INSTALLED:
         return
     _INSTALLED = True
-    workspace_product_experience._workspace_commands = _workspace_commands_with_save_modes
     legacy_save.handle_pending_save_upload = handle_pending_save_upload
 
 
