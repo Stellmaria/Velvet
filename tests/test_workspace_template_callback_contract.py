@@ -21,11 +21,11 @@ class WorkspaceTemplateCallbackContractTests(unittest.TestCase):
         self.assertFalse(is_workspace_member_callback_data("unknown:show:9"))
         self.assertFalse(is_workspace_member_callback_data(None))
 
-    def test_workspace_installer_does_not_patch_access_classifier(self) -> None:
+    def test_home_hint_controller_does_not_patch_access_classifier(self) -> None:
         source = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
-            "workspace_product_experience.py"
+            "workspace_home_hint_controller.py"
         ).read_text(encoding="utf-8")
 
         self.assertNotIn("access_middleware.is_workspace_member_callback_data =", source)
