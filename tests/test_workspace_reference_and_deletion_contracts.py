@@ -8,12 +8,14 @@ from unittest.mock import AsyncMock, patch
 
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.presentation.telegram.workspace_deletion_controller import (
+    WorkspaceDeleteCommandFilter,
     build_workspace_delete_keyboard,
 )
 from velvet_bot.presentation.telegram.workspace_reference_dashboard import (
     WorkspaceReferenceCharacter,
     build_workspace_reference_dashboard,
     build_workspace_reference_dashboard_keyboard,
+    parse_workspace_reference_callback,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,13 +69,17 @@ class WorkspaceReferenceDashboardContractTests(unittest.IsolatedAsyncioTestCase)
         self.assertIn("↩️ Моё пространство", labels)
         open_button = next(button for button in buttons if button.text.startswith("🧬"))
         back_button = next(button for button in buttons if button.text == "↩️ Моё пространство")
-        self.assertIsNotNone(open_button.callback_data)
-        self.assertTrue(open_button.callback_data.startswith("wref:open:9:3"))
+        action = parse_workspace_reference_callback(open_button.callback_data)
+        self.assertIsNotNone(action)
+        assert action is not None
+        self.assertEqual("open", action.action)
+        self.assertEqual(9, action.workspace_id)
+        self.assertEqual(3, action.character_id)
         self.assertIsNotNone(back_button.callback_data)
         self.assertTrue(back_button.callback_data.startswith("wsp:home:9:"))
 
 
-class WorkspaceDeletionContractTests(unittest.TestCase):
+class WorkspaceDeletionContractTests(unittest.IsolatedAsyncioTestCase):
     def test_confirmation_keyboard_is_explicit_and_reversible(self) -> None:
         keyboard = build_workspace_delete_keyboard(9)
         labels = _labels(keyboard)
@@ -90,18 +96,29 @@ class WorkspaceDeletionContractTests(unittest.TestCase):
         self.assertIsNotNone(cancel.callback_data)
         self.assertTrue(cancel.callback_data.startswith("wsp:deletecancel:9:"))
 
+    async def test_delete_command_filter_accepts_bot_suffix(self) -> None:
+        message = SimpleNamespace(
+            text="/workspace_delete@DominusVelvetBot 9",
+            caption=None,
+        )
+
+        self.assertTrue(await WorkspaceDeleteCommandFilter()(message))
+
 
 class WorkspaceOwnerBoundaryTests(unittest.TestCase):
-    def test_reference_contract_owns_query_and_callback_prefix(self) -> None:
+    def test_reference_contract_owns_query_and_callback_parser(self) -> None:
         source = (
             PRESENTATION / "workspace_reference_dashboard.py"
         ).read_text(encoding="utf-8")
 
+        self.assertIn("class WorkspaceReferenceAction", source)
         self.assertIn("class WorkspaceReferenceCharacter", source)
         self.assertIn("class WorkspaceReferenceDashboard", source)
         self.assertIn("async def load_workspace_reference_characters", source)
+        self.assertIn("def parse_workspace_reference_callback", source)
+        self.assertIn('REFERENCE_CALLBACK_PREFIX = "wref"', source)
         self.assertIn("FROM characters AS character", source)
-        self.assertIn('prefix="wref"', source)
+        self.assertNotIn("CallbackData", source)
         self.assertNotIn("workspace_owner_controls", source)
 
     def test_reference_controller_owns_module_and_open_flows(self) -> None:
@@ -109,6 +126,7 @@ class WorkspaceOwnerBoundaryTests(unittest.TestCase):
             PRESENTATION / "workspace_reference_dashboard_controller.py"
         ).read_text(encoding="utf-8")
 
+        self.assertIn("class WorkspaceReferenceActionFilter", source)
         self.assertIn("handle_workspace_reference_entry", source)
         self.assertIn("handle_workspace_reference_action", source)
         self.assertIn("register_workspace_reference_dashboard", source)
@@ -122,11 +140,13 @@ class WorkspaceOwnerBoundaryTests(unittest.TestCase):
             PRESENTATION / "workspace_deletion_controller.py"
         ).read_text(encoding="utf-8")
 
+        self.assertIn("class WorkspaceDeleteCommandFilter", source)
         self.assertIn("async def delete_workspace_data", source)
         self.assertIn("FOR UPDATE", source)
         self.assertIn("DELETE FROM workspaces", source)
         self.assertIn("build_workspace_home_presentation", source)
         self.assertIn("register_workspace_deletion", source)
+        self.assertNotIn('Command("workspace_delete")', source)
         self.assertNotIn("workspace_owner_controls", source)
         self.assertNotIn("@router.callback_query", source)
 
