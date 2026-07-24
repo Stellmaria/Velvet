@@ -41,7 +41,8 @@
 
 - подготовлены repository/service методы для hint preference;
 - подготовлен перевод controller на публичный service contract;
-- добавлены unit- и architecture regression-тесты.
+- добавлены unit- и architecture regression-тесты;
+- запущено проверяемое применение transformation scripts.
 
 ### Миграции и совместимость
 
