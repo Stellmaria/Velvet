@@ -119,11 +119,11 @@ class KritaWakeContractTests(unittest.IsolatedAsyncioTestCase):
 
 
 class WatermarkPresentationArchitectureTests(unittest.TestCase):
-    def test_workspace_installer_does_not_patch_watermark_ui_or_wake_policy(self) -> None:
+    def test_workspace_controller_does_not_patch_watermark_ui_or_wake_policy(self) -> None:
         source = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
-            "workspace_product_experience.py"
+            "workspace_watermark_draft_controller.py"
         ).read_text(encoding="utf-8")
 
         for forbidden in (
