@@ -115,6 +115,7 @@ WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
     "dash:",
     "wteam:",
     "wlogo:",
+    "wmtpl:",
     "wm:",
 )
 

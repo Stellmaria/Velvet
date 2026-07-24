@@ -7,10 +7,10 @@ from pathlib import Path
 from velvet_bot.domains.watermark.models import WatermarkJob, WatermarkRevision, WatermarkSettings, WatermarkWorkItem
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import WorkspaceModuleSetting
+from velvet_bot.core.access import is_workspace_member_callback_data
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_product_experience import (
     _SHOW_BUTTON_HINTS,
     _home_keyboard_with_hint_toggle,
-    _workspace_callback_with_template,
     _workspace_commands,
 )
 from velvet_bot.watermark_ui import build_watermark_keyboard
@@ -93,7 +93,7 @@ class WorkspaceCommandMenuTests(unittest.TestCase):
         self.assertNotIn("refadd", commands)
 
     def test_template_callback_is_accepted_as_workspace_callback(self) -> None:
-        self.assertTrue(_workspace_callback_with_template("wmtpl:show:9:"))
+        self.assertTrue(is_workspace_member_callback_data("wmtpl:show:9:"))
 
 
 class WorkspaceHintToggleTests(unittest.TestCase):
