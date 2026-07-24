@@ -49,8 +49,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt -r requirements-dev.txt
-      - name: Prepare test database
-        run: python scripts/apply_migrations.py
       - name: Run focused validation
         run: |
           python -m compileall \
