@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt -r requirements-dev.txt
-      - name: Run focused validation
+      - name: Compile changed modules
         run: |
           python -m compileall \
             velvet_bot/watermark_ui.py \
@@ -40,11 +40,14 @@ jobs:
             velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_product_experience.py \
             velvet_bot/presentation/telegram/routers/public_archive/watermark_actions.py \
             tests/test_watermark_presentation_contracts.py
-          python -m unittest -v \
-            tests.test_watermark_presentation_contracts \
-            tests.test_workspace_commands_and_watermark_drafts \
-            tests.test_watermark_draft_persistence_boundary \
-            tests.test_workspace_taxonomy_watermark_reliability
+      - name: Test presentation contracts
+        run: python -m unittest -v tests.test_watermark_presentation_contracts
+      - name: Test existing draft UI
+        run: python -m unittest -v tests.test_workspace_commands_and_watermark_drafts
+      - name: Test draft persistence boundary
+        run: python -m unittest -v tests.test_watermark_draft_persistence_boundary
+      - name: Test watermark reliability
+        run: python -m unittest -v tests.test_workspace_taxonomy_watermark_reliability
       - name: Remove transformation scripts
         run: |
           rm .github/apply-watermark-ui-contract.py
