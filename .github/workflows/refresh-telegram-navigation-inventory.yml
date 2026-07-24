@@ -1,0 +1,43 @@
+name: Refresh Telegram navigation inventory
+
+on:
+  push:
+    branches:
+      - agent/watermark-draft-persistence-boundary
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-inventory:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Refresh Telegram navigation inventory'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/watermark-draft-persistence-boundary
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Refresh generated report
+        run: |
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --check
+      - name: Verify inventory contract
+        run: python -m unittest -v tests.test_telegram_navigation_inventory
+      - name: Commit generated report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/generated/telegram_navigation_inventory.md
+          git diff --cached --check
+          git commit -m "Refresh Telegram navigation inventory"
+          git push origin HEAD:agent/watermark-draft-persistence-boundary
