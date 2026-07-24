@@ -27,7 +27,8 @@ def workspace_commands(role: str) -> tuple[BotCommand, ...]:
     if _ROLE_RANK.get(role, 0) >= _ROLE_RANK["editor"]:
         commands.extend(
             [
-                BotCommand(command="save", description="Сохранить материалы персонажу"),
+                BotCommand(command="save", description="Сохранить один файл"),
+                BotCommand(command="save_set", description="Пакетная загрузка файлов"),
                 BotCommand(command="savecancel", description="Завершить пакетное сохранение"),
                 BotCommand(command="refadd", description="Добавить референс"),
                 BotCommand(command="refdel", description="Удалить референс"),
