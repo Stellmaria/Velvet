@@ -63,6 +63,8 @@ class WatermarkService:
         source_file_id: str,
         source_file_unique_id: str | None,
         source_path: str,
+        settings: WatermarkSettings | None = None,
+        draft: bool = False,
         workspace_id: int = 1,
         logo_kind: str = "builtin",
         logo_path: str | None = None,
@@ -77,7 +79,8 @@ class WatermarkService:
             source_file_id=source_file_id,
             source_file_unique_id=source_file_unique_id,
             source_path=source_path,
-            settings=WatermarkSettings(),
+            settings=settings or WatermarkSettings(),
+            revision_status="draft" if draft else "pending",
             workspace_id=workspace_id,
             logo_kind=logo_kind,
             logo_path=logo_path,
@@ -108,6 +111,7 @@ class WatermarkService:
         size_delta: float = 0.0,
         margin_delta: float = 0.0,
         enabled: bool | None = None,
+        draft: bool = False,
     ) -> WatermarkWorkItem:
         current = await self.get_current(job_id, owner_user_id=owner_user_id)
         settings = current.revision.settings
@@ -120,11 +124,36 @@ class WatermarkService:
             margin=settings.margin + margin_delta,
             enabled=enabled if enabled is not None else settings.enabled,
         ).normalized()
-        return await self._repository.create_revision(job_id, settings=next_settings)
+        return await self._repository.create_revision(
+            job_id,
+            settings=next_settings,
+            revision_status="draft" if draft else "pending",
+        )
 
-    async def undo(self, job_id: int, *, owner_user_id: int) -> WatermarkWorkItem:
+    async def undo(
+        self,
+        job_id: int,
+        *,
+        owner_user_id: int,
+        draft: bool = False,
+    ) -> WatermarkWorkItem:
         await self.get_current(job_id, owner_user_id=owner_user_id)
-        return await self._repository.undo(job_id)
+        return await self._repository.undo(
+            job_id,
+            revision_status="draft" if draft else "pending",
+        )
+
+    async def generate(self, job_id: int, *, owner_user_id: int) -> WatermarkWorkItem:
+        current = await self.get_current(job_id, owner_user_id=owner_user_id)
+        status = current.revision.status
+        if status not in {"draft", "error"}:
+            if status in {"pending", "processing"}:
+                raise ValueError("Генерация этой версии уже запущена.")
+            raise ValueError("Сначала измените настройки, затем запустите новую генерацию.")
+        return await self._repository.queue_revision(
+            job_id=job_id,
+            revision=current.revision.revision,
+        )
 
     async def approve(self, job_id: int, *, owner_user_id: int) -> WatermarkWorkItem:
         current = await self.get_current(job_id, owner_user_id=owner_user_id)

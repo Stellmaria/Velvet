@@ -38,18 +38,23 @@ class WorkspaceTaxonomyWatermarkReliabilityTests(unittest.TestCase):
         self.assertIn("UPDATE characters SET category = NULL", source)
         self.assertIn("SET universe = NULL, story_id = NULL", source)
 
-    def test_watermark_template_is_applied_to_new_workspace_jobs(self) -> None:
-        runtime = (
+    def test_watermark_template_is_applied_without_runtime_service_patch(self) -> None:
+        core_watermark = (
             ROOT
-            / "velvet_bot/domains/watermark/workspace_template_runtime.py"
+            / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
+            "watermark.py"
         ).read_text(encoding="utf-8")
         router_bundle = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/archive_and_public.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("WorkspaceWatermarkTemplateRepository", runtime)
-        self.assertIn("settings=settings", runtime)
-        self.assertIn("install_workspace_watermark_templates()", router_bundle)
+        runtime = ROOT / "velvet_bot/domains/watermark/workspace_template_runtime.py"
+
+        self.assertIn("WorkspaceWatermarkTemplateRepository(database).get", core_watermark)
+        self.assertIn("settings=settings", core_watermark)
+        self.assertIn("draft=True", core_watermark)
+        self.assertNotIn("install_workspace_watermark_templates", router_bundle)
+        self.assertFalse(runtime.exists())
 
     def test_standalone_personal_quick_watermark_is_removed(self) -> None:
         adjustment = (

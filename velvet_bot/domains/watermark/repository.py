@@ -12,6 +12,7 @@ from velvet_bot.domains.watermark.models import (
 )
 
 CancelResult = Literal["cancelled", "already_cancelled", "approved"]
+RevisionStatus = Literal["draft", "pending"]
 
 
 class WatermarkRepository:
@@ -28,6 +29,7 @@ class WatermarkRepository:
         source_file_unique_id: str | None,
         source_path: str,
         settings: WatermarkSettings,
+        revision_status: RevisionStatus = "pending",
         workspace_id: int = 1,
         logo_kind: str = "builtin",
         logo_path: str | None = None,
@@ -72,6 +74,7 @@ class WatermarkRepository:
                     job_id=int(job_row["id"]),
                     revision=1,
                     settings=settings,
+                    status=revision_status,
                 )
         return WatermarkWorkItem(
             job=self._map_job(job_row),
@@ -88,6 +91,7 @@ class WatermarkRepository:
         job_id: int,
         *,
         settings: WatermarkSettings,
+        revision_status: RevisionStatus = "pending",
     ) -> WatermarkWorkItem:
         settings = settings.normalized()
         async with self._database.acquire() as connection:
@@ -106,6 +110,7 @@ class WatermarkRepository:
                     job_id=job_id,
                     revision=revision,
                     settings=settings,
+                    status=revision_status,
                 )
                 job_row = await connection.fetchrow(
                     """
@@ -126,7 +131,12 @@ class WatermarkRepository:
             revision=self._map_revision(revision_row),
         )
 
-    async def undo(self, job_id: int) -> WatermarkWorkItem:
+    async def undo(
+        self,
+        job_id: int,
+        *,
+        revision_status: RevisionStatus = "pending",
+    ) -> WatermarkWorkItem:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
@@ -141,7 +151,41 @@ class WatermarkRepository:
             )
         if row is None:
             raise ValueError("Предыдущей версии настроек нет.")
-        return await self.create_revision(job_id, settings=self._settings_from_row(row))
+        return await self.create_revision(
+            job_id,
+            settings=self._settings_from_row(row),
+            revision_status=revision_status,
+        )
+
+    async def queue_revision(self, *, job_id: int, revision: int) -> WatermarkWorkItem:
+        async with self._database.acquire() as connection:
+            async with connection.transaction():
+                result = await connection.execute(
+                    """
+                    UPDATE watermark_revisions AS revision
+                    SET status = 'pending',
+                        request_path = NULL,
+                        output_path = NULL,
+                        response_path = NULL,
+                        telegram_preview_file_id = NULL,
+                        error = NULL,
+                        completed_at = NULL
+                    FROM watermark_jobs AS job
+                    WHERE revision.job_id = $1
+                      AND revision.revision = $2
+                      AND revision.status IN ('draft', 'error')
+                      AND job.id = revision.job_id
+                      AND job.current_revision = revision.revision
+                    """,
+                    int(job_id),
+                    int(revision),
+                )
+                if not result.endswith("1"):
+                    raise ValueError("Черновик уже изменился. Обновите карточку.")
+                row = await connection.fetchrow(self._current_query(), int(job_id))
+        if row is None:
+            raise ValueError("Задание водяного знака не найдено.")
+        return self._map_work_item(row)
 
     async def set_control_message(self, job_id: int, message_id: int) -> None:
         async with self._database.acquire() as connection:
@@ -357,14 +401,15 @@ class WatermarkRepository:
         job_id: int,
         revision: int,
         settings: WatermarkSettings,
+        status: RevisionStatus,
     ):
         row = await connection.fetchrow(
             """
             INSERT INTO watermark_revisions (
                 job_id, revision, enabled, position, color,
-                opacity, size, margin, lock_layer
+                opacity, size, margin, lock_layer, status
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
             """,
             job_id,
@@ -376,6 +421,7 @@ class WatermarkRepository:
             settings.size,
             settings.margin,
             settings.lock,
+            status,
         )
         if row is None:
             raise RuntimeError("Не удалось создать revision водяного знака.")
@@ -529,4 +575,4 @@ class WatermarkRepository:
         ).normalized()
 
 
-__all__ = ("CancelResult", "WatermarkRepository")
+__all__ = ("CancelResult", "RevisionStatus", "WatermarkRepository")

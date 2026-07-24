@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from contextvars import ContextVar
-from dataclasses import replace
 from html import escape
 from typing import Any
 
@@ -20,16 +19,11 @@ from aiogram.types import (
 
 from velvet_bot import watermark_ui
 from velvet_bot.database import Database
-from velvet_bot.domains.watermark.models import WatermarkSettings, WatermarkWorkItem
-from velvet_bot.domains.watermark.repository import WatermarkRepository
-from velvet_bot.domains.watermark.service import WatermarkService
+from velvet_bot.domains.watermark.models import WatermarkWorkItem
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
-from velvet_bot.domains.workspaces.watermark_templates import (
-    WorkspaceWatermarkTemplateRepository,
-)
 from velvet_bot.presentation.telegram.middleware import access as access_middleware
 from velvet_bot.presentation.telegram.routers import workspace_guided_actions
 from velvet_bot.presentation.telegram.routers import workspace_owner_controls
@@ -263,277 +257,6 @@ def _workspace_callback_with_template(value: str | None) -> bool:
         _ORIGINAL_MEMBER_CALLBACK_CHECK(value)
         or (value and value.startswith("wmtpl:"))
     )
-
-
-async def _create_draft_job(
-    repository: WatermarkRepository,
-    *,
-    owner_user_id: int,
-    chat_id: int,
-    source_message_id: int,
-    source_file_id: str,
-    source_file_unique_id: str | None,
-    source_path: str,
-    settings: WatermarkSettings,
-    workspace_id: int,
-    logo_kind: str,
-    logo_path: str | None,
-    logo_width: float | None,
-    logo_height: float | None,
-    logo_name: str | None,
-) -> WatermarkWorkItem:
-    settings = settings.normalized()
-    async with repository._database.acquire() as connection:
-        async with connection.transaction():
-            job_row = await connection.fetchrow(
-                """
-                INSERT INTO watermark_jobs (
-                    owner_user_id, chat_id, source_message_id,
-                    source_file_id, source_file_unique_id, source_path,
-                    workspace_id, logo_kind, logo_path, logo_width,
-                    logo_height, logo_name
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                RETURNING *
-                """,
-                owner_user_id,
-                chat_id,
-                source_message_id,
-                source_file_id,
-                source_file_unique_id,
-                source_path,
-                int(workspace_id),
-                logo_kind,
-                logo_path,
-                logo_width,
-                logo_height,
-                logo_name,
-            )
-            if job_row is None:
-                raise RuntimeError("Не удалось создать задание водяного знака.")
-            revision_row = await connection.fetchrow(
-                """
-                INSERT INTO watermark_revisions (
-                    job_id, revision, enabled, position, color,
-                    opacity, size, margin, lock_layer, status
-                )
-                VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, 'draft')
-                RETURNING *
-                """,
-                int(job_row["id"]),
-                settings.enabled,
-                settings.position,
-                settings.color,
-                settings.opacity,
-                settings.size,
-                settings.margin,
-                settings.lock,
-            )
-    if revision_row is None:
-        raise RuntimeError("Не удалось создать черновик водяного знака.")
-    return WatermarkWorkItem(
-        job=repository._map_job(job_row),
-        revision=repository._map_revision(revision_row),
-    )
-
-
-async def _create_draft_revision(
-    repository: WatermarkRepository,
-    job_id: int,
-    *,
-    settings: WatermarkSettings,
-) -> WatermarkWorkItem:
-    settings = settings.normalized()
-    async with repository._database.acquire() as connection:
-        async with connection.transaction():
-            job_row = await connection.fetchrow(
-                "SELECT * FROM watermark_jobs WHERE id = $1 FOR UPDATE",
-                int(job_id),
-            )
-            if job_row is None:
-                raise ValueError("Задание водяного знака не найдено.")
-            if str(job_row["status"]) in {"approved", "cancelled"}:
-                raise ValueError("Задание уже завершено.")
-            revision = int(job_row["current_revision"]) + 1
-            revision_row = await connection.fetchrow(
-                """
-                INSERT INTO watermark_revisions (
-                    job_id, revision, enabled, position, color,
-                    opacity, size, margin, lock_layer, status
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft')
-                RETURNING *
-                """,
-                int(job_id),
-                revision,
-                settings.enabled,
-                settings.position,
-                settings.color,
-                settings.opacity,
-                settings.size,
-                settings.margin,
-                settings.lock,
-            )
-            job_row = await connection.fetchrow(
-                """
-                UPDATE watermark_jobs
-                SET current_revision = $2,
-                    status = 'active',
-                    updated_at = NOW()
-                WHERE id = $1
-                RETURNING *
-                """,
-                int(job_id),
-                revision,
-            )
-    if job_row is None or revision_row is None:
-        raise RuntimeError("Не удалось сохранить черновик водяного знака.")
-    return WatermarkWorkItem(
-        job=repository._map_job(job_row),
-        revision=repository._map_revision(revision_row),
-    )
-
-
-async def _service_create_draft_job(
-    self: WatermarkService,
-    *,
-    owner_user_id: int,
-    chat_id: int,
-    source_message_id: int,
-    source_file_id: str,
-    source_file_unique_id: str | None,
-    source_path: str,
-    workspace_id: int = DEFAULT_WORKSPACE_ID,
-    logo_kind: str = "builtin",
-    logo_path: str | None = None,
-    logo_width: float | None = None,
-    logo_height: float | None = None,
-    logo_name: str | None = None,
-) -> WatermarkWorkItem:
-    repository = self._repository
-    settings = WatermarkSettings()
-    if int(workspace_id) != DEFAULT_WORKSPACE_ID:
-        settings = await WorkspaceWatermarkTemplateRepository(
-            repository._database
-        ).get(workspace_id)
-    return await _create_draft_job(
-        repository,
-        owner_user_id=owner_user_id,
-        chat_id=chat_id,
-        source_message_id=source_message_id,
-        source_file_id=source_file_id,
-        source_file_unique_id=source_file_unique_id,
-        source_path=source_path,
-        settings=settings,
-        workspace_id=workspace_id,
-        logo_kind=logo_kind,
-        logo_path=logo_path,
-        logo_width=logo_width,
-        logo_height=logo_height,
-        logo_name=logo_name,
-    )
-
-
-async def _service_revise_draft(
-    self: WatermarkService,
-    job_id: int,
-    *,
-    owner_user_id: int,
-    position: str | None = None,
-    color: str | None = None,
-    opacity_delta: int = 0,
-    size_delta: float = 0.0,
-    margin_delta: float = 0.0,
-    enabled: bool | None = None,
-) -> WatermarkWorkItem:
-    current = await self.get_current(job_id, owner_user_id=owner_user_id)
-    settings = current.revision.settings
-    next_settings = replace(
-        settings,
-        position=position if position is not None else settings.position,
-        color=color if color is not None else settings.color,
-        opacity=settings.opacity + opacity_delta,
-        size=settings.size + size_delta,
-        margin=settings.margin + margin_delta,
-        enabled=enabled if enabled is not None else settings.enabled,
-    ).normalized()
-    return await _create_draft_revision(
-        self._repository,
-        job_id,
-        settings=next_settings,
-    )
-
-
-async def _service_undo_draft(
-    self: WatermarkService,
-    job_id: int,
-    *,
-    owner_user_id: int,
-) -> WatermarkWorkItem:
-    await self.get_current(job_id, owner_user_id=owner_user_id)
-    repository = self._repository
-    async with repository._database.acquire() as connection:
-        row = await connection.fetchrow(
-            """
-            SELECT revision.*
-            FROM watermark_jobs AS job
-            JOIN watermark_revisions AS revision
-              ON revision.job_id = job.id
-            WHERE job.id = $1
-              AND revision.revision < job.current_revision
-            ORDER BY revision.revision DESC
-            LIMIT 1
-            """,
-            int(job_id),
-        )
-    if row is None:
-        raise ValueError("Предыдущей версии настроек нет.")
-    return await _create_draft_revision(
-        repository,
-        job_id,
-        settings=repository._settings_from_row(row),
-    )
-
-
-async def _service_generate(
-    self: WatermarkService,
-    job_id: int,
-    *,
-    owner_user_id: int,
-) -> WatermarkWorkItem:
-    current = await self.get_current(job_id, owner_user_id=owner_user_id)
-    status = current.revision.status
-    if status not in {"draft", "error"}:
-        if status in {"pending", "processing"}:
-            raise ValueError("Генерация этой версии уже запущена.")
-        raise ValueError("Сначала измените настройки, затем запустите новую генерацию.")
-
-    repository = self._repository
-    async with repository._database.acquire() as connection:
-        async with connection.transaction():
-            result = await connection.execute(
-                """
-                UPDATE watermark_revisions
-                SET status = 'pending',
-                    request_path = NULL,
-                    output_path = NULL,
-                    response_path = NULL,
-                    telegram_preview_file_id = NULL,
-                    error = NULL,
-                    completed_at = NULL
-                WHERE job_id = $1
-                  AND revision = $2
-                  AND status IN ('draft', 'error')
-                """,
-                int(job_id),
-                current.revision.revision,
-            )
-            if not result.endswith("1"):
-                raise ValueError("Черновик уже изменился. Обновите карточку.")
-            row = await connection.fetchrow(repository._current_query(), int(job_id))
-    if row is None:
-        raise ValueError("Задание водяного знака не найдено.")
-    return repository._map_work_item(row)
 
 
 def _draft_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
@@ -828,8 +551,7 @@ async def handle_watermark_draft_callback(
             ),
         )
         if action == "generate":
-            item = await _service_generate(
-                service,
+            item = await service.generate(
                 job_id,
                 owner_user_id=owner_user_id,
             )
@@ -849,6 +571,7 @@ async def handle_watermark_draft_callback(
                 owner_user_id=owner_user_id,
                 position=callback_data.value,
                 enabled=True,
+                draft=True,
             )
         elif action == "color":
             item = await service.revise(
@@ -856,32 +579,41 @@ async def handle_watermark_draft_callback(
                 owner_user_id=owner_user_id,
                 color=callback_data.value,
                 enabled=True,
+                draft=True,
             )
         elif action == "opacity":
             item = await service.revise(
                 job_id,
                 owner_user_id=owner_user_id,
                 opacity_delta=int(callback_data.value),
+                draft=True,
             )
         elif action == "size":
             item = await service.revise(
                 job_id,
                 owner_user_id=owner_user_id,
                 size_delta=float(callback_data.value),
+                draft=True,
             )
         elif action == "margin":
             item = await service.revise(
                 job_id,
                 owner_user_id=owner_user_id,
                 margin_delta=float(callback_data.value),
+                draft=True,
             )
         elif action == "undo":
-            item = await service.undo(job_id, owner_user_id=owner_user_id)
+            item = await service.undo(
+                job_id,
+                owner_user_id=owner_user_id,
+                draft=True,
+            )
         elif action == "remove":
             item = await service.revise(
                 job_id,
                 owner_user_id=owner_user_id,
                 enabled=False,
+                draft=True,
             )
         else:
             raise ValueError("Неизвестная настройка.")
@@ -925,6 +657,7 @@ async def handle_watermark_draft_color(
             owner_user_id=message.from_user.id,
             color=color,
             enabled=True,
+            draft=True,
         )
     except (ValueError, WorkspaceAccessError) as error:
         await message.answer(f"❌ {escape(str(error))}")
@@ -948,11 +681,6 @@ def install_workspace_product_experience() -> None:
     access_middleware.is_workspace_member_callback_data = (
         _workspace_callback_with_template
     )
-
-    WatermarkService.create_job = _service_create_draft_job  # type: ignore[method-assign]
-    WatermarkService.revise = _service_revise_draft  # type: ignore[method-assign]
-    WatermarkService.undo = _service_undo_draft  # type: ignore[method-assign]
-    setattr(WatermarkService, "generate", _service_generate)
 
     watermark_ui.build_watermark_keyboard = _draft_watermark_keyboard
     watermark_ui.format_watermark_caption = _draft_watermark_caption
