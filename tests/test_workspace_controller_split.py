@@ -44,6 +44,7 @@ class WorkspaceArchiveDashboardContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_contract_returns_ready_to_render_dashboard(self) -> None:
         now = datetime.now(UTC)
         workspace = Workspace(9, "private-9", "Мой архив", False, now, now)
+        database = SimpleNamespace()
         rows = [
             {"id": 3, "name": "Каэль", "archive_topic_url": None, "media_count": 2},
             {"id": 4, "name": "Эрик", "archive_topic_url": None, "media_count": 0},
@@ -63,7 +64,7 @@ class WorkspaceArchiveDashboardContractTests(unittest.IsolatedAsyncioTestCase):
             ) as keyboard_builder,
         ):
             dashboard = await build_workspace_archive_dashboard(
-                SimpleNamespace(),  # type: ignore[arg-type]
+                database,  # type: ignore[arg-type]
                 workspace,
                 command_context=True,
             )
@@ -73,7 +74,7 @@ class WorkspaceArchiveDashboardContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Персонажей: <b>2</b>", dashboard.text)
         self.assertIn("активного пользовательского пространства", dashboard.text)
         self.assertIs(keyboard, dashboard.keyboard)
-        loader.assert_awaited_once_with(SimpleNamespace(), workspace_id=9)
+        loader.assert_awaited_once_with(database, workspace_id=9)
         keyboard_builder.assert_called_once_with(workspace_id=9, rows=rows)
 
 
