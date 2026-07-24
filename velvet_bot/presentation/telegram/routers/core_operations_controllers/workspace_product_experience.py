@@ -1,21 +1,12 @@
 from __future__ import annotations
 
-import logging
-from contextvars import ContextVar
 from html import escape
 from typing import Any
 
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import BaseFilter
-from aiogram.types import (
-    BotCommand,
-    BotCommandScopeChat,
-    CallbackQuery,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    Message,
-)
+from aiogram.types import CallbackQuery, Message
 
 from velvet_bot import watermark_ui
 from velvet_bot.database import Database
@@ -28,13 +19,14 @@ from velvet_bot.presentation.telegram.routers import workspace_owner_controls
 from velvet_bot.presentation.telegram.routers.core_operations_controllers import (
     watermark as core_watermark,
 )
+from velvet_bot.presentation.telegram.workspace_command_menu import (
+    set_workspace_chat_commands,
+)
 from velvet_bot.watermark_ui import WatermarkCallback
 from velvet_bot.workspace_ui import WorkspaceCallback, format_workspace_home, workspace_callback
 
-logger = logging.getLogger(__name__)
 router = Router(name=__name__)
 
-_ROLE_RANK = {"viewer": 10, "reviewer": 20, "editor": 30, "admin": 40, "owner": 50}
 _DRAFT_ACTIONS = frozenset(
     {
         "position",
@@ -50,17 +42,6 @@ _DRAFT_ACTIONS = frozenset(
         "help",
     }
 )
-_SHOW_BUTTON_HINTS: ContextVar[bool] = ContextVar(
-    "workspace_show_button_hints",
-    default=True,
-)
-_INSTALLED = False
-
-_ORIGINAL_HOME_KEYBOARD = workspace_owner_controls._workspace_home_keyboard
-_ORIGINAL_RENDER_HOME = workspace_owner_controls._render_home
-_ORIGINAL_RENDER_MEMBER_HOME = workspace_owner_controls._render_member_home
-
-
 def _is_global_owner(user_id: int) -> bool:
     return int(user_id) == GLOBAL_WORKSPACE_CREATOR_ID
 
@@ -71,142 +52,6 @@ def _command_name(message: Message) -> str:
         return ""
     token = text.split(maxsplit=1)[0][1:]
     return token.split("@", maxsplit=1)[0].casefold()
-
-
-def _workspace_commands(role: str) -> tuple[BotCommand, ...]:
-    commands = [
-        BotCommand(command="start", description="Открыть пространство"),
-        BotCommand(command="archive", description="Архив этого пространства"),
-        BotCommand(command="refs", description="Референсы персонажа"),
-        BotCommand(command="compare_ref", description="Сравнить с референсом"),
-    ]
-    if _ROLE_RANK.get(role, 0) >= _ROLE_RANK["editor"]:
-        commands.extend(
-            [
-                BotCommand(command="save", description="Сохранить материалы персонажу"),
-                BotCommand(command="savecancel", description="Завершить пакетное сохранение"),
-                BotCommand(command="refadd", description="Добавить референс"),
-                BotCommand(command="refdel", description="Удалить референс"),
-                BotCommand(command="watermark", description="Подготовить watermark"),
-            ]
-        )
-    return tuple(commands)
-
-
-async def _set_chat_commands(bot: Bot, chat_id: int, role: str) -> None:
-    try:
-        await bot.set_my_commands(
-            list(_workspace_commands(role)),
-            scope=BotCommandScopeChat(chat_id=int(chat_id)),
-        )
-    except TelegramAPIError as error:
-        logger.warning(
-            "Could not install workspace command menu for chat %s: %s",
-            chat_id,
-            error,
-        )
-
-
-async def _install_scoped_commands(callback: CallbackQuery, *, role: str) -> None:
-    chat_id = (
-        callback.message.chat.id
-        if isinstance(callback.message, Message)
-        else callback.from_user.id
-    )
-    await _set_chat_commands(callback.bot, chat_id, role)
-
-
-def _home_keyboard_with_hint_toggle(
-    workspace: Workspace,
-    *,
-    public_enabled: bool,
-    modules,
-) -> InlineKeyboardMarkup:
-    keyboard = _ORIGINAL_HOME_KEYBOARD(
-        workspace,
-        public_enabled=public_enabled,
-        modules=modules,
-    )
-    show_hints = _SHOW_BUTTON_HINTS.get()
-    rows: list[list[InlineKeyboardButton]] = []
-    for row in keyboard.inline_keyboard:
-        filtered = [
-            button
-            for button in row
-            if not (
-                button.text in {"🙈 Скрыть все подсказки", "ℹ️ Показать подсказки"}
-                or (not show_hints and button.text == "ℹ️")
-            )
-        ]
-        if filtered:
-            rows.append(filtered)
-
-    toggle = InlineKeyboardButton(
-        text="🙈 Скрыть все подсказки" if show_hints else "ℹ️ Показать подсказки",
-        callback_data=workspace_callback(
-            "helptoggle",
-            workspace_id=workspace.id,
-        ),
-    )
-    insert_at = len(rows)
-    if rows and any(button.text == "✖ Закрыть" for button in rows[-1]):
-        insert_at -= 1
-    rows.insert(max(0, insert_at), [toggle])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-async def _render_home_with_preferences(
-    callback: CallbackQuery,
-    *,
-    workspace: Workspace,
-    user_id: int,
-    workspace_service: WorkspaceService,
-    workspace_product_service: WorkspaceProductService,
-) -> None:
-    token = _SHOW_BUTTON_HINTS.set(
-        await workspace_product_service.get_button_hints(workspace.id)
-    )
-    try:
-        await _ORIGINAL_RENDER_HOME(
-            callback,
-            workspace=workspace,
-            user_id=user_id,
-            workspace_service=workspace_service,
-            workspace_product_service=workspace_product_service,
-        )
-    finally:
-        _SHOW_BUTTON_HINTS.reset(token)
-    membership = await workspace_service.require_role(
-        workspace_id=workspace.id,
-        user_id=user_id,
-        minimum_role="owner",
-        global_owner=_is_global_owner(user_id),
-    )
-    await _install_scoped_commands(callback, role=membership.role)
-
-
-async def _render_member_home_with_commands(
-    callback: CallbackQuery,
-    *,
-    workspace: Workspace,
-    user_id: int,
-    workspace_service: WorkspaceService,
-    workspace_product_service: WorkspaceProductService,
-) -> None:
-    await _ORIGINAL_RENDER_MEMBER_HOME(
-        callback,
-        workspace=workspace,
-        user_id=user_id,
-        workspace_service=workspace_service,
-        workspace_product_service=workspace_product_service,
-    )
-    membership = await workspace_service.require_role(
-        workspace_id=workspace.id,
-        user_id=user_id,
-        minimum_role="viewer",
-        global_owner=_is_global_owner(user_id),
-    )
-    await _install_scoped_commands(callback, role=membership.role)
 
 
 class PersonalArchiveCommandFilter(BaseFilter):
@@ -276,7 +121,7 @@ async def handle_personal_archive_command(
             rows=rows,
         ),
     )
-    await _set_chat_commands(message.bot, message.chat.id, workspace_role)
+    await set_workspace_chat_commands(message.bot, message.chat.id, workspace_role)
 
 
 @router.callback_query(WorkspaceCallback.filter(F.action == "helptoggle"))
@@ -344,21 +189,18 @@ async def handle_workspace_help_toggle(
         )
         + "\nРоль: <b>владелец</b>"
     )
-    token = _SHOW_BUTTON_HINTS.set(show_button_hints)
-    try:
-        keyboard = _home_keyboard_with_hint_toggle(
-            workspace,
-            public_enabled=settings.public_archive_enabled,
-            modules=modules,
-        )
-    finally:
-        _SHOW_BUTTON_HINTS.reset(token)
+    keyboard = workspace_owner_controls._workspace_home_keyboard(
+        workspace,
+        public_enabled=settings.public_archive_enabled,
+        modules=modules,
+        show_button_hints=show_button_hints,
+    )
     try:
         await callback.message.edit_text(text, reply_markup=keyboard)
     except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             raise
-    await _set_chat_commands(callback.bot, callback.message.chat.id, membership.role)
+    await set_workspace_chat_commands(callback.bot, callback.message.chat.id, membership.role)
 
 
 @router.message(WatermarkCommandFilter())
@@ -566,19 +408,4 @@ async def handle_watermark_draft_color(
     )
 
 
-def install_workspace_product_experience() -> None:
-    global _INSTALLED
-    if _INSTALLED:
-        return
-    _INSTALLED = True
-
-    workspace_owner_controls._workspace_home_keyboard = _home_keyboard_with_hint_toggle
-    workspace_owner_controls._render_home = _render_home_with_preferences
-    workspace_owner_controls._render_member_home = _render_member_home_with_commands
-
-
-
-__all__ = (
-    "install_workspace_product_experience",
-    "router",
-)
+__all__ = ("router",)

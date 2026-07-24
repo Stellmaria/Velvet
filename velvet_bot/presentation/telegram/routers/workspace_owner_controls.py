@@ -62,6 +62,9 @@ from velvet_bot.presentation.telegram.routers.public_archive.watermark_actions i
 from velvet_bot.presentation.telegram.routers.workspace_guided_ui import (
     guided_workspace_callback,
 )
+from velvet_bot.presentation.telegram.workspace_command_menu import (
+    install_workspace_scoped_commands,
+)
 from velvet_bot.presentation.telegram.routers.workspace_onboarding import (
     WorkspaceOnboardingCallback,
 )
@@ -212,43 +215,73 @@ def _workspace_home_keyboard(
     *,
     public_enabled: bool,
     modules,
+    show_button_hints: bool = True,
 ) -> InlineKeyboardMarkup:
     base = build_workspace_home_keyboard(
         workspace,
         public_enabled=public_enabled,
         modules=modules,
     )
-    if workspace.is_system:
-        return base
-
     rows = [list(row) for row in base.inline_keyboard]
-    close_row = rows.pop() if rows else []
-    rows.extend(
-        [
+    if not workspace.is_system:
+        close_row = rows.pop() if rows else []
+        rows.extend(
             [
-                InlineKeyboardButton(
-                    text="🧭 Настроить архив",
-                    callback_data=WorkspaceOnboardingCallback(
-                        action="intro",
-                        workspace_id=workspace.id,
-                        key="",
-                    ).pack(),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🗑 Удалить пространство",
-                    callback_data=workspace_callback(
-                        "delete",
-                        workspace_id=workspace.id,
-                    ),
-                )
-            ],
+                [
+                    InlineKeyboardButton(
+                        text="🧭 Настроить архив",
+                        callback_data=WorkspaceOnboardingCallback(
+                            action="intro",
+                            workspace_id=workspace.id,
+                            key="",
+                        ).pack(),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🗑 Удалить пространство",
+                        callback_data=workspace_callback(
+                            "delete",
+                            workspace_id=workspace.id,
+                        ),
+                    )
+                ],
+            ]
+        )
+        if close_row:
+            rows.append(close_row)
+
+    filtered_rows: list[list[InlineKeyboardButton]] = []
+    for row in rows:
+        filtered = [
+            button
+            for button in row
+            if not (
+                button.text in {"🙈 Скрыть все подсказки", "ℹ️ Показать подсказки"}
+                or (not show_button_hints and button.text == "ℹ️")
+            )
         ]
+        if filtered:
+            filtered_rows.append(filtered)
+
+    toggle = InlineKeyboardButton(
+        text=(
+            "🙈 Скрыть все подсказки"
+            if show_button_hints
+            else "ℹ️ Показать подсказки"
+        ),
+        callback_data=workspace_callback(
+            "helptoggle",
+            workspace_id=workspace.id,
+        ),
     )
-    if close_row:
-        rows.append(close_row)
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+    insert_at = len(filtered_rows)
+    if filtered_rows and any(
+        button.text == "✖ Закрыть" for button in filtered_rows[-1]
+    ):
+        insert_at -= 1
+    filtered_rows.insert(max(0, insert_at), [toggle])
+    return InlineKeyboardMarkup(inline_keyboard=filtered_rows)
 
 
 async def _render_home(
@@ -270,9 +303,13 @@ async def _render_home(
         actor_user_id=user_id,
         global_owner=_is_global_owner(user_id),
     )
-    settings = await workspace_product_service._workspaces.get_settings(workspace.id)
-    if settings is None:
-        await callback.answer("Настройки пространства не найдены.", show_alert=True)
+    try:
+        settings = await workspace_product_service.get_settings(workspace.id)
+        show_button_hints = await workspace_product_service.get_button_hints(
+            workspace.id
+        )
+    except ValueError as error:
+        await callback.answer(str(error), show_alert=True)
         return
 
     allowed_modules = sum(item.is_allowed for item in modules)
@@ -297,6 +334,7 @@ async def _render_home(
                 workspace,
                 public_enabled=settings.public_archive_enabled,
                 modules=modules,
+                show_button_hints=show_button_hints,
             ),
         )
     except TelegramBadRequest as error:
@@ -307,9 +345,11 @@ async def _render_home(
                     workspace,
                     public_enabled=settings.public_archive_enabled,
                     modules=modules,
+                    show_button_hints=show_button_hints,
                 ),
             )
     await callback.answer()
+    await install_workspace_scoped_commands(callback, role=membership.role)
 
 
 async def _render_member_home(
@@ -331,9 +371,10 @@ async def _render_member_home(
         actor_user_id=user_id,
         global_owner=_is_global_owner(user_id),
     )
-    settings = await workspace_product_service._workspaces.get_settings(workspace.id)
-    if settings is None:
-        await callback.answer("Настройки пространства не найдены.", show_alert=True)
+    try:
+        settings = await workspace_product_service.get_settings(workspace.id)
+    except ValueError as error:
+        await callback.answer(str(error), show_alert=True)
         return
     allowed_modules = sum(item.is_allowed for item in modules)
     enabled_modules = sum(item.is_allowed and item.is_enabled for item in modules)
@@ -363,6 +404,7 @@ async def _render_member_home(
         if "message is not modified" not in str(error).casefold():
             await callback.message.answer(text, reply_markup=keyboard)
     await callback.answer()
+    await install_workspace_scoped_commands(callback, role=membership.role)
 
 
 async def _render_workspace_selector(

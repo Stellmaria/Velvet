@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 from velvet_bot.app.save_sessions import SaveUploadSessions
 from velvet_bot.core.access import is_workspace_member_command_text
 from velvet_bot.presentation.telegram import save_mode_runtime as save_modes
+from velvet_bot.presentation.telegram.workspace_command_menu import workspace_commands
 
 
 def _message(
@@ -86,7 +87,7 @@ class SaveModeCommandTests(unittest.IsolatedAsyncioTestCase):
     def test_editor_command_menu_exposes_both_modes(self) -> None:
         commands = {
             item.command: item.description
-            for item in save_modes._workspace_commands_with_save_modes("editor")
+            for item in workspace_commands("editor")
         }
 
         self.assertEqual("Сохранить один файл", commands["save"])

@@ -21,11 +21,8 @@ from velvet_bot.presentation.telegram.routers.core_operations_controllers.waterm
     router as watermark_router,
 )
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_product_experience import (
-    install_workspace_product_experience,
     router as workspace_product_experience_router,
 )
-
-install_workspace_product_experience()
 router = Router(name=__name__)
 
 
