@@ -285,16 +285,26 @@ async def _send_reference_page(
     )
 
 
+async def _send_manage_notice(callback: CallbackQuery, text: str) -> None:
+    if isinstance(callback.message, Message):
+        await callback.message.answer(text)
+
+
 async def _edit_reference_page(
     callback: CallbackQuery,
     *,
     page,
+    acknowledge: bool = True,
 ) -> None:
     if page.reference is None:
-        await callback.answer("Референсы больше не найдены.", show_alert=True)
+        if acknowledge:
+            await callback.answer("Референсы больше не найдены.", show_alert=True)
+        else:
+            await _send_manage_notice(callback, "Референсы больше не найдены.")
         return
     if not isinstance(callback.message, Message):
-        await callback.answer("Сообщение больше недоступно.", show_alert=True)
+        if acknowledge:
+            await callback.answer("Сообщение больше недоступно.", show_alert=True)
         return
     try:
         await callback.message.edit_media(
@@ -314,7 +324,8 @@ async def _edit_reference_page(
                 reply_markup=_reference_keyboard(page),
                 protect_content=True,
             )
-    await callback.answer()
+    if acknowledge:
+        await callback.answer()
 
 
 class PendingReferenceReplaceFilter(BaseFilter):
@@ -409,6 +420,7 @@ async def handle_reference_manage(
 ) -> None:
     if await _reject_access(callback, personal_reference_context):
         return
+    await callback.answer()
     action = callback_data.action
     if action == "manage_close":
         if isinstance(callback.message, Message):
@@ -416,19 +428,18 @@ async def handle_reference_manage(
                 await callback.message.delete()
             except TelegramBadRequest:
                 pass
-        await callback.answer()
         return
     if action in {"manage_upload_done", "manage_upload_cancel"}:
         stopped = reference_uploads.stop(callback.from_user.id)
         if stopped is None:
-            await callback.answer("Активной загрузки референсов нет.", show_alert=True)
+            await _send_manage_notice(callback, "Активной загрузки референсов нет.")
             return
         text = (
             "Загрузка референсов завершена."
             if action == "manage_upload_done"
             else "Загрузка референсов отменена. Уже сохранённые файлы не удалены."
         )
-        await callback.answer(text, show_alert=True)
+        await _send_manage_notice(callback, text)
         return
     if action == "manage_back":
         rows = await _load_reference_characters(
@@ -449,7 +460,6 @@ async def handle_reference_manage(
                     rows=rows,
                 ),
             )
-        await callback.answer()
         return
 
     page = await get_reference_page(
@@ -459,7 +469,7 @@ async def handle_reference_manage(
         workspace_id=personal_reference_context.workspace_id,
     )
     if page is None:
-        await callback.answer("Персонаж не найден в активном пространстве.", show_alert=True)
+        await _send_manage_notice(callback, "Персонаж не найден в активном пространстве.")
         return
     if action == "manage_add":
         try:
@@ -471,7 +481,7 @@ async def handle_reference_manage(
                 minimum_role="editor",
             )
         except WorkspaceAccessError as error:
-            await callback.answer(str(error), show_alert=True)
+            await _send_manage_notice(callback, str(error))
             return
         reference_uploads.start(
             callback.from_user.id,
@@ -486,19 +496,18 @@ async def handle_reference_manage(
                 "Можно прислать несколько файлов подряд, затем нажать «Завершить».",
                 reply_markup=_upload_keyboard(character_id=page.character.id),
             )
-        await callback.answer()
         return
     if page.reference is None:
-        await callback.answer("У персонажа пока нет референсов.", show_alert=True)
+        await _send_manage_notice(callback, "У персонажа пока нет референсов.")
         return
     if action == "manage_show":
-        await _edit_reference_page(callback, page=page)
+        await _edit_reference_page(callback, page=page, acknowledge=False)
         return
     if action == "manage_compare":
-        await callback.answer(
+        await _send_manage_notice(
+            callback,
             f"Ответьте на готовое изображение командой /compare_ref "
             f"{page.character.name} {page.offset + 1}",
-            show_alert=True,
         )
         return
 
@@ -511,12 +520,11 @@ async def handle_reference_manage(
             minimum_role="editor",
         )
     except WorkspaceAccessError as error:
-        await callback.answer(str(error), show_alert=True)
+        await _send_manage_notice(callback, str(error))
         return
     if page.reference.id != callback_data.reference_id:
-        await callback.answer(
-            "Список изменился. Откройте референсы заново.",
-            show_alert=True,
+        await _send_manage_notice(
+            callback, "Список изменился. Откройте референсы заново."
         )
         return
     if action == "manage_replace":
@@ -540,21 +548,18 @@ async def handle_reference_manage(
                     offset=page.offset,
                 ),
             )
-        await callback.answer()
         return
     if action == "manage_delete_prompt":
         if isinstance(callback.message, Message):
             await callback.message.edit_reply_markup(
                 reply_markup=_delete_confirmation_keyboard(page)
             )
-        await callback.answer()
         return
     if action == "manage_delete_cancel":
         if isinstance(callback.message, Message):
             await callback.message.edit_reply_markup(
                 reply_markup=_reference_keyboard(page)
             )
-        await callback.answer()
         return
     if action == "manage_delete":
         result = await delete_character_reference(
@@ -564,7 +569,7 @@ async def handle_reference_manage(
             workspace_id=personal_reference_context.workspace_id,
         )
         if result.reference is None:
-            await callback.answer("Референс уже удалён.", show_alert=True)
+            await _send_manage_notice(callback, "Референс уже удалён.")
             return
         await audit_logger.send(
             "Референс личного пространства удалён кнопкой",
@@ -586,7 +591,7 @@ async def handle_reference_manage(
                     "Последний референс удалён.",
                     reply_markup=_empty_reference_keyboard(page.character.id),
                 )
-            await callback.answer("Референс удалён.")
+            await _send_manage_notice(callback, "Референс удалён.")
             return
         next_page = await get_reference_page(
             database,
@@ -595,11 +600,11 @@ async def handle_reference_manage(
             workspace_id=personal_reference_context.workspace_id,
         )
         if next_page is None or next_page.reference is None:
-            await callback.answer("Не удалось открыть следующий референс.", show_alert=True)
+            await _send_manage_notice(callback, "Не удалось открыть следующий референс.")
             return
-        await _edit_reference_page(callback, page=next_page)
+        await _edit_reference_page(callback, page=next_page, acknowledge=False)
         return
-    await callback.answer("Неизвестное действие.", show_alert=True)
+    await _send_manage_notice(callback, "Неизвестное действие.")
 
 
 @router.message(

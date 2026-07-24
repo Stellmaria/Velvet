@@ -102,9 +102,11 @@ async def _edit(
     reply_markup: InlineKeyboardMarkup,
     answer: str | None = None,
     show_alert: bool = False,
+    acknowledge: bool = True,
 ) -> None:
     if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
+        if acknowledge:
+            await callback.answer("Меню больше недоступно.", show_alert=True)
         return
     try:
         await callback.message.edit_text(
@@ -119,7 +121,8 @@ async def _edit(
                 reply_markup=reply_markup,
                 disable_web_page_preview=True,
             )
-    await callback.answer(answer, show_alert=show_alert)
+    if acknowledge:
+        await callback.answer(answer, show_alert=show_alert)
 
 
 async def _resolve_workspace(
@@ -241,6 +244,7 @@ async def _render_quick(
     workspace: Workspace,
     user_id: int,
     workspace_product_service: WorkspaceProductService,
+    acknowledge: bool = True,
 ) -> None:
     enabled = await _enabled_modules(
         workspace_product_service,
@@ -259,6 +263,7 @@ async def _render_quick(
             "и копируются в его тему; данные других пространств не смешиваются."
         ),
         reply_markup=_quick_keyboard(workspace.id, enabled),
+        acknowledge=acknowledge,
     )
 
 
@@ -722,6 +727,7 @@ async def _start_category(
     *,
     state: FSMContext,
     workspace: Workspace,
+    acknowledge: bool = True,
 ) -> None:
     await state.set_state(GuidedWorkspaceForm.category_label)
     await state.update_data(workspace_id=workspace.id)
@@ -732,6 +738,7 @@ async def _start_category(
             "Отправьте понятное название категории. Технический ключ бот создаст сам."
         ),
         reply_markup=_taxonomy_prompt_keyboard(workspace.id),
+        acknowledge=acknowledge,
     )
 
 
@@ -740,6 +747,7 @@ async def _start_universe(
     *,
     state: FSMContext,
     workspace: Workspace,
+    acknowledge: bool = True,
 ) -> None:
     await state.set_state(GuidedWorkspaceForm.universe_label)
     await state.update_data(workspace_id=workspace.id)
@@ -750,6 +758,7 @@ async def _start_universe(
             "Отправьте название вселенной. Технический ключ бот создаст сам."
         ),
         reply_markup=_taxonomy_prompt_keyboard(workspace.id),
+        acknowledge=acknowledge,
     )
 
 
@@ -759,10 +768,14 @@ async def _start_story(
     state: FSMContext,
     workspace: Workspace,
     workspace_product_service: WorkspaceProductService,
+    acknowledge: bool = True,
 ) -> None:
     universes = await workspace_product_service.list_universes(workspace.id)
     if not universes:
-        await callback.answer("Сначала создайте хотя бы одну вселенную.", show_alert=True)
+        if acknowledge:
+            await callback.answer("Сначала создайте хотя бы одну вселенную.", show_alert=True)
+        elif isinstance(callback.message, Message):
+            await callback.message.answer("Сначала создайте хотя бы одну вселенную.")
         return
     rows = [
         [
@@ -793,6 +806,7 @@ async def _start_story(
         callback,
         text="<b>➕ Новая история</b>\n\nВыберите вселенную истории.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+        acknowledge=acknowledge,
     )
 
 
@@ -805,20 +819,23 @@ async def handle_workspace_quick_entry(
     workspace_product_service: WorkspaceProductService,
 ) -> None:
     try:
-        await state.clear()
         workspace = await _resolve_workspace(
             workspace_id=callback_data.workspace_id,
             user_id=callback.from_user.id,
             workspace_service=workspace_service,
         )
-        await _render_quick(
-            callback,
-            workspace=workspace,
-            user_id=callback.from_user.id,
-            workspace_product_service=workspace_product_service,
-        )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
+        return
+    await callback.answer()
+    await state.clear()
+    await _render_quick(
+        callback,
+        workspace=workspace,
+        user_id=callback.from_user.id,
+        workspace_product_service=workspace_product_service,
+        acknowledge=False,
+    )
 
 
 @router.message(Command("cancel"))
@@ -856,19 +873,26 @@ async def handle_guided_taxonomy_entry(
             user_id=callback.from_user.id,
             workspace_service=workspace_service,
         )
-        if callback_data.action == "addcategory":
-            await _start_category(callback, state=state, workspace=workspace)
-        elif callback_data.action == "adduniverse":
-            await _start_universe(callback, state=state, workspace=workspace)
-        else:
-            await _start_story(
-                callback,
-                state=state,
-                workspace=workspace,
-                workspace_product_service=workspace_product_service,
-            )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
+        return
+    await callback.answer()
+    if callback_data.action == "addcategory":
+        await _start_category(
+            callback, state=state, workspace=workspace, acknowledge=False
+        )
+    elif callback_data.action == "adduniverse":
+        await _start_universe(
+            callback, state=state, workspace=workspace, acknowledge=False
+        )
+    else:
+        await _start_story(
+            callback,
+            state=state,
+            workspace=workspace,
+            workspace_product_service=workspace_product_service,
+            acknowledge=False,
+        )
 
 
 @router.callback_query(GuidedWorkspaceCallback.filter())

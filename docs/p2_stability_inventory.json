@@ -1,15 +1,15 @@
 {
-  "schema_version": 63,
-  "generated_from_commit": "workspace-commands-watermark-drafts",
+  "schema_version": 64,
+  "generated_from_commit": "p2-workspace-callback-ack",
   "broad_exception_total": 86,
   "broad_exception_files": 52,
   "broad_exception_approved": 86,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
   "callback_total": 130,
-  "risky_callback_total": 3,
-  "risky_callback_files": 2,
-  "guarded_callback_total": 41,
+  "risky_callback_total": 0,
+  "risky_callback_files": 0,
+  "guarded_callback_total": 44,
   "delegated_callback_total": 11,
   "next_slice": null,
   "broad_exceptions": [
@@ -1660,26 +1660,26 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py",
       "function": "handle_workspace_quick_entry",
-      "line": 800,
-      "ack_line": 821,
-      "pre_ack_awaits": 3,
-      "total_awaits": 4,
-      "risk": "late_ack"
+      "line": 814,
+      "ack_line": 828,
+      "pre_ack_awaits": 1,
+      "total_awaits": 5,
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py",
       "function": "handle_guided_taxonomy_entry",
-      "line": 846,
-      "ack_line": 871,
-      "pre_ack_awaits": 4,
-      "total_awaits": 5,
-      "risk": "late_ack"
+      "line": 863,
+      "ack_line": 877,
+      "pre_ack_awaits": 1,
+      "total_awaits": 6,
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py",
       "function": "handle_guided_workspace_callback",
-      "line": 875,
-      "ack_line": 887,
+      "line": 899,
+      "ack_line": 911,
       "pre_ack_awaits": 0,
       "total_awaits": 57,
       "risk": "early_ack"
@@ -1795,8 +1795,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_buttons.py",
       "function": "handle_reference_character_open",
-      "line": 338,
-      "ack_line": 356,
+      "line": 349,
+      "ack_line": 367,
       "pre_ack_awaits": 1,
       "total_awaits": 11,
       "risk": "guarded_ack"
@@ -1804,11 +1804,11 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_buttons.py",
       "function": "handle_reference_manage",
-      "line": 400,
-      "ack_line": 419,
-      "pre_ack_awaits": 2,
-      "total_awaits": 37,
-      "risk": "late_ack"
+      "line": 411,
+      "ack_line": 423,
+      "pre_ack_awaits": 1,
+      "total_awaits": 32,
+      "risk": "guarded_ack"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
