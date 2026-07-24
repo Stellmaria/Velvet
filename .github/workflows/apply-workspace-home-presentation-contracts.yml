@@ -23,6 +23,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Repair checked transformation
+        run: python .github/fix-workspace-home-transform.py
       - name: Apply home presentation contracts
         run: python .github/apply-workspace-home-presentation-contracts.py
       - name: Install dependencies
@@ -43,8 +45,10 @@ jobs:
             tests.test_workspace_quick_references_contract \
             tests.test_workspace_hint_preference_boundary
           python scripts/telegram_navigation_inventory.py --root velvet_bot --check
-      - name: Remove transformation script
-        run: rm .github/apply-workspace-home-presentation-contracts.py
+      - name: Remove transformation scripts
+        run: |
+          rm .github/apply-workspace-home-presentation-contracts.py
+          rm .github/fix-workspace-home-transform.py
       - name: Commit applied slice
         run: |
           git config user.name "github-actions[bot]"
