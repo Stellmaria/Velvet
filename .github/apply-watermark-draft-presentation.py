@@ -19,8 +19,7 @@ replace_once(
 )
 replace_once(
     core,
-    """from velvet_bot.domains.workspaces.watermark_assets import WorkspaceWatermarkAssetRepository
-""",
+    "from velvet_bot.domains.workspaces.watermark_assets import WorkspaceWatermarkAssetRepository\n",
     """from velvet_bot.domains.workspaces.watermark_assets import WorkspaceWatermarkAssetRepository
 from velvet_bot.domains.workspaces.watermark_templates import (
     WorkspaceWatermarkTemplateRepository,
@@ -58,109 +57,131 @@ controller = Path(
     "workspace_product_experience.py"
 )
 text = controller.read_text(encoding="utf-8")
-text = text.replace("from dataclasses import replace\n", "")
-text = text.replace(
-    "from velvet_bot.domains.watermark.models import WatermarkSettings, WatermarkWorkItem\n",
-    "from velvet_bot.domains.watermark.models import WatermarkWorkItem\n",
-)
-text = text.replace(
-    "from velvet_bot.domains.watermark.repository import WatermarkRepository\n",
-    "",
-)
-text = text.replace(
-    "from velvet_bot.domains.workspaces.watermark_templates import (\n"
-    "    WorkspaceWatermarkTemplateRepository,\n"
-    ")\n",
-    "",
-)
+for old, new in (
+    ("from dataclasses import replace\n", ""),
+    (
+        "from velvet_bot.domains.watermark.models import WatermarkSettings, WatermarkWorkItem\n",
+        "from velvet_bot.domains.watermark.models import WatermarkWorkItem\n",
+    ),
+    ("from velvet_bot.domains.watermark.repository import WatermarkRepository\n", ""),
+    (
+        "from velvet_bot.domains.workspaces.watermark_templates import (\n"
+        "    WorkspaceWatermarkTemplateRepository,\n"
+        ")\n",
+        "",
+    ),
+):
+    if old not in text:
+        raise RuntimeError(f"Missing controller import block: {old!r}")
+    text = text.replace(old, new, 1)
 start = text.index("async def _create_draft_job(")
 end = text.index("def _draft_watermark_keyboard(")
 text = text[:start] + text[end:]
-text = text.replace(
-    """            item = await _service_generate(
+replacements = (
+    (
+        """            item = await _service_generate(
                 service,
                 job_id,
                 owner_user_id=owner_user_id,
             )
 """,
-    """            item = await service.generate(
+        """            item = await service.generate(
                 job_id,
                 owner_user_id=owner_user_id,
             )
 """,
-)
-text = text.replace(
-    """                position=callback_data.value,
+    ),
+    (
+        """                position=callback_data.value,
                 enabled=True,
             )
 """,
-    """                position=callback_data.value,
-                enabled=True,
-                draft=True,
-            )
-""",
-    1,
-)
-text = text.replace(
-    """                color=callback_data.value,
-                enabled=True,
-            )
-""",
-    """                color=callback_data.value,
+        """                position=callback_data.value,
                 enabled=True,
                 draft=True,
             )
 """,
-    1,
-)
-for argument in ("opacity_delta", "size_delta", "margin_delta"):
-    old = f"""                {argument}={{'opacity_delta': 'int', 'size_delta': 'float', 'margin_delta': 'float'}[argument]}(callback_data.value),
+    ),
+    (
+        """                color=callback_data.value,
+                enabled=True,
             )
-"""
-    new = old.replace("            )\n", "                draft=True,\n            )\n")
-    if old not in text:
-        raise RuntimeError(f"Missing draft revise call for {argument}")
-    text = text.replace(old, new, 1)
-text = text.replace(
-    """            item = await service.undo(job_id, owner_user_id=owner_user_id)
 """,
-    """            item = await service.undo(
+        """                color=callback_data.value,
+                enabled=True,
+                draft=True,
+            )
+""",
+    ),
+    (
+        """                opacity_delta=int(callback_data.value),
+            )
+""",
+        """                opacity_delta=int(callback_data.value),
+                draft=True,
+            )
+""",
+    ),
+    (
+        """                size_delta=float(callback_data.value),
+            )
+""",
+        """                size_delta=float(callback_data.value),
+                draft=True,
+            )
+""",
+    ),
+    (
+        """                margin_delta=float(callback_data.value),
+            )
+""",
+        """                margin_delta=float(callback_data.value),
+                draft=True,
+            )
+""",
+    ),
+    (
+        """            item = await service.undo(job_id, owner_user_id=owner_user_id)
+""",
+        """            item = await service.undo(
                 job_id,
                 owner_user_id=owner_user_id,
                 draft=True,
             )
 """,
-    1,
-)
-text = text.replace(
-    """                enabled=False,
+    ),
+    (
+        """                enabled=False,
             )
 """,
-    """                enabled=False,
+        """                enabled=False,
                 draft=True,
             )
 """,
-    1,
-)
-text = text.replace(
-    """            color=color,
+    ),
+    (
+        """            color=color,
             enabled=True,
         )
 """,
-    """            color=color,
+        """            color=color,
             enabled=True,
             draft=True,
         )
 """,
-    1,
-)
-text = text.replace(
-    """    WatermarkService.create_job = _service_create_draft_job  # type: ignore[method-assign]
+    ),
+    (
+        """    WatermarkService.create_job = _service_create_draft_job  # type: ignore[method-assign]
     WatermarkService.revise = _service_revise_draft  # type: ignore[method-assign]
     WatermarkService.undo = _service_undo_draft  # type: ignore[method-assign]
     setattr(WatermarkService, "generate", _service_generate)
 
 """,
-    "",
+        "",
+    ),
 )
+for old, new in replacements:
+    if old not in text:
+        raise RuntimeError(f"Missing controller behavior block: {old[:100]!r}")
+    text = text.replace(old, new, 1)
 controller.write_text(text, encoding="utf-8")
