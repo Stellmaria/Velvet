@@ -139,10 +139,10 @@ class WatermarkDraftTests(unittest.TestCase):
         self.assertIn("'draft'", migration)
         self.assertIn("watermark_revisions_status_check", migration)
 
-    def test_product_router_runs_before_legacy_watermark_router(self) -> None:
+    def test_home_hint_router_runs_before_legacy_watermark_router(self) -> None:
         source = (ROOT / "velvet_bot/presentation/telegram/routers/core_operations_controllers/owner_menu.py").read_text(encoding="utf-8")
         self.assertLess(
-            source.index("router.include_router(workspace_product_experience_router)"),
+            source.index("router.include_router(workspace_home_hint_router)"),
             source.index("router.include_router(watermark_router)"),
         )
 
