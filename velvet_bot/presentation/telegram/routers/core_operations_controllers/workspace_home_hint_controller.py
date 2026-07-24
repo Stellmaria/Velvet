@@ -9,11 +9,13 @@ from aiogram.types import CallbackQuery, Message
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
-from velvet_bot.presentation.telegram.routers import workspace_owner_controls
 from velvet_bot.presentation.telegram.workspace_command_menu import (
     set_workspace_chat_commands,
 )
-from velvet_bot.workspace_ui import WorkspaceCallback, format_workspace_home
+from velvet_bot.presentation.telegram.workspace_home_presentation import (
+    build_workspace_home_presentation,
+)
+from velvet_bot.workspace_ui import WorkspaceCallback
 
 router = Router(name=__name__)
 
@@ -30,11 +32,12 @@ async def handle_workspace_help_toggle(
     workspace_product_service: WorkspaceProductService,
 ) -> None:
     user_id = callback.from_user.id
+    global_owner = _is_global_owner(user_id)
     try:
         workspace = await workspace_service.set_active_workspace(
             workspace_id=callback_data.workspace_id,
             user_id=user_id,
-            global_owner=_is_global_owner(user_id),
+            global_owner=global_owner,
         )
     except WorkspaceAccessError as error:
         await callback.answer(str(error), show_alert=True)
@@ -48,11 +51,11 @@ async def handle_workspace_help_toggle(
             )
         return
     try:
-        membership = await workspace_service.require_role(
+        await workspace_service.require_role(
             workspace_id=workspace.id,
             user_id=user_id,
             minimum_role="owner",
-            global_owner=_is_global_owner(user_id),
+            global_owner=global_owner,
         )
     except WorkspaceAccessError as error:
         if isinstance(callback.message, Message):
@@ -60,48 +63,33 @@ async def handle_workspace_help_toggle(
         return
 
     try:
-        show_button_hints = await workspace_product_service.toggle_button_hints(
-            workspace.id
+        await workspace_product_service.toggle_button_hints(workspace.id)
+        presentation = await build_workspace_home_presentation(
+            workspace=workspace,
+            user_id=user_id,
+            workspace_service=workspace_service,
+            workspace_product_service=workspace_product_service,
+            global_owner=global_owner,
         )
-        settings = await workspace_product_service.get_settings(workspace.id)
     except ValueError as error:
         if isinstance(callback.message, Message):
             await callback.message.answer(str(error))
         return
 
-    modules = await workspace_product_service.list_modules(
-        workspace_id=workspace.id,
-        actor_user_id=user_id,
-        global_owner=_is_global_owner(user_id),
-    )
     if not isinstance(callback.message, Message):
         return
-    allowed_modules = sum(item.is_allowed for item in modules)
-    enabled_modules = sum(item.is_allowed and item.is_enabled for item in modules)
-    text = (
-        format_workspace_home(
-            workspace,
-            public_enabled=settings.public_archive_enabled,
-            enabled_modules=enabled_modules,
-            allowed_modules=allowed_modules,
-        )
-        + "\nРоль: <b>владелец</b>"
-    )
-    keyboard = workspace_owner_controls._workspace_home_keyboard(
-        workspace,
-        public_enabled=settings.public_archive_enabled,
-        modules=modules,
-        show_button_hints=show_button_hints,
-    )
     try:
-        await callback.message.edit_text(text, reply_markup=keyboard)
+        await callback.message.edit_text(
+            presentation.text,
+            reply_markup=presentation.keyboard,
+        )
     except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             raise
     await set_workspace_chat_commands(
         callback.bot,
         callback.message.chat.id,
-        membership.role,
+        presentation.role,
     )
 
 
