@@ -4,17 +4,22 @@ on:
   push:
     branches:
       - agent/p2-workspace-callback-ack
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply-slice:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
         with:
+          ref: agent/p2-workspace-callback-ack
           fetch-depth: 0
 
       - name: Set up Python 3.13
