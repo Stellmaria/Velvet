@@ -15,6 +15,7 @@ class ChannelAnalyticsTimestampBoundaryTests(unittest.IsolatedAsyncioTestCase):
             field_name="date",
         )
 
+        assert result is not None
         self.assertEqual(
             datetime.fromtimestamp(1784921606, tz=UTC),
             result,
@@ -29,6 +30,7 @@ class ChannelAnalyticsTimestampBoundaryTests(unittest.IsolatedAsyncioTestCase):
             field_name="date",
         )
 
+        assert result is not None
         self.assertEqual(source.replace(tzinfo=UTC), result)
         self.assertIs(UTC, result.tzinfo)
 
