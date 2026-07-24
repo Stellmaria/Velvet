@@ -150,6 +150,9 @@ class WatermarkDraftPresentationBoundaryTests(unittest.TestCase):
             self.assertNotIn(forbidden, source)
         self.assertIn("await service.generate(", source)
         self.assertIn("draft=True", source)
+        self.assertFalse(
+            (ROOT / "velvet_bot/domains/watermark/workspace_template_runtime.py").exists()
+        )
 
     def test_core_watermark_explicitly_creates_draft_with_workspace_template(self) -> None:
         source = (

@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from aiogram import F, Router
 
-from velvet_bot.domains.watermark.workspace_template_runtime import (
-    install_workspace_watermark_templates,
-)
 from velvet_bot.presentation.telegram.public_archive_rework import (
     register_public_archive_rework,
 )
@@ -175,7 +172,6 @@ from velvet_bot.presentation.telegram.routers.archive.save import (
     router as archive_router,
 )
 
-install_workspace_watermark_templates()
 apply_workspace_ui_adjustments()
 
 router = Router(name=__name__)
