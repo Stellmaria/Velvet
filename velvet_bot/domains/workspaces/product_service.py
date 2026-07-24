@@ -217,6 +217,15 @@ class WorkspaceProductService:
             raise ValueError("Настройки пространства не найдены.")
         return settings
 
+    async def get_button_hints(self, workspace_id: int) -> bool:
+        return await self._product.get_button_hints(int(workspace_id))
+
+    async def toggle_button_hints(self, workspace_id: int) -> bool:
+        value = await self._product.toggle_button_hints(int(workspace_id))
+        if value is None:
+            raise ValueError("Настройки пространства не найдены.")
+        return value
+
     async def list_channels(self, workspace_id: int) -> tuple[WorkspaceChannel, ...]:
         return await self._workspaces.list_channels(int(workspace_id))
 
