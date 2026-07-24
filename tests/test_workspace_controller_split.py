@@ -144,28 +144,32 @@ class WorkspaceControllerSplitTests(unittest.TestCase):
         self.assertNotIn("_load_archive_characters as", source)
         self.assertNotIn("_archive_dashboard_keyboard as", source)
 
-    def test_archive_dashboard_callback_has_dedicated_controller(self) -> None:
+    def test_archive_dashboard_callback_has_bundle_registrar(self) -> None:
         source = (
-            ROUTERS / "workspace_archive_dashboard_controller.py"
+            PRESENTATION / "workspace_archive_dashboard_controller.py"
         ).read_text(encoding="utf-8")
 
         self.assertIn("handle_workspace_archive_dashboard", source)
-        self.assertIn("build_workspace_archive_dashboard", source)
+        self.assertIn("register_workspace_archive_dashboard", source)
+        self.assertIn("router.callback_query.register", source)
         self.assertIn('module_key="archive"', source)
         self.assertIn('minimum_role="viewer"', source)
+        self.assertNotIn("@router.callback_query", source)
         self.assertNotIn("_render_archive_dashboard", source)
         self.assertNotIn("_load_archive_characters", source)
+        self.assertFalse(
+            (ROUTERS / "workspace_archive_dashboard_controller.py").exists()
+        )
 
-    def test_archive_dashboard_router_precedes_owner_controls(self) -> None:
+    def test_archive_dashboard_registers_before_owner_controls_router(self) -> None:
         source = (ROUTERS / "archive_and_public.py").read_text(encoding="utf-8")
 
-        canonical = source.index(
-            "router.include_router(workspace_archive_dashboard_router)"
-        )
+        canonical = source.index("register_workspace_archive_dashboard(router)")
         legacy = source.index(
             "router.include_router(workspace_owner_controls_router)"
         )
         self.assertLess(canonical, legacy)
+        self.assertNotIn("workspace_archive_dashboard_router", source)
 
     def test_watermark_controller_owns_draft_flow(self) -> None:
         source = (
