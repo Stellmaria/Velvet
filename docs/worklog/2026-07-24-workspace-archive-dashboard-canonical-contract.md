@@ -65,7 +65,7 @@ Legacy `_load_archive_characters`, `_archive_dashboard_keyboard` и `_render_arc
 ### PR и commit
 
 - ветка: `agent/archive-dashboard-canonical-contract`;
-- PR создаётся после финального сравнения с `main`.
+- PR: `#320 Make workspace archive dashboard canonical`.
 
 ### Незавершённое
 
