@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock, patch
 
+from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_command_filtering import (
     command_name,
+)
+from velvet_bot.presentation.telegram.workspace_archive_dashboard import (
+    build_workspace_archive_dashboard,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +38,43 @@ class WorkspaceCommandFilteringTests(unittest.TestCase):
         )
 
         self.assertEqual("watermark", command_name(message))
+
+
+class WorkspaceArchiveDashboardContractTests(unittest.IsolatedAsyncioTestCase):
+    async def test_contract_returns_ready_to_render_dashboard(self) -> None:
+        now = datetime.now(UTC)
+        workspace = Workspace(9, "private-9", "Мой архив", False, now, now)
+        rows = [
+            {"id": 3, "name": "Каэль", "archive_topic_url": None, "media_count": 2},
+            {"id": 4, "name": "Эрик", "archive_topic_url": None, "media_count": 0},
+        ]
+        keyboard = Mock()
+
+        with (
+            patch(
+                "velvet_bot.presentation.telegram.workspace_archive_dashboard."
+                "_legacy_load_archive_characters",
+                new=AsyncMock(return_value=rows),
+            ) as loader,
+            patch(
+                "velvet_bot.presentation.telegram.workspace_archive_dashboard."
+                "_legacy_archive_dashboard_keyboard",
+                return_value=keyboard,
+            ) as keyboard_builder,
+        ):
+            dashboard = await build_workspace_archive_dashboard(
+                SimpleNamespace(),  # type: ignore[arg-type]
+                workspace,
+                command_context=True,
+            )
+
+        self.assertEqual(2, dashboard.character_count)
+        self.assertIn("Архив · Мой архив", dashboard.text)
+        self.assertIn("Персонажей: <b>2</b>", dashboard.text)
+        self.assertIn("активного пользовательского пространства", dashboard.text)
+        self.assertIs(keyboard, dashboard.keyboard)
+        loader.assert_awaited_once_with(SimpleNamespace(), workspace_id=9)
+        keyboard_builder.assert_called_once_with(workspace_id=9, rows=rows)
 
 
 class WorkspaceControllerSplitTests(unittest.TestCase):
