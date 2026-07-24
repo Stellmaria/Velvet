@@ -46,11 +46,11 @@ class WorkspaceQuickReferencesContractTests(unittest.TestCase):
 
 
 class WorkspaceQuickReferencesArchitectureTests(unittest.TestCase):
-    def test_workspace_installer_does_not_patch_quick_keyboard(self) -> None:
+    def test_home_hint_controller_does_not_patch_quick_keyboard(self) -> None:
         source = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
-            "workspace_product_experience.py"
+            "workspace_home_hint_controller.py"
         ).read_text(encoding="utf-8")
 
         for forbidden in (

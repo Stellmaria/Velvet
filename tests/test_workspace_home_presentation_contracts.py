@@ -100,11 +100,11 @@ class WorkspaceCommandMenuTests(unittest.IsolatedAsyncioTestCase):
 
 
 class WorkspaceHomeArchitectureTests(unittest.TestCase):
-    def test_product_controller_has_no_home_runtime_installer(self) -> None:
+    def test_home_hint_controller_has_no_runtime_installer(self) -> None:
         source = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
-            "workspace_product_experience.py"
+            "workspace_home_hint_controller.py"
         ).read_text(encoding="utf-8")
 
         for forbidden in (
@@ -131,7 +131,8 @@ class WorkspaceHomeArchitectureTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertNotIn("install_workspace_product_experience", source)
-        self.assertIn("workspace_product_experience_router", source)
+        self.assertIn("workspace_home_hint_router", source)
+        self.assertNotIn("workspace_product_experience_router", source)
 
     def test_canonical_render_uses_public_preferences_and_command_contract(self) -> None:
         source = (
