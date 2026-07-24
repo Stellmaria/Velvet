@@ -21,8 +21,8 @@
 
 - перенести SQL-загрузку и построение dashboard keyboard в публичный contract;
 - добавить типизированную immutable строку персонажа;
-- добавить отдельный callback controller для `wsp:module:archive`;
-- подключить новый router перед broad owner-controls router;
+- добавить отдельный callback registrar для `wsp:module:archive`;
+- зарегистрировать canonical handler на bundle до broad owner-controls router;
 - обновить функциональные и architecture regressions;
 - актуализировать Telegram navigation inventory.
 
@@ -31,7 +31,7 @@
 - `workspace_archive_dashboard.py` не импортирует private archive helpers;
 - `/archive` и кнопка модуля используют `build_workspace_archive_dashboard`;
 - callback controller сохраняет viewer role и module checks;
-- canonical router подключён раньше `workspace_owner_controls_router`;
+- canonical handler зарегистрирован раньше `workspace_owner_controls_router`;
 - dashboard text, empty states, topic links и возврат в workspace покрыты тестами;
 - navigation inventory не содержит violations.
 
@@ -46,9 +46,10 @@ Legacy `_load_archive_characters`, `_archive_dashboard_keyboard` и `_render_arc
 - `workspace_archive_dashboard.py` теперь сам загружает типизированные `WorkspaceArchiveCharacter`;
 - публичный builder самостоятельно формирует character keyboard и итоговый dashboard;
 - удалена compatibility-зависимость от private loader и keyboard helpers;
-- добавлен `workspace_archive_dashboard_controller.py` для callback входа модуля;
-- новый router подключён перед `workspace_owner_controls_router`;
-- добавлены regressions для текста, кнопок, topic URL, workspace navigation и router order;
+- добавлен `workspace_archive_dashboard_controller.py` с явным bundle-level registrar;
+- canonical callback зарегистрирован до дочерних routers и broad `workspace_owner_controls_router`;
+- лишний child-router не добавлялся, поэтому архитектурные router inventories сохранили прежнюю структуру;
+- добавлены regressions для текста, кнопок, topic URL, workspace navigation и порядка регистрации;
 - Telegram navigation inventory обновлён до 441 Python-файла без violations.
 
 ### Миграции и совместимость
@@ -59,8 +60,10 @@ Legacy `_load_archive_characters`, `_archive_dashboard_keyboard` и `_render_arc
 
 - source-level architecture regressions обновлены;
 - functional dashboard contract tests обновлены;
-- router composition regression добавлен;
-- полный type check, test suite, project notes contract и Docker build выполняются в PR CI.
+- bundle registration regression добавлен;
+- initial CI выявил только устаревшие architecture inventories из-за лишнего child-router;
+- child-router заменён bundle-level регистрацией без нового decorated callback;
+- полный type check, test suite, project notes contract и Docker build повторно выполняются в PR CI.
 
 ### PR и commit
 
