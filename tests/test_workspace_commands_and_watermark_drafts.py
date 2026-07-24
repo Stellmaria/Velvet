@@ -8,10 +8,10 @@ from velvet_bot.domains.watermark.models import WatermarkJob, WatermarkRevision,
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import WorkspaceModuleSetting
 from velvet_bot.core.access import is_workspace_member_callback_data
-from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
-    _workspace_home_keyboard,
-)
 from velvet_bot.presentation.telegram.workspace_command_menu import workspace_commands
+from velvet_bot.presentation.telegram.workspace_home_presentation import (
+    build_workspace_owner_home_keyboard,
+)
 from velvet_bot.watermark_ui import build_watermark_keyboard
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,7 +97,7 @@ class WorkspaceCommandMenuTests(unittest.TestCase):
 
 class WorkspaceHintToggleTests(unittest.TestCase):
     def test_home_can_hide_every_info_button_at_once(self) -> None:
-        keyboard = _workspace_home_keyboard(
+        keyboard = build_workspace_owner_home_keyboard(
             _workspace(),
             public_enabled=False,
             modules=_modules(),
@@ -109,7 +109,7 @@ class WorkspaceHintToggleTests(unittest.TestCase):
         self.assertIn("🖼 Архив", labels)
 
     def test_home_keeps_help_buttons_until_hidden(self) -> None:
-        keyboard = _workspace_home_keyboard(
+        keyboard = build_workspace_owner_home_keyboard(
             _workspace(),
             public_enabled=False,
             modules=_modules(),
