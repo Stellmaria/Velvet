@@ -5,7 +5,7 @@
 - Линия/фаза: P2 workspace callback cleanup
 - Статус: `завершено в коде`
 - Ветка: `agent/p2-workspace-callback-ack`
-- Базовый commit: `c2d98464218c279dd1d5e5e8f8f7efa4cf2ba151`
+- Базовый commit: `3a35ff676a43b8fea60eb40c40d9b6c37fcc879e`
 
 ## Цель
 
@@ -20,7 +20,7 @@
 - поздние уведомления управления референсами отправляются обычным сообщением;
 - helper редактирования карточки референса поддерживает уже подтверждённый callback;
 - добавлен regression-test порядка acknowledgment;
-- P2 inventory обновлён скриптом.
+- P2 inventory обновлён скриптом: 130 callbacks, 0 late/missing, 44 guarded, 11 delegated.
 
 ## Инварианты
 
@@ -31,9 +31,9 @@
 
 ## Проверки
 
-- `python -m compileall` для изменённых модулей;
-- `python -m unittest tests.test_p2_stability_inventory`;
-- полный CI запускается на pull request.
+- `python -m compileall` для изменённых модулей: success;
+- `python -m unittest tests.test_p2_stability_inventory`: success;
+- полный CI запущен на pull request.
 
 ## Незавершённое
 
