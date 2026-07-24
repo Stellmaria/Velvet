@@ -3,7 +3,7 @@
 - Дата: 2026-07-24
 - ID: `2026-07-24-workspace-template-callback-contract`
 - Линия/фаза: workspace architecture cleanup
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/workspace-template-callback-contract`
 - Базовый commit: `154b54bab50f0e0259ec609a1800a55d4a0fbbd2`
 
@@ -39,27 +39,36 @@
 
 ### Фактически сделано
 
-- подготовлен canonical prefix contract;
-- подготовлено удаление access monkeypatch;
-- добавлены functional и architecture regression-тесты.
+- `wmtpl:` добавлен в canonical `WORKSPACE_MEMBER_CALLBACK_PREFIXES`;
+- удалены `_ORIGINAL_MEMBER_CALLBACK_CHECK` и `_workspace_callback_with_template`;
+- workspace installer больше не импортирует и не подменяет access middleware;
+- существующий тест переведён на публичный `is_workspace_member_callback_data`;
+- добавлены functional проверки известных и неизвестных prefix;
+- добавлен architecture regression-test запрета возврата monkeypatch.
 
 ### Миграции и совместимость
 
-Миграции не требуются. Формат callback data `wmtpl:*` не меняется.
+Миграции не требуются. Формат callback data `wmtpl:*` не меняется. Active workspace, role и tenant checks выполняются прежним middleware и целевыми handlers.
 
 ### Проверки
 
-Результаты будут записаны после применения checked transformation.
+- focused compileall: success;
+- focused callback, existing workspace UI и recovery tests: success;
+- tests `1829`: success;
+- type check `482`: success;
+- Docker build `1233`: success;
+- project notes contract `1106`: success.
 
 ### PR и commit
 
-Ветка `agent/workspace-template-callback-contract`; PR создаётся после focused validation.
+- PR: `#315 Make watermark template callbacks part of canonical access policy`;
+- ветка: `agent/workspace-template-callback-contract`;
+- implementation head перед финализацией журнала: `4490dac8a1133ac824339283b4eda2111c44dea0`.
 
 ### Незавершённое
 
-- применить transformation;
-- выполнить focused и полный CI;
-- слить отдельный PR.
+- после merge выполнить smoke test открытия и сохранения workspace watermark template;
+- quick references keyboard extension остаётся следующим отдельным срезом.
 
 ### Следующий шаг
 
