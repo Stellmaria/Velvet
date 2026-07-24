@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.filters import Filter
 from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.character_resolution import load_character_by_id
@@ -14,11 +15,23 @@ from velvet_bot.presentation.telegram.routers.references.albums import (
     send_reference_collection,
 )
 from velvet_bot.presentation.telegram.workspace_reference_dashboard import (
-    WorkspaceReferenceEntryCallback,
+    WorkspaceReferenceAction,
     build_workspace_reference_dashboard,
+    parse_workspace_reference_callback,
 )
 from velvet_bot.reference_catalog import list_character_references
 from velvet_bot.workspace_ui import WorkspaceCallback
+
+
+class WorkspaceReferenceActionFilter(Filter):
+    async def __call__(
+        self,
+        callback: CallbackQuery,
+    ) -> bool | dict[str, WorkspaceReferenceAction]:
+        reference_action = parse_workspace_reference_callback(callback.data)
+        if reference_action is None:
+            return False
+        return {"reference_action": reference_action}
 
 
 def _is_global_owner(user_id: int) -> bool:
@@ -94,14 +107,14 @@ async def handle_workspace_reference_entry(
 
 async def handle_workspace_reference_action(
     callback: CallbackQuery,
-    callback_data: WorkspaceReferenceEntryCallback,
+    reference_action: WorkspaceReferenceAction,
     database: Database,
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
 ) -> None:
     try:
         workspace = await _resolve_reference_workspace(
-            workspace_id=callback_data.workspace_id,
+            workspace_id=reference_action.workspace_id,
             user_id=callback.from_user.id,
             workspace_service=workspace_service,
             workspace_product_service=workspace_product_service,
@@ -110,20 +123,20 @@ async def handle_workspace_reference_action(
         await callback.answer(str(error), show_alert=True)
         return
 
-    if callback_data.action == "help":
+    if reference_action.action == "help":
         await callback.answer(
             "Добавление: /refadd Имя персонажа. Затем отправляйте фото или "
             "изображения-документы и завершите /refdone.",
             show_alert=True,
         )
         return
-    if callback_data.action != "open":
+    if reference_action.action != "open":
         await callback.answer("Неизвестное действие.", show_alert=True)
         return
 
     character = await load_character_by_id(
         database,
-        character_id=callback_data.character_id,
+        character_id=reference_action.character_id,
         workspace_id=workspace.id,
     )
     if character is None:
@@ -172,11 +185,12 @@ def register_workspace_reference_dashboard(router: Router) -> None:
     )
     router.callback_query.register(
         handle_workspace_reference_action,
-        WorkspaceReferenceEntryCallback.filter(),
+        WorkspaceReferenceActionFilter(),
     )
 
 
 __all__ = (
+    "WorkspaceReferenceActionFilter",
     "handle_workspace_reference_action",
     "handle_workspace_reference_entry",
     "register_workspace_reference_dashboard",
