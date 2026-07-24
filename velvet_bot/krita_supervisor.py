@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
-from velvet_bot.supervisor_client import SupervisorClient, build_supervisor_client
+from velvet_bot.supervisor_client import (
+    SupervisorClient,
+    SupervisorClientError,
+    build_supervisor_client,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class KritaSupervisorClient(SupervisorClient):
@@ -30,4 +37,20 @@ def build_krita_supervisor_client() -> KritaSupervisorClient | None:
     )
 
 
-__all__ = ("KritaSupervisorClient", "build_krita_supervisor_client")
+async def wake_krita(*, context: str = "watermark") -> str | None:
+    client = build_krita_supervisor_client()
+    if client is None:
+        return None
+    try:
+        await client.ensure_krita()
+    except SupervisorClientError as error:
+        logger.warning("Could not wake Krita for %s: %s", context, error)
+        return str(error)
+    return None
+
+
+__all__ = (
+    "KritaSupervisorClient",
+    "build_krita_supervisor_client",
+    "wake_krita",
+)

@@ -31,12 +31,11 @@ from velvet_bot.domains.watermark.models import WatermarkSettings, WatermarkWork
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
-from velvet_bot.krita_supervisor import build_krita_supervisor_client
+from velvet_bot.krita_supervisor import wake_krita
 from velvet_bot.presentation.telegram.routers.public_archive.watermark_actions import (
     handle_manager_fast_watermark,
 )
 from velvet_bot.public_ui import PublicArchiveCallback
-from velvet_bot.supervisor_client import SupervisorClientError
 from velvet_bot.watermark_ui import (
     WatermarkCallback,
     build_archive_watermark_edit_keyboard,
@@ -146,18 +145,6 @@ async def _require_job_workspace(
         )
 
 
-async def _wake_krita() -> str | None:
-    client = build_krita_supervisor_client()
-    if client is None:
-        return None
-    try:
-        await client.ensure_krita()
-    except SupervisorClientError as error:
-        logger.warning("Could not wake Krita through Supervisor: %s", error)
-        return str(error)
-    return None
-
-
 class WatermarkInputReplyFilter(BaseFilter):
     async def __call__(self, message: Message) -> bool:
         reply = message.reply_to_message
@@ -216,14 +203,6 @@ async def _create_job_from_message(
             "PNG/JPG/JPEG/WEBP/TIFF/BMP."
         )
         return None
-    wake_error = await _wake_krita()
-    if wake_error:
-        await message.answer(
-            "⚠️ Не удалось автоматически запустить Krita. "
-            "Задание будет создано, но Krita нужно открыть вручную.\n\n"
-            f"<code>{escape(wake_error[:800])}</code>"
-        )
-
     file_id, file_unique_id, suffix = source
     source_path = watermark_service.bridge.paths.sources / (
         f"tg-{message.chat.id}-{source_message.message_id}-{uuid4().hex}{suffix}"
@@ -262,7 +241,7 @@ async def _create_job_from_message(
         logo_name=(logo_asset.file_name if logo_asset is not None else None),
     )
     control = await message.answer(
-        format_watermark_caption(item, status_text="поставлено в очередь"),
+        format_watermark_caption(item),
         reply_markup=build_watermark_keyboard(item),
     )
     await watermark_service.set_control_message(item.job.id, control.message_id)
@@ -305,16 +284,10 @@ async def handle_watermark_command(
         return
     source = message.reply_to_message
     if source is None:
-        wake_error = await _wake_krita()
-        warning = (
-            f"\n\n⚠️ Автозапуск Krita: <code>{escape(wake_error[:500])}</code>"
-            if wake_error
-            else ""
-        )
         await message.answer(
             "Ответьте командой <code>/watermark</code> на изображение. "
-            "Команда является аварийным резервом; обычный вход доступен из меню."
-            + warning
+            "Команда является аварийным резервом; обычный вход доступен из меню. "
+            "Krita запустится только после кнопки генерации."
         )
         return
     await _create_job_from_message(
@@ -358,7 +331,7 @@ async def handle_watermark_custom_color(
     if not _watermark_enabled():
         await message.answer("Krita bridge выключен.")
         return
-    await _wake_krita()
+    await wake_krita(context="watermark color revision")
     service = _build_service(bot, database)
     color = (message.text or "").strip()
     try:
@@ -399,21 +372,14 @@ async def handle_watermark_callback(
         await callback.answer("Krita bridge выключен.", show_alert=True)
         return
     if action in {"start", "help"}:
-        wake_error = await _wake_krita()
         await callback.answer()
         if isinstance(callback.message, Message):
-            warning = (
-                "\n\n⚠️ Krita не запустилась автоматически. Откройте её вручную.\n"
-                f"<code>{escape(wake_error[:800])}</code>"
-                if wake_error
-                else "\n\nKrita запущена автоматически и закроется после 10 минут простоя."
-            )
             await callback.message.answer(
                 "<b>Водяной знак Velvet Anatomy</b>\n\n"
                 "Ответьте изображением на это сообщение. Бот сохранит неизменяемый "
-                "исходник, а Krita будет строить отдельные preview."
-                + warning
-                + f"\n\n<code>{_INPUT_MARKER}</code>",
+                "исходник. Сначала настройте черновик; Krita запустится только после "
+                "кнопки «Сгенерировать preview»."
+                f"\n\n<code>{_INPUT_MARKER}</code>",
                 reply_markup=build_watermark_start_keyboard(),
             )
         return
@@ -491,7 +457,7 @@ async def handle_watermark_callback(
 
     await callback.answer("Принято, готовлю новую версию…")
     if action != "cancel":
-        await _wake_krita()
+        await wake_krita(context="watermark revision")
 
     try:
         if action == "position":
