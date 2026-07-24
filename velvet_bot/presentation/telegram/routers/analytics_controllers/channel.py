@@ -282,10 +282,45 @@ async def handle_prompt_stats(
     await message.answer(_prompt_text(stats, hashtags))
 
 
-@router.message(Command("hashtag"))
+@router.message(Command("hashtagstats", "tagstats"))
 async def handle_hashtag_stats(
     message: Message,
     command: CommandObject,
+    database: Database,
+    analytics_channel_ids: frozenset[int],
+) -> None:
+    try:
+        result = await load_hashtag_stats(
+            database,
+            analytics_channel_ids,
+            command.args or "",
+        )
+    except ValueError as error:
+        await message.answer(escape(str(error)))
+        return
+    if isinstance(result, HashtagStat):
+        character = (
+            f"\nПерсонаж в архиве: <b>{escape(result.character_name)}</b>"
+            if result.character_name
+            else "\nС карточкой персонажа пока не сопоставлен."
+        )
+        await message.answer(
+            f"<b>#{escape(result.hashtag)}</b>\n\n"
+            f"Публикаций: <b>{result.publication_count}</b>\n"
+            f"Из них промтов: <b>{result.prompt_count}</b>\n"
+            f"Последнее использование: <b>{_format_date(result.last_used_at)}</b>"
+            f"{character}"
+        )
+        return
+    await message.answer(
+        "<b>Хэштеги канала</b>\n\n"
+        f"{_hashtag_lines(list(result), limit=30)}"
+    )
+
+
+@router.message(Command("characterstats"))
+async def handle_character_stats(
+    message: Message,
     database: Database,
     analytics_channel_ids: frozenset[int],
 ) -> None:
@@ -293,19 +328,8 @@ async def handle_hashtag_stats(
     if channel_id is None:
         await message.answer("Каналы для аналитики не настроены.")
         return
-    query = (command.args or "").strip()
-    if not query:
-        await message.answer("Использование: <code>/hashtag имя</code>")
-        return
-    stats = await load_hashtag_stats(database, channel_id, query)
-    if stats is None:
-        await message.answer(f"Хэштег <code>#{escape(query.lstrip('#'))}</code> пока не найден.")
-        return
-    character = f"\nПерсонаж: <b>{escape(stats.character_name)}</b>" if stats.character_name else ""
+    items = await list_character_usage_stats(database, channel_id, limit=30)
     await message.answer(
-        f"<b>#{escape(stats.hashtag)}</b>\n\n"
-        f"Публикаций: <b>{stats.publication_count}</b>\n"
-        f"Промтов: <b>{stats.prompt_count}</b>\n"
-        f"Последнее использование: <b>{_format_date(stats.last_used_at)}</b>"
-        f"{character}"
+        "<b>Персонажи, задействованные в канале</b>\n\n"
+        f"{_character_lines(items, limit=30)}"
     )
