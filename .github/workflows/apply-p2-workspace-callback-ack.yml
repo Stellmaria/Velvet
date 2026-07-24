@@ -1,0 +1,113 @@
+name: Apply P2 workspace callback acknowledgment slice
+
+on:
+  push:
+    branches:
+      - agent/p2-workspace-callback-ack
+
+permissions:
+  contents: write
+
+jobs:
+  apply-slice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Apply reviewed source patch
+        run: |
+          git apply --check .github/p2-workspace-callback-ack.patch
+          git apply .github/p2-workspace-callback-ack.patch
+
+      - name: Refresh P2 inventory
+        run: |
+          python scripts/update_p2_stability_inventory.py \
+            --label p2-workspace-callback-ack \
+            --schema-version 64
+
+      - name: Record worklog
+        shell: bash
+        run: |
+          base_commit="$(git rev-parse HEAD)"
+          cat > docs/worklog/2026-07-24-p2-workspace-callback-ack.md <<EOF
+          # Сессия: раннее подтверждение workspace callbacks
+
+          - Дата: 2026-07-24
+          - ID: \`2026-07-24-p2-workspace-callback-ack\`
+          - Линия/фаза: P2 workspace callback cleanup
+          - Статус: \`завершено в коде\`
+          - Ветка: \`agent/p2-workspace-callback-ack\`
+          - Базовый commit: \`${base_commit}\`
+
+          ## Цель
+
+          Убрать три late callback acknowledgment, появившиеся после расширения личных пространств, не меняя callback data, порядок routers и бизнес-операции.
+
+          ## Сделано
+
+          - быстрые действия подтверждают callback после проверки доступа, но до очистки FSM и загрузки модулей;
+          - входы создания категории, вселенной и истории подтверждают callback до FSM/database операций;
+          - управление референсами подтверждает callback до загрузки списков, страниц, Telegram media и mutation operations;
+          - повторные callback answers после раннего подтверждения удалены;
+          - поздние уведомления управления референсами отправляются обычным сообщением, чтобы не отвечать одному callback дважды;
+          - helper редактирования карточки референса поддерживает уже подтверждённый callback;
+          - добавлен regression-test порядка acknowledgment;
+          - P2 inventory обновлён скриптом.
+
+          ## Инварианты
+
+          - callback prefixes и packed data не менялись;
+          - роли workspace и проверки доступа сохранены;
+          - SQL, migrations и repository layout не менялись;
+          - порядок регистрации routers не менялся.
+
+          ## Проверки
+
+          - \`python -m compileall\` для изменённых модулей;
+          - \`python -m unittest tests.test_p2_stability_inventory\`;
+          - полный CI запускается на pull request.
+
+          ## Незавершённое
+
+          - дождаться полного CI;
+          - после merge выполнить workspace smoke test в Telegram.
+
+          ## Следующий шаг
+
+          После подтверждения этого P2-среза перенести SQL настроек workspace из Telegram controller в repository/service boundary отдельным PR.
+          EOF
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run focused validation
+        run: |
+          python -m compileall \
+            velvet_bot/presentation/telegram/routers/workspace_guided_actions.py \
+            velvet_bot/presentation/telegram/routers/workspace_reference_buttons.py \
+            tests/test_p2_stability_inventory.py
+          python -m unittest tests.test_p2_stability_inventory
+
+      - name: Remove bootstrap files
+        run: |
+          rm .github/p2-workspace-callback-ack.patch
+          rm .github/workflows/apply-p2-workspace-callback-ack.yml
+
+      - name: Commit applied slice
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix workspace callback acknowledgments"
+          git push origin HEAD:agent/p2-workspace-callback-ack
