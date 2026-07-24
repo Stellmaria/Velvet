@@ -18,13 +18,16 @@ from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.domains.workspaces.watermark_assets import WorkspaceWatermarkAssetRepository
+from velvet_bot.domains.workspaces.watermark_templates import (
+    WorkspaceWatermarkTemplateRepository,
+)
 from velvet_bot.domains.public_archive.watermark_repository import (
     PublicArchiveWatermarkRepository,
 )
 from velvet_bot.domains.watermark.archive_output import (
     prepare_archive_watermark_output,
 )
-from velvet_bot.domains.watermark.models import WatermarkWorkItem
+from velvet_bot.domains.watermark.models import WatermarkSettings, WatermarkWorkItem
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
@@ -239,6 +242,9 @@ async def _create_job_from_message(
             "❌ Документ не является поддерживаемым изображением или повреждён."
         )
         return None
+    settings = WatermarkSettings()
+    if workspace_id != DEFAULT_WORKSPACE_ID:
+        settings = await WorkspaceWatermarkTemplateRepository(database).get(workspace_id)
     item = await watermark_service.create_job(
         owner_user_id=message.from_user.id,
         chat_id=message.chat.id,
@@ -246,6 +252,8 @@ async def _create_job_from_message(
         source_file_id=file_id,
         source_file_unique_id=file_unique_id,
         source_path=str(source_path),
+        settings=settings,
+        draft=True,
         workspace_id=workspace_id,
         logo_kind=(logo_asset.asset_kind if logo_asset is not None else "builtin"),
         logo_path=(logo_asset.local_path if logo_asset is not None else None),
