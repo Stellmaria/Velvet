@@ -4,13 +4,16 @@ on:
   push:
     branches:
       - agent/workspace-hint-preference-boundary
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply-slice:
-    if: github.event.head_commit.message != 'Apply workspace hint preference boundary'
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Apply workspace hint preference boundary'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
