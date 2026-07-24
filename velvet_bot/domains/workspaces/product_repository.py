@@ -170,6 +170,32 @@ class WorkspaceProductRepository:
             )
         return int(value) if value is not None else DEFAULT_WORKSPACE_ID
 
+    async def get_button_hints(self, workspace_id: int) -> bool:
+        async with self._database.acquire() as connection:
+            value = await connection.fetchval(
+                """
+                SELECT show_button_hints
+                FROM workspace_settings
+                WHERE workspace_id = $1::BIGINT
+                """,
+                int(workspace_id),
+            )
+        return True if value is None else bool(value)
+
+    async def toggle_button_hints(self, workspace_id: int) -> bool | None:
+        async with self._database.acquire() as connection:
+            value = await connection.fetchval(
+                """
+                UPDATE workspace_settings
+                SET show_button_hints = NOT show_button_hints,
+                    updated_at = NOW()
+                WHERE workspace_id = $1::BIGINT
+                RETURNING show_button_hints
+                """,
+                int(workspace_id),
+            )
+        return bool(value) if value is not None else None
+
     async def initialize_modules(
         self,
         *,

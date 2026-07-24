@@ -4,7 +4,7 @@ import logging
 from contextvars import ContextVar
 from dataclasses import replace
 from html import escape
-from typing import Any, cast
+from typing import Any
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
@@ -132,26 +132,6 @@ async def _install_scoped_commands(callback: CallbackQuery, *, role: str) -> Non
     await _set_chat_commands(callback.bot, chat_id, role)
 
 
-def _database_from_product_service(service: WorkspaceProductService) -> Database:
-    database = getattr(service._workspaces, "_database", None)
-    if database is None:
-        raise RuntimeError("Workspace repository does not expose its database boundary.")
-    return cast(Database, database)
-
-
-async def _show_button_hints(database: Database, workspace_id: int) -> bool:
-    async with database.acquire() as connection:
-        value = await connection.fetchval(
-            """
-            SELECT show_button_hints
-            FROM workspace_settings
-            WHERE workspace_id = $1::BIGINT
-            """,
-            int(workspace_id),
-        )
-    return True if value is None else bool(value)
-
-
 def _home_keyboard_with_hint_toggle(
     workspace: Workspace,
     *,
@@ -199,9 +179,8 @@ async def _render_home_with_preferences(
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
 ) -> None:
-    database = _database_from_product_service(workspace_product_service)
     token = _SHOW_BUTTON_HINTS.set(
-        await _show_button_hints(database, workspace.id)
+        await workspace_product_service.get_button_hints(workspace.id)
     )
     try:
         await _ORIGINAL_RENDER_HOME(
@@ -716,21 +695,14 @@ async def handle_workspace_help_toggle(
             await callback.message.answer(f"❌ {escape(str(error))}")
         return
 
-    database = _database_from_product_service(workspace_product_service)
-    async with database.acquire() as connection:
-        row = await connection.fetchrow(
-            """
-            UPDATE workspace_settings
-            SET show_button_hints = NOT show_button_hints,
-                updated_at = NOW()
-            WHERE workspace_id = $1::BIGINT
-            RETURNING show_button_hints
-            """,
-            workspace.id,
+    try:
+        show_button_hints = await workspace_product_service.toggle_button_hints(
+            workspace.id
         )
-    if row is None:
+        settings = await workspace_product_service.get_settings(workspace.id)
+    except ValueError as error:
         if isinstance(callback.message, Message):
-            await callback.message.answer("Настройки пространства не найдены.")
+            await callback.message.answer(str(error))
         return
 
     modules = await workspace_product_service.list_modules(
@@ -738,8 +710,7 @@ async def handle_workspace_help_toggle(
         actor_user_id=user_id,
         global_owner=_is_global_owner(user_id),
     )
-    settings = await workspace_product_service._workspaces.get_settings(workspace.id)
-    if settings is None or not isinstance(callback.message, Message):
+    if not isinstance(callback.message, Message):
         return
     allowed_modules = sum(item.is_allowed for item in modules)
     enabled_modules = sum(item.is_allowed and item.is_enabled for item in modules)
@@ -752,7 +723,7 @@ async def handle_workspace_help_toggle(
         )
         + "\nРоль: <b>владелец</b>"
     )
-    token = _SHOW_BUTTON_HINTS.set(bool(row["show_button_hints"]))
+    token = _SHOW_BUTTON_HINTS.set(show_button_hints)
     try:
         keyboard = _home_keyboard_with_hint_toggle(
             workspace,
