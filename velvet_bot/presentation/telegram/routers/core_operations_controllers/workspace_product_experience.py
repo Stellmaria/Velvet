@@ -24,7 +24,6 @@ from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATO
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.krita_supervisor import wake_krita
-from velvet_bot.presentation.telegram.routers import workspace_guided_actions
 from velvet_bot.presentation.telegram.routers import workspace_owner_controls
 from velvet_bot.presentation.telegram.routers.core_operations_controllers import (
     watermark as core_watermark,
@@ -60,7 +59,6 @@ _INSTALLED = False
 _ORIGINAL_HOME_KEYBOARD = workspace_owner_controls._workspace_home_keyboard
 _ORIGINAL_RENDER_HOME = workspace_owner_controls._render_home
 _ORIGINAL_RENDER_MEMBER_HOME = workspace_owner_controls._render_member_home
-_ORIGINAL_QUICK_KEYBOARD = workspace_guided_actions._quick_keyboard
 
 
 def _is_global_owner(user_id: int) -> bool:
@@ -209,39 +207,6 @@ async def _render_member_home_with_commands(
         global_owner=_is_global_owner(user_id),
     )
     await _install_scoped_commands(callback, role=membership.role)
-
-
-def _quick_keyboard_with_references(
-    workspace_id: int,
-    enabled: frozenset[str],
-) -> InlineKeyboardMarkup:
-    keyboard = _ORIGINAL_QUICK_KEYBOARD(workspace_id, enabled)
-    rows = [list(row) for row in keyboard.inline_keyboard]
-    if "references" in enabled and not any(
-        button.text == "🧬 Референсы" for row in rows for button in row
-    ):
-        insert_at = next(
-            (
-                index
-                for index, row in enumerate(rows)
-                if any(button.text == "🧭 Настройка архива" for button in row)
-            ),
-            len(rows),
-        )
-        rows.insert(
-            insert_at,
-            [
-                InlineKeyboardButton(
-                    text="🧬 Референсы",
-                    callback_data=workspace_callback(
-                        "module",
-                        workspace_id=workspace_id,
-                        module_key="references",
-                    ),
-                )
-            ],
-        )
-    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 class PersonalArchiveCommandFilter(BaseFilter):
@@ -610,7 +575,6 @@ def install_workspace_product_experience() -> None:
     workspace_owner_controls._workspace_home_keyboard = _home_keyboard_with_hint_toggle
     workspace_owner_controls._render_home = _render_home_with_preferences
     workspace_owner_controls._render_member_home = _render_member_home_with_commands
-    workspace_guided_actions._quick_keyboard = _quick_keyboard_with_references
 
 
 

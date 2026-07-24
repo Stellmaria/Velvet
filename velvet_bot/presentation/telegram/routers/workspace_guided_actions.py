@@ -204,6 +204,19 @@ def _quick_keyboard(workspace_id: int, enabled: frozenset[str]) -> InlineKeyboar
                 )
             ]
         )
+    if "references" in enabled:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🧬 Референсы",
+                    callback_data=workspace_callback(
+                        "module",
+                        workspace_id=workspace_id,
+                        module_key="references",
+                    ),
+                )
+            ]
+        )
     rows.extend(
         [
             [
