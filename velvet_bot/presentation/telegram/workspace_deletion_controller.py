@@ -5,7 +5,7 @@ from html import escape
 from aiogram import F, Router
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command
+from aiogram.filters import Filter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -21,6 +21,16 @@ from velvet_bot.presentation.telegram.workspace_home_presentation import (
     build_workspace_home_presentation,
 )
 from velvet_bot.workspace_ui import WorkspaceCallback, build_start_keyboard, workspace_callback
+
+
+class WorkspaceDeleteCommandFilter(Filter):
+    async def __call__(self, message: Message) -> bool:
+        raw = message.text or message.caption or ""
+        token = raw.strip().split(maxsplit=1)[0] if raw.strip() else ""
+        if not token.startswith("/"):
+            return False
+        command = token[1:].split("@", 1)[0].casefold()
+        return command == "workspace_delete"
 
 
 def _is_global_owner(user_id: int) -> bool:
@@ -297,7 +307,7 @@ async def handle_workspace_delete_confirm(
 def register_workspace_deletion(router: Router) -> None:
     router.message.register(
         handle_workspace_delete_command,
-        Command("workspace_delete"),
+        WorkspaceDeleteCommandFilter(),
     )
     router.callback_query.register(
         handle_workspace_delete_prompt,
@@ -314,6 +324,7 @@ def register_workspace_deletion(router: Router) -> None:
 
 
 __all__ = (
+    "WorkspaceDeleteCommandFilter",
     "build_workspace_delete_keyboard",
     "delete_workspace_data",
     "handle_workspace_delete_cancel",
