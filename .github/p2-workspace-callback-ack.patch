@@ -1,0 +1,371 @@
+diff --git a/velvet_bot/presentation/telegram/routers/workspace_guided_actions.py b/velvet_bot/presentation/telegram/routers/workspace_guided_actions.py
+--- a/velvet_bot/presentation/telegram/routers/workspace_guided_actions.py
++++ b/velvet_bot/presentation/telegram/routers/workspace_guided_actions.py
+@@ -103,10 +103,12 @@ async def _edit(
+     reply_markup: InlineKeyboardMarkup,
+     answer: str | None = None,
+     show_alert: bool = False,
++    acknowledge: bool = True,
+ ) -> None:
+     if not isinstance(callback.message, Message):
+-        await callback.answer("Меню больше недоступно.", show_alert=True)
++        if acknowledge:
++            await callback.answer("Меню больше недоступно.", show_alert=True)
+         return
+     try:
+         await callback.message.edit_text(
+@@ -121,7 +123,8 @@ async def _edit(
+                 reply_markup=reply_markup,
+                 disable_web_page_preview=True,
+             )
+-    await callback.answer(answer, show_alert=show_alert)
++    if acknowledge:
++        await callback.answer(answer, show_alert=show_alert)
+@@ -243,6 +246,7 @@ async def _render_quick(
+     workspace: Workspace,
+     user_id: int,
+     workspace_product_service: WorkspaceProductService,
++    acknowledge: bool = True,
+ ) -> None:
+     enabled = await _enabled_modules(
+         workspace_product_service,
+@@ -261,6 +265,7 @@ async def _render_quick(
+             "и копируются в его тему; данные других пространств не смешиваются."
+         ),
+         reply_markup=_quick_keyboard(workspace.id, enabled),
++        acknowledge=acknowledge,
+     )
+@@ -721,6 +726,7 @@ async def _start_category(
+     *,
+     state: FSMContext,
+     workspace: Workspace,
++    acknowledge: bool = True,
+ ) -> None:
+     await state.set_state(GuidedWorkspaceForm.category_label)
+     await state.update_data(workspace_id=workspace.id)
+@@ -732,6 +738,7 @@ async def _start_category(
+             "Отправьте понятное название категории. Технический ключ бот создаст сам."
+         ),
+         reply_markup=_taxonomy_prompt_keyboard(workspace.id),
++        acknowledge=acknowledge,
+     )
+@@ -742,6 +749,7 @@ async def _start_universe(
+     *,
+     state: FSMContext,
+     workspace: Workspace,
++    acknowledge: bool = True,
+ ) -> None:
+     await state.set_state(GuidedWorkspaceForm.universe_label)
+     await state.update_data(workspace_id=workspace.id)
+@@ -753,6 +761,7 @@ async def _start_universe(
+             "Отправьте название вселенной. Технический ключ бот создаст сам."
+         ),
+         reply_markup=_taxonomy_prompt_keyboard(workspace.id),
++        acknowledge=acknowledge,
+     )
+@@ -764,10 +773,15 @@ async def _start_story(
+     state: FSMContext,
+     workspace: Workspace,
+     workspace_product_service: WorkspaceProductService,
++    acknowledge: bool = True,
+ ) -> None:
+     universes = await workspace_product_service.list_universes(workspace.id)
+     if not universes:
+-        await callback.answer("Сначала создайте хотя бы одну вселенную.", show_alert=True)
++        if acknowledge:
++            await callback.answer("Сначала создайте хотя бы одну вселенную.", show_alert=True)
++        elif isinstance(callback.message, Message):
++            await callback.message.answer("Сначала создайте хотя бы одну вселенную.")
+         return
+@@ -799,6 +813,7 @@ async def _start_story(
+         callback,
+         text="<b>➕ Новая история</b>\n\nВыберите вселенную истории.",
+         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
++        acknowledge=acknowledge,
+     )
+@@ -808,19 +823,22 @@ async def handle_workspace_quick_entry(
+     workspace_service: WorkspaceService,
+     workspace_product_service: WorkspaceProductService,
+ ) -> None:
+     try:
+-        await state.clear()
+         workspace = await _resolve_workspace(
+             workspace_id=callback_data.workspace_id,
+             user_id=callback.from_user.id,
+             workspace_service=workspace_service,
+         )
+-        await _render_quick(
+-            callback,
+-            workspace=workspace,
+-            user_id=callback.from_user.id,
+-            workspace_product_service=workspace_product_service,
+-        )
+     except WorkspaceAccessError as error:
+         await callback.answer(str(error), show_alert=True)
++        return
++    await callback.answer()
++    await state.clear()
++    await _render_quick(
++        callback,
++        workspace=workspace,
++        user_id=callback.from_user.id,
++        workspace_product_service=workspace_product_service,
++        acknowledge=False,
++    )
+@@ -854,23 +872,29 @@ async def handle_guided_taxonomy_entry(
+             user_id=callback.from_user.id,
+             workspace_service=workspace_service,
+         )
+-        if callback_data.action == "addcategory":
+-            await _start_category(callback, state=state, workspace=workspace)
+-        elif callback_data.action == "adduniverse":
+-            await _start_universe(callback, state=state, workspace=workspace)
+-        else:
+-            await _start_story(
+-                callback,
+-                state=state,
+-                workspace=workspace,
+-                workspace_product_service=workspace_product_service,
+-            )
+     except WorkspaceAccessError as error:
+         await callback.answer(str(error), show_alert=True)
++        return
++    await callback.answer()
++    if callback_data.action == "addcategory":
++        await _start_category(
++            callback, state=state, workspace=workspace, acknowledge=False
++        )
++    elif callback_data.action == "adduniverse":
++        await _start_universe(
++            callback, state=state, workspace=workspace, acknowledge=False
++        )
++    else:
++        await _start_story(
++            callback,
++            state=state,
++            workspace=workspace,
++            workspace_product_service=workspace_product_service,
++            acknowledge=False,
++        )
+diff --git a/velvet_bot/presentation/telegram/routers/workspace_reference_buttons.py b/velvet_bot/presentation/telegram/routers/workspace_reference_buttons.py
+--- a/velvet_bot/presentation/telegram/routers/workspace_reference_buttons.py
++++ b/velvet_bot/presentation/telegram/routers/workspace_reference_buttons.py
+@@ -288,17 +288,29 @@ async def _send_reference_page(
+     )
+ 
+ 
++async def _send_manage_notice(callback: CallbackQuery, text: str) -> None:
++    if isinstance(callback.message, Message):
++        await callback.message.answer(text)
++
++
+ async def _edit_reference_page(
+     callback: CallbackQuery,
+     *,
+     page,
++    acknowledge: bool = True,
+ ) -> None:
+     if page.reference is None:
+-        await callback.answer("Референсы больше не найдены.", show_alert=True)
++        if acknowledge:
++            await callback.answer("Референсы больше не найдены.", show_alert=True)
++        else:
++            await _send_manage_notice(callback, "Референсы больше не найдены.")
+         return
+     if not isinstance(callback.message, Message):
+-        await callback.answer("Сообщение больше недоступно.", show_alert=True)
++        if acknowledge:
++            await callback.answer("Сообщение больше недоступно.", show_alert=True)
+         return
+@@ -316,7 +328,8 @@ async def _edit_reference_page(
+                 reply_markup=_reference_keyboard(page),
+                 protect_content=True,
+             )
+-    await callback.answer()
++    if acknowledge:
++        await callback.answer()
+@@ -405,6 +418,7 @@ async def handle_reference_manage(
+     action = callback_data.action
+     if action == "manage_close":
++        await callback.answer()
+         if isinstance(callback.message, Message):
+             try:
+                 await callback.message.delete()
+             except TelegramBadRequest:
+                 pass
+-        await callback.answer()
+         return
+     if action in {"manage_upload_done", "manage_upload_cancel"}:
+         stopped = reference_uploads.stop(callback.from_user.id)
+@@ -424,6 +438,7 @@ async def handle_reference_manage(
+         await callback.answer(text, show_alert=True)
+         return
+     if action == "manage_back":
++        await callback.answer()
+         rows = await _load_reference_characters(
+             database,
+             workspace_id=personal_reference_context.workspace_id,
+@@ -441,15 +456,14 @@ async def handle_reference_manage(
+                     rows=rows,
+                 ),
+             )
+-        await callback.answer()
+         return
+ 
++    await callback.answer()
+     page = await get_reference_page(
+         database,
+         callback_data.character_id,
+@@ -458,7 +472,7 @@ async def handle_reference_manage(
+         workspace_id=personal_reference_context.workspace_id,
+     )
+     if page is None:
+-        await callback.answer("Персонаж не найден в активном пространстве.", show_alert=True)
++        await _send_manage_notice(callback, "Персонаж не найден в активном пространстве.")
+         return
+     if action == "manage_add":
+         try:
+@@ -471,7 +485,7 @@ async def handle_reference_manage(
+                 minimum_role="editor",
+             )
+         except WorkspaceAccessError as error:
+-            await callback.answer(str(error), show_alert=True)
++            await _send_manage_notice(callback, str(error))
+             return
+         reference_uploads.start(
+             callback.from_user.id,
+@@ -490,19 +504,17 @@ async def handle_reference_manage(
+                 "Можно прислать несколько файлов подряд, затем нажать «Завершить».",
+                 reply_markup=_upload_keyboard(character_id=page.character.id),
+             )
+-        await callback.answer()
+         return
+     if page.reference is None:
+-        await callback.answer("У персонажа пока нет референсов.", show_alert=True)
++        await _send_manage_notice(callback, "У персонажа пока нет референсов.")
+         return
+     if action == "manage_show":
+-        await _edit_reference_page(callback, page=page)
++        await _edit_reference_page(callback, page=page, acknowledge=False)
+         return
+     if action == "manage_compare":
+-        await callback.answer(
++        await _send_manage_notice(
++            callback,
+             f"Ответьте на готовое изображение командой /compare_ref "
+             f"{page.character.name} {page.offset + 1}",
+-            show_alert=True,
+         )
+         return
+@@ -518,19 +530,17 @@ async def handle_reference_manage(
+             minimum_role="editor",
+         )
+     except WorkspaceAccessError as error:
+-        await callback.answer(str(error), show_alert=True)
++        await _send_manage_notice(callback, str(error))
+         return
+     if page.reference.id != callback_data.reference_id:
+-        await callback.answer(
+-            "Список изменился. Откройте референсы заново.",
+-            show_alert=True,
++        await _send_manage_notice(
++            callback, "Список изменился. Откройте референсы заново."
+         )
+         return
+@@ -555,7 +565,6 @@ async def handle_reference_manage(
+                     offset=page.offset,
+                 ),
+             )
+-        await callback.answer()
+         return
+     if action == "manage_delete_prompt":
+         if isinstance(callback.message, Message):
+@@ -563,7 +572,6 @@ async def handle_reference_manage(
+                 reply_markup=_delete_confirmation_keyboard(page)
+             )
+-        await callback.answer()
+         return
+     if action == "manage_delete_cancel":
+         if isinstance(callback.message, Message):
+@@ -571,7 +579,6 @@ async def handle_reference_manage(
+                 reply_markup=_reference_keyboard(page)
+             )
+-        await callback.answer()
+         return
+     if action == "manage_delete":
+         result = await delete_character_reference(
+@@ -582,7 +589,7 @@ async def handle_reference_manage(
+             workspace_id=personal_reference_context.workspace_id,
+         )
+         if result.reference is None:
+-            await callback.answer("Референс уже удалён.", show_alert=True)
++            await _send_manage_notice(callback, "Референс уже удалён.")
+             return
+@@ -608,7 +615,6 @@ async def handle_reference_manage(
+                     reply_markup=_empty_reference_keyboard(page.character.id),
+                 )
+-            await callback.answer("Референс удалён.")
+             return
+@@ -622,10 +628,10 @@ async def handle_reference_manage(
+             workspace_id=personal_reference_context.workspace_id,
+         )
+         if next_page is None or next_page.reference is None:
+-            await callback.answer("Не удалось открыть следующий референс.", show_alert=True)
++            await _send_manage_notice(callback, "Не удалось открыть следующий референс.")
+             return
+-        await _edit_reference_page(callback, page=next_page)
++        await _edit_reference_page(callback, page=next_page, acknowledge=False)
+         return
+-    await callback.answer("Неизвестное действие.", show_alert=True)
++    await _send_manage_notice(callback, "Неизвестное действие.")
+diff --git a/tests/test_p2_stability_inventory.py b/tests/test_p2_stability_inventory.py
+--- a/tests/test_p2_stability_inventory.py
++++ b/tests/test_p2_stability_inventory.py
+@@ -8,7 +8,11 @@ import unittest
+ from pathlib import Path
+ 
+ from velvet_bot.presentation.telegram.routers.stories import multi_story_kr as multi_story
++from velvet_bot.presentation.telegram.routers import workspace_guided_actions
++from velvet_bot.presentation.telegram.routers import workspace_reference_buttons
+@@ -153,6 +157,35 @@ class P2StabilityInventoryTests(unittest.TestCase):
+                 source.index("await callback.answer()"),
+             )
+ 
++    def test_workspace_callbacks_ack_before_slow_operations(self) -> None:
++        quick_source = inspect.getsource(
++            workspace_guided_actions.handle_workspace_quick_entry
++        )
++        self.assertLess(
++            quick_source.index("await callback.answer()"),
++            quick_source.index("await state.clear()"),
++        )
++        self.assertLess(
++            quick_source.index("await callback.answer()"),
++            quick_source.index("await _render_quick("),
++        )
++
++        taxonomy_source = inspect.getsource(
++            workspace_guided_actions.handle_guided_taxonomy_entry
++        )
++        for operation in ("await _start_category(", "await _start_universe(", "await _start_story("):
++            self.assertLess(
++                taxonomy_source.index("await callback.answer()"),
++                taxonomy_source.index(operation),
++            )
++
++        reference_source = inspect.getsource(
++            workspace_reference_buttons.handle_reference_manage
++        )
++        manage_back = reference_source[reference_source.index('if action == "manage_back":'):]
++        self.assertLess(
++            manage_back.index("await callback.answer()"),
++            manage_back.index("rows = await _load_reference_characters("),
++        )
++        self.assertLess(
++            reference_source.index("await callback.answer()", reference_source.index("manage_back")),
++            reference_source.index("page = await get_reference_page("),
++        )
++
+     def test_phase18_plan_is_not_stale(self) -> None:
+         for name in ("development_status.md", "project_memory.md"):
+             text = (ROOT / "docs" / name).read_text(encoding="utf-8")
