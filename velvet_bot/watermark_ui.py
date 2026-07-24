@@ -108,6 +108,27 @@ def build_archive_watermark_edit_keyboard(
 
 
 def build_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
+    status = item.revision.status
+    if status in {"draft", "error"}:
+        rows = _settings_rows(item)
+        rows.append(
+            [_button("▶️ Сгенерировать preview", "generate", item.job.id)]
+        )
+        rows.append([_button("✖ Отмена", "cancel", item.job.id)])
+        return InlineKeyboardMarkup(inline_keyboard=rows)
+    if status in {"pending", "processing"}:
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    _button(
+                        "⏳ Генерация выполняется",
+                        "draft_noop",
+                        item.job.id,
+                    )
+                ],
+                [_button("✖ Отмена", "cancel", item.job.id)],
+            ]
+        )
     if item.job.archive_media_id is not None:
         return build_archive_watermark_review_keyboard(item)
     rows = _settings_rows(item)
@@ -117,6 +138,13 @@ def build_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
 
 
 def format_watermark_caption(item: WatermarkWorkItem, *, status_text: str | None = None) -> str:
+    if item.revision.status == "draft":
+        status_text = (
+            "черновик: выберите все параметры и затем нажмите "
+            "«Сгенерировать preview»"
+        )
+    elif item.revision.status == "error" and status_text is None:
+        status_text = "ошибка: измените параметры или повторите генерацию"
     settings = item.revision.settings
     color = settings.color.upper() if settings.enabled else "без знака"
     logo = (

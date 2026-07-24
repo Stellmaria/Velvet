@@ -9,11 +9,11 @@ from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import WorkspaceModuleSetting
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_product_experience import (
     _SHOW_BUTTON_HINTS,
-    _draft_watermark_keyboard,
     _home_keyboard_with_hint_toggle,
     _workspace_callback_with_template,
     _workspace_commands,
 )
+from velvet_bot.watermark_ui import build_watermark_keyboard
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -125,13 +125,13 @@ class WorkspaceHintToggleTests(unittest.TestCase):
 
 class WatermarkDraftTests(unittest.TestCase):
     def test_draft_has_explicit_generate_button_and_no_approval(self) -> None:
-        labels = _labels(_draft_watermark_keyboard(_watermark_item("draft")))
+        labels = _labels(build_watermark_keyboard(_watermark_item("draft")))
         self.assertIn("▶️ Сгенерировать preview", labels)
         self.assertNotIn("✅ Скачать PNG без сжатия", labels)
         self.assertNotIn("✅ Использовать watermark", labels)
 
     def test_processing_version_cannot_be_reconfigured(self) -> None:
-        labels = _labels(_draft_watermark_keyboard(_watermark_item("processing")))
+        labels = _labels(build_watermark_keyboard(_watermark_item("processing")))
         self.assertIn("⏳ Генерация выполняется", labels)
         self.assertNotIn("▶️ Сгенерировать preview", labels)
         self.assertNotIn("Прозр. +", labels)

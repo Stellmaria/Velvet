@@ -21,10 +21,9 @@ from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.image_preview import BOT_API_DOWNLOAD_MAX_BYTES
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
-from velvet_bot.krita_supervisor import build_krita_supervisor_client
+from velvet_bot.krita_supervisor import wake_krita
 from velvet_bot.public_manager_access import has_public_manager_access
 from velvet_bot.public_ui import PublicArchiveCallback
-from velvet_bot.supervisor_client import SupervisorClientError
 from velvet_bot.watermark_ui import build_watermark_keyboard, format_watermark_caption
 
 logger = logging.getLogger(__name__)
@@ -55,18 +54,6 @@ def _build_service(bot: Bot, database: Database) -> WatermarkService:
         repository=WatermarkRepository(database),
         bridge=KritaBridge(default_krita_bridge_dir()),
     )
-
-
-async def _wake_krita() -> str | None:
-    client = build_krita_supervisor_client()
-    if client is None:
-        return None
-    try:
-        await client.ensure_krita()
-    except SupervisorClientError as error:
-        logger.warning("Could not wake Krita for public archive watermark: %s", error)
-        return str(error)
-    return None
 
 
 def _source_suffix(file_name: str, mime_type: str | None) -> str | None:
@@ -171,7 +158,7 @@ async def enqueue_archive_watermark(
         )
         return
 
-    wake_error = await _wake_krita()
+    wake_error = await wake_krita(context="public archive watermark")
     item = await service.create_job(
         owner_user_id=callback.from_user.id,
         chat_id=callback.message.chat.id,

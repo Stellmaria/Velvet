@@ -19,18 +19,17 @@ from aiogram.types import (
 
 from velvet_bot import watermark_ui
 from velvet_bot.database import Database
-from velvet_bot.domains.watermark.models import WatermarkWorkItem
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID, Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
+from velvet_bot.krita_supervisor import wake_krita
 from velvet_bot.presentation.telegram.middleware import access as access_middleware
 from velvet_bot.presentation.telegram.routers import workspace_guided_actions
 from velvet_bot.presentation.telegram.routers import workspace_owner_controls
 from velvet_bot.presentation.telegram.routers.core_operations_controllers import (
     watermark as core_watermark,
 )
-from velvet_bot.presentation.telegram.routers.public_archive import watermark_actions
 from velvet_bot.watermark_ui import WatermarkCallback
 from velvet_bot.workspace_ui import WorkspaceCallback, format_workspace_home, workspace_callback
 
@@ -64,11 +63,6 @@ _ORIGINAL_RENDER_HOME = workspace_owner_controls._render_home
 _ORIGINAL_RENDER_MEMBER_HOME = workspace_owner_controls._render_member_home
 _ORIGINAL_QUICK_KEYBOARD = workspace_guided_actions._quick_keyboard
 _ORIGINAL_MEMBER_CALLBACK_CHECK = access_middleware.is_workspace_member_callback_data
-_ORIGINAL_SETTINGS_ROWS = watermark_ui._settings_rows
-_ORIGINAL_WATERMARK_BUTTON = watermark_ui._button
-_ORIGINAL_WATERMARK_KEYBOARD = watermark_ui.build_watermark_keyboard
-_ORIGINAL_FORMAT_WATERMARK = watermark_ui.format_watermark_caption
-_ORIGINAL_CORE_WAKE_KRITA = core_watermark._wake_krita
 
 
 def _is_global_owner(user_id: int) -> bool:
@@ -257,58 +251,6 @@ def _workspace_callback_with_template(value: str | None) -> bool:
         _ORIGINAL_MEMBER_CALLBACK_CHECK(value)
         or (value and value.startswith("wmtpl:"))
     )
-
-
-def _draft_watermark_keyboard(item: WatermarkWorkItem) -> InlineKeyboardMarkup:
-    status = item.revision.status
-    if status in {"draft", "error"}:
-        rows = _ORIGINAL_SETTINGS_ROWS(item)
-        rows.append(
-            [
-                _ORIGINAL_WATERMARK_BUTTON(
-                    "▶️ Сгенерировать preview",
-                    "generate",
-                    item.job.id,
-                )
-            ]
-        )
-        rows.append(
-            [_ORIGINAL_WATERMARK_BUTTON("✖ Отмена", "cancel", item.job.id)]
-        )
-        return InlineKeyboardMarkup(inline_keyboard=rows)
-    if status in {"pending", "processing"}:
-        return InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    _ORIGINAL_WATERMARK_BUTTON(
-                        "⏳ Генерация выполняется",
-                        "draft_noop",
-                        item.job.id,
-                    )
-                ],
-                [_ORIGINAL_WATERMARK_BUTTON("✖ Отмена", "cancel", item.job.id)],
-            ]
-        )
-    return _ORIGINAL_WATERMARK_KEYBOARD(item)
-
-
-def _draft_watermark_caption(
-    item: WatermarkWorkItem,
-    *,
-    status_text: str | None = None,
-) -> str:
-    if item.revision.status == "draft":
-        status_text = (
-            "черновик: выберите все параметры и затем нажмите "
-            "«Сгенерировать preview»"
-        )
-    elif item.revision.status == "error" and status_text is None:
-        status_text = "ошибка: измените параметры или повторите генерацию"
-    return _ORIGINAL_FORMAT_WATERMARK(item, status_text=status_text)
-
-
-async def _defer_krita_start() -> str | None:
-    return None
 
 
 class PersonalArchiveCommandFilter(BaseFilter):
@@ -555,13 +497,13 @@ async def handle_watermark_draft_callback(
                 job_id,
                 owner_user_id=owner_user_id,
             )
-            wake_error = await _ORIGINAL_CORE_WAKE_KRITA()
+            wake_error = await wake_krita(context="workspace watermark preview")
             status = "поставлено в очередь"
             if wake_error:
                 status += "; Krita нужно открыть вручную"
             await core_watermark._safe_edit(
                 callback,
-                _draft_watermark_caption(item, status_text=status),
+                watermark_ui.format_watermark_caption(item, status_text=status),
                 item,
             )
             return
@@ -623,7 +565,7 @@ async def handle_watermark_draft_callback(
 
     await core_watermark._safe_edit(
         callback,
-        _draft_watermark_caption(item),
+        watermark_ui.format_watermark_caption(item),
         item,
     )
 
@@ -663,8 +605,8 @@ async def handle_watermark_draft_color(
         await message.answer(f"❌ {escape(str(error))}")
         return
     await message.answer(
-        _draft_watermark_caption(item),
-        reply_markup=_draft_watermark_keyboard(item),
+        watermark_ui.format_watermark_caption(item),
+        reply_markup=watermark_ui.build_watermark_keyboard(item),
     )
 
 
@@ -682,19 +624,6 @@ def install_workspace_product_experience() -> None:
         _workspace_callback_with_template
     )
 
-    watermark_ui.build_watermark_keyboard = _draft_watermark_keyboard
-    watermark_ui.format_watermark_caption = _draft_watermark_caption
-    core_watermark.build_watermark_keyboard = _draft_watermark_keyboard
-    core_watermark.format_watermark_caption = _draft_watermark_caption
-    core_watermark._wake_krita = _defer_krita_start
-
-    from velvet_bot.domains.watermark import service as watermark_service_module
-
-    watermark_service_module.build_watermark_keyboard = _draft_watermark_keyboard
-    watermark_service_module.format_watermark_caption = _draft_watermark_caption
-    watermark_actions.build_watermark_keyboard = _draft_watermark_keyboard
-    watermark_actions.format_watermark_caption = _draft_watermark_caption
-    watermark_actions._wake_krita = _defer_krita_start
 
 
 __all__ = (
