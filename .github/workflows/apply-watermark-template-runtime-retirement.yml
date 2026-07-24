@@ -45,7 +45,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt -r requirements-dev.txt
-      - name: Run focused validation
+      - name: Compile changed modules
         run: |
           python -m compileall \
             velvet_bot/domains/watermark \
@@ -53,8 +53,11 @@ jobs:
             velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py \
             tests/test_watermark_draft_persistence_boundary.py \
             tests/test_workspace_taxonomy_watermark_reliability.py
-          python scripts/inventory_repository_layout.py --check --label p3e-repository-layout-complete
-          python -m unittest \
+      - name: Check repository inventory
+        run: python scripts/inventory_repository_layout.py --check --label p3e-repository-layout-complete
+      - name: Run focused unit tests
+        run: |
+          python -m unittest -v \
             tests.test_watermark_draft_persistence_boundary \
             tests.test_watermark_repository_integration \
             tests.test_workspace_taxonomy_watermark_reliability \
