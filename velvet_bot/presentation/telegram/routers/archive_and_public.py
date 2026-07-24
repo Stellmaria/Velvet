@@ -5,6 +5,9 @@ from aiogram import F, Router
 from velvet_bot.presentation.telegram.public_archive_rework import (
     register_public_archive_rework,
 )
+from velvet_bot.presentation.telegram.workspace_archive_dashboard_controller import (
+    register_workspace_archive_dashboard,
+)
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
     router as telegram_analytics_import_router,
 )
@@ -186,6 +189,9 @@ router.message.register(
 # batch. Register this on the existing bundle instead of adding another router.
 register_save_mode_handlers(router)
 register_public_archive_rework(router)
+# The canonical dashboard is a bundle-level callback, so it wins before the broad
+# owner-controls child router without adding another router to the bundle tree.
+register_workspace_archive_dashboard(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)

@@ -3,14 +3,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html import escape
 
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
-    _archive_dashboard_keyboard as _legacy_archive_dashboard_keyboard,
-    _load_archive_characters as _legacy_load_archive_characters,
+    WorkspacePersonalArchiveCallback,
 )
+from velvet_bot.workspace_ui import workspace_callback
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceArchiveCharacter:
+    """Character summary used by the personal archive dashboard."""
+
+    id: int
+    name: str
+    archive_topic_url: str | None
+    media_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,19 +32,132 @@ class WorkspaceArchiveDashboard:
     character_count: int
 
 
+def _archive_callback(
+    action: str,
+    *,
+    workspace_id: int,
+    character_id: int = 0,
+) -> str:
+    return WorkspacePersonalArchiveCallback(
+        action=action,
+        workspace_id=int(workspace_id),
+        character_id=int(character_id),
+        offset=0,
+        media_id=0,
+    ).pack()
+
+
+async def load_workspace_archive_characters(
+    database: Database,
+    *,
+    workspace_id: int,
+) -> tuple[WorkspaceArchiveCharacter, ...]:
+    """Load typed archive dashboard rows for one workspace."""
+
+    async with database.acquire() as connection:
+        rows = await connection.fetch(
+            """
+            SELECT
+                character.id,
+                character.name,
+                character.archive_topic_url,
+                COUNT(link.media_id) AS media_count
+            FROM characters AS character
+            LEFT JOIN character_media AS link
+              ON link.character_id = character.id
+            WHERE character.workspace_id = $1::BIGINT
+            GROUP BY character.id
+            ORDER BY character.normalized_name, character.id
+            LIMIT 60
+            """,
+            int(workspace_id),
+        )
+    return tuple(
+        WorkspaceArchiveCharacter(
+            id=int(row["id"]),
+            name=str(row["name"]),
+            archive_topic_url=(
+                str(row["archive_topic_url"])
+                if row["archive_topic_url"]
+                else None
+            ),
+            media_count=int(row["media_count"] or 0),
+        )
+        for row in rows
+    )
+
+
+def build_workspace_archive_dashboard_keyboard(
+    *,
+    workspace_id: int,
+    characters: tuple[WorkspaceArchiveCharacter, ...],
+) -> InlineKeyboardMarkup:
+    """Build the canonical character list keyboard for a personal archive."""
+
+    buttons: list[list[InlineKeyboardButton]] = []
+    for character in characters:
+        if character.media_count:
+            button = InlineKeyboardButton(
+                text=f"🖼 {character.name} · {character.media_count}"[:60],
+                callback_data=_archive_callback(
+                    "open",
+                    workspace_id=workspace_id,
+                    character_id=character.id,
+                ),
+            )
+        elif character.archive_topic_url:
+            button = InlineKeyboardButton(
+                text=f"📂 {character.name} · пусто"[:60],
+                url=character.archive_topic_url,
+            )
+        else:
+            button = InlineKeyboardButton(
+                text=f"➖ {character.name} · пусто"[:60],
+                callback_data=_archive_callback(
+                    "empty",
+                    workspace_id=workspace_id,
+                    character_id=character.id,
+                ),
+            )
+        buttons.append([button])
+    buttons.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    text="➕ Как сохранить материал",
+                    callback_data=_archive_callback(
+                        "help",
+                        workspace_id=workspace_id,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Моё пространство",
+                    callback_data=workspace_callback(
+                        "home",
+                        workspace_id=workspace_id,
+                    ),
+                )
+            ],
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 async def build_workspace_archive_dashboard(
     database: Database,
     workspace: Workspace,
     *,
     command_context: bool = False,
 ) -> WorkspaceArchiveDashboard:
-    """Build the canonical archive dashboard without leaking legacy helpers."""
+    """Build the canonical archive dashboard presentation."""
 
-    rows = await _legacy_load_archive_characters(
+    characters = await load_workspace_archive_characters(
         database,
         workspace_id=workspace.id,
     )
-    character_count = len(rows)
+    character_count = len(characters)
     if command_context:
         description = (
             "Здесь показаны материалы только активного пользовательского "
@@ -52,15 +175,18 @@ async def build_workspace_archive_dashboard(
             f"Персонажей: <b>{character_count}</b>\n\n"
             f"{description}"
         ),
-        keyboard=_legacy_archive_dashboard_keyboard(
+        keyboard=build_workspace_archive_dashboard_keyboard(
             workspace_id=workspace.id,
-            rows=rows,
+            characters=characters,
         ),
         character_count=character_count,
     )
 
 
 __all__ = (
+    "WorkspaceArchiveCharacter",
     "WorkspaceArchiveDashboard",
     "build_workspace_archive_dashboard",
+    "build_workspace_archive_dashboard_keyboard",
+    "load_workspace_archive_characters",
 )
