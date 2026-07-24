@@ -3,7 +3,7 @@
 - Дата: 2026-07-24
 - ID: `2026-07-24-workspace-quick-references-contract`
 - Линия/фаза: workspace architecture cleanup
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/workspace-quick-references-contract`
 - Базовый commit: `8d4e9e7cb7f005ddc83a3de90a1d19097d5aa879`
 
@@ -40,9 +40,12 @@
 
 ### Фактически сделано
 
-- подготовлен canonical references row;
-- подготовлено удаление quick-keyboard monkeypatch;
-- добавлены functional и architecture regression-тесты.
+- references row добавлен в canonical `_quick_keyboard`;
+- кнопка показывается только при активном модуле `references`;
+- callback сохраняет canonical workspace module route;
+- удалены `_ORIGINAL_QUICK_KEYBOARD`, wrapper, импорт и runtime assignment;
+- добавлены functional и architecture regression-тесты;
+- временные transformation script и workflow удалены из PR.
 
 ### Миграции и совместимость
 
@@ -50,18 +53,22 @@
 
 ### Проверки
 
-Результаты будут записаны после применения checked transformation.
+- focused compileall: success;
+- focused quick keyboard и workspace command tests: success;
+- Telegram navigation contract: success;
+- tests `1834`: success;
+- type check `487`: success;
+- Docker build `1237`: success;
+- project notes contract `1110`: success.
 
 ### PR и commit
 
-Ветка `agent/workspace-quick-references-contract`; PR создаётся после focused validation.
+PR `#316` — `Make quick references part of canonical workspace UI`.
 
 ### Незавершённое
 
-- применить transformation;
-- выполнить focused и полный CI;
-- слить отдельный PR.
+Нет в рамках этого среза.
 
 ### Следующий шаг
 
-После merge убрать runtime wrappers home/render и заменить их явными параметрами канонического workspace UI.
+Убрать runtime wrappers home/render и заменить их явными параметрами канонического workspace UI.
