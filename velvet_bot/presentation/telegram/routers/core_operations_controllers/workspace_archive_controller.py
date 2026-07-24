@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from html import escape
 from typing import Any
 
 from aiogram import Router
@@ -12,9 +11,11 @@ from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
-from velvet_bot.presentation.telegram.routers import workspace_owner_controls
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_command_filtering import (
     command_name,
+)
+from velvet_bot.presentation.telegram.workspace_archive_dashboard import (
+    build_workspace_archive_dashboard,
 )
 from velvet_bot.presentation.telegram.workspace_command_menu import (
     set_workspace_chat_commands,
@@ -73,21 +74,14 @@ async def handle_personal_archive_command(
     personal_workspace: Workspace,
     workspace_role: str,
 ) -> None:
-    rows = await workspace_owner_controls._load_archive_characters(
+    dashboard = await build_workspace_archive_dashboard(
         database,
-        workspace_id=personal_workspace.id,
+        personal_workspace,
+        command_context=True,
     )
     await message.answer(
-        (
-            f"<b>🖼 Архив · {escape(personal_workspace.name)}</b>\n\n"
-            f"Персонажей: <b>{len(rows)}</b>\n\n"
-            "Здесь показаны материалы только активного пользовательского "
-            "пространства."
-        ),
-        reply_markup=workspace_owner_controls._archive_dashboard_keyboard(
-            workspace_id=personal_workspace.id,
-            rows=rows,
-        ),
+        dashboard.text,
+        reply_markup=dashboard.keyboard,
     )
     await set_workspace_chat_commands(message.bot, message.chat.id, workspace_role)
 
