@@ -21,12 +21,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _item(status: str, *, archive_media_id: int | None = None) -> WatermarkWorkItem:
     now = datetime.now(UTC)
+    source_message_id = -archive_media_id if archive_media_id is not None else 9
     return WatermarkWorkItem(
         job=WatermarkJob(
             id=41,
             owner_user_id=7,
             chat_id=8,
-            source_message_id=9,
+            source_message_id=source_message_id,
             source_file_id="file",
             source_file_unique_id="unique",
             source_path="source.png",
@@ -38,7 +39,6 @@ def _item(status: str, *, archive_media_id: int | None = None) -> WatermarkWorkI
             created_at=now,
             updated_at=now,
             workspace_id=3,
-            archive_media_id=archive_media_id,
         ),
         revision=WatermarkRevision(
             job_id=41,
