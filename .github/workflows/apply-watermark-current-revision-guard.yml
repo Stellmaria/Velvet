@@ -1,0 +1,66 @@
+name: Apply watermark current revision guard
+
+on:
+  push:
+    branches:
+      - agent/watermark-draft-persistence-boundary
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply-guard:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Apply watermark current revision guard'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: velvet
+          POSTGRES_PASSWORD: velvet
+          POSTGRES_DB: velvet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U velvet -d velvet_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://velvet:velvet@127.0.0.1:5432/velvet_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/watermark-draft-persistence-boundary
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Apply current revision guard
+        run: python .github/apply-watermark-current-revision-guard.py
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run focused validation
+        run: |
+          python -m compileall \
+            velvet_bot/domains/watermark/repository.py \
+            velvet_bot/presentation/telegram/routers/core_operations_controllers/workspace_product_experience.py \
+            tests/test_watermark_repository_integration.py
+          python -m unittest \
+            tests.test_watermark_draft_persistence_boundary \
+            tests.test_watermark_repository_integration
+      - name: Remove transformation script
+        run: rm .github/apply-watermark-current-revision-guard.py
+      - name: Commit applied guard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Apply watermark current revision guard"
+          git push origin HEAD:agent/watermark-draft-persistence-boundary
