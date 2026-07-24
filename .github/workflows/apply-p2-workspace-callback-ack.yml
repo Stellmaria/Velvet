@@ -27,23 +27,11 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Apply reviewed source patch
+      - name: Apply checked source transformations
         run: |
-          git apply --verbose --check .github/p2-workspace-callback-ack.patch
-          git apply --verbose .github/p2-workspace-callback-ack.patch
-
-      - name: Persist patch diagnostics
-        if: failure()
-        run: |
-          git apply --verbose --check .github/p2-workspace-callback-ack.patch \
-            > .github/p2-workspace-callback-ack-error.log 2>&1 || true
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/p2-workspace-callback-ack-error.log
-          if ! git diff --cached --quiet; then
-            git commit -m "Record callback patch bootstrap failure"
-            git push origin HEAD:agent/p2-workspace-callback-ack
-          fi
+          python .github/apply-guided-callback-ack.py
+          python .github/apply-reference-callback-ack.py
+          python .github/apply-p2-callback-tests.py
 
       - name: Refresh P2 inventory
         run: |
@@ -75,7 +63,7 @@ jobs:
           - входы создания категории, вселенной и истории подтверждают callback до FSM/database операций;
           - управление референсами подтверждает callback до загрузки списков, страниц, Telegram media и mutation operations;
           - повторные callback answers после раннего подтверждения удалены;
-          - поздние уведомления управления референсами отправляются обычным сообщением, чтобы не отвечать одному callback дважды;
+          - поздние уведомления управления референсами отправляются обычным сообщением;
           - helper редактирования карточки референса поддерживает уже подтверждённый callback;
           - добавлен regression-test порядка acknowledgment;
           - P2 inventory обновлён скриптом.
@@ -100,7 +88,7 @@ jobs:
 
           ## Следующий шаг
 
-          После подтверждения этого P2-среза перенести SQL настроек workspace из Telegram controller в repository/service boundary отдельным PR.
+          Перенести SQL настроек workspace из Telegram controller в repository/service boundary отдельным PR.
           EOF
 
       - name: Install test dependencies
@@ -118,6 +106,9 @@ jobs:
 
       - name: Remove bootstrap files
         run: |
+          rm .github/apply-guided-callback-ack.py
+          rm .github/apply-reference-callback-ack.py
+          rm .github/apply-p2-callback-tests.py
           rm .github/p2-workspace-callback-ack.patch
           rm .github/p2-workspace-callback-ack-error.log 2>/dev/null || true
           rm .github/workflows/apply-p2-workspace-callback-ack.yml
