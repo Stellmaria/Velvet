@@ -47,23 +47,27 @@ class WorkspaceHintPreferenceControllerBoundaryTests(unittest.TestCase):
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
             "workspace_home_hint_controller.py"
         ).read_text(encoding="utf-8")
-        home_source = (
+        presentation_source = (
             ROOT
-            / "velvet_bot/presentation/telegram/routers/"
-            "workspace_owner_controls.py"
+            / "velvet_bot/presentation/telegram/workspace_home_presentation.py"
         ).read_text(encoding="utf-8")
 
-        for source in (controller_source, home_source):
+        for source in (controller_source, presentation_source):
             self.assertNotIn("SELECT show_button_hints", source)
             self.assertNotIn("UPDATE workspace_settings", source)
             self.assertNotIn("workspace_product_service._workspaces", source)
             self.assertNotIn("_database_from_product_service", source)
+            self.assertNotIn("workspace_owner_controls", source)
         self.assertIn(
             "workspace_product_service.get_button_hints",
-            home_source,
+            presentation_source,
         )
         self.assertIn(
             "workspace_product_service.toggle_button_hints",
+            controller_source,
+        )
+        self.assertIn(
+            "build_workspace_home_presentation",
             controller_source,
         )
 
