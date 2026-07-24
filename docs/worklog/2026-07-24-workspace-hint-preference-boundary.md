@@ -3,7 +3,7 @@
 - Дата: 2026-07-24
 - ID: `2026-07-24-workspace-hint-preference-boundary`
 - Линия/фаза: workspace architecture cleanup
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/workspace-hint-preference-boundary`
 - Базовый commit: `e3a0d46505706c5131d4efab5c529375e4ce6ca0`
 
@@ -39,29 +39,34 @@
 
 ### Фактически сделано
 
-- подготовлены repository/service методы для hint preference;
-- подготовлен перевод controller на публичный service contract;
-- добавлены unit- и architecture regression-тесты;
-- запущено проверяемое применение transformation scripts.
+- `WorkspaceProductRepository` получил `get_button_hints()` и `toggle_button_hints()`;
+- `WorkspaceProductService` открыл transport-neutral операции чтения и переключения preference;
+- Telegram controller больше не выполняет hint SQL и не достаёт Database через private attributes;
+- чтение workspace settings переведено на публичный `get_settings()`;
+- добавлены unit-тесты service delegation и regression-test запрета SQL/private access в controller.
 
 ### Миграции и совместимость
 
-Новые миграции не требуются. Существующий столбец `workspace_settings.show_button_hints` и callback data сохраняются.
+Новые миграции не требуются. Существующий столбец `workspace_settings.show_button_hints`, callback data, роли и пользовательское поведение сохраняются.
 
 ### Проверки
 
-Focused и полный CI будут зафиксированы после применения code transformation.
+- tests `1797`: success;
+- type check `450`: success;
+- Docker build `1208`: success;
+- project notes contract `1077`: success;
+- focused service/controller tests: success.
 
 ### PR и commit
 
-Ветка `agent/workspace-hint-preference-boundary`; PR создаётся после применения и focused validation.
+- PR: `#312 Move workspace hint preferences behind service boundary`;
+- ветка: `agent/workspace-hint-preference-boundary`;
+- implementation head перед финализацией журнала: `550b8fdb9bc8b535fb2a4a8af83514e4b2c3b6b7`.
 
 ### Незавершённое
 
-- применить transformations;
-- выполнить focused tests;
-- открыть PR и дождаться полного CI.
+- после merge выполнить smoke test кнопки скрытия и показа подсказок в личном workspace.
 
 ### Следующий шаг
 
-После этого среза перенести watermark draft SQL и mapping из Telegram controller в `WatermarkRepository`.
+Перенести watermark draft SQL и mapping из Telegram controller в `WatermarkRepository`.
