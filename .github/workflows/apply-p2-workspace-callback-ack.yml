@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: agent/p2-workspace-callback-ack
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
@@ -29,8 +29,8 @@ jobs:
 
       - name: Apply reviewed source patch
         run: |
-          git apply --check .github/p2-workspace-callback-ack.patch
-          git apply .github/p2-workspace-callback-ack.patch
+          git apply --verbose --check .github/p2-workspace-callback-ack.patch
+          git apply --verbose .github/p2-workspace-callback-ack.patch
 
       - name: Refresh P2 inventory
         run: |
