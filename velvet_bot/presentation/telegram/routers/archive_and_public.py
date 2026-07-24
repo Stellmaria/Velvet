@@ -5,6 +5,9 @@ from aiogram import F, Router
 from velvet_bot.presentation.telegram.public_archive_rework import (
     register_public_archive_rework,
 )
+from velvet_bot.presentation.telegram.workspace_archive_dashboard_controller import (
+    register_workspace_archive_dashboard,
+)
 from velvet_bot.presentation.telegram.routers.archive_and_public_controllers.telegram_analytics_import import (
     router as telegram_analytics_import_router,
 )
@@ -53,9 +56,6 @@ from velvet_bot.presentation.telegram.routers.workspace_watermark_templates impo
 )
 from velvet_bot.presentation.telegram.routers.workspace_watermark import (
     router as workspace_watermark_router,
-)
-from velvet_bot.presentation.telegram.routers.workspace_archive_dashboard_controller import (
-    router as workspace_archive_dashboard_router,
 )
 from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
     router as workspace_owner_controls_router,
@@ -189,6 +189,9 @@ router.message.register(
 # batch. Register this on the existing bundle instead of adding another router.
 register_save_mode_handlers(router)
 register_public_archive_rework(router)
+# The canonical dashboard is a bundle-level callback, so it wins before the broad
+# owner-controls child router without adding another router to the bundle tree.
+register_workspace_archive_dashboard(router)
 router.include_router(character_aliases_router)
 router.include_router(telegram_analytics_import_router)
 router.include_router(discussion_updates_router)
@@ -218,9 +221,6 @@ router.include_router(workspace_admin_router)
 router.include_router(workspace_team_router)
 router.include_router(workspace_watermark_templates_router)
 router.include_router(workspace_watermark_router)
-# The canonical archive dashboard callback must intercept the broad owner-controls
-# module handler so both `/archive` and the workspace button use one presentation.
-router.include_router(workspace_archive_dashboard_router)
 router.include_router(workspace_owner_controls_router)
 # The tenant publication entry must precede generic `wsp:module` help. The
 # publication capture router remains below reference/save flows.
