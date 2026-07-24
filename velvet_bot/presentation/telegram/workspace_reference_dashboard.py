@@ -3,15 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html import escape
 
-from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.workspace_ui import workspace_callback
 
+_REFERENCE_CALLBACK_PREFIX = "wref"
 
-class WorkspaceReferenceEntryCallback(CallbackData, prefix="wref"):
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceReferenceAction:
     action: str
     workspace_id: int
     character_id: int = 0
@@ -37,11 +39,30 @@ def workspace_reference_callback(
     workspace_id: int,
     character_id: int = 0,
 ) -> str:
-    return WorkspaceReferenceEntryCallback(
-        action=action,
-        workspace_id=int(workspace_id),
-        character_id=int(character_id),
-    ).pack()
+    return (
+        f"{_REFERENCE_CALLBACK_PREFIX}:{action}:"
+        f"{int(workspace_id)}:{int(character_id)}"
+    )
+
+
+def parse_workspace_reference_callback(
+    data: str | None,
+) -> WorkspaceReferenceAction | None:
+    if not data:
+        return None
+    parts = data.split(":")
+    if len(parts) != 4 or parts[0] != _REFERENCE_CALLBACK_PREFIX:
+        return None
+    try:
+        workspace_id = int(parts[2])
+        character_id = int(parts[3])
+    except ValueError:
+        return None
+    return WorkspaceReferenceAction(
+        action=parts[1],
+        workspace_id=workspace_id,
+        character_id=character_id,
+    )
 
 
 async def load_workspace_reference_characters(
@@ -144,11 +165,12 @@ async def build_workspace_reference_dashboard(
 
 
 __all__ = (
+    "WorkspaceReferenceAction",
     "WorkspaceReferenceCharacter",
     "WorkspaceReferenceDashboard",
-    "WorkspaceReferenceEntryCallback",
     "build_workspace_reference_dashboard",
     "build_workspace_reference_dashboard_keyboard",
     "load_workspace_reference_characters",
+    "parse_workspace_reference_callback",
     "workspace_reference_callback",
 )
