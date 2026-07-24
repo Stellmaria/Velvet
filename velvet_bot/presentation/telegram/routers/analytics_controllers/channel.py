@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from copy import copy
+from datetime import UTC, datetime
 from html import escape
 
 from aiogram import Router
@@ -44,6 +46,38 @@ _MEDIA_LABELS = {
 
 def _primary_channel_id(analytics_channel_ids: frozenset[int]) -> int | None:
     return sorted(analytics_channel_ids)[0] if analytics_channel_ids else None
+
+
+def _coerce_telegram_datetime(value: object, *, field_name: str) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return datetime.fromtimestamp(value, tz=UTC)
+    raise TypeError(
+        f"Telegram field {field_name} must be datetime or Unix timestamp, "
+        f"got {type(value).__name__}."
+    )
+
+
+def _normalize_channel_message_datetimes(message: Message) -> Message:
+    posted_at = _coerce_telegram_datetime(message.date, field_name="date")
+    if posted_at is None:
+        raise TypeError("Telegram channel post date is required.")
+    edited_at = _coerce_telegram_datetime(message.edit_date, field_name="edit_date")
+    if posted_at is message.date and edited_at is message.edit_date:
+        return message
+
+    updates = {"date": posted_at, "edit_date": edited_at}
+    model_copy = getattr(message, "model_copy", None)
+    if callable(model_copy):
+        return model_copy(update=updates)
+
+    normalized = copy(message)
+    normalized.date = posted_at
+    normalized.edit_date = edited_at
+    return normalized
 
 
 def _format_date(value) -> str:
@@ -155,7 +189,8 @@ async def _capture_channel_post(
     if message.chat.id not in analytics_channel_ids:
         return
     try:
-        parsed = await ingest_channel_post(database, message)
+        normalized_message = _normalize_channel_message_datetimes(message)
+        parsed = await ingest_channel_post(database, normalized_message)
         logger.info(
             "Captured channel post channel=%s message=%s prompt=%s hashtags=%s",
             parsed.channel_id,
@@ -247,45 +282,10 @@ async def handle_prompt_stats(
     await message.answer(_prompt_text(stats, hashtags))
 
 
-@router.message(Command("hashtagstats", "tagstats"))
+@router.message(Command("hashtag"))
 async def handle_hashtag_stats(
     message: Message,
     command: CommandObject,
-    database: Database,
-    analytics_channel_ids: frozenset[int],
-) -> None:
-    try:
-        result = await load_hashtag_stats(
-            database,
-            analytics_channel_ids,
-            command.args or "",
-        )
-    except ValueError as error:
-        await message.answer(escape(str(error)))
-        return
-    if isinstance(result, HashtagStat):
-        character = (
-            f"\nПерсонаж в архиве: <b>{escape(result.character_name)}</b>"
-            if result.character_name
-            else "\nС карточкой персонажа пока не сопоставлен."
-        )
-        await message.answer(
-            f"<b>#{escape(result.hashtag)}</b>\n\n"
-            f"Публикаций: <b>{result.publication_count}</b>\n"
-            f"Из них промтов: <b>{result.prompt_count}</b>\n"
-            f"Последнее использование: <b>{_format_date(result.last_used_at)}</b>"
-            f"{character}"
-        )
-        return
-    await message.answer(
-        "<b>Хэштеги канала</b>\n\n"
-        f"{_hashtag_lines(list(result), limit=30)}"
-    )
-
-
-@router.message(Command("characterstats"))
-async def handle_character_stats(
-    message: Message,
     database: Database,
     analytics_channel_ids: frozenset[int],
 ) -> None:
@@ -293,8 +293,19 @@ async def handle_character_stats(
     if channel_id is None:
         await message.answer("Каналы для аналитики не настроены.")
         return
-    items = await list_character_usage_stats(database, channel_id, limit=30)
+    query = (command.args or "").strip()
+    if not query:
+        await message.answer("Использование: <code>/hashtag имя</code>")
+        return
+    stats = await load_hashtag_stats(database, channel_id, query)
+    if stats is None:
+        await message.answer(f"Хэштег <code>#{escape(query.lstrip('#'))}</code> пока не найден.")
+        return
+    character = f"\nПерсонаж: <b>{escape(stats.character_name)}</b>" if stats.character_name else ""
     await message.answer(
-        "<b>Персонажи, задействованные в канале</b>\n\n"
-        f"{_character_lines(items, limit=30)}"
+        f"<b>#{escape(stats.hashtag)}</b>\n\n"
+        f"Публикаций: <b>{stats.publication_count}</b>\n"
+        f"Промтов: <b>{stats.prompt_count}</b>\n"
+        f"Последнее использование: <b>{_format_date(stats.last_used_at)}</b>"
+        f"{character}"
     )
