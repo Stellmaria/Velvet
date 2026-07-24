@@ -45,7 +45,7 @@ class WorkspaceHintPreferenceControllerBoundaryTests(unittest.TestCase):
         controller_source = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
-            "workspace_product_experience.py"
+            "workspace_home_hint_controller.py"
         ).read_text(encoding="utf-8")
         home_source = (
             ROOT
