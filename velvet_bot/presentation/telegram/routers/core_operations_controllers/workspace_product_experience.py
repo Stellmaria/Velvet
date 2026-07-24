@@ -24,7 +24,6 @@ from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATO
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
 from velvet_bot.krita_supervisor import wake_krita
-from velvet_bot.presentation.telegram.middleware import access as access_middleware
 from velvet_bot.presentation.telegram.routers import workspace_guided_actions
 from velvet_bot.presentation.telegram.routers import workspace_owner_controls
 from velvet_bot.presentation.telegram.routers.core_operations_controllers import (
@@ -62,7 +61,6 @@ _ORIGINAL_HOME_KEYBOARD = workspace_owner_controls._workspace_home_keyboard
 _ORIGINAL_RENDER_HOME = workspace_owner_controls._render_home
 _ORIGINAL_RENDER_MEMBER_HOME = workspace_owner_controls._render_member_home
 _ORIGINAL_QUICK_KEYBOARD = workspace_guided_actions._quick_keyboard
-_ORIGINAL_MEMBER_CALLBACK_CHECK = access_middleware.is_workspace_member_callback_data
 
 
 def _is_global_owner(user_id: int) -> bool:
@@ -244,13 +242,6 @@ def _quick_keyboard_with_references(
             ],
         )
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-def _workspace_callback_with_template(value: str | None) -> bool:
-    return bool(
-        _ORIGINAL_MEMBER_CALLBACK_CHECK(value)
-        or (value and value.startswith("wmtpl:"))
-    )
 
 
 class PersonalArchiveCommandFilter(BaseFilter):
@@ -620,9 +611,6 @@ def install_workspace_product_experience() -> None:
     workspace_owner_controls._render_home = _render_home_with_preferences
     workspace_owner_controls._render_member_home = _render_member_home_with_commands
     workspace_guided_actions._quick_keyboard = _quick_keyboard_with_references
-    access_middleware.is_workspace_member_callback_data = (
-        _workspace_callback_with_template
-    )
 
 
 
