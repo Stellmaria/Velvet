@@ -126,11 +126,11 @@ class WatermarkDraftServiceTests(unittest.IsolatedAsyncioTestCase):
 
 
 class WatermarkDraftPresentationBoundaryTests(unittest.TestCase):
-    def test_workspace_controller_has_no_watermark_persistence_or_service_monkeypatch(self) -> None:
+    def test_workspace_watermark_controller_has_no_persistence_or_service_monkeypatch(self) -> None:
         source = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/core_operations_controllers/"
-            "workspace_product_experience.py"
+            "workspace_watermark_draft_controller.py"
         ).read_text(encoding="utf-8")
 
         for forbidden in (
