@@ -10,8 +10,10 @@ from velvet_bot.archive_catalog import (
     toggle_archive_media_spoiler,
 )
 from velvet_bot.database import Database
-from velvet_bot.domains.media_rework.manual import request_manual_rework
-from velvet_bot.domains.media_rework.repository import MediaReworkRepository
+from velvet_bot.domains.media_rework.manual import (
+    is_manual_rework_active,
+    request_manual_rework,
+)
 from velvet_bot.domains.workspaces.onboarding import WorkspaceOnboardingRepository
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
@@ -117,6 +119,7 @@ async def handle_workspace_archive_mutation(
             database,
             media_id=page.media.id,
             user_id=callback.from_user.id,
+            workspace_id=workspace.id,
             reason="Владелец пространства отправил работу на доработку.",
         )
         await callback.answer(
@@ -140,7 +143,11 @@ async def handle_workspace_archive_mutation(
             return
         if (
             not page.media.is_public
-            and await MediaReworkRepository(database).is_active(page.media.id)
+            and await is_manual_rework_active(
+                database,
+                media_id=page.media.id,
+                workspace_id=workspace.id,
+            )
         ):
             await callback.answer(
                 "Сначала завершите проверку в очереди доработки, затем верните "
