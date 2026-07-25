@@ -12,8 +12,17 @@ from velvet_bot.domains.workspaces.service import WorkspaceAccessError, Workspac
 from velvet_bot.presentation.telegram.workspace_archive_dashboard import (
     build_workspace_archive_dashboard,
 )
+from velvet_bot.presentation.telegram.workspace_archive_delivery_controller import (
+    register_workspace_archive_delivery,
+)
+from velvet_bot.presentation.telegram.workspace_archive_mutation_controller import (
+    register_workspace_archive_mutations,
+)
 from velvet_bot.presentation.telegram.workspace_archive_navigation_controller import (
     register_workspace_archive_navigation,
+)
+from velvet_bot.presentation.telegram.workspace_archive_social_controller import (
+    register_workspace_archive_social_actions,
 )
 from velvet_bot.presentation.telegram.workspace_media_policy_controller import (
     register_workspace_media_policy,
@@ -103,6 +112,9 @@ def register_workspace_archive_dashboard(router: Router) -> None:
     )
     register_workspace_archive_navigation(router)
     register_workspace_media_policy(router)
+    register_workspace_archive_social_actions(router)
+    register_workspace_archive_mutations(router)
+    register_workspace_archive_delivery(router)
 
 
 __all__ = (
