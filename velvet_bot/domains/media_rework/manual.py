@@ -6,6 +6,36 @@ from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 _ACTIVE_STATUSES = ("needs_fix", "checking", "ready_for_review")
 
 
+async def is_manual_rework_active(
+    database: Database,
+    *,
+    media_id: int,
+    workspace_id: int = DEFAULT_WORKSPACE_ID,
+) -> bool:
+    """Return whether one media item is active in the workspace rework queue."""
+
+    async with database.acquire() as connection:
+        return bool(
+            await connection.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM media_rework_items
+                    WHERE workspace_id = $1::BIGINT
+                      AND media_id = $2::BIGINT
+                      AND status IN (
+                          'needs_fix',
+                          'checking',
+                          'ready_for_review'
+                      )
+                )
+                """,
+                int(workspace_id),
+                int(media_id),
+            )
+        )
+
+
 async def request_manual_rework(
     database: Database,
     *,
@@ -145,4 +175,4 @@ async def request_manual_rework(
     return True
 
 
-__all__ = ("request_manual_rework",)
+__all__ = ("is_manual_rework_active", "request_manual_rework")
