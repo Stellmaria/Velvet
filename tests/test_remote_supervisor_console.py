@@ -42,6 +42,22 @@ class RemoteConsoleTests(unittest.TestCase):
         self.assertEqual("git-status", spec.key)
         self.assertEqual(("git", "status", "--short"), spec.command)
 
+    def test_krita_cleanup_resolves_only_to_fixed_path(self) -> None:
+        spec = self.registry.resolve(
+            "git clean -f -- tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip"
+        )
+        self.assertEqual("git-clean-krita-bridge", spec.key)
+        self.assertEqual(
+            (
+                "git",
+                "clean",
+                "-f",
+                "--",
+                "tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip",
+            ),
+            spec.command,
+        )
+
     def test_unknown_and_shell_syntax_are_rejected(self) -> None:
         for value in (
             "whoami",
@@ -50,6 +66,8 @@ class RemoteConsoleTests(unittest.TestCase):
             "git status > result.txt",
             "powershell -EncodedCommand AAAA",
             "git status; taskkill /f /im python.exe",
+            "git clean -fd",
+            "git clean -f -- another-file.zip",
         ):
             with self.subTest(value=value):
                 with self.assertRaises(RemoteCommandRejected):
