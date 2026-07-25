@@ -12,6 +12,9 @@ from velvet_bot.domains.workspaces.service import WorkspaceAccessError, Workspac
 from velvet_bot.presentation.telegram.workspace_archive_dashboard import (
     build_workspace_archive_dashboard,
 )
+from velvet_bot.presentation.telegram.workspace_media_policy_controller import (
+    register_workspace_media_policy,
+)
 from velvet_bot.workspace_ui import WorkspaceCallback
 
 
@@ -87,7 +90,7 @@ async def handle_workspace_archive_dashboard(
 
 
 def register_workspace_archive_dashboard(router: Router) -> None:
-    """Register the canonical archive dashboard before broad child routers."""
+    """Register canonical archive flows before broad child routers."""
 
     router.callback_query.register(
         handle_workspace_archive_dashboard,
@@ -95,6 +98,7 @@ def register_workspace_archive_dashboard(router: Router) -> None:
             (F.action == "module") & (F.module_key == "archive")
         ),
     )
+    register_workspace_media_policy(router)
 
 
 __all__ = (
