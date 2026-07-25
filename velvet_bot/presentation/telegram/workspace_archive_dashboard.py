@@ -7,8 +7,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.models import Workspace
-from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
-    WorkspacePersonalArchiveCallback,
+from velvet_bot.presentation.telegram.workspace_personal_archive_contract import (
+    workspace_personal_archive_callback,
 )
 from velvet_bot.workspace_ui import workspace_callback
 
@@ -30,21 +30,6 @@ class WorkspaceArchiveDashboard:
     text: str
     keyboard: InlineKeyboardMarkup
     character_count: int
-
-
-def _archive_callback(
-    action: str,
-    *,
-    workspace_id: int,
-    character_id: int = 0,
-) -> str:
-    return WorkspacePersonalArchiveCallback(
-        action=action,
-        workspace_id=int(workspace_id),
-        character_id=int(character_id),
-        offset=0,
-        media_id=0,
-    ).pack()
 
 
 async def load_workspace_archive_characters(
@@ -99,7 +84,7 @@ def build_workspace_archive_dashboard_keyboard(
         if character.media_count:
             button = InlineKeyboardButton(
                 text=f"🖼 {character.name} · {character.media_count}"[:60],
-                callback_data=_archive_callback(
+                callback_data=workspace_personal_archive_callback(
                     "open",
                     workspace_id=workspace_id,
                     character_id=character.id,
@@ -113,7 +98,7 @@ def build_workspace_archive_dashboard_keyboard(
         else:
             button = InlineKeyboardButton(
                 text=f"➖ {character.name} · пусто"[:60],
-                callback_data=_archive_callback(
+                callback_data=workspace_personal_archive_callback(
                     "empty",
                     workspace_id=workspace_id,
                     character_id=character.id,
@@ -125,7 +110,7 @@ def build_workspace_archive_dashboard_keyboard(
             [
                 InlineKeyboardButton(
                     text="➕ Как сохранить материал",
-                    callback_data=_archive_callback(
+                    callback_data=workspace_personal_archive_callback(
                         "help",
                         workspace_id=workspace_id,
                     ),
