@@ -35,6 +35,16 @@ class WorkspacePersonalArchiveCallbackContractTests(unittest.TestCase):
         parsed = parse_workspace_personal_archive_callback(payload)
 
         self.assertEqual("wpa:settings:9:17:4:31", payload)
+        self.assertEqual(
+            "wpa:show:9:17:0:31",
+            workspace_personal_archive_callback(
+                "show",
+                workspace_id=9,
+                character_id=17,
+                offset=-4,
+                media_id=31,
+            ),
+        )
         self.assertIsNotNone(parsed)
         assert parsed is not None
         self.assertEqual(
