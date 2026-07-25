@@ -118,6 +118,23 @@ class RemoteCommandRegistry:
                 category="Git",
             ),
             RemoteCommandSpec(
+                key="git-clean-krita-bridge",
+                title="Git: удалить локальный ZIP-мост Krita",
+                command=(
+                    "git",
+                    "clean",
+                    "-f",
+                    "--",
+                    "tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip",
+                ),
+                aliases=(
+                    "git clean -f -- tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip",
+                    "удалить локальный zip-мост krita",
+                    "очистить zip krita",
+                ),
+                category="Git",
+            ),
+            RemoteCommandSpec(
                 key="python-version",
                 title="Версия Python",
                 command=(python, "--version"),
