@@ -175,6 +175,19 @@ class WorkspaceMediaPolicyBoundaryTests(unittest.TestCase):
         self.assertNotIn("workspace_owner_controls", source)
         self.assertNotIn("@router.callback_query", source)
 
+    def test_policy_controller_reuses_shared_archive_access_boundary(self) -> None:
+        source = (PRESENTATION / "workspace_media_policy_controller.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("from velvet_bot.presentation.telegram.workspace_archive_access import", source)
+        self.assertIn("resolve_workspace_archive_access", source)
+        self.assertIn("load_workspace_archive_action_page", source)
+        self.assertIn("is_global_workspace_owner", source)
+        self.assertNotIn("async def _resolve_workspace_archive_access", source)
+        self.assertNotIn("def _is_global_owner", source)
+        self.assertNotIn("get_archive_page", source)
+
     def test_archive_registrar_registers_policy_before_owner_router(self) -> None:
         controller = (
             PRESENTATION / "workspace_archive_dashboard_controller.py"
