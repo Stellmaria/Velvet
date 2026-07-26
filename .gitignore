@@ -32,6 +32,9 @@ venv/
 .coverage
 htmlcov/
 
+# Generated distributables
+tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip
+
 # OS
 .DS_Store
 Thumbs.db
