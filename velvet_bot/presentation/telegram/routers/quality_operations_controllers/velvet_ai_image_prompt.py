@@ -13,12 +13,7 @@ from aiogram.exceptions import (
     TelegramNetworkError,
 )
 from aiogram.filters import BaseFilter
-from aiogram.types import (
-    BufferedInputFile,
-    CallbackQuery,
-    ForceReply,
-    Message,
-)
+from aiogram.types import CallbackQuery, ForceReply, Message
 
 from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
@@ -34,6 +29,8 @@ _IMAGE_PROMPT_MARKER = "VELVET_AI:IMAGE_TO_PROMPT"
 _DOWNLOAD_ATTEMPTS = 3
 _DOWNLOAD_TIMEOUT_SECONDS = 90
 _RETRY_DELAYS = (1.0, 3.0)
+_PRE_BLOCK_CONTENT_LIMIT = 3200
+_SPLIT_BACKTRACK_LIMIT = 600
 
 
 class ImagePromptReplyFilter(BaseFilter):
@@ -107,9 +104,9 @@ def _result_text(
         f"Готово моделей: <b>{len(prompts)}</b>",
     ]
     for model, prompt in prompts.items():
-        preview = escape(prompt[:1200].rstrip())
-        if len(prompt) > 1200:
-            preview += "\n\n…полная версия приложена файлом."
+        preview = escape(prompt[:900].rstrip())
+        if len(prompt) > 900:
+            preview += "\n\n…полная версия отправлена сообщениями в чат."
         lines.extend(
             [
                 "",
@@ -124,23 +121,95 @@ def _result_text(
     return "\n".join(lines)[:4090]
 
 
-def _result_document(prompts: dict[str, str], errors: dict[str, str]) -> str:
-    sections: list[str] = []
-    for index, (model, prompt) in enumerate(prompts.items(), start=1):
-        sections.extend(
-            [
-                "=" * 80,
-                f"МОДЕЛЬ {index}: {model}",
-                "=" * 80,
-                prompt.strip(),
-                "",
-            ]
-        )
-    if errors:
-        sections.extend(["=" * 80, "ОШИБКИ МОДЕЛЕЙ", "=" * 80])
-        for model, error in errors.items():
-            sections.append(f"{model}: {error}")
-    return "\n".join(sections).strip() + "\n"
+def _completion_notice(
+    job_id: int,
+    *,
+    total_models: int,
+    prompts: dict[str, str],
+    errors: dict[str, str],
+) -> str:
+    completed = len(prompts)
+    if completed == total_models and not errors:
+        icon = "✅"
+        status = "завершён"
+    elif completed:
+        icon = "⚠️"
+        status = "завершён частично"
+    else:
+        icon = "❌"
+        status = "не выполнен"
+
+    lines = [
+        f"<b>{icon} Image-to-prompt #{job_id} {status}</b>",
+        "",
+        f"Готово моделей: <b>{completed} из {total_models}</b>",
+        f"Ошибок: <b>{len(errors)}</b>",
+    ]
+    if prompts:
+        lines.extend(["", "Полный результат отправлен ниже моноширным текстом."])
+    return "\n".join(lines)
+
+
+def _split_preformatted(
+    value: str,
+    *,
+    max_escaped_length: int = _PRE_BLOCK_CONTENT_LIMIT,
+) -> tuple[str, ...]:
+    remaining = value.strip()
+    if not remaining:
+        return ("",)
+
+    chunks: list[str] = []
+    while remaining:
+        low = 1
+        high = len(remaining)
+        best = 1
+        while low <= high:
+            middle = (low + high) // 2
+            if len(escape(remaining[:middle])) <= max_escaped_length:
+                best = middle
+                low = middle + 1
+            else:
+                high = middle - 1
+
+        cut = best
+        if cut < len(remaining):
+            candidate = remaining[:cut]
+            floor = max(1, len(candidate) - _SPLIT_BACKTRACK_LIMIT)
+            newline = candidate.rfind("\n", floor)
+            space = candidate.rfind(" ", floor)
+            natural_cut = max(newline, space)
+            if natural_cut > 0:
+                cut = natural_cut
+
+        chunk = remaining[:cut].strip()
+        if not chunk:
+            chunk = remaining[:best]
+            cut = best
+        chunks.append(chunk)
+        remaining = remaining[cut:].lstrip()
+
+    return tuple(chunks)
+
+
+async def _send_prompt_messages(
+    message: Message,
+    prompts: dict[str, str],
+) -> None:
+    total_models = len(prompts)
+    for model_index, (model, prompt) in enumerate(prompts.items(), start=1):
+        chunks = _split_preformatted(prompt)
+        for part_index, chunk in enumerate(chunks, start=1):
+            part_label = (
+                f" · часть {part_index}/{len(chunks)}"
+                if len(chunks) > 1
+                else ""
+            )
+            await message.answer(
+                f"<b>🧠 Модель {model_index}/{total_models}{part_label}</b>\n"
+                f"<code>{escape(model)}</code>\n\n"
+                f"<pre>{escape(chunk)}</pre>"
+            )
 
 
 @router.callback_query(QualityCallback.filter(F.action == "imageprompt_start"))
@@ -242,7 +311,6 @@ async def handle_image_prompt_reply(
             raise RuntimeError(details or "Ни одна модель не вернула промт.")
 
         result_text = _result_text(tracker.job_id, prompts, errors)
-        document = _result_document(prompts, errors)
         await tracker.ready(
             result_text=result_text,
             result_payload={
@@ -251,15 +319,15 @@ async def handle_image_prompt_reply(
                 "models": list(models),
             },
         )
-        await message.answer_document(
-            BufferedInputFile(
-                document.encode("utf-8"),
-                filename=f"qwen-image-prompts-{tracker.job_id}.txt",
-            ),
-            caption=(
-                f"Image-to-prompt: готово {len(prompts)} из {len(models)} моделей."
-            ),
+        await message.answer(
+            _completion_notice(
+                tracker.job_id,
+                total_models=len(models),
+                prompts=prompts,
+                errors=errors,
+            )
         )
+        await _send_prompt_messages(message, prompts)
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
@@ -271,5 +339,7 @@ async def handle_image_prompt_reply(
 __all__ = (
     "ImagePromptReplyFilter",
     "_comparison_models",
+    "_completion_notice",
+    "_split_preformatted",
     "router",
 )
