@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import os
 from html import escape
 
 from aiogram import Bot, F, Router
@@ -53,6 +54,14 @@ def _message_image(message: Message) -> tuple[str, str | None] | None:
     return None
 
 
+def _comparison_models(primary_model: str) -> tuple[str, ...]:
+    primary = primary_model.strip()
+    secondary = os.getenv("AI_VISION_COMPARE_MODEL", "").strip()
+    if not secondary or secondary == primary:
+        return (primary,)
+    return primary, secondary
+
+
 async def _download_image(bot: Bot, file_id: str) -> bytes:
     errors: list[BaseException] = []
     for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
@@ -86,15 +95,52 @@ async def _download_image(bot: Bot, file_id: str) -> bytes:
     raise RuntimeError("Telegram вернул пустой файл.")
 
 
-def _result_text(job_id: int, prompt: str) -> str:
-    escaped = escape(prompt)
-    if len(escaped) > 3400:
-        escaped = escaped[:3400].rstrip() + "\n\n…полный текст приложен файлом."
-    return (
-        "<b>🪄 Qwen · изображение в промт</b>\n\n"
-        f"Задание: <b>#{job_id}</b>\n\n"
-        f"<pre>{escaped}</pre>"
-    )[:4090]
+def _result_text(
+    job_id: int,
+    prompts: dict[str, str],
+    errors: dict[str, str],
+) -> str:
+    lines = [
+        "<b>🪄 Qwen · изображение в промт</b>",
+        "",
+        f"Задание: <b>#{job_id}</b>",
+        f"Готово моделей: <b>{len(prompts)}</b>",
+    ]
+    for model, prompt in prompts.items():
+        preview = escape(prompt[:1200].rstrip())
+        if len(prompt) > 1200:
+            preview += "\n\n…полная версия приложена файлом."
+        lines.extend(
+            [
+                "",
+                f"<b>Модель:</b> <code>{escape(model)}</code>",
+                f"<pre>{preview}</pre>",
+            ]
+        )
+    if errors:
+        lines.extend(["", "<b>Не завершились:</b>"])
+        for model, error in errors.items():
+            lines.append(f"• <code>{escape(model)}</code>: {escape(error)[:400]}")
+    return "\n".join(lines)[:4090]
+
+
+def _result_document(prompts: dict[str, str], errors: dict[str, str]) -> str:
+    sections: list[str] = []
+    for index, (model, prompt) in enumerate(prompts.items(), start=1):
+        sections.extend(
+            [
+                "=" * 80,
+                f"МОДЕЛЬ {index}: {model}",
+                "=" * 80,
+                prompt.strip(),
+                "",
+            ]
+        )
+    if errors:
+        sections.extend(["=" * 80, "ОШИБКИ МОДЕЛЕЙ", "=" * 80])
+        for model, error in errors.items():
+            sections.append(f"{model}: {error}")
+    return "\n".join(sections).strip() + "\n"
 
 
 @router.callback_query(QualityCallback.filter(F.action == "imageprompt_start"))
@@ -109,12 +155,19 @@ async def handle_image_prompt_start(callback: CallbackQuery) -> None:
             show_alert=True,
         )
         return
+    models = _comparison_models(settings.ai_vision_model)
+    model_lines = "\n".join(f"• <code>{escape(model)}</code>" for model in models)
+    mode_text = (
+        "Две модели последовательно создадут версии промта для сравнения."
+        if len(models) > 1
+        else "Qwen создаст одну версию промта."
+    )
     await callback.answer()
     await callback.message.answer(
         "<b>🪄 Изображение → промт</b>\n\n"
         "Ответьте на это сообщение фотографией или image-файлом. "
-        "Qwen восстановит подробный основной промт, negative prompt, "
-        "композицию, свет и цвет.\n\n"
+        f"{mode_text}\n\n"
+        f"<b>Модели:</b>\n{model_lines}\n\n"
         f"<code>{_IMAGE_PROMPT_MARKER}</code>",
         reply_markup=ForceReply(selective=True),
     )
@@ -139,42 +192,73 @@ async def handle_image_prompt_reply(
         await message.answer("Локальный Qwen отключён в настройках бота.")
         return
 
+    models = _comparison_models(settings.ai_vision_model)
     file_id, file_unique_id = image_file
     tracker = await AIJobTracker.create(
         database=database,
         source_message=message,
         kind="image_to_prompt",
-        title="Изображение → промт",
+        title=(
+            "Изображение → промт · сравнение моделей"
+            if len(models) > 1
+            else "Изображение → промт"
+        ),
         provider=settings.ai_vision_provider,
-        model=settings.ai_vision_model,
+        model=" | ".join(models),
         request_payload={
             "image_file_id": file_id,
             "image_file_unique_id": file_unique_id,
+            "models": list(models),
         },
     )
     try:
         await tracker.stage("downloading")
         image = await _download_image(bot, file_id)
-        client = ImageToPromptClient(
-            provider=settings.ai_vision_provider,
-            base_url=settings.ai_vision_base_url,
-            model=settings.ai_vision_model,
-            api_key=settings.ai_vision_api_key,
-            timeout_seconds=settings.ai_vision_timeout_seconds,
-        )
+        prompts: dict[str, str] = {}
+        errors: dict[str, str] = {}
+        keep_alive: str | int = 0 if len(models) > 1 else "15m"
+
         await tracker.stage("analyzing")
         async with get_local_ai_lock():
-            prompt = await client.generate(image)
+            for model in models:
+                client = ImageToPromptClient(
+                    provider=settings.ai_vision_provider,
+                    base_url=settings.ai_vision_base_url,
+                    model=model,
+                    api_key=settings.ai_vision_api_key,
+                    timeout_seconds=settings.ai_vision_timeout_seconds,
+                    keep_alive=keep_alive,
+                )
+                try:
+                    prompts[model] = await client.generate(image)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as error:  # p2-approved-boundary: compare-model-partial
+                    logger.exception("Image-to-prompt model failed model=%s", model)
+                    errors[model] = str(error).strip()[:1200] or "Неизвестная ошибка."
+
+        if not prompts:
+            details = "; ".join(f"{model}: {error}" for model, error in errors.items())
+            raise RuntimeError(details or "Ни одна модель не вернула промт.")
+
+        result_text = _result_text(tracker.job_id, prompts, errors)
+        document = _result_document(prompts, errors)
         await tracker.ready(
-            result_text=_result_text(tracker.job_id, prompt),
-            result_payload={"prompt": prompt},
+            result_text=result_text,
+            result_payload={
+                "prompts": prompts,
+                "errors": errors,
+                "models": list(models),
+            },
         )
         await message.answer_document(
             BufferedInputFile(
-                prompt.encode("utf-8"),
-                filename=f"qwen-image-prompt-{tracker.job_id}.txt",
+                document.encode("utf-8"),
+                filename=f"qwen-image-prompts-{tracker.job_id}.txt",
             ),
-            caption="Полный image-to-prompt без ограничения длины сообщения Telegram",
+            caption=(
+                f"Image-to-prompt: готово {len(prompts)} из {len(models)} моделей."
+            ),
         )
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
@@ -184,4 +268,8 @@ async def handle_image_prompt_reply(
         await tracker.error(error)
 
 
-__all__ = ("ImagePromptReplyFilter", "router")
+__all__ = (
+    "ImagePromptReplyFilter",
+    "_comparison_models",
+    "router",
+)
