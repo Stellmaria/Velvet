@@ -73,6 +73,7 @@ class VelvetAIMenuTests(unittest.TestCase):
                 "qcal",
                 "refcompare_start",
                 "promptcheck_start",
+                "imageprompt_start",
                 "visual_start",
                 "format_menu",
                 "sets",

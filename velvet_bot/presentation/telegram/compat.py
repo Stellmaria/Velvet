@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from velvet_bot.ai_quality_schema_compat import install_ai_quality_schema_compatibility
-from velvet_bot.image_to_prompt_ui import install_image_to_prompt_ui
 from velvet_bot.media_set_ui_compat import install_media_set_ui
 from velvet_bot.owner_menu_compat import install_owner_menu_navigation
 from velvet_bot.quality_calibration_dashboard import install_quality_calibration_dashboard
@@ -20,7 +19,6 @@ PRE_IMPORT_COMPONENTS = (
     "media-set-ai-discovery",
     "media-set-ui",
     "owner-menu-navigation",
-    "image-to-prompt-ui",
 )
 POST_IMPORT_COMPONENTS = ("quality-calibration-report-ui",)
 ACTIVE_COMPATIBILITY_COMPONENTS = PRE_IMPORT_COMPONENTS + POST_IMPORT_COMPONENTS
@@ -38,7 +36,6 @@ def install_pre_router_compatibility() -> None:
 
     install_media_set_ui()
     install_owner_menu_navigation()
-    install_image_to_prompt_ui()
 
 
 def install_post_router_compatibility() -> None:
