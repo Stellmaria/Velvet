@@ -404,6 +404,24 @@ class VisionClient:
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 raw = response.read()
+        except urllib.error.HTTPError as error:
+            try:
+                error_raw = error.read()
+                error_payload = json.loads(error_raw.decode("utf-8"))
+                detail = (
+                    str(error_payload.get("error") or "").strip()
+                    if isinstance(error_payload, dict)
+                    else ""
+                )
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                detail = ""
+            message = (
+                f"HTTP {error.code}: "
+                f"{detail or error.reason or 'ошибка сервиса ИИ'}"
+            )
+            if error.code >= 500:
+                raise VisionProviderUnavailable(message) from error
+            raise VisionAnalysisError(message) from error
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise VisionProviderUnavailable(str(error)) from error
         try:

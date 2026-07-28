@@ -16,6 +16,7 @@ from aiogram.filters import BaseFilter
 from aiogram.types import CallbackQuery, ForceReply, Message
 
 from velvet_bot.ai_job_runtime import AIJobTracker
+from velvet_bot.ai_vision import VisionAnalysisError
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
 from velvet_bot.infrastructure.image_to_prompt import ImageToPromptClient
@@ -285,6 +286,7 @@ async def handle_image_prompt_reply(
         image = await _download_image(bot, file_id)
         prompts: dict[str, str] = {}
         errors: dict[str, str] = {}
+        failures: dict[str, BaseException] = {}
         keep_alive: str | int = 0 if len(models) > 1 else "15m"
 
         await tracker.stage("analyzing")
@@ -303,16 +305,41 @@ async def handle_image_prompt_reply(
                 except asyncio.CancelledError:
                     raise
                 except Exception as error:  # p2-approved-boundary: compare-model-partial
-                    logger.warning(
+                    log_model_failure = (
+                        logger.info
+                        if isinstance(error, VisionAnalysisError)
+                        else logger.warning
+                    )
+                    log_model_failure(
                         "Image-to-prompt comparison model unavailable model=%s error=%s",
                         model,
                         str(error).strip()[:500] or type(error).__name__,
                     )
                     errors[model] = str(error).strip()[:1200] or "Неизвестная ошибка."
+                    failures[model] = error
 
         if not prompts:
             details = "; ".join(f"{model}: {error}" for model, error in errors.items())
-            raise RuntimeError(details or "Ни одна модель не вернула промт.")
+            failure_text = details or "Ни одна модель не вернула промт."
+            if failures and all(
+                isinstance(error, VisionAnalysisError) for error in failures.values()
+            ):
+                logger.warning(
+                    "Image-to-prompt unavailable job_id=%s details=%s",
+                    tracker.job_id,
+                    failure_text[:1500],
+                )
+                await tracker.error(failure_text)
+                await message.answer(
+                    _completion_notice(
+                        tracker.job_id,
+                        total_models=len(models),
+                        prompts=prompts,
+                        errors=errors,
+                    )
+                )
+                return
+            raise RuntimeError(failure_text)
 
         result_text = _result_text(tracker.job_id, prompts, errors)
         await tracker.ready(
