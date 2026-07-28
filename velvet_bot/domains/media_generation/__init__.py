@@ -1,4 +1,5 @@
 from .models import (
+    KIE_GENERATION_TASK_TYPE,
     KieGenerationRequest,
     KieModelAlias,
     KieModelCatalog,
@@ -8,6 +9,7 @@ from .models import (
 )
 
 __all__ = (
+    "KIE_GENERATION_TASK_TYPE",
     "KieGenerationRequest",
     "KieModelAlias",
     "KieModelCatalog",
