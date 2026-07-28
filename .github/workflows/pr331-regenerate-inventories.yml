@@ -1,9 +1,9 @@
-name: PR331 inventory regeneration
+name: PR331 clean inventory regeneration
 
 on:
   push:
     branches:
-      - agent/image-to-prompt
+      - agent/pr331-cleanup
     paths:
       - .github/workflows/pr331-regenerate-inventories.yml
 
@@ -14,10 +14,10 @@ jobs:
   regenerate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout isolated branch
         uses: actions/checkout@v4
         with:
-          ref: agent/image-to-prompt
+          ref: agent/pr331-cleanup
           fetch-depth: 0
 
       - name: Update imports and generated inventories
@@ -54,4 +54,4 @@ jobs:
           git add -A
           git diff --cached --check
           git commit -m "Regenerate inventories for image-to-prompt"
-          git push origin HEAD:agent/image-to-prompt
+          git push origin HEAD:agent/pr331-cleanup
