@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+import json
+import time
+import unittest
+from unittest.mock import patch
+
+from velvet_supervisor.hermes_incident import (
+    HermesIncident,
+    HermesIncidentClient,
+    redact_sensitive,
+)
+
+
+class _FakeResponse:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> "_FakeResponse":
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self._payload).encode("utf-8")
+
+
+class HermesIncidentTests(unittest.TestCase):
+    def _incident(self) -> HermesIncident:
+        return HermesIncident(
+            service="velvet-bot",
+            reason="Repeated crash",
+            exit_code=1,
+            restart_count=3,
+            crash_loop_open=True,
+            log_tail=(
+                "Authorization: Bearer super-secret-token\n"
+                "DATABASE_URL=postgresql://velvet:database-password@postgres:5432/velvet\n"
+                "BOT_TOKEN=1234567890:abcdefghijklmnopqrstuvwxyzABCDE\n"
+                "RuntimeError: worker failed 123 times"
+            ),
+            git_head="abc123",
+            branch="main",
+        )
+
+    def test_redacts_tokens_and_database_passwords(self) -> None:
+        redacted = redact_sensitive(self._incident().log_tail)
+        self.assertNotIn("super-secret-token", redacted)
+        self.assertNotIn("database-password", redacted)
+        self.assertNotIn("abcdefghijklmnopqrstuvwxyzABCDE", redacted)
+        self.assertGreaterEqual(redacted.count("[REDACTED]"), 3)
+
+    def test_submits_to_runs_api_and_returns_run_id(self) -> None:
+        client = HermesIncidentClient(
+            enabled=True,
+            base_url="http://hermes:8642",
+            api_key="12345678",
+        )
+        with patch(
+            "velvet_supervisor.hermes_incident.urllib.request.urlopen",
+            return_value=_FakeResponse({"run_id": "run_123", "status": "started"}),
+        ) as urlopen:
+            run_id = client.submit(self._incident())
+        self.assertEqual(run_id, "run_123")
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://hermes:8642/v1/runs")
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertIn("input", body)
+        self.assertIn("session_id", body)
+        self.assertNotIn("super-secret-token", body["input"])
+        self.assertNotIn("database-password", body["input"])
+
+    def test_deduplicates_same_incident_during_cooldown(self) -> None:
+        client = HermesIncidentClient(
+            enabled=True,
+            base_url="http://hermes:8642",
+            api_key="12345678",
+            cooldown_seconds=600,
+        )
+        client.submit = lambda incident: "run_test"  # type: ignore[method-assign]
+        self.assertTrue(client.submit_async(self._incident()))
+        self.assertFalse(client.submit_async(self._incident()))
+        time.sleep(0.02)
+        self.assertIn(client.status()["state"], {"cooldown", "submitted"})
+
+    def test_disabled_client_does_not_start_thread(self) -> None:
+        client = HermesIncidentClient(
+            enabled=False,
+            base_url="",
+            api_key=None,
+        )
+        self.assertFalse(client.submit_async(self._incident()))
+        self.assertEqual(client.status()["state"], "disabled")
+
+
+if __name__ == "__main__":
+    unittest.main()
