@@ -100,6 +100,8 @@ class VisionBatchService:
                 "ordinary_month_remaining_rub": str(
                     budget.ordinary_month_remaining_rub
                 ),
+                "max_request_rub": str(budget.max_request_rub),
+                "within_per_request_limit": per_item <= budget.max_request_rub,
                 "within_current_budget": estimated <= available,
             },
         )
@@ -130,6 +132,10 @@ class VisionBatchService:
         if budget.paused:
             reason = f" Причина: {budget.pause_reason}" if budget.pause_reason else ""
             raise VisionBatchError("AI-контур приостановлен." + reason)
+        if plan.max_cost_per_item_rub > budget.max_request_rub:
+            raise VisionBatchError(
+                "Максимальная стоимость одного VL-запроса превышает per-request лимит."
+            )
         if plan.estimated_cost_rub > budget.daily_remaining_rub:
             raise VisionBatchError(
                 "Максимальная стоимость партии превышает дневной остаток бюджета."
