@@ -1,10 +1,10 @@
+from .ledger import AIUsageRepository
 from .models import (
     AIProviderResult,
     AIRequestContext,
     AIReservation,
     AIUsageTotals,
 )
-from .repository import AIUsageRepository
 from .service import AIBudgetExceeded, AIRequestExecutor, AIUsageService
 
 __all__ = (
