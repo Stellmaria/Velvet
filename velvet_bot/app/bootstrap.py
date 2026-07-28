@@ -6,6 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 
+from velvet_bot.app.ai_usage import build_audited_ai_usage_service
 from velvet_bot.app.commands import install_command_menus
 from velvet_bot.app.dispatcher import build_dispatcher
 from velvet_bot.app.save_sessions import SaveUploadSessions
@@ -166,6 +167,10 @@ async def run_application() -> None:
         )
         bot = _build_bot(settings)
         audit_logger = TelegramAuditLogger(bot, settings.log_chat_id)
+        ai_usage_service = build_audited_ai_usage_service(
+            database=database,
+            audit_logger=audit_logger,
+        )
         incident_repository = ErrorIncidentRepository(database)
         diagnostic_service = DiagnosticBundleService(
             incident_repository=incident_repository,
@@ -188,6 +193,7 @@ async def run_application() -> None:
             database=database,
             backup_service=backup_service,
             settings=settings,
+            ai_usage_service=ai_usage_service,
             error_center=error_center,
             system_service=system_service,
             diagnostic_service=diagnostic_service,
@@ -206,6 +212,7 @@ async def run_application() -> None:
             database=database,
             bot_username=bot_username,
             audit_logger=audit_logger,
+            ai_usage_service=ai_usage_service,
             error_center=error_center,
             reference_uploads=reference_uploads,
             save_upload_sessions=save_upload_sessions,
