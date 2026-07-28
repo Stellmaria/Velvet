@@ -53,28 +53,53 @@
 
 ### Фактически сделано
 
-Работа начата.
+- добавлены transport-neutral модели `AITask`, `AITaskRequest`, `AITaskStatus`, enqueue/failure results и queue snapshot;
+- реализованы одиночная и пакетная постановка задач с активным partial-unique `dedupe_key`;
+- атомарный claim использует `FOR UPDATE SKIP LOCKED` и не выдаёт одну задачу двум workers;
+- claim учитывает глобальный pause в `ai_runtime_state`;
+- добавлены heartbeat, complete с JSONB-result, cancel и ручной requeue terminal-задач;
+- fail использует exponential backoff, сохраняет тип и текст ошибки и после исчерпания attempts переводит задачу в `error`;
+- stale running locks автоматически возвращаются в `queued` либо завершаются `error` согласно attempt_count/max_attempts;
+- зарегистрирован бесплатный background worker `ai-task-stale-recovery`, не вызывающий модели;
+- один `AITaskQueueService` разделяется между background workers и Telegram composition root;
+- добавлены owner-команды `/ai_queue`, `/ai_queue_retry`, `/ai_queue_cancel`;
+- owner-интерфейс показывает counts, status, priority, attempts, estimated cost, worker lock, retry delay и ошибку;
+- команды зарегистрированы в owner-only access, полном help и UI/direct command contracts;
+- исправлено явное декодирование JSONB payload/result для конфигураций asyncpg, возвращающих строки;
+- добавлены PostgreSQL integration tests active dedupe, concurrent claim, pause, retry, completion, stale recovery и cancel/requeue;
+- добавлены unit-тесты owner formatting/access и обновлён точный worker registry.
 
 ### Миграции и совместимость
 
-Планируется добавочная миграция результата и диагностических полей очереди.
+Добавлена новая неизменяемая миграция `migrations/z007_ai_task_queue_lifecycle.sql`. Она расширяет существующую `ai_tasks` полями `result`, `estimated_cost_rub`, `last_error_type` и `last_retry_delay_seconds`, а также добавляет индексы running-lock и terminal history. Старая `z004` не изменена. Существующие строки получают безопасные значения по умолчанию. Backup/restore drill подтвердил применение и восстановление схемы. Отдельный Redis или внешний брокер не требуется.
 
 ### Проверки
 
-Будут выполнены unit/integration tests, type check, Docker build, notes contract и backup restore drill.
+На head `2cd60d06f5035d4a9742bf2412f17fb15a90b22f` успешно прошли:
+
+- tests workflow `#2087`: 1489 тестов;
+- type check `#740`;
+- Docker build `#1466`;
+- project notes contract `#1324`;
+- backup restore drill `#469`.
+
+Live production-smoke owner-команд и реальных queue consumers намеренно не выполнялся в CI.
 
 ### PR и commit
 
-- PR: будет создан после реализации и проверки diff.
+- PR: `#353` — «Добавить lifecycle PostgreSQL-очереди AI-задач».
 - Ветка: `agent/ai-task-queue-lifecycle`.
+- Проверенный head: `2cd60d06f5035d4a9742bf2412f17fb15a90b22f`.
 
 ### Незавершённое
 
-- queue models/repository/service;
-- owner-команды;
-- migration;
-- tests и CI.
+- перевод semantic VL worker с прямого polling `media_ai_profiles` на `ai_tasks`;
+- пакетная постановка изображений;
+- предварительная оценка максимальной стоимости партии и подтверждение владельца;
+- heartbeat во время длительного реального provider call;
+- per-task progress и batch grouping;
+- live Telegram-smoke `/ai_queue`, retry и cancel после обновления production.
 
 ### Следующий шаг
 
-Добавить модели и атомарный PostgreSQL repository lifecycle, затем owner presentation.
+Добавить пакет semantic VL-задач с предварительным расчётом максимальной стоимости, owner-подтверждением и queue consumer, который вызывает существующий Flash → Pro → sensitive router.
