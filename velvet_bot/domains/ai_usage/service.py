@@ -3,21 +3,26 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from datetime import datetime
-from typing import Generic, TypeVar
-from uuid import uuid4
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Generic, TypeVar, cast
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from velvet_bot.core.ai_budget import AIBudgetDecision, AIBudgetPolicy
+from velvet_bot.core.ai_budget import AIBudgetDecision, AIBudgetPolicy, AIBudgetScope
 from velvet_bot.domains.ai_usage.ledger import AIUsageRepository
 from velvet_bot.domains.ai_usage.models import (
+    AIBudgetStatus,
+    AIBudgetWarning,
     AIProviderResult,
     AIRequestContext,
     AIReservation,
+    AIUsageEvent,
     AIUsageTotals,
 )
 
 T = TypeVar("T")
+BudgetWarningHandler = Callable[[AIBudgetWarning], Awaitable[None]]
 
 
 class AIBudgetExceeded(RuntimeError):
@@ -42,18 +47,23 @@ class AIUsageService:
         policy: AIBudgetPolicy,
         *,
         budget_timezone: str = "Europe/Warsaw",
+        warning_handler: BudgetWarningHandler | None = None,
     ) -> None:
         self._repository = repository
         self.policy = policy
+        self._warning_handler = warning_handler
         try:
             self._timezone = ZoneInfo(budget_timezone)
         except ZoneInfoNotFoundError as error:
             raise ValueError(f"Неизвестная timezone AI-бюджета: {budget_timezone}") from error
 
-    async def reserve(self, context: AIRequestContext) -> AIReservation:
+    def _period_bounds(self) -> tuple[datetime, datetime]:
         now = datetime.now(self._timezone)
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        month_start = day_start.replace(day=1)
+        return day_start, day_start.replace(day=1)
+
+    async def reserve(self, context: AIRequestContext) -> AIReservation:
+        day_start, month_start = self._period_bounds()
         decision, reservation, pause_reason = await self._repository.reserve_if_allowed(
             request_id=uuid4(),
             context=context,
@@ -82,6 +92,7 @@ class AIUsageService:
         )
         if not updated:
             raise RuntimeError("AI reservation уже завершена или не найдена.")
+        await self._emit_budget_warning_if_needed()
 
     async def fail(
         self,
@@ -103,12 +114,75 @@ class AIUsageService:
         )
 
     async def totals(self) -> AIUsageTotals:
-        now = datetime.now(self._timezone)
-        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        month_start = day_start.replace(day=1)
+        day_start, month_start = self._period_bounds()
         return await self._repository.totals(
             day_start=day_start,
             month_start=month_start,
+        )
+
+    async def status(self) -> AIBudgetStatus:
+        totals = await self.totals()
+        runtime = await self._repository.runtime_state()
+        today_with_reservations = totals.today_rub + totals.reserved_today_rub
+        month_with_reservations = totals.month_rub + totals.reserved_month_rub
+        ordinary_month_cap = max(
+            Decimal("0"),
+            self.policy.monthly_limit_rub - self.policy.hermes_reserve_rub,
+        )
+        return AIBudgetStatus(
+            enabled=self.policy.enabled,
+            daily_limit_rub=self.policy.daily_limit_rub,
+            monthly_limit_rub=self.policy.monthly_limit_rub,
+            max_request_rub=self.policy.max_request_rub,
+            hermes_reserve_rub=self.policy.hermes_reserve_rub,
+            today_rub=totals.today_rub,
+            month_rub=totals.month_rub,
+            reserved_today_rub=totals.reserved_today_rub,
+            reserved_month_rub=totals.reserved_month_rub,
+            daily_remaining_rub=max(
+                Decimal("0"), self.policy.daily_limit_rub - today_with_reservations
+            ),
+            ordinary_month_remaining_rub=max(
+                Decimal("0"), ordinary_month_cap - month_with_reservations
+            ),
+            total_month_remaining_rub=max(
+                Decimal("0"), self.policy.monthly_limit_rub - month_with_reservations
+            ),
+            paused=bool(runtime["paused"]),
+            pause_reason=cast(str | None, runtime["pause_reason"]),
+            updated_by=cast(int | None, runtime["updated_by"]),
+            updated_at=cast(datetime, runtime["updated_at"]),
+            warning_month=cast(date | None, runtime["warning_month"]),
+            warning_percent=cast(int | None, runtime["warning_percent"]),
+        )
+
+    async def recent_events(self, *, limit: int = 20) -> tuple[AIUsageEvent, ...]:
+        rows = await self._repository.recent_events(limit=limit)
+        return tuple(
+            AIUsageEvent(
+                request_id=cast(UUID, row["request_id"]),
+                scope=AIBudgetScope(str(row["scope"])),
+                provider=str(row["provider"]),
+                model=str(row["model"]),
+                operation=str(row["operation"]),
+                status=str(row["status"]),
+                estimated_cost_rub=Decimal(row["estimated_cost_rub"] or 0),
+                actual_cost_rub=Decimal(row["actual_cost_rub"] or 0),
+                input_tokens=int(row["input_tokens"] or 0),
+                output_tokens=int(row["output_tokens"] or 0),
+                latency_ms=(
+                    int(row["latency_ms"])
+                    if row["latency_ms"] is not None
+                    else None
+                ),
+                user_id=int(row["user_id"]) if row["user_id"] is not None else None,
+                chat_id=int(row["chat_id"]) if row["chat_id"] is not None else None,
+                created_at=cast(datetime, row["created_at"]),
+                completed_at=cast(datetime | None, row["completed_at"]),
+                error_type=str(row["error_type"] or "") or None,
+                error_message=str(row["error_message"] or "") or None,
+            )
+            for row in rows
         )
 
     async def pause(self, *, reason: str, updated_by: int | None) -> None:
@@ -124,6 +198,38 @@ class AIUsageService:
             reason=None,
             updated_by=updated_by,
         )
+
+    async def _emit_budget_warning_if_needed(self) -> None:
+        if not self.policy.enabled or self._warning_handler is None:
+            return
+        if self.policy.monthly_limit_rub <= 0:
+            return
+        totals = await self.totals()
+        projected_month = totals.month_rub + totals.reserved_month_rub
+        ratio = projected_month * Decimal(100) / self.policy.monthly_limit_rub
+        reached = tuple(
+            percent for percent in self.policy.warning_percents if ratio >= percent
+        )
+        if not reached:
+            return
+        threshold = max(reached)
+        _, month_start = self._period_bounds()
+        claimed = await self._repository.claim_budget_warning(
+            period_start=month_start.date(),
+            threshold_percent=threshold,
+        )
+        if not claimed:
+            return
+        warning = AIBudgetWarning(
+            threshold_percent=threshold,
+            month_rub=projected_month,
+            monthly_limit_rub=self.policy.monthly_limit_rub,
+            remaining_rub=max(
+                Decimal("0"), self.policy.monthly_limit_rub - projected_month
+            ),
+            period_start=month_start.date(),
+        )
+        await self._warning_handler(warning)
 
 
 class AIRequestExecutor(Generic[T]):
@@ -170,4 +276,9 @@ def _latency_ms(started: float) -> int:
     return max(0, int((time.monotonic() - started) * 1000))
 
 
-__all__ = ("AIBudgetExceeded", "AIRequestExecutor", "AIUsageService")
+__all__ = (
+    "AIBudgetExceeded",
+    "AIRequestExecutor",
+    "AIUsageService",
+    "BudgetWarningHandler",
+)

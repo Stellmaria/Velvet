@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from aiogram import Dispatcher
 
@@ -11,6 +12,7 @@ from velvet_bot.core.access import AccessPolicy
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
+from velvet_bot.domains.ai_usage import AIBudgetWarning, build_ai_usage_service
 from velvet_bot.domains.roleplay import build_roleplay_service
 from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
@@ -32,6 +34,10 @@ from velvet_bot.workers import WorkerManager
 class DispatcherBundle:
     dispatcher: Dispatcher
     access_policy: AccessPolicy
+
+
+def _format_rub(value: Decimal) -> str:
+    return f"{value.quantize(Decimal('0.01')):.2f}".replace(".", ",") + " ₽"
 
 
 def build_dispatcher(
@@ -65,7 +71,27 @@ def build_dispatcher(
         workspace_repository=workspace_repository,
     )
     workspace_character_service = WorkspaceCharacterService(database)
-    roleplay_service = build_roleplay_service(settings=settings, database=database)
+
+    async def send_budget_warning(warning: AIBudgetWarning) -> None:
+        await audit_logger.send(
+            "AI-бюджет достиг порога",
+            level="WARNING",
+            threshold=f"{warning.threshold_percent}%",
+            month_spend=_format_rub(warning.month_rub),
+            monthly_limit=_format_rub(warning.monthly_limit_rub),
+            remaining=_format_rub(warning.remaining_rub),
+            period=warning.period_start.isoformat(),
+        )
+
+    ai_usage_service = build_ai_usage_service(
+        database=database,
+        warning_handler=send_budget_warning,
+    )
+    roleplay_service = build_roleplay_service(
+        settings=settings,
+        database=database,
+        ai_usage_service=ai_usage_service,
+    )
 
     workflow_data = {
         "database": database,
@@ -78,6 +104,7 @@ def build_dispatcher(
         "workspace_product_service": workspace_product_service,
         "workspace_characters": workspace_character_service,
         "roleplay_service": roleplay_service,
+        "ai_usage_service": ai_usage_service,
         "analytics_channel_ids": settings.analytics_channel_ids,
         "adult_channel_id": settings.adult_channel_id,
         "publication_timezone": settings.publication_timezone,

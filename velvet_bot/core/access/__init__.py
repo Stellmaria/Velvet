@@ -9,7 +9,7 @@ from velvet_bot.core.access.policy import (
     MODERATOR_TAG_CALLBACK_ACTIONS,
     MODERATOR_TAG_COMMANDS,
     MODERATOR_USER_IDS,
-    OWNER_ONLY_COMMANDS,
+    OWNER_ONLY_COMMANDS as _BASE_OWNER_ONLY_COMMANDS,
     PROMPT_REPLY_MARKER,
     PUBLIC_CALLBACK_ACTIONS,
     PUBLIC_CALLBACK_PREFIX,
@@ -19,7 +19,6 @@ from velvet_bot.core.access.policy import (
     command_name,
     is_moderator_callback_data,
     is_owner_mention_text,
-    is_owner_only_command_text,
     is_public_callback_data,
     is_public_command_text,
     is_save_mention_text,
@@ -49,6 +48,19 @@ WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
     *_BASE_WORKSPACE_MEMBER_CALLBACK_PREFIXES,
     "wq:",
 )
+OWNER_ONLY_COMMANDS = _BASE_OWNER_ONLY_COMMANDS | frozenset(
+    {
+        "ai_budget",
+        "ai_usage",
+        "ai_pause",
+        "ai_resume",
+    }
+)
+
+
+def is_owner_only_command_text(text: str) -> bool:
+    command = command_name(text)
+    return bool(command and command in OWNER_ONLY_COMMANDS)
 
 
 def is_workspace_member_command_text(text: str) -> bool:

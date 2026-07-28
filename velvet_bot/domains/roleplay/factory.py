@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from velvet_bot.core.ai_budget import load_ai_budget_policy
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
-from velvet_bot.domains.ai_usage.ledger import AIUsageRepository
-from velvet_bot.domains.ai_usage.pricing import load_token_pricing
-from velvet_bot.domains.ai_usage.service import AIRequestExecutor, AIUsageService
+from velvet_bot.domains.ai_usage import (
+    AIRequestExecutor,
+    AIUsageService,
+    build_ai_usage_service,
+    load_token_pricing,
+)
 from velvet_bot.domains.roleplay.client import (
     FailoverRoleplayClient,
     RoleplayClient,
@@ -19,6 +21,7 @@ def build_roleplay_service(
     *,
     settings: Settings,
     database: Database,
+    ai_usage_service: AIUsageService | None = None,
 ) -> RoleplayService:
     client: RoleplayClient | None = None
     provider_label = "disabled"
@@ -29,12 +32,8 @@ def build_roleplay_service(
             raise RuntimeError(
                 "AI_TEXT_ENABLED=true требует непустой AI_TEXT_MODEL."
             )
-        executor = AIRequestExecutor(
-            AIUsageService(
-                AIUsageRepository(database),
-                load_ai_budget_policy(),
-            )
-        )
+        usage_service = ai_usage_service or build_ai_usage_service(database=database)
+        executor = AIRequestExecutor(usage_service)
         primary = TextRoleplayClient(
             provider=settings.ai_text_provider,
             base_url=settings.ai_text_base_url,

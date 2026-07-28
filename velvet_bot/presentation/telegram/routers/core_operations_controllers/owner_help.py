@@ -4,6 +4,9 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.ai_budget import (
+    router as ai_budget_router,
+)
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.roleplay import (
     router as roleplay_router,
 )
@@ -130,6 +133,10 @@ OWNER_COMMAND_GROUPS: tuple[
             ("rework", "открыть очередь доработки"),
             ("reworks", "алиас очереди доработки"),
             ("quality_rework", "алиас очереди доработки"),
+            ("ai_budget", "показать лимиты, расходы и состояние AI-контура"),
+            ("ai_usage", "показать последние платные AI-операции"),
+            ("ai_pause", "приостановить новые AI-запросы"),
+            ("ai_resume", "возобновить AI-запросы"),
         ),
     ),
     (
@@ -231,6 +238,7 @@ async def handle_owner_help(message: Message) -> None:
 
 
 router.message.register(handle_owner_help, Command("help"))
+router.include_router(ai_budget_router)
 router.include_router(roleplay_router)
 
 
