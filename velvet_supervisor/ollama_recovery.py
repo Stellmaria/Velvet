@@ -13,17 +13,41 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping, Sequence
 
-_MODEL = "qwen3-vl:4b"
 _BASE_URL = "http://127.0.0.1:11434"
+
+_STANDARD_VISION_MODEL = "qwen3-vl:8b"
+_UNCENSORED_VISION_MODEL = (
+    "hf.co/mradermacher/"
+    "Qwen3-VL-8B-Instruct-abliterated-v2.0-GGUF:Q4_K_M"
+)
+_FALLBACK_VISION_MODEL = (
+    "hf.co/mradermacher/"
+    "Qwen3-VL-4B-Instruct-abliterated-GGUF:Q4_K_M"
+)
+_UNCENSORED_TEXT_MODEL = (
+    "hf.co/mradermacher/"
+    "Huihui-Qwen3.5-9B-abliterated-i1-GGUF:Q4_K_M"
+)
+
 _ENV_VALUES = {
     "AI_VISION_ENABLED": "true",
     "AI_VISION_PROVIDER": "ollama",
     "AI_VISION_BASE_URL": _BASE_URL,
-    "AI_VISION_MODEL": _MODEL,
-    "AI_VISION_COMPARE_MODEL": "",
+    "AI_VISION_MODEL": _STANDARD_VISION_MODEL,
+    "AI_VISION_COMPARE_MODEL": _UNCENSORED_VISION_MODEL,
+    "AI_VISION_FALLBACK_MODEL": _FALLBACK_VISION_MODEL,
     "AI_VISION_TIMEOUT_SECONDS": "600",
+    "AI_TEXT_PROVIDER": "ollama",
+    "AI_TEXT_BASE_URL": _BASE_URL,
+    "AI_TEXT_MODEL": _UNCENSORED_TEXT_MODEL,
+    "AI_TEXT_TIMEOUT_SECONDS": "600",
+    "OLLAMA_MAX_LOADED_MODELS": "1",
+    "OLLAMA_NUM_PARALLEL": "1",
+    "OLLAMA_FLASH_ATTENTION": "1",
+    "OLLAMA_KV_CACHE_TYPE": "q8_0",
+    "OLLAMA_KEEP_ALIVE": "2m",
 }
 _ENV_LINE_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=")
 _E_STORAGE_CANDIDATES = (
@@ -48,6 +72,21 @@ class StorageLayout:
     @property
     def valid(self) -> bool:
         return self.has_blobs and self.has_manifests
+
+
+@dataclass(frozen=True, slots=True)
+class ModelSpec:
+    role: str
+    name: str
+    required_capability: str
+
+
+_MODEL_BUNDLE = (
+    ModelSpec("vision-standard", _STANDARD_VISION_MODEL, "vision"),
+    ModelSpec("vision-uncensored", _UNCENSORED_VISION_MODEL, "vision"),
+    ModelSpec("vision-fallback", _FALLBACK_VISION_MODEL, "vision"),
+    ModelSpec("text-uncensored", _UNCENSORED_TEXT_MODEL, "completion"),
+)
 
 
 def _project_dir() -> Path:
@@ -137,6 +176,42 @@ def choose_e_storage(
     return selected
 
 
+def _manifest_model_name(manifests_root: Path, manifest_path: Path) -> str | None:
+    try:
+        parts = manifest_path.relative_to(manifests_root).parts
+    except ValueError:
+        return None
+    if len(parts) < 4:
+        return None
+
+    host = parts[0]
+    tag = parts[-1]
+    model_path = parts[1:-1]
+    if host.casefold() == "registry.ollama.ai" and model_path[:1] == ("library",):
+        model_path = model_path[1:]
+        if not model_path:
+            return None
+        return f"{'/'.join(model_path)}:{tag}"
+    return f"{host}/{'/'.join(model_path)}:{tag}"
+
+
+def scan_manifest_models(storage_path: Path) -> tuple[str, ...]:
+    manifests_root = storage_path / "manifests"
+    if not manifests_root.is_dir():
+        return ()
+    names: set[str] = set()
+    try:
+        for manifest_path in manifests_root.rglob("*"):
+            if not manifest_path.is_file():
+                continue
+            name = _manifest_model_name(manifests_root, manifest_path)
+            if name:
+                names.add(name)
+    except OSError:
+        return ()
+    return tuple(sorted(names, key=str.casefold))
+
+
 def _read_project_env_value(env_path: Path, key: str) -> str:
     if not env_path.exists():
         return ""
@@ -153,7 +228,7 @@ def _read_env_values(env_path: Path) -> dict[str, str]:
         key: value
         for key in _ENV_VALUES
         if (value := _read_project_env_value(env_path, key))
-        or key == "AI_VISION_COMPARE_MODEL"
+        or key in {"AI_VISION_COMPARE_MODEL", "AI_VISION_FALLBACK_MODEL"}
     }
 
 
@@ -285,6 +360,12 @@ def print_storage_status(project_dir: Path) -> StorageLayout | None:
         "  Рекомендуемый каталог E: "
         + (str(selected.path) if selected is not None else "не найден")
     )
+    if selected is not None:
+        disk_models = scan_manifest_models(selected.path)
+        print(
+            "  Модели в manifests E: "
+            + (", ".join(disk_models) if disk_models else "не распознаны")
+        )
     return selected
 
 
@@ -322,6 +403,18 @@ def stop_ollama() -> None:
     )
 
 
+def _apply_runtime_environment(environment: dict[str, str]) -> None:
+    environment["OLLAMA_HOST"] = _BASE_URL
+    for key in (
+        "OLLAMA_MAX_LOADED_MODELS",
+        "OLLAMA_NUM_PARALLEL",
+        "OLLAMA_FLASH_ATTENTION",
+        "OLLAMA_KV_CACHE_TYPE",
+        "OLLAMA_KEEP_ALIVE",
+    ):
+        environment[key] = _ENV_VALUES[key]
+
+
 def start_ollama(
     project_dir: Path,
     *,
@@ -339,7 +432,7 @@ def start_ollama(
     logs_dir.mkdir(parents=True, exist_ok=True)
     log_path = logs_dir / "ollama-supervisor.log"
     environment = os.environ.copy()
-    environment["OLLAMA_HOST"] = _BASE_URL
+    _apply_runtime_environment(environment)
     if storage_path is not None:
         environment["OLLAMA_MODELS"] = str(storage_path)
 
@@ -383,6 +476,19 @@ def _model_names(tags: dict[str, Any]) -> list[str]:
     return names
 
 
+def _api_model_names() -> tuple[str, ...]:
+    return tuple(_model_names(_request_json("/api/tags", timeout=5.0)))
+
+
+def _model_identity(name: str) -> str:
+    return name.strip().casefold()
+
+
+def _contains_model(names: Iterable[str], model: str) -> bool:
+    target = _model_identity(model)
+    return any(_model_identity(name) == target for name in names)
+
+
 def prepare_e_storage(project_dir: Path) -> Path | None:
     selected = print_storage_status(project_dir)
     layouts = [inspect_storage(path) for path in _E_STORAGE_CANDIDATES]
@@ -411,8 +517,7 @@ def prepare_e_storage(project_dir: Path) -> Path | None:
         print("Перезапуск Ollama для применения каталога на E:...", flush=True)
         stop_ollama()
     start_ollama(project_dir, storage_path=selected.path)
-    tags = _request_json("/api/tags", timeout=5.0)
-    names = _model_names(tags)
+    names = _api_model_names()
     print(
         "Модели после переключения: " + (", ".join(names) if names else "нет"),
         flush=True,
@@ -420,15 +525,15 @@ def prepare_e_storage(project_dir: Path) -> Path | None:
     return selected.path
 
 
-def pull_model(project_dir: Path) -> None:
+def pull_model(project_dir: Path, model: str = _STANDARD_VISION_MODEL) -> None:
     executable = shutil.which("ollama")
     if not executable:
         raise OllamaRecoveryError("ollama.exe не найден в PATH Supervisor.")
     environment = os.environ.copy()
-    environment["OLLAMA_HOST"] = _BASE_URL
-    print(f"Загрузка модели {_MODEL}...", flush=True)
+    _apply_runtime_environment(environment)
+    print(f"Загрузка модели {model}...", flush=True)
     completed = subprocess.run(
-        [executable, "pull", _MODEL],
+        [executable, "pull", model],
         cwd=str(project_dir),
         env=environment,
         stdin=subprocess.DEVNULL,
@@ -436,12 +541,41 @@ def pull_model(project_dir: Path) -> None:
     )
     if completed.returncode:
         raise OllamaRecoveryError(
-            f"ollama pull {_MODEL} завершился с кодом {completed.returncode}."
+            f"ollama pull {model} завершился с кодом {completed.returncode}."
         )
 
 
-def verify_model() -> tuple[str, ...]:
-    payload = _request_json("/api/show", payload={"model": _MODEL}, timeout=30.0)
+def ensure_model_bundle(project_dir: Path, storage_path: Path | None) -> tuple[str, ...]:
+    start_ollama(project_dir, storage_path=storage_path)
+    api_names = list(_api_model_names())
+    disk_names = list(scan_manifest_models(storage_path)) if storage_path else []
+    pulled: list[str] = []
+
+    for spec in _MODEL_BUNDLE:
+        if _contains_model(api_names, spec.name):
+            print(f"{spec.role}: уже доступна через Ollama API — {spec.name}", flush=True)
+            continue
+        if _contains_model(disk_names, spec.name):
+            print(
+                f"{spec.role}: найдена в manifests на диске E, "
+                "выполняется pull для повторной регистрации без удаления blobs.",
+                flush=True,
+            )
+        else:
+            print(f"{spec.role}: отсутствует, начинается загрузка {spec.name}", flush=True)
+        pull_model(project_dir, spec.name)
+        pulled.append(spec.name)
+        api_names = list(_api_model_names())
+
+    return tuple(pulled)
+
+
+def verify_model(
+    model: str = _STANDARD_VISION_MODEL,
+    *,
+    required_capability: str = "vision",
+) -> tuple[str, ...]:
+    payload = _request_json("/api/show", payload={"model": model}, timeout=30.0)
     raw_capabilities = payload.get("capabilities")
     capabilities = (
         tuple(
@@ -452,12 +586,40 @@ def verify_model() -> tuple[str, ...]:
         if isinstance(raw_capabilities, list)
         else ()
     )
-    if "vision" not in capabilities:
+    required = required_capability.strip().casefold()
+    if required not in capabilities:
         shown = ", ".join(capabilities) or "не указаны"
         raise OllamaRecoveryError(
-            f"Модель {_MODEL} установлена, но capability vision отсутствует: {shown}."
+            f"Модель {model} установлена, но capability {required} отсутствует: {shown}."
         )
     return capabilities
+
+
+def verify_model_bundle() -> dict[str, tuple[str, ...]]:
+    result: dict[str, tuple[str, ...]] = {}
+    for spec in _MODEL_BUNDLE:
+        result[spec.name] = verify_model(
+            spec.name,
+            required_capability=spec.required_capability,
+        )
+        print(
+            f"{spec.role}: {spec.name} — {', '.join(result[spec.name])}",
+            flush=True,
+        )
+    return result
+
+
+def _model_state(
+    spec: ModelSpec,
+    *,
+    api_names: Sequence[str],
+    disk_names: Sequence[str],
+) -> str:
+    if _contains_model(api_names, spec.name):
+        return "API"
+    if _contains_model(disk_names, spec.name):
+        return "найдена на диске E, не зарегистрирована в API"
+    return "отсутствует"
 
 
 def print_status(project_dir: Path) -> None:
@@ -467,36 +629,56 @@ def print_status(project_dir: Path) -> None:
     print(f"Файл конфигурации: {env_path}")
     for key in _ENV_VALUES:
         print(f"{key}={values.get(key, '<не задано>')}")
-    print_storage_status(project_dir)
+    selected = print_storage_status(project_dir)
+    disk_names = scan_manifest_models(selected.path) if selected is not None else ()
     try:
-        tags = _request_json("/api/tags", timeout=3.0)
+        api_names = _api_model_names()
     except OllamaRecoveryError as error:
         print(f"Ollama API: недоступен ({error})")
-        return
-    names = _model_names(tags)
-    print("Ollama API: доступен")
-    print("Модели: " + (", ".join(names) if names else "нет"))
+        api_names = ()
+    else:
+        print("Ollama API: доступен")
+        print("Модели: " + (", ".join(api_names) if api_names else "нет"))
+
+    print("Целевой набор моделей:")
+    for spec in _MODEL_BUNDLE:
+        print(
+            f"  {spec.role}: {_model_state(spec, api_names=api_names, disk_names=disk_names)}"
+            f" — {spec.name}"
+        )
 
 
 def repair(project_dir: Path) -> None:
-    print("Шаг 1/5: проверка и восстановление хранилища Ollama", flush=True)
+    print("Шаг 1/6: поиск и подключение хранилища Ollama на E", flush=True)
     storage_path = prepare_e_storage(project_dir)
 
-    print("Шаг 2/5: безопасная настройка AI vision", flush=True)
+    print("Шаг 2/6: обновление AI vision/text и безопасных лимитов Ollama", flush=True)
     env_path = configure_vision_env(project_dir)
     print(f"Обновлён {env_path}: только {', '.join(_ENV_VALUES)}", flush=True)
 
-    print("Шаг 3/5: запуск Ollama", flush=True)
+    print("Шаг 3/6: запуск Ollama с выбранным хранилищем", flush=True)
     start_ollama(project_dir, storage_path=storage_path)
 
-    print(f"Шаг 4/5: установка {_MODEL}", flush=True)
-    pull_model(project_dir)
+    print("Шаг 4/6: поиск моделей в API и manifests", flush=True)
+    if storage_path is not None:
+        disk_names = scan_manifest_models(storage_path)
+        print(
+            "Найдено в manifests: " + (", ".join(disk_names) if disk_names else "нет"),
+            flush=True,
+        )
 
-    print("Шаг 5/5: проверка vision capability", flush=True)
-    capabilities = verify_model()
-    print(f"Модель {_MODEL} готова. Capabilities: {', '.join(capabilities)}", flush=True)
+    print("Шаг 5/6: установка только отсутствующих моделей", flush=True)
+    pulled = ensure_model_bundle(project_dir, storage_path)
     print(
-        "Теперь выполните самоперезапуск Supervisor, чтобы он перечитал обновлённый .env.",
+        "Загружено/перерегистрировано: " + (", ".join(pulled) if pulled else "ничего"),
+        flush=True,
+    )
+
+    print("Шаг 6/6: проверка capabilities всего набора", flush=True)
+    verify_model_bundle()
+    print(
+        "Набор Ollama готов. Выполните самоперезапуск Supervisor, "
+        "чтобы он перечитал обновлённый .env.",
         flush=True,
     )
 
@@ -505,7 +687,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Safe Ollama recovery for Velvet Supervisor")
     parser.add_argument(
         "action",
-        choices=("status", "configure", "start", "pull", "show", "repair"),
+        choices=(
+            "status",
+            "configure",
+            "start",
+            "storage",
+            "pull",
+            "show",
+            "repair",
+        ),
     )
     args = parser.parse_args(argv)
     project_dir = _project_dir()
@@ -517,12 +707,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Обновлён {env_path}. Требуется самоперезапуск Supervisor.")
         elif args.action == "start":
             start_ollama(project_dir)
+        elif args.action == "storage":
+            prepare_e_storage(project_dir)
         elif args.action == "pull":
-            start_ollama(project_dir)
-            pull_model(project_dir)
+            storage_path = prepare_e_storage(project_dir)
+            ensure_model_bundle(project_dir, storage_path)
         elif args.action == "show":
-            capabilities = verify_model()
-            print(f"{_MODEL}: {', '.join(capabilities)}")
+            verify_model_bundle()
         else:
             repair(project_dir)
     except OllamaRecoveryError as error:

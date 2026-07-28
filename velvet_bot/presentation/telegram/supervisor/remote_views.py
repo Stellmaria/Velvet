@@ -8,6 +8,28 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from .contract import supervisor_callback
 
 
+_COMMAND_TITLE_OVERRIDES = {
+    "ollama-recovery-status": "Ollama: состояние набора моделей",
+    "ollama-configure-qwen3-vl-4b": "Ollama: настроить набор моделей",
+    "ollama-pull-qwen3-vl-4b": "Ollama: установить набор моделей",
+    "ollama-show-qwen3-vl-4b": "Ollama: проверить набор моделей",
+    "ollama-repair-qwen3-vl-4b": "Ollama: восстановить набор моделей",
+}
+_TITLE_TEXT_OVERRIDES = {
+    "Ollama: состояние vision": "Ollama: состояние набора моделей",
+    "Ollama: настроить vision qwen3-vl:4b": "Ollama: настроить набор моделей",
+    "Ollama: скачать qwen3-vl:4b": "Ollama: установить набор моделей",
+    "Ollama: проверить vision qwen3-vl:4b": "Ollama: проверить набор моделей",
+    "Ollama: восстановить vision qwen3-vl:4b": "Ollama: восстановить набор моделей",
+}
+
+
+def _command_title(item: dict[str, Any], *, default: str = "Команда") -> str:
+    key = str(item.get("key") or item.get("command_key") or "")
+    raw = str(item.get("title", default))
+    return _COMMAND_TITLE_OVERRIDES.get(key, _TITLE_TEXT_OVERRIDES.get(raw, raw))
+
+
 def console_text(commands: list[dict[str, Any]]) -> str:
     lines = [
         "<b>🖥 Безопасная консоль Supervisor</b>",
@@ -19,7 +41,7 @@ def console_text(commands: list[dict[str, Any]]) -> str:
     ]
     for item in commands:
         lines.append(
-            f"• <b>{escape(str(item.get('title', 'Команда')))}</b>\n"
+            f"• <b>{escape(_command_title(item))}</b>\n"
             f"  <code>{escape(str(item.get('command', '')))}</code>"
         )
     return "\n".join(lines)
@@ -44,7 +66,7 @@ def console_keyboard(commands: list[dict[str, Any]]) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"▶️ {str(item.get('title', key))[:42]}",
+                    text=f"▶️ {_command_title(item, default=key)[:42]}",
                     callback_data=supervisor_callback("console.quick", task_id=key),
                 )
             ]
@@ -82,7 +104,7 @@ def console_preview_text(request: dict[str, Any]) -> str:
     return (
         "<b>Подтвердите удалённую команду</b>\n\n"
         f"ID: <code>{escape(str(request.get('id', '—')))}</code>\n"
-        f"Название: <b>{escape(str(request.get('title', '—')))}</b>\n"
+        f"Название: <b>{escape(_command_title(request, default='—'))}</b>\n"
         f"Каталог: <code>{escape(str(request.get('project_dir', '—')))}</code>\n"
         f"Команда: <code>{escape(str(request.get('command', '—')))}</code>\n"
         f"Таймаут: <b>{escape(str(request.get('timeout_seconds', '—')))} сек.</b>\n"
