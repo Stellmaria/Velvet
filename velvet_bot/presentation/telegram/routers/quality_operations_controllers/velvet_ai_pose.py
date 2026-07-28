@@ -7,7 +7,7 @@ from html import escape
 from aiogram import Bot, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import BaseFilter
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, ForceReply, Message
 
 from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.ai_vision import VisionAnalysisError, VisionProviderUnavailable
@@ -127,6 +127,38 @@ async def _send_pose_messages(
             )
 
 
+async def start_pose_extractor(callback: CallbackQuery) -> None:
+    if not isinstance(callback.message, Message):
+        await callback.answer("Меню больше недоступно.", show_alert=True)
+        return
+    settings = load_settings()
+    if not settings.ai_vision_enabled:
+        await callback.answer(
+            "Локальный Qwen отключён в настройках бота.",
+            show_alert=True,
+        )
+        return
+
+    models = _comparison_models(settings.ai_vision_model)
+    model_lines = "\n".join(f"• <code>{escape(model)}</code>" for model in models)
+    mode_text = (
+        "Две модели последовательно извлекут карты позы для сравнения."
+        if len(models) > 1
+        else "Qwen извлечёт одну техническую карту позы."
+    )
+    await callback.answer()
+    await callback.message.answer(
+        "<b>🧍 Изображение → поза</b>\n\n"
+        "Ответьте на это сообщение фотографией или image-файлом. "
+        "Экстрактор опишет только положение тел, конечностей, опоры, контакты, "
+        "перекрытия и ракурс, без внешности, одежды и художественного оформления. "
+        f"{mode_text}\n\n"
+        f"<b>Модели:</b>\n{model_lines}\n\n"
+        f"<code>{POSE_EXTRACTOR_MARKER}</code>",
+        reply_markup=ForceReply(selective=True),
+    )
+
+
 @router.message(PoseExtractorReplyFilter())
 async def handle_pose_extractor_reply(
     message: Message,
@@ -229,4 +261,5 @@ __all__ = (
     "PoseExtractorReplyFilter",
     "_completion_notice",
     "router",
+    "start_pose_extractor",
 )
