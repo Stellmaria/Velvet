@@ -198,7 +198,7 @@ def format_meow_preview(
         )
     )
     return (
-        f"<b>Мяу · {escape(request.model.title)}</b>\n\n"
+        f"<b>Мяу · {escape(request.model.display_name)}</b>\n\n"
         f"{settings}\n"
         f"Себестоимость: <b>{_format_usd(estimated_usd)}</b> · "
         f"<b>{_format_rub(estimated_rub)}</b>\n"
@@ -317,7 +317,7 @@ async def handle_meow_model(
     )
     if isinstance(callback.message, Message):
         await callback.message.answer(
-            f"<b>Мяу · {escape(model.title)}</b>\n\n"
+            f"<b>Мяу · {escape(model.display_name)}</b>\n\n"
             "Отправьте промт одним текстовым сообщением. "
             "Формат по умолчанию: 9:16.",
             reply_markup=build_meow_cancel_keyboard(
@@ -411,13 +411,18 @@ async def handle_meow_confirm(
     if block_reason is not None:
         await callback.answer(block_reason, show_alert=True)
         return
+    chat_id = (
+        callback.message.chat.id
+        if isinstance(callback.message, Message)
+        else None
+    )
     result = await ai_task_queue_service.enqueue(
         AITaskRequest(
             scope=AIBudgetScope.VISION,
             task_type=KIE_GENERATION_TASK_TYPE,
             payload={
                 "request": request.to_task_payload(),
-                "chat_id": callback.message.chat.id if callback.message else None,
+                "chat_id": chat_id,
                 "user_id": callback.from_user.id,
                 "workspace_id": callback_data.workspace_id,
             },
@@ -431,7 +436,7 @@ async def handle_meow_confirm(
     await _edit_or_answer(
         callback,
         text=(
-            f"<b>Мяу · {escape(model.title)}</b>\n\n"
+            f"<b>Мяу · {escape(model.display_name)}</b>\n\n"
             "Задача поставлена в очередь. Платный вызов произойдёт только после "
             "атомарной проверки бюджета worker-ом.\n\n"
             f"Задача: <code>{result.task.id}</code>\n"
