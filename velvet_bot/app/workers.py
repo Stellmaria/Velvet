@@ -15,7 +15,14 @@ from velvet_bot.backup_runtime import BackupService
 from velvet_bot.calibrated_ai_quality import CalibratedAIQualityService
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
+from velvet_bot.domains.ai_usage import AIUsageService, build_ai_usage_service
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
+from velvet_bot.domains.vision_routing import build_vision_cascade_router
+from velvet_bot.domains.vision_routing.integration import (
+    CascadeMediaAIRepository,
+    CascadeMediaAIVisionService,
+    VisionCascadeAdapter,
+)
 from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.domains.workspaces.qwen_repository import WorkspaceQwenRepository
@@ -26,13 +33,8 @@ from velvet_bot.infrastructure.transient_connections import (
     recover_database_pool,
 )
 from velvet_bot.local_ai_runtime import get_local_ai_lock
-from velvet_bot.ollama_vision import ReliableVisionClient
 from velvet_bot.quality_calibration import QualityCalibrationRepository
 from velvet_bot.resilient_ai_quality import ResilientAIQualityRepository
-from velvet_bot.resilient_ai_vision import (
-    ResilientMediaAIRepository,
-    ResilientMediaAIVisionService,
-)
 from velvet_bot.services.diagnostic_bundle import DiagnosticBundleService
 from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.services.workspace_qwen_quality import WorkspaceQwenQualityService
@@ -73,6 +75,7 @@ def build_worker_manager(
     database: Database,
     backup_service: BackupService,
     settings: Settings | None = None,
+    ai_usage_service: AIUsageService | None = None,
     error_center: ErrorIncidentCenter | None = None,
     system_service: SystemHealthService | None = None,
     diagnostic_service: DiagnosticBundleService | None = None,
@@ -131,16 +134,16 @@ def build_worker_manager(
     if settings is not None and settings.ai_vision_enabled:
         ai_lock = get_local_ai_lock()
         cache_chat_id = _ai_cache_chat_id(settings)
-        ai_service = ResilientMediaAIVisionService(
+        active_usage_service = ai_usage_service or build_ai_usage_service(database=database)
+        vision_router = build_vision_cascade_router(
+            settings=settings,
+            database=database,
+            ai_usage_service=active_usage_service,
+        )
+        ai_service = CascadeMediaAIVisionService(
             bot=bot,
-            repository=ResilientMediaAIRepository(database),
-            client=ReliableVisionClient(
-                provider=settings.ai_vision_provider,
-                base_url=settings.ai_vision_base_url,
-                model=settings.ai_vision_model,
-                api_key=settings.ai_vision_api_key,
-                timeout_seconds=settings.ai_vision_timeout_seconds,
-            ),
+            repository=CascadeMediaAIRepository(database),
+            client=VisionCascadeAdapter(vision_router),
             max_attempts=settings.ai_vision_max_attempts,
         )
         ai_service.set_cache_chat_id(cache_chat_id)
@@ -173,7 +176,7 @@ def build_worker_manager(
         manager.register(
             PeriodicWorkerSpec(
                 name="ai-vision",
-                description="Смысловой ИИ-анализ изображений",
+                description="Каскадный смысловой VL-анализ изображений",
                 interval_seconds=8,
                 runner=partial(
                     _run_ai_locked,
