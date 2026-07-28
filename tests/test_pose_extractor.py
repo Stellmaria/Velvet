@@ -86,7 +86,13 @@ class PoseExtractorTests(unittest.TestCase):
 
     def test_controller_delivers_text_and_registers_pose_job(self) -> None:
         source = Path(velvet_ai_pose.__file__).read_text(encoding="utf-8")
-        self.assertIn('F.action == "poseextract_start"', source)
+        bundle = (
+            Path(__file__).resolve().parents[1]
+            / "velvet_bot/presentation/telegram/routers/quality_operations.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('F.action == "poseextract_start"', bundle)
+        self.assertIn("start_pose_extractor", bundle)
         self.assertIn('kind="pose_extraction"', source)
         self.assertIn("_send_pose_messages", source)
         self.assertNotIn("answer_document(", source)
