@@ -1,12 +1,12 @@
 # Текущий статус разработки Velvet
 
-Дата актуализации: 21 июля 2026 года.
+Дата актуализации: 28 июля 2026 года.
 
 Текущая стабильная версия: `1.3.0`.
 
 ## Назначение
 
-Velvet Archive — owner-oriented архивный Telegram-бот. Его домены: персонажи, истории, медиа, референсы, публикации, аналитика, AI-проверки и эксплуатация владельцем.
+Velvet Archive — owner-oriented архивный Telegram-бот. Его домены: персонажи, истории, медиа, референсы, публикации, аналитика, AI-проверки и эксплуатация владельцем. По отдельному решению владельца начата изолированная линия локального ролевого режима, не использующая архивные карточки персонажей.
 
 Аукционный бот является отдельным продуктом. Ставки, лоты, колоды, валюты и режимы торгов в Velvet Archive не входят.
 
@@ -17,7 +17,7 @@ Velvet Archive — owner-oriented архивный Telegram-бот. Его до�
 - стабилизировать и упрощать существующий функционал;
 - улучшать скорость, надёжность, контроль и читаемость;
 - новый код добавлять только как улучшение существующего сценария;
-- не расширять предметную область до закрытия эксплуатационных ворот.
+- не расширять предметную область до закрытия эксплуатационных ворот, кроме явно одобренной владельцем отдельной продуктовой линии.
 
 ## Существующий функционал
 
@@ -172,8 +172,8 @@ Production legacy-consumer inventory закрыт: 0 файлов, 0 references 
 
 Статус: завершено.
 
-- repository modules: 34;
-- domain repositories: 33;
+- repository modules: 36;
+- domain repositories: 35;
 - infrastructure PostgreSQL adapters: 1;
 - central repositories: 0;
 - root repositories: 0;
@@ -188,6 +188,20 @@ Production legacy-consumer inventory закрыт: 0 файлов, 0 references 
 
 Статический анализ включается постепенно для transport-neutral слоёв: core, application, domains, services и workers. Первый baseline ограничивается выбранным пакетом и запрещает новые typing errors только в его scope. Полное включение strict-mode одним изменением запрещено.
 
+## Линия F: локальный ролевой режим
+
+Статус: RP1 foundation в разработке, draft PR.
+
+Реализуемая граница:
+
+- собственные `rp_characters`, `rp_sessions`, `rp_session_characters`, `rp_messages` и `rp_memories`;
+- отдельные блоки внешности, характера, речи, биографии и канонических фактов;
+- отдельные `RP_*` настройки и Ollama text client;
+- контекстный бюджет 8192/900 для MSI Katana с 16 ГБ RAM;
+- отсутствие связей с архивными `characters`, медиа, историями и референсами.
+
+Пока не готовы Telegram-редактор персонажей, запуск сцены, генерация хода, автоматическая сводка, ручное управление памятью, откат и экспорт. Поэтому пользовательский RP-режим ещё не заявляется работающим.
+
 ## Текущие production-улучшения
 
 21 июля 2026 года добавлены:
@@ -199,12 +213,14 @@ Production legacy-consumer inventory закрыт: 0 файлов, 0 references 
 
 ## Оставшийся кодовый долг
 
-1. P3F: ограниченный static typing baseline.
-2. Классификация 110 исторических `velvet_bot/*.py` modules.
-3. Разбор 8 explicit runtime compatibility-компонентов.
-4. Инвентаризация duplicate/shared Telegram helpers.
-5. AI duration/error/provider/model/cost-unit metrics.
-6. Heavy Runtime: idle unload, пустой polling, checkpoint/resume import.
+1. RP1: PostgreSQL/Ollama foundation и CI.
+2. RP2: отдельный редактор RP-персонажей.
+3. P3F: ограниченный static typing baseline.
+4. Классификация 110 исторических `velvet_bot/*.py` modules.
+5. Разбор 8 explicit runtime compatibility-компонентов.
+6. Инвентаризация duplicate/shared Telegram helpers.
+7. AI duration/error/provider/model/cost-unit metrics.
+8. Heavy Runtime: idle unload, пустой polling, checkpoint/resume import.
 
 ## Эксплуатационные обязательства
 
@@ -235,7 +251,7 @@ CI блокирует содержательный PR без завершённ�
 
 ## Правила дальнейшей разработки
 
-- новый код обязан улучшать существующую функцию;
+- новый код обязан улучшать существующую функцию либо относиться к явно одобренной владельцем отдельной продуктовой линии;
 - Telegram controller не получает новый SQL;
 - business operation создаётся через use case/domain service;
 - новые внешние private pool access запрещены;
