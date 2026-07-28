@@ -8,16 +8,18 @@ from typing import Mapping
 from uuid import UUID
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
 
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.domains.ai_usage import (
+    AIBudgetExceeded,
     AIProviderResult,
     AIRequestContext,
     AIRequestExecutor,
     AITask,
     AITaskQueueService,
 )
-from velvet_bot.infrastructure.ai import KieClient
+from velvet_bot.infrastructure.ai import KieClient, KieError
 
 from .models import (
     KIE_GENERATION_TASK_TYPE,
@@ -135,7 +137,14 @@ class KieGenerationWorker:
                 error=error,
             )
             raise
-        except Exception as error:  # p2-approved-boundary: persist-kie-task-failure
+        except (
+            AIBudgetExceeded,
+            KieError,
+            TimeoutError,
+            ValueError,
+            RuntimeError,
+            OSError,
+        ) as error:
             failure = await self._queue.fail(
                 task_id=task.id,
                 worker_id=self._worker_id,
@@ -207,7 +216,7 @@ class KieGenerationWorker:
                         photo=url,
                         caption=item_caption,
                     )
-        except Exception:  # p2-approved-boundary: best-effort-kie-delivery
+        except TelegramAPIError:
             logger.exception(
                 "Kie task %s succeeded but Telegram delivery failed",
                 record.task_id,
@@ -228,7 +237,7 @@ class KieGenerationWorker:
                 f"{escape(str(error))}\n"
                 f"Задача: <code>{task.id}</code>",
             )
-        except Exception:  # p2-approved-boundary: best-effort-kie-failure-notice
+        except TelegramAPIError:
             logger.exception("Could not deliver terminal Kie failure for %s", task.id)
 
 
