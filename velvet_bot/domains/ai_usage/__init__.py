@@ -1,4 +1,4 @@
-from .factory import build_ai_usage_service
+from .factory import build_ai_task_queue_service, build_ai_usage_service
 from .ledger import AIUsageRepository
 from .models import (
     AIBudgetStatus,
@@ -16,6 +16,16 @@ from .service import (
     AIUsageService,
     BudgetWarningHandler,
 )
+from .task_models import (
+    AITask,
+    AITaskEnqueueResult,
+    AITaskFailureResult,
+    AITaskQueueSnapshot,
+    AITaskRequest,
+    AITaskStatus,
+)
+from .task_service import AITaskQueueService
+from .tasks import AITaskRepository
 
 __all__ = (
     "AIBudgetExceeded",
@@ -25,12 +35,21 @@ __all__ = (
     "AIRequestContext",
     "AIRequestExecutor",
     "AIReservation",
+    "AITask",
+    "AITaskEnqueueResult",
+    "AITaskFailureResult",
+    "AITaskQueueService",
+    "AITaskQueueSnapshot",
+    "AITaskRepository",
+    "AITaskRequest",
+    "AITaskStatus",
     "AITokenPricing",
     "AIUsageEvent",
     "AIUsageRepository",
     "AIUsageService",
     "AIUsageTotals",
     "BudgetWarningHandler",
+    "build_ai_task_queue_service",
     "build_ai_usage_service",
     "load_token_pricing",
 )
