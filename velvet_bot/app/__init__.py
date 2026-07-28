@@ -13,7 +13,13 @@ def __getattr__(name: str) -> Any:
 
     install_runtime_stability()
 
-    from velvet_bot.app.bootstrap import run_application
+    from velvet_bot.app.bootstrap import run_application as application
 
-    globals()[name] = run_application
-    return run_application
+    async def configured_run_application() -> None:
+        from velvet_bot.infrastructure.ai_model_routing import install_ai_model_routing
+
+        install_ai_model_routing()
+        await application()
+
+    globals()[name] = configured_run_application
+    return configured_run_application
