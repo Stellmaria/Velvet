@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -18,12 +18,34 @@ from velvet_bot.domains.ai_usage.task_models import (
     AITaskStatus,
 )
 
-_TASK_COLUMNS = """
-    id,scope,task_type,status,priority,payload,result,dedupe_key,
-    attempt_count,max_attempts,not_before,locked_by,locked_at,
-    last_error_type,last_error,last_retry_delay_seconds,
-    estimated_cost_rub,created_by,created_at,updated_at,completed_at
-"""
+_TASK_FIELDS = (
+    "id",
+    "scope",
+    "task_type",
+    "status",
+    "priority",
+    "payload",
+    "result",
+    "dedupe_key",
+    "attempt_count",
+    "max_attempts",
+    "not_before",
+    "locked_by",
+    "locked_at",
+    "last_error_type",
+    "last_error",
+    "last_retry_delay_seconds",
+    "estimated_cost_rub",
+    "created_by",
+    "created_at",
+    "updated_at",
+    "completed_at",
+)
+
+
+def _columns(alias: str | None = None) -> str:
+    prefix = f"{alias}." if alias else ""
+    return ",".join(f"{prefix}{field}" for field in _TASK_FIELDS)
 
 
 class AITaskRepository:
@@ -91,7 +113,7 @@ class AITaskRepository:
                        last_retry_delay_seconds=NULL,completed_at=NULL
                    FROM candidate
                    WHERE task.id=candidate.id
-                   RETURNING {_TASK_COLUMNS}""",
+                   RETURNING {_columns('task')}""",
                 normalized_worker,
                 scope_values,
                 type_values,
@@ -123,7 +145,7 @@ class AITaskRepository:
                        last_error_type=NULL,last_error=NULL,
                        last_retry_delay_seconds=NULL,completed_at=NOW(),updated_at=NOW()
                    WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR
-                   RETURNING {_TASK_COLUMNS}""",
+                   RETURNING {_columns()}""",
                 task_id,
                 _worker_id(worker_id),
                 json.dumps(dict(result or {}), ensure_ascii=False, default=str),
@@ -141,15 +163,16 @@ class AITaskRepository:
     ) -> AITaskFailureResult | None:
         base_delay = max(0, int(base_delay_seconds))
         max_delay = max(base_delay, int(max_delay_seconds))
+        normalized_worker = _worker_id(worker_id)
         async with self._database.acquire() as connection:
             async with connection.transaction():
                 current = await connection.fetchrow(
-                    f"""SELECT {_TASK_COLUMNS}
+                    f"""SELECT {_columns()}
                        FROM ai_tasks
                        WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR
                        FOR UPDATE""",
                     task_id,
-                    _worker_id(worker_id),
+                    normalized_worker,
                 )
                 if current is None:
                     return None
@@ -169,9 +192,9 @@ class AITaskRepository:
                                last_error=$5::TEXT,last_retry_delay_seconds=$3::INTEGER,
                                completed_at=NULL,updated_at=NOW()
                            WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR
-                           RETURNING {_TASK_COLUMNS}""",
+                           RETURNING {_columns()}""",
                         task_id,
-                        _worker_id(worker_id),
+                        normalized_worker,
                         delay,
                         error_type,
                         error_message,
@@ -190,9 +213,9 @@ class AITaskRepository:
                            last_error_type=$3::VARCHAR,last_error=$4::TEXT,
                            last_retry_delay_seconds=NULL,completed_at=NOW(),updated_at=NOW()
                        WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR
-                       RETURNING {_TASK_COLUMNS}""",
+                       RETURNING {_columns()}""",
                     task_id,
-                    _worker_id(worker_id),
+                    normalized_worker,
                     error_type,
                     error_message,
                 )
@@ -212,7 +235,7 @@ class AITaskRepository:
                        last_error_type='CancelledByOwner',last_error=$2::TEXT,
                        last_retry_delay_seconds=NULL,completed_at=NOW(),updated_at=NOW()
                    WHERE id=$1::UUID AND status IN ('queued','running')
-                   RETURNING {_TASK_COLUMNS}""",
+                   RETURNING {_columns()}""",
                 task_id,
                 reason.strip()[:8000] or "Cancelled by owner.",
             )
@@ -227,7 +250,7 @@ class AITaskRepository:
                        last_error_type=NULL,last_error=NULL,
                        last_retry_delay_seconds=NULL,completed_at=NULL,updated_at=NOW()
                    WHERE id=$1::UUID AND status IN ('error','cancelled')
-                   RETURNING {_TASK_COLUMNS}""",
+                   RETURNING {_columns()}""",
                 task_id,
             )
         return _task_from_row(row) if row is not None else None
@@ -242,11 +265,12 @@ class AITaskRepository:
         async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 f"""WITH stale AS (
-                       SELECT id
-                       FROM ai_tasks
-                       WHERE status='running' AND locked_at<$1::TIMESTAMPTZ
-                       ORDER BY locked_at ASC
-                       FOR UPDATE SKIP LOCKED
+                       SELECT stale_task.id
+                       FROM ai_tasks AS stale_task
+                       WHERE stale_task.status='running'
+                         AND stale_task.locked_at<$1::TIMESTAMPTZ
+                       ORDER BY stale_task.locked_at ASC
+                       FOR UPDATE OF stale_task SKIP LOCKED
                        LIMIT $2::INTEGER
                    )
                    UPDATE ai_tasks AS task
@@ -272,7 +296,7 @@ class AITaskRepository:
                        updated_at=NOW()
                    FROM stale
                    WHERE task.id=stale.id
-                   RETURNING {_TASK_COLUMNS}""",
+                   RETURNING {_columns('task')}""",
                 older_than,
                 safe_limit,
             )
@@ -311,7 +335,7 @@ class AITaskRepository:
         safe_limit = max(1, min(int(limit), 200))
         async with self._database.acquire() as connection:
             rows = await connection.fetch(
-                f"""SELECT {_TASK_COLUMNS}
+                f"""SELECT {_columns()}
                    FROM ai_tasks
                    ORDER BY updated_at DESC,id DESC
                    LIMIT $1::INTEGER""",
@@ -322,7 +346,7 @@ class AITaskRepository:
     async def get(self, *, task_id: UUID) -> AITask | None:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
-                f"SELECT {_TASK_COLUMNS} FROM ai_tasks WHERE id=$1::UUID",
+                f"SELECT {_columns()} FROM ai_tasks WHERE id=$1::UUID",
                 task_id,
             )
         return _task_from_row(row) if row is not None else None
@@ -345,7 +369,7 @@ class AITaskRepository:
                ON CONFLICT (dedupe_key)
                WHERE dedupe_key IS NOT NULL AND status IN ('queued','running')
                DO NOTHING
-               RETURNING {_TASK_COLUMNS}""",
+               RETURNING {_columns()}""",
             task_id,
             request.scope.value,
             request.task_type.strip(),
@@ -362,7 +386,7 @@ class AITaskRepository:
         if dedupe_key is None:
             raise RuntimeError("Не удалось поставить AI-задачу в очередь.")
         existing = await connection.fetchrow(
-            f"""SELECT {_TASK_COLUMNS}
+            f"""SELECT {_columns()}
                FROM ai_tasks
                WHERE dedupe_key=$1::VARCHAR AND status IN ('queued','running')
                ORDER BY created_at ASC
