@@ -158,6 +158,7 @@ def build_worker_manager(
             api_key=active_kie_settings.api_key,
             models=active_kie_settings.models,
             base_url=active_kie_settings.base_url,
+            file_upload_base_url=active_kie_settings.file_upload_base_url,
             timeout_seconds=active_kie_settings.timeout_seconds,
             poll_interval_seconds=active_kie_settings.poll_interval_seconds,
             task_timeout_seconds=active_kie_settings.task_timeout_seconds,
@@ -173,7 +174,7 @@ def build_worker_manager(
         manager.register(
             PeriodicWorkerSpec(
                 name="kie-media-generation",
-                description="Генерация изображений и видео через Мяу",
+                description="Генерация изображений через Мяу",
                 interval_seconds=3,
                 runner=kie_worker.process_once,
             )
