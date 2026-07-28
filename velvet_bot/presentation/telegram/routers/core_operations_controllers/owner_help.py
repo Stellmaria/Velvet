@@ -143,6 +143,10 @@ OWNER_COMMAND_GROUPS: tuple[
             ("ai_queue", "показать состояние и последние AI-задачи"),
             ("ai_queue_retry", "повторно поставить error/cancelled AI-задачу"),
             ("ai_queue_cancel", "отменить queued/running AI-задачу"),
+            ("ai_batch_plan", "рассчитать максимальную стоимость VL-партии"),
+            ("ai_batch_start", "подтвердить и поставить VL-партию в очередь"),
+            ("ai_batch_status", "показать прогресс VL-партии"),
+            ("ai_batch_cancel", "отменить план и ожидающие задачи VL-партии"),
         ),
     ),
     (
