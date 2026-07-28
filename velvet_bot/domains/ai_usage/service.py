@@ -3,19 +3,19 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Generic, TypeVar
 from uuid import uuid4
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from velvet_bot.core.ai_budget import AIBudgetDecision, AIBudgetPolicy
+from velvet_bot.domains.ai_usage.ledger import AIUsageRepository
 from velvet_bot.domains.ai_usage.models import (
     AIProviderResult,
     AIRequestContext,
     AIReservation,
     AIUsageTotals,
 )
-from velvet_bot.domains.ai_usage.repository import AIUsageRepository
 
 T = TypeVar("T")
 
@@ -47,7 +47,7 @@ class AIUsageService:
         self.policy = policy
         try:
             self._timezone = ZoneInfo(budget_timezone)
-        except Exception as error:
+        except ZoneInfoNotFoundError as error:
             raise ValueError(f"Неизвестная timezone AI-бюджета: {budget_timezone}") from error
 
     async def reserve(self, context: AIRequestContext) -> AIReservation:
@@ -68,7 +68,7 @@ class AIUsageService:
     async def complete(
         self,
         reservation: AIReservation,
-        result: AIProviderResult[object],
+        result: AIProviderResult[T],
         *,
         latency_ms: int,
     ) -> None:
@@ -159,7 +159,7 @@ class AIRequestExecutor(Generic[T]):
         latency_ms = _latency_ms(started)
         await self._usage_service.complete(
             reservation,
-            result,  # type: ignore[arg-type]
+            result,
             latency_ms=latency_ms,
         )
         return result.value
