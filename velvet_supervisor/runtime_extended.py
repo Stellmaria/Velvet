@@ -83,16 +83,26 @@ class VelvetSupervisor(BaseVelvetSupervisor):
         return result
 
     def schedule_supervisor_restart(self, *, update: bool) -> OperationState:
-        """Hand off self-restart through a short Task Scheduler wrapper."""
+        """Hand off self-control through a short Task Scheduler wrapper.
 
-        if not self._operation_lock.acquire(blocking=False):
-            raise OperationConflict("Уже выполняется другая системная операция.")
+        A plain restart intentionally bypasses the shared operation lock. It is the
+        recovery path when a console command or another worker has wedged that
+        lock. Self-update remains serialized because changing the checkout while
+        another operation is active is unsafe.
+        """
+
+        lock_acquired = False
+        if update:
+            if not self._operation_lock.acquire(blocking=False):
+                raise OperationConflict("Уже выполняется другая системная операция.")
+            lock_acquired = True
+
         kind = "supervisor-update" if update else "supervisor-restart"
         operation = OperationState.create(
             kind,
             "Self-update передан bootstrap-задаче."
             if update
-            else "Перезапуск передан bootstrap-задаче.",
+            else "Аварийный перезапуск передан bootstrap-задаче; активная операция будет прервана.",
         )
         operation.status = "handed-off"
         operation.started_at = utc_now()
@@ -122,7 +132,8 @@ class VelvetSupervisor(BaseVelvetSupervisor):
             self._persist_operation(operation)
             raise
         finally:
-            self._operation_lock.release()
+            if lock_acquired:
+                self._operation_lock.release()
 
 
 __all__ = ("OperationConflict", "VelvetSupervisor")
