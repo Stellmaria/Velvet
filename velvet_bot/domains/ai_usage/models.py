@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Generic, Mapping, TypeVar
 from uuid import UUID
@@ -42,6 +42,58 @@ class AIUsageTotals:
 
 
 @dataclass(frozen=True, slots=True)
+class AIBudgetStatus:
+    enabled: bool
+    daily_limit_rub: Decimal
+    monthly_limit_rub: Decimal
+    max_request_rub: Decimal
+    hermes_reserve_rub: Decimal
+    today_rub: Decimal
+    month_rub: Decimal
+    reserved_today_rub: Decimal
+    reserved_month_rub: Decimal
+    daily_remaining_rub: Decimal
+    ordinary_month_remaining_rub: Decimal
+    total_month_remaining_rub: Decimal
+    paused: bool
+    pause_reason: str | None
+    updated_by: int | None
+    updated_at: datetime
+    warning_month: date | None = None
+    warning_percent: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AIBudgetWarning:
+    threshold_percent: int
+    month_rub: Decimal
+    monthly_limit_rub: Decimal
+    remaining_rub: Decimal
+    period_start: date
+
+
+@dataclass(frozen=True, slots=True)
+class AIUsageEvent:
+    request_id: UUID
+    scope: AIBudgetScope
+    provider: str
+    model: str
+    operation: str
+    status: str
+    estimated_cost_rub: Decimal
+    actual_cost_rub: Decimal
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int | None
+    user_id: int | None
+    chat_id: int | None
+    created_at: datetime
+    completed_at: datetime | None
+    error_type: str | None = None
+    error_message: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class AIReservation:
     request_id: UUID
     context: AIRequestContext
@@ -67,8 +119,11 @@ class AIProviderResult(Generic[T]):
 
 
 __all__ = (
+    "AIBudgetStatus",
+    "AIBudgetWarning",
     "AIProviderResult",
     "AIRequestContext",
     "AIReservation",
+    "AIUsageEvent",
     "AIUsageTotals",
 )
