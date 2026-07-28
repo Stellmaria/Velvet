@@ -1,3 +1,16 @@
+ALTER TABLE media_ai_profiles
+    ADD COLUMN IF NOT EXISTS analysis_route VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS content_hash CHAR(64),
+    ADD COLUMN IF NOT EXISTS cache_hit BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE media_ai_profiles
+    ADD CONSTRAINT media_ai_profiles_route_check
+    CHECK (analysis_route IS NULL OR analysis_route IN ('flash', 'pro', 'sensitive'));
+
+ALTER TABLE media_ai_profiles
+    ADD CONSTRAINT media_ai_profiles_content_hash_check
+    CHECK (content_hash IS NULL OR content_hash ~ '^[0-9a-f]{64}$');
+
 CREATE TABLE IF NOT EXISTS ai_vision_cache (
     id BIGSERIAL PRIMARY KEY,
     content_hash CHAR(64) NOT NULL,
@@ -38,3 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_vision_cache_lookup
 
 CREATE INDEX IF NOT EXISTS idx_ai_vision_cache_recent
     ON ai_vision_cache(updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_media_ai_profiles_content_hash
+    ON media_ai_profiles(content_hash)
+    WHERE content_hash IS NOT NULL;
