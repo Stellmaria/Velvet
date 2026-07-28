@@ -37,7 +37,14 @@
 - выключенный AI-контур сохраняет прежнее поведение;
 - существующие tests, type check, Docker build и project notes contract проходят.
 
-## После реализации
+### Риски и ограничения
+
+- реальные model ID и цены подтверждаются только живым API-тестом;
+- разные OpenAI-compatible endpoints могут возвращать usage в отличающемся формате;
+- provider error может не содержать токены уже принятого запроса;
+- этот срез не подключает VL и не добавляет Telegram-команды владельца.
+
+## После завершения
 
 ### Фактически сделано
 
@@ -49,21 +56,34 @@
 - при отсутствии usage применяются консервативные оценки по размеру текста;
 - user ID и chat ID сохраняются вместе с reservation;
 - metadata результата дописывается в существующий ledger event;
-- primary и fallback оборачиваются одним транзакционным usage service, но создают отдельные reservations;
+- primary и fallback используют общий usage service, но создают отдельные reservations;
 - добавлены тесты pricing и metered roleplay client.
 
-### Совместимость
+### Миграции и совместимость
 
-Новая проверка цены выполняется только при `AI_TEXT_ENABLED=true`. При выключенной текстовой модели запуск бота не требует новых переменных. Для включения primary необходимо задать `AI_TEXT_INPUT_RUB_PER_1M` и/или `AI_TEXT_OUTPUT_RUB_PER_1M`; для включённого fallback используются отдельные `AI_TEXT_FALLBACK_*` цены.
+Новые миграции отсутствуют: используется таблица `ai_usage_events` из `z004_ai_usage_ledger.sql`. Проверка цены выполняется только при `AI_TEXT_ENABLED=true`. При выключенной текстовой модели запуск бота не требует новых переменных. Для primary необходимо задать `AI_TEXT_INPUT_RUB_PER_1M` и/или `AI_TEXT_OUTPUT_RUB_PER_1M`; для включённого fallback используются отдельные `AI_TEXT_FALLBACK_*` цены.
 
-### Ограничения
+### Проверки
 
-- live-запросы к BYESU/OpenAI не выполняются в CI;
-- цены пока задаются вручную после проверки конкретного model ID;
-- post-request warning в Telegram и owner-команды `/ai_usage` остаются отдельным этапом;
-- VL-клиенты ещё не подключены к executor;
-- provider error без usage записывается как ошибка с нулевой фактической ценой, поскольку endpoint не сообщает оплаченные токены.
+- добавлены unit tests расчёта стоимости;
+- добавлены async tests metered roleplay client;
+- проверяется provider-reported usage и fallback-оценка при отсутствии usage;
+- полный tests workflow, type check, Docker build и project notes contract должны быть подтверждены GitHub CI;
+- live-запросы к платным провайдерам намеренно не выполняются.
+
+### PR и commit
+
+- PR: будет создан после проверки diff;
+- Ветка: `agent/roleplay-usage-metering`.
+
+### Незавершённое
+
+- post-request warning в Telegram;
+- owner-команды `/ai_budget`, `/ai_usage`, `/ai_pause`, `/ai_resume`;
+- подключение VL-клиентов к executor;
+- pricing registry для нескольких проверенных моделей;
+- учёт оплаченных токенов при provider error, если endpoint начнёт возвращать usage в ошибке.
 
 ### Следующий шаг
 
-Добавить owner-команды `/ai_budget`, `/ai_usage`, `/ai_pause`, `/ai_resume`, затем подключить Flash → Pro → sensitive VL router к тому же executor и pricing registry.
+Добавить owner-команды бюджета и расходов, затем подключить Flash → Pro → sensitive VL router к тому же executor и pricing registry.
