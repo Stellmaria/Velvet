@@ -6,6 +6,55 @@ import unittest
 import velvet_bot.presentation.telegram.routers.supervisor.console as module
 
 
+class _RecordingBot:
+    def __init__(self) -> None:
+        self.messages: list[dict[str, object]] = []
+        self.documents: list[dict[str, object]] = []
+
+    async def send_message(self, **kwargs: object) -> None:
+        self.messages.append(dict(kwargs))
+
+    async def send_document(self, **kwargs: object) -> None:
+        self.documents.append(dict(kwargs))
+
+
+class SupervisorConsoleResultDeliveryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_finished_short_result_does_not_send_duplicate_text_summary(self) -> None:
+        bot = _RecordingBot()
+        operation = {
+            "id": "short-result",
+            "status": "success",
+            "result": {
+                "title": "Ollama: список моделей",
+                "returncode": 0,
+                "output": "qwen3-vl:8b",
+            },
+        }
+
+        await module._notify_console_result(bot, 17, operation)  # type: ignore[arg-type]
+
+        self.assertEqual([], bot.messages)
+        self.assertEqual([], bot.documents)
+
+    async def test_finished_long_result_sends_only_full_output_attachment(self) -> None:
+        bot = _RecordingBot()
+        operation = {
+            "id": "long-result",
+            "status": "success",
+            "result": {
+                "title": "Запустить тесты проекта",
+                "returncode": 0,
+                "output": "x" * 3000,
+            },
+        }
+
+        await module._notify_console_result(bot, 17, operation)  # type: ignore[arg-type]
+
+        self.assertEqual([], bot.messages)
+        self.assertEqual(1, len(bot.documents))
+        self.assertEqual(17, bot.documents[0]["chat_id"])
+
+
 class SupervisorConsoleWatcherBoundaryTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.original_operation = module._operation
