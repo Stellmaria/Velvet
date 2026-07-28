@@ -18,6 +18,7 @@ class KieSettings:
     timeout_seconds: int
     poll_interval_seconds: int
     task_timeout_seconds: int
+    usd_to_rub: Decimal
     models: KieModelCatalog
     pricing: KiePricing
 
@@ -49,8 +50,14 @@ def load_kie_settings() -> KieSettings:
             ).strip()
         ),
     )
+    usd_to_rub = _parse_non_negative_decimal(
+        os.getenv("KIE_USD_TO_RUB", "0"),
+        variable_name="KIE_USD_TO_RUB",
+    )
     if enabled and not api_key:
         raise RuntimeError("KIE_ENABLED=true требует непустой KIE_API_KEY.")
+    if enabled and usd_to_rub <= 0:
+        raise RuntimeError("KIE_ENABLED=true требует KIE_USD_TO_RUB больше нуля.")
     if enabled:
         for model in (
             models.seedream_5_pro,
@@ -114,6 +121,7 @@ def load_kie_settings() -> KieSettings:
             minimum=60,
             maximum=3600,
         ),
+        usd_to_rub=usd_to_rub,
         models=models,
         pricing=pricing,
     )
@@ -124,7 +132,7 @@ def _parse_non_negative_decimal(value: str, *, variable_name: str) -> Decimal:
         result = Decimal(value.strip())
     except (InvalidOperation, ValueError) as error:
         raise RuntimeError(f"{variable_name} должен быть десятичным числом.") from error
-    if result < 0:
+    if not result.is_finite() or result < 0:
         raise RuntimeError(f"{variable_name} не может быть отрицательным.")
     return result
 
