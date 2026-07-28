@@ -11,9 +11,10 @@ from velvet_bot.core.access import AccessPolicy
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
+from velvet_bot.domains.roleplay import build_roleplay_service
+from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
-from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.domains.workspaces.service import WorkspaceService
 from velvet_bot.error_center import ErrorIncidentCenter
@@ -64,6 +65,7 @@ def build_dispatcher(
         workspace_repository=workspace_repository,
     )
     workspace_character_service = WorkspaceCharacterService(database)
+    roleplay_service = build_roleplay_service(settings=settings, database=database)
 
     workflow_data = {
         "database": database,
@@ -75,6 +77,7 @@ def build_dispatcher(
         "workspace_service": workspace_service,
         "workspace_product_service": workspace_product_service,
         "workspace_characters": workspace_character_service,
+        "roleplay_service": roleplay_service,
         "analytics_channel_ids": settings.analytics_channel_ids,
         "adult_channel_id": settings.adult_channel_id,
         "publication_timezone": settings.publication_timezone,
