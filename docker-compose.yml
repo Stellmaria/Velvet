@@ -69,10 +69,9 @@ services:
     mem_limit: 4g
     cpus: 2.0
     pids_limit: 256
+    shm_size: 1gb
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
 
 volumes:
   velvet_postgres_data:
