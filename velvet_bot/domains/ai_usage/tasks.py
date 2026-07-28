@@ -405,17 +405,28 @@ def _worker_id(value: str) -> str:
     return normalized[:120]
 
 
+def _json_mapping(value: object) -> dict[str, object]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        if isinstance(decoded, Mapping):
+            return dict(decoded)
+    return {}
+
+
 def _task_from_row(row: Mapping[str, Any]) -> AITask:
-    payload = row["payload"] if isinstance(row["payload"], dict) else {}
-    result = row["result"] if isinstance(row["result"], dict) else {}
     return AITask(
         id=row["id"],
         scope=AIBudgetScope(str(row["scope"])),
         task_type=str(row["task_type"]),
         status=AITaskStatus(str(row["status"])),
         priority=int(row["priority"]),
-        payload=dict(payload),
-        result=dict(result),
+        payload=_json_mapping(row["payload"]),
+        result=_json_mapping(row["result"]),
         dedupe_key=str(row["dedupe_key"] or "") or None,
         attempt_count=int(row["attempt_count"]),
         max_attempts=int(row["max_attempts"]),
