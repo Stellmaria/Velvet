@@ -61,6 +61,7 @@ class VelvetAIMenuTests(unittest.TestCase):
         }
 
         self.assertIn("Qwen · работа с архивом", text)
+        self.assertIn("извлечение позы", text)
         self.assertIn("Стэл <b>2</b> · Qwen <b>3</b>", text)
         self.assertTrue(
             {
@@ -74,6 +75,7 @@ class VelvetAIMenuTests(unittest.TestCase):
                 "refcompare_start",
                 "promptcheck_start",
                 "imageprompt_start",
+                "poseextract_start",
                 "visual_start",
                 "format_menu",
                 "sets",
