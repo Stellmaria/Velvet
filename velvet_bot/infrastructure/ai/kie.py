@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any
 
 from velvet_bot.domains.media_generation import (
+    MAX_KIE_REFERENCE_BYTES,
     KieGenerationRequest,
     KieModelCatalog,
     KieTaskRecord,
     KieTaskState,
+    KieUploadedFile,
 )
 
 JsonTransport = Callable[
@@ -48,6 +52,7 @@ class KieClient:
         api_key: str,
         models: KieModelCatalog,
         base_url: str = "https://api.kie.ai/api/v1",
+        file_upload_base_url: str = "https://kieai.redpandaai.co",
         timeout_seconds: float = 60,
         poll_interval_seconds: float = 4,
         task_timeout_seconds: float = 900,
@@ -58,10 +63,59 @@ class KieClient:
         self.api_key = api_key.strip()
         self.models = models
         self.base_url = base_url.rstrip("/")
+        self.file_upload_base_url = file_upload_base_url.rstrip("/")
         self.timeout_seconds = max(1.0, float(timeout_seconds))
         self.poll_interval_seconds = max(1.0, float(poll_interval_seconds))
         self.task_timeout_seconds = max(10.0, float(task_timeout_seconds))
         self._transport = transport or _request_json
+
+    async def upload_reference(
+        self,
+        payload: bytes,
+        *,
+        mime_type: str,
+        file_name: str,
+    ) -> KieUploadedFile:
+        if not payload:
+            raise ValueError("Нельзя загрузить в Kie.ai пустой референс.")
+        if len(payload) > MAX_KIE_REFERENCE_BYTES:
+            raise ValueError("Референс для Kie.ai должен быть не больше 10 МБ.")
+        normalized_mime = mime_type.strip().casefold()
+        if normalized_mime not in {
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/webp",
+        }:
+            raise ValueError("Kie.ai принимает референсы только JPG, PNG или WEBP.")
+        safe_name = Path(file_name or "reference.jpg").name or "reference.jpg"
+        encoded = base64.b64encode(payload).decode("ascii")
+        response = await asyncio.to_thread(
+            self._transport,
+            "POST",
+            f"{self.file_upload_base_url}/api/file-base64-upload",
+            self._headers(),
+            {
+                "base64Data": f"data:{normalized_mime};base64,{encoded}",
+                "uploadPath": "velvet/references",
+                "fileName": safe_name,
+            },
+            self.timeout_seconds,
+        )
+        if response.get("success") is not True and response.get("code") != 200:
+            self._ensure_success(response, operation="file-base64-upload")
+        data = response.get("data")
+        if not isinstance(data, Mapping):
+            raise KieProtocolError("Kie.ai upload не вернул объект data.")
+        file_url = str(data.get("downloadUrl") or data.get("fileUrl") or "").strip()
+        if not file_url:
+            raise KieProtocolError("Kie.ai upload не вернул URL файла.")
+        return KieUploadedFile(
+            file_url=file_url,
+            file_name=_optional_text(data.get("fileName")),
+            mime_type=_optional_text(data.get("mimeType")),
+            file_size=_optional_int(data.get("fileSize")),
+        )
 
     async def create_task(
         self,
@@ -200,6 +254,20 @@ def _request_json(
     if not isinstance(parsed, Mapping):
         raise KieProtocolError("Kie.ai вернул JSON не в виде объекта.")
     return parsed
+
+
+def _optional_int(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_text(value: object) -> str | None:
+    text = str(value or "").strip()
+    return text or None
 
 
 __all__ = (
