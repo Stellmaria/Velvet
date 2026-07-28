@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import subprocess
 import tempfile
 import unittest
@@ -42,6 +41,32 @@ class RemoteConsoleTests(unittest.TestCase):
         self.assertEqual("git-status", spec.key)
         self.assertEqual(("git", "status", "--short"), spec.command)
 
+    def test_recovery_commands_resolve_to_fixed_argv(self) -> None:
+        expected = {
+            "git clean -nd": ("git-clean-preview", ("git", "clean", "-nd")),
+            "аварийный stash": (
+                "git-stash-save-all",
+                (
+                    "git",
+                    "stash",
+                    "push",
+                    "--include-untracked",
+                    "-m",
+                    "Supervisor emergency stash",
+                ),
+            ),
+            "git stash pop": ("git-stash-pop", ("git", "stash", "pop")),
+            "git rev-list --left-right --count HEAD...origin/main": (
+                "git-sync-count",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"),
+            ),
+        }
+        for alias, (key, command) in expected.items():
+            with self.subTest(alias=alias):
+                spec = self.registry.resolve(alias)
+                self.assertEqual(key, spec.key)
+                self.assertEqual(command, spec.command)
+
     def test_krita_cleanup_resolves_only_to_fixed_path(self) -> None:
         spec = self.registry.resolve(
             "git clean -f -- tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip"
@@ -58,6 +83,32 @@ class RemoteConsoleTests(unittest.TestCase):
             spec.command,
         )
 
+    def test_catalog_contains_remote_recovery_toolkit(self) -> None:
+        keys = {spec.key for spec in self.registry.catalog()}
+        self.assertTrue(
+            {
+                "git-status",
+                "git-branch",
+                "git-fetch",
+                "git-sync-count",
+                "git-incoming",
+                "git-outgoing",
+                "git-clean-preview",
+                "git-stash-list",
+                "git-stash-save-all",
+                "git-stash-show",
+                "git-stash-pop",
+                "git-clean-krita-bridge",
+                "pip-check",
+                "compile",
+                "tests",
+                "task-status",
+                "python-processes",
+                "network-config",
+                "disk-volumes",
+            }.issubset(keys)
+        )
+
     def test_unknown_and_shell_syntax_are_rejected(self) -> None:
         for value in (
             "whoami",
@@ -68,6 +119,9 @@ class RemoteConsoleTests(unittest.TestCase):
             "git status; taskkill /f /im python.exe",
             "git clean -fd",
             "git clean -f -- another-file.zip",
+            "git reset --hard origin/main",
+            "git push --force",
+            "del important.db",
         ):
             with self.subTest(value=value):
                 with self.assertRaises(RemoteCommandRejected):
