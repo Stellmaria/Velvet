@@ -10,6 +10,7 @@ from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.access import AccessPolicy
 from velvet_bot.core.config import Settings
+from velvet_bot.core.config.kie import KieSettings, load_kie_settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
 from velvet_bot.domains.ai_usage import (
@@ -53,6 +54,7 @@ def build_dispatcher(
     worker_manager: WorkerManager,
     ai_usage_service: AIUsageService | None = None,
     ai_task_queue_service: AITaskQueueService | None = None,
+    kie_settings: KieSettings | None = None,
     error_center: ErrorIncidentCenter | None = None,
     save_upload_sessions: SaveUploadSessions | None = None,
 ) -> DispatcherBundle:
@@ -81,6 +83,7 @@ def build_dispatcher(
     active_task_queue_service = (
         ai_task_queue_service or build_ai_task_queue_service(database=database)
     )
+    active_kie_settings = kie_settings or load_kie_settings()
     roleplay_service = build_roleplay_service(
         settings=settings,
         database=database,
@@ -100,6 +103,7 @@ def build_dispatcher(
         "roleplay_service": roleplay_service,
         "ai_usage_service": active_ai_usage_service,
         "ai_task_queue_service": active_task_queue_service,
+        "kie_settings": active_kie_settings,
         "analytics_channel_ids": settings.analytics_channel_ids,
         "adult_channel_id": settings.adult_channel_id,
         "publication_timezone": settings.publication_timezone,
