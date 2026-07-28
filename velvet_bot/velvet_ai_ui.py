@@ -111,6 +111,12 @@ def build_velvet_ai_menu(
             ],
             [
                 InlineKeyboardButton(
+                    text="🪄 Фото → промт",
+                    callback_data=quality_callback("imageprompt_start"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     text="🎨 Палитра",
                     callback_data=quality_callback("visual_start"),
                 ),

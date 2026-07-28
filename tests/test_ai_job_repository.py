@@ -3,8 +3,13 @@ from __future__ import annotations
 import os
 import unittest
 
-from velvet_bot.ai_jobs import AIJobRepository
+from velvet_bot.ai_jobs import AI_JOB_KINDS, AIJobRepository
 from velvet_bot.database import Database
+
+
+class AIJobKindsTests(unittest.TestCase):
+    def test_image_to_prompt_is_registered(self) -> None:
+        self.assertIn("image_to_prompt", AI_JOB_KINDS)
 
 
 @unittest.skipUnless(
