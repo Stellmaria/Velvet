@@ -9,11 +9,10 @@ from dataclasses import dataclass
 from typing import Any, Protocol, Sequence
 
 from velvet_bot.domains.roleplay.models import RoleplayMessage
-from velvet_bot.local_ai_runtime import get_local_ai_lock
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_PROVIDERS = frozenset({"openai", "openai_compatible", "ollama"})
+_SUPPORTED_PROVIDERS = frozenset({"openai", "openai_compatible"})
 
 
 class RoleplayClientError(RuntimeError):
@@ -37,7 +36,7 @@ class RoleplayClient(Protocol):
 
 
 class TextRoleplayClient:
-    """Small standard-library client for OpenAI Responses and local text APIs."""
+    """Small standard-library client for cloud Responses and chat APIs."""
 
     def __init__(self, *, provider: str, base_url: str, model: str, api_key: str | None,
                  timeout_seconds: int, max_output_tokens: int, max_attempts: int = 2) -> None:
@@ -50,23 +49,18 @@ class TextRoleplayClient:
             raise ValueError("Base URL text provider не может быть пустым.")
         if not normalized_model:
             raise ValueError("Название text-модели не может быть пустым.")
+        if not api_key or not api_key.strip():
+            raise ValueError("Облачный text provider требует API key.")
         self.provider = normalized_provider
         self.base_url = normalized_url
         self.model = normalized_model
-        self.api_key = api_key.strip() if api_key else None
+        self.api_key = api_key.strip()
         self.timeout_seconds = max(10, int(timeout_seconds))
         self.max_output_tokens = max(128, int(max_output_tokens))
         self.max_attempts = max(1, int(max_attempts))
 
     async def generate(self, *, instructions: str,
                        messages: Sequence[RoleplayMessage]) -> GeneratedRoleplayText:
-        if self.provider == "ollama":
-            async with get_local_ai_lock():
-                return await self._generate_unlocked(instructions=instructions, messages=messages)
-        return await self._generate_unlocked(instructions=instructions, messages=messages)
-
-    async def _generate_unlocked(self, *, instructions: str,
-                                 messages: Sequence[RoleplayMessage]) -> GeneratedRoleplayText:
         last_error: RoleplayClientError | None = None
         for attempt in range(1, self.max_attempts + 1):
             try:
@@ -89,71 +83,76 @@ class TextRoleplayClient:
         if self.provider == "openai":
             endpoint = f"{self.base_url}/responses"
             body = self._openai_responses_body(instructions, messages)
-        elif self.provider == "openai_compatible":
+        else:
             endpoint = f"{self.base_url}/chat/completions"
             body = self._chat_completions_body(instructions, messages)
-        else:
-            endpoint = f"{self.base_url}/api/chat"
-            body = self._ollama_body(instructions, messages)
-        request = urllib.request.Request(endpoint,
+        request = urllib.request.Request(
+            endpoint,
             data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
-            headers=self._headers(), method="POST")
+            headers=self._headers(),
+            method="POST",
+        )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as error:
             details = error.read().decode("utf-8", errors="replace")[:1200]
             raise RoleplayClientError(
-                f"{self.provider}:{self.model} HTTP {error.code}: {details}") from error
+                f"{self.provider}:{self.model} HTTP {error.code}: {details}"
+            ) from error
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise RoleplayClientError(
-                f"{self.provider}:{self.model} недоступен: {error}") from error
+                f"{self.provider}:{self.model} недоступен: {error}"
+            ) from error
         try:
             payload = json.loads(raw)
         except json.JSONDecodeError as error:
             raise RoleplayClientError(
-                f"{self.provider}:{self.model} вернул повреждённый JSON.") from error
+                f"{self.provider}:{self.model} вернул повреждённый JSON."
+            ) from error
         if not isinstance(payload, dict):
             raise RoleplayClientError(
-                f"{self.provider}:{self.model} вернул неожиданный ответ.")
+                f"{self.provider}:{self.model} вернул неожиданный ответ."
+            )
         provider_error = payload.get("error")
         if provider_error:
             raise RoleplayClientError(f"{self.provider}:{self.model}: {provider_error}")
         return payload
 
     def _headers(self) -> dict[str, str]:
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        return headers
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
 
     def _openai_responses_body(self, instructions: str,
                                messages: Sequence[RoleplayMessage]) -> dict[str, Any]:
-        return {"model": self.model, "instructions": instructions,
-                "input": [{"role": m.role, "content": m.content} for m in messages],
-                "max_output_tokens": self.max_output_tokens, "store": False}
+        return {
+            "model": self.model,
+            "instructions": instructions,
+            "input": [{"role": message.role, "content": message.content}
+                      for message in messages],
+            "max_output_tokens": self.max_output_tokens,
+            "store": False,
+        }
 
     def _chat_completions_body(self, instructions: str,
                                messages: Sequence[RoleplayMessage]) -> dict[str, Any]:
-        return {"model": self.model,
-                "messages": [{"role": "system", "content": instructions},
-                             *({"role": m.role, "content": m.content} for m in messages)],
-                "max_tokens": self.max_output_tokens, "stream": False}
-
-    def _ollama_body(self, instructions: str,
-                     messages: Sequence[RoleplayMessage]) -> dict[str, Any]:
-        return {"model": self.model,
-                "messages": [{"role": "system", "content": instructions},
-                             *({"role": m.role, "content": m.content} for m in messages)],
-                "stream": False, "think": False, "keep_alive": "10m",
-                "options": {"num_predict": self.max_output_tokens}}
+        return {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": instructions},
+                *({"role": message.role, "content": message.content}
+                  for message in messages),
+            ],
+            "max_tokens": self.max_output_tokens,
+            "stream": False,
+        }
 
     def _extract_text(self, payload: dict[str, Any]) -> str:
         if self.provider == "openai":
             return _extract_openai_response_text(payload)
-        if self.provider == "openai_compatible":
-            return _extract_chat_completion_text(payload)
-        return _extract_ollama_text(payload)
+        return _extract_chat_completion_text(payload)
 
 
 class FailoverRoleplayClient:
@@ -193,7 +192,8 @@ def _extract_openai_response_text(payload: dict[str, Any]) -> str:
         return "\n".join(fragments)
     raise RoleplayClientError(
         f"OpenAI Responses API не вернул текст: status={payload.get('status')!r}, "
-        f"incomplete={payload.get('incomplete_details')!r}.")
+        f"incomplete={payload.get('incomplete_details')!r}."
+    )
 
 
 def _extract_chat_completion_text(payload: dict[str, Any]) -> str:
@@ -212,15 +212,10 @@ def _extract_chat_completion_text(payload: dict[str, Any]) -> str:
     return content
 
 
-def _extract_ollama_text(payload: dict[str, Any]) -> str:
-    message = payload.get("message")
-    if isinstance(message, dict) and isinstance(message.get("content"), str):
-        return message["content"]
-    response = payload.get("response")
-    if isinstance(response, str):
-        return response
-    raise RoleplayClientError("Ollama не вернул message.content.")
-
-
-__all__ = ("FailoverRoleplayClient", "GeneratedRoleplayText", "RoleplayClient",
-           "RoleplayClientError", "TextRoleplayClient")
+__all__ = (
+    "FailoverRoleplayClient",
+    "GeneratedRoleplayText",
+    "RoleplayClient",
+    "RoleplayClientError",
+    "TextRoleplayClient",
+)
