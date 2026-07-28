@@ -168,8 +168,15 @@ def build_roleplay_context(
     trimmed = max(0, len(recent_messages) - len(history))
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
 
-    fixed_tokens = estimate_tokens(system) + estimate_tokens(cleaned_user_message)
-    available = max(0, budget.input_limit - fixed_tokens)
+    fixed_tokens = (
+        estimate_tokens(system) + 8 + estimate_tokens(cleaned_user_message) + 8
+    )
+    if fixed_tokens > budget.input_limit:
+        raise ValueError(
+            "Постоянные RP-данные превышают бюджет контекста. "
+            "Сократите карточки, лор, сводку или память."
+        )
+    available = budget.input_limit - fixed_tokens
 
     selected: list[RoleplayMessage] = []
     used = 0
