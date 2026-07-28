@@ -89,30 +89,87 @@ Velvet уже имеет PostgreSQL, Telegram presentation, owner access, Superv
 
 ### Фактически сделано
 
-Работа начата. Раздел будет заполнен после реализации и проверок.
+- создан отдельный домен `velvet_bot.domains.roleplay`;
+- добавлены RP models, validation service, repository и context builder;
+- карточка персонажа хранит внешность, характер, речь, биографию, правила,
+  канонические факты, примеры реплик и служебные заметки;
+- создание карточки требует явного `adult_confirmed`;
+- сессии сохраняют модель, сценарий, лор, сводку, состояние сцены и generation
+  settings;
+- сообщения получают атомарный sequence number внутри сессии;
+- память разделена на `canonical`, `episodic`, `relationship` и `scene`;
+- контекст собирается из карточек, сценария, лора, сводки, состояния сцены,
+  памяти, последних сообщений и нового хода пользователя;
+- слишком большой постоянный контекст отклоняется до запроса Ollama с понятной
+  ошибкой вместо молчаливого вытеснения всей переписки;
+- добавлен независимый `RoleplaySettings` и `load_roleplay_settings()`;
+- добавлен `OllamaRoleplayClient` с `num_ctx`, `num_predict`, temperature, top_p,
+  min_p, repeat penalty и keep-alive;
+- обновлены `.env.example`, `docs/ROLEPLAY.md`, project memory, development status
+  и stabilization policy;
+- создан draft PR #332.
 
 ### Изменённые модули и контракты
 
-Будут перечислены после реализации.
+- `velvet_bot/domains/roleplay/models.py`;
+- `velvet_bot/domains/roleplay/service.py`;
+- `velvet_bot/domains/roleplay/context.py`;
+- `velvet_bot/domains/roleplay/repository.py`;
+- `velvet_bot/domains/roleplay/__init__.py`;
+- `velvet_bot/core/config/roleplay.py`;
+- `velvet_bot/services/roleplay_ollama.py`;
+- `tests/test_roleplay_foundation.py`;
+- `tests/test_roleplay_repository.py`.
 
 ### Миграции и совместимость
 
-Будут перечислены после реализации.
+Добавлена миграция `916_roleplay_foundation.sql`. Первоначальный номер 915 был
+заменён после CI, поскольку он уже занят применяемой workspace-миграцией.
+
+Миграция создаёт только:
+
+- `rp_characters`;
+- `rp_sessions`;
+- `rp_session_characters`;
+- `rp_messages`;
+- `rp_memories`.
+
+Foreign key на архивные `characters`, media, story или reference tables отсутствует.
+Архивная карточка с совпадающим именем не появляется в RP repository и наоборот.
 
 ### Проверки
 
-Пока не выполнены.
+На head `d3717a3e2ecfe665bc129d5fe9e4d5319f2b5a42`:
+
+- project notes contract: success;
+- type check: success;
+- Docker build: success;
+- backup restore drill: success;
+- полный tests workflow с PostgreSQL integration tests: success;
+- repository layout inventory обновлён до 36 modules, из них 35 domain и 1
+  infrastructure;
+- Telegram navigation inventory обновлён до 463 Python files без новых buttons и
+  violations.
+
+Локально до CI выполнены syntax checks и целевые unit tests. Живой запрос к Ollama
+на целевом MSI Katana не выполнялся и не считается подтверждённым.
 
 ### PR и commit
 
-Draft PR будет создан после первого целостного commit.
+Draft PR #332: `Add isolated roleplay foundation`.
+
+Проверенный CI head: `d3717a3e2ecfe665bc129d5fe9e4d5319f2b5a42`.
 
 ### Незавершённое
 
-- реализовать RP1 foundation;
-- запустить CI;
-- выполнить живую проверку Ollama на целевом Windows-ноутбуке.
+- установить и проверить выбранную RP-модель через Ollama на MSI Katana;
+- выполнить живой запрос с 8192 context и измерить скорость/память;
+- добавить отдельный Telegram-редактор RP-персонажей;
+- добавить запуск и продолжение RP-сессии;
+- добавить автоматическую сводку и подтверждаемое извлечение памяти;
+- добавить управление отношениями, откат и экспорт.
 
 ### Следующий шаг
 
-Создать изолированную миграцию и transport-neutral domain package `roleplay`.
+Начать RP2 отдельным срезом: Telegram-редактор RP-персонажей, который создаёт и
+изменяет только `rp_characters` и не обращается к архиву.
