@@ -192,6 +192,7 @@ class AIMenuCoverageTests(unittest.TestCase):
         )
         paths = {
             "prompt_result": quality_root / "velvet_ai.py",
+            "image_to_prompt": quality_root / "velvet_ai_image_prompt.py",
             "palette_composition": quality_root / "velvet_ai_visual.py",
             "velvet_formatting": quality_root / "velvet_ai_formatting.py",
             "quality_image": quality_root / "quality_operations.py",
