@@ -12,7 +12,11 @@ from velvet_bot.core.access import AccessPolicy
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
-from velvet_bot.domains.ai_usage import AIUsageService
+from velvet_bot.domains.ai_usage import (
+    AITaskQueueService,
+    AIUsageService,
+    build_ai_task_queue_service,
+)
 from velvet_bot.domains.roleplay import build_roleplay_service
 from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
@@ -48,6 +52,7 @@ def build_dispatcher(
     diagnostic_service: DiagnosticBundleService,
     worker_manager: WorkerManager,
     ai_usage_service: AIUsageService | None = None,
+    ai_task_queue_service: AITaskQueueService | None = None,
     error_center: ErrorIncidentCenter | None = None,
     save_upload_sessions: SaveUploadSessions | None = None,
 ) -> DispatcherBundle:
@@ -73,6 +78,9 @@ def build_dispatcher(
         database=database,
         audit_logger=audit_logger,
     )
+    active_task_queue_service = (
+        ai_task_queue_service or build_ai_task_queue_service(database=database)
+    )
     roleplay_service = build_roleplay_service(
         settings=settings,
         database=database,
@@ -91,6 +99,7 @@ def build_dispatcher(
         "workspace_characters": workspace_character_service,
         "roleplay_service": roleplay_service,
         "ai_usage_service": active_ai_usage_service,
+        "ai_task_queue_service": active_task_queue_service,
         "analytics_channel_ids": settings.analytics_channel_ids,
         "adult_channel_id": settings.adult_channel_id,
         "publication_timezone": settings.publication_timezone,
