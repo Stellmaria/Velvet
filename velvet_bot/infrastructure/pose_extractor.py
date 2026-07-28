@@ -6,6 +6,8 @@ import base64
 from velvet_bot.ai_vision import VisionAnalysisError, _prepare_image
 from velvet_bot.infrastructure.image_to_prompt import ImageToPromptClient
 
+POSE_EXTRACTOR_MARKER = "VELVET_AI:POSE_EXTRACTOR"
+
 _POSE_SECTIONS = (
     "Vᴇʟᴠᴇᴛ Pᴏsᴇ",
     "Количество персонажей:",
@@ -190,6 +192,7 @@ class PoseExtractorClient(ImageToPromptClient):
 
 
 __all__ = (
+    "POSE_EXTRACTOR_MARKER",
     "PoseExtractorClient",
     "_POSE_EXTRACTION_INSTRUCTION",
     "_is_pose_complete",
