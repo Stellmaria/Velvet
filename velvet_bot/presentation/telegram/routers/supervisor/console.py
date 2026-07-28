@@ -11,7 +11,6 @@ from aiogram.filters import BaseFilter, Command
 from aiogram.types import BufferedInputFile, CallbackQuery, ForceReply, Message
 
 from velvet_bot.presentation.telegram.supervisor.console_results import (
-    console_operation_dm_text,
     console_operation_finished,
     console_operation_keyboard,
     console_operation_missing_text,
@@ -96,30 +95,32 @@ async def _notify_console_result(
     recipient_id: int,
     operation: dict[str, Any],
 ) -> None:
+    """Deliver only the optional full-output attachment.
+
+    The operation card itself is already edited in place. Sending a second textual
+    summary to the same user duplicated every completed console command.
+    """
     if not console_operation_finished(operation):
         return
 
+    attachment = console_operation_output_attachment(operation)
+    if attachment is None:
+        return
+
     operation_id = str(operation.get("id", ""))
+    filename, payload = attachment
     try:
-        await bot.send_message(
+        await bot.send_document(
             chat_id=recipient_id,
-            text=console_operation_dm_text(operation),
-            reply_markup=console_operation_keyboard(operation_id, finished=True),
+            document=BufferedInputFile(payload, filename=filename),
+            caption=(
+                "📎 Полный вывод команды Supervisor\n"
+                f"Операция: <code>{operation_id}</code>"
+            ),
         )
-        attachment = console_operation_output_attachment(operation)
-        if attachment is not None:
-            filename, payload = attachment
-            await bot.send_document(
-                chat_id=recipient_id,
-                document=BufferedInputFile(payload, filename=filename),
-                caption=(
-                    "📎 Полный вывод команды Supervisor\n"
-                    f"Операция: <code>{operation_id}</code>"
-                ),
-            )
     except TelegramAPIError as error:
         logger.warning(
-            "Could not deliver Supervisor console result in DM operation=%s recipient=%s: %s",
+            "Could not deliver Supervisor console attachment operation=%s recipient=%s: %s",
             operation_id,
             recipient_id,
             error,
@@ -320,7 +321,7 @@ async def handle_console_callback(
             if not operation_id:
                 raise SupervisorClientError("Supervisor не вернул ID операции.")
             await _render_operation(callback.message, operation)
-            await callback.answer("Команда запущена. Итог придёт в ЛС.")
+            await callback.answer("Команда запущена. Карточка обновится автоматически.")
             if console_operation_finished(operation):
                 await _notify_console_result(callback.bot, callback.from_user.id, operation)
             else:
