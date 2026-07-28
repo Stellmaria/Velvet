@@ -8,8 +8,9 @@ from dotenv import load_dotenv
 
 from velvet_bot.core.access import normalize_username
 
-
 DEFAULT_ADULT_CHANNEL_ID = -1003951213065
+_VISION_PROVIDERS = frozenset({"ollama", "openai_compatible"})
+_TEXT_PROVIDERS = frozenset({"ollama", "openai", "openai_compatible"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,11 +34,19 @@ class Settings:
     ai_vision_api_key: str | None = None
     ai_vision_timeout_seconds: int = 180
     ai_vision_max_attempts: int = 3
+    ai_text_enabled: bool = False
     ai_text_provider: str = "ollama"
     ai_text_base_url: str = "http://127.0.0.1:11435"
     ai_text_model: str | None = None
     ai_text_api_key: str | None = None
     ai_text_timeout_seconds: int = 180
+    ai_text_max_attempts: int = 2
+    ai_text_max_output_tokens: int = 1800
+    ai_text_max_history_messages: int = 30
+    ai_text_fallback_provider: str | None = None
+    ai_text_fallback_base_url: str = "http://127.0.0.1:11435"
+    ai_text_fallback_model: str | None = None
+    ai_text_fallback_api_key: str | None = None
     moderator_user_ids: frozenset[int] = frozenset()
     adult_channel_id: int = DEFAULT_ADULT_CHANNEL_ID
 
@@ -63,8 +72,7 @@ def parse_allowed_user_ids(value: str) -> frozenset[int]:
 
 def parse_allowed_usernames(value: str) -> frozenset[str]:
     return frozenset(
-        username
-        for item in value.split(",")
+        username for item in value.split(",")
         if (username := normalize_username(item))
     )
 
@@ -79,12 +87,7 @@ def parse_optional_chat_id(value: str) -> int | None:
         raise RuntimeError("LOG_CHAT_ID должен быть числовым Telegram chat ID.") from error
 
 
-def parse_chat_id(
-    value: str,
-    *,
-    variable_name: str,
-    default: int,
-) -> int:
+def parse_chat_id(value: str, *, variable_name: str, default: int) -> int:
     cleaned = value.strip()
     if not cleaned:
         return int(default)
@@ -148,12 +151,19 @@ def parse_required_path(value: str, *, default: str, variable_name: str) -> str:
     return cleaned
 
 
-def _parse_ai_provider(value: str, *, variable_name: str) -> str:
+def _parse_ai_provider(
+    value: str,
+    *,
+    variable_name: str,
+    allowed: frozenset[str],
+    optional: bool = False,
+) -> str | None:
     provider = value.strip().casefold()
-    if provider not in {"ollama", "openai_compatible"}:
-        raise RuntimeError(
-            f"{variable_name} должен быть ollama или openai_compatible."
-        )
+    if optional and not provider:
+        return None
+    if provider not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise RuntimeError(f"{variable_name} должен быть одним из: {choices}.")
     return provider
 
 
@@ -173,44 +183,96 @@ def load_settings() -> Settings:
             "Не задан BOT_TOKEN. Скопируйте .env.example в .env "
             "и вставьте токен, полученный у @BotFather."
         )
-
     database_url = os.getenv("DATABASE_URL", "").strip()
     if not database_url:
         raise RuntimeError(
             "Не задан DATABASE_URL. Укажите строку подключения PostgreSQL "
             "в локальном файле .env."
         )
-
     allowed_user_ids = parse_allowed_user_ids(os.getenv("ALLOWED_USER_IDS", ""))
     allowed_usernames = parse_allowed_usernames(os.getenv("ALLOWED_USERNAMES", ""))
-
     if not allowed_user_ids and not allowed_usernames:
         raise RuntimeError(
             "Не задан владелец бота. Укажите ALLOWED_USER_IDS или "
             "ALLOWED_USERNAMES в .env."
         )
 
-    ai_provider = _parse_ai_provider(
+    vision_provider = _parse_ai_provider(
         os.getenv("AI_VISION_PROVIDER", "ollama"),
         variable_name="AI_VISION_PROVIDER",
+        allowed=_VISION_PROVIDERS,
     )
-    ai_base_url = _parse_ai_base_url(
+    assert vision_provider is not None
+    vision_base_url = _parse_ai_base_url(
         os.getenv("AI_VISION_BASE_URL", "http://127.0.0.1:11435"),
         variable_name="AI_VISION_BASE_URL",
     )
-    ai_model = os.getenv("AI_VISION_MODEL", "qwen3-vl:8b").strip()
-    if not ai_model:
+    vision_model = os.getenv("AI_VISION_MODEL", "qwen3-vl:8b").strip()
+    if not vision_model:
         raise RuntimeError("AI_VISION_MODEL не может быть пустым.")
-    ai_api_key = os.getenv("AI_VISION_API_KEY", "").strip() or None
 
+    text_enabled = parse_boolean(
+        os.getenv("AI_TEXT_ENABLED", "false"),
+        variable_name="AI_TEXT_ENABLED",
+    )
     text_provider = _parse_ai_provider(
-        os.getenv("AI_TEXT_PROVIDER", ai_provider),
+        os.getenv("AI_TEXT_PROVIDER", vision_provider),
         variable_name="AI_TEXT_PROVIDER",
+        allowed=_TEXT_PROVIDERS,
+    )
+    assert text_provider is not None
+    text_base_default = (
+        "https://api.openai.com/v1" if text_provider == "openai"
+        else vision_base_url
     )
     text_base_url = _parse_ai_base_url(
-        os.getenv("AI_TEXT_BASE_URL", ai_base_url),
+        os.getenv("AI_TEXT_BASE_URL", text_base_default),
         variable_name="AI_TEXT_BASE_URL",
     )
+    text_model = os.getenv("AI_TEXT_MODEL", "").strip() or None
+    explicit_text_key = os.getenv("AI_TEXT_API_KEY", "").strip()
+    text_api_key = explicit_text_key or (
+        os.getenv("OPENAI_API_KEY", "").strip()
+        if text_provider == "openai" else ""
+    ) or None
+    if text_enabled and not text_model:
+        raise RuntimeError("AI_TEXT_ENABLED=true требует непустой AI_TEXT_MODEL.")
+    if text_enabled and text_provider == "openai" and not text_api_key:
+        raise RuntimeError(
+            "Для AI_TEXT_PROVIDER=openai задайте AI_TEXT_API_KEY "
+            "или OPENAI_API_KEY."
+        )
+
+    fallback_provider = _parse_ai_provider(
+        os.getenv("AI_TEXT_FALLBACK_PROVIDER", ""),
+        variable_name="AI_TEXT_FALLBACK_PROVIDER",
+        allowed=_TEXT_PROVIDERS,
+        optional=True,
+    )
+    fallback_model = os.getenv("AI_TEXT_FALLBACK_MODEL", "").strip() or None
+    if bool(fallback_provider) != bool(fallback_model):
+        raise RuntimeError(
+            "AI_TEXT_FALLBACK_PROVIDER и AI_TEXT_FALLBACK_MODEL должны быть "
+            "заданы вместе."
+        )
+    fallback_default = (
+        "https://api.openai.com/v1" if fallback_provider == "openai"
+        else vision_base_url
+    )
+    fallback_base_url = _parse_ai_base_url(
+        os.getenv("AI_TEXT_FALLBACK_BASE_URL", fallback_default),
+        variable_name="AI_TEXT_FALLBACK_BASE_URL",
+    )
+    fallback_api_key = os.getenv("AI_TEXT_FALLBACK_API_KEY", "").strip() or (
+        os.getenv("OPENAI_API_KEY", "").strip()
+        if fallback_provider == "openai" else ""
+    ) or None
+    if (text_enabled and fallback_provider == "openai"
+            and not fallback_api_key):
+        raise RuntimeError(
+            "Для AI_TEXT_FALLBACK_PROVIDER=openai задайте "
+            "AI_TEXT_FALLBACK_API_KEY или OPENAI_API_KEY."
+        )
 
     return Settings(
         bot_token=bot_token,
@@ -226,82 +288,84 @@ def load_settings() -> Settings:
             os.getenv("PUBLICATION_TIMEZONE", "Europe/Berlin")
         ),
         backup_dir=parse_required_path(
-            os.getenv("BACKUP_DIR", "backups"),
-            default="backups",
+            os.getenv("BACKUP_DIR", "backups"), default="backups",
             variable_name="BACKUP_DIR",
         ),
         pg_dump_path=parse_required_path(
-            os.getenv("PG_DUMP_PATH", "pg_dump"),
-            default="pg_dump",
+            os.getenv("PG_DUMP_PATH", "pg_dump"), default="pg_dump",
             variable_name="PG_DUMP_PATH",
         ),
         pg_restore_path=parse_required_path(
-            os.getenv("PG_RESTORE_PATH", "pg_restore"),
-            default="pg_restore",
+            os.getenv("PG_RESTORE_PATH", "pg_restore"), default="pg_restore",
             variable_name="PG_RESTORE_PATH",
         ),
         ai_vision_enabled=parse_boolean(
             os.getenv("AI_VISION_ENABLED", "false"),
             variable_name="AI_VISION_ENABLED",
         ),
-        ai_vision_provider=ai_provider,
-        ai_vision_base_url=ai_base_url,
-        ai_vision_model=ai_model,
+        ai_vision_provider=vision_provider,
+        ai_vision_base_url=vision_base_url,
+        ai_vision_model=vision_model,
         ai_vision_compare_model=(
             os.getenv("AI_VISION_COMPARE_MODEL", "").strip() or None
         ),
         ai_vision_fallback_model=(
             os.getenv("AI_VISION_FALLBACK_MODEL", "").strip() or None
         ),
-        ai_vision_api_key=ai_api_key,
+        ai_vision_api_key=os.getenv("AI_VISION_API_KEY", "").strip() or None,
         ai_vision_timeout_seconds=parse_bounded_integer(
             os.getenv("AI_VISION_TIMEOUT_SECONDS", "180"),
-            variable_name="AI_VISION_TIMEOUT_SECONDS",
-            default=180,
-            minimum=10,
-            maximum=600,
+            variable_name="AI_VISION_TIMEOUT_SECONDS", default=180,
+            minimum=10, maximum=600,
         ),
         ai_vision_max_attempts=parse_bounded_integer(
             os.getenv("AI_VISION_MAX_ATTEMPTS", "3"),
-            variable_name="AI_VISION_MAX_ATTEMPTS",
-            default=3,
-            minimum=1,
-            maximum=10,
+            variable_name="AI_VISION_MAX_ATTEMPTS", default=3,
+            minimum=1, maximum=10,
         ),
+        ai_text_enabled=text_enabled,
         ai_text_provider=text_provider,
         ai_text_base_url=text_base_url,
-        ai_text_model=os.getenv("AI_TEXT_MODEL", "").strip() or None,
-        ai_text_api_key=os.getenv("AI_TEXT_API_KEY", "").strip() or None,
+        ai_text_model=text_model,
+        ai_text_api_key=text_api_key,
         ai_text_timeout_seconds=parse_bounded_integer(
             os.getenv("AI_TEXT_TIMEOUT_SECONDS", "180"),
-            variable_name="AI_TEXT_TIMEOUT_SECONDS",
-            default=180,
-            minimum=10,
-            maximum=600,
+            variable_name="AI_TEXT_TIMEOUT_SECONDS", default=180,
+            minimum=10, maximum=900,
         ),
+        ai_text_max_attempts=parse_bounded_integer(
+            os.getenv("AI_TEXT_MAX_ATTEMPTS", "2"),
+            variable_name="AI_TEXT_MAX_ATTEMPTS", default=2,
+            minimum=1, maximum=5,
+        ),
+        ai_text_max_output_tokens=parse_bounded_integer(
+            os.getenv("AI_TEXT_MAX_OUTPUT_TOKENS", "1800"),
+            variable_name="AI_TEXT_MAX_OUTPUT_TOKENS", default=1800,
+            minimum=128, maximum=16000,
+        ),
+        ai_text_max_history_messages=parse_bounded_integer(
+            os.getenv("AI_TEXT_MAX_HISTORY_MESSAGES", "30"),
+            variable_name="AI_TEXT_MAX_HISTORY_MESSAGES", default=30,
+            minimum=6, maximum=120,
+        ),
+        ai_text_fallback_provider=fallback_provider,
+        ai_text_fallback_base_url=fallback_base_url,
+        ai_text_fallback_model=fallback_model,
+        ai_text_fallback_api_key=fallback_api_key,
         moderator_user_ids=parse_integer_list(
             os.getenv("MODERATOR_USER_IDS", ""),
             variable_name="MODERATOR_USER_IDS",
         ),
         adult_channel_id=parse_chat_id(
             os.getenv("ADULT_CHANNEL_ID", str(DEFAULT_ADULT_CHANNEL_ID)),
-            variable_name="ADULT_CHANNEL_ID",
-            default=DEFAULT_ADULT_CHANNEL_ID,
+            variable_name="ADULT_CHANNEL_ID", default=DEFAULT_ADULT_CHANNEL_ID,
         ),
     )
 
 
 __all__ = (
-    "DEFAULT_ADULT_CHANNEL_ID",
-    "Settings",
-    "load_settings",
-    "parse_allowed_user_ids",
-    "parse_allowed_usernames",
-    "parse_boolean",
-    "parse_bounded_integer",
-    "parse_chat_id",
-    "parse_integer_list",
-    "parse_optional_chat_id",
-    "parse_required_path",
-    "parse_timezone",
+    "DEFAULT_ADULT_CHANNEL_ID", "Settings", "load_settings",
+    "parse_allowed_user_ids", "parse_allowed_usernames", "parse_boolean",
+    "parse_bounded_integer", "parse_chat_id", "parse_integer_list",
+    "parse_optional_chat_id", "parse_required_path", "parse_timezone",
 )
