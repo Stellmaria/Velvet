@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -115,6 +116,29 @@ class RoleplayFoundationTests(unittest.TestCase):
         self.assertEqual("Я подхожу ближе.", result.messages[-1]["content"])
         self.assertGreater(result.trimmed_message_count, 0)
         self.assertLessEqual(result.estimated_input_tokens, 4096)
+
+    def test_context_rejects_profile_that_consumes_fixed_budget(self) -> None:
+        oversized = replace(
+            _character(),
+            biography={"detail": "очень длинная биография " * 800},
+        )
+        with self.assertRaisesRegex(ValueError, "превышают бюджет контекста"):
+            build_roleplay_context(
+                characters=(oversized,),
+                scenario="",
+                world_lore="",
+                summary="",
+                scene_state={},
+                memories=(),
+                recent_messages=(),
+                user_message="Начинаем.",
+                budget=RoleplayContextBudget(
+                    num_ctx=2048,
+                    max_output_tokens=512,
+                    recent_message_limit=8,
+                    summary_trigger_tokens=1200,
+                ),
+            )
 
     def test_ollama_body_uses_roleplay_context_and_sampling(self) -> None:
         client = OllamaRoleplayClient(
