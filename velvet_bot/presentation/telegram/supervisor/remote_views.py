@@ -46,6 +46,7 @@ _VISIBLE_COMMAND_KEYS = {
 }
 _TELEGRAM_SAFE_TEXT_LIMIT = 3600
 _HISTORY_ITEMS_LIMIT = 12
+_HISTORY_NOTICE_RESERVE = 180
 
 
 def _command_title(item: dict[str, Any], *, default: str = "Команда") -> str:
@@ -209,21 +210,20 @@ def operation_history_text(operations: list[dict[str, Any]]) -> str:
                 entry.append(f"<code>{escape(error)}</code>")
 
         candidate = "\n".join(lines + entry)
-        if len(candidate) > _TELEGRAM_SAFE_TEXT_LIMIT:
-            lines.extend(
-                [
-                    "",
-                    "<i>Остальные записи скрыты, чтобы история помещалась в Telegram. "
-                    "Подробный вывод остаётся в карточках операций и текстовых вложениях.</i>",
-                ]
-            )
+        if len(candidate) > _TELEGRAM_SAFE_TEXT_LIMIT - _HISTORY_NOTICE_RESERVE:
             break
         lines.extend(entry)
         shown += 1
 
     remaining = max(0, len(operations) - shown)
-    if remaining and len("\n".join(lines)) < _TELEGRAM_SAFE_TEXT_LIMIT - 180:
-        lines.extend(["", f"<i>Не показано более старых операций: {remaining}.</i>"])
+    if remaining:
+        lines.extend(
+            [
+                "",
+                f"<i>Не показано более старых операций: {remaining}. "
+                "Подробный вывод остаётся в карточках операций и текстовых вложениях.</i>",
+            ]
+        )
     return "\n".join(lines)
 
 
