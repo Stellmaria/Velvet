@@ -59,6 +59,7 @@ class WorkerRegistryTests(unittest.TestCase):
                 "public-archive-notifications",
                 "publication-queue",
                 "media-quality",
+                "ai-task-stale-recovery",
                 "postgresql-backups",
             ),
         )
@@ -76,6 +77,7 @@ class WorkerRegistryTests(unittest.TestCase):
                 "public-archive-notifications",
                 "publication-queue",
                 "media-quality",
+                "ai-task-stale-recovery",
                 "krita-watermark",
                 "postgresql-backups",
             ),
