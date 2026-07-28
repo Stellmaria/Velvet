@@ -78,6 +78,7 @@ class AIUsageService:
             input_tokens=result.input_tokens,
             output_tokens=result.output_tokens,
             latency_ms=latency_ms,
+            metadata=dict(result.metadata),
         )
         if not updated:
             raise RuntimeError("AI reservation уже завершена или не найдена.")

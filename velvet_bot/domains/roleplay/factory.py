@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from velvet_bot.core.ai_budget import load_ai_budget_policy
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
+from velvet_bot.domains.ai_usage.ledger import AIUsageRepository
+from velvet_bot.domains.ai_usage.pricing import load_token_pricing
+from velvet_bot.domains.ai_usage.service import AIRequestExecutor, AIUsageService
 from velvet_bot.domains.roleplay.client import (
     FailoverRoleplayClient,
     RoleplayClient,
@@ -25,6 +29,12 @@ def build_roleplay_service(
             raise RuntimeError(
                 "AI_TEXT_ENABLED=true требует непустой AI_TEXT_MODEL."
             )
+        executor = AIRequestExecutor(
+            AIUsageService(
+                AIUsageRepository(database),
+                load_ai_budget_policy(),
+            )
+        )
         primary = TextRoleplayClient(
             provider=settings.ai_text_provider,
             base_url=settings.ai_text_base_url,
@@ -33,6 +43,8 @@ def build_roleplay_service(
             timeout_seconds=settings.ai_text_timeout_seconds,
             max_output_tokens=settings.ai_text_max_output_tokens,
             max_attempts=settings.ai_text_max_attempts,
+            executor=executor,
+            pricing=load_token_pricing("AI_TEXT"),
         )
         client = primary
         provider_label = settings.ai_text_provider
@@ -47,6 +59,8 @@ def build_roleplay_service(
                 timeout_seconds=settings.ai_text_timeout_seconds,
                 max_output_tokens=settings.ai_text_max_output_tokens,
                 max_attempts=1,
+                executor=executor,
+                pricing=load_token_pricing("AI_TEXT_FALLBACK"),
             )
             client = FailoverRoleplayClient(primary, fallback)
             provider_label = (

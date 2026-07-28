@@ -5,6 +5,7 @@ from .models import (
     AIReservation,
     AIUsageTotals,
 )
+from .pricing import AITokenPricing, load_token_pricing
 from .service import AIBudgetExceeded, AIRequestExecutor, AIUsageService
 
 __all__ = (
@@ -13,7 +14,9 @@ __all__ = (
     "AIRequestContext",
     "AIRequestExecutor",
     "AIReservation",
+    "AITokenPricing",
     "AIUsageRepository",
     "AIUsageService",
     "AIUsageTotals",
+    "load_token_pricing",
 )

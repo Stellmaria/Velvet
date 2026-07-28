@@ -8,6 +8,10 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Protocol, Sequence
 
+from velvet_bot.core.ai_budget import AIBudgetScope
+from velvet_bot.domains.ai_usage.models import AIProviderResult, AIRequestContext
+from velvet_bot.domains.ai_usage.pricing import AITokenPricing
+from velvet_bot.domains.ai_usage.service import AIRequestExecutor
 from velvet_bot.domains.roleplay.models import RoleplayMessage
 
 logger = logging.getLogger(__name__)
@@ -24,6 +28,9 @@ class GeneratedRoleplayText:
     text: str
     provider: str
     model: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    usage_reported: bool = False
 
 
 class RoleplayClient(Protocol):
@@ -38,8 +45,19 @@ class RoleplayClient(Protocol):
 class TextRoleplayClient:
     """Small standard-library client for cloud Responses and chat APIs."""
 
-    def __init__(self, *, provider: str, base_url: str, model: str, api_key: str | None,
-                 timeout_seconds: int, max_output_tokens: int, max_attempts: int = 2) -> None:
+    def __init__(
+        self,
+        *,
+        provider: str,
+        base_url: str,
+        model: str,
+        api_key: str | None,
+        timeout_seconds: int,
+        max_output_tokens: int,
+        max_attempts: int = 2,
+        executor: AIRequestExecutor[GeneratedRoleplayText] | None = None,
+        pricing: AITokenPricing | None = None,
+    ) -> None:
         normalized_provider = provider.strip().casefold()
         if normalized_provider not in _SUPPORTED_PROVIDERS:
             raise ValueError(f"Неподдерживаемый text provider: {provider}.")
@@ -51,6 +69,8 @@ class TextRoleplayClient:
             raise ValueError("Название text-модели не может быть пустым.")
         if not api_key or not api_key.strip():
             raise ValueError("Облачный text provider требует API key.")
+        if (executor is None) != (pricing is None):
+            raise ValueError("AI executor и token pricing должны быть заданы вместе.")
         self.provider = normalized_provider
         self.base_url = normalized_url
         self.model = normalized_model
@@ -58,17 +78,96 @@ class TextRoleplayClient:
         self.timeout_seconds = max(10, int(timeout_seconds))
         self.max_output_tokens = max(128, int(max_output_tokens))
         self.max_attempts = max(1, int(max_attempts))
+        self._executor = executor
+        self._pricing = pricing
 
-    async def generate(self, *, instructions: str,
-                       messages: Sequence[RoleplayMessage]) -> GeneratedRoleplayText:
+    async def generate(
+        self,
+        *,
+        instructions: str,
+        messages: Sequence[RoleplayMessage],
+    ) -> GeneratedRoleplayText:
+        if self._executor is None or self._pricing is None:
+            return await self._generate_with_attempts(instructions, messages)
+
+        estimated_input_tokens = _estimate_request_tokens(instructions, messages)
+        context_message = messages[-1] if messages else None
+        context = AIRequestContext(
+            scope=AIBudgetScope.ROLEPLAY,
+            provider=self.provider,
+            model=self.model,
+            operation="roleplay.generate",
+            estimated_cost_rub=self._pricing.cost(
+                input_tokens=estimated_input_tokens,
+                output_tokens=self.max_output_tokens,
+            ),
+            user_id=context_message.user_id if context_message is not None else None,
+            chat_id=context_message.chat_id if context_message is not None else None,
+            metadata={
+                "message_count": len(messages),
+                "max_output_tokens": self.max_output_tokens,
+                "estimated_input_tokens": estimated_input_tokens,
+            },
+        )
+
+        async def operation() -> AIProviderResult[GeneratedRoleplayText]:
+            generated = await self._generate_with_attempts(instructions, messages)
+            input_tokens = (
+                generated.input_tokens
+                if generated.usage_reported
+                else estimated_input_tokens
+            )
+            output_tokens = (
+                generated.output_tokens
+                if generated.usage_reported
+                else _estimate_text_tokens(generated.text)
+            )
+            return AIProviderResult(
+                value=generated,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                actual_cost_rub=self._pricing.cost(
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                ),
+                metadata={
+                    "provider_reported_usage": generated.usage_reported,
+                    "attempt_limit": self.max_attempts,
+                },
+            )
+
+        return await self._executor.execute(context=context, operation=operation)
+
+    async def _generate_with_attempts(
+        self,
+        instructions: str,
+        messages: Sequence[RoleplayMessage],
+    ) -> GeneratedRoleplayText:
         last_error: RoleplayClientError | None = None
         for attempt in range(1, self.max_attempts + 1):
             try:
-                payload = await asyncio.to_thread(self._request_once, instructions, messages)
+                payload = await asyncio.to_thread(
+                    self._request_once,
+                    instructions,
+                    messages,
+                )
                 text = self._extract_text(payload).strip()
                 if not text:
-                    raise RoleplayClientError(f"{self.provider}:{self.model} вернул пустой ответ.")
-                return GeneratedRoleplayText(text=text, provider=self.provider, model=self.model)
+                    raise RoleplayClientError(
+                        f"{self.provider}:{self.model} вернул пустой ответ."
+                    )
+                input_tokens, output_tokens, usage_reported = _extract_token_usage(
+                    payload,
+                    provider=self.provider,
+                )
+                return GeneratedRoleplayText(
+                    text=text,
+                    provider=self.provider,
+                    model=self.model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    usage_reported=usage_reported,
+                )
             except RoleplayClientError as error:
                 last_error = error
                 if attempt >= self.max_attempts:
@@ -78,8 +177,11 @@ class TextRoleplayClient:
             raise last_error
         raise RoleplayClientError("Text provider завершился без ответа.")
 
-    def _request_once(self, instructions: str,
-                      messages: Sequence[RoleplayMessage]) -> dict[str, Any]:
+    def _request_once(
+        self,
+        instructions: str,
+        messages: Sequence[RoleplayMessage],
+    ) -> dict[str, Any]:
         if self.provider == "openai":
             endpoint = f"{self.base_url}/responses"
             body = self._openai_responses_body(instructions, messages)
@@ -125,25 +227,35 @@ class TextRoleplayClient:
             "Authorization": f"Bearer {self.api_key}",
         }
 
-    def _openai_responses_body(self, instructions: str,
-                               messages: Sequence[RoleplayMessage]) -> dict[str, Any]:
+    def _openai_responses_body(
+        self,
+        instructions: str,
+        messages: Sequence[RoleplayMessage],
+    ) -> dict[str, Any]:
         return {
             "model": self.model,
             "instructions": instructions,
-            "input": [{"role": message.role, "content": message.content}
-                      for message in messages],
+            "input": [
+                {"role": message.role, "content": message.content}
+                for message in messages
+            ],
             "max_output_tokens": self.max_output_tokens,
             "store": False,
         }
 
-    def _chat_completions_body(self, instructions: str,
-                               messages: Sequence[RoleplayMessage]) -> dict[str, Any]:
+    def _chat_completions_body(
+        self,
+        instructions: str,
+        messages: Sequence[RoleplayMessage],
+    ) -> dict[str, Any]:
         return {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": instructions},
-                *({"role": message.role, "content": message.content}
-                  for message in messages),
+                *(
+                    {"role": message.role, "content": message.content}
+                    for message in messages
+                ),
             ],
             "max_tokens": self.max_output_tokens,
             "stream": False,
@@ -160,13 +272,23 @@ class FailoverRoleplayClient:
         self._primary = primary
         self._fallback = fallback
 
-    async def generate(self, *, instructions: str,
-                       messages: Sequence[RoleplayMessage]) -> GeneratedRoleplayText:
+    async def generate(
+        self,
+        *,
+        instructions: str,
+        messages: Sequence[RoleplayMessage],
+    ) -> GeneratedRoleplayText:
         try:
-            return await self._primary.generate(instructions=instructions, messages=messages)
+            return await self._primary.generate(
+                instructions=instructions,
+                messages=messages,
+            )
         except RoleplayClientError as error:
             logger.warning("Primary roleplay provider failed, using fallback: %s", error)
-            return await self._fallback.generate(instructions=instructions, messages=messages)
+            return await self._fallback.generate(
+                instructions=instructions,
+                messages=messages,
+            )
 
 
 def _extract_openai_response_text(payload: dict[str, Any]) -> str:
@@ -210,6 +332,43 @@ def _extract_chat_completion_text(payload: dict[str, Any]) -> str:
     if not isinstance(content, str):
         raise RoleplayClientError("OpenAI-compatible endpoint не вернул текст.")
     return content
+
+
+def _extract_token_usage(
+    payload: dict[str, Any],
+    *,
+    provider: str,
+) -> tuple[int, int, bool]:
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return 0, 0, False
+    if provider == "openai":
+        input_value = usage.get("input_tokens")
+        output_value = usage.get("output_tokens")
+    else:
+        input_value = usage.get("prompt_tokens")
+        output_value = usage.get("completion_tokens")
+    if not _is_token_count(input_value) or not _is_token_count(output_value):
+        return 0, 0, False
+    return int(input_value), int(output_value), True
+
+
+def _is_token_count(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _estimate_request_tokens(
+    instructions: str,
+    messages: Sequence[RoleplayMessage],
+) -> int:
+    content = [instructions]
+    content.extend(message.content for message in messages)
+    role_overhead = len(messages) * 8
+    return max(1, sum(_estimate_text_tokens(item) for item in content) + role_overhead)
+
+
+def _estimate_text_tokens(text: str) -> int:
+    return max(1, (len(text) + 1) // 2)
 
 
 __all__ = (
