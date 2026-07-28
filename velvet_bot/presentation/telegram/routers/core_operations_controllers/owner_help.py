@@ -7,6 +7,9 @@ from aiogram.types import Message
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.ai_budget import (
     router as ai_budget_router,
 )
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.ai_queue import (
+    router as ai_queue_router,
+)
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.roleplay import (
     router as roleplay_router,
 )
@@ -137,6 +140,9 @@ OWNER_COMMAND_GROUPS: tuple[
             ("ai_usage", "показать последние платные AI-операции"),
             ("ai_pause", "приостановить новые AI-запросы"),
             ("ai_resume", "возобновить AI-запросы"),
+            ("ai_queue", "показать состояние и последние AI-задачи"),
+            ("ai_queue_retry", "повторно поставить error/cancelled AI-задачу"),
+            ("ai_queue_cancel", "отменить queued/running AI-задачу"),
         ),
     ),
     (
@@ -239,6 +245,7 @@ async def handle_owner_help(message: Message) -> None:
 
 router.message.register(handle_owner_help, Command("help"))
 router.include_router(ai_budget_router)
+router.include_router(ai_queue_router)
 router.include_router(roleplay_router)
 
 

@@ -15,7 +15,12 @@ from velvet_bot.backup_runtime import BackupService
 from velvet_bot.calibrated_ai_quality import CalibratedAIQualityService
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
-from velvet_bot.domains.ai_usage import AIUsageService, build_ai_usage_service
+from velvet_bot.domains.ai_usage import (
+    AITaskQueueService,
+    AIUsageService,
+    build_ai_task_queue_service,
+    build_ai_usage_service,
+)
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
 from velvet_bot.domains.vision_routing.integration import (
@@ -51,6 +56,14 @@ async def _run_ai_locked(
         return await runner()
 
 
+async def _recover_stale_ai_tasks(service: AITaskQueueService) -> int:
+    recovered = await service.recover_expired_locks(
+        stale_after_seconds=900,
+        limit=100,
+    )
+    return len(recovered)
+
+
 def _env_enabled(name: str) -> bool:
     return os.getenv(name, "false").strip().casefold() in {
         "1",
@@ -76,6 +89,7 @@ def build_worker_manager(
     backup_service: BackupService,
     settings: Settings | None = None,
     ai_usage_service: AIUsageService | None = None,
+    ai_task_queue_service: AITaskQueueService | None = None,
     error_center: ErrorIncidentCenter | None = None,
     system_service: SystemHealthService | None = None,
     diagnostic_service: DiagnosticBundleService | None = None,
@@ -86,6 +100,9 @@ def build_worker_manager(
     media_quality_service = MediaQualityService(
         bot=bot,
         repository=MediaQualityRepository(database),
+    )
+    active_task_queue_service = (
+        ai_task_queue_service or build_ai_task_queue_service(database=database)
     )
 
     manager = WorkerManager(
@@ -115,6 +132,14 @@ def build_worker_manager(
             description="Дубли и проверка медиа",
             interval_seconds=4,
             runner=media_quality_service.process_once,
+        )
+    )
+    manager.register(
+        PeriodicWorkerSpec(
+            name="ai-task-stale-recovery",
+            description="Восстановление зависших AI-задач",
+            interval_seconds=300,
+            runner=partial(_recover_stale_ai_tasks, active_task_queue_service),
         )
     )
     if _env_enabled("KRITA_WATERMARK_ENABLED"):
