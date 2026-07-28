@@ -11,6 +11,9 @@ class AIJobKindsTests(unittest.TestCase):
     def test_image_to_prompt_is_registered(self) -> None:
         self.assertIn("image_to_prompt", AI_JOB_KINDS)
 
+    def test_pose_extraction_is_registered(self) -> None:
+        self.assertIn("pose_extraction", AI_JOB_KINDS)
+
 
 @unittest.skipUnless(
     os.getenv("TEST_DATABASE_URL"),
