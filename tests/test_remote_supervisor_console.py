@@ -160,6 +160,33 @@ class RemoteConsoleTests(unittest.TestCase):
         self.assertNotIn("end-1", text)
         self.assertIn("Не показано более старых операций", text)
 
+    def test_ollama_bundle_commands_use_extended_timeout_and_current_titles(self) -> None:
+        pull = self.registry.resolve("ollama-pull-qwen3-vl-4b", by_key=True)
+        repair = self.registry.resolve("ollama-repair-qwen3-vl-4b", by_key=True)
+
+        self.assertEqual(7200, pull.timeout_seconds)
+        self.assertEqual(7200, repair.timeout_seconds)
+        self.assertFalse(pull.enforce_global_timeout)
+        self.assertFalse(repair.enforce_global_timeout)
+        self.assertEqual("Ollama: установить набор моделей", pull.title)
+        self.assertEqual("Ollama: восстановить набор моделей", repair.title)
+
+    def test_execute_uses_extended_timeout_for_ollama_repair(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=["python.exe", "-m", "velvet_supervisor.ollama_recovery", "repair"],
+            returncode=0,
+            stdout="success",
+            stderr=None,
+        )
+        with patch(
+            "velvet_supervisor.remote_console.subprocess.run",
+            return_value=completed,
+        ) as run:
+            result = self.registry.execute("ollama-repair-qwen3-vl-4b")
+
+        self.assertEqual(7200, run.call_args.kwargs["timeout"])
+        self.assertEqual(0, result["returncode"])
+
     def test_unknown_and_shell_syntax_are_rejected(self) -> None:
         for value in (
             "whoami",
@@ -199,6 +226,22 @@ class RemoteConsoleTests(unittest.TestCase):
         self.assertNotIn("supervisor-secret-token", output)
         self.assertNotIn("secret@localhost", output)
         self.assertIn("redacted", output)
+
+    def test_execute_strips_terminal_control_sequences(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=["ollama", "list"],
+            returncode=0,
+            stdout="\x1b[?25lpulling manifest\r\x1b[Kwriting manifest\r\nsuccess\x1b[?25h",
+            stderr=None,
+        )
+        with patch("velvet_supervisor.remote_console.subprocess.run", return_value=completed):
+            result = self.registry.execute("ollama-list")
+
+        output = str(result["output"])
+        self.assertNotIn("\x1b", output)
+        self.assertIn("pulling manifest", output)
+        self.assertIn("writing manifest", output)
+        self.assertIn("success", output)
 
     def test_nonzero_exit_is_an_operation_error_with_result(self) -> None:
         completed = subprocess.CompletedProcess(
