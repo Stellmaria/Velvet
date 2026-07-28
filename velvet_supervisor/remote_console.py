@@ -21,6 +21,7 @@ _TERMINAL_ESCAPE_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 _MAX_INPUT_LENGTH = 300
 _MAX_OUTPUT_LENGTH = 20_000
 _OLLAMA_BUNDLE_TIMEOUT_SECONDS = 7_200
+_OLLAMA_MODULE = "velvet_supervisor.ollama_recovery_v2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +81,14 @@ def _child_environment() -> dict[str, str]:
     environment = os.environ.copy()
     environment["PYTHONUTF8"] = "1"
     environment["PYTHONIOENCODING"] = "utf-8"
+    base_url = os.getenv("AI_VISION_BASE_URL", "http://127.0.0.1:11435").strip()
+    if base_url.startswith("http://"):
+        environment["OLLAMA_HOST"] = base_url.removeprefix("http://").rstrip("/")
+    elif base_url.startswith("https://"):
+        environment["OLLAMA_HOST"] = base_url.removeprefix("https://").rstrip("/")
+    models_path = os.getenv("OLLAMA_MODELS", "").strip()
+    if models_path:
+        environment["OLLAMA_MODELS"] = models_path
     return environment
 
 
@@ -279,7 +288,7 @@ class RemoteCommandRegistry:
             RemoteCommandSpec(
                 "ollama-list",
                 "Ollama: список моделей",
-                ("ollama", "list"),
+                (python, "-m", _OLLAMA_MODULE, "list"),
                 ("ollama list", "модели ollama"),
                 timeout_seconds=60,
                 category="AI: Ollama",
@@ -287,7 +296,7 @@ class RemoteCommandRegistry:
             RemoteCommandSpec(
                 "ollama-recovery-status",
                 "Ollama: состояние набора моделей",
-                (python, "-m", "velvet_supervisor.ollama_recovery", "status"),
+                (python, "-m", _OLLAMA_MODULE, "status"),
                 (
                     "ollama recovery status",
                     "состояние ollama vision",
@@ -299,27 +308,27 @@ class RemoteCommandRegistry:
             RemoteCommandSpec(
                 "ollama-start",
                 "Ollama: запустить локальный сервер",
-                (python, "-m", "velvet_supervisor.ollama_recovery", "start"),
+                (python, "-m", _OLLAMA_MODULE, "start"),
                 ("ollama start", "запустить ollama"),
-                timeout_seconds=60,
+                timeout_seconds=90,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
                 "ollama-configure-qwen3-vl-4b",
                 "Ollama: настроить набор моделей",
-                (python, "-m", "velvet_supervisor.ollama_recovery", "configure"),
+                (python, "-m", _OLLAMA_MODULE, "configure"),
                 (
                     "ollama configure qwen3-vl 4b",
                     "настроить qwen3 vl 4b",
                     "настроить набор ollama",
                 ),
-                timeout_seconds=30,
+                timeout_seconds=60,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
                 "ollama-pull-qwen3-vl-4b",
                 "Ollama: установить набор моделей",
-                (python, "-m", "velvet_supervisor.ollama_recovery", "pull"),
+                (python, "-m", _OLLAMA_MODULE, "pull"),
                 (
                     "ollama pull qwen3-vl:4b",
                     "скачать qwen3 vl 4b",
@@ -332,19 +341,19 @@ class RemoteCommandRegistry:
             RemoteCommandSpec(
                 "ollama-show-qwen3-vl-4b",
                 "Ollama: проверить набор моделей",
-                (python, "-m", "velvet_supervisor.ollama_recovery", "show"),
+                (python, "-m", _OLLAMA_MODULE, "show"),
                 (
                     "ollama show qwen3-vl:4b",
                     "проверить qwen3 vl 4b",
                     "проверить набор ollama",
                 ),
-                timeout_seconds=120,
+                timeout_seconds=180,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
                 "ollama-repair-qwen3-vl-4b",
                 "Ollama: восстановить набор моделей",
-                (python, "-m", "velvet_supervisor.ollama_recovery", "repair"),
+                (python, "-m", _OLLAMA_MODULE, "repair"),
                 (
                     "ollama repair qwen3-vl:4b",
                     "восстановить ollama vision",
