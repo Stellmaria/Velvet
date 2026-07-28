@@ -26,17 +26,17 @@ class Settings:
     pg_dump_path: str
     pg_restore_path: str
     ai_vision_enabled: bool = False
-    ai_vision_provider: str = "ollama"
-    ai_vision_base_url: str = "http://127.0.0.1:11435"
-    ai_vision_model: str = "qwen3-vl:8b"
+    ai_vision_provider: str = "openai_compatible"
+    ai_vision_base_url: str = "https://byesu.com/v1"
+    ai_vision_model: str = ""
     ai_vision_compare_model: str | None = None
     ai_vision_fallback_model: str | None = None
     ai_vision_api_key: str | None = None
     ai_vision_timeout_seconds: int = 180
     ai_vision_max_attempts: int = 3
     ai_text_enabled: bool = False
-    ai_text_provider: str = "ollama"
-    ai_text_base_url: str = "http://127.0.0.1:11435"
+    ai_text_provider: str = "openai_compatible"
+    ai_text_base_url: str = "https://byesu.com/v1"
     ai_text_model: str | None = None
     ai_text_api_key: str | None = None
     ai_text_timeout_seconds: int = 180
@@ -44,7 +44,7 @@ class Settings:
     ai_text_max_output_tokens: int = 1800
     ai_text_max_history_messages: int = 30
     ai_text_fallback_provider: str | None = None
-    ai_text_fallback_base_url: str = "http://127.0.0.1:11435"
+    ai_text_fallback_base_url: str = "https://byesu.com/v1"
     ai_text_fallback_model: str | None = None
     ai_text_fallback_api_key: str | None = None
     moderator_user_ids: frozenset[int] = frozenset()
@@ -174,6 +174,17 @@ def _parse_ai_base_url(value: str, *, variable_name: str) -> str:
     return result
 
 
+def _shared_cloud_api_key() -> str:
+    return (
+        os.getenv("BYESU_API_KEY", "").strip()
+        or os.getenv("OPENAI_API_KEY", "").strip()
+    )
+
+
+def _provider_needs_api_key(provider: str | None) -> bool:
+    return provider in {"openai", "openai_compatible"}
+
+
 def load_settings() -> Settings:
     load_dotenv()
 
@@ -197,50 +208,66 @@ def load_settings() -> Settings:
             "ALLOWED_USERNAMES в .env."
         )
 
+    shared_cloud_key = _shared_cloud_api_key()
+    vision_enabled = parse_boolean(
+        os.getenv("AI_VISION_ENABLED", "false"),
+        variable_name="AI_VISION_ENABLED",
+    )
     vision_provider = _parse_ai_provider(
-        os.getenv("AI_VISION_PROVIDER", "ollama"),
+        os.getenv("AI_VISION_PROVIDER", "openai_compatible"),
         variable_name="AI_VISION_PROVIDER",
         allowed=_VISION_PROVIDERS,
     )
     assert vision_provider is not None
     vision_base_url = _parse_ai_base_url(
-        os.getenv("AI_VISION_BASE_URL", "http://127.0.0.1:11435"),
+        os.getenv("AI_VISION_BASE_URL", "https://byesu.com/v1"),
         variable_name="AI_VISION_BASE_URL",
     )
-    vision_model = os.getenv("AI_VISION_MODEL", "qwen3-vl:8b").strip()
-    if not vision_model:
-        raise RuntimeError("AI_VISION_MODEL не может быть пустым.")
+    vision_model = os.getenv("AI_VISION_MODEL", "").strip()
+    vision_api_key = (
+        os.getenv("AI_VISION_API_KEY", "").strip()
+        or shared_cloud_key
+        or None
+    )
+    if vision_enabled and not vision_model:
+        raise RuntimeError("AI_VISION_ENABLED=true требует непустой AI_VISION_MODEL.")
+    if vision_enabled and _provider_needs_api_key(vision_provider) and not vision_api_key:
+        raise RuntimeError(
+            "Для облачного AI_VISION_PROVIDER задайте AI_VISION_API_KEY, "
+            "BYESU_API_KEY или OPENAI_API_KEY."
+        )
 
     text_enabled = parse_boolean(
         os.getenv("AI_TEXT_ENABLED", "false"),
         variable_name="AI_TEXT_ENABLED",
     )
     text_provider = _parse_ai_provider(
-        os.getenv("AI_TEXT_PROVIDER", vision_provider),
+        os.getenv("AI_TEXT_PROVIDER", "openai_compatible"),
         variable_name="AI_TEXT_PROVIDER",
         allowed=_TEXT_PROVIDERS,
     )
     assert text_provider is not None
     text_base_default = (
-        "https://api.openai.com/v1" if text_provider == "openai"
-        else vision_base_url
+        "https://api.openai.com/v1"
+        if text_provider == "openai"
+        else "https://byesu.com/v1"
     )
     text_base_url = _parse_ai_base_url(
         os.getenv("AI_TEXT_BASE_URL", text_base_default),
         variable_name="AI_TEXT_BASE_URL",
     )
     text_model = os.getenv("AI_TEXT_MODEL", "").strip() or None
-    explicit_text_key = os.getenv("AI_TEXT_API_KEY", "").strip()
-    text_api_key = explicit_text_key or (
-        os.getenv("OPENAI_API_KEY", "").strip()
-        if text_provider == "openai" else ""
-    ) or None
+    text_api_key = (
+        os.getenv("AI_TEXT_API_KEY", "").strip()
+        or shared_cloud_key
+        or None
+    )
     if text_enabled and not text_model:
         raise RuntimeError("AI_TEXT_ENABLED=true требует непустой AI_TEXT_MODEL.")
-    if text_enabled and text_provider == "openai" and not text_api_key:
+    if text_enabled and _provider_needs_api_key(text_provider) and not text_api_key:
         raise RuntimeError(
-            "Для AI_TEXT_PROVIDER=openai задайте AI_TEXT_API_KEY "
-            "или OPENAI_API_KEY."
+            "Для облачного AI_TEXT_PROVIDER задайте AI_TEXT_API_KEY, "
+            "BYESU_API_KEY или OPENAI_API_KEY."
         )
 
     fallback_provider = _parse_ai_provider(
@@ -256,22 +283,27 @@ def load_settings() -> Settings:
             "заданы вместе."
         )
     fallback_default = (
-        "https://api.openai.com/v1" if fallback_provider == "openai"
-        else vision_base_url
+        "https://api.openai.com/v1"
+        if fallback_provider == "openai"
+        else "https://byesu.com/v1"
     )
     fallback_base_url = _parse_ai_base_url(
         os.getenv("AI_TEXT_FALLBACK_BASE_URL", fallback_default),
         variable_name="AI_TEXT_FALLBACK_BASE_URL",
     )
-    fallback_api_key = os.getenv("AI_TEXT_FALLBACK_API_KEY", "").strip() or (
-        os.getenv("OPENAI_API_KEY", "").strip()
-        if fallback_provider == "openai" else ""
-    ) or None
-    if (text_enabled and fallback_provider == "openai"
-            and not fallback_api_key):
+    fallback_api_key = (
+        os.getenv("AI_TEXT_FALLBACK_API_KEY", "").strip()
+        or shared_cloud_key
+        or None
+    )
+    if (
+        text_enabled
+        and _provider_needs_api_key(fallback_provider)
+        and not fallback_api_key
+    ):
         raise RuntimeError(
-            "Для AI_TEXT_FALLBACK_PROVIDER=openai задайте "
-            "AI_TEXT_FALLBACK_API_KEY или OPENAI_API_KEY."
+            "Для облачного AI_TEXT_FALLBACK_PROVIDER задайте "
+            "AI_TEXT_FALLBACK_API_KEY, BYESU_API_KEY или OPENAI_API_KEY."
         )
 
     return Settings(
@@ -299,10 +331,7 @@ def load_settings() -> Settings:
             os.getenv("PG_RESTORE_PATH", "pg_restore"), default="pg_restore",
             variable_name="PG_RESTORE_PATH",
         ),
-        ai_vision_enabled=parse_boolean(
-            os.getenv("AI_VISION_ENABLED", "false"),
-            variable_name="AI_VISION_ENABLED",
-        ),
+        ai_vision_enabled=vision_enabled,
         ai_vision_provider=vision_provider,
         ai_vision_base_url=vision_base_url,
         ai_vision_model=vision_model,
@@ -312,7 +341,7 @@ def load_settings() -> Settings:
         ai_vision_fallback_model=(
             os.getenv("AI_VISION_FALLBACK_MODEL", "").strip() or None
         ),
-        ai_vision_api_key=os.getenv("AI_VISION_API_KEY", "").strip() or None,
+        ai_vision_api_key=vision_api_key,
         ai_vision_timeout_seconds=parse_bounded_integer(
             os.getenv("AI_VISION_TIMEOUT_SECONDS", "180"),
             variable_name="AI_VISION_TIMEOUT_SECONDS", default=180,
