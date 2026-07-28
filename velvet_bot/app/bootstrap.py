@@ -14,6 +14,7 @@ from velvet_bot.app.workers import build_worker_manager
 from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.config import Settings, load_settings
+from velvet_bot.core.config.kie import load_kie_settings
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import build_ai_task_queue_service
 from velvet_bot.error_center import ErrorIncidentCenter, ErrorIncidentRepository
@@ -138,6 +139,7 @@ async def _report_fatal_application_error(
 async def run_application() -> None:
     """Create all application dependencies and own their complete lifecycle."""
     settings = load_settings()
+    kie_settings = load_kie_settings()
     backup_service = BackupService(
         database_url=settings.database_url,
         backup_dir=settings.backup_dir,
@@ -197,6 +199,7 @@ async def run_application() -> None:
             settings=settings,
             ai_usage_service=ai_usage_service,
             ai_task_queue_service=ai_task_queue_service,
+            kie_settings=kie_settings,
             error_center=error_center,
             system_service=system_service,
             diagnostic_service=diagnostic_service,
@@ -217,6 +220,7 @@ async def run_application() -> None:
             audit_logger=audit_logger,
             ai_usage_service=ai_usage_service,
             ai_task_queue_service=ai_task_queue_service,
+            kie_settings=kie_settings,
             error_center=error_center,
             reference_uploads=reference_uploads,
             save_upload_sessions=save_upload_sessions,
@@ -244,6 +248,16 @@ async def run_application() -> None:
             )
         else:
             logger.info("AI vision disabled; media sets use fallback heuristics")
+        if kie_settings.enabled:
+            logger.info(
+                "Meow/Kie enabled base_url=%s models=%s,%s,%s",
+                kie_settings.base_url,
+                kie_settings.models.seedream_5_pro,
+                kie_settings.models.nano_banana_pro,
+                kie_settings.models.grok_imagine_video,
+            )
+        else:
+            logger.info("Meow/Kie disabled; UI remains visible in setup mode")
 
         await install_command_menus(bot, settings)
         await _probe_analytics_channels(
@@ -271,6 +285,7 @@ async def run_application() -> None:
                 if settings.ai_vision_enabled
                 else "disabled"
             ),
+            meow_kie="enabled" if kie_settings.enabled else "disabled",
             backup_dir=settings.backup_dir,
             log_chat_id=settings.log_chat_id,
             error_center="enabled",
