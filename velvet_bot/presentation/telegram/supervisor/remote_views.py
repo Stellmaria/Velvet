@@ -33,6 +33,8 @@ def console_keyboard(commands: list[dict[str, Any]]) -> InlineKeyboardMarkup:
         "compile",
         "tests",
         "ollama-list",
+        "ollama-recovery-status",
+        "ollama-repair-qwen3-vl-4b",
         "task-status",
     }
     for item in commands:
