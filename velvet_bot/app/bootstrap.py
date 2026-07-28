@@ -15,6 +15,7 @@ from velvet_bot.audit import TelegramAuditLogger
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.core.config import Settings, load_settings
 from velvet_bot.database import Database
+from velvet_bot.domains.ai_usage import build_ai_task_queue_service
 from velvet_bot.error_center import ErrorIncidentCenter, ErrorIncidentRepository
 from velvet_bot.infrastructure.postgres.system_repository import SystemRepository
 from velvet_bot.protected_bot import ProtectedMediaBot
@@ -171,6 +172,7 @@ async def run_application() -> None:
             database=database,
             audit_logger=audit_logger,
         )
+        ai_task_queue_service = build_ai_task_queue_service(database=database)
         incident_repository = ErrorIncidentRepository(database)
         diagnostic_service = DiagnosticBundleService(
             incident_repository=incident_repository,
@@ -194,6 +196,7 @@ async def run_application() -> None:
             backup_service=backup_service,
             settings=settings,
             ai_usage_service=ai_usage_service,
+            ai_task_queue_service=ai_task_queue_service,
             error_center=error_center,
             system_service=system_service,
             diagnostic_service=diagnostic_service,
@@ -213,6 +216,7 @@ async def run_application() -> None:
             bot_username=bot_username,
             audit_logger=audit_logger,
             ai_usage_service=ai_usage_service,
+            ai_task_queue_service=ai_task_queue_service,
             error_center=error_center,
             reference_uploads=reference_uploads,
             save_upload_sessions=save_upload_sessions,
