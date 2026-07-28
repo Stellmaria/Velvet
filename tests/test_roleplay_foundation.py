@@ -168,7 +168,7 @@ class RoleplayFoundationTests(unittest.TestCase):
         self.assertEqual(700, settings.timeout_seconds)
 
     def test_migration_is_isolated_from_archive_tables(self) -> None:
-        sql = (ROOT / "migrations/915_roleplay_foundation.sql").read_text(
+        sql = (ROOT / "migrations/916_roleplay_foundation.sql").read_text(
             encoding="utf-8"
         )
         for table in (
