@@ -1,3 +1,7 @@
+from velvet_bot.core.config.roleplay import (
+    RoleplaySettings,
+    load_roleplay_settings,
+)
 from velvet_bot.core.config.settings import (
     DEFAULT_ADULT_CHANNEL_ID,
     Settings,
@@ -13,7 +17,9 @@ from velvet_bot.core.config.settings import (
 
 __all__ = (
     "DEFAULT_ADULT_CHANNEL_ID",
+    "RoleplaySettings",
     "Settings",
+    "load_roleplay_settings",
     "load_settings",
     "parse_allowed_user_ids",
     "parse_allowed_usernames",
