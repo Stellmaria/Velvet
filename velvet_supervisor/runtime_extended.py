@@ -10,6 +10,7 @@ from .dependencies import (
     sync_current_requirements,
     sync_remote_requirements,
 )
+from .hermes_incident import HermesIncident, HermesIncidentClient
 from .krita_process import KritaProcessManager
 from .models import OperationState, utc_now
 from .polling_log_filter import install_supervisor_polling_filter
@@ -20,13 +21,21 @@ logger = logging.getLogger(__name__)
 
 
 class VelvetSupervisor(BaseVelvetSupervisor):
-    """Supervisor runtime extended with on-demand Krita process ownership."""
+    """Supervisor runtime extended with Krita and bounded Hermes escalation."""
 
     def __init__(self, settings) -> None:
         super().__init__(settings)
         self.krita = KritaProcessManager(
             project_dir=settings.project_dir,
             runtime_dir=settings.runtime_dir,
+        )
+        self.hermes_incidents = HermesIncidentClient(
+            enabled=settings.hermes_incident_enabled,
+            base_url=settings.hermes_base_url,
+            api_key=settings.hermes_api_key,
+            timeout_seconds=settings.hermes_timeout_seconds,
+            cooldown_seconds=settings.hermes_cooldown_seconds,
+            max_log_chars=settings.hermes_max_log_chars,
         )
 
     def start(self) -> None:
@@ -62,7 +71,41 @@ class VelvetSupervisor(BaseVelvetSupervisor):
     def status(self) -> dict[str, Any]:
         payload = super().status()
         payload["krita"] = self.krita.status()
+        payload["hermes_incidents"] = self.hermes_incidents.status()
         return payload
+
+    def _register_crash_locked(self) -> float | None:
+        restart_delay = super()._register_crash_locked()
+        restart_count = len(self._restart_times)
+        should_escalate = (
+            self.settings.hermes_incident_enabled
+            and (
+                self._crash_loop_open
+                or restart_count >= self.settings.hermes_escalate_after_restarts
+            )
+        )
+        if should_escalate:
+            incident = HermesIncident(
+                service="velvet-bot",
+                reason=(
+                    "crash-loop-open"
+                    if self._crash_loop_open
+                    else "repeated-process-exit"
+                ),
+                exit_code=self._last_exit_code,
+                restart_count=restart_count,
+                crash_loop_open=self._crash_loop_open,
+                log_tail="\n".join(list(self._tail)[-80:]),
+                git_head=None,
+                branch=None,
+            )
+            if self.hermes_incidents.submit_async(incident):
+                logger.warning(
+                    "Submitted Velvet crash incident to Hermes restarts=%s crash_loop=%s",
+                    restart_count,
+                    self._crash_loop_open,
+                )
+        return restart_delay
 
     def ensure_krita(self) -> dict[str, Any]:
         return self.krita.ensure()
