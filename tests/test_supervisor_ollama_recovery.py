@@ -274,7 +274,8 @@ class OllamaRecoveryRegistryTests(unittest.TestCase):
             spec.command,
         )
         self.assertEqual("AI: Ollama", spec.category)
-        self.assertEqual(900, spec.timeout_seconds)
+        self.assertEqual(7200, spec.timeout_seconds)
+        self.assertFalse(spec.enforce_global_timeout)
         self.assertNotIn("powershell", " ".join(spec.command).casefold())
         self.assertNotIn("cmd.exe", " ".join(spec.command).casefold())
 
