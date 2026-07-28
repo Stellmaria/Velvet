@@ -262,6 +262,30 @@ class ImageToPromptClient(VisionClient):
         super().__init__(**kwargs)
         self.keep_alive = keep_alive
 
+    async def _ensure_vision_capability(self) -> None:
+        if self.provider != "ollama":
+            return
+        request = urllib.request.Request(
+            f"{self.base_url}/api/show",
+            data=json.dumps({"model": self.model}, ensure_ascii=False).encode("utf-8"),
+            headers=self._headers(),
+            method="POST",
+        )
+        payload = await asyncio.to_thread(
+            self._read_json,
+            request,
+            timeout=min(30, self.timeout_seconds),
+        )
+        capabilities = payload.get("capabilities")
+        if not isinstance(capabilities, list) or not capabilities:
+            return
+        normalized = {str(value).strip().casefold() for value in capabilities}
+        if "vision" not in normalized:
+            raise VisionAnalysisError(
+                f"Модель {self.model} не поддерживает изображения в Ollama. "
+                "Используйте модель с capability vision, например qwen3-vl:4b."
+            )
+
     def _messages(
         self,
         image_base64: str,
@@ -363,6 +387,7 @@ class ImageToPromptClient(VisionClient):
         return f" ({detail[:200]})" if detail else ""
 
     async def generate(self, source: bytes) -> str:
+        await self._ensure_vision_capability()
         prepared = await asyncio.to_thread(_prepare_image, source)
         image_base64 = base64.b64encode(prepared).decode("ascii")
 
