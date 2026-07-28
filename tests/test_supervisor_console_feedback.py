@@ -111,6 +111,34 @@ class SupervisorConsoleFeedbackTests(unittest.TestCase):
         self.assertIn("Показан конец длинного вывода", text)
         self.assertIn("приложен файлом в ЛС", text)
 
+    def test_extreme_error_output_stays_within_telegram_limit(self) -> None:
+        progress = (
+            "\x1b[?25lpulling ed12a4674d72: 100% <&> 6.1 GB\r"
+            "verifying sha256 digest <&>\x1b[K\n"
+        )
+        operation = {
+            "id": "ollama-long-error",
+            "status": "error",
+            "message": "Команда принята: Ollama recovery",
+            "result": {
+                "title": "Ollama: восстановить набор моделей " + ("<&>" * 300),
+                "command": "python -m velvet_supervisor.ollama_recovery repair " + ("<&>" * 500),
+                "returncode": 124,
+                "duration_seconds": 900,
+                "output": (progress * 300) + "writing manifest\nsuccess",
+            },
+            "error": "Команда превысила таймаут. " + ("<&>" * 700),
+        }
+
+        text = console_operation_text(operation)
+        dm_text = console_operation_dm_text(operation)
+
+        self.assertLessEqual(len(text), 3800)
+        self.assertLessEqual(len(dm_text), 3800)
+        self.assertNotIn("\x1b", text)
+        self.assertIn("success", text)
+        self.assertIn("Полный вывод приложен файлом", text)
+
     def test_dm_result_uses_explicit_notification_heading(self) -> None:
         operation = {
             "id": "dm1",
