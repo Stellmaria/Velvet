@@ -17,8 +17,10 @@ _CONNECTION_RE = re.compile(
     r"(?i)\b(?:postgres(?:ql)?|redis|mysql|mongodb(?:\+srv)?)://\S+"
 )
 _BOT_TOKEN_RE = re.compile(r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b")
+_TERMINAL_ESCAPE_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 _MAX_INPUT_LENGTH = 300
 _MAX_OUTPUT_LENGTH = 20_000
+_OLLAMA_BUNDLE_TIMEOUT_SECONDS = 7_200
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +31,7 @@ class RemoteCommandSpec:
     aliases: tuple[str, ...]
     timeout_seconds: int = 60
     category: str = "Диагностика"
+    enforce_global_timeout: bool = True
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -55,8 +58,14 @@ def _normalize(value: str) -> str:
     return " ".join(value.strip().casefold().split())
 
 
+def _strip_terminal_control(value: str) -> str:
+    cleaned = _TERMINAL_ESCAPE_RE.sub("", value)
+    cleaned = cleaned.replace("\r\n", "\n").replace("\r", "\n")
+    return cleaned
+
+
 def _redact(value: str, secret_values: Iterable[str] = ()) -> str:
-    result = value
+    result = _strip_terminal_control(value)
     for secret in secret_values:
         cleaned = secret.strip()
         if len(cleaned) >= 6:
@@ -77,9 +86,8 @@ def _child_environment() -> dict[str, str]:
 class RemoteCommandRegistry:
     """Exact allowlist for commands accepted from Telegram.
 
-    No user text is ever passed to a shell. A user message only resolves to one
-    predefined argv tuple. This keeps a stolen Telegram session from becoming
-    an unrestricted Windows terminal.
+    User text only resolves to predefined argv tuples. No command is executed
+    through a shell.
     """
 
     def __init__(self, settings: SupervisorSettings) -> None:
@@ -88,104 +96,104 @@ class RemoteCommandRegistry:
         python = settings.python_executable
         specs = (
             RemoteCommandSpec(
-                key="git-status",
-                title="Git: локальные изменения",
-                command=("git", "status", "--short"),
-                aliases=("git status", "git status --short", "статус git"),
+                "git-status",
+                "Git: локальные изменения",
+                ("git", "status", "--short"),
+                ("git status", "git status --short", "статус git"),
                 category="Git: состояние",
             ),
             RemoteCommandSpec(
-                key="git-branch",
-                title="Git: текущая ветка",
-                command=("git", "branch", "--show-current"),
-                aliases=("git branch --show-current", "текущая ветка"),
+                "git-branch",
+                "Git: текущая ветка",
+                ("git", "branch", "--show-current"),
+                ("git branch --show-current", "текущая ветка"),
                 category="Git: состояние",
             ),
             RemoteCommandSpec(
-                key="git-head",
-                title="Git: текущий commit",
-                command=("git", "rev-parse", "--short", "HEAD"),
-                aliases=("git rev-parse --short head", "git head", "текущий commit"),
+                "git-head",
+                "Git: текущий commit",
+                ("git", "rev-parse", "--short", "HEAD"),
+                ("git rev-parse --short head", "git head", "текущий commit"),
                 category="Git: состояние",
             ),
             RemoteCommandSpec(
-                key="git-log",
-                title="Git: последние десять commit",
-                command=("git", "log", "-10", "--oneline", "--decorate"),
-                aliases=("git log -10 --oneline --decorate", "git log", "последние коммиты"),
+                "git-log",
+                "Git: последние десять commit",
+                ("git", "log", "-10", "--oneline", "--decorate"),
+                ("git log -10 --oneline --decorate", "git log", "последние коммиты"),
                 category="Git: состояние",
             ),
             RemoteCommandSpec(
-                key="git-diff-stat",
-                title="Git: сводка локальных изменений",
-                command=("git", "diff", "--stat"),
-                aliases=("git diff --stat", "сводка изменений"),
+                "git-diff-stat",
+                "Git: сводка локальных изменений",
+                ("git", "diff", "--stat"),
+                ("git diff --stat", "сводка изменений"),
                 category="Git: состояние",
             ),
             RemoteCommandSpec(
-                key="git-diff-names",
-                title="Git: изменённые файлы",
-                command=("git", "diff", "--name-status"),
-                aliases=("git diff --name-status", "измененные файлы", "изменённые файлы"),
+                "git-diff-names",
+                "Git: изменённые файлы",
+                ("git", "diff", "--name-status"),
+                ("git diff --name-status", "измененные файлы", "изменённые файлы"),
                 category="Git: состояние",
             ),
             RemoteCommandSpec(
-                key="git-fetch",
-                title="Git: получить origin",
-                command=("git", "fetch", "origin", "--prune"),
-                aliases=("git fetch", "git fetch origin", "git fetch origin --prune"),
+                "git-fetch",
+                "Git: получить origin",
+                ("git", "fetch", "origin", "--prune"),
+                ("git fetch", "git fetch origin", "git fetch origin --prune"),
                 timeout_seconds=180,
                 category="Git: синхронизация",
             ),
             RemoteCommandSpec(
-                key="git-sync-count",
-                title="Git: отставание и опережение main",
-                command=("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"),
-                aliases=(
+                "git-sync-count",
+                "Git: отставание и опережение main",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"),
+                (
                     "git rev-list --left-right --count head...origin/main",
                     "сравнить с origin main",
                 ),
                 category="Git: синхронизация",
             ),
             RemoteCommandSpec(
-                key="git-incoming",
-                title="Git: входящие commit из origin/main",
-                command=("git", "log", "--oneline", "HEAD..origin/main"),
-                aliases=("git log --oneline head..origin/main", "входящие коммиты"),
+                "git-incoming",
+                "Git: входящие commit из origin/main",
+                ("git", "log", "--oneline", "HEAD..origin/main"),
+                ("git log --oneline head..origin/main", "входящие коммиты"),
                 category="Git: синхронизация",
             ),
             RemoteCommandSpec(
-                key="git-outgoing",
-                title="Git: локальные commit вне origin/main",
-                command=("git", "log", "--oneline", "origin/main..HEAD"),
-                aliases=("git log --oneline origin/main..head", "исходящие коммиты"),
+                "git-outgoing",
+                "Git: локальные commit вне origin/main",
+                ("git", "log", "--oneline", "origin/main..HEAD"),
+                ("git log --oneline origin/main..head", "исходящие коммиты"),
                 category="Git: синхронизация",
             ),
             RemoteCommandSpec(
-                key="git-origin-diff-stat",
-                title="Git: разница HEAD и origin/main",
-                command=("git", "diff", "--stat", "HEAD", "origin/main"),
-                aliases=("git diff --stat head origin/main", "разница с origin main"),
+                "git-origin-diff-stat",
+                "Git: разница HEAD и origin/main",
+                ("git", "diff", "--stat", "HEAD", "origin/main"),
+                ("git diff --stat head origin/main", "разница с origin main"),
                 category="Git: синхронизация",
             ),
             RemoteCommandSpec(
-                key="git-clean-preview",
-                title="Git: показать удаляемые неотслеживаемые файлы",
-                command=("git", "clean", "-nd"),
-                aliases=("git clean -nd", "предпросмотр очистки git"),
+                "git-clean-preview",
+                "Git: показать удаляемые неотслеживаемые файлы",
+                ("git", "clean", "-nd"),
+                ("git clean -nd", "предпросмотр очистки git"),
                 category="Git: восстановление",
             ),
             RemoteCommandSpec(
-                key="git-stash-list",
-                title="Git: список сохранённых изменений",
-                command=("git", "stash", "list"),
-                aliases=("git stash list", "список stash"),
+                "git-stash-list",
+                "Git: список сохранённых изменений",
+                ("git", "stash", "list"),
+                ("git stash list", "список stash"),
                 category="Git: восстановление",
             ),
             RemoteCommandSpec(
-                key="git-stash-save-all",
-                title="Git: временно сохранить все локальные изменения",
-                command=(
+                "git-stash-save-all",
+                "Git: временно сохранить все локальные изменения",
+                (
                     "git",
                     "stash",
                     "push",
@@ -193,7 +201,7 @@ class RemoteCommandRegistry:
                     "-m",
                     "Supervisor emergency stash",
                 ),
-                aliases=(
+                (
                     'git stash push --include-untracked -m "supervisor emergency stash"',
                     "сохранить локальные изменения",
                     "аварийный stash",
@@ -202,31 +210,31 @@ class RemoteCommandRegistry:
                 category="Git: восстановление",
             ),
             RemoteCommandSpec(
-                key="git-stash-show",
-                title="Git: содержимое последнего stash",
-                command=("git", "stash", "show", "--stat", "stash@{0}"),
-                aliases=("git stash show --stat stash@{0}", "показать последний stash"),
+                "git-stash-show",
+                "Git: содержимое последнего stash",
+                ("git", "stash", "show", "--stat", "stash@{0}"),
+                ("git stash show --stat stash@{0}", "показать последний stash"),
                 category="Git: восстановление",
             ),
             RemoteCommandSpec(
-                key="git-stash-pop",
-                title="Git: вернуть последний stash",
-                command=("git", "stash", "pop"),
-                aliases=("git stash pop", "вернуть последний stash"),
+                "git-stash-pop",
+                "Git: вернуть последний stash",
+                ("git", "stash", "pop"),
+                ("git stash pop", "вернуть последний stash"),
                 timeout_seconds=180,
                 category="Git: восстановление",
             ),
             RemoteCommandSpec(
-                key="git-clean-krita-bridge",
-                title="Git: удалить локальный ZIP-мост Krita",
-                command=(
+                "git-clean-krita-bridge",
+                "Git: удалить локальный ZIP-мост Krita",
+                (
                     "git",
                     "clean",
                     "-f",
                     "--",
                     "tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip",
                 ),
-                aliases=(
+                (
                     "git clean -f -- tools/krita/Velvet_Anatomy_Krita_Plugin_bridge.zip",
                     "удалить локальный zip-мост krita",
                     "очистить zip krita",
@@ -234,32 +242,25 @@ class RemoteCommandRegistry:
                 category="Git: восстановление",
             ),
             RemoteCommandSpec(
-                key="python-version",
-                title="Версия Python",
-                command=(python, "--version"),
-                aliases=("python --version", "python -v", "версия python"),
+                "python-version",
+                "Версия Python",
+                (python, "--version"),
+                ("python --version", "python -v", "версия python"),
                 category="Проверки",
             ),
             RemoteCommandSpec(
-                key="pip-check",
-                title="Проверить зависимости Python",
-                command=(python, "-m", "pip", "check"),
-                aliases=("python -m pip check", "pip check", "проверить зависимости"),
+                "pip-check",
+                "Проверить зависимости Python",
+                (python, "-m", "pip", "check"),
+                ("python -m pip check", "pip check", "проверить зависимости"),
                 timeout_seconds=180,
                 category="Проверки",
             ),
             RemoteCommandSpec(
-                key="compile",
-                title="Проверить синтаксис проекта",
-                command=(
-                    python,
-                    "-m",
-                    "compileall",
-                    "-q",
-                    "velvet_bot",
-                    "velvet_supervisor",
-                ),
-                aliases=(
+                "compile",
+                "Проверить синтаксис проекта",
+                (python, "-m", "compileall", "-q", "velvet_bot", "velvet_supervisor"),
+                (
                     "python -m compileall -q velvet_bot velvet_supervisor",
                     "compileall",
                     "проверить синтаксис",
@@ -268,73 +269,95 @@ class RemoteCommandRegistry:
                 category="Проверки",
             ),
             RemoteCommandSpec(
-                key="tests",
-                title="Запустить тесты проекта",
-                command=settings.test_command,
-                aliases=("tests", "pytest", "unittest", "запустить тесты"),
+                "tests",
+                "Запустить тесты проекта",
+                settings.test_command,
+                ("tests", "pytest", "unittest", "запустить тесты"),
                 timeout_seconds=settings.command_timeout_seconds,
                 category="Проверки",
             ),
             RemoteCommandSpec(
-                key="ollama-list",
-                title="Ollama: список моделей",
-                command=("ollama", "list"),
-                aliases=("ollama list", "модели ollama"),
+                "ollama-list",
+                "Ollama: список моделей",
+                ("ollama", "list"),
+                ("ollama list", "модели ollama"),
                 timeout_seconds=60,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
-                key="ollama-recovery-status",
-                title="Ollama: состояние vision",
-                command=(python, "-m", "velvet_supervisor.ollama_recovery", "status"),
-                aliases=("ollama recovery status", "состояние ollama vision"),
+                "ollama-recovery-status",
+                "Ollama: состояние набора моделей",
+                (python, "-m", "velvet_supervisor.ollama_recovery", "status"),
+                (
+                    "ollama recovery status",
+                    "состояние ollama vision",
+                    "состояние набора ollama",
+                ),
                 timeout_seconds=30,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
-                key="ollama-start",
-                title="Ollama: запустить локальный сервер",
-                command=(python, "-m", "velvet_supervisor.ollama_recovery", "start"),
-                aliases=("ollama start", "запустить ollama"),
+                "ollama-start",
+                "Ollama: запустить локальный сервер",
+                (python, "-m", "velvet_supervisor.ollama_recovery", "start"),
+                ("ollama start", "запустить ollama"),
                 timeout_seconds=60,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
-                key="ollama-configure-qwen3-vl-4b",
-                title="Ollama: настроить vision qwen3-vl:4b",
-                command=(python, "-m", "velvet_supervisor.ollama_recovery", "configure"),
-                aliases=("ollama configure qwen3-vl 4b", "настроить qwen3 vl 4b"),
+                "ollama-configure-qwen3-vl-4b",
+                "Ollama: настроить набор моделей",
+                (python, "-m", "velvet_supervisor.ollama_recovery", "configure"),
+                (
+                    "ollama configure qwen3-vl 4b",
+                    "настроить qwen3 vl 4b",
+                    "настроить набор ollama",
+                ),
                 timeout_seconds=30,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
-                key="ollama-pull-qwen3-vl-4b",
-                title="Ollama: скачать qwen3-vl:4b",
-                command=(python, "-m", "velvet_supervisor.ollama_recovery", "pull"),
-                aliases=("ollama pull qwen3-vl:4b", "скачать qwen3 vl 4b"),
-                timeout_seconds=settings.command_timeout_seconds,
+                "ollama-pull-qwen3-vl-4b",
+                "Ollama: установить набор моделей",
+                (python, "-m", "velvet_supervisor.ollama_recovery", "pull"),
+                (
+                    "ollama pull qwen3-vl:4b",
+                    "скачать qwen3 vl 4b",
+                    "установить набор ollama",
+                ),
+                timeout_seconds=_OLLAMA_BUNDLE_TIMEOUT_SECONDS,
+                category="AI: Ollama",
+                enforce_global_timeout=False,
+            ),
+            RemoteCommandSpec(
+                "ollama-show-qwen3-vl-4b",
+                "Ollama: проверить набор моделей",
+                (python, "-m", "velvet_supervisor.ollama_recovery", "show"),
+                (
+                    "ollama show qwen3-vl:4b",
+                    "проверить qwen3 vl 4b",
+                    "проверить набор ollama",
+                ),
+                timeout_seconds=120,
                 category="AI: Ollama",
             ),
             RemoteCommandSpec(
-                key="ollama-show-qwen3-vl-4b",
-                title="Ollama: проверить vision qwen3-vl:4b",
-                command=(python, "-m", "velvet_supervisor.ollama_recovery", "show"),
-                aliases=("ollama show qwen3-vl:4b", "проверить qwen3 vl 4b"),
-                timeout_seconds=60,
+                "ollama-repair-qwen3-vl-4b",
+                "Ollama: восстановить набор моделей",
+                (python, "-m", "velvet_supervisor.ollama_recovery", "repair"),
+                (
+                    "ollama repair qwen3-vl:4b",
+                    "восстановить ollama vision",
+                    "восстановить набор ollama",
+                ),
+                timeout_seconds=_OLLAMA_BUNDLE_TIMEOUT_SECONDS,
                 category="AI: Ollama",
+                enforce_global_timeout=False,
             ),
             RemoteCommandSpec(
-                key="ollama-repair-qwen3-vl-4b",
-                title="Ollama: восстановить vision qwen3-vl:4b",
-                command=(python, "-m", "velvet_supervisor.ollama_recovery", "repair"),
-                aliases=("ollama repair qwen3-vl:4b", "восстановить ollama vision"),
-                timeout_seconds=settings.command_timeout_seconds,
-                category="AI: Ollama",
-            ),
-            RemoteCommandSpec(
-                key="task-status",
-                title="Состояние задачи VelvetSupervisor",
-                command=(
+                "task-status",
+                "Состояние задачи VelvetSupervisor",
+                (
                     "schtasks.exe",
                     "/Query",
                     "/TN",
@@ -343,7 +366,7 @@ class RemoteCommandRegistry:
                     "/FO",
                     "LIST",
                 ),
-                aliases=(
+                (
                     "schtasks /query /tn velvetsupervisor /v /fo list",
                     "task status",
                     "статус задачи supervisor",
@@ -351,43 +374,40 @@ class RemoteCommandRegistry:
                 category="Система",
             ),
             RemoteCommandSpec(
-                key="python-processes",
-                title="Процессы Python",
-                command=(
-                    "tasklist.exe",
-                    "/FI",
-                    "IMAGENAME eq python.exe",
-                    "/FO",
-                    "LIST",
-                ),
-                aliases=("tasklist python", "python processes", "процессы python"),
+                "python-processes",
+                "Процессы Python",
+                ("tasklist.exe", "/FI", "IMAGENAME eq python.exe", "/FO", "LIST"),
+                ("tasklist python", "python processes", "процессы python"),
                 category="Система",
             ),
             RemoteCommandSpec(
-                key="hostname",
-                title="Имя компьютера",
-                command=("hostname.exe",),
-                aliases=("hostname", "имя компьютера"),
+                "hostname",
+                "Имя компьютера",
+                ("hostname.exe",),
+                ("hostname", "имя компьютера"),
                 category="Система",
             ),
             RemoteCommandSpec(
-                key="network-config",
-                title="Сетевые адреса компьютера",
-                command=("ipconfig.exe",),
-                aliases=("ipconfig", "сеть", "сетевые адреса"),
+                "network-config",
+                "Сетевые адреса компьютера",
+                ("ipconfig.exe",),
+                ("ipconfig", "сеть", "сетевые адреса"),
                 category="Система",
             ),
             RemoteCommandSpec(
-                key="disk-volumes",
-                title="Свободное место на дисках",
-                command=(
+                "disk-volumes",
+                "Свободное место на дисках",
+                (
                     "powershell.exe",
                     "-NoProfile",
                     "-NonInteractive",
                     "-Command",
                     "Get-Volume",
                 ),
-                aliases=("powershell -noprofile -noninteractive -command get-volume", "свободное место"),
+                (
+                    "powershell -noprofile -noninteractive -command get-volume",
+                    "свободное место",
+                ),
                 category="Система",
             ),
         )
@@ -423,6 +443,12 @@ class RemoteCommandRegistry:
     def execute(self, key: str) -> dict[str, object]:
         spec = self.resolve(key, by_key=True)
         started = time.monotonic()
+        effective_timeout = max(5, spec.timeout_seconds)
+        if spec.enforce_global_timeout:
+            effective_timeout = min(
+                effective_timeout,
+                self._settings.command_timeout_seconds,
+            )
         try:
             completed = subprocess.run(
                 list(spec.command),
@@ -434,18 +460,20 @@ class RemoteCommandRegistry:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=max(5, min(spec.timeout_seconds, self._settings.command_timeout_seconds)),
+                timeout=effective_timeout,
                 shell=False,
                 check=False,
             )
-            output = completed.stdout or ""
+            output: str | bytes = completed.stdout or ""
             returncode = int(completed.returncode)
         except FileNotFoundError as error:
             output = f"Исполняемый файл не найден: {error.filename or spec.command[0]}"
             returncode = 127
         except subprocess.TimeoutExpired as error:
             raw = error.stdout or ""
-            output = f"Команда превысила таймаут {spec.timeout_seconds} сек.\n{raw}"
+            if isinstance(raw, bytes):
+                raw = raw.decode("utf-8", errors="replace")
+            output = f"Команда превысила таймаут {effective_timeout} сек.\n{raw}"
             returncode = 124
 
         secrets = (
