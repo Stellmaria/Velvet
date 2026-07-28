@@ -14,6 +14,7 @@ AI_JOB_KINDS = frozenset(
         "reference_comparison",
         "prompt_result",
         "image_to_prompt",
+        "pose_extraction",
         "palette_composition",
         "velvet_formatting",
         "media_set_consistency",
