@@ -14,7 +14,6 @@ MODULES = (
     "velvet_ai_formatting",
     "velvet_ai_visual",
     "velvet_ai_image_prompt",
-    "velvet_ai_pose",
     "velvet_ai",
     "quality_duplicates",
     "quality_sets",
@@ -37,7 +36,6 @@ RETIRED_ALIASES = {
     "quality_sets",
     "velvet_ai",
     "velvet_ai_image_prompt",
-    "velvet_ai_pose",
     "velvet_ai_formatting",
     "velvet_ai_visual",
 }
@@ -46,6 +44,8 @@ ALIASES = {
     for name in MODULES
     if name not in RETIRED_ALIASES
 }
+MODULES += ("velvet_ai_pose",)
+RETIRED_ALIASES.add("velvet_ai_pose")
 INCLUDE_ORDER = (
     "backup_center",
     "ai_jobs",
