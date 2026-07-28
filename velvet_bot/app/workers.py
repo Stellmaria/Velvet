@@ -14,13 +14,16 @@ from velvet_bot.app.publication import build_publication_service
 from velvet_bot.backup_runtime import BackupService
 from velvet_bot.calibrated_ai_quality import CalibratedAIQualityService
 from velvet_bot.core.config import Settings
+from velvet_bot.core.config.kie import KieSettings, load_kie_settings
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import (
+    AIRequestExecutor,
     AITaskQueueService,
     AIUsageService,
     build_ai_task_queue_service,
     build_ai_usage_service,
 )
+from velvet_bot.domains.media_generation.worker import KieGenerationWorker
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
 from velvet_bot.domains.vision_routing.integration import (
@@ -32,6 +35,7 @@ from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.domains.workspaces.qwen_repository import WorkspaceQwenRepository
 from velvet_bot.error_center import ErrorIncidentCenter
+from velvet_bot.infrastructure.ai import KieClient
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
 from velvet_bot.infrastructure.transient_connections import (
     install_recoverable_polling_filter,
@@ -90,6 +94,7 @@ def build_worker_manager(
     settings: Settings | None = None,
     ai_usage_service: AIUsageService | None = None,
     ai_task_queue_service: AITaskQueueService | None = None,
+    kie_settings: KieSettings | None = None,
     error_center: ErrorIncidentCenter | None = None,
     system_service: SystemHealthService | None = None,
     diagnostic_service: DiagnosticBundleService | None = None,
@@ -104,6 +109,8 @@ def build_worker_manager(
     active_task_queue_service = (
         ai_task_queue_service or build_ai_task_queue_service(database=database)
     )
+    active_kie_settings = kie_settings or load_kie_settings()
+    active_usage_service = ai_usage_service
 
     manager = WorkerManager(
         transient_failure_handler=partial(recover_database_pool, database),
@@ -142,6 +149,35 @@ def build_worker_manager(
             runner=partial(_recover_stale_ai_tasks, active_task_queue_service),
         )
     )
+    if active_kie_settings.enabled:
+        if active_kie_settings.api_key is None:
+            raise RuntimeError("Kie включён без API key.")
+        if active_usage_service is None:
+            active_usage_service = build_ai_usage_service(database=database)
+        kie_client = KieClient(
+            api_key=active_kie_settings.api_key,
+            models=active_kie_settings.models,
+            base_url=active_kie_settings.base_url,
+            timeout_seconds=active_kie_settings.timeout_seconds,
+            poll_interval_seconds=active_kie_settings.poll_interval_seconds,
+            task_timeout_seconds=active_kie_settings.task_timeout_seconds,
+        )
+        kie_worker = KieGenerationWorker(
+            bot=bot,
+            queue=active_task_queue_service,
+            client=kie_client,
+            executor=AIRequestExecutor(active_usage_service),
+            pricing=active_kie_settings.pricing,
+            usd_to_rub=active_kie_settings.usd_to_rub,
+        )
+        manager.register(
+            PeriodicWorkerSpec(
+                name="kie-media-generation",
+                description="Генерация изображений и видео через Мяу",
+                interval_seconds=3,
+                runner=kie_worker.process_once,
+            )
+        )
     if _env_enabled("KRITA_WATERMARK_ENABLED"):
         watermark_service = WatermarkService(
             bot=bot,
@@ -159,7 +195,8 @@ def build_worker_manager(
     if settings is not None and settings.ai_vision_enabled:
         ai_lock = get_local_ai_lock()
         cache_chat_id = _ai_cache_chat_id(settings)
-        active_usage_service = ai_usage_service or build_ai_usage_service(database=database)
+        if active_usage_service is None:
+            active_usage_service = build_ai_usage_service(database=database)
         vision_router = build_vision_cascade_router(
             settings=settings,
             database=database,
