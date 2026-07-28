@@ -5,12 +5,12 @@ import unittest
 import urllib.request
 from unittest.mock import patch
 
-from velvet_bot.ai_model_routing import (
+from velvet_bot.ai_vision import VisionClient
+from velvet_bot.infrastructure.ai_model_routing import (
     _configure_client,
     _routed_read_json,
     clear_ai_model_cache,
 )
-from velvet_bot.ai_vision import VisionClient
 
 
 class DummyVisionClient(VisionClient):
@@ -64,7 +64,10 @@ class AIModelRoutingTests(unittest.TestCase):
             requested.append(str(payload["model"]))
             return {"message": {"content": "{}"}}
 
-        with patch("velvet_bot.ai_model_routing._ORIGINAL_READ_JSON", side_effect=fake_read):
+        with patch(
+            "velvet_bot.infrastructure.ai_model_routing._ORIGINAL_READ_JSON",
+            side_effect=fake_read,
+        ):
             result = _routed_read_json(
                 client,
                 _request(client.base_url, client.model),
@@ -136,7 +139,10 @@ class AIModelRoutingTests(unittest.TestCase):
             requested.append(str(payload["model"]))
             return {"message": {"content": "{}"}}
 
-        with patch("velvet_bot.ai_model_routing._ORIGINAL_READ_JSON", side_effect=fake_read):
+        with patch(
+            "velvet_bot.infrastructure.ai_model_routing._ORIGINAL_READ_JSON",
+            side_effect=fake_read,
+        ):
             _routed_read_json(
                 client,
                 _request(client.base_url, client.model),
