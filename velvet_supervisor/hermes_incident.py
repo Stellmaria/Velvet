@@ -84,8 +84,8 @@ class HermesIncidentClient:
         fingerprint = incident.fingerprint()
         now = time.monotonic()
         with self._lock:
-            previous = self._last_submitted.get(fingerprint, 0.0)
-            if now - previous < self.cooldown_seconds:
+            previous = self._last_submitted.get(fingerprint)
+            if previous is not None and now - previous < self.cooldown_seconds:
                 self._last_status = {
                     **self._last_status,
                     "state": "cooldown",
