@@ -63,12 +63,24 @@ services:
     command: ["gateway", "run"]
     env_file:
       - .env.hermes
+    ports:
+      - "127.0.0.1:8642:8642"
     volumes:
       - velvet_hermes_data:/opt/data
     mem_limit: 4g
     cpus: 2.0
     pids_limit: 256
     shm_size: 1gb
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3).read()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     security_opt:
       - no-new-privileges:true
 
