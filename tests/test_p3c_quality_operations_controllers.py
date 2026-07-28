@@ -14,6 +14,7 @@ MODULES = (
     "velvet_ai_formatting",
     "velvet_ai_visual",
     "velvet_ai_image_prompt",
+    "velvet_ai_pose",
     "velvet_ai",
     "quality_duplicates",
     "quality_sets",
@@ -36,6 +37,7 @@ RETIRED_ALIASES = {
     "quality_sets",
     "velvet_ai",
     "velvet_ai_image_prompt",
+    "velvet_ai_pose",
     "velvet_ai_formatting",
     "velvet_ai_visual",
 }
@@ -51,6 +53,7 @@ INCLUDE_ORDER = (
     "velvet_ai_formatting",
     "velvet_ai_visual",
     "velvet_ai_image_prompt",
+    "velvet_ai_pose",
     "velvet_ai",
     "quality_duplicates",
     "quality_sets",
@@ -104,6 +107,10 @@ class P3CQualityOperationsControllersTests(unittest.TestCase):
             "velvet_ai_image_prompt.py": (
                 "AIJobTracker.create",
                 'kind="image_to_prompt"',
+            ),
+            "velvet_ai_pose.py": (
+                "AIJobTracker.create",
+                'kind="pose_extraction"',
             ),
             "quality_duplicates.py": ('F.action == "duplicates"',),
             "quality_sets.py": ('F.action == "sets"',),
