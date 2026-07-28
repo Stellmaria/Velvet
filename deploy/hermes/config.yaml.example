@@ -1,0 +1,15 @@
+model:
+  provider: custom
+  base_url: https://byesu.com/v1
+  default: gpt-5.5
+
+# Hermes уже запущен внутри отдельного контейнера без production mounts и
+# docker.sock, поэтому local здесь означает локально внутри изолированного
+# контейнера, а не на хостовой системе.
+terminal:
+  backend: local
+
+# Любые команды, меняющие Git, зависимости, миграции или deployment,
+# подтверждаются владельцем до выполнения.
+approvals:
+  mode: manual

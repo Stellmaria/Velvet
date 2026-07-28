@@ -7,8 +7,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-velvet}
       POSTGRES_USER: ${POSTGRES_USER:-velvet}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - velvet_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,6 +17,8 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    security_opt:
+      - no-new-privileges:true
 
   bot:
     build:
@@ -26,6 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: velvet-bot
     restart: unless-stopped
+    init: true
     env_file:
       - .env
     environment:
@@ -33,7 +34,6 @@ services:
       BACKUP_DIR: /app/backups
       PG_DUMP_PATH: pg_dump
       PG_RESTORE_PATH: pg_restore
-      AI_VISION_BASE_URL: ${AI_VISION_BASE_URL:-http://ollama:11434}
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,17 +47,31 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: velvet-ollama
-    profiles: ["ai"]
+  # Запускается отдельно: docker compose --profile agent up -d hermes
+  # Hermes не получает docker.sock, production .env или каталог приложения.
+  # Он клонирует репозиторий в собственный persistent volume и создаёт PR
+  # вместо прямой правки запущенного контейнера.
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: velvet-hermes
+    profiles: ["agent"]
     restart: unless-stopped
-    ports:
-      - "11434:11434"
+    init: true
+    command: ["gateway", "run"]
+    env_file:
+      - .env.hermes
     volumes:
-      - velvet_ollama_data:/root/.ollama
+      - velvet_hermes_data:/opt/data
+    mem_limit: 4g
+    cpus: 2.0
+    pids_limit: 256
+    shm_size: 1gb
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   velvet_postgres_data:
-  velvet_ollama_data:
+  velvet_hermes_data:

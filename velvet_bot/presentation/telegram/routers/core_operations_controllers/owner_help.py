@@ -4,6 +4,10 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from velvet_bot.presentation.telegram.routers.core_operations_controllers.roleplay import (
+    router as roleplay_router,
+)
+
 router = Router(name=__name__)
 
 _HELP_PAGE_LIMIT = 3800
@@ -129,6 +133,18 @@ OWNER_COMMAND_GROUPS: tuple[
         ),
     ),
     (
+        "Ролевая игра",
+        (
+            ("rp_help", "показать команды и правила РЛ-режима"),
+            ("rp_on", "включить РЛ для обычных сообщений в ЛС"),
+            ("rp_off", "выключить РЛ, сохранив канон и историю"),
+            ("rp", "включить РЛ и сразу отправить реплику модели"),
+            ("rp_prompt", "сохранить или показать постоянный канон"),
+            ("rp_status", "показать модель и состояние памяти"),
+            ("rp_reset", "очистить историю и резюме, сохранив канон"),
+        ),
+    ),
+    (
         "Система, диагностика и резервные копии",
         (
             ("system", "открыть системный центр"),
@@ -215,6 +231,7 @@ async def handle_owner_help(message: Message) -> None:
 
 
 router.message.register(handle_owner_help, Command("help"))
+router.include_router(roleplay_router)
 
 
 __all__ = (

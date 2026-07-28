@@ -151,6 +151,13 @@ DIRECT_COMMANDS = {
     "workspace_unbind",
     "workspace_bind_channel",
     "workspace_delete",
+    "rp_help",
+    "rp_on",
+    "rp_off",
+    "rp",
+    "rp_prompt",
+    "rp_status",
+    "rp_reset",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 

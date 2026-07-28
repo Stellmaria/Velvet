@@ -1,0 +1,12 @@
+model = "gpt-5.5"
+model_provider = "byesu"
+model_reasoning_effort = "high"
+disable_response_storage = true
+
+[model_providers.byesu]
+name = "byesu"
+base_url = "https://byesu.com/v1"
+wire_api = "responses"
+
+# Codex запускается от отдельного Linux-пользователя внутри собственного
+# checkout/worktree. Production .env, база и docker.sock ему не выдаются.

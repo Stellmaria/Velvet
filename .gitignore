@@ -1,5 +1,12 @@
 # Secrets
-.env
+.env*
+!.env.example
+!.env.hermes.example
+.codex/
+.hermes/
+.ssh/
+*.pem
+*.key
 
 # Runtime data
 data/
