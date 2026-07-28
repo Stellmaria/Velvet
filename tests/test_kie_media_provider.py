@@ -36,7 +36,12 @@ class KieMediaProviderTests(unittest.TestCase):
             },
             request.to_input(),
         )
-        self.assertEqual(Decimal("0.12"), KiePricing().estimate_usd(request))
+        pricing = KiePricing()
+        self.assertEqual(Decimal("0.12"), pricing.estimate_usd(request))
+        self.assertEqual(
+            Decimal("12.00"),
+            pricing.estimate_rub(request, usd_to_rub=Decimal("100")),
+        )
 
     def test_grok_video_cost_is_per_second(self) -> None:
         request = KieGenerationRequest(
@@ -46,6 +51,22 @@ class KieMediaProviderTests(unittest.TestCase):
             duration_seconds=10,
         )
         self.assertEqual(Decimal("0.150"), KiePricing().estimate_usd(request))
+
+    def test_queue_payload_roundtrip_preserves_request(self) -> None:
+        request = KieGenerationRequest(
+            model=KieModelAlias.GROK_IMAGINE_VIDEO,
+            prompt="camera orbit",
+            aspect_ratio="9:16",
+            resolution="720p",
+            duration_seconds=6,
+            image_urls=("https://example.com/ref.jpg",),
+            mode="normal",
+            extra_input={"seed": 42},
+        )
+        restored = KieGenerationRequest.from_task_payload(request.to_task_payload())
+        self.assertEqual(request, restored)
+        self.assertEqual("Grok Imagine Video", request.model.title)
+        self.assertTrue(request.model.is_video)
 
     def test_client_create_and_wait(self) -> None:
         calls: list[tuple[str, str, object]] = []
@@ -121,10 +142,23 @@ class KieMediaProviderTests(unittest.TestCase):
         with self.assertRaises(KieTaskFailed):
             asyncio.run(client.wait_for_task("task-bad"))
 
-    def test_settings_require_key_and_seedream_model_when_enabled(self) -> None:
+    def test_settings_require_budget_rate_when_enabled(self) -> None:
+        values = {
+            "KIE_ENABLED": "true",
+            "KIE_API_KEY": "secret",
+            "KIE_SEEDREAM_5_PRO_MODEL": "seedream/test",
+        }
+        with patch.dict(os.environ, values, clear=True), patch(
+            "velvet_bot.core.config.kie.load_dotenv"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "KIE_USD_TO_RUB"):
+                load_kie_settings()
+
+    def test_settings_require_seedream_model_when_enabled(self) -> None:
         base = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
+            "KIE_USD_TO_RUB": "100",
         }
         with patch.dict(os.environ, base, clear=True), patch(
             "velvet_bot.core.config.kie.load_dotenv"
@@ -136,6 +170,7 @@ class KieMediaProviderTests(unittest.TestCase):
         values = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
+            "KIE_USD_TO_RUB": "100",
             "KIE_SEEDREAM_5_PRO_MODEL": "seedream/5-pro-text-to-image",
         }
         with patch.dict(os.environ, values, clear=True), patch(
@@ -148,6 +183,7 @@ class KieMediaProviderTests(unittest.TestCase):
             settings.models.grok_imagine_video,
         )
         self.assertEqual(Decimal("0.09"), settings.pricing.nano_1k_2k_usd)
+        self.assertEqual(Decimal("100"), settings.usd_to_rub)
 
 
 if __name__ == "__main__":
