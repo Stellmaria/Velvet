@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
@@ -90,16 +91,14 @@ class _FakeRepository:
     async def create_plan(self, **kwargs):
         self.created_kwargs = kwargs
         plan = _plan(candidate_ids=tuple(kwargs["candidate_ids"]))
-        self.plan_value = VisionBatchPlan(
-            **{
-                **plan.__dict__,
-                "id": kwargs["plan_id"],
-                "max_cost_per_item_rub": kwargs["max_cost_per_item_rub"],
-                "estimated_cost_rub": kwargs["estimated_cost_rub"],
-                "prompt_version": kwargs["prompt_version"],
-                "expires_at": kwargs["expires_at"],
-                "metadata": kwargs["metadata"],
-            }
+        self.plan_value = replace(
+            plan,
+            id=kwargs["plan_id"],
+            max_cost_per_item_rub=kwargs["max_cost_per_item_rub"],
+            estimated_cost_rub=kwargs["estimated_cost_rub"],
+            prompt_version=kwargs["prompt_version"],
+            expires_at=kwargs["expires_at"],
+            metadata=kwargs["metadata"],
         )
         return self.plan_value
 
@@ -113,12 +112,14 @@ class _FakeRepository:
         if self.plan_value is None or self.plan_value.id != plan_id:
             return None
         if self.plan_value.expires_at <= datetime.now(timezone.utc):
-            self.plan_value = VisionBatchPlan(
-                **{**self.plan_value.__dict__, "status": VisionBatchStatus.EXPIRED}
+            self.plan_value = replace(
+                self.plan_value,
+                status=VisionBatchStatus.EXPIRED,
             )
             return None
-        self.plan_value = VisionBatchPlan(
-            **{**self.plan_value.__dict__, "status": VisionBatchStatus.STARTING}
+        self.plan_value = replace(
+            self.plan_value,
+            status=VisionBatchStatus.STARTING,
         )
         return self.plan_value
 
@@ -134,13 +135,11 @@ class _FakeRepository:
         deduplicated_task_count,
     ):
         self.marked_counts = (created_task_count, deduplicated_task_count)
-        self.plan_value = VisionBatchPlan(
-            **{
-                **self.plan_value.__dict__,
-                "status": VisionBatchStatus.QUEUED,
-                "created_task_count": created_task_count,
-                "deduplicated_task_count": deduplicated_task_count,
-            }
+        self.plan_value = replace(
+            self.plan_value,
+            status=VisionBatchStatus.QUEUED,
+            created_task_count=created_task_count,
+            deduplicated_task_count=deduplicated_task_count,
         )
         return self.plan_value
 
@@ -184,6 +183,11 @@ class _FakeQueue:
         return True
 
 
+class _FakeProcessor:
+    async def process_media_id(self, media_id: int) -> dict[str, object]:
+        return {"media_id": media_id, "route": "flash"}
+
+
 class VisionBatchServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_plan_calculates_conservative_cost_without_provider_call(self) -> None:
         repository = _FakeRepository()
@@ -196,6 +200,8 @@ class VisionBatchServiceTests(unittest.IsolatedAsyncioTestCase):
         env = {
             "AI_VISION_FLASH_INPUT_RUB_PER_1M": "100",
             "AI_VISION_FLASH_OUTPUT_RUB_PER_1M": "100",
+            "AI_VISION_PRO_MODEL": "",
+            "AI_VISION_SENSITIVE_MODEL": "",
             "AI_VISION_QUEUE_ENABLED": "true",
         }
         with patch.dict(os.environ, env, clear=False):
@@ -265,10 +271,9 @@ class VisionBatchConsumerTests(unittest.IsolatedAsyncioTestCase):
         queue = _FakeQueue()
         task_id = uuid4()
         queue.task = SimpleNamespace(id=task_id, payload={"media_id": 77})
-        processor = SimpleNamespace(process_media_id=self._process_media)
         consumer = VisionBatchQueueConsumer(
             queue_service=queue,
-            processor=processor,
+            processor=_FakeProcessor(),  # type: ignore[arg-type]
             heartbeat_seconds=3600,
         )
         processed = await consumer.process_once()
@@ -276,10 +281,6 @@ class VisionBatchConsumerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(task_id, queue.completed["task_id"])
         self.assertEqual(77, queue.completed["result"]["media_id"])
         self.assertIsNone(queue.failed)
-
-    @staticmethod
-    async def _process_media(media_id: int):
-        return {"media_id": media_id, "route": "flash"}
 
 
 if __name__ == "__main__":
