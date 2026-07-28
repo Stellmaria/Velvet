@@ -11,9 +11,9 @@ from velvet_bot.domains.ai_usage import (
     AIUsageService,
     load_token_pricing,
 )
+from velvet_bot.domains.vision_routing.cache import VisionAnalysisCacheRepository
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
 from velvet_bot.domains.vision_routing.models import VisionRoute, VisionRouteConfig
-from velvet_bot.domains.vision_routing.repository import VisionAnalysisCacheRepository
 from velvet_bot.domains.vision_routing.service import VisionCascadeRouter
 
 
