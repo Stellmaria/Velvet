@@ -17,10 +17,10 @@
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations.py",
-      "router_count": 14
+      "router_count": 15
     }
   ],
-  "active_bundle_router_count": 80,
+  "active_bundle_router_count": 81,
   "duplicate_bundle_router_import_count": 0,
   "legacy_handler_file_count": 0,
   "legacy_handler_implementation_count": 0,
