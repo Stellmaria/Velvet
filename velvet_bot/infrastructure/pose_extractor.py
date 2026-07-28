@@ -132,7 +132,11 @@ def _section_position(value: str, section: str) -> int:
 
 
 def _missing_pose_sections(value: str) -> tuple[str, ...]:
-    return tuple(section for section in _POSE_SECTIONS if _section_position(value, section) < 0)
+    return tuple(
+        section
+        for section in _POSE_SECTIONS
+        if _section_position(value, section) < 0
+    )
 
 
 def _pose_sections_in_order(value: str) -> bool:
@@ -141,7 +145,11 @@ def _pose_sections_in_order(value: str) -> bool:
 
 
 def _is_pose_complete(value: str) -> bool:
-    return len(value.strip()) >= 120 and not _missing_pose_sections(value) and _pose_sections_in_order(value)
+    return (
+        len(value.strip()) >= 120
+        and not _missing_pose_sections(value)
+        and _pose_sections_in_order(value)
+    )
 
 
 def _better_pose_result(first: str, second: str) -> str:
@@ -159,6 +167,7 @@ class PoseExtractorClient(ImageToPromptClient):
     """Extract a reusable pose-only description from one source image."""
 
     async def generate(self, source: bytes) -> str:
+        await self._ensure_vision_capability()
         prepared = await asyncio.to_thread(_prepare_image, source)
         image_base64 = base64.b64encode(prepared).decode("ascii")
 
