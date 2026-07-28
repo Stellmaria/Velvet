@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+from contextlib import suppress
+from typing import Any
+from uuid import UUID
+
+from aiogram import Bot
+
+from velvet_bot.ai_vision import VisionAnalysisError, VisionProviderUnavailable
+from velvet_bot.core.ai_budget import AIBudgetScope
+from velvet_bot.core.config import Settings
+from velvet_bot.database import Database
+from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
+from velvet_bot.domains.vision_batches.repository import VisionBatchRepository
+from velvet_bot.domains.vision_batches.service import VISION_BATCH_TASK_TYPE
+from velvet_bot.domains.vision_routing import build_vision_cascade_router
+from velvet_bot.domains.vision_routing.integration import (
+    CascadeMediaAIRepository,
+    CascadeMediaAIVisionService,
+    VisionCascadeAdapter,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class TargetedVisionService(CascadeMediaAIVisionService):
+    def __init__(
+        self,
+        *,
+        batch_repository: VisionBatchRepository,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self._batch_repository = batch_repository
+
+    async def process_media_id(self, media_id: int) -> dict[str, object]:
+        if not await self._provider_available():
+            raise VisionProviderUnavailable("VL provider недоступен.")
+        target = await self._batch_repository.claim_media_target(
+            media_id=media_id,
+            provider=self._client.provider,
+            model=self._client.model,
+            max_attempts=self._max_attempts,
+        )
+        if target is None:
+            return {"media_id": media_id, "already_ready_or_unavailable": True}
+        try:
+            source = await self._download_target(target)
+            profile = await self._client.analyze(source)
+            await self._repository.mark_ready(media_id, profile)
+            return {
+                "media_id": media_id,
+                "provider": str(getattr(profile, "provider", self._client.provider)),
+                "model": str(getattr(profile, "model", self._client.model)),
+                "route": str(getattr(profile, "route", "")),
+                "cache_hit": bool(getattr(profile, "cache_hit", False)),
+            }
+        except asyncio.CancelledError:
+            raise
+        except BaseException as error:
+            permanent = isinstance(error, VisionAnalysisError) and (
+                "прочитать как изображение" in str(error)
+                or "file is too big" in str(error).casefold()
+            )
+            await self._repository.mark_error(
+                media_id,
+                error,
+                max_attempts=self._max_attempts,
+                permanent=permanent,
+            )
+            raise
+
+
+class VisionBatchQueueConsumer:
+    def __init__(
+        self,
+        *,
+        queue_service: AITaskQueueService,
+        processor: TargetedVisionService,
+        worker_id: str = "vision-semantic-batch",
+        heartbeat_seconds: int = 60,
+    ) -> None:
+        self._queue = queue_service
+        self._processor = processor
+        self._worker_id = worker_id
+        self._heartbeat_seconds = max(15, int(heartbeat_seconds))
+
+    async def process_once(self) -> int:
+        task = await self._queue.claim_next(
+            worker_id=self._worker_id,
+            scopes=(AIBudgetScope.VISION,),
+            task_types=(VISION_BATCH_TASK_TYPE,),
+        )
+        if task is None:
+            return 0
+        heartbeat = asyncio.create_task(self._heartbeat(task.id))
+        try:
+            media_id = int(task.payload.get("media_id") or 0)
+            if media_id <= 0:
+                raise ValueError("AI-задача не содержит корректный media_id.")
+            result = await self._processor.process_media_id(media_id)
+            completed = await self._queue.complete(
+                task_id=task.id,
+                worker_id=self._worker_id,
+                result=result,
+            )
+            if completed is None:
+                logger.warning(
+                    "VL batch task lost lock before completion task_id=%s",
+                    task.id,
+                )
+                return 0
+            return 1
+        except asyncio.CancelledError:
+            raise
+        except BaseException as error:
+            await self._queue.fail(
+                task_id=task.id,
+                worker_id=self._worker_id,
+                error=error,
+            )
+            logger.warning(
+                "VL batch task failed task_id=%s media_id=%s: %s",
+                task.id,
+                task.payload.get("media_id"),
+                error,
+            )
+            return 0
+        finally:
+            heartbeat.cancel()
+            with suppress(asyncio.CancelledError):
+                await heartbeat
+
+    async def _heartbeat(self, task_id: UUID) -> None:
+        while True:
+            await asyncio.sleep(self._heartbeat_seconds)
+            updated = await self._queue.heartbeat(
+                task_id=task_id,
+                worker_id=self._worker_id,
+            )
+            if not updated:
+                return
+
+
+def build_vision_batch_consumer(
+    *,
+    bot: Bot,
+    database: Database,
+    settings: Settings,
+    usage_service: AIUsageService,
+    queue_service: AITaskQueueService,
+    cache_chat_id: int | None,
+) -> VisionBatchQueueConsumer:
+    router = build_vision_cascade_router(
+        settings=settings,
+        database=database,
+        ai_usage_service=usage_service,
+    )
+    batch_repository = VisionBatchRepository(database)
+    processor = TargetedVisionService(
+        bot=bot,
+        repository=CascadeMediaAIRepository(database),
+        client=VisionCascadeAdapter(router),
+        max_attempts=settings.ai_vision_max_attempts,
+        batch_repository=batch_repository,
+    )
+    processor.set_cache_chat_id(cache_chat_id)
+    return VisionBatchQueueConsumer(
+        queue_service=queue_service,
+        processor=processor,
+    )
+
+
+__all__ = (
+    "TargetedVisionService",
+    "VisionBatchQueueConsumer",
+    "build_vision_batch_consumer",
+)
