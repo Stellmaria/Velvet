@@ -18,7 +18,7 @@ from aiogram.types import CallbackQuery, ForceReply, Message
 from velvet_bot.ai_job_runtime import AIJobTracker
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
-from velvet_bot.image_to_prompt import ImageToPromptClient
+from velvet_bot.infrastructure.image_to_prompt import ImageToPromptClient
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.quality_ui import QualityCallback
 
