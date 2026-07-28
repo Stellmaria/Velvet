@@ -212,7 +212,7 @@ def load_settings() -> Settings:
         variable_name="AI_TEXT_BASE_URL",
     )
 
-    settings = Settings(
+    return Settings(
         bot_token=bot_token,
         database_url=database_url,
         allowed_user_ids=allowed_user_ids,
@@ -289,11 +289,6 @@ def load_settings() -> Settings:
             default=DEFAULT_ADULT_CHANNEL_ID,
         ),
     )
-
-    from velvet_bot.ai_model_routing import install_ai_model_routing
-
-    install_ai_model_routing()
-    return settings
 
 
 __all__ = (
