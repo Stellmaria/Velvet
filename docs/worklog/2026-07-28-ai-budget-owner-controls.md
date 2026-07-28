@@ -48,28 +48,48 @@
 
 ### Фактически сделано
 
-Работа начата.
+- добавлены owner-команды `/ai_budget`, `/ai_usage`, `/ai_pause`, `/ai_resume`;
+- создан единый `AIUsageService` в composition root и передан РП-клиенту и Telegram workflow data;
+- `/ai_budget` показывает дневной и месячный лимиты, фактические расходы, reservations, остаток обычных задач и полный остаток с резервом Hermes;
+- `/ai_usage` показывает последние операции с scope, model, operation, стоимостью, токенами и latency;
+- pause/resume записываются в `ai_runtime_state` и немедленно применяются к новым provider calls;
+- пороги 70/85/95% фиксируются атомарно и не повторяются в пределах месяца;
+- новый месяц допускает повторную отправку порогов;
+- предупреждение доставляется через существующий приватный `TelegramAuditLogger`;
+- команды зарегистрированы в owner-only access contract, owner help и UI/direct route inventory;
+- лишняя broad exception boundary не добавлялась: audit logger уже изолирует ошибку Telegram sink;
+- добавлены PostgreSQL integration tests и unit-тесты Telegram formatting/access.
 
 ### Миграции и совместимость
 
-Планируется новая добавочная миграция без изменения старых файлов.
+Добавлена новая неизменяемая миграция `migrations/z005_ai_budget_warning_state.sql`. Она добавляет nullable-поля `warning_month` и `warning_percent` в singleton `ai_runtime_state`; старые миграции не изменены. Backup/restore drill подтвердил применение и восстановление схемы. При пустом `LOG_CHAT_ID` бюджет и дедупликация продолжают работать, но Telegram-предупреждение не отправляется.
 
 ### Проверки
 
-Будут выполнены unit/integration tests, type check, Docker build и project notes contract.
+На head `a2d746da0c2775c0ecf39a3c4e699a634ed31a72` успешно прошли:
+
+- tests workflow `#2073`: 1465 тестов;
+- type check `#726`;
+- Docker build `#1452`;
+- project notes contract `#1312`;
+- backup restore drill `#455`.
+
+Live-вызовы платных провайдеров и живой Telegram-smoke намеренно не выполнялись в CI.
 
 ### PR и commit
 
-- PR: будет создан после завершения реализации и проверки diff.
+- PR: `#351` — «Добавить owner-контроль AI-бюджета».
 - Ветка: `agent/ai-budget-owner-controls`.
+- Проверенный head: `a2d746da0c2775c0ecf39a3c4e699a634ed31a72`.
 
 ### Незавершённое
 
-- реализация domain/repository слоя;
-- Telegram-команды;
-- пороговые уведомления;
-- тесты и CI.
+- живой Telegram-smoke `/ai_budget`, `/ai_usage`, `/ai_pause`, `/ai_resume` после обновления production;
+- проверка реального порогового сообщения при платном provider call;
+- подключение VL-клиентов к executor;
+- Flash → Pro → sensitive маршрутизация и task queue worker;
+- серверный deployment и внешний uptime-monitor.
 
 ### Следующий шаг
 
-Реализовать status/read API сервиса и атомарную дедупликацию месячных предупреждений, затем подключить owner-команды.
+Подключить Flash → Pro → sensitive VL router к единому `AIRequestExecutor`, добавить pricing для трёх маршрутов, cache/dedupe по image hash и очередь `ai_tasks`.
