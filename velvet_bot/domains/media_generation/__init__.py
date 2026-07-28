@@ -1,19 +1,31 @@
 from .models import (
     KIE_GENERATION_TASK_TYPE,
+    MAX_KIE_REFERENCES,
+    MAX_KIE_REFERENCE_BYTES,
+    KieContentMode,
     KieGenerationRequest,
+    KieInputMode,
     KieModelAlias,
     KieModelCatalog,
     KiePricing,
+    KieReferenceImage,
     KieTaskRecord,
     KieTaskState,
+    KieUploadedFile,
 )
 
 __all__ = (
     "KIE_GENERATION_TASK_TYPE",
+    "MAX_KIE_REFERENCES",
+    "MAX_KIE_REFERENCE_BYTES",
+    "KieContentMode",
     "KieGenerationRequest",
+    "KieInputMode",
     "KieModelAlias",
     "KieModelCatalog",
     "KiePricing",
+    "KieReferenceImage",
     "KieTaskRecord",
     "KieTaskState",
+    "KieUploadedFile",
 )
