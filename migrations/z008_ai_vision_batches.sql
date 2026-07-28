@@ -44,6 +44,36 @@ CREATE TABLE IF NOT EXISTS ai_task_batches (
 ALTER TABLE ai_tasks
     ADD COLUMN IF NOT EXISTS batch_id UUID REFERENCES ai_task_batches(id) ON DELETE SET NULL;
 
+CREATE OR REPLACE FUNCTION assign_ai_task_batch_from_payload()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    payload_batch TEXT;
+BEGIN
+    IF NEW.batch_id IS NOT NULL OR NEW.payload IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    payload_batch := NULLIF(BTRIM(NEW.payload->>'batch_id'), '');
+    IF payload_batch IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    NEW.batch_id := payload_batch::UUID;
+    RETURN NEW;
+EXCEPTION
+    WHEN invalid_text_representation THEN
+        RAISE EXCEPTION 'Invalid AI batch_id in task payload: %', payload_batch;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_assign_ai_task_batch_from_payload ON ai_tasks;
+CREATE TRIGGER trg_assign_ai_task_batch_from_payload
+BEFORE INSERT OR UPDATE OF payload,batch_id ON ai_tasks
+FOR EACH ROW
+EXECUTE FUNCTION assign_ai_task_batch_from_payload();
+
 CREATE INDEX IF NOT EXISTS idx_ai_task_batches_status_expires
     ON ai_task_batches(status, expires_at);
 
