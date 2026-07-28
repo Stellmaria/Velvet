@@ -65,7 +65,7 @@ class KieMediaProviderTests(unittest.TestCase):
         )
         restored = KieGenerationRequest.from_task_payload(request.to_task_payload())
         self.assertEqual(request, restored)
-        self.assertEqual("Grok Imagine Video", request.model.title)
+        self.assertEqual("Grok Imagine Video", request.model.display_name)
         self.assertTrue(request.model.is_video)
 
     def test_client_create_and_wait(self) -> None:
