@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -191,7 +191,8 @@ class AIUsageRepository:
     async def runtime_state(self) -> dict[str, object]:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
-                """SELECT paused,pause_reason,updated_by,updated_at
+                """SELECT paused,pause_reason,updated_by,updated_at,
+                          warning_month,warning_percent
                    FROM ai_runtime_state WHERE singleton_id=1"""
             )
         if row is None:
@@ -201,7 +202,36 @@ class AIUsageRepository:
             "pause_reason": str(row["pause_reason"] or "") or None,
             "updated_by": int(row["updated_by"]) if row["updated_by"] is not None else None,
             "updated_at": row["updated_at"],
+            "warning_month": row["warning_month"],
+            "warning_percent": (
+                int(row["warning_percent"])
+                if row["warning_percent"] is not None
+                else None
+            ),
         }
+
+    async def claim_budget_warning(
+        self,
+        *,
+        period_start: date,
+        threshold_percent: int,
+    ) -> bool:
+        if threshold_percent <= 0 or threshold_percent >= 100:
+            raise ValueError("Порог AI-бюджета должен быть от 1 до 99.")
+        async with self._database.acquire() as connection:
+            result = await connection.execute(
+                """UPDATE ai_runtime_state
+                   SET warning_month=$1::DATE,warning_percent=$2::SMALLINT,
+                       updated_at=NOW()
+                   WHERE singleton_id=1
+                     AND (
+                         warning_month IS DISTINCT FROM $1::DATE
+                         OR COALESCE(warning_percent,0) < $2::SMALLINT
+                     )""",
+                period_start,
+                int(threshold_percent),
+            )
+        return result.endswith(" 1")
 
     async def release_stale_reservations(self, *, older_than: datetime) -> int:
         async with self._database.acquire() as connection:
