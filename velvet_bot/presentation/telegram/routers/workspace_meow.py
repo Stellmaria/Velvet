@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from html import escape
 
-from aiogram import F, Router
+from aiogram import F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
@@ -30,8 +30,6 @@ from velvet_bot.domains.media_generation import (
     KieModelAlias,
 )
 from velvet_bot.workspace_ui import WorkspaceCallback, workspace_callback
-
-router = Router(name=__name__)
 
 
 class MeowCallback(CallbackData, prefix="meow"):
@@ -253,7 +251,6 @@ def _budget_block_reason(
     return None
 
 
-@router.callback_query(WorkspaceCallback.filter(F.action == "meow"))
 async def handle_meow_entry(
     callback: CallbackQuery,
     callback_data: WorkspaceCallback,
@@ -287,7 +284,6 @@ async def handle_meow_entry(
     )
 
 
-@router.callback_query(MeowCallback.filter(F.action == "model"))
 async def handle_meow_model(
     callback: CallbackQuery,
     callback_data: MeowCallback,
@@ -327,7 +323,6 @@ async def handle_meow_model(
     await callback.answer()
 
 
-@router.message(MeowForm.waiting_prompt, F.text)
 async def handle_meow_prompt(
     message: Message,
     state: FSMContext,
@@ -375,7 +370,6 @@ async def handle_meow_prompt(
     )
 
 
-@router.callback_query(MeowCallback.filter(F.action == "confirm"))
 async def handle_meow_confirm(
     callback: CallbackQuery,
     callback_data: MeowCallback,
@@ -449,7 +443,6 @@ async def handle_meow_confirm(
     )
 
 
-@router.callback_query(MeowCallback.filter(F.action == "cancel"))
 async def handle_meow_cancel(
     callback: CallbackQuery,
     callback_data: MeowCallback,
@@ -495,5 +488,9 @@ __all__ = (
     "build_meow_menu_keyboard",
     "default_meow_request",
     "format_meow_preview",
-    "router",
+    "handle_meow_cancel",
+    "handle_meow_confirm",
+    "handle_meow_entry",
+    "handle_meow_model",
+    "handle_meow_prompt",
 )
