@@ -57,7 +57,8 @@
 - user ID и chat ID сохраняются вместе с reservation;
 - metadata результата дописывается в существующий ledger event;
 - primary и fallback используют общий usage service, но создают отдельные reservations;
-- добавлены тесты pricing и metered roleplay client.
+- добавлены тесты pricing и metered roleplay client;
+- обновлён generated Telegram navigation inventory после добавления Python-модуля.
 
 ### Миграции и совместимость
 
@@ -65,16 +66,18 @@
 
 ### Проверки
 
-- добавлены unit tests расчёта стоимости;
-- добавлены async tests metered roleplay client;
-- проверяется provider-reported usage и fallback-оценка при отсутствии usage;
-- полный tests workflow, type check, Docker build и project notes contract должны быть подтверждены GitHub CI;
-- live-запросы к платным провайдерам намеренно не выполняются.
+- GitHub Actions `tests` run `#2068`: успешно, 1459 тестов;
+- GitHub Actions `type check` run `#721`: успешно;
+- GitHub Actions `docker build` run `#1447`: успешно;
+- GitHub Actions `project notes contract` run `#1308`: успешно;
+- первый `tests` run `#2067` обнаружил только устаревшее число Python-файлов в generated inventory; inventory обновлён, повторный прогон зелёный;
+- live-запросы к платным провайдерам намеренно не выполнялись.
 
 ### PR и commit
 
-- PR: будет создан после проверки diff;
-- Ветка: `agent/roleplay-usage-metering`.
+- PR: `#350`;
+- Ветка: `agent/roleplay-usage-metering`;
+- проверенный кодовый head до финальной синхронизации worklog: `8b2cab30807033b097ccbc20fab2158d15f14757`.
 
 ### Незавершённое
 
