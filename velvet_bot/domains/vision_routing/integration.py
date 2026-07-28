@@ -37,6 +37,8 @@ class VisionCascadeAdapter:
 
     async def analyze(self, source: bytes) -> RoutedVisionProfile:
         result = await self._router.analyze(source)
+        self.provider = result.provider
+        self.model = result.model
         return RoutedVisionProfile(result)
 
 
@@ -56,6 +58,9 @@ class CascadeMediaAIRepository(ResilientMediaAIRepository):
                    SET status='ready',analysis=$2::JSONB,semantic_text=$3::TEXT,
                        provider=COALESCE($4::VARCHAR,provider),
                        model=COALESCE($5::VARCHAR,model),
+                       analysis_route=$6::VARCHAR,
+                       content_hash=$7::CHAR(64),
+                       cache_hit=$8::BOOLEAN,
                        error_message=NULL,analyzed_at=NOW(),updated_at=NOW()
                    WHERE media_id=$1::BIGINT""",
                 int(media_id),
@@ -63,20 +68,10 @@ class CascadeMediaAIRepository(ResilientMediaAIRepository):
                 profile_to_semantic_text(dict(profile)),
                 provider,
                 model[:160] if model else None,
-            )
-            await connection.execute(
-                """UPDATE ai_vision_cache
-                   SET updated_at=NOW()
-                   WHERE content_hash=$1::CHAR(64)
-                     AND model=$2::VARCHAR
-                     AND $1::TEXT IS NOT NULL""",
+                route,
                 content_hash,
-                model,
+                cache_hit,
             )
-        if route:
-            profile["_velvet_route"] = route
-        if cache_hit:
-            profile["_velvet_cache_hit"] = True
 
 
 class CascadeMediaAIVisionService(ResilientMediaAIVisionService):
