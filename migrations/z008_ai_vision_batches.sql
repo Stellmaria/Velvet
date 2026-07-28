@@ -20,7 +20,12 @@ CREATE TABLE IF NOT EXISTS ai_task_batches (
     CONSTRAINT ai_task_batches_type_check
         CHECK (LENGTH(BTRIM(task_type)) > 0),
     CONSTRAINT ai_task_batches_status_check
-        CHECK (status IN ('planned', 'starting', 'queued', 'cancelled', 'expired', 'error')),
+        CHECK (
+            status IN (
+                'planned', 'starting', 'queued', 'completed',
+                'cancelled', 'expired', 'error'
+            )
+        ),
     CONSTRAINT ai_task_batches_candidate_ids_check
         CHECK (jsonb_typeof(candidate_ids) = 'array'),
     CONSTRAINT ai_task_batches_counts_check
