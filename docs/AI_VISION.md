@@ -14,7 +14,7 @@ Velvet может использовать локальную vision-модел�
 2. Загрузить vision-модель:
 
 ```powershell
-ollama pull qwen3-vl:8b
+ollama pull qwen3-vl:4b
 ```
 
 3. Проверить, что локальный сервис запущен:
@@ -31,7 +31,7 @@ ollama list
 AI_VISION_ENABLED=true
 AI_VISION_PROVIDER=ollama
 AI_VISION_BASE_URL=http://127.0.0.1:11434
-AI_VISION_MODEL=qwen3-vl:8b
+AI_VISION_MODEL=qwen3-vl:4b
 AI_VISION_COMPARE_MODEL=
 AI_VISION_API_KEY=
 AI_VISION_TIMEOUT_SECONDS=180
@@ -67,8 +67,8 @@ AI_VISION_MAX_ATTEMPTS=3
 сравнения двух локальных моделей можно указать вторую:
 
 ```dotenv
-AI_VISION_MODEL=hf.co/mradermacher/Qwen3-VL-4B-Instruct-abliterated-GGUF:Q4_K_M
-AI_VISION_COMPARE_MODEL=qwen3-vl:8b
+AI_VISION_MODEL=qwen3-vl:4b
+AI_VISION_COMPARE_MODEL=qwen3-vl:2b
 ```
 
 Обе модели получают одно изображение и одну Velvet-инструкцию. Они запускаются
@@ -80,8 +80,31 @@ AI_VISION_COMPARE_MODEL=qwen3-vl:8b
 файл в обычном сценарии не создаётся. Если вторая модель не задана или совпадает
 с основной, используется одиночный режим.
 
-Расширенный формат может занимать больше времени. Для локальной 8B-модели на
-ограниченной видеопамяти разумно увеличить `AI_VISION_TIMEOUT_SECONDS` до `600`.
+Расширенный формат может занимать больше времени. Начинать следует с одной
+официальной Ollama-модели `qwen3-vl:4b`. Модель `qwen3-vl:8b` требует больше памяти
+и должна включаться только после отдельной живой проверки; при нестабильности
+используйте `qwen3-vl:2b`. Для длинного промта можно увеличить
+`AI_VISION_TIMEOUT_SECONDS` до `600`.
+
+Сырые мультимодальные GGUF из Hugging Face нельзя считать готовой Ollama-моделью
+только по имени `hf.co/...`. Для vision им нужен совместимый multimodal projector
+и корректный импорт. Бот теперь проверяет capability `vision` через `/api/show` и
+отклоняет текстовую или неполностью импортированную модель до отправки изображения.
+
+## Диагностика Ollama на Windows
+
+Если сначала появляется `Remote end closed connection`, а затем `WinError 10061`,
+сервер Ollama завершился или был остановлен во время загрузки модели. Проверьте:
+
+```powershell
+ollama list
+ollama show qwen3-vl:4b
+ollama run qwen3-vl:4b "Кратко опиши этот тест"
+explorer $env:LOCALAPPDATA\Ollama
+```
+
+В каталоге Ollama откройте `server.log`. После восстановления сервиса оставьте
+`AI_VISION_COMPARE_MODEL` пустым и сначала проверьте одиночную `qwen3-vl:4b`.
 
 ## Изображение → поза
 
@@ -107,7 +130,8 @@ AI_VISION_COMPARE_MODEL=qwen3-vl:8b
 `персонаж A`, `персонаж B` и далее.
 
 Pose extractor использует те же `AI_VISION_MODEL`, `AI_VISION_COMPARE_MODEL`,
-timeout и последовательную локальную блокировку, что и `Фото → промт`. Если одна
+timeout и последовательную локальную блокировку, что и `Фото → промт`. Перед
+анализом он наследует проверку capability `vision` через `/api/show`. Если одна
 из сравнительных моделей завершается ошибкой, успешная карта второй модели всё
 равно сохраняется и отправляется в чат. Задание регистрируется в истории как
 `pose_extraction`.
