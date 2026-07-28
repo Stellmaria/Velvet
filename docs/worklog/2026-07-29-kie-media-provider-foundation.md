@@ -82,16 +82,20 @@
 
 ### Проверки
 
-- первый provider-only head прошёл 1495 тестов, mypy, Docker build и project notes contract;
-- для второго среза добавлены новые unit-тесты UI и worker lifecycle;
-- финальный GitHub Actions прогон запускается после обновления worklog и navigation inventory;
-- реальные Kie-запросы и списания не выполнялись.
+На head `1b1f1b432844efd8e12fccf109014dc32ba8b529` успешно прошли:
+
+- tests workflow `#2117`: 1501 тест;
+- type check `#770`;
+- Docker build `#1495`;
+- project notes contract `#1353`.
+
+Реальные Kie-запросы и списания не выполнялись.
 
 ### PR и commit
 
-- PR: `#355` — «Добавить фундамент Kie media provider»;
+- PR: `#355` — «Добавить Kie и интерфейс Мяу»;
 - ветка: `agent/kie-media-provider-foundation`;
-- PR временно возвращён в draft на время расширения среза;
+- проверенный head: `1b1f1b432844efd8e12fccf109014dc32ba8b529`;
 - базовый commit: `de9d59441aabbae1c888da65be26932588fd62e4`.
 
 ### Незавершённое
@@ -104,4 +108,4 @@
 
 ### Следующий шаг
 
-После зелёного CI и слияния PR настроить серверный `.env`, выполнить одиночный owner-only live smoke Nano Banana Pro, затем добавить безопасную загрузку Telegram-референсов и постоянное сохранение результатов.
+После слияния PR настроить серверный `.env`, выполнить одиночный owner-only live smoke Nano Banana Pro, затем добавить безопасную загрузку Telegram-референсов и постоянное сохранение результатов.
