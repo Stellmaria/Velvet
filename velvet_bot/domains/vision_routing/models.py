@@ -50,6 +50,7 @@ class VisionProviderAnalysis:
     input_tokens: int
     output_tokens: int
     usage_reported: bool
+    actual_cost_rub: Decimal = Decimal("0")
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +79,9 @@ class VisionCascadeResult:
     confidence: int
     cache_hit: bool
     attempts: tuple[VisionRoute, ...] = ()
+    input_tokens: int = 0
+    output_tokens: int = 0
+    actual_cost_rub: Decimal = Decimal("0")
     metadata: Mapping[str, object] = field(default_factory=dict)
 
 
