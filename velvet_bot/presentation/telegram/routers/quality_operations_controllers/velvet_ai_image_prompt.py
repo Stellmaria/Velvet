@@ -303,7 +303,11 @@ async def handle_image_prompt_reply(
                 except asyncio.CancelledError:
                     raise
                 except Exception as error:  # p2-approved-boundary: compare-model-partial
-                    logger.exception("Image-to-prompt model failed model=%s", model)
+                    logger.warning(
+                        "Image-to-prompt comparison model unavailable model=%s error=%s",
+                        model,
+                        str(error).strip()[:500] or type(error).__name__,
+                    )
                     errors[model] = str(error).strip()[:1200] or "Неизвестная ошибка."
 
         if not prompts:
