@@ -12,11 +12,11 @@ from velvet_bot.domains.workspaces.service import WorkspaceAccessError, Workspac
 from velvet_bot.presentation.telegram.routers.workspace_meow import (
     MeowCallback,
     MeowForm,
-    handle_meow_cancel,
-    handle_meow_confirm,
+    handle_meow_action,
     handle_meow_entry,
-    handle_meow_model,
     handle_meow_prompt,
+    handle_meow_reference_message,
+    handle_meow_reference_text,
 )
 from velvet_bot.presentation.telegram.workspace_command_menu import (
     install_workspace_scoped_commands,
@@ -108,16 +108,18 @@ def register_workspace_home(router: Router) -> None:
         WorkspaceCallback.filter(F.action == "meow"),
     )
     router.callback_query.register(
-        handle_meow_model,
-        MeowCallback.filter(F.action == "model"),
+        handle_meow_action,
+        MeowCallback.filter(),
     )
-    router.callback_query.register(
-        handle_meow_confirm,
-        MeowCallback.filter(F.action == "confirm"),
+    router.message.register(
+        handle_meow_reference_message,
+        MeowForm.collecting_references,
+        F.photo | F.document,
     )
-    router.callback_query.register(
-        handle_meow_cancel,
-        MeowCallback.filter(F.action == "cancel"),
+    router.message.register(
+        handle_meow_reference_text,
+        MeowForm.collecting_references,
+        F.text,
     )
     router.message.register(
         handle_meow_prompt,
