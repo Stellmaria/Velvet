@@ -26,11 +26,18 @@ class Settings:
     pg_restore_path: str
     ai_vision_enabled: bool = False
     ai_vision_provider: str = "ollama"
-    ai_vision_base_url: str = "http://127.0.0.1:11434"
+    ai_vision_base_url: str = "http://127.0.0.1:11435"
     ai_vision_model: str = "qwen3-vl:8b"
+    ai_vision_compare_model: str | None = None
+    ai_vision_fallback_model: str | None = None
     ai_vision_api_key: str | None = None
     ai_vision_timeout_seconds: int = 180
     ai_vision_max_attempts: int = 3
+    ai_text_provider: str = "ollama"
+    ai_text_base_url: str = "http://127.0.0.1:11435"
+    ai_text_model: str | None = None
+    ai_text_api_key: str | None = None
+    ai_text_timeout_seconds: int = 180
     moderator_user_ids: frozenset[int] = frozenset()
     adult_channel_id: int = DEFAULT_ADULT_CHANNEL_ID
 
@@ -141,6 +148,22 @@ def parse_required_path(value: str, *, default: str, variable_name: str) -> str:
     return cleaned
 
 
+def _parse_ai_provider(value: str, *, variable_name: str) -> str:
+    provider = value.strip().casefold()
+    if provider not in {"ollama", "openai_compatible"}:
+        raise RuntimeError(
+            f"{variable_name} должен быть ollama или openai_compatible."
+        )
+    return provider
+
+
+def _parse_ai_base_url(value: str, *, variable_name: str) -> str:
+    result = value.strip().rstrip("/")
+    if not result:
+        raise RuntimeError(f"{variable_name} не может быть пустым.")
+    return result
+
+
 def load_settings() -> Settings:
     load_dotenv()
 
@@ -158,12 +181,8 @@ def load_settings() -> Settings:
             "в локальном файле .env."
         )
 
-    allowed_user_ids = parse_allowed_user_ids(
-        os.getenv("ALLOWED_USER_IDS", "")
-    )
-    allowed_usernames = parse_allowed_usernames(
-        os.getenv("ALLOWED_USERNAMES", "")
-    )
+    allowed_user_ids = parse_allowed_user_ids(os.getenv("ALLOWED_USER_IDS", ""))
+    allowed_usernames = parse_allowed_usernames(os.getenv("ALLOWED_USERNAMES", ""))
 
     if not allowed_user_ids and not allowed_usernames:
         raise RuntimeError(
@@ -171,23 +190,29 @@ def load_settings() -> Settings:
             "ALLOWED_USERNAMES в .env."
         )
 
-    ai_provider = os.getenv("AI_VISION_PROVIDER", "ollama").strip().casefold()
-    if ai_provider not in {"ollama", "openai_compatible"}:
-        raise RuntimeError(
-            "AI_VISION_PROVIDER должен быть ollama или openai_compatible."
-        )
-    ai_base_url = os.getenv(
-        "AI_VISION_BASE_URL",
-        "http://127.0.0.1:11434",
-    ).strip().rstrip("/")
-    if not ai_base_url:
-        raise RuntimeError("AI_VISION_BASE_URL не может быть пустым.")
+    ai_provider = _parse_ai_provider(
+        os.getenv("AI_VISION_PROVIDER", "ollama"),
+        variable_name="AI_VISION_PROVIDER",
+    )
+    ai_base_url = _parse_ai_base_url(
+        os.getenv("AI_VISION_BASE_URL", "http://127.0.0.1:11435"),
+        variable_name="AI_VISION_BASE_URL",
+    )
     ai_model = os.getenv("AI_VISION_MODEL", "qwen3-vl:8b").strip()
     if not ai_model:
         raise RuntimeError("AI_VISION_MODEL не может быть пустым.")
     ai_api_key = os.getenv("AI_VISION_API_KEY", "").strip() or None
 
-    return Settings(
+    text_provider = _parse_ai_provider(
+        os.getenv("AI_TEXT_PROVIDER", ai_provider),
+        variable_name="AI_TEXT_PROVIDER",
+    )
+    text_base_url = _parse_ai_base_url(
+        os.getenv("AI_TEXT_BASE_URL", ai_base_url),
+        variable_name="AI_TEXT_BASE_URL",
+    )
+
+    settings = Settings(
         bot_token=bot_token,
         database_url=database_url,
         allowed_user_ids=allowed_user_ids,
@@ -222,6 +247,12 @@ def load_settings() -> Settings:
         ai_vision_provider=ai_provider,
         ai_vision_base_url=ai_base_url,
         ai_vision_model=ai_model,
+        ai_vision_compare_model=(
+            os.getenv("AI_VISION_COMPARE_MODEL", "").strip() or None
+        ),
+        ai_vision_fallback_model=(
+            os.getenv("AI_VISION_FALLBACK_MODEL", "").strip() or None
+        ),
         ai_vision_api_key=ai_api_key,
         ai_vision_timeout_seconds=parse_bounded_integer(
             os.getenv("AI_VISION_TIMEOUT_SECONDS", "180"),
@@ -237,6 +268,17 @@ def load_settings() -> Settings:
             minimum=1,
             maximum=10,
         ),
+        ai_text_provider=text_provider,
+        ai_text_base_url=text_base_url,
+        ai_text_model=os.getenv("AI_TEXT_MODEL", "").strip() or None,
+        ai_text_api_key=os.getenv("AI_TEXT_API_KEY", "").strip() or None,
+        ai_text_timeout_seconds=parse_bounded_integer(
+            os.getenv("AI_TEXT_TIMEOUT_SECONDS", "180"),
+            variable_name="AI_TEXT_TIMEOUT_SECONDS",
+            default=180,
+            minimum=10,
+            maximum=600,
+        ),
         moderator_user_ids=parse_integer_list(
             os.getenv("MODERATOR_USER_IDS", ""),
             variable_name="MODERATOR_USER_IDS",
@@ -247,6 +289,11 @@ def load_settings() -> Settings:
             default=DEFAULT_ADULT_CHANNEL_ID,
         ),
     )
+
+    from velvet_bot.ai_model_routing import install_ai_model_routing
+
+    install_ai_model_routing()
+    return settings
 
 
 __all__ = (
