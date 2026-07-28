@@ -183,7 +183,7 @@ class KieGenerationWorker:
         if chat_id is None:
             return
         caption = (
-            f"<b>Мяу · {escape(request.model.title)}</b>\n"
+            f"<b>Мяу · {escape(request.model.display_name)}</b>\n"
             f"Задача Kie: <code>{escape(record.task_id)}</code>"
         )
         try:
