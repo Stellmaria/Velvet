@@ -52,8 +52,8 @@ services:
 
   # Запускается отдельно: docker compose --profile agent up -d hermes
   # Hermes не получает docker.sock, production .env или каталог приложения.
-  # Он работает через отдельный GitHub checkout и создаёт PR вместо прямой
-  # правки запущенного контейнера.
+  # Он клонирует репозиторий в собственный persistent volume и создаёт PR
+  # вместо прямой правки запущенного контейнера.
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: velvet-hermes
@@ -65,7 +65,6 @@ services:
       - .env.hermes
     volumes:
       - velvet_hermes_data:/opt/data
-      - ./runtime/hermes-output:/opt/data/home/output
     mem_limit: 4g
     cpus: 2.0
     pids_limit: 256
