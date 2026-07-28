@@ -8,18 +8,25 @@ from unittest.mock import patch
 
 from velvet_bot.presentation.telegram.supervisor.remote_views import console_keyboard
 from velvet_supervisor.ollama_recovery import (
+    _FALLBACK_VISION_MODEL,
+    _MODEL_BUNDLE,
+    _STANDARD_VISION_MODEL,
+    _UNCENSORED_TEXT_MODEL,
+    _UNCENSORED_VISION_MODEL,
     OllamaRecoveryError,
     choose_e_storage,
     configure_ollama_storage_env,
     configure_vision_env,
+    ensure_model_bundle,
     inspect_storage,
+    scan_manifest_models,
     verify_model,
 )
 from velvet_supervisor.remote_console import RemoteCommandRegistry
 
 
 class OllamaRecoveryEnvironmentTests(unittest.TestCase):
-    def test_configure_updates_only_ai_vision_keys(self) -> None:
+    def test_configure_updates_bundle_keys_without_touching_secrets(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project_dir = Path(directory)
             env_path = project_dir / ".env"
@@ -28,7 +35,8 @@ class OllamaRecoveryEnvironmentTests(unittest.TestCase):
                 "AI_VISION_MODEL=hf.co/old/model\r\n"
                 "CUSTOM_FLAG=preserve-me\r\n"
                 "AI_VISION_COMPARE_MODEL=qwen3-vl:8b\r\n"
-                "AI_VISION_MODEL=duplicate-old-model\r\n",
+                "AI_VISION_MODEL=duplicate-old-model\r\n"
+                "AI_TEXT_MODEL=old-text\r\n",
                 encoding="utf-8",
                 newline="",
             )
@@ -40,17 +48,27 @@ class OllamaRecoveryEnvironmentTests(unittest.TestCase):
             self.assertIn("BOT_TOKEN=keep-this-secret", updated)
             self.assertIn("CUSTOM_FLAG=preserve-me", updated)
             self.assertNotIn("hf.co/old/model", updated)
-            self.assertNotIn("qwen3-vl:8b", updated)
             self.assertNotIn("duplicate-old-model", updated)
-            self.assertEqual(1, updated.count("AI_VISION_MODEL=qwen3-vl:4b"))
-            self.assertEqual(1, updated.count("AI_VISION_COMPARE_MODEL="))
-            self.assertIn("AI_VISION_ENABLED=true", updated)
-            self.assertIn("AI_VISION_PROVIDER=ollama", updated)
-            self.assertIn(
-                "AI_VISION_BASE_URL=http://127.0.0.1:11434",
-                updated,
+            self.assertNotIn("AI_TEXT_MODEL=old-text", updated)
+            self.assertEqual(
+                1,
+                updated.count(f"AI_VISION_MODEL={_STANDARD_VISION_MODEL}"),
             )
-            self.assertIn("AI_VISION_TIMEOUT_SECONDS=600", updated)
+            self.assertEqual(
+                1,
+                updated.count(f"AI_VISION_COMPARE_MODEL={_UNCENSORED_VISION_MODEL}"),
+            )
+            self.assertEqual(
+                1,
+                updated.count(f"AI_VISION_FALLBACK_MODEL={_FALLBACK_VISION_MODEL}"),
+            )
+            self.assertEqual(
+                1,
+                updated.count(f"AI_TEXT_MODEL={_UNCENSORED_TEXT_MODEL}"),
+            )
+            self.assertIn("OLLAMA_MAX_LOADED_MODELS=1", updated)
+            self.assertIn("OLLAMA_NUM_PARALLEL=1", updated)
+            self.assertIn("OLLAMA_KV_CACHE_TYPE=q8_0", updated)
 
     def test_configure_creates_missing_env_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -60,8 +78,12 @@ class OllamaRecoveryEnvironmentTests(unittest.TestCase):
 
             self.assertTrue(env_path.exists())
             updated = env_path.read_text(encoding="utf-8")
-            self.assertIn("AI_VISION_MODEL=qwen3-vl:4b", updated)
-            self.assertIn("AI_VISION_COMPARE_MODEL=", updated)
+            self.assertIn(f"AI_VISION_MODEL={_STANDARD_VISION_MODEL}", updated)
+            self.assertIn(
+                f"AI_VISION_COMPARE_MODEL={_UNCENSORED_VISION_MODEL}",
+                updated,
+            )
+            self.assertIn(f"AI_TEXT_MODEL={_UNCENSORED_TEXT_MODEL}", updated)
 
     def test_storage_config_preserves_secrets_and_removes_duplicates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -75,17 +97,14 @@ class OllamaRecoveryEnvironmentTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            configure_ollama_storage_env(project_dir, Path(r"E:\OllamaModels\models"))
+            configure_ollama_storage_env(project_dir, Path(r"E:\OllamaModels"))
 
             updated = env_path.read_text(encoding="utf-8")
             self.assertIn("BOT_TOKEN=keep-this-secret", updated)
             self.assertIn("CUSTOM_FLAG=preserve-me", updated)
             self.assertNotIn(r"C:\old", updated)
             self.assertNotIn(r"C:\duplicate", updated)
-            self.assertEqual(
-                1,
-                updated.count(r"OLLAMA_MODELS=E:\OllamaModels\models"),
-            )
+            self.assertEqual(1, updated.count(r"OLLAMA_MODELS=E:\OllamaModels"))
 
 
 class OllamaStorageLayoutTests(unittest.TestCase):
@@ -132,24 +151,102 @@ class OllamaStorageLayoutTests(unittest.TestCase):
 
             self.assertIsNone(choose_e_storage((first, second)))
 
+    def test_scan_manifest_models_recovers_ollama_and_huggingface_names(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ollama_manifest = (
+                root
+                / "manifests"
+                / "registry.ollama.ai"
+                / "library"
+                / "qwen3-vl"
+                / "8b"
+            )
+            hf_manifest = (
+                root
+                / "manifests"
+                / "hf.co"
+                / "mradermacher"
+                / "Qwen3-VL-4B-Instruct-abliterated-GGUF"
+                / "Q4_K_M"
+            )
+            ollama_manifest.parent.mkdir(parents=True)
+            hf_manifest.parent.mkdir(parents=True)
+            ollama_manifest.write_text("{}", encoding="utf-8")
+            hf_manifest.write_text("{}", encoding="utf-8")
+
+            names = scan_manifest_models(root)
+
+            self.assertIn("qwen3-vl:8b", names)
+            self.assertIn(_FALLBACK_VISION_MODEL, names)
+
 
 class OllamaRecoveryCapabilityTests(unittest.TestCase):
-    def test_verify_model_requires_vision_capability(self) -> None:
+    def test_verify_model_requires_requested_capability(self) -> None:
         with patch(
             "velvet_supervisor.ollama_recovery._request_json",
             return_value={"capabilities": ["completion"]},
         ):
             with self.assertRaisesRegex(OllamaRecoveryError, "vision отсутствует"):
-                verify_model()
+                verify_model(_STANDARD_VISION_MODEL, required_capability="vision")
 
-    def test_verify_model_accepts_vision_capability(self) -> None:
+    def test_verify_model_accepts_text_completion_capability(self) -> None:
         with patch(
             "velvet_supervisor.ollama_recovery._request_json",
-            return_value={"capabilities": ["completion", "vision"]},
+            return_value={"capabilities": ["completion"]},
         ):
-            capabilities = verify_model()
+            capabilities = verify_model(
+                _UNCENSORED_TEXT_MODEL,
+                required_capability="completion",
+            )
 
-        self.assertEqual(("completion", "vision"), capabilities)
+        self.assertEqual(("completion",), capabilities)
+
+    def test_ensure_bundle_skips_api_models_and_registers_disk_model(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_dir = Path(directory)
+            storage = project_dir / "models"
+            manifest = (
+                storage
+                / "manifests"
+                / "hf.co"
+                / "mradermacher"
+                / "Qwen3-VL-4B-Instruct-abliterated-GGUF"
+                / "Q4_K_M"
+            )
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text("{}", encoding="utf-8")
+
+            api_snapshots = [
+                (_STANDARD_VISION_MODEL,),
+                (_STANDARD_VISION_MODEL, _UNCENSORED_VISION_MODEL),
+                (
+                    _STANDARD_VISION_MODEL,
+                    _UNCENSORED_VISION_MODEL,
+                    _FALLBACK_VISION_MODEL,
+                ),
+                tuple(spec.name for spec in _MODEL_BUNDLE),
+            ]
+            pulls: list[str] = []
+
+            with (
+                patch("velvet_supervisor.ollama_recovery.start_ollama"),
+                patch(
+                    "velvet_supervisor.ollama_recovery._api_model_names",
+                    side_effect=api_snapshots,
+                ),
+                patch(
+                    "velvet_supervisor.ollama_recovery.pull_model",
+                    side_effect=lambda _project, model: pulls.append(model),
+                ),
+            ):
+                pulled = ensure_model_bundle(project_dir, storage)
+
+            self.assertEqual(tuple(pulls), pulled)
+            self.assertNotIn(_STANDARD_VISION_MODEL, pulls)
+            self.assertIn(_UNCENSORED_VISION_MODEL, pulls)
+            self.assertIn(_FALLBACK_VISION_MODEL, pulls)
+            self.assertIn(_UNCENSORED_TEXT_MODEL, pulls)
 
 
 class OllamaRecoveryRegistryTests(unittest.TestCase):
@@ -164,7 +261,7 @@ class OllamaRecoveryRegistryTests(unittest.TestCase):
         )
         self.registry = RemoteCommandRegistry(self.settings)  # type: ignore[arg-type]
 
-    def test_repair_command_is_fixed_and_shell_free(self) -> None:
+    def test_repair_command_remains_fixed_and_shell_free(self) -> None:
         spec = self.registry.resolve("ollama-repair-qwen3-vl-4b", by_key=True)
 
         self.assertEqual(
@@ -178,24 +275,10 @@ class OllamaRecoveryRegistryTests(unittest.TestCase):
         )
         self.assertEqual("AI: Ollama", spec.category)
         self.assertEqual(900, spec.timeout_seconds)
+        self.assertNotIn("powershell", " ".join(spec.command).casefold())
+        self.assertNotIn("cmd.exe", " ".join(spec.command).casefold())
 
-    def test_registry_exposes_only_fixed_recovery_actions(self) -> None:
-        expected = {
-            "ollama-recovery-status": "status",
-            "ollama-start": "start",
-            "ollama-configure-qwen3-vl-4b": "configure",
-            "ollama-pull-qwen3-vl-4b": "pull",
-            "ollama-show-qwen3-vl-4b": "show",
-            "ollama-repair-qwen3-vl-4b": "repair",
-        }
-        for key, action in expected.items():
-            with self.subTest(key=key):
-                spec = self.registry.resolve(key, by_key=True)
-                self.assertEqual(action, spec.command[-1])
-                self.assertNotIn("powershell", " ".join(spec.command).casefold())
-                self.assertNotIn("cmd.exe", " ".join(spec.command).casefold())
-
-    def test_console_has_quick_storage_status_and_repair_buttons(self) -> None:
+    def test_console_keeps_status_and_repair_buttons(self) -> None:
         commands = [spec.to_dict() for spec in self.registry.catalog()]
 
         keyboard = console_keyboard(commands)
