@@ -8,11 +8,20 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from velvet_bot.core.config import load_settings
+from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import (
     AITask,
     AITaskQueueService,
     AITaskQueueSnapshot,
     AITaskStatus,
+    AIUsageService,
+)
+from velvet_bot.domains.vision_batches import (
+    VisionBatchError,
+    VisionBatchProgress,
+    VisionBatchStatus,
+    build_vision_batch_service,
 )
 
 router = Router(name=__name__)
@@ -40,6 +49,16 @@ def _limit(message: Message) -> int:
         return 8
 
 
+def _batch_limit(message: Message) -> int:
+    value = _arguments(message)
+    if not value:
+        return 100
+    try:
+        return max(1, min(int(value), 5000))
+    except ValueError:
+        return 100
+
+
 def _parse_task_id(value: str) -> UUID | None:
     try:
         return UUID(value.strip())
@@ -54,6 +73,18 @@ def _status_icon(status: AITaskStatus) -> str:
         AITaskStatus.SUCCESS: "✅",
         AITaskStatus.ERROR: "❌",
         AITaskStatus.CANCELLED: "🚫",
+    }[status]
+
+
+def _batch_status_icon(status: VisionBatchStatus) -> str:
+    return {
+        VisionBatchStatus.PLANNED: "🧾",
+        VisionBatchStatus.STARTING: "🚀",
+        VisionBatchStatus.QUEUED: "⏳",
+        VisionBatchStatus.COMPLETED: "✅",
+        VisionBatchStatus.CANCELLED: "🚫",
+        VisionBatchStatus.EXPIRED: "⌛",
+        VisionBatchStatus.ERROR: "❌",
     }[status]
 
 
@@ -108,6 +139,47 @@ def _task_text(task: AITask) -> str:
     )
 
 
+def _batch_text(progress: VisionBatchProgress) -> str:
+    plan = progress.plan
+    expires = plan.expires_at.strftime("%d.%m %H:%M")
+    lines = [
+        f"<b>{_batch_status_icon(plan.status)} VL-партия</b>",
+        f"ID: <code>{plan.id}</code>",
+        f"Статус: <b>{escape(plan.status.value)}</b>",
+        f"Кандидатов: <b>{plan.candidate_count}</b>",
+        f"Создано задач: {plan.created_task_count}",
+        f"Дедуплицировано: {plan.deduplicated_task_count}",
+        f"Максимум на изображение: {_format_rub(plan.max_cost_per_item_rub)}",
+        f"Максимум партии: <b>{_format_rub(plan.estimated_cost_rub)}</b>",
+        f"Истекает: {expires}",
+    ]
+    if plan.status in {
+        VisionBatchStatus.QUEUED,
+        VisionBatchStatus.COMPLETED,
+        VisionBatchStatus.CANCELLED,
+        VisionBatchStatus.ERROR,
+    }:
+        lines.extend(
+            [
+                "",
+                f"В очереди: {progress.queued}",
+                f"Выполняются: {progress.running}",
+                f"Успешно: {progress.success}",
+                f"Ошибки: {progress.error}",
+                f"Отменены: {progress.cancelled}",
+            ]
+        )
+    if plan.last_error:
+        lines.append(
+            f"\nПричина: <code>{escape(_short(plan.last_error, limit=300))}</code>"
+        )
+    return "\n".join(lines)
+
+
+def _owner_id(message: Message) -> int | None:
+    return int(message.from_user.id) if message.from_user is not None else None
+
+
 @router.message(Command("ai_queue"))
 async def handle_ai_queue(
     message: Message,
@@ -117,7 +189,10 @@ async def handle_ai_queue(
     tasks = await ai_task_queue_service.recent(limit=_limit(message))
     sections = [_snapshot_text(snapshot)]
     if tasks:
-        sections.append("<b>Последние задачи</b>\n\n" + "\n\n".join(_task_text(task) for task in tasks))
+        sections.append(
+            "<b>Последние задачи</b>\n\n"
+            + "\n\n".join(_task_text(task) for task in tasks)
+        )
     else:
         sections.append("Очередь пока пуста.")
     sections.append(
@@ -164,7 +239,9 @@ async def handle_ai_queue_cancel(
         )
         return
     cancellation_reason = (
-        reason.strip() if separator and reason.strip() else "Отменено владельцем через Telegram."
+        reason.strip()
+        if separator and reason.strip()
+        else "Отменено владельцем через Telegram."
     )[:500]
     task = await ai_task_queue_service.cancel(
         task_id=task_id,
@@ -183,9 +260,147 @@ async def handle_ai_queue_cancel(
     )
 
 
+@router.message(Command("ai_batch_plan"))
+async def handle_ai_batch_plan(
+    message: Message,
+    database: Database,
+    ai_usage_service: AIUsageService,
+    ai_task_queue_service: AITaskQueueService,
+) -> None:
+    service = build_vision_batch_service(
+        settings=load_settings(),
+        database=database,
+        usage_service=ai_usage_service,
+        queue_service=ai_task_queue_service,
+    )
+    try:
+        plan = await service.plan(
+            limit=_batch_limit(message),
+            created_by=_owner_id(message),
+        )
+        progress = await service.status(
+            plan_id=plan.id,
+            created_by=_owner_id(message),
+        )
+    except VisionBatchError as error:
+        await message.answer(f"<b>VL-партия не создана.</b>\n{escape(str(error))}")
+        return
+    assert progress is not None
+    text = _batch_text(progress)
+    if plan.candidate_count:
+        text += (
+            "\n\nДля запуска подтвердите отдельно:\n"
+            f"<code>/ai_batch_start {plan.id}</code>"
+        )
+    else:
+        text += "\n\nНовых изображений для смыслового анализа не найдено."
+    await message.answer(text)
+
+
+@router.message(Command("ai_batch_start"))
+async def handle_ai_batch_start(
+    message: Message,
+    database: Database,
+    ai_usage_service: AIUsageService,
+    ai_task_queue_service: AITaskQueueService,
+) -> None:
+    plan_id = _parse_task_id(_arguments(message))
+    if plan_id is None:
+        await message.answer("Использование: <code>/ai_batch_start UUID</code>")
+        return
+    service = build_vision_batch_service(
+        settings=load_settings(),
+        database=database,
+        usage_service=ai_usage_service,
+        queue_service=ai_task_queue_service,
+    )
+    try:
+        await service.start(plan_id=plan_id, created_by=_owner_id(message))
+        progress = await service.status(
+            plan_id=plan_id,
+            created_by=_owner_id(message),
+        )
+    except VisionBatchError as error:
+        await message.answer(f"<b>VL-партия не запущена.</b>\n{escape(str(error))}")
+        return
+    assert progress is not None
+    await message.answer(_batch_text(progress))
+
+
+@router.message(Command("ai_batch_status"))
+async def handle_ai_batch_status(
+    message: Message,
+    database: Database,
+    ai_usage_service: AIUsageService,
+    ai_task_queue_service: AITaskQueueService,
+) -> None:
+    raw = _arguments(message)
+    plan_id = _parse_task_id(raw) if raw else None
+    if raw and plan_id is None:
+        await message.answer("Использование: <code>/ai_batch_status [UUID]</code>")
+        return
+    service = build_vision_batch_service(
+        settings=load_settings(),
+        database=database,
+        usage_service=ai_usage_service,
+        queue_service=ai_task_queue_service,
+    )
+    progress = await service.status(
+        plan_id=plan_id,
+        created_by=_owner_id(message),
+    )
+    if progress is None:
+        await message.answer("Планы VL-партий пока не найдены.")
+        return
+    await message.answer(_batch_text(progress))
+
+
+@router.message(Command("ai_batch_cancel"))
+async def handle_ai_batch_cancel(
+    message: Message,
+    database: Database,
+    ai_usage_service: AIUsageService,
+    ai_task_queue_service: AITaskQueueService,
+) -> None:
+    arguments = _arguments(message)
+    raw_id, separator, reason = arguments.partition(" ")
+    plan_id = _parse_task_id(raw_id)
+    if plan_id is None:
+        await message.answer(
+            "Использование: <code>/ai_batch_cancel UUID [причина]</code>"
+        )
+        return
+    service = build_vision_batch_service(
+        settings=load_settings(),
+        database=database,
+        usage_service=ai_usage_service,
+        queue_service=ai_task_queue_service,
+    )
+    cancellation_reason = (
+        reason.strip()
+        if separator and reason.strip()
+        else "VL-партия отменена владельцем."
+    )
+    plan = await service.cancel(plan_id=plan_id, reason=cancellation_reason)
+    if plan is None:
+        await message.answer("План не найден либо уже окончательно завершён.")
+        return
+    progress = await service.status(
+        plan_id=plan.id,
+        created_by=_owner_id(message),
+    )
+    assert progress is not None
+    await message.answer(_batch_text(progress))
+
+
 __all__ = (
+    "_batch_text",
     "_snapshot_text",
     "_task_text",
+    "handle_ai_batch_cancel",
+    "handle_ai_batch_plan",
+    "handle_ai_batch_start",
+    "handle_ai_batch_status",
     "handle_ai_queue",
     "handle_ai_queue_cancel",
     "handle_ai_queue_retry",
