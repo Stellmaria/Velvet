@@ -1,0 +1,107 @@
+name: One-shot image prompt Ollama fix
+
+on:
+  push:
+    branches:
+      - agent/fix-image-prompt-ollama-errors
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-image-prompt-ollama-errors
+          fetch-depth: 0
+
+      - name: Apply focused runtime fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"Expected block not found in {path}")
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace(
+              "velvet_bot/ai_vision.py",
+              '''        try:\n            with urllib.request.urlopen(request, timeout=timeout) as response:\n                raw = response.read()\n        except (urllib.error.URLError, TimeoutError, OSError) as error:\n            raise VisionProviderUnavailable(str(error)) from error\n''',
+              '''        try:\n            with urllib.request.urlopen(request, timeout=timeout) as response:\n                raw = response.read()\n        except urllib.error.HTTPError as error:\n            try:\n                error_raw = error.read()\n                error_payload = json.loads(error_raw.decode("utf-8"))\n                detail = (\n                    str(error_payload.get("error") or "").strip()\n                    if isinstance(error_payload, dict)\n                    else ""\n                )\n            except (OSError, UnicodeDecodeError, json.JSONDecodeError):\n                detail = ""\n            message = (\n                f"HTTP {error.code}: "\n                f"{detail or error.reason or 'ошибка сервиса ИИ'}"\n            )\n            if error.code >= 500:\n                raise VisionProviderUnavailable(message) from error\n            raise VisionAnalysisError(message) from error\n        except (urllib.error.URLError, TimeoutError, OSError) as error:\n            raise VisionProviderUnavailable(str(error)) from error\n''',
+          )
+
+          replace(
+              "velvet_bot/infrastructure/image_to_prompt.py",
+              '''    def _messages(\n''',
+              '''    async def _ensure_vision_capability(self) -> None:\n        if self.provider != "ollama":\n            return\n        request = urllib.request.Request(\n            f"{self.base_url}/api/show",\n            data=json.dumps({"model": self.model}, ensure_ascii=False).encode("utf-8"),\n            headers=self._headers(),\n            method="POST",\n        )\n        payload = await asyncio.to_thread(\n            self._read_json,\n            request,\n            timeout=min(30, self.timeout_seconds),\n        )\n        capabilities = payload.get("capabilities")\n        if not isinstance(capabilities, list) or not capabilities:\n            return\n        normalized = {str(value).strip().casefold() for value in capabilities}\n        if "vision" not in normalized:\n            raise VisionAnalysisError(\n                f"Модель {self.model} не поддерживает изображения в Ollama. "\n                "Используйте модель с capability vision, например qwen3-vl:4b."\n            )\n\n    def _messages(\n''',
+          )
+          replace(
+              "velvet_bot/infrastructure/image_to_prompt.py",
+              '''    async def generate(self, source: bytes) -> str:\n        prepared = await asyncio.to_thread(_prepare_image, source)\n''',
+              '''    async def generate(self, source: bytes) -> str:\n        await self._ensure_vision_capability()\n        prepared = await asyncio.to_thread(_prepare_image, source)\n''',
+          )
+
+          replace(
+              "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
+              '''from velvet_bot.ai_job_runtime import AIJobTracker\n''',
+              '''from velvet_bot.ai_job_runtime import AIJobTracker\nfrom velvet_bot.ai_vision import VisionAnalysisError\n''',
+          )
+          replace(
+              "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
+              '''        prompts: dict[str, str] = {}\n        errors: dict[str, str] = {}\n''',
+              '''        prompts: dict[str, str] = {}\n        errors: dict[str, str] = {}\n        failures: dict[str, BaseException] = {}\n''',
+          )
+          replace(
+              "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
+              '''                except Exception as error:  # p2-approved-boundary: compare-model-partial\n                    logger.warning(\n                        "Image-to-prompt comparison model unavailable model=%s error=%s",\n                        model,\n                        str(error).strip()[:500] or type(error).__name__,\n                    )\n                    errors[model] = str(error).strip()[:1200] or "Неизвестная ошибка."\n\n        if not prompts:\n            details = "; ".join(f"{model}: {error}" for model, error in errors.items())\n            raise RuntimeError(details or "Ни одна модель не вернула промт.")\n''',
+              '''                except Exception as error:  # p2-approved-boundary: compare-model-partial\n                    log_model_failure = (\n                        logger.info\n                        if isinstance(error, VisionAnalysisError)\n                        else logger.warning\n                    )\n                    log_model_failure(\n                        "Image-to-prompt comparison model unavailable model=%s error=%s",\n                        model,\n                        str(error).strip()[:500] or type(error).__name__,\n                    )\n                    errors[model] = str(error).strip()[:1200] or "Неизвестная ошибка."\n                    failures[model] = error\n\n        if not prompts:\n            details = "; ".join(f"{model}: {error}" for model, error in errors.items())\n            failure_text = details or "Ни одна модель не вернула промт."\n            if failures and all(\n                isinstance(error, VisionAnalysisError) for error in failures.values()\n            ):\n                logger.warning(\n                    "Image-to-prompt unavailable job_id=%s details=%s",\n                    tracker.job_id,\n                    failure_text[:1500],\n                )\n                await tracker.error(failure_text)\n                await message.answer(\n                    _completion_notice(\n                        tracker.job_id,\n                        total_models=len(models),\n                        prompts=prompts,\n                        errors=errors,\n                    )\n                )\n                return\n            raise RuntimeError(failure_text)\n''',
+          )
+
+          replace(
+              ".env.example",
+              "AI_VISION_MODEL=qwen3-vl:8b\n",
+              "AI_VISION_MODEL=qwen3-vl:4b\n",
+          )
+
+          docs = Path("docs/AI_VISION.md")
+          docs_text = docs.read_text(encoding="utf-8")
+          docs_text = docs_text.replace("ollama pull qwen3-vl:8b", "ollama pull qwen3-vl:4b")
+          docs_text = docs_text.replace("AI_VISION_MODEL=qwen3-vl:8b", "AI_VISION_MODEL=qwen3-vl:4b")
+          docs_text = docs_text.replace(
+              '''AI_VISION_MODEL=hf.co/mradermacher/Qwen3-VL-4B-Instruct-abliterated-GGUF:Q4_K_M\nAI_VISION_COMPARE_MODEL=qwen3-vl:8b\n''',
+              '''AI_VISION_MODEL=qwen3-vl:4b\nAI_VISION_COMPARE_MODEL=qwen3-vl:2b\n''',
+          )
+          docs_text = docs_text.replace(
+              '''Расширенный формат может занимать больше времени. Для локальной 8B-модели на\nограниченной видеопамяти разумно увеличить `AI_VISION_TIMEOUT_SECONDS` до `600`.\n''',
+              '''Расширенный формат может занимать больше времени. Начинать следует с одной\nофициальной Ollama-модели `qwen3-vl:4b`. Модель `qwen3-vl:8b` требует больше памяти\nи должна включаться только после отдельной живой проверки; при нестабильности\nиспользуйте `qwen3-vl:2b`. Для длинного промта можно увеличить\n`AI_VISION_TIMEOUT_SECONDS` до `600`.\n\nСырые мультимодальные GGUF из Hugging Face нельзя считать готовой Ollama-моделью\nтолько по имени `hf.co/...`. Для vision им нужен совместимый multimodal projector\nи корректный импорт. Бот теперь проверяет capability `vision` через `/api/show` и\nотклоняет текстовую или неполностью импортированную модель до отправки изображения.\n\n## Диагностика Ollama на Windows\n\nЕсли сначала появляется `Remote end closed connection`, а затем `WinError 10061`,\nсервер Ollama завершился или был остановлен во время загрузки модели. Проверьте:\n\n```powershell\nollama list\nollama show qwen3-vl:4b\nollama run qwen3-vl:4b "Кратко опиши этот тест"\nexplorer $env:LOCALAPPDATA\\Ollama\n```\n\nВ каталоге Ollama откройте `server.log`. После восстановления сервиса оставьте\n`AI_VISION_COMPARE_MODEL` пустым и сначала проверьте одиночную `qwen3-vl:4b`.\n''',
+          )
+          docs.write_text(docs_text, encoding="utf-8")
+
+          Path("tests/test_image_to_prompt_ollama_errors.py").write_text(
+              '''from __future__ import annotations\n\nimport asyncio\nimport io\nimport json\nimport unittest\nimport urllib.error\nimport urllib.request\nfrom unittest.mock import patch\n\nfrom velvet_bot.ai_vision import (\n    VisionAnalysisError,\n    VisionClient,\n    VisionProviderUnavailable,\n)\nfrom velvet_bot.infrastructure.image_to_prompt import ImageToPromptClient\n\n\nclass ImageToPromptOllamaErrorTests(unittest.TestCase):\n    @staticmethod\n    def _client() -> ImageToPromptClient:\n        return ImageToPromptClient(\n            provider="ollama",\n            base_url="http://127.0.0.1:11434",\n            model="test-model",\n            api_key=None,\n            timeout_seconds=30,\n        )\n\n    def test_http_400_includes_ollama_error_body(self) -> None:\n        error = urllib.error.HTTPError(\n            "http://127.0.0.1:11434/api/chat",\n            400,\n            "Bad Request",\n            None,\n            io.BytesIO(json.dumps({"error": "model does not support images"}).encode()),\n        )\n        request = urllib.request.Request("http://127.0.0.1:11434/api/chat")\n        with patch("urllib.request.urlopen", side_effect=error):\n            with self.assertRaisesRegex(\n                VisionAnalysisError,\n                "HTTP 400: model does not support images",\n            ):\n                VisionClient._read_json(request, timeout=10)\n\n    def test_http_500_is_provider_unavailable(self) -> None:\n        error = urllib.error.HTTPError(\n            "http://127.0.0.1:11434/api/chat",\n            500,\n            "Internal Server Error",\n            None,\n            io.BytesIO(json.dumps({"error": "runner crashed"}).encode()),\n        )\n        request = urllib.request.Request("http://127.0.0.1:11434/api/chat")\n        with patch("urllib.request.urlopen", side_effect=error):\n            with self.assertRaisesRegex(\n                VisionProviderUnavailable,\n                "HTTP 500: runner crashed",\n            ):\n                VisionClient._read_json(request, timeout=10)\n\n    def test_ollama_model_without_vision_capability_is_rejected(self) -> None:\n        client = self._client()\n        with patch.object(\n            client,\n            "_read_json",\n            return_value={"capabilities": ["completion"]},\n        ):\n            with self.assertRaisesRegex(\n                VisionAnalysisError,\n                "не поддерживает изображения",\n            ):\n                asyncio.run(client._ensure_vision_capability())\n\n    def test_missing_capabilities_remains_backward_compatible(self) -> None:\n        client = self._client()\n        with patch.object(client, "_read_json", return_value={}):\n            asyncio.run(client._ensure_vision_capability())\n\n\nif __name__ == "__main__":\n    unittest.main()\n''',
+              encoding="utf-8",
+          )
+
+          Path("docs/worklog/2026-07-28-image-prompt-ollama-errors.md").write_text(
+              '''# Image-to-prompt Ollama error handling\n\n## Инцидент\n\nОперация `Изображение → промт` получила HTTP 400 от сырой GGUF-модели, затем\n`qwen3-vl:8b` закрыл соединение и локальный Ollama перестал принимать запросы.\nПоследующие попытки завершались `WinError 10061`.\n\n## Исправление\n\n- HTTP-ошибки теперь сохраняют JSON-поле `error` из ответа Ollama;\n- `/api/show` проверяет capability `vision` до отправки изображения;\n- ожидаемые ошибки модели и недоступность провайдера не создают traceback уровня ERROR;\n- документация и `.env.example` используют устойчивую стартовую модель `qwen3-vl:4b`;\n- сырой Hugging Face GGUF удалён из рекомендуемой Ollama-конфигурации;\n- добавлены regression-тесты HTTP 400/500 и vision capability.\n\n## Эксплуатационный шаг\n\nПерезапустить Ollama, проверить `server.log`, установить `qwen3-vl:4b`, оставить\n`AI_VISION_COMPARE_MODEL` пустым и повторить одиночную живую проверку.\n''',
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/one-shot-image-prompt-ollama-fix.yml
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Fix Ollama image prompt failures"
+          git push origin HEAD:agent/fix-image-prompt-ollama-errors
