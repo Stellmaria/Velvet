@@ -1,6 +1,6 @@
 # Память проекта Velvet
 
-Дата актуализации: 21 июля 2026 года.
+Дата актуализации: 28 июля 2026 года.
 
 Этот файл хранит долгосрочную карту проекта и архитектурные решения. Фактическое состояние продукта находится в `docs/development_status.md`, измеримые inventories — в `docs/private_pool_inventory.*`, `docs/p2_stability_inventory.*`, `docs/architecture_layout_inventory.*` и `docs/repository_layout_inventory.*`, подробности отдельных работ — в `docs/worklog/`, заметные изменения — в `CHANGELOG.md`.
 
@@ -32,6 +32,8 @@ Velvet Archive — отдельный owner-oriented архивный Telegram-�
 
 Аукционные ставки, лоты, колоды, валюты, победители и режимы торгов относятся к другому продукту и в Velvet Archive не переносятся.
 
+По явному решению владельца от 28 июля 2026 года добавлена отдельная линия F: локальный ролевой режим. Его персонажи, сессии и память изолированы от архивных `characters`, медиа, историй и референсов.
+
 ## Режим стабилизации
 
 До закрытия ворот из `docs/stabilization_policy.md` новый код допускается только как улучшение существующего Velvet Archive.
@@ -46,7 +48,7 @@ Velvet Archive — отдельный owner-oriented архивный Telegram-�
 - staging, backup/restore automation, метрики, tests и документация;
 - удаление compatibility-долга и физическое выравнивание структуры.
 
-Новая несвязанная предметная механика откладывается.
+Новая несвязанная предметная механика откладывается, кроме явно одобренной владельцем линии F. Такое расширение фиксируется как отдельная продуктовая граница и не маскируется под улучшение архива.
 
 # Линия A. Основное развитие текущего Velvet Archive
 
@@ -218,9 +220,9 @@ Production legacy-consumer inventory закрыт на 0/0/0, а `velvet_bot.han
 
 Статус: завершено.
 
-Repository inventory фиксирует 34 module:
+Repository inventory фиксирует 36 modules:
 
-- 33 domain repositories;
+- 35 domain repositories;
 - 1 PostgreSQL infrastructure adapter;
 - 0 central repositories;
 - 0 root repositories.
@@ -233,16 +235,32 @@ Repository inventory фиксирует 34 module:
 
 Типизация включается постепенно для transport-neutral слоёв. Сначала один ограниченный core/application/domain scope, затем services/workers и только потом Telegram adapters. Массовое включение strict-mode на весь repository запрещено без baseline и поэтапного плана.
 
+# Линия F. Локальный ролевой режим
+
+Статус: RP1 foundation в разработке, отдельный draft PR.
+
+Граница линии:
+
+- отдельные таблицы `rp_*`;
+- отдельные карточки внешности, характера, речи и биографии;
+- долговечные RP-сессии, сообщения, состояние сцены и память;
+- отдельная конфигурация `RP_*` и Ollama text client;
+- отсутствие foreign key, импорта или автоматического копирования из архивных таблиц.
+
+RP1 не считается готовым пользовательским режимом до появления редактора персонажей, запуска сцен, генерации ответов, суммаризации и живой проверки на MSI Katana.
+
 # Открытые обязательства
 
 ## Кодовые срезы
 
-1. P3F static typing baseline.
-2. Классификация 110 исторических root modules.
-3. Разбор 8 runtime compatibility components.
-4. Duplicate/shared-helper inventory.
-5. AI duration/error/provider/model/cost-unit metrics.
-6. Heavy Runtime: idle unload, пустой polling, checkpoint/resume.
+1. RP1 isolated roleplay foundation и PostgreSQL/Ollama checks.
+2. RP2 отдельный редактор RP-персонажей.
+3. P3F static typing baseline.
+4. Классификация 110 исторических root modules.
+5. Разбор 8 runtime compatibility components.
+6. Duplicate/shared-helper inventory.
+7. AI duration/error/provider/model/cost-unit metrics.
+8. Heavy Runtime: idle unload, пустой polling, checkpoint/resume.
 
 ## На целевой Windows
 
@@ -267,7 +285,7 @@ Repository inventory фиксирует 34 module:
 - новые SQL/DB access из Telegram controllers запрещены;
 - P2 broad exception/callback inventory 0 unresolved;
 - P3 handler compatibility aliases 0;
-- P3 repository layout 33 domain + 1 infrastructure, root/central 0;
+- P3 repository layout 35 domain + 1 infrastructure, root/central 0;
 - CI, Docker, diagnostics, backup drill workflow и release foundation.
 
 Не закрыты эксплуатационно:
@@ -285,7 +303,7 @@ Repository inventory фиксирует 34 module:
 
 1. определить линию и точный срез;
 2. проверить предметную границу;
-3. обосновать новый код улучшением существующей функции;
+3. обосновать новый код улучшением существующей функции либо сослаться на явное решение владельца о новой продуктовой линии;
 4. прочитать актуальный status, inventory и относящийся worklog;
 5. создать стартовую запись до production-кода;
 6. определить измеримые критерии готовности;
