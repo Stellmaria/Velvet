@@ -28,7 +28,7 @@
         {
           "kind": "dynamic-prefix-reference",
           "module": "velvet_bot.handlers",
-          "line": 41
+          "line": 43
         }
       ]
     }

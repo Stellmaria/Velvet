@@ -6,7 +6,7 @@ from html import escape
 from pathlib import Path
 from unittest.mock import patch
 
-from velvet_bot.image_to_prompt import (
+from velvet_bot.infrastructure.image_to_prompt import (
     _IMAGE_TO_PROMPT_INSTRUCTION,
     _is_complete,
     _merge_recovery,

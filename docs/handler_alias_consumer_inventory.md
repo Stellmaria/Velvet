@@ -23,7 +23,7 @@
 
 ### `tests/test_p3c_quality_operations_controllers.py`
 
-- line 41: `velvet_bot.handlers` (dynamic-prefix-reference).
+- line 43: `velvet_bot.handlers` (dynamic-prefix-reference).
 
 ## Следующий срез
 

@@ -4,10 +4,10 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **86** в **52** файлах;
-- approved boundaries: **86**;
+- raw broad exceptions: **88** в **53** файлах;
+- approved boundaries: **88**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **130**;
+- callback handlers: **131**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **44**;
 - delegated callbacks: **11**.
@@ -75,6 +75,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:569` `handle_set_analysis_command`: compensate-set-analysis-command-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai.py:351` `handle_prompt_check_reply`: compensate-prompt-result-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_formatting.py:287` `handle_formatting_reply`: compensate-velvet-formatting-job.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:305` `handle_image_prompt_reply`: compare-model-partial.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:338` `handle_image_prompt_reply`: compensate-image-prompt-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_visual.py:315` `handle_visual_analysis_reply`: compensate-palette-composition-job.
 - `velvet_bot/presentation/telegram/routers/references/comparison.py:282` `handle_reference_comparison`: report-reference-comparison-failure.
 - `velvet_bot/presentation/telegram/routers/references/comparison_help.py:255` `handle_reference_comparison_reply`: compensate-reference-comparison-form-job.
