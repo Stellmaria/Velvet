@@ -183,7 +183,7 @@ def _extract_result_urls(value: object) -> tuple[str, ...]:
 
 def _non_negative_int(value: object) -> int:
     try:
-        return max(0, int(value or 0))
+        return max(0, int(str(value or "0").strip()))
     except (TypeError, ValueError):
         return 0
 
