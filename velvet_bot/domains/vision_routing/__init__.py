@@ -1,3 +1,4 @@
+from .cache import VisionAnalysisCacheRepository
 from .client import MeteredVisionClient
 from .factory import build_vision_cascade_router
 from .models import (
@@ -7,7 +8,6 @@ from .models import (
     VisionRoute,
     VisionRouteConfig,
 )
-from .repository import VisionAnalysisCacheRepository
 from .service import VisionCascadeRouter
 
 __all__ = (
