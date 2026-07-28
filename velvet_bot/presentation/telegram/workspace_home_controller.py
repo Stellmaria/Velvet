@@ -9,6 +9,15 @@ from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
+from velvet_bot.presentation.telegram.routers.workspace_meow import (
+    MeowCallback,
+    MeowForm,
+    handle_meow_cancel,
+    handle_meow_confirm,
+    handle_meow_entry,
+    handle_meow_model,
+    handle_meow_prompt,
+)
 from velvet_bot.presentation.telegram.workspace_command_menu import (
     install_workspace_scoped_commands,
 )
@@ -88,11 +97,32 @@ async def handle_workspace_home(
 
 
 def register_workspace_home(router: Router) -> None:
-    """Register home before legacy child routers without growing the router tree."""
+    """Register canonical home and its owner-only Meow flow at bundle level."""
 
     router.callback_query.register(
         handle_workspace_home,
         WorkspaceCallback.filter(F.action == "home"),
+    )
+    router.callback_query.register(
+        handle_meow_entry,
+        WorkspaceCallback.filter(F.action == "meow"),
+    )
+    router.callback_query.register(
+        handle_meow_model,
+        MeowCallback.filter(F.action == "model"),
+    )
+    router.callback_query.register(
+        handle_meow_confirm,
+        MeowCallback.filter(F.action == "confirm"),
+    )
+    router.callback_query.register(
+        handle_meow_cancel,
+        MeowCallback.filter(F.action == "cancel"),
+    )
+    router.message.register(
+        handle_meow_prompt,
+        MeowForm.waiting_prompt,
+        F.text,
     )
 
 
