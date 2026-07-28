@@ -9,6 +9,7 @@ from dataclasses import replace
 from .codex_command import apply_codex_model, normalize_codex_command
 from .config import SupervisorSettings
 from .http_api_extended import SupervisorHTTPServer
+from .instance_guard import SupervisorAlreadyRunning, SupervisorInstanceGuard
 from .runtime_extended import VelvetSupervisor
 
 
@@ -39,34 +40,44 @@ def main() -> int:
     )
     configure_logging(settings)
     logger = logging.getLogger(__name__)
-    runtime = VelvetSupervisor(settings)
-    server = SupervisorHTTPServer((settings.host, settings.port), runtime)
-    stopped = threading.Event()
-
-    def request_shutdown(signum: int, _frame: object) -> None:
-        logger.warning("Shutdown signal received: %s", signum)
-        if stopped.is_set():
-            return
-        stopped.set()
-        threading.Thread(target=server.shutdown, daemon=True).start()
-
-    for signal_name in ("SIGINT", "SIGTERM", "SIGBREAK"):
-        value = getattr(signal, signal_name, None)
-        if value is not None:
-            signal.signal(value, request_shutdown)
-
-    runtime.start()
-    logger.info(
-        "Velvet Supervisor API listening on http://%s:%s",
-        settings.host,
-        settings.port,
-    )
+    guard = SupervisorInstanceGuard(settings.runtime_dir / "supervisor.instance.lock")
     try:
-        server.serve_forever(poll_interval=0.5)
+        guard.acquire()
+    except SupervisorAlreadyRunning as error:
+        logger.error("%s", error)
+        return 2
+
+    try:
+        runtime = VelvetSupervisor(settings)
+        server = SupervisorHTTPServer((settings.host, settings.port), runtime)
+        stopped = threading.Event()
+
+        def request_shutdown(signum: int, _frame: object) -> None:
+            logger.warning("Shutdown signal received: %s", signum)
+            if stopped.is_set():
+                return
+            stopped.set()
+            threading.Thread(target=server.shutdown, daemon=True).start()
+
+        for signal_name in ("SIGINT", "SIGTERM", "SIGBREAK"):
+            value = getattr(signal, signal_name, None)
+            if value is not None:
+                signal.signal(value, request_shutdown)
+
+        runtime.start()
+        logger.info(
+            "Velvet Supervisor API listening on http://%s:%s",
+            settings.host,
+            settings.port,
+        )
+        try:
+            server.serve_forever(poll_interval=0.5)
+        finally:
+            server.server_close()
+            runtime.shutdown()
+        return 0
     finally:
-        server.server_close()
-        runtime.shutdown()
-    return 0
+        guard.release()
 
 
 if __name__ == "__main__":
