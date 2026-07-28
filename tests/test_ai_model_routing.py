@@ -21,6 +21,10 @@ class DummyTextClient(VisionClient):
     ai_task_profile = "text"
 
 
+class DummyCascadeClient(VisionClient):
+    ai_task_profile = "cascade"
+
+
 def _request(base_url: str, model: str) -> urllib.request.Request:
     return urllib.request.Request(
         f"{base_url}/api/chat",
@@ -151,6 +155,26 @@ class AIModelRoutingTests(unittest.TestCase):
 
         self.assertEqual(["vision-uncensored"], requested)
         self.assertEqual("vision-uncensored", client.model)
+
+    def test_cascade_client_is_locked_to_explicit_route_model(self) -> None:
+        client = DummyCascadeClient.__new__(DummyCascadeClient)
+        environment = {
+            "AI_VISION_MODEL": "vision-standard",
+            "AI_VISION_COMPARE_MODEL": "vision-pro",
+            "AI_VISION_FALLBACK_MODEL": "vision-sensitive",
+        }
+        with patch.dict("os.environ", environment, clear=False):
+            _configure_client(
+                client,
+                provider="ollama",
+                base_url="http://127.0.0.1:11435",
+                model="flash-explicit",
+                api_key=None,
+                timeout_seconds=120,
+            )
+
+        self.assertEqual("flash-explicit", client.model)
+        self.assertEqual(("flash-explicit",), client._velvet_model_candidates)
 
 
 if __name__ == "__main__":

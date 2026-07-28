@@ -46,8 +46,12 @@ def _bounded_timeout(value: str, *, default: int) -> int:
     return max(10, min(parsed, 600))
 
 
+def _task_profile(client: VisionClient) -> str:
+    return str(getattr(type(client), "ai_task_profile", "")).strip().casefold()
+
+
 def _is_text_client(client: VisionClient) -> bool:
-    explicit = str(getattr(type(client), "ai_task_profile", "")).strip().casefold()
+    explicit = _task_profile(client)
     return explicit == "text" or type(client).__name__ in _TEXT_CLIENT_NAMES
 
 
@@ -64,7 +68,9 @@ def _configure_client(
     compare = os.getenv("AI_VISION_COMPARE_MODEL", "").strip()
     fallback = os.getenv("AI_VISION_FALLBACK_MODEL", "").strip()
 
-    if _is_text_client(client):
+    if _task_profile(client) == "cascade":
+        candidates = _unique_models(model)
+    elif _is_text_client(client):
         provider = os.getenv("AI_TEXT_PROVIDER", provider).strip() or provider
         base_url = os.getenv("AI_TEXT_BASE_URL", base_url).strip() or base_url
         api_key = os.getenv("AI_TEXT_API_KEY", "").strip() or api_key
