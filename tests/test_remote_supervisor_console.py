@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 from velvet_bot.presentation.telegram.supervisor.remote_views import (
     console_keyboard,
+    console_text,
+    operation_history_text,
     self_control_keyboard,
 )
 from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard
@@ -108,6 +110,55 @@ class RemoteConsoleTests(unittest.TestCase):
                 "disk-volumes",
             }.issubset(keys)
         )
+
+    def test_standard_menu_hides_legacy_and_emergency_commands(self) -> None:
+        commands = [spec.to_dict() for spec in self.registry.catalog()]
+        text = console_text(commands)
+
+        self.assertIn("Ollama: восстановить набор моделей", text)
+        self.assertIn("Git: получить origin", text)
+        self.assertIn("Процессы Python", text)
+        self.assertNotIn("Ollama: настроить набор моделей", text)
+        self.assertNotIn("Ollama: установить набор моделей", text)
+        self.assertNotIn("Ollama: проверить набор моделей", text)
+        self.assertNotIn("Состояние задачи VelvetSupervisor", text)
+        self.assertNotIn("Сетевые адреса компьютера", text)
+        self.assertNotIn("Свободное место на дисках", text)
+        self.assertNotIn("вернуть последний stash", text.casefold())
+        self.assertIn("остаются в безопасном allowlist", text)
+
+        # Hidden commands remain resolvable for an explicit emergency action.
+        self.assertEqual("git-stash-pop", self.registry.resolve("git stash pop").key)
+        self.assertEqual(
+            "ollama-configure-qwen3-vl-4b",
+            self.registry.resolve("ollama configure qwen3-vl 4b").key,
+        )
+
+    def test_operation_history_never_exceeds_safe_telegram_budget(self) -> None:
+        operations = []
+        for index in range(20):
+            status = "error" if index == 0 else "success"
+            operations.append(
+                {
+                    "id": f"operation-{index:02d}",
+                    "kind": "console-command",
+                    "status": status,
+                    "message": "Команда принята: " + ("очень длинное описание " * 50),
+                    "result": {
+                        "output": f"begin-{index}\n" + ("x" * 6000) + f"\nend-{index}",
+                    },
+                    "error": ("ошибка " * 200) if status == "error" else "",
+                }
+            )
+
+        text = operation_history_text(operations)
+
+        self.assertLessEqual(len(text), 3600)
+        self.assertIn("operation-00", text)
+        self.assertIn("end-0", text)
+        self.assertNotIn("begin-1", text)
+        self.assertNotIn("end-1", text)
+        self.assertIn("Не показано более старых операций", text)
 
     def test_unknown_and_shell_syntax_are_rejected(self) -> None:
         for value in (
