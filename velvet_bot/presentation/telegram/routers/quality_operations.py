@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aiogram import Router
+from aiogram import F, Router
 
 from velvet_bot.presentation.telegram.quality_rework_entry import register_quality_rework_entry
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.backup_center import router as backup_center_router
@@ -10,7 +10,10 @@ from velvet_bot.presentation.telegram.routers.quality_operations_controllers.vel
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_visual import router as velvet_ai_visual_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai import router as velvet_ai_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_image_prompt import router as velvet_ai_image_prompt_router
-from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_pose import router as velvet_ai_pose_router
+from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_pose import (
+    router as velvet_ai_pose_router,
+    start_pose_extractor,
+)
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicates import router as quality_duplicates_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_duplicate_reset import router as quality_duplicate_reset_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets import router as quality_sets_router
@@ -19,8 +22,13 @@ from velvet_bot.presentation.telegram.routers.quality_operations_controllers.qua
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai_preview import router as quality_ai_preview_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_ai import router as quality_ai_router
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_center import router as quality_center_router
+from velvet_bot.quality_ui import QualityCallback
 
 router = Router(name=__name__)
+router.callback_query.register(
+    start_pose_extractor,
+    QualityCallback.filter(F.action == "poseextract_start"),
+)
 router.include_router(backup_center_router)
 router.include_router(ai_jobs_router)
 router.include_router(quality_operations_router)
