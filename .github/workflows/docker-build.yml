@@ -8,11 +8,14 @@ on:
       - ".dockerignore"
       - "docker-compose.yml"
       - ".env.example"
+      - ".env.hermes.example"
+      - "deploy/**"
       - "requirements.txt"
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
       - ".github/workflows/docker-build.yml"
+      - ".github/workflows/deploy-production.yml"
   push:
     branches:
       - main
@@ -21,11 +24,14 @@ on:
       - ".dockerignore"
       - "docker-compose.yml"
       - ".env.example"
+      - ".env.hermes.example"
+      - "deploy/**"
       - "requirements.txt"
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
       - ".github/workflows/docker-build.yml"
+      - ".github/workflows/deploy-production.yml"
 
 jobs:
   build:
@@ -47,10 +53,17 @@ jobs:
           LOG_CHAT_ID=-1001
           ANALYTICS_CHANNEL_IDS=-1002
           AI_VISION_ENABLED=false
+          AI_TEXT_ENABLED=false
           EOF
+          cp .env.hermes.example .env.hermes
+
+      - name: Validate deployment shell
+        run: bash -n deploy/server/deploy.sh
 
       - name: Validate Docker Compose
-        run: docker compose config --quiet
+        run: |
+          docker compose config --quiet
+          docker compose --profile agent config --quiet
 
       - name: Build Velvet image
         run: docker build --tag velvet-bot:ci .
