@@ -1,6 +1,14 @@
 .git
 .github
 .env
+.env.*
+!.env.example
+!.env.hermes.example
+.codex
+.hermes
+.ssh
+*.pem
+*.key
 .venv*
 __pycache__
 *.py[cod]
