@@ -23,6 +23,30 @@ _TITLE_TEXT_OVERRIDES = {
     "Ollama: восстановить vision qwen3-vl:4b": "Ollama: восстановить набор моделей",
 }
 
+# The registry intentionally remains broader than the normal menu. Rare recovery
+# commands are still resolvable by exact key/alias, but the main menu only shows
+# commands that are useful during routine operation.
+_VISIBLE_COMMAND_KEYS = {
+    "git-status",
+    "git-head",
+    "git-log",
+    "git-diff-names",
+    "git-fetch",
+    "git-sync-count",
+    "git-incoming",
+    "python-version",
+    "pip-check",
+    "compile",
+    "tests",
+    "ollama-list",
+    "ollama-recovery-status",
+    "ollama-start",
+    "ollama-repair-qwen3-vl-4b",
+    "python-processes",
+}
+_TELEGRAM_SAFE_TEXT_LIMIT = 3600
+_HISTORY_ITEMS_LIMIT = 12
+
 
 def _command_title(item: dict[str, Any], *, default: str = "Команда") -> str:
     key = str(item.get("key") or item.get("command_key") or "")
@@ -30,19 +54,41 @@ def _command_title(item: dict[str, Any], *, default: str = "Команда") -> 
     return _COMMAND_TITLE_OVERRIDES.get(key, _TITLE_TEXT_OVERRIDES.get(raw, raw))
 
 
+def _visible_commands(commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [item for item in commands if str(item.get("key", "")) in _VISIBLE_COMMAND_KEYS]
+
+
 def console_text(commands: list[dict[str, Any]]) -> str:
+    visible = _visible_commands(commands)
+    hidden_count = max(0, len(commands) - len(visible))
     lines = [
         "<b>🖥 Безопасная консоль Supervisor</b>",
         "",
         "Команды запускаются без shell и только из фиксированного реестра. ",
         "Перед выполнением бот покажет точную команду и попросит подтверждение.",
         "",
-        "<b>Доступные команды</b>",
+        "<b>Основные команды</b>",
     ]
-    for item in commands:
+    current_category = ""
+    for item in visible:
+        category = str(item.get("category") or "Диагностика")
+        if category != current_category:
+            current_category = category
+            lines.extend(["", f"<b>{escape(category)}</b>"])
         lines.append(
             f"• <b>{escape(_command_title(item))}</b>\n"
             f"  <code>{escape(str(item.get('command', '')))}</code>"
+        )
+    if hidden_count:
+        lines.extend(
+            [
+                "",
+                (
+                    f"<i>Ещё {hidden_count} аварийных и узкоспециальных команд "
+                    "остаются в безопасном allowlist, но скрыты из обычного меню. "
+                    "Их можно вызвать через точный ввод команды.</i>"
+                ),
+            ]
         )
     return "\n".join(lines)
 
@@ -52,14 +98,14 @@ def console_keyboard(commands: list[dict[str, Any]]) -> InlineKeyboardMarkup:
     preferred = {
         "git-status",
         "git-head",
+        "git-fetch",
         "compile",
         "tests",
         "ollama-list",
         "ollama-recovery-status",
         "ollama-repair-qwen3-vl-4b",
-        "task-status",
     }
-    for item in commands:
+    for item in _visible_commands(commands):
         key = str(item.get("key", ""))
         if key not in preferred:
             continue
@@ -134,26 +180,50 @@ def operation_history_text(operations: list[dict[str, Any]]) -> str:
     lines = ["<b>🕘 История операций Supervisor</b>"]
     if not operations:
         return "\n\n".join(lines + ["Операций пока нет."])
-    for item in operations[:15]:
+
+    shown = 0
+    for item in operations[:_HISTORY_ITEMS_LIMIT]:
         result = item.get("result") if isinstance(item.get("result"), dict) else {}
-        output = str(result.get("output", ""))
-        if len(output) > 500:
-            output = output[-500:]
-        lines.extend(
-            [
-                "",
-                (
-                    f"<code>{escape(str(item.get('id', '—')))}</code> · "
-                    f"<b>{escape(str(item.get('status', '—')))}</b> · "
-                    f"{escape(str(item.get('kind', '—')))}"
-                ),
-                escape(str(item.get("message", ""))[:500]),
-            ]
-        )
-        if output:
-            lines.append(f"<pre>{escape(output)}</pre>")
-        if item.get("error"):
-            lines.append(f"<code>{escape(str(item['error'])[-700:])}</code>")
+        status = str(item.get("status", "—"))
+        message = " ".join(str(item.get("message", "")).split())[:180]
+        entry = [
+            "",
+            (
+                f"<code>{escape(str(item.get('id', '—')))}</code> · "
+                f"<b>{escape(status)}</b> · "
+                f"{escape(str(item.get('kind', '—')))}"
+            ),
+        ]
+        if message:
+            entry.append(escape(message))
+
+        # Successful command output is already available on its own operation card
+        # and, for long results, as a text attachment. History only keeps concise
+        # diagnostics for failed operations.
+        if status.casefold() == "error":
+            output = " ".join(str(result.get("output", "")).split())[-220:]
+            if output:
+                entry.append(f"<code>{escape(output)}</code>")
+            error = " ".join(str(item.get("error", "")).split())[-320:]
+            if error:
+                entry.append(f"<code>{escape(error)}</code>")
+
+        candidate = "\n".join(lines + entry)
+        if len(candidate) > _TELEGRAM_SAFE_TEXT_LIMIT:
+            lines.extend(
+                [
+                    "",
+                    "<i>Остальные записи скрыты, чтобы история помещалась в Telegram. "
+                    "Подробный вывод остаётся в карточках операций и текстовых вложениях.</i>",
+                ]
+            )
+            break
+        lines.extend(entry)
+        shown += 1
+
+    remaining = max(0, len(operations) - shown)
+    if remaining and len("\n".join(lines)) < _TELEGRAM_SAFE_TEXT_LIMIT - 180:
+        lines.extend(["", f"<i>Не показано более старых операций: {remaining}.</i>"])
     return "\n".join(lines)
 
 
