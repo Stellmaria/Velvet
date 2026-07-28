@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from collections.abc import Awaitable, Callable
 from datetime import date, datetime
@@ -24,7 +23,6 @@ from velvet_bot.domains.ai_usage.models import (
 
 T = TypeVar("T")
 BudgetWarningHandler = Callable[[AIBudgetWarning], Awaitable[None]]
-logger = logging.getLogger(__name__)
 
 
 class AIBudgetExceeded(RuntimeError):
@@ -231,10 +229,7 @@ class AIUsageService:
             ),
             period_start=month_start.date(),
         )
-        try:
-            await self._warning_handler(warning)
-        except Exception:  # p2-approved-boundary: isolate-budget-warning-sink
-            logger.exception("Could not deliver AI budget warning")
+        await self._warning_handler(warning)
 
 
 class AIRequestExecutor(Generic[T]):
