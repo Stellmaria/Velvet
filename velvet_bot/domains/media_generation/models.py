@@ -2,15 +2,30 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import Decimal, ROUND_UP
 from enum import StrEnum
 from typing import Any, Mapping
+
+KIE_GENERATION_TASK_TYPE = "media.generate.kie"
+_MONEY_QUANTUM = Decimal("0.01")
 
 
 class KieModelAlias(StrEnum):
     SEEDREAM_5_PRO = "seedream_5_pro"
     NANO_BANANA_PRO = "nano_banana_pro"
     GROK_IMAGINE_VIDEO = "grok_imagine_video"
+
+    @property
+    def title(self) -> str:
+        return {
+            self.SEEDREAM_5_PRO: "Seedream 5 Pro",
+            self.NANO_BANANA_PRO: "Nano Banana Pro",
+            self.GROK_IMAGINE_VIDEO: "Grok Imagine Video",
+        }[self]
+
+    @property
+    def is_video(self) -> bool:
+        return self is self.GROK_IMAGINE_VIDEO
 
 
 class KieTaskState(StrEnum):
@@ -74,6 +89,19 @@ class KiePricing:
             return rate * Decimal(request.duration_seconds)
         raise ValueError(f"Неизвестная модель: {request.model}")
 
+    def estimate_rub(
+        self,
+        request: "KieGenerationRequest",
+        *,
+        usd_to_rub: Decimal,
+    ) -> Decimal:
+        if usd_to_rub <= 0:
+            raise ValueError("Курс USD/RUB для Kie.ai должен быть больше нуля.")
+        return (self.estimate_usd(request) * usd_to_rub).quantize(
+            _MONEY_QUANTUM,
+            rounding=ROUND_UP,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class KieGenerationRequest:
@@ -129,6 +157,55 @@ class KieGenerationRequest:
             )
         payload.update(dict(self.extra_input))
         return payload
+
+    def to_task_payload(self) -> dict[str, object]:
+        return {
+            "model": self.model.value,
+            "prompt": self.prompt.strip(),
+            "aspect_ratio": self.aspect_ratio.strip(),
+            "resolution": self.resolution.strip(),
+            "quality": self.quality.strip(),
+            "duration_seconds": self.duration_seconds,
+            "image_urls": list(self.image_urls),
+            "output_format": self.output_format.strip(),
+            "mode": self.mode.strip(),
+            "extra_input": dict(self.extra_input),
+        }
+
+    @classmethod
+    def from_task_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> "KieGenerationRequest":
+        model_text = str(payload.get("model") or "").strip()
+        try:
+            model = KieModelAlias(model_text)
+        except ValueError as error:
+            raise ValueError(f"Неизвестная Kie-модель в очереди: {model_text}") from error
+        image_urls_value = payload.get("image_urls")
+        image_urls = (
+            tuple(
+                str(item).strip()
+                for item in image_urls_value
+                if str(item).strip()
+            )
+            if isinstance(image_urls_value, (list, tuple))
+            else ()
+        )
+        extra_value = payload.get("extra_input")
+        extra_input = dict(extra_value) if isinstance(extra_value, Mapping) else {}
+        return cls(
+            model=model,
+            prompt=str(payload.get("prompt") or "").strip(),
+            aspect_ratio=str(payload.get("aspect_ratio") or "9:16").strip(),
+            resolution=str(payload.get("resolution") or "1K").strip(),
+            quality=str(payload.get("quality") or "basic").strip(),
+            duration_seconds=_positive_int(payload.get("duration_seconds"), default=6),
+            image_urls=image_urls,
+            output_format=str(payload.get("output_format") or "png").strip(),
+            mode=str(payload.get("mode") or "normal").strip(),
+            extra_input=extra_input,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,12 +265,18 @@ def _non_negative_int(value: object) -> int:
         return 0
 
 
+def _positive_int(value: object, *, default: int) -> int:
+    parsed = _non_negative_int(value)
+    return parsed if parsed > 0 else default
+
+
 def _optional_text(value: object) -> str | None:
     text = str(value or "").strip()
     return text or None
 
 
 __all__ = (
+    "KIE_GENERATION_TASK_TYPE",
     "KieGenerationRequest",
     "KieModelAlias",
     "KieModelCatalog",
