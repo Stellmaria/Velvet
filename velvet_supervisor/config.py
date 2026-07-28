@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass
 from ipaddress import ip_address
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -61,6 +62,16 @@ def _safe_path(value: str, *, base: Path) -> Path:
     return result.resolve()
 
 
+def _parse_http_url(value: str, *, name: str, default: str) -> str:
+    cleaned = value.strip().rstrip("/") or default.rstrip("/")
+    parsed = urlparse(cleaned)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise RuntimeError(f"{name} должен быть корректным http/https URL.")
+    if parsed.username or parsed.password:
+        raise RuntimeError(f"{name} не должен содержать credentials.")
+    return cleaned
+
+
 @dataclass(frozen=True, slots=True)
 class SupervisorSettings:
     project_dir: Path
@@ -87,6 +98,13 @@ class SupervisorSettings:
     codex_worktree_dir: Path
     codex_push_remote: str
     max_log_lines: int
+    hermes_incident_enabled: bool
+    hermes_base_url: str
+    hermes_api_key: str | None
+    hermes_timeout_seconds: int
+    hermes_escalate_after_restarts: int
+    hermes_cooldown_seconds: int
+    hermes_max_log_chars: int
     codex_model: str | None = None
     test_database_url: str | None = None
 
@@ -152,6 +170,23 @@ class SupervisorSettings:
             os.getenv("SUPERVISOR_RUNTIME_DIR", "runtime/supervisor"),
             base=project_dir,
         )
+        hermes_incident_enabled = _parse_bool(
+            os.getenv("HERMES_INCIDENT_ENABLED", "false"),
+            name="HERMES_INCIDENT_ENABLED",
+            default=False,
+        )
+        hermes_base_url = _parse_http_url(
+            os.getenv("HERMES_BASE_URL", "http://hermes:8642"),
+            name="HERMES_BASE_URL",
+            default="http://hermes:8642",
+        )
+        hermes_api_key = os.getenv("HERMES_API_KEY", "").strip() or None
+        if hermes_incident_enabled and (
+            hermes_api_key is None or len(hermes_api_key) < 8
+        ):
+            raise RuntimeError(
+                "HERMES_INCIDENT_ENABLED=true требует HERMES_API_KEY минимум из 8 символов."
+            )
 
         return cls(
             project_dir=project_dir,
@@ -255,6 +290,37 @@ class SupervisorSettings:
                 default=2000,
                 minimum=200,
                 maximum=20000,
+            ),
+            hermes_incident_enabled=hermes_incident_enabled,
+            hermes_base_url=hermes_base_url,
+            hermes_api_key=hermes_api_key,
+            hermes_timeout_seconds=_parse_int(
+                os.getenv("HERMES_TIMEOUT_SECONDS", "20"),
+                name="HERMES_TIMEOUT_SECONDS",
+                default=20,
+                minimum=3,
+                maximum=300,
+            ),
+            hermes_escalate_after_restarts=_parse_int(
+                os.getenv("HERMES_ESCALATE_AFTER_RESTARTS", "2"),
+                name="HERMES_ESCALATE_AFTER_RESTARTS",
+                default=2,
+                minimum=1,
+                maximum=20,
+            ),
+            hermes_cooldown_seconds=_parse_int(
+                os.getenv("HERMES_INCIDENT_COOLDOWN_SECONDS", "600"),
+                name="HERMES_INCIDENT_COOLDOWN_SECONDS",
+                default=600,
+                minimum=30,
+                maximum=86400,
+            ),
+            hermes_max_log_chars=_parse_int(
+                os.getenv("HERMES_MAX_LOG_CHARS", "12000"),
+                name="HERMES_MAX_LOG_CHARS",
+                default=12000,
+                minimum=1000,
+                maximum=100000,
             ),
             codex_model=(
                 os.getenv("CODEX_MODEL", "gpt-5.3-codex").strip() or None
