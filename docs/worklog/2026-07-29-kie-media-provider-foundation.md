@@ -3,7 +3,7 @@
 - Дата: 2026-07-29
 - ID: kie-media-provider-foundation
 - Линия/фаза: Линия B — Velvet AI / media generation
-- Статус: `готово к review`
+- Статус: `завершено`
 - Ветка: `agent/kie-media-provider-foundation`
 - Базовый commit: `de9d59441aabbae1c888da65be26932588fd62e4`
 
