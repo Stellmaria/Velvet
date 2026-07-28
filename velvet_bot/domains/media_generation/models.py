@@ -16,7 +16,7 @@ class KieModelAlias(StrEnum):
     GROK_IMAGINE_VIDEO = "grok_imagine_video"
 
     @property
-    def title(self) -> str:
+    def display_name(self) -> str:
         return {
             self.SEEDREAM_5_PRO: "Seedream 5 Pro",
             self.NANO_BANANA_PRO: "Nano Banana Pro",
