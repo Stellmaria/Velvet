@@ -54,6 +54,9 @@ OWNER_ONLY_COMMANDS = _BASE_OWNER_ONLY_COMMANDS | frozenset(
         "ai_usage",
         "ai_pause",
         "ai_resume",
+        "ai_queue",
+        "ai_queue_retry",
+        "ai_queue_cancel",
     }
 )
 
