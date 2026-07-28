@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 from decimal import Decimal
 from html import escape
+from pathlib import Path
 from typing import Mapping
 from uuid import UUID
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import (
+    TelegramAPIError,
+    TelegramBadRequest,
+    TelegramNetworkError,
+)
 
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.domains.ai_usage import (
@@ -23,12 +29,17 @@ from velvet_bot.infrastructure.ai import KieClient, KieError
 
 from .models import (
     KIE_GENERATION_TASK_TYPE,
+    MAX_KIE_REFERENCE_BYTES,
     KieGenerationRequest,
     KiePricing,
+    KieReferenceImage,
     KieTaskRecord,
 )
 
 logger = logging.getLogger(__name__)
+_DOWNLOAD_ATTEMPTS = 3
+_DOWNLOAD_TIMEOUT_SECONDS = 90
+_DOWNLOAD_RETRY_DELAYS = (1.0, 3.0)
 
 
 class KieGenerationWorker:
@@ -86,14 +97,20 @@ class KieGenerationWorker:
                 metadata={
                     "queue_task_id": str(task.id),
                     "model_alias": request.model.value,
+                    "input_mode": request.input_mode.value,
+                    "reference_count": len(request.references),
+                    "content_mode": request.content_mode.value,
                     "aspect_ratio": request.aspect_ratio,
                     "resolution": request.resolution,
-                    "duration_seconds": request.duration_seconds,
                 },
             )
 
             async def provider_operation() -> AIProviderResult[KieTaskRecord]:
-                provider_task_id = await self._client.create_task(request)
+                provider_request = await self._upload_references(
+                    queue_task_id=task.id,
+                    request=request,
+                )
+                provider_task_id = await self._client.create_task(provider_request)
                 record = await self._wait_with_heartbeat(
                     queue_task_id=task.id,
                     provider_task_id=provider_task_id,
@@ -106,6 +123,8 @@ class KieGenerationWorker:
                         "consumed_credits": record.consumed_credits,
                         "result_count": len(record.result_urls),
                         "model_alias": request.model.value,
+                        "reference_count": len(request.references),
+                        "content_mode": request.content_mode.value,
                     },
                 )
 
@@ -120,6 +139,9 @@ class KieGenerationWorker:
                     "provider": "kie",
                     "provider_task_id": record.task_id,
                     "model_alias": request.model.value,
+                    "input_mode": request.input_mode.value,
+                    "reference_count": len(request.references),
+                    "content_mode": request.content_mode.value,
                     "result_urls": list(record.result_urls),
                     "consumed_credits": record.consumed_credits,
                     "estimated_cost_rub": str(estimated_cost_rub),
@@ -153,6 +175,69 @@ class KieGenerationWorker:
             if failure is not None and not failure.will_retry:
                 await self._notify_terminal_failure_best_effort(task, error)
         return 1
+
+    async def _upload_references(
+        self,
+        *,
+        queue_task_id: UUID,
+        request: KieGenerationRequest,
+    ) -> KieGenerationRequest:
+        if not request.references:
+            return request
+        uploaded_urls: list[str] = []
+        for index, reference in enumerate(request.references, start=1):
+            payload = await self._download_reference(reference)
+            safe_name = Path(reference.file_name or "reference.jpg").name
+            uploaded = await self._client.upload_reference(
+                payload,
+                mime_type=reference.mime_type,
+                file_name=f"{queue_task_id}-{index}-{safe_name}",
+            )
+            uploaded_urls.append(uploaded.file_url)
+            await self._queue.heartbeat(
+                task_id=queue_task_id,
+                worker_id=self._worker_id,
+            )
+        return request.with_image_urls(tuple(uploaded_urls))
+
+    async def _download_reference(self, reference: KieReferenceImage) -> bytes:
+        errors: list[BaseException] = []
+        for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
+            try:
+                destination = io.BytesIO()
+                await self._bot.download(
+                    reference.telegram_file_id,
+                    destination=destination,
+                    timeout=_DOWNLOAD_TIMEOUT_SECONDS,
+                    seek=True,
+                )
+                value = destination.getvalue()
+                if not value:
+                    raise RuntimeError("Telegram вернул пустой файл референса.")
+                if len(value) > MAX_KIE_REFERENCE_BYTES:
+                    raise ValueError("Референс для Kie.ai должен быть не больше 10 МБ.")
+                return value
+            except asyncio.CancelledError:
+                raise
+            except TelegramBadRequest as error:
+                errors.append(error)
+                break
+            except (
+                TelegramNetworkError,
+                TimeoutError,
+                ConnectionError,
+                OSError,
+            ) as error:
+                errors.append(error)
+                if attempt >= _DOWNLOAD_ATTEMPTS:
+                    break
+                await asyncio.sleep(_DOWNLOAD_RETRY_DELAYS[attempt - 1])
+            except TelegramAPIError as error:
+                errors.append(error)
+                break
+        if errors:
+            raise RuntimeError(f"Не удалось скачать референс: {errors[-1]}")
+        raise RuntimeError("Telegram вернул пустой файл референса.")
 
     async def _wait_with_heartbeat(
         self,
@@ -193,6 +278,9 @@ class KieGenerationWorker:
             return
         caption = (
             f"<b>Мяу · {escape(request.model.display_name)}</b>\n"
+            f"Качество: <b>{escape(request.resolution)}</b>\n"
+            f"Референсов: <b>{len(request.references)}</b>\n"
+            f"Контент: <b>{escape(request.content_mode.display_name)}</b>\n"
             f"Задача Kie: <code>{escape(record.task_id)}</code>"
         )
         try:
