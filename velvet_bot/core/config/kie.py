@@ -15,6 +15,7 @@ class KieSettings:
     enabled: bool
     api_key: str | None
     base_url: str
+    file_upload_base_url: str
     timeout_seconds: int
     poll_interval_seconds: int
     task_timeout_seconds: int
@@ -35,8 +36,15 @@ def load_kie_settings() -> KieSettings:
         .strip()
         .rstrip("/")
     )
+    file_upload_base_url = (
+        os.getenv("KIE_FILE_UPLOAD_BASE_URL", "https://kieai.redpandaai.co")
+        .strip()
+        .rstrip("/")
+    )
     if not base_url:
         raise RuntimeError("KIE_BASE_URL не может быть пустым.")
+    if not file_upload_base_url:
+        raise RuntimeError("KIE_FILE_UPLOAD_BASE_URL не может быть пустым.")
 
     models = KieModelCatalog(
         seedream_5_pro=os.getenv("KIE_SEEDREAM_5_PRO_MODEL", "").strip(),
@@ -58,17 +66,11 @@ def load_kie_settings() -> KieSettings:
         raise RuntimeError("KIE_ENABLED=true требует непустой KIE_API_KEY.")
     if enabled and usd_to_rub <= 0:
         raise RuntimeError("KIE_ENABLED=true требует KIE_USD_TO_RUB больше нуля.")
-    if enabled:
-        for model in (
-            models.seedream_5_pro,
-            models.nano_banana_pro,
-            models.grok_imagine_video,
-        ):
-            if not model:
-                raise RuntimeError(
-                    "KIE_ENABLED=true требует model id для Seedream 5 Pro, "
-                    "Nano Banana Pro и Grok Imagine."
-                )
+    if enabled and (not models.seedream_5_pro or not models.nano_banana_pro):
+        raise RuntimeError(
+            "KIE_ENABLED=true требует model id для Seedream 5 Pro и "
+            "Nano Banana Pro."
+        )
 
     pricing = KiePricing(
         seedream_basic_usd=_parse_non_negative_decimal(
@@ -100,6 +102,7 @@ def load_kie_settings() -> KieSettings:
         enabled=enabled,
         api_key=api_key,
         base_url=base_url,
+        file_upload_base_url=file_upload_base_url,
         timeout_seconds=parse_bounded_integer(
             os.getenv("KIE_TIMEOUT_SECONDS", "60"),
             variable_name="KIE_TIMEOUT_SECONDS",
