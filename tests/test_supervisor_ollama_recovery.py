@@ -278,14 +278,14 @@ class OllamaRecoveryRegistryTests(unittest.TestCase):
         self.assertNotIn("powershell", " ".join(spec.command).casefold())
         self.assertNotIn("cmd.exe", " ".join(spec.command).casefold())
 
-    def test_console_keeps_status_and_repair_buttons(self) -> None:
+    def test_console_renames_status_and_repair_buttons_for_bundle(self) -> None:
         commands = [spec.to_dict() for spec in self.registry.catalog()]
 
         keyboard = console_keyboard(commands)
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
 
-        self.assertIn("▶️ Ollama: состояние vision", labels)
-        self.assertIn("▶️ Ollama: восстановить vision qwen3-vl:4b", labels)
+        self.assertIn("▶️ Ollama: состояние набора моделей", labels)
+        self.assertIn("▶️ Ollama: восстановить набор моделей", labels)
 
 
 if __name__ == "__main__":
