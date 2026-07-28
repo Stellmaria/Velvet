@@ -66,9 +66,6 @@ from velvet_bot.presentation.telegram.routers.workspace_watermark_templates impo
 from velvet_bot.presentation.telegram.routers.workspace_watermark import (
     router as workspace_watermark_router,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow import (
-    router as workspace_meow_router,
-)
 from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
     router as workspace_owner_controls_router,
 )
@@ -236,8 +233,6 @@ router.include_router(workspace_admin_router)
 router.include_router(workspace_team_router)
 router.include_router(workspace_watermark_templates_router)
 router.include_router(workspace_watermark_router)
-# Мяу owns its prompt FSM and paid confirmation before broad workspace handlers.
-router.include_router(workspace_meow_router)
 router.include_router(workspace_owner_controls_router)
 # The tenant publication entry must precede generic `wsp:module` help. The
 # publication capture router remains below reference/save flows.
