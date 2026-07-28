@@ -5,6 +5,7 @@ import hashlib
 from typing import Mapping
 
 from velvet_bot.ai_vision import VisionAnalysisError, _prepare_image
+from velvet_bot.domains.vision_routing.cache import VisionAnalysisCacheRepository
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
 from velvet_bot.domains.vision_routing.models import (
     CachedVisionAnalysis,
@@ -12,7 +13,6 @@ from velvet_bot.domains.vision_routing.models import (
     VisionProviderAnalysis,
     VisionRoute,
 )
-from velvet_bot.domains.vision_routing.repository import VisionAnalysisCacheRepository
 
 _REFUSAL_MARKERS = (
     "provider refusal",
