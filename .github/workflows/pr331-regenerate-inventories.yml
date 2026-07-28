@@ -1,0 +1,57 @@
+name: PR331 inventory regeneration
+
+on:
+  push:
+    branches:
+      - agent/image-to-prompt
+    paths:
+      - .github/workflows/pr331-regenerate-inventories.yml
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/image-to-prompt
+          fetch-depth: 0
+
+      - name: Update imports and generated inventories
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = (
+              Path("tests/test_image_to_prompt_comparison.py"),
+              Path("velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py"),
+          )
+          old = "from velvet_bot.image_to_prompt import"
+          new = "from velvet_bot.infrastructure.image_to_prompt import"
+          for path in paths:
+              source = path.read_text(encoding="utf-8")
+              if old not in source:
+                  raise SystemExit(f"Expected import not found in {path}")
+              path.write_text(source.replace(old, new), encoding="utf-8")
+          PY
+
+          python scripts/inventory_architecture_layout.py --write --label p3d-analytics-alias-retirement
+          python scripts/inventory_handler_alias_consumers.py --write --label p3d-analytics-alias-retirement
+          python scripts/update_p2_stability_inventory.py --label p2-workspace-callback-ack --schema-version 64
+          python scripts/telegram_navigation_inventory.py --root velvet_bot --markdown docs/generated/telegram_navigation_inventory.md
+
+          rm .github/workflows/pr331-regenerate-inventories.yml
+
+      - name: Commit regenerated files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Regenerate inventories for image-to-prompt"
+          git push origin HEAD:agent/image-to-prompt
