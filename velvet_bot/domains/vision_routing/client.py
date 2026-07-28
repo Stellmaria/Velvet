@@ -95,14 +95,25 @@ class MeteredVisionClient(VisionClient):
                 if analysis.usage_reported
                 else _estimate_profile_tokens(analysis.profile)
             )
-            return AIProviderResult(
-                value=analysis,
+            actual_cost = self._pricing.cost(
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                actual_cost_rub=self._pricing.cost(
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                ),
+            )
+            metered = VisionProviderAnalysis(
+                profile=analysis.profile,
+                provider=analysis.provider,
+                model=analysis.model,
+                route=analysis.route,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                usage_reported=analysis.usage_reported,
+                actual_cost_rub=actual_cost,
+            )
+            return AIProviderResult(
+                value=metered,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                actual_cost_rub=actual_cost,
                 metadata={
                     "route": self.route.value,
                     "provider_reported_usage": analysis.usage_reported,
