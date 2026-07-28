@@ -268,7 +268,7 @@ class OllamaRecoveryRegistryTests(unittest.TestCase):
             (
                 "python.exe",
                 "-m",
-                "velvet_supervisor.ollama_recovery",
+                "velvet_supervisor.ollama_recovery_v2",
                 "repair",
             ),
             spec.command,
