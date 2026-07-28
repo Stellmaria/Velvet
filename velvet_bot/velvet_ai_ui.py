@@ -55,7 +55,8 @@ def build_velvet_ai_menu(
         f"Доработка: <b>{rework.active}</b> · "
         f"Стэл <b>{rework.stel_priority}</b> · Qwen <b>{rework.qwen_only}</b>\n\n"
         "Все операции Qwen собраны здесь: архивная проверка, ручной анализ, "
-        "референсы, промт, палитра, оформление, медиасеты, история и калибровка."
+        "референсы, промт, извлечение позы, палитра, оформление, медиасеты, "
+        "история и калибровка."
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -113,7 +114,11 @@ def build_velvet_ai_menu(
                 InlineKeyboardButton(
                     text="🪄 Фото → промт",
                     callback_data=quality_callback("imageprompt_start"),
-                )
+                ),
+                InlineKeyboardButton(
+                    text="🧍 Поза → промт",
+                    callback_data=quality_callback("poseextract_start"),
+                ),
             ],
             [
                 InlineKeyboardButton(
