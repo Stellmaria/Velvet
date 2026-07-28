@@ -4,14 +4,19 @@ import asyncio
 import logging
 from html import escape
 
-from aiogram import Bot, F, Router
+from aiogram import Bot, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import BaseFilter
-from aiogram.types import CallbackQuery, ForceReply, Message
+from aiogram.types import Message
 
 from velvet_bot.ai_job_runtime import AIJobTracker
+from velvet_bot.ai_vision import VisionAnalysisError, VisionProviderUnavailable
 from velvet_bot.core.config import load_settings
 from velvet_bot.database import Database
-from velvet_bot.infrastructure.pose_extractor import PoseExtractorClient
+from velvet_bot.infrastructure.pose_extractor import (
+    POSE_EXTRACTOR_MARKER,
+    PoseExtractorClient,
+)
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_image_prompt import (
     _comparison_models,
@@ -19,12 +24,20 @@ from velvet_bot.presentation.telegram.routers.quality_operations_controllers.vel
     _message_image,
     _split_preformatted,
 )
-from velvet_bot.quality_ui import QualityCallback
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
 
-_POSE_EXTRACTOR_MARKER = "VELVET_AI:POSE_EXTRACTOR"
+_POSE_OPERATION_ERRORS = (
+    VisionAnalysisError,
+    VisionProviderUnavailable,
+    RuntimeError,
+    ValueError,
+    TelegramAPIError,
+    TimeoutError,
+    ConnectionError,
+    OSError,
+)
 
 
 class PoseExtractorReplyFilter(BaseFilter):
@@ -33,7 +46,7 @@ class PoseExtractorReplyFilter(BaseFilter):
         if reply is None:
             return False
         source = reply.text or reply.caption or ""
-        return _POSE_EXTRACTOR_MARKER in source
+        return POSE_EXTRACTOR_MARKER in source
 
 
 def _result_text(
@@ -114,39 +127,6 @@ async def _send_pose_messages(
             )
 
 
-@router.callback_query(QualityCallback.filter(F.action == "poseextract_start"))
-async def handle_pose_extractor_start(callback: CallbackQuery) -> None:
-    if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
-        return
-    settings = load_settings()
-    if not settings.ai_vision_enabled:
-        await callback.answer(
-            "Локальный Qwen отключён в настройках бота.",
-            show_alert=True,
-        )
-        return
-
-    models = _comparison_models(settings.ai_vision_model)
-    model_lines = "\n".join(f"• <code>{escape(model)}</code>" for model in models)
-    mode_text = (
-        "Две модели последовательно извлекут карты позы для сравнения."
-        if len(models) > 1
-        else "Qwen извлечёт одну техническую карту позы."
-    )
-    await callback.answer()
-    await callback.message.answer(
-        "<b>🧍 Изображение → поза</b>\n\n"
-        "Ответьте на это сообщение фотографией или image-файлом. "
-        "Экстрактор опишет только положение тел, конечностей, опоры, контакты, "
-        "перекрытия и ракурс, без внешности, одежды и художественного оформления. "
-        f"{mode_text}\n\n"
-        f"<b>Модели:</b>\n{model_lines}\n\n"
-        f"<code>{_POSE_EXTRACTOR_MARKER}</code>",
-        reply_markup=ForceReply(selective=True),
-    )
-
-
 @router.message(PoseExtractorReplyFilter())
 async def handle_pose_extractor_reply(
     message: Message,
@@ -195,19 +175,19 @@ async def handle_pose_extractor_reply(
         await tracker.stage("analyzing")
         async with get_local_ai_lock():
             for model in models:
-                client = PoseExtractorClient(
-                    provider=settings.ai_vision_provider,
-                    base_url=settings.ai_vision_base_url,
-                    model=model,
-                    api_key=settings.ai_vision_api_key,
-                    timeout_seconds=settings.ai_vision_timeout_seconds,
-                    keep_alive=keep_alive,
-                )
                 try:
+                    client = PoseExtractorClient(
+                        provider=settings.ai_vision_provider,
+                        base_url=settings.ai_vision_base_url,
+                        model=model,
+                        api_key=settings.ai_vision_api_key,
+                        timeout_seconds=settings.ai_vision_timeout_seconds,
+                        keep_alive=keep_alive,
+                    )
                     poses[model] = await client.generate(image)
                 except asyncio.CancelledError:
                     raise
-                except Exception as error:  # p2-approved-boundary: compare-model-partial
+                except _POSE_OPERATION_ERRORS as error:
                     logger.warning(
                         "Pose-extractor comparison model unavailable model=%s error=%s",
                         model,
@@ -240,7 +220,7 @@ async def handle_pose_extractor_reply(
     except asyncio.CancelledError:
         await tracker.error("Задание прервано остановкой процесса.")
         raise
-    except Exception as error:  # p2-approved-boundary: compensate-pose-extraction-job
+    except _POSE_OPERATION_ERRORS as error:
         logger.exception("Pose extraction failed job_id=%s", tracker.job_id)
         await tracker.error(error)
 
