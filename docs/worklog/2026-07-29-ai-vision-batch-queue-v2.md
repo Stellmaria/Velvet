@@ -3,7 +3,7 @@
 - Дата: 2026-07-29
 - ID: ai-vision-batch-queue-v2
 - Линия/фаза: Линия B — Velvet AI / batch queue
-- Статус: `готово`
+- Статус: `завершено`
 - Ветка: `agent/ai-vision-batch-queue-v2`
 - Базовый commit: `574291c46e262452d76cd66ac1416cd660a4c4fb`
 
