@@ -158,6 +158,10 @@ class GitRepository:
             environment["TEST_DATABASE_URL"] = self.test_database_url
         else:
             environment.pop("TEST_DATABASE_URL", None)
+        # Never let local production credentials turn unit tests into live provider calls.
+        # Keep the keys present but empty so python-dotenv cannot restore them from .env.
+        environment["GRS_API_KEY"] = ""
+        environment["GRS_BASE_URL"] = "https://grsaiapi.com"
         environment.setdefault("PYTHONUTF8", "1")
         environment.setdefault("PYTHONIOENCODING", "utf-8")
         return environment
