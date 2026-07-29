@@ -12,19 +12,20 @@ def __getattr__(name: str) -> Any:
         raise AttributeError(name)
 
     install_runtime_stability()
-
     from velvet_bot.app.channel_analytics_datetime_compat import (
         install_channel_analytics_datetime_compat,
     )
 
     install_channel_analytics_datetime_compat()
-
     from velvet_bot.app.bootstrap import run_application as application
 
     async def configured_run_application() -> None:
         from velvet_bot.app.auf_branding import install_auf_branding
         from velvet_bot.app.grs_campaign_retry import install_grs_campaign_retry
         from velvet_bot.app.grs_resilience import install_grs_resilience
+        from velvet_bot.app.telegram_progress_resilience import (
+            install_telegram_progress_resilience,
+        )
         from velvet_bot.domains.media_generation.friendly_worker import (
             install_friendly_media_worker,
         )
@@ -34,6 +35,7 @@ def __getattr__(name: str) -> Any:
         install_friendly_media_worker()
         install_grs_resilience()
         install_grs_campaign_retry()
+        install_telegram_progress_resilience()
         install_auf_branding()
         await application()
 
