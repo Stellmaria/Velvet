@@ -10,4 +10,4 @@
 
 ## Violations
 
-No violations found.
+No violations.
