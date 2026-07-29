@@ -11,6 +11,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 from aiogram.methods import (
     AnswerCallbackQuery,
+    EditMessageText,
     GetMe,
     SendAnimation,
     SendDocument,
@@ -34,6 +35,7 @@ _STALE_CALLBACK_MARKERS = (
     "query id is invalid",
 )
 _GET_ME_RETRY_DELAYS_SECONDS = (2.0, 4.0, 8.0, 15.0)
+_EDIT_MESSAGE_RETRY_DELAYS_SECONDS = (1.0, 2.0, 4.0)
 
 
 def protect_private_media_method(
@@ -66,6 +68,21 @@ def is_expired_callback_answer(method: Any, error: TelegramBadRequest) -> bool:
     return any(marker in normalized for marker in _STALE_CALLBACK_MARKERS)
 
 
+def is_unchanged_message_edit(method: Any, error: TelegramBadRequest) -> bool:
+    """Treat a retried text edit as successful when Telegram already applied it."""
+    return isinstance(method, EditMessageText) and (
+        "message is not modified" in str(error).casefold()
+    )
+
+
+def _retry_delays_for(method: Any) -> tuple[float, ...]:
+    if isinstance(method, GetMe):
+        return _GET_ME_RETRY_DELAYS_SECONDS
+    if isinstance(method, EditMessageText):
+        return _EDIT_MESSAGE_RETRY_DELAYS_SECONDS
+    return ()
+
+
 class ProtectedMediaBot(Bot):
     """Protect private media while allowing trusted owners and scoped downloads."""
 
@@ -90,7 +107,7 @@ class ProtectedMediaBot(Bot):
 
     @asynccontextmanager
     async def unprotected_private_media(self, user_id: int) -> AsyncIterator[None]:
-        """Allow unprotected media sends in this task, then restore protection."""
+        """Allow unprotected private media sends in this task, then restore protection."""
         current = self._scoped_unprotected_private_user_ids.get()
         token = self._scoped_unprotected_private_user_ids.set(
             current | {int(user_id)}
@@ -123,9 +140,7 @@ class ProtectedMediaBot(Bot):
             method,
             unprotected_private_user_ids=unprotected_ids,
         )
-        retry_delays = (
-            _GET_ME_RETRY_DELAYS_SECONDS if isinstance(method, GetMe) else ()
-        )
+        retry_delays = _retry_delays_for(method)
         for attempt in range(len(retry_delays) + 1):
             try:
                 return await super().__call__(method, request_timeout=request_timeout)
@@ -134,8 +149,9 @@ class ProtectedMediaBot(Bot):
                     raise
                 delay = retry_delays[attempt]
                 logger.warning(
-                    "Telegram getMe network request failed; retrying in %.1f seconds "
+                    "Telegram %s network request failed; retrying in %.1f seconds "
                     "(attempt %s/%s): %s",
+                    method.__class__.__name__,
                     delay,
                     attempt + 2,
                     len(retry_delays) + 1,
@@ -144,6 +160,8 @@ class ProtectedMediaBot(Bot):
                 await asyncio.sleep(delay)
             except TelegramBadRequest as error:
                 if is_expired_callback_answer(method, error):
+                    return True
+                if is_unchanged_message_edit(method, error):
                     return True
                 raise
         raise RuntimeError("unreachable Telegram request retry state")
