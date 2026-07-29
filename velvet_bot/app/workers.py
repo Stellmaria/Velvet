@@ -23,7 +23,7 @@ from velvet_bot.domains.ai_usage import (
     build_ai_task_queue_service,
     build_ai_usage_service,
 )
-from velvet_bot.domains.media_generation.worker import KieGenerationWorker
+from velvet_bot.domains.media_generation.file_delivery_worker import KieGenerationWorker
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.vision_batches import build_vision_batch_consumer
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
