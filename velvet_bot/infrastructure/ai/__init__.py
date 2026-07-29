@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping
 
+from velvet_bot.domains.media_generation import KieGenerationRequest
+
 from .kie import (
     KieClient as BaseKieClient,
     KieError,
@@ -17,7 +19,12 @@ _GROK_V1_IMAGE_TO_VIDEO = "grok-imagine/image-to-video"
 class KieClient(BaseKieClient):
     """Kie client with exact compatibility for the legacy Grok v1 contract."""
 
-    async def create_task(self, request, *, callback_url: str | None = None) -> str:
+    async def create_task(
+        self,
+        request: KieGenerationRequest,
+        *,
+        callback_url: str | None = None,
+    ) -> str:
         provider_model = self.models.provider_model_for_request(request)
         provider_input = dict(request.to_input())
         if provider_model == _GROK_V1_IMAGE_TO_VIDEO:
