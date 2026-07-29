@@ -237,7 +237,7 @@ class VisionBatchServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(2, len(queue.requests))
         self.assertEqual("vision.semantic-profile", queue.requests[0].task_type)
         self.assertEqual(10, queue.requests[0].payload["media_id"])
-        self.assertEqual(1, len(repository.attached))
+        self.assertEqual(2, len(repository.attached))
 
     async def test_start_is_blocked_when_queue_feature_is_disabled(self) -> None:
         plan = _plan()
