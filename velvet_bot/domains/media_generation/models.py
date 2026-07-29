@@ -44,18 +44,26 @@ class KieModelAlias(StrEnum):
     SEEDREAM_5_PRO = "seedream_5_pro"
     NANO_BANANA_PRO = "nano_banana_pro"
     GROK_IMAGINE_VIDEO = "grok_imagine_video"
+    SEEDANCE_15_PRO_VIDEO = "seedance_15_pro_video"
+    WAN_26_IMAGE_TO_VIDEO = "wan_26_image_to_video"
 
     @property
     def display_name(self) -> str:
         return {
             self.SEEDREAM_5_PRO: "Seedream 5 Pro",
             self.NANO_BANANA_PRO: "Nano Banana Pro",
-            self.GROK_IMAGINE_VIDEO: "Grok Imagine Video",
+            self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",
+            self.SEEDANCE_15_PRO_VIDEO: "Seedance 1.5 Pro",
+            self.WAN_26_IMAGE_TO_VIDEO: "Wan 2.6",
         }[self]
 
     @property
     def is_video(self) -> bool:
-        return self is self.GROK_IMAGINE_VIDEO
+        return self in {
+            self.GROK_IMAGINE_VIDEO,
+            self.SEEDANCE_15_PRO_VIDEO,
+            self.WAN_26_IMAGE_TO_VIDEO,
+        }
 
     @property
     def supported_photo_resolutions(self) -> tuple[str, ...]:
@@ -84,17 +92,15 @@ class KieTaskState(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class KieModelCatalog:
-    """Provider model ids separated from stable internal aliases.
-
-    ``seedream_5_pro`` is retained as a legacy fallback for existing server
-    environments. New deployments should set the explicit text and image ids.
-    """
+    """Provider model ids separated from stable internal aliases."""
 
     seedream_5_pro: str = ""
     seedream_5_pro_text: str = ""
     seedream_5_pro_image: str = ""
     nano_banana_pro: str = "nano-banana-pro"
-    grok_imagine_video: str = "grok-imagine/text-to-video"
+    grok_imagine_video: str = "grok-imagine/image-to-video"
+    seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"
+    wan_26_image_to_video: str = "wan/2-6-image-to-video"
 
     def provider_model(
         self,
@@ -114,8 +120,12 @@ class KieModelCatalog:
                 model = self.seedream_5_pro_image or self.seedream_5_pro
         elif alias is KieModelAlias.NANO_BANANA_PRO:
             model = self.nano_banana_pro
-        else:
+        elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:
             model = self.grok_imagine_video
+        elif alias is KieModelAlias.SEEDANCE_15_PRO_VIDEO:
+            model = self.seedance_15_pro_video
+        else:
+            model = self.wan_26_image_to_video
         normalized = model.strip()
         if not normalized:
             mode_suffix = f" для режима {input_mode.value}" if input_mode else ""
@@ -139,6 +149,14 @@ class KiePricing:
     nano_4k_usd: Decimal = Decimal("0.12")
     grok_480p_usd_per_second: Decimal = Decimal("0.008")
     grok_720p_usd_per_second: Decimal = Decimal("0.015")
+    seedance_480p_no_audio_usd_per_second: Decimal = Decimal("0.00875")
+    seedance_720p_no_audio_usd_per_second: Decimal = Decimal("0.0175")
+    seedance_1080p_no_audio_usd_per_second: Decimal = Decimal("0.0375")
+    seedance_480p_audio_usd_per_second: Decimal = Decimal("0.0175")
+    seedance_720p_audio_usd_per_second: Decimal = Decimal("0.035")
+    seedance_1080p_audio_usd_per_second: Decimal = Decimal("0.075")
+    wan_720p_usd_per_second: Decimal = Decimal("0.07")
+    wan_1080p_usd_per_second: Decimal = Decimal("0.105")
 
     def estimate_usd(self, request: "KieGenerationRequest") -> Decimal:
         if request.model is KieModelAlias.SEEDREAM_5_PRO:
@@ -158,6 +176,29 @@ class KiePricing:
                 self.grok_720p_usd_per_second
                 if request.resolution.casefold() == "720p"
                 else self.grok_480p_usd_per_second
+            )
+            return rate * Decimal(request.duration_seconds)
+        if request.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:
+            audio = bool(request.extra_input.get("generate_audio", False))
+            resolution = request.resolution.casefold()
+            if audio:
+                rate = {
+                    "480p": self.seedance_480p_audio_usd_per_second,
+                    "720p": self.seedance_720p_audio_usd_per_second,
+                    "1080p": self.seedance_1080p_audio_usd_per_second,
+                }.get(resolution, self.seedance_720p_audio_usd_per_second)
+            else:
+                rate = {
+                    "480p": self.seedance_480p_no_audio_usd_per_second,
+                    "720p": self.seedance_720p_no_audio_usd_per_second,
+                    "1080p": self.seedance_1080p_no_audio_usd_per_second,
+                }.get(resolution, self.seedance_720p_no_audio_usd_per_second)
+            return rate * Decimal(request.duration_seconds)
+        if request.model is KieModelAlias.WAN_26_IMAGE_TO_VIDEO:
+            rate = (
+                self.wan_1080p_usd_per_second
+                if request.resolution.casefold() == "1080p"
+                else self.wan_720p_usd_per_second
             )
             return rate * Decimal(request.duration_seconds)
         raise ValueError(f"Неизвестная модель: {request.model}")
@@ -289,13 +330,11 @@ class KieGenerationRequest:
         return replace(self, image_urls=image_urls)
 
     def to_input(self) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "prompt": self.provider_prompt,
-            "aspect_ratio": self.aspect_ratio.strip(),
-        }
+        payload: dict[str, object] = {"prompt": self.provider_prompt}
         if self.model is KieModelAlias.SEEDREAM_5_PRO:
             payload.update(
                 {
+                    "aspect_ratio": self.aspect_ratio.strip(),
                     "quality": self.provider_quality,
                     "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
                 }
@@ -306,6 +345,7 @@ class KieGenerationRequest:
         elif self.model is KieModelAlias.NANO_BANANA_PRO:
             payload.update(
                 {
+                    "aspect_ratio": self.aspect_ratio.strip(),
                     "resolution": self.resolution.upper(),
                     "output_format": self.output_format.strip() or "png",
                     "image_input": list(self.image_urls),
@@ -314,10 +354,33 @@ class KieGenerationRequest:
         elif self.model is KieModelAlias.GROK_IMAGINE_VIDEO:
             payload.update(
                 {
+                    "aspect_ratio": self.aspect_ratio.strip(),
                     "resolution": self.resolution.strip() or "480p",
                     "duration": self.duration_seconds,
                     "mode": self.mode.strip() or "normal",
                     "image_urls": list(self.image_urls),
+                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                }
+            )
+        elif self.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:
+            payload.update(
+                {
+                    "input_urls": list(self.image_urls),
+                    "aspect_ratio": self.aspect_ratio.strip(),
+                    "resolution": self.resolution.strip() or "720p",
+                    "duration": self.duration_seconds,
+                    "fixed_lens": False,
+                    "generate_audio": False,
+                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                }
+            )
+        elif self.model is KieModelAlias.WAN_26_IMAGE_TO_VIDEO:
+            payload.update(
+                {
+                    "image_urls": list(self.image_urls),
+                    "duration": str(self.duration_seconds),
+                    "resolution": self.resolution.strip() or "720p",
+                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
                 }
             )
         payload.update(dict(self.extra_input))

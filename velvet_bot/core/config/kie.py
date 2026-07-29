@@ -63,6 +63,14 @@ def load_kie_settings() -> KieSettings:
         or legacy_grok_image_to_video
         or "grok-imagine/image-to-video"
     )
+    seedance_image_to_video = (
+        os.getenv("KIE_SEEDANCE_15_PRO_MODEL", "").strip()
+        or "bytedance/seedance-1.5-pro"
+    )
+    wan_image_to_video = (
+        os.getenv("KIE_WAN_26_IMAGE_TO_VIDEO_MODEL", "").strip()
+        or "wan/2-6-image-to-video"
+    )
     models = KieModelCatalog(
         seedream_5_pro=legacy_seedream,
         seedream_5_pro_text=os.getenv(
@@ -77,6 +85,8 @@ def load_kie_settings() -> KieSettings:
             os.getenv("KIE_NANO_BANANA_PRO_MODEL", "nano-banana-pro").strip()
         ),
         grok_imagine_video=grok_image_to_video,
+        seedance_15_pro_video=seedance_image_to_video,
+        wan_26_image_to_video=wan_image_to_video,
     )
     usd_to_rub = _parse_non_negative_decimal(
         os.getenv("KIE_USD_TO_RUB", "0"),
@@ -92,6 +102,8 @@ def load_kie_settings() -> KieSettings:
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.GROK_IMAGINE_VIDEO, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.SEEDANCE_15_PRO_VIDEO, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.WAN_26_IMAGE_TO_VIDEO, KieInputMode.PHOTO_TEXT),
         )
         try:
             for alias, input_mode in required_routes:
@@ -99,33 +111,65 @@ def load_kie_settings() -> KieSettings:
         except ValueError as error:
             raise RuntimeError(
                 "KIE_ENABLED=true требует model id для Nano Banana Pro, "
-                "обоих режимов Seedream 5 Pro и Grok Imagine image-to-video."
+                "обоих режимов Seedream 5 Pro и трёх image-to-video моделей."
             ) from error
 
     pricing = KiePricing(
-        seedream_basic_usd=_parse_non_negative_decimal(
-            os.getenv("KIE_SEEDREAM_BASIC_USD", "0.075"),
-            variable_name="KIE_SEEDREAM_BASIC_USD",
+        seedream_basic_usd=_env_decimal(
+            "KIE_SEEDREAM_BASIC_USD",
+            "0.075",
         ),
-        seedream_high_usd=_parse_non_negative_decimal(
-            os.getenv("KIE_SEEDREAM_HIGH_USD", "0.15"),
-            variable_name="KIE_SEEDREAM_HIGH_USD",
+        seedream_high_usd=_env_decimal(
+            "KIE_SEEDREAM_HIGH_USD",
+            "0.15",
         ),
-        nano_1k_2k_usd=_parse_non_negative_decimal(
-            os.getenv("KIE_NANO_1K_2K_USD", "0.09"),
-            variable_name="KIE_NANO_1K_2K_USD",
+        nano_1k_2k_usd=_env_decimal(
+            "KIE_NANO_1K_2K_USD",
+            "0.09",
         ),
-        nano_4k_usd=_parse_non_negative_decimal(
-            os.getenv("KIE_NANO_4K_USD", "0.12"),
-            variable_name="KIE_NANO_4K_USD",
+        nano_4k_usd=_env_decimal(
+            "KIE_NANO_4K_USD",
+            "0.12",
         ),
-        grok_480p_usd_per_second=_parse_non_negative_decimal(
-            os.getenv("KIE_GROK_480P_USD_PER_SECOND", "0.008"),
-            variable_name="KIE_GROK_480P_USD_PER_SECOND",
+        grok_480p_usd_per_second=_env_decimal(
+            "KIE_GROK_480P_USD_PER_SECOND",
+            "0.008",
         ),
-        grok_720p_usd_per_second=_parse_non_negative_decimal(
-            os.getenv("KIE_GROK_720P_USD_PER_SECOND", "0.015"),
-            variable_name="KIE_GROK_720P_USD_PER_SECOND",
+        grok_720p_usd_per_second=_env_decimal(
+            "KIE_GROK_720P_USD_PER_SECOND",
+            "0.015",
+        ),
+        seedance_480p_no_audio_usd_per_second=_env_decimal(
+            "KIE_SEEDANCE_15_480P_NO_AUDIO_USD_PER_SECOND",
+            "0.00875",
+        ),
+        seedance_720p_no_audio_usd_per_second=_env_decimal(
+            "KIE_SEEDANCE_15_720P_NO_AUDIO_USD_PER_SECOND",
+            "0.0175",
+        ),
+        seedance_1080p_no_audio_usd_per_second=_env_decimal(
+            "KIE_SEEDANCE_15_1080P_NO_AUDIO_USD_PER_SECOND",
+            "0.0375",
+        ),
+        seedance_480p_audio_usd_per_second=_env_decimal(
+            "KIE_SEEDANCE_15_480P_AUDIO_USD_PER_SECOND",
+            "0.0175",
+        ),
+        seedance_720p_audio_usd_per_second=_env_decimal(
+            "KIE_SEEDANCE_15_720P_AUDIO_USD_PER_SECOND",
+            "0.035",
+        ),
+        seedance_1080p_audio_usd_per_second=_env_decimal(
+            "KIE_SEEDANCE_15_1080P_AUDIO_USD_PER_SECOND",
+            "0.075",
+        ),
+        wan_720p_usd_per_second=_env_decimal(
+            "KIE_WAN_26_720P_USD_PER_SECOND",
+            "0.07",
+        ),
+        wan_1080p_usd_per_second=_env_decimal(
+            "KIE_WAN_26_1080P_USD_PER_SECOND",
+            "0.105",
         ),
     )
     return KieSettings(
@@ -157,6 +201,13 @@ def load_kie_settings() -> KieSettings:
         usd_to_rub=usd_to_rub,
         models=models,
         pricing=pricing,
+    )
+
+
+def _env_decimal(variable_name: str, default: str) -> Decimal:
+    return _parse_non_negative_decimal(
+        os.getenv(variable_name, default),
+        variable_name=variable_name,
     )
 
 
