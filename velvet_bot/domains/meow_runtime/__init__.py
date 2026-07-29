@@ -5,11 +5,11 @@ from velvet_bot.domains.meow_runtime.models import (
     MeowRuntimeSettings,
     WorkspaceMeowSettings,
 )
-from velvet_bot.domains.meow_runtime.repository import MeowRuntimeRepository
 from velvet_bot.domains.meow_runtime.service import (
     MeowRuntimeAccessError,
     MeowRuntimeService,
 )
+from velvet_bot.domains.meow_runtime.store import MeowRuntimeRepository
 
 __all__ = (
     "MeowCancellationResult",
