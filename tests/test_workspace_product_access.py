@@ -98,125 +98,204 @@ class PostgreSQLWorkspaceProductTests(unittest.IsolatedAsyncioTestCase):
             )
             await connection.execute("DELETE FROM workspace_creation_grants")
             await connection.execute("DELETE FROM user_public_workspace_preferences")
+            await connection.execute(
+                """
+                DELETE FROM workspace_stories
+                WHERE workspace_id = $1::BIGINT
+                  AND universe_key = 'kr'
+                  AND key = $2::VARCHAR
+                """,
+                DEFAULT_WORKSPACE_ID,
+                _TEST_KR_STORY_KEY,
+            )
+            await connection.execute(
+                """
+                UPDATE workspace_settings
+                SET public_archive_enabled = TRUE,
+                    updated_at = NOW()
+                WHERE workspace_id = $1::BIGINT
+                """,
+                DEFAULT_WORKSPACE_ID,
+            )
+            await connection.execute(
+                """
+                UPDATE workspace_modules
+                SET is_allowed = TRUE,
+                    is_enabled = TRUE,
+                    updated_at = NOW()
+                WHERE workspace_id = $1::BIGINT
+                """,
+                DEFAULT_WORKSPACE_ID,
+            )
 
-    async def test_only_global_creator_can_grant_creation_access(self) -> None:
+    async def _grant_and_create(self, user_id: int, name: str):
+        await self.service.grant_creation_access(
+            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+            user_id=user_id,
+        )
+        return await self.service.create_personal_workspace(
+            owner_user_id=user_id,
+            name=name,
+        )
+
+    async def test_only_stell_can_grant_workspace_creation(self) -> None:
         with self.assertRaises(WorkspaceCreationAccessError):
             await self.service.grant_creation_access(
                 actor_user_id=999,
-                user_id=700,
+                user_id=101,
             )
-        grant = await self.service.grant_creation_access(
-            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-            user_id=700,
-        )
-        self.assertEqual(700, grant.user_id)
-        self.assertEqual(1, grant.max_workspaces)
 
-    async def test_personal_workspace_is_private_and_module_gated(self) -> None:
-        await self.service.grant_creation_access(
-            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-            user_id=701,
-        )
-        workspace = await self.service.create_personal_workspace(
-            owner_user_id=701,
-            name="Личный архив",
-        )
+    async def test_user_without_grant_cannot_create_workspace(self) -> None:
+        with self.assertRaises(WorkspaceCreationAccessError):
+            await self.service.create_personal_workspace(
+                owner_user_id=101,
+                name="Denied Archive",
+            )
+
+    async def test_granted_workspace_is_private_and_modules_are_initialized(self) -> None:
+        workspace = await self._grant_and_create(101, "Private Archive")
         settings = await self.workspace_repository.get_settings(workspace.id)
-        modules = await self.service.list_modules(
-            workspace_id=workspace.id,
-            actor_user_id=701,
-        )
+        modules = await self.product_repository.list_modules(workspace.id)
+
         self.assertIsNotNone(settings)
+        assert settings is not None
         self.assertFalse(settings.public_archive_enabled)
-        self.assertTrue(any(item.module_key == "archive" for item in modules))
-        self.assertFalse(any(item.module_key == "qwen" for item in modules))
+        self.assertTrue(modules)
+        self.assertTrue(all(item.is_enabled for item in modules if item.is_allowed))
+        self.assertFalse(await self.service.can_create_workspace(101))
 
-        with self.assertRaises(WorkspaceModuleAccessError):
-            await self.service.set_module_enabled(
-                workspace_id=workspace.id,
-                actor_user_id=701,
-                module_key="qwen",
-                is_enabled=True,
-            )
+    async def test_system_velvet_is_public_by_default(self) -> None:
+        public = await self.service.list_public_workspaces()
+        self.assertIn(DEFAULT_WORKSPACE_ID, {item.id for item in public})
 
-    async def test_global_creator_can_allow_module_then_owner_enables_it(self) -> None:
-        await self.service.grant_creation_access(
-            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-            user_id=702,
+    async def test_private_workspace_appears_only_after_owner_enables_public_mode(self) -> None:
+        workspace = await self._grant_and_create(102, "Publish Later")
+        before = {item.id for item in await self.service.list_public_workspaces()}
+        self.assertNotIn(workspace.id, before)
+
+        await self.service.set_public_archive_enabled(
+            workspace_id=workspace.id,
+            actor_user_id=102,
+            enabled=True,
         )
-        workspace = await self.service.create_personal_workspace(
-            owner_user_id=702,
-            name="Личный архив 2",
-        )
+        after = {item.id for item in await self.service.list_public_workspaces()}
+        self.assertIn(workspace.id, after)
+
+    async def test_owner_cannot_enable_module_forbidden_by_stell(self) -> None:
+        workspace = await self._grant_and_create(103, "Restricted Modules")
         await self.service.set_module_allowed(
             actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
             workspace_id=workspace.id,
             module_key="qwen",
-            is_allowed=True,
+            is_allowed=False,
         )
-        module = await self.service.set_module_enabled(
-            workspace_id=workspace.id,
-            actor_user_id=702,
-            module_key="qwen",
-            is_enabled=True,
-        )
-        self.assertTrue(module.is_allowed)
-        self.assertTrue(module.is_enabled)
+        with self.assertRaises(WorkspaceModuleAccessError):
+            await self.service.set_module_enabled(
+                workspace_id=workspace.id,
+                actor_user_id=103,
+                module_key="qwen",
+                is_enabled=True,
+            )
 
-    async def test_public_directory_requires_explicit_enable(self) -> None:
-        await self.service.grant_creation_access(
-            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-            user_id=703,
-        )
-        workspace = await self.service.create_personal_workspace(
-            owner_user_id=703,
-            name="Личный архив 3",
-        )
-        public_before = await self.service.list_public_workspaces()
-        self.assertFalse(any(item.id == workspace.id for item in public_before))
-        await self.service.set_public_archive_enabled(
-            workspace_id=workspace.id,
-            actor_user_id=703,
-            enabled=True,
-        )
-        public_after = await self.service.list_public_workspaces()
-        self.assertTrue(any(item.id == workspace.id for item in public_after))
+    async def test_module_keyboard_has_help_button_for_every_module(self) -> None:
+        workspace = await self._grant_and_create(104, "Module Help")
+        modules = await self.product_repository.list_modules(workspace.id)
+        markup = build_modules_keyboard(workspace.id, modules)
+        self.assertEqual(len(modules) + 1, len(markup.inline_keyboard))
+        self.assertTrue(all(len(row) == 2 for row in markup.inline_keyboard[:-1]))
 
-    async def test_taxonomy_is_workspace_scoped(self) -> None:
-        await self.service.grant_creation_access(
-            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-            user_id=704,
+    async def test_same_custom_taxonomy_keys_are_isolated(self) -> None:
+        first = await self._grant_and_create(105, "First Taxonomy")
+        second = await self._grant_and_create(106, "Second Taxonomy")
+
+        for workspace, user_id, label in (
+            (first, 105, "Первая"),
+            (second, 106, "Вторая"),
+        ):
+            category = await self.service.create_category(
+                workspace_id=workspace.id,
+                actor_user_id=user_id,
+                key="solo",
+                label=label,
+            )
+            universe = await self.service.create_universe(
+                workspace_id=workspace.id,
+                actor_user_id=user_id,
+                key="custom",
+                label=label,
+                requires_story=True,
+            )
+            story = await self.service.create_story(
+                workspace_id=workspace.id,
+                actor_user_id=user_id,
+                universe_key="custom",
+                key="chapter-one",
+                short_label="Г1",
+                title=label,
+            )
+            self.assertEqual(workspace.id, category.workspace_id)
+            self.assertEqual(workspace.id, universe.workspace_id)
+            self.assertEqual(workspace.id, story.workspace_id)
+
+        first_categories = await self.service.list_categories(first.id)
+        second_categories = await self.service.list_categories(second.id)
+        self.assertEqual(
+            "Первая",
+            next(item.label for item in first_categories if item.key == "solo"),
         )
-        workspace = await self.service.create_personal_workspace(
-            owner_user_id=704,
-            name="Личный архив 4",
+        self.assertEqual(
+            "Вторая",
+            next(item.label for item in second_categories if item.key == "solo"),
         )
-        category = await self.service.upsert_category(
+
+    async def test_kr_template_is_copied_without_mutating_system_catalog(self) -> None:
+        workspace = await self._grant_and_create(107, "KR Template")
+        system_before = await self.service.list_stories(
+            workspace_id=DEFAULT_WORKSPACE_ID,
+            universe_key="kr",
+        )
+        if not system_before:
+            await self.product_repository.upsert_story(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                universe_key="kr",
+                key=_TEST_KR_STORY_KEY,
+                short_label="ТЕСТ",
+                title="Тестовый шаблон КР",
+                created_by_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+            )
+            system_before = await self.service.list_stories(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                universe_key="kr",
+            )
+
+        _, copied = await self.service.import_kr_template(
             workspace_id=workspace.id,
-            actor_user_id=704,
-            key="custom",
-            label="Своя категория",
-            emoji="🧩",
+            actor_user_id=107,
         )
-        universe = await self.service.upsert_universe(
+        personal = await self.service.list_stories(
             workspace_id=workspace.id,
-            actor_user_id=704,
-            key="custom-world",
-            label="Своя вселенная",
-            emoji="🌌",
-            requires_story=True,
+            universe_key="kr",
         )
-        story = await self.service.upsert_story(
+        system_after = await self.service.list_stories(
+            workspace_id=DEFAULT_WORKSPACE_ID,
+            universe_key="kr",
+        )
+
+        self.assertGreater(copied, 0)
+        self.assertEqual(copied, len(personal))
+        self.assertEqual(len(system_before), len(system_after))
+
+    async def test_viewer_cannot_select_private_workspace_as_public(self) -> None:
+        workspace = await self._grant_and_create(108, "Still Private")
+        selected = await self.service.select_public_workspace(
+            user_id=500,
             workspace_id=workspace.id,
-            actor_user_id=704,
-            universe_key=universe.key,
-            key=_TEST_KR_STORY_KEY,
-            short_label="ЛА",
-            title="Личный архив",
         )
-        self.assertEqual(workspace.id, category.workspace_id)
-        self.assertEqual(workspace.id, universe.workspace_id)
-        self.assertEqual(workspace.id, story.workspace_id)
+        self.assertFalse(selected)
+        self.assertEqual(
+            DEFAULT_WORKSPACE_ID,
+            await self.service.public_workspace_id_for_user(500),
+        )
 
 
 if __name__ == "__main__":
