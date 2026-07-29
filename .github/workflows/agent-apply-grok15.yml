@@ -1,0 +1,201 @@
+name: Apply Grok 1.5 video choice
+
+on:
+  push:
+    branches:
+      - agent/add-grok-15-video-choice
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/add-grok-15-video-choice
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Apply source changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"Expected block not found in {path}: {old[:100]!r}")
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          models = "velvet_bot/domains/media_generation/models.py"
+          replace_once(
+              models,
+              '    GROK_IMAGINE_VIDEO = "grok_imagine_video"\n    SEEDANCE_15_PRO_VIDEO = "seedance_15_pro_video"',
+              '    GROK_IMAGINE_VIDEO = "grok_imagine_video"\n    GROK_IMAGINE_VIDEO_15 = "grok_imagine_video_15"\n    SEEDANCE_15_PRO_VIDEO = "seedance_15_pro_video"',
+          )
+          replace_once(
+              models,
+              '            self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",\n            self.SEEDANCE_15_PRO_VIDEO: "Seedance 1.5 Pro",',
+              '            self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",\n            self.GROK_IMAGINE_VIDEO_15: "Grok Imagine Video 1.5",\n            self.SEEDANCE_15_PRO_VIDEO: "Seedance 1.5 Pro",',
+          )
+          replace_once(
+              models,
+              '            self.GROK_IMAGINE_VIDEO,\n            self.SEEDANCE_15_PRO_VIDEO,',
+              '            self.GROK_IMAGINE_VIDEO,\n            self.GROK_IMAGINE_VIDEO_15,\n            self.SEEDANCE_15_PRO_VIDEO,',
+          )
+          replace_once(
+              models,
+              '    grok_imagine_video: str = "grok-imagine/image-to-video"\n    seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"',
+              '    grok_imagine_video: str = "grok-imagine/image-to-video"\n    grok_imagine_video_15: str = "grok-imagine-video-1-5-preview"\n    seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"',
+          )
+          replace_once(
+              models,
+              '        elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:\n            model = self.grok_imagine_video\n        elif alias is KieModelAlias.SEEDANCE_15_PRO_VIDEO:',
+              '        elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:\n            model = self.grok_imagine_video\n        elif alias is KieModelAlias.GROK_IMAGINE_VIDEO_15:\n            model = self.grok_imagine_video_15\n        elif alias is KieModelAlias.SEEDANCE_15_PRO_VIDEO:',
+          )
+          replace_once(
+              models,
+              '    grok_480p_usd_per_second: Decimal = Decimal("0.008")\n    grok_720p_usd_per_second: Decimal = Decimal("0.015")',
+              '    grok_480p_usd_per_second: Decimal = Decimal("0.008")\n    grok_720p_usd_per_second: Decimal = Decimal("0.015")\n    grok_15_480p_usd_per_second: Decimal = Decimal("0.0725")\n    grok_15_720p_usd_per_second: Decimal = Decimal("0.125")',
+          )
+          replace_once(
+              models,
+              '        if request.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:\n',
+              '        if request.model is KieModelAlias.GROK_IMAGINE_VIDEO_15:\n            rate = (\n                self.grok_15_720p_usd_per_second\n                if request.resolution.casefold() == "720p"\n                else self.grok_15_480p_usd_per_second\n            )\n            return rate * Decimal(request.duration_seconds)\n        if request.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:\n',
+          )
+          replace_once(
+              models,
+              '        elif self.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:\n',
+              '        elif self.model is KieModelAlias.GROK_IMAGINE_VIDEO_15:\n            payload.update(\n                {\n                    "aspect_ratio": self.aspect_ratio.strip() or "auto",\n                    "resolution": self.resolution.strip() or "480p",\n                    "duration": self.duration_seconds,\n                    "image_urls": list(self.image_urls),\n                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,\n                }\n            )\n        elif self.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:\n',
+          )
+
+          config = "velvet_bot/core/config/kie.py"
+          replace_once(
+              config,
+              '    seedance_image_to_video = (\n',
+              '    grok_15_image_to_video = (\n        os.getenv("KIE_GROK_IMAGINE_VIDEO_15_MODEL", "").strip()\n        or "grok-imagine-video-1-5-preview"\n    )\n    seedance_image_to_video = (\n',
+          )
+          replace_once(
+              config,
+              '        grok_imagine_video=grok_image_to_video,\n        seedance_15_pro_video=seedance_image_to_video,',
+              '        grok_imagine_video=grok_image_to_video,\n        grok_imagine_video_15=grok_15_image_to_video,\n        seedance_15_pro_video=seedance_image_to_video,',
+          )
+          replace_once(
+              config,
+              '            (KieModelAlias.GROK_IMAGINE_VIDEO, KieInputMode.PHOTO_TEXT),\n            (KieModelAlias.SEEDANCE_15_PRO_VIDEO, KieInputMode.PHOTO_TEXT),',
+              '            (KieModelAlias.GROK_IMAGINE_VIDEO, KieInputMode.PHOTO_TEXT),\n            (KieModelAlias.GROK_IMAGINE_VIDEO_15, KieInputMode.PHOTO_TEXT),\n            (KieModelAlias.SEEDANCE_15_PRO_VIDEO, KieInputMode.PHOTO_TEXT),',
+          )
+          replace_once(
+              config,
+              'обоих режимов Seedream 5 Pro и трёх image-to-video моделей.',
+              'обоих режимов Seedream 5 Pro и четырёх image-to-video моделей.',
+          )
+          replace_once(
+              config,
+              '        seedance_480p_no_audio_usd_per_second=_env_decimal(\n',
+              '        grok_15_480p_usd_per_second=_env_decimal(\n            "KIE_GROK_15_480P_USD_PER_SECOND", "0.0725"\n        ),\n        grok_15_720p_usd_per_second=_env_decimal(\n            "KIE_GROK_15_720P_USD_PER_SECOND", "0.125"\n        ),\n        seedance_480p_no_audio_usd_per_second=_env_decimal(\n',
+          )
+
+          video = "velvet_bot/presentation/telegram/routers/workspace_meow_video_simple.py"
+          replace_once(
+              video,
+              '_GROK_MODEL_ID = "grok-imagine/image-to-video"\n_SEEDANCE_MODEL_ID',
+              '_GROK_MODEL_ID = "grok-imagine/image-to-video"\n_GROK_15_MODEL_ID = "grok-imagine-video-1-5-preview"\n_SEEDANCE_MODEL_ID',
+          )
+          replace_once(video, '_MODEL_CODES = ("grok", "seedance", "wan")', '_MODEL_CODES = ("grok", "grok15", "seedance", "wan")')
+          replace_once(
+              video,
+              '    "grok": KieModelAlias.GROK_IMAGINE_VIDEO,\n    "seedance":',
+              '    "grok": KieModelAlias.GROK_IMAGINE_VIDEO,\n    "grok15": KieModelAlias.GROK_IMAGINE_VIDEO_15,\n    "seedance":',
+          )
+          replace_once(
+              video,
+              '    "grok": "Grok Imagine v1",\n    "seedance":',
+              '    "grok": "Grok Imagine v1",\n    "grok15": "Grok Imagine Video 1.5",\n    "seedance":',
+          )
+          replace_once(
+              video,
+              '    "grok": _GROK_MODEL_ID,\n    "seedance":',
+              '    "grok": _GROK_MODEL_ID,\n    "grok15": _GROK_15_MODEL_ID,\n    "seedance":',
+          )
+          replace_once(
+              video,
+              '            [InlineKeyboardButton(text=_selected("Grok · дёшево", model == "grok"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok"))],\n            [InlineKeyboardButton(text=_selected("Seedance 1.5 Pro", model == "seedance"),',
+              '            [InlineKeyboardButton(text=_selected("Grok v1 · дёшево", model == "grok"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok"))],\n            [InlineKeyboardButton(text=_selected("Grok 1.5 · качество", model == "grok15"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok15"))],\n            [InlineKeyboardButton(text=_selected("Seedance 1.5 Pro", model == "seedance"),',
+          )
+          replace_once(video, '    if model in {"seedance", "wan"}:\n', '    if model in {"grok15", "seedance", "wan"}:\n',)
+          replace_once(
+              video,
+              '        "• <b>Grok</b> — самый дешёвый вариант.\\n"\n        "• <b>Seedance</b>',
+              '        "• <b>Grok v1</b> — самый дешёвый вариант.\\n"\n        "• <b>Grok 1.5</b> — более качественное движение и длительность до 15 секунд.\\n"\n        "• <b>Seedance</b>',
+          )
+          replace_once(video, '        if model not in {"seedance", "wan"}:\n', '        if model not in {"grok15", "seedance", "wan"}:\n')
+          replace_once(video, '        if _validated_model(data) not in {"seedance", "wan"}:\n', '        if _validated_model(data) not in {"grok15", "seedance", "wan"}:\n')
+          replace_once(
+              video,
+              ') -> KieGenerationRequest:\n    if model == "seedance":',
+              ') -> KieGenerationRequest:\n    if model == "grok15":\n        return KieGenerationRequest(\n            model=KieModelAlias.GROK_IMAGINE_VIDEO_15,\n            input_mode=KieInputMode.PHOTO_TEXT,\n            prompt=prompt,\n            references=(reference,),\n            content_mode=KieContentMode.MATURE,\n            aspect_ratio="auto",\n            resolution=resolution,\n            duration_seconds=duration or 8,\n            output_format="mp4",\n            extra_input={"nsfw_checker": False},\n        )\n    if model == "seedance":',
+          )
+          replace_once(
+              video,
+              '    if model == "seedance":\n        await state.update_data(meow_video_model=model, meow_video_resolution="720p", meow_video_duration=5, meow_video_generate_audio=False, meow_video_wan_mode="first")',
+              '    if model == "grok15":\n        await state.update_data(meow_video_model=model, meow_video_resolution="480p", meow_video_duration=8, meow_video_generate_audio=False, meow_video_wan_mode="first")\n    elif model == "seedance":\n        await state.update_data(meow_video_model=model, meow_video_resolution="720p", meow_video_duration=5, meow_video_generate_audio=False, meow_video_wan_mode="first")',
+          )
+          replace_once(video, '    default = "480p" if resolved_model == "grok" else "720p"', '    default = "480p" if resolved_model in {"grok", "grok15"} else "720p"')
+
+          env = ".env.example"
+          replace_once(
+              env,
+              'KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL=grok-imagine/image-to-video\n# Legacy-параметр',
+              'KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL=grok-imagine/image-to-video\n# Grok Imagine Video 1.5 Preview: отдельная модель, старый Grok остаётся доступен.\nKIE_GROK_IMAGINE_VIDEO_15_MODEL=grok-imagine-video-1-5-preview\n# Legacy-параметр',
+          )
+          replace_once(
+              env,
+              'KIE_GROK_720P_USD_PER_SECOND=0.015\n',
+              'KIE_GROK_720P_USD_PER_SECOND=0.015\nKIE_GROK_15_480P_USD_PER_SECOND=0.0725\nKIE_GROK_15_720P_USD_PER_SECOND=0.125\n',
+          )
+
+          tests = "tests/test_meow_video_generation.py"
+          replace_once(
+              tests,
+              '        self.assertIn("Seedance 1.5 Pro", labels)\n        self.assertNotIn("Wan 2.6", labels)',
+              '        self.assertIn("Grok v1 · дёшево", labels)\n        self.assertIn("Grok 1.5 · качество", labels)\n        self.assertIn("Seedance 1.5 Pro", labels)\n        self.assertNotIn("Wan 2.6", labels)',
+          )
+          replace_once(
+              tests,
+              '    def test_seedance_request_keeps_hidden_provider_controls(self) -> None:\n',
+              '    def test_grok_15_request_uses_separate_contract_without_legacy_mode(self) -> None:\n        request = _build_request(\n            reference=_reference(),\n            prompt="Natural cinematic movement.",\n            model="grok15",\n            resolution="720p",\n            duration=8,\n        ).with_image_urls(("https://files.example/portrait.png",))\n        self.assertIs(request.model, KieModelAlias.GROK_IMAGINE_VIDEO_15)\n        payload = request.to_input()\n        self.assertEqual(["https://files.example/portrait.png"], payload["image_urls"])\n        self.assertEqual(8, payload["duration"])\n        self.assertEqual("auto", payload["aspect_ratio"])\n        self.assertIs(False, payload["nsfw_checker"])\n        self.assertNotIn("mode", payload)\n\n    def test_seedance_request_keeps_hidden_provider_controls(self) -> None:\n',
+          )
+          replace_once(
+              tests,
+              '    async def test_seedance_adapter_uses_numeric_duration_and_audio(self) -> None:\n',
+              '    async def test_grok_15_adapter_uses_preview_model_and_new_payload(self) -> None:\n        client, calls = self._client_and_calls(\n            KieModelCatalog(grok_imagine_video_15="grok-imagine-video-1-5-preview")\n        )\n        request = _build_request(\n            reference=_reference(), prompt="Slow camera move.", model="grok15",\n            resolution="480p", duration=9,\n        ).with_image_urls(("https://files.example/portrait.png",))\n        await client.create_task(request)\n        self.assertEqual("grok-imagine-video-1-5-preview", calls[0]["model"])\n        provider_input = calls[0]["input"]\n        assert isinstance(provider_input, Mapping)\n        self.assertEqual(9, provider_input["duration"])\n        self.assertNotIn("mode", provider_input)\n\n    async def test_seedance_adapter_uses_numeric_duration_and_audio(self) -> None:\n',
+          )
+          replace_once(
+              tests,
+              '        self.assertEqual("wan/2-7-image-to-video", settings.models.wan_26_image_to_video)\n',
+              '        self.assertEqual("grok-imagine-video-1-5-preview", settings.models.grok_imagine_video_15)\n        self.assertEqual("wan/2-7-image-to-video", settings.models.wan_26_image_to_video)\n',
+          )
+
+          for path in (models, config, video, tests):
+              compile(Path(path).read_text(encoding="utf-8"), path, "exec")
+          PY
+
+      - name: Commit patched files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/domains/media_generation/models.py \
+                  velvet_bot/core/config/kie.py \
+                  velvet_bot/presentation/telegram/routers/workspace_meow_video_simple.py \
+                  tests/test_meow_video_generation.py \
+                  .env.example
+          git commit -m "Add Grok 1.5 as selectable video model"
+          git push origin HEAD:agent/add-grok-15-video-choice
