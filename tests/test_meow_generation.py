@@ -47,7 +47,7 @@ def _workspace() -> Workspace:
     return Workspace(9, "private-9", "Мой архив", False, now, now)
 
 
-def _modules() -> tuple[WorkspaceModuleSetting, ...]:
+def _modules(*, meow_allowed: bool = True, meow_enabled: bool = True) -> tuple[WorkspaceModuleSetting, ...]:
     now = datetime.now(UTC)
     return (
         WorkspaceModuleSetting(
@@ -55,6 +55,15 @@ def _modules() -> tuple[WorkspaceModuleSetting, ...]:
             module_key="archive",
             is_allowed=True,
             is_enabled=True,
+            updated_by_user_id=1,
+            created_at=now,
+            updated_at=now,
+        ),
+        WorkspaceModuleSetting(
+            workspace_id=9,
+            module_key="meow",
+            is_allowed=meow_allowed,
+            is_enabled=meow_enabled if meow_allowed else False,
             updated_by_user_id=1,
             created_at=now,
             updated_at=now,
@@ -116,7 +125,7 @@ def _task(request: KieGenerationRequest, *, attempt_count: int = 1) -> AITask:
 
 
 class MeowUIContractTests(unittest.TestCase):
-    def test_owner_home_contains_exact_meow_label(self) -> None:
+    def test_owner_home_contains_meow_when_module_is_allowed_and_enabled(self) -> None:
         keyboard = build_workspace_owner_home_keyboard(
             _workspace(),
             public_enabled=False,
@@ -125,6 +134,22 @@ class MeowUIContractTests(unittest.TestCase):
         labels = _labels(keyboard)
         self.assertIn("Мяу", labels)
         self.assertNotIn("🐈 Мяу", labels)
+
+    def test_owner_home_hides_meow_without_system_permission(self) -> None:
+        keyboard = build_workspace_owner_home_keyboard(
+            _workspace(),
+            public_enabled=False,
+            modules=_modules(meow_allowed=False, meow_enabled=False),
+        )
+        self.assertNotIn("Мяу", _labels(keyboard))
+
+    def test_owner_home_hides_meow_when_workspace_disables_module(self) -> None:
+        keyboard = build_workspace_owner_home_keyboard(
+            _workspace(),
+            public_enabled=False,
+            modules=_modules(meow_allowed=True, meow_enabled=False),
+        )
+        self.assertNotIn("Мяу", _labels(keyboard))
 
     def test_meow_root_has_create_and_animate(self) -> None:
         self.assertEqual(
