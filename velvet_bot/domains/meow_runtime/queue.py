@@ -3,11 +3,12 @@ from __future__ import annotations
 from uuid import UUID
 
 from velvet_bot.core.ai_budget import AIBudgetScope
-from velvet_bot.domains.ai_usage import AITask
+from velvet_bot.domains.ai_usage import AITask, AITaskFailureResult
 from velvet_bot.domains.ai_usage.tasks import _columns, _task_from_row, _worker_id
 from velvet_bot.domains.media_generation.models import KIE_GENERATION_TASK_TYPE
 from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
+from velvet_bot.infrastructure.ai import KieTaskFailed
 
 from .models import MeowProvider
 
@@ -140,6 +141,41 @@ class ProviderMeowTaskQueueService(KieTaskQueueService):
                 task_id,
             )
         return bool(value)
+
+    async def fail(
+        self,
+        *,
+        task_id: UUID,
+        worker_id: str,
+        error: BaseException,
+        base_delay_seconds: int = 30,
+        max_delay_seconds: int = 3600,
+    ) -> AITaskFailureResult | None:
+        if isinstance(error, KieTaskFailed) and await self.cancellation_requested(
+            task_id=task_id
+        ):
+            cancelled = await self.finish_cancelled(
+                task_id=task_id,
+                worker_id=worker_id,
+                reason=(
+                    "Пользователь запросил остановку. Уже отправленная provider-задача "
+                    "завершилась ошибкой; новая платная попытка не запускается."
+                ),
+            )
+            if cancelled is None:
+                return None
+            return AITaskFailureResult(
+                task=cancelled,
+                will_retry=False,
+                retry_delay_seconds=None,
+            )
+        return await super().fail(
+            task_id=task_id,
+            worker_id=worker_id,
+            error=error,
+            base_delay_seconds=base_delay_seconds,
+            max_delay_seconds=max_delay_seconds,
+        )
 
     async def finish_cancelled(
         self,
