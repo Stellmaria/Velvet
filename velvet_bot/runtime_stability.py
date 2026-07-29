@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+from decimal import Decimal
 from typing import Any
 
 import asyncpg
@@ -10,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 _INSTALLED = False
 _ORIGINAL_ERROR_CENTER_START = None
+_ORIGINAL_BUILD_WORKER_MANAGER: Any = None
 
 _NETWORK_FAILURE_MARKERS = (
     "serverdisconnectederror",
@@ -194,6 +197,89 @@ async def acknowledge_legacy_polling_noise(repository: Any) -> int:
         return 0
 
 
+def _nbrb_rate_enabled() -> bool:
+    return os.getenv("KIE_NBRB_RATE_ENABLED", "true").strip().casefold() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+        "нет",
+    }
+
+
+def _nbrb_timeout_seconds() -> int:
+    try:
+        value = int(os.getenv("KIE_NBRB_TIMEOUT_SECONDS", "20").strip())
+    except (AttributeError, TypeError, ValueError):
+        value = 20
+    return max(5, min(value, 120))
+
+
+def _install_nbrb_worker_wrapper() -> None:
+    global _ORIGINAL_BUILD_WORKER_MANAGER
+
+    import velvet_bot.app.workers as workers_module
+    from velvet_bot.domains.media_generation.worker import KieGenerationWorker
+    from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
+        DailyNbrbExchangeRateService,
+        NbrbExchangeRateRepository,
+        NbrbRateClient,
+    )
+    from velvet_bot.workers import PeriodicWorkerSpec
+
+    if _ORIGINAL_BUILD_WORKER_MANAGER is not None:
+        return
+    _ORIGINAL_BUILD_WORKER_MANAGER = workers_module.build_worker_manager
+
+    def build_worker_manager_with_nbrb(*args: Any, **kwargs: Any):
+        manager = _ORIGINAL_BUILD_WORKER_MANAGER(*args, **kwargs)
+        if not _nbrb_rate_enabled():
+            return manager
+        if "kie-nbrb-exchange-rate" in manager.registered_names():
+            return manager
+
+        database = kwargs.get("database")
+        if database is None:
+            return manager
+
+        kie_workers: list[KieGenerationWorker] = []
+        for name, spec in manager._specs.items():
+            if not name.startswith("kie-media-generation"):
+                continue
+            worker = getattr(spec.runner, "__self__", None)
+            if isinstance(worker, KieGenerationWorker):
+                kie_workers.append(worker)
+        if not kie_workers:
+            return manager
+
+        def apply_usd_to_rub(value: Decimal) -> None:
+            if value <= 0:
+                return
+            for worker in kie_workers:
+                worker._usd_to_rub = value
+
+        service = DailyNbrbExchangeRateService(
+            repository=NbrbExchangeRateRepository(database),
+            client=NbrbRateClient(
+                base_url=os.getenv("KIE_NBRB_BASE_URL", "https://api.nbrb.by"),
+                timeout_seconds=_nbrb_timeout_seconds(),
+            ),
+            timezone_name=os.getenv("KIE_NBRB_TIMEZONE", "Europe/Minsk"),
+            on_rate=apply_usd_to_rub,
+        )
+        manager.register(
+            PeriodicWorkerSpec(
+                name="kie-nbrb-exchange-rate",
+                description="Ежедневный официальный курс USD/RUB по НБРБ",
+                interval_seconds=3600,
+                runner=service.process_once,
+            )
+        )
+        return manager
+
+    workers_module.build_worker_manager = build_worker_manager_with_nbrb
+
+
 def install_runtime_stability() -> None:
     """Install production guards before application bootstrap creates the error center."""
 
@@ -233,6 +319,7 @@ def install_runtime_stability() -> None:
         await _ORIGINAL_ERROR_CENTER_START(self)
 
     error_center.ErrorIncidentCenter.start = start_with_polling_cleanup
+    _install_nbrb_worker_wrapper()
     _INSTALLED = True
 
 
