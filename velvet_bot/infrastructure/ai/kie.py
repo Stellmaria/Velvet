@@ -25,6 +25,11 @@ JsonTransport = Callable[
     Mapping[str, Any],
 ]
 TaskUpdateCallback = Callable[[KieTaskRecord, int], Awaitable[None]]
+_DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
 
 
 class KieError(RuntimeError):
@@ -57,10 +62,13 @@ class KieClient:
         timeout_seconds: float = 60,
         poll_interval_seconds: float = 4,
         task_timeout_seconds: float = 900,
+        user_agent: str = _DEFAULT_USER_AGENT,
         transport: JsonTransport | None = None,
     ) -> None:
         if not api_key.strip():
             raise ValueError("KIE_API_KEY не может быть пустым.")
+        if not user_agent.strip():
+            raise ValueError("Kie User-Agent не может быть пустым.")
         self.api_key = api_key.strip()
         self.models = models
         self.base_url = base_url.rstrip("/")
@@ -68,6 +76,7 @@ class KieClient:
         self.timeout_seconds = max(1.0, float(timeout_seconds))
         self.poll_interval_seconds = max(1.0, float(poll_interval_seconds))
         self.task_timeout_seconds = max(10.0, float(task_timeout_seconds))
+        self.user_agent = user_agent.strip()
         self._transport = transport or _request_json
 
     async def upload_reference(
@@ -203,6 +212,7 @@ class KieClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": self.user_agent,
         }
 
     @staticmethod
