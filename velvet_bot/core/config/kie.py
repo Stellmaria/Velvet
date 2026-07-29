@@ -30,7 +30,7 @@ class KieSettings:
     credit_usd: Decimal = Decimal("0.005")
     credit_byn: Decimal = Decimal("0.019")
     max_concurrent_generations: int = 4
-    generation_max_attempts: int = 11
+    generation_max_attempts: int = 50
 
 
 def load_kie_settings() -> KieSettings:
@@ -227,11 +227,11 @@ def load_kie_settings() -> KieSettings:
             maximum=8,
         ),
         generation_max_attempts=parse_bounded_integer(
-            os.getenv("KIE_GENERATION_MAX_ATTEMPTS", "11"),
+            os.getenv("KIE_GENERATION_MAX_ATTEMPTS", "50"),
             variable_name="KIE_GENERATION_MAX_ATTEMPTS",
-            default=11,
+            default=50,
             minimum=1,
-            maximum=20,
+            maximum=50,
         ),
     )
 
