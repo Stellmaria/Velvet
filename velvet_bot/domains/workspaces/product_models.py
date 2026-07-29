@@ -15,6 +15,7 @@ WorkspaceModuleKey: TypeAlias = Literal[
     "publications",
     "analytics",
     "team",
+    "meow",
 ]
 
 WORKSPACE_MODULE_KEYS: Final[tuple[WorkspaceModuleKey, ...]] = (
@@ -28,6 +29,7 @@ WORKSPACE_MODULE_KEYS: Final[tuple[WorkspaceModuleKey, ...]] = (
     "publications",
     "analytics",
     "team",
+    "meow",
 )
 
 DEFAULT_PERSONAL_MODULE_KEYS: Final[tuple[WorkspaceModuleKey, ...]] = (
