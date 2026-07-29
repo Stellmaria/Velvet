@@ -60,7 +60,7 @@ class _DownloadedResult:
 
 
 class KieGenerationWorker(BaseKieGenerationWorker):
-    """Download Kie results and upload bytes to Telegram instead of remote URLs."""
+    """Download Kie results, then send Telegram preview and original file."""
 
     async def _deliver_best_effort(
         self,
@@ -79,7 +79,8 @@ class KieGenerationWorker(BaseKieGenerationWorker):
             f"Референсов: <b>{len(request.references)}</b>\n"
             f"Контент: <b>{escape(request.content_mode.display_name)}</b>\n"
             f"Задача Kie: <code>{escape(record.task_id)}</code>\n\n"
-            "Файл скачан ботом напрямую с Kie перед отправкой в Telegram."
+            "Результат скачан ботом напрямую с Kie. Ниже отправлены "
+            "предпросмотр и оригинальный файл."
         )
         try:
             if not record.result_urls:
@@ -98,19 +99,18 @@ class KieGenerationWorker(BaseKieGenerationWorker):
                     mime_type=result.mime_type,
                     video=request.model.is_video,
                 )
-                upload = BufferedInputFile(result.payload, filename=filename)
                 if request.model.is_video:
-                    await self._send_video_with_document_fallback(
+                    await self._send_video_and_document(
                         chat_id=chat_id,
-                        upload=upload,
                         payload=result.payload,
                         filename=filename,
                         caption=item_caption,
                     )
                 else:
-                    await self._bot.send_document(
-                        chat_id,
-                        document=upload,
+                    await self._send_image_and_document(
+                        chat_id=chat_id,
+                        payload=result.payload,
+                        filename=filename,
                         caption=item_caption,
                     )
         except TelegramAPIError:
@@ -124,32 +124,66 @@ class KieGenerationWorker(BaseKieGenerationWorker):
                 record.task_id,
             )
 
-    async def _send_video_with_document_fallback(
+    async def _send_image_and_document(
         self,
         *,
         chat_id: int,
-        upload: BufferedInputFile,
         payload: bytes,
         filename: str,
         caption: str | None,
     ) -> None:
+        preview_sent = True
+        try:
+            await self._bot.send_photo(
+                chat_id,
+                photo=BufferedInputFile(payload, filename=filename),
+                caption=caption,
+            )
+        except TelegramBadRequest as error:
+            preview_sent = False
+            logger.warning(
+                "Telegram rejected Kie image preview; sending original document: %s",
+                error,
+            )
+        document_caption = "Оригинальный файл изображения."
+        if not preview_sent and caption:
+            document_caption = caption + "\n\n" + document_caption
+        await self._bot.send_document(
+            chat_id,
+            document=BufferedInputFile(payload, filename=filename),
+            caption=document_caption,
+        )
+
+    async def _send_video_and_document(
+        self,
+        *,
+        chat_id: int,
+        payload: bytes,
+        filename: str,
+        caption: str | None,
+    ) -> None:
+        preview_sent = True
         try:
             await self._bot.send_video(
                 chat_id,
-                video=upload,
+                video=BufferedInputFile(payload, filename=filename),
                 caption=caption,
                 supports_streaming=True,
             )
         except TelegramBadRequest as error:
+            preview_sent = False
             logger.warning(
                 "Telegram rejected Kie video preview; sending original document: %s",
                 error,
             )
-            await self._bot.send_document(
-                chat_id,
-                document=BufferedInputFile(payload, filename=filename),
-                caption=(caption or "") + "\n\nОригинальный видеофайл.",
-            )
+        document_caption = "Оригинальный видеофайл."
+        if not preview_sent and caption:
+            document_caption = caption + "\n\n" + document_caption
+        await self._bot.send_document(
+            chat_id,
+            document=BufferedInputFile(payload, filename=filename),
+            caption=document_caption,
+        )
 
     async def _download_result(self, url: str) -> _DownloadedResult:
         user_agent = str(
