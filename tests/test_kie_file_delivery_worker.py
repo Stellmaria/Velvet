@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
 from aiogram.types import BufferedInputFile
 
@@ -32,8 +32,9 @@ class KieOriginalFileDeliveryTests(unittest.IsolatedAsyncioTestCase):
             usd_to_rub=Decimal("100"),
         )
 
-    async def test_image_result_is_sent_as_original_document(self) -> None:
+    async def test_image_result_is_sent_as_preview_and_original_document(self) -> None:
         bot = SimpleNamespace(
+            send_photo=AsyncMock(),
             send_document=AsyncMock(),
             send_video=AsyncMock(),
             send_message=AsyncMock(),
@@ -66,17 +67,30 @@ class KieOriginalFileDeliveryTests(unittest.IsolatedAsyncioTestCase):
                 record=record,
             )
 
+        bot.send_photo.assert_awaited_once()
         bot.send_document.assert_awaited_once()
         bot.send_video.assert_not_awaited()
-        call = bot.send_document.await_args
-        document = call.kwargs["document"]
+
+        photo_call = bot.send_photo.await_args
+        photo = photo_call.kwargs["photo"]
+        self.assertIsInstance(photo, BufferedInputFile)
+        self.assertEqual(b"original-png-bytes", photo.data)
+        self.assertEqual("meow-provider-123-1.png", photo.filename)
+        self.assertIn("предпросмотр и оригинальный файл", photo_call.kwargs["caption"])
+
+        document_call = bot.send_document.await_args
+        document = document_call.kwargs["document"]
         self.assertIsInstance(document, BufferedInputFile)
         self.assertEqual(b"original-png-bytes", document.data)
         self.assertEqual("meow-provider-123-1.png", document.filename)
-        self.assertIn("скачан ботом напрямую", call.kwargs["caption"])
+        self.assertEqual(
+            "Оригинальный файл изображения.",
+            document_call.kwargs["caption"],
+        )
 
-    async def test_video_result_is_downloaded_then_uploaded_to_telegram(self) -> None:
+    async def test_video_result_is_sent_as_preview_and_original_document(self) -> None:
         bot = SimpleNamespace(
+            send_photo=AsyncMock(),
             send_document=AsyncMock(),
             send_video=AsyncMock(),
             send_message=AsyncMock(),
@@ -111,20 +125,58 @@ class KieOriginalFileDeliveryTests(unittest.IsolatedAsyncioTestCase):
             )
 
         bot.send_video.assert_awaited_once()
-        call = bot.send_video.await_args
-        self.assertEqual(100, call.args[0])
-        video = call.kwargs["video"]
+        bot.send_document.assert_awaited_once()
+        bot.send_photo.assert_not_awaited()
+
+        video_call = bot.send_video.await_args
+        self.assertEqual(100, video_call.args[0])
+        video = video_call.kwargs["video"]
         self.assertIsInstance(video, BufferedInputFile)
         self.assertEqual(b"original-mp4-bytes", video.data)
         self.assertEqual("meow-video-1-1.mp4", video.filename)
-        self.assertIs(True, call.kwargs["supports_streaming"])
-        bot.send_document.assert_not_awaited()
+        self.assertIs(True, video_call.kwargs["supports_streaming"])
 
-    async def test_rejected_video_preview_falls_back_to_original_document(self) -> None:
+        document_call = bot.send_document.await_args
+        document = document_call.kwargs["document"]
+        self.assertIsInstance(document, BufferedInputFile)
+        self.assertEqual(b"original-mp4-bytes", document.data)
+        self.assertEqual("meow-video-1-1.mp4", document.filename)
+        self.assertEqual("Оригинальный видеофайл.", document_call.kwargs["caption"])
+
+    async def test_rejected_image_preview_still_sends_original_document(self) -> None:
+        from aiogram.exceptions import TelegramBadRequest
+        from aiogram.methods import SendPhoto
+
+        bot = SimpleNamespace(
+            send_photo=AsyncMock(
+                side_effect=TelegramBadRequest(
+                    method=SendPhoto(chat_id=100, photo="file-id"),
+                    message="photo invalid dimensions",
+                )
+            ),
+            send_document=AsyncMock(),
+            send_video=AsyncMock(),
+            send_message=AsyncMock(),
+        )
+        worker = self._worker(bot)
+
+        await worker._send_image_and_document(
+            chat_id=100,
+            payload=b"image",
+            filename="result.png",
+            caption="Готово",
+        )
+
+        bot.send_document.assert_awaited_once()
+        call = bot.send_document.await_args
+        self.assertEqual("Готово\n\nОригинальный файл изображения.", call.kwargs["caption"])
+
+    async def test_rejected_video_preview_still_sends_original_document(self) -> None:
         from aiogram.exceptions import TelegramBadRequest
         from aiogram.methods import SendVideo
 
         bot = SimpleNamespace(
+            send_photo=AsyncMock(),
             send_document=AsyncMock(),
             send_video=AsyncMock(
                 side_effect=TelegramBadRequest(
@@ -135,21 +187,21 @@ class KieOriginalFileDeliveryTests(unittest.IsolatedAsyncioTestCase):
             send_message=AsyncMock(),
         )
         worker = self._worker(bot)
-        upload = BufferedInputFile(b"video", filename="result.mp4")
 
-        await worker._send_video_with_document_fallback(
+        await worker._send_video_and_document(
             chat_id=100,
-            upload=upload,
             payload=b"video",
             filename="result.mp4",
             caption="Готово",
         )
 
-        bot.send_document.assert_awaited_once_with(
-            100,
-            document=ANY,
-            caption="Готово\n\nОригинальный видеофайл.",
-        )
+        bot.send_document.assert_awaited_once()
+        call = bot.send_document.await_args
+        document = call.kwargs["document"]
+        self.assertIsInstance(document, BufferedInputFile)
+        self.assertEqual(b"video", document.data)
+        self.assertEqual("result.mp4", document.filename)
+        self.assertEqual("Готово\n\nОригинальный видеофайл.", call.kwargs["caption"])
 
     def test_result_filename_uses_provider_extension_when_available(self) -> None:
         self.assertEqual(
