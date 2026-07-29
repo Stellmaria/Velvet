@@ -100,6 +100,28 @@ class SupervisorTestEnvironmentTests(unittest.TestCase):
             runner.call_args.kwargs["env"]["TEST_DATABASE_URL"],
         )
 
+    def test_live_grs_credentials_are_not_forwarded_to_tests(self) -> None:
+        completed = SimpleNamespace(returncode=0, stdout="ok")
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "GRS_API_KEY": "production-secret",
+                    "GRS_BASE_URL": "https://private-grs.example",
+                },
+                clear=False,
+            ),
+            patch(
+                "velvet_supervisor.git_ops.subprocess.run",
+                return_value=completed,
+            ) as runner,
+        ):
+            self._repository(None).run_tests()
+
+        environment = runner.call_args.kwargs["env"]
+        self.assertEqual("", environment["GRS_API_KEY"])
+        self.assertEqual("https://grsaiapi.com", environment["GRS_BASE_URL"])
+
 
 if __name__ == "__main__":
     unittest.main()
