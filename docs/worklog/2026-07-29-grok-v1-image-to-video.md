@@ -3,7 +3,7 @@
 - Дата: 2026-07-29
 - ID: 2026-07-29-grok-v1-image-to-video
 - Линия/фаза: Мяу / генерация видео / Grok Imagine v1
-- Статус: частично
+- Статус: завершено
 - Ветка: agent/grok-v1-image-to-video
 - Базовый commit: 6e2ae830df072b230ab0d00c9ca13ba65205f22b
 
@@ -61,11 +61,14 @@
 - перед постановкой задачи показываются параметры и расчётная себестоимость в USD и RUB;
 - общий AI budget проверяется до enqueue;
 - session-based `dedupe_key` защищает от двойной платной постановки;
-- provider input содержит одно `image_urls`, `prompt`, `mode`, `duration`, `resolution`, `aspect_ratio` и `nsfw_checker=false`;
+- доменный запрос хранит Mature-настройку, а Grok v1 compatibility adapter перед provider call удаляет недокументированный `nsfw_checker` и преобразует `duration` в строку;
+- provider получает одно `image_urls`, `prompt`, `mode`, строковый `duration`, `resolution` и `aspect_ratio`;
 - готовый MP4 скачивается worker-ом и загружается в Telegram через `BufferedInputFile`;
 - основной delivery использует `send_video(..., supports_streaming=True)`, при `TelegramBadRequest` выполняется fallback на оригинальный документ;
 - лимит результата 50 МБ, timeout 120 секунд и три попытки скачивания;
 - корневой экран `Мяу` теперь описывает рабочие ветки `Создать` и `Оживить`;
+- callback-data видео использует отдельный разделитель, поэтому форматы `9:16` и `16:9` не конфликтуют с сериализацией aiogram;
+- обновлён generated Telegram navigation inventory: 501 Python-файл, 83 файла с кнопками и 940 inline-кнопок без нарушений;
 - добавлены unit-тесты UI, provider payload, стоимости, fallback-значений, конфигурации и доставки видео.
 
 ### Миграции и совместимость
@@ -80,25 +83,25 @@ KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL=grok-imagine/image-to-video
 
 ### Проверки
 
-- type check, GitHub Actions run `30418391282`: успешно;
-- Docker build, GitHub Actions run `30418391309`: успешно;
-- project notes contract run `30418391356`: первый запуск выявил несоответствие шаблону; журнал исправлен;
-- full tests run `30418391314`: первый запуск выявил конфликт `:` в callback-data и устаревший generated inventory; оба расхождения исправлены;
-- повторные проверки выполняются после исправлений.
+- full tests, GitHub Actions run `30419052211`: успешно, 1538 тестов за 65,547 сек;
+- type check, GitHub Actions run `30419052236`: успешно;
+- Docker build, GitHub Actions run `30419052217`: успешно;
+- project notes contract, GitHub Actions run `30419052206`: успешно;
+- отдельные тесты подтверждают точный provider payload Grok v1, строковую длительность, отсутствие недокументированного поля, расчёт стоимости и byte-based Telegram delivery;
+- финальный CI после этой записи должен подтвердить только изменение статуса и операционной памяти.
 
 ### PR и commit
 
-- Draft PR: #363 `Добавить Grok Imagine v1 для фото в видео`;
+- PR: #363 `Добавить Grok Imagine v1 для фото в видео`;
 - ветка: `agent/grok-v1-image-to-video`;
-- head после исправления callback и инвентаря: `658526b41871b9b4ba3b767b2989a46c5aaef522`;
-- текущий commit фиксирует допустимый промежуточный статус журнала.
+- проверенный head перед финальной записью: `bd955f148ec1f31295bfa60b82952d85d386301f`;
+- merge commit фиксируется GitHub после зелёного финального CI.
 
 ### Незавершённое
 
-- дождаться повторного CI и исправить оставшиеся расхождения;
-- после зелёного CI изменить статус журнала на `завершено` и зафиксировать итоговые run/merge commit;
-- выполнить живую платную проверку после обновления локального бота.
+- живая платная проверка через локальный Telegram-бот после слияния, Supervisor update и перезапуска;
+- будущие модели Grok 1.5, upscale и extend не входят в эту фазу.
 
 ### Следующий шаг
 
-Проверить повторные GitHub Actions, затем подготовить PR к слиянию в `main`.
+Слить PR #363 в `main`, обновить локальный бот через Supervisor и выполнить одну минимальную 480p/6 sec генерацию для проверки внешней доступности модели и тарифа Kie.ai.
