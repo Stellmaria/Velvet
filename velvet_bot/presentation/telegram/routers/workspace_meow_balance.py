@@ -12,6 +12,7 @@ from velvet_bot.core.config.kie import KieSettings
 from velvet_bot.database import Database
 from velvet_bot.infrastructure.ai import KieClient, KieError
 from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
+from velvet_bot.services.nbrb_exchange_rate import NbrbExchangeRateRepository
 from velvet_bot.workspace_ui import workspace_callback
 
 _MODEL_NAMES = {
@@ -81,6 +82,12 @@ async def handle_meow_balance(
         balance_error = str(error)
 
     summary, recent = await _load_kie_usage(database)
+    stored_rate = await NbrbExchangeRateRepository(database).latest_success()
+    usd_to_rub = (
+        stored_rate.usd_to_rub
+        if stored_rate is not None and stored_rate.usd_to_rub > 0
+        else kie_settings.usd_to_rub
+    )
     text = _render_balance(
         live_credits=live_credits,
         balance_error=balance_error,
@@ -88,10 +95,16 @@ async def handle_meow_balance(
         recent=recent,
         credit_usd=kie_settings.credit_usd,
         credit_byn=kie_settings.credit_byn,
-        usd_to_rub=kie_settings.usd_to_rub,
+        usd_to_rub=usd_to_rub,
         concurrency=kie_settings.max_concurrent_generations,
         attempts=kie_settings.generation_max_attempts,
     )
+    if stored_rate is not None:
+        text += (
+            "\nКурс USD/RUB: "
+            f"<b>{_format_number(stored_rate.usd_to_rub, places=4, minimum_places=4)} ₽</b> "
+            f"по НБРБ на <b>{stored_rate.effective_date:%d.%m.%Y}</b>."
+        )
     keyboard = build_kie_balance_keyboard(workspace_id=callback_data.workspace_id)
     if isinstance(callback.message, Message):
         try:
