@@ -18,6 +18,14 @@ from velvet_bot.presentation.telegram.routers.workspace_meow import (
     handle_meow_reference_message,
     handle_meow_reference_text,
 )
+from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
+    MeowVideoCallback,
+    MeowVideoForm,
+    handle_meow_video_action,
+    handle_meow_video_entry,
+    handle_meow_video_prompt,
+    handle_meow_video_reference_message,
+)
 from velvet_bot.presentation.telegram.workspace_command_menu import (
     install_workspace_scoped_commands,
 )
@@ -97,7 +105,7 @@ async def handle_workspace_home(
 
 
 def register_workspace_home(router: Router) -> None:
-    """Register canonical home and its owner-only Meow flow at bundle level."""
+    """Register canonical home plus owner-only photo and video Meow flows."""
 
     router.callback_query.register(
         handle_workspace_home,
@@ -108,8 +116,26 @@ def register_workspace_home(router: Router) -> None:
         WorkspaceCallback.filter(F.action == "meow"),
     )
     router.callback_query.register(
+        handle_meow_video_entry,
+        MeowCallback.filter(F.action == "animate"),
+    )
+    router.callback_query.register(
+        handle_meow_video_action,
+        MeowVideoCallback.filter(),
+    )
+    router.callback_query.register(
         handle_meow_action,
         MeowCallback.filter(),
+    )
+    router.message.register(
+        handle_meow_video_reference_message,
+        MeowVideoForm.waiting_reference,
+        F.photo | F.document,
+    )
+    router.message.register(
+        handle_meow_video_prompt,
+        MeowVideoForm.waiting_prompt,
+        F.text,
     )
     router.message.register(
         handle_meow_reference_message,
