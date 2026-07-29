@@ -22,9 +22,13 @@ from velvet_bot.domains.media_generation import (
     KieTaskState,
     KieUploadedFile,
 )
-from velvet_bot.domains.media_generation.worker import KieGenerationWorker
+from velvet_bot.domains.media_generation.worker import (
+    KieGenerationWorker,
+    render_progress_bar,
+)
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import WorkspaceModuleSetting
+from velvet_bot.infrastructure.ai import KieError
 from velvet_bot.presentation.telegram.routers.workspace_meow import (
     build_meow_mode_keyboard,
     build_meow_root_keyboard,
@@ -76,6 +80,38 @@ def _reference() -> KieReferenceImage:
         file_size=3,
         character_id=10,
         reference_id=20,
+    )
+
+
+def _task(request: KieGenerationRequest, *, attempt_count: int = 1) -> AITask:
+    now = datetime.now(UTC)
+    return AITask(
+        id=uuid4(),
+        scope=AIBudgetScope.VISION,
+        task_type=KIE_GENERATION_TASK_TYPE,
+        status=AITaskStatus.RUNNING,
+        priority=40,
+        payload={
+            "request": request.to_task_payload(),
+            "chat_id": 100,
+            "user_id": 200,
+            "workspace_id": 9,
+        },
+        result={},
+        dedupe_key=None,
+        attempt_count=attempt_count,
+        max_attempts=3,
+        not_before=now,
+        locked_by="kie-media-generation",
+        locked_at=now,
+        last_error_type=None,
+        last_error=None,
+        last_retry_delay_seconds=None,
+        estimated_cost_rub=Decimal("15"),
+        created_by=200,
+        created_at=now,
+        updated_at=now,
+        completed_at=None,
     )
 
 
@@ -158,6 +194,11 @@ class MeowUIContractTests(unittest.TestCase):
         self.assertIn("из базы 1, отправлено 1", text)
         self.assertIn("Контент: <b>Mature</b>", text)
 
+    def test_progress_bar_is_bounded_and_visible(self) -> None:
+        self.assertEqual("░░░░░░░░░░", render_progress_bar(-5))
+        self.assertEqual("█████░░░░░", render_progress_bar(50))
+        self.assertEqual("██████████", render_progress_bar(120))
+
 
 class _FakeExecutor:
     def __init__(self) -> None:
@@ -173,7 +214,10 @@ class _FakeBot:
     def __init__(self) -> None:
         self.send_photo = AsyncMock()
         self.send_video = AsyncMock()
-        self.send_message = AsyncMock()
+        self.send_message = AsyncMock(
+            return_value=SimpleNamespace(message_id=777)
+        )
+        self.edit_message_text = AsyncMock()
         self.downloaded_file_ids: list[str] = []
 
     async def download(self, file_id, *, destination, timeout, seek):
@@ -186,7 +230,6 @@ class _FakeBot:
 
 class MeowWorkerTests(unittest.IsolatedAsyncioTestCase):
     async def test_worker_uploads_reference_then_generates_seedream_photo(self) -> None:
-        now = datetime.now(UTC)
         request = KieGenerationRequest(
             model=KieModelAlias.SEEDREAM_5_PRO,
             input_mode=KieInputMode.PHOTO_TEXT,
@@ -196,34 +239,7 @@ class MeowWorkerTests(unittest.IsolatedAsyncioTestCase):
             aspect_ratio="9:16",
             resolution="2K",
         )
-        task = AITask(
-            id=uuid4(),
-            scope=AIBudgetScope.VISION,
-            task_type=KIE_GENERATION_TASK_TYPE,
-            status=AITaskStatus.RUNNING,
-            priority=40,
-            payload={
-                "request": request.to_task_payload(),
-                "chat_id": 100,
-                "user_id": 200,
-                "workspace_id": 9,
-            },
-            result={},
-            dedupe_key=None,
-            attempt_count=1,
-            max_attempts=3,
-            not_before=now,
-            locked_by="kie-media-generation",
-            locked_at=now,
-            last_error_type=None,
-            last_error=None,
-            last_retry_delay_seconds=None,
-            estimated_cost_rub=Decimal("15"),
-            created_by=200,
-            created_at=now,
-            updated_at=now,
-            completed_at=None,
-        )
+        task = _task(request)
         queue = SimpleNamespace(
             claim_next=AsyncMock(return_value=task),
             heartbeat=AsyncMock(return_value=True),
@@ -231,7 +247,9 @@ class MeowWorkerTests(unittest.IsolatedAsyncioTestCase):
             fail=AsyncMock(return_value=None),
         )
         client = SimpleNamespace(
-            models=KieModelCatalog(seedream_5_pro="seedream/test"),
+            models=KieModelCatalog(
+                seedream_5_pro_image="seedream/5-pro-image-to-image"
+            ),
             upload_reference=AsyncMock(
                 return_value=KieUploadedFile(
                     file_url="https://temp.example/reference.jpg"
@@ -278,9 +296,70 @@ class MeowWorkerTests(unittest.IsolatedAsyncioTestCase):
         queue.fail.assert_not_awaited()
         bot.send_photo.assert_awaited_once()
         bot.send_video.assert_not_awaited()
+        bot.edit_message_text.assert_awaited()
+        progress_texts = [
+            call.args[0]
+            for call in bot.edit_message_text.await_args_list
+        ]
+        self.assertTrue(any("100%" in text for text in progress_texts))
         self.assertEqual("kie", executor.context.provider)
         self.assertEqual("media.generate", executor.context.operation)
         self.assertEqual(1, executor.context.metadata["reference_count"])
+
+    async def test_failed_generation_is_requeued_and_progress_discloses_retry(self) -> None:
+        request = KieGenerationRequest(
+            model=KieModelAlias.NANO_BANANA_PRO,
+            input_mode=KieInputMode.TEXT,
+            prompt="portrait",
+            resolution="1K",
+        )
+        task = _task(request)
+        failure = SimpleNamespace(
+            will_retry=True,
+            retry_delay_seconds=5,
+        )
+        queue = SimpleNamespace(
+            claim_next=AsyncMock(return_value=task),
+            heartbeat=AsyncMock(return_value=True),
+            complete=AsyncMock(),
+            fail=AsyncMock(return_value=failure),
+        )
+        client = SimpleNamespace(
+            models=KieModelCatalog(),
+            create_task=AsyncMock(side_effect=KieError("provider unavailable")),
+            wait_for_task=AsyncMock(),
+            upload_reference=AsyncMock(),
+        )
+        bot = _FakeBot()
+        worker = KieGenerationWorker(
+            bot=bot,
+            queue=queue,
+            client=client,
+            executor=_FakeExecutor(),
+            pricing=KiePricing(),
+            usd_to_rub=Decimal("100"),
+        )
+
+        processed = await worker.process_once()
+
+        self.assertEqual(1, processed)
+        queue.complete.assert_not_awaited()
+        queue.fail.assert_awaited_once()
+        self.assertEqual(
+            5,
+            queue.fail.await_args.kwargs["base_delay_seconds"],
+        )
+        self.assertEqual(
+            30,
+            queue.fail.await_args.kwargs["max_delay_seconds"],
+        )
+        progress_texts = [
+            call.args[0]
+            for call in bot.edit_message_text.await_args_list
+        ]
+        self.assertTrue(
+            any("Автоповтор 2/3 через 5 сек." in text for text in progress_texts)
+        )
 
 
 if __name__ == "__main__":

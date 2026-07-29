@@ -71,9 +71,43 @@ class KieMediaProviderTests(unittest.TestCase):
         payload = request.to_input()
         self.assertEqual("high", payload["quality"])
         self.assertEqual(["https://example.com/ref.jpg"], payload["image_urls"])
+        self.assertEqual("png", payload["output_format"])
         self.assertIs(False, payload["nsfw_checker"])
         self.assertTrue(str(payload["prompt"]).strip())
         self.assertEqual(Decimal("0.15"), KiePricing().estimate_usd(request))
+
+    def test_seedream_text_payload_omits_image_urls(self) -> None:
+        request = KieGenerationRequest(
+            model=KieModelAlias.SEEDREAM_5_PRO,
+            input_mode=KieInputMode.TEXT,
+            prompt="portrait",
+            content_mode=KieContentMode.MATURE,
+            resolution="1K",
+        )
+        payload = request.to_input()
+        self.assertNotIn("image_urls", payload)
+        self.assertEqual("basic", payload["quality"])
+        self.assertIs(False, payload["nsfw_checker"])
+
+    def test_seedream_catalog_routes_text_and_image_endpoints(self) -> None:
+        catalog = KieModelCatalog(
+            seedream_5_pro_text="seedream/5-pro-text-to-image",
+            seedream_5_pro_image="seedream/5-pro-image-to-image",
+        )
+        self.assertEqual(
+            "seedream/5-pro-text-to-image",
+            catalog.provider_model(
+                KieModelAlias.SEEDREAM_5_PRO,
+                input_mode=KieInputMode.TEXT,
+            ),
+        )
+        self.assertEqual(
+            "seedream/5-pro-image-to-image",
+            catalog.provider_model(
+                KieModelAlias.SEEDREAM_5_PRO,
+                input_mode=KieInputMode.PHOTO_TEXT,
+            ),
+        )
 
     def test_photo_models_expose_only_supported_quality(self) -> None:
         self.assertEqual(
@@ -137,7 +171,9 @@ class KieMediaProviderTests(unittest.TestCase):
 
         client = KieClient(
             api_key="secret",
-            models=KieModelCatalog(seedream_5_pro="seedream/test"),
+            models=KieModelCatalog(
+                seedream_5_pro_image="seedream/5-pro-image-to-image"
+            ),
             file_upload_base_url="https://upload.example",
             transport=transport,
         )
@@ -159,8 +195,9 @@ class KieMediaProviderTests(unittest.TestCase):
         self.assertEqual("reference.jpg", request_payload["fileName"])
         self.assertTrue(str(request_payload["base64Data"]).startswith("data:image/jpeg;base64,"))
 
-    def test_client_create_and_wait(self) -> None:
+    def test_client_create_wait_and_progress_callback(self) -> None:
         calls: list[tuple[str, str, object]] = []
+        updates: list[tuple[KieTaskState, int]] = []
         responses = iter(
             [
                 {"code": 200, "msg": "success", "data": {"taskId": "task-1"}},
@@ -190,7 +227,7 @@ class KieMediaProviderTests(unittest.TestCase):
 
         client = KieClient(
             api_key="secret",
-            models=KieModelCatalog(seedream_5_pro="seedream/test"),
+            models=KieModelCatalog(),
             timeout_seconds=5,
             poll_interval_seconds=1,
             task_timeout_seconds=10,
@@ -204,14 +241,21 @@ class KieMediaProviderTests(unittest.TestCase):
         )
 
         async def scenario():
+            async def on_update(record, poll_count):
+                updates.append((record.state, poll_count))
+
             task_id = await client.create_task(request)
-            return await client.wait_for_task(task_id)
+            return await client.wait_for_task(task_id, on_update=on_update)
 
         with patch("velvet_bot.infrastructure.ai.kie.asyncio.sleep", return_value=None):
             record = asyncio.run(scenario())
         self.assertEqual(KieTaskState.SUCCESS, record.state)
         self.assertEqual(("https://cdn/result.png",), record.result_urls)
         self.assertEqual(18, record.consumed_credits)
+        self.assertEqual(
+            [(KieTaskState.GENERATING, 1), (KieTaskState.SUCCESS, 2)],
+            updates,
+        )
         create_payload = calls[0][2]
         self.assertIsInstance(create_payload, dict)
         self.assertEqual("nano-banana-pro", create_payload["model"])
@@ -230,7 +274,7 @@ class KieMediaProviderTests(unittest.TestCase):
 
         client = KieClient(
             api_key="secret",
-            models=KieModelCatalog(seedream_5_pro="seedream/test"),
+            models=KieModelCatalog(),
             transport=transport,
             poll_interval_seconds=1,
         )
@@ -241,7 +285,6 @@ class KieMediaProviderTests(unittest.TestCase):
         values = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
-            "KIE_SEEDREAM_5_PRO_MODEL": "seedream/test",
         }
         with patch.dict(os.environ, values, clear=True), patch(
             "velvet_bot.core.config.kie.load_dotenv"
@@ -249,30 +292,39 @@ class KieMediaProviderTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "KIE_USD_TO_RUB"):
                 load_kie_settings()
 
-    def test_settings_require_seedream_model_when_enabled(self) -> None:
+    def test_settings_require_both_seedream_routes_when_explicitly_empty(self) -> None:
         base = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
             "KIE_USD_TO_RUB": "100",
+            "KIE_SEEDREAM_5_PRO_TEXT_MODEL": "",
+            "KIE_SEEDREAM_5_PRO_IMAGE_MODEL": "",
         }
         with patch.dict(os.environ, base, clear=True), patch(
             "velvet_bot.core.config.kie.load_dotenv"
         ):
-            with self.assertRaisesRegex(RuntimeError, "model id"):
+            with self.assertRaisesRegex(RuntimeError, "обоих режимов Seedream"):
                 load_kie_settings()
 
-    def test_settings_load_photo_model_and_upload_defaults(self) -> None:
+    def test_settings_load_seedream_routes_and_upload_defaults(self) -> None:
         values = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
             "KIE_USD_TO_RUB": "100",
-            "KIE_SEEDREAM_5_PRO_MODEL": "seedream/5-pro-image",
         }
         with patch.dict(os.environ, values, clear=True), patch(
             "velvet_bot.core.config.kie.load_dotenv"
         ):
             settings = load_kie_settings()
         self.assertEqual("nano-banana-pro", settings.models.nano_banana_pro)
+        self.assertEqual(
+            "seedream/5-pro-text-to-image",
+            settings.models.seedream_5_pro_text,
+        )
+        self.assertEqual(
+            "seedream/5-pro-image-to-image",
+            settings.models.seedream_5_pro_image,
+        )
         self.assertEqual(
             "https://kieai.redpandaai.co",
             settings.file_upload_base_url,
