@@ -13,6 +13,12 @@ def __getattr__(name: str) -> Any:
 
     install_runtime_stability()
 
+    from velvet_bot.app.channel_analytics_datetime_compat import (
+        install_channel_analytics_datetime_compat,
+    )
+
+    install_channel_analytics_datetime_compat()
+
     from velvet_bot.app.bootstrap import run_application as application
 
     async def configured_run_application() -> None:
