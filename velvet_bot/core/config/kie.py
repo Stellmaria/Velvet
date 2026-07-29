@@ -27,6 +27,8 @@ class KieSettings:
     usd_to_rub: Decimal
     models: KieModelCatalog
     pricing: KiePricing
+    grs_api_key: str | None = None
+    grs_base_url: str = "https://grsaiapi.com"
     credit_usd: Decimal = Decimal("0.005")
     credit_byn: Decimal = Decimal("0.019")
     max_concurrent_generations: int = 4
@@ -40,6 +42,7 @@ def load_kie_settings() -> KieSettings:
         variable_name="KIE_ENABLED",
     )
     api_key = os.getenv("KIE_API_KEY", "").strip() or None
+    grs_api_key = os.getenv("GRS_API_KEY", "").strip() or None
     base_url = (
         os.getenv("KIE_BASE_URL", "https://api.kie.ai/api/v1")
         .strip()
@@ -50,10 +53,17 @@ def load_kie_settings() -> KieSettings:
         .strip()
         .rstrip("/")
     )
+    grs_base_url = (
+        os.getenv("GRS_BASE_URL", "https://grsaiapi.com")
+        .strip()
+        .rstrip("/")
+    )
     if not base_url:
         raise RuntimeError("KIE_BASE_URL не может быть пустым.")
     if not file_upload_base_url:
         raise RuntimeError("KIE_FILE_UPLOAD_BASE_URL не может быть пустым.")
+    if not grs_base_url:
+        raise RuntimeError("GRS_BASE_URL не может быть пустым.")
 
     legacy_seedream = os.getenv("KIE_SEEDREAM_5_PRO_MODEL", "").strip()
     legacy_grok_video = os.getenv("KIE_GROK_IMAGINE_VIDEO_MODEL", "").strip()
@@ -85,8 +95,14 @@ def load_kie_settings() -> KieSettings:
             "KIE_SEEDREAM_5_PRO_IMAGE_MODEL",
             legacy_seedream or "seedream/5-pro-image-to-image",
         ).strip(),
+        nano_banana_2=os.getenv(
+            "GRS_NANO_BANANA_2_MODEL",
+            "nano-banana-2",
+        ).strip(),
         nano_banana_pro=(
-            os.getenv("KIE_NANO_BANANA_PRO_MODEL", "nano-banana-pro").strip()
+            os.getenv("GRS_NANO_BANANA_PRO_MODEL", "").strip()
+            or os.getenv("KIE_NANO_BANANA_PRO_MODEL", "").strip()
+            or "nano-banana-pro"
         ),
         grok_imagine_video=grok_image_to_video,
         seedance_15_pro_video=seedance_image_to_video,
@@ -114,6 +130,7 @@ def load_kie_settings() -> KieSettings:
         raise RuntimeError("KIE_ENABLED=true требует KIE_CREDIT_BYN больше нуля.")
     if enabled:
         required_routes = (
+            (KieModelAlias.NANO_BANANA_2, KieInputMode.TEXT),
             (KieModelAlias.NANO_BANANA_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.PHOTO_TEXT),
@@ -126,7 +143,7 @@ def load_kie_settings() -> KieSettings:
                 models.provider_model(alias, input_mode=input_mode)
         except ValueError as error:
             raise RuntimeError(
-                "KIE_ENABLED=true требует model id для Nano Banana Pro, "
+                "KIE_ENABLED=true требует model id для Nano Banana 2/Pro в GRS, "
                 "обоих режимов Seedream 5 Pro и трёх image-to-video моделей."
             ) from error
 
@@ -146,6 +163,14 @@ def load_kie_settings() -> KieSettings:
         nano_4k_usd=_env_decimal(
             "KIE_NANO_4K_USD",
             "0.12",
+        ),
+        nano_banana_2_usd=_env_decimal(
+            "GRS_NANO_BANANA_2_USD",
+            "0.02",
+        ),
+        nano_banana_pro_usd=_env_decimal(
+            "GRS_NANO_BANANA_PRO_USD",
+            "0.03",
         ),
         grok_480p_usd_per_second=_env_decimal(
             "KIE_GROK_480P_USD_PER_SECOND",
@@ -193,6 +218,8 @@ def load_kie_settings() -> KieSettings:
         api_key=api_key,
         base_url=base_url,
         file_upload_base_url=file_upload_base_url,
+        grs_api_key=grs_api_key,
+        grs_base_url=grs_base_url,
         timeout_seconds=parse_bounded_integer(
             os.getenv("KIE_TIMEOUT_SECONDS", "60"),
             variable_name="KIE_TIMEOUT_SECONDS",
