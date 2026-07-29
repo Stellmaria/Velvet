@@ -35,8 +35,8 @@ class AITaskRequest:
             raise ValueError("AI task_type не может быть пустым.")
         if not 0 <= int(self.priority) <= 1000:
             raise ValueError("AI priority должен быть от 0 до 1000.")
-        if not 1 <= int(self.max_attempts) <= 20:
-            raise ValueError("AI max_attempts должен быть от 1 до 20.")
+        if not 1 <= int(self.max_attempts) <= 50:
+            raise ValueError("AI max_attempts должен быть от 1 до 50.")
         if self.estimated_cost_rub < 0:
             raise ValueError("Оценочная стоимость AI-задачи не может быть отрицательной.")
         if self.dedupe_key is not None and not self.dedupe_key.strip():

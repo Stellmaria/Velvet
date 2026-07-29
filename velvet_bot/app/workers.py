@@ -23,7 +23,7 @@ from velvet_bot.domains.ai_usage import (
     build_ai_task_queue_service,
     build_ai_usage_service,
 )
-from velvet_bot.domains.media_generation.file_delivery_worker import KieGenerationWorker
+from velvet_bot.domains.media_generation.economy_worker import KieGenerationWorker
 from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.vision_batches import build_vision_batch_consumer
@@ -188,7 +188,7 @@ def build_worker_manager(
                 PeriodicWorkerSpec(
                     name=worker_name,
                     description=(
-                        "Генерация фото и видео через Мяу "
+                        "Экономная генерация фото и видео через Мяу "
                         f"· слот {slot}/{active_kie_settings.max_concurrent_generations}"
                     ),
                     interval_seconds=3,
@@ -337,6 +337,3 @@ def build_worker_manager(
         )
     )
     return manager
-
-
-__all__ = ("build_worker_manager",)
