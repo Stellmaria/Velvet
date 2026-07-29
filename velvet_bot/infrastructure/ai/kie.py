@@ -32,6 +32,7 @@ _DEFAULT_USER_AGENT = (
     "Chrome/131.0.0.0 Safari/537.36"
 )
 _GRS_TASK_PREFIX = "grs:"
+_WAN_27_MODEL_ID = "wan/2-7-image-to-video"
 
 
 class KieError(RuntimeError):
@@ -149,9 +150,13 @@ class KieClient:
             self.grs_api_key is not None or request.model.value == "nano_banana_2"
         ):
             return await self._create_grs_task(request)
+        provider_model = self.models.provider_model_for_request(request)
+        provider_input: Mapping[str, object] = request.to_input()
+        if provider_model == _WAN_27_MODEL_ID:
+            provider_input = _build_wan_27_input(provider_input)
         payload: dict[str, object] = {
-            "model": self.models.provider_model_for_request(request),
-            "input": request.to_input(),
+            "model": provider_model,
+            "input": dict(provider_input),
         }
         if callback_url and callback_url.strip():
             payload["callBackUrl"] = callback_url.strip()
@@ -232,7 +237,7 @@ class KieClient:
             self._transport,
             "GET",
             f"{self.grs_base_url}/v1/api/result?{query}",
-            self._headers(self.grs_api_key),
+            self._headers(self.api_key),
             None,
             self.timeout_seconds,
         )
@@ -299,6 +304,42 @@ class KieClient:
             else KieError
         )
         raise error_type(f"Kie.ai {operation}: code={code}; {message}")
+
+
+def _build_wan_27_input(payload: Mapping[str, object]) -> dict[str, object]:
+    image_urls_value = payload.get("image_urls")
+    image_urls = (
+        [str(item).strip() for item in image_urls_value if str(item).strip()]
+        if isinstance(image_urls_value, (list, tuple))
+        else []
+    )
+    if not image_urls:
+        raise KieProtocolError("Wan 2.7 требует URL первого кадра.")
+    duration = _optional_int(payload.get("duration"))
+    if duration is None or not 2 <= duration <= 15:
+        raise KieProtocolError("Wan 2.7 поддерживает длительность от 2 до 15 секунд.")
+    mode = str(payload.get("wan_mode") or "first").strip()
+    result: dict[str, object] = {
+        "prompt": str(payload.get("prompt") or "").strip(),
+        "first_frame_url": image_urls[0],
+        "resolution": str(payload.get("resolution") or "1080p").strip(),
+        "duration": duration,
+        "prompt_extend": bool(payload.get("prompt_extend", True)),
+        "watermark": False,
+        "nsfw_checker": False,
+    }
+    negative_prompt = str(payload.get("negative_prompt") or "").strip()
+    if negative_prompt:
+        result["negative_prompt"] = negative_prompt
+    if mode == "first_last":
+        if len(image_urls) < 2:
+            raise KieProtocolError(
+                "Wan 2.7 в режиме первого и последнего кадра требует два изображения."
+            )
+        result["last_frame_url"] = image_urls[1]
+    elif mode != "first":
+        raise KieProtocolError(f"Неизвестный режим кадров Wan 2.7: {mode}")
+    return result
 
 
 def _request_json(
