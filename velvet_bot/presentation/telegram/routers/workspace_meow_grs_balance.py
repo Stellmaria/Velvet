@@ -15,9 +15,10 @@ from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
 from velvet_bot.workspace_ui import workspace_callback
 
 _GRS_BALANCE_TIMEOUT_SECONDS = 8
-_USD_QUANTUM = Decimal("0.01")
+_NANO_BANANA_2_CREDITS = Decimal("1200")
+_NANO_BANANA_PRO_CREDITS = Decimal("1800")
+_USD_QUANTUM = Decimal("0.0001")
 _RUB_QUANTUM = Decimal("0.01")
-_BYN_QUANTUM = Decimal("0.01")
 
 
 def build_grs_balance_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
@@ -70,7 +71,10 @@ async def handle_meow_grs_balance(
             file_upload_base_url=kie_settings.file_upload_base_url,
             grs_api_key=kie_settings.grs_api_key,
             grs_base_url=kie_settings.grs_base_url,
-            timeout_seconds=min(kie_settings.timeout_seconds, _GRS_BALANCE_TIMEOUT_SECONDS),
+            timeout_seconds=min(
+                kie_settings.timeout_seconds,
+                _GRS_BALANCE_TIMEOUT_SECONDS,
+            ),
             poll_interval_seconds=kie_settings.poll_interval_seconds,
             task_timeout_seconds=kie_settings.task_timeout_seconds,
         )
@@ -86,8 +90,11 @@ async def handle_meow_grs_balance(
     text = _render_grs_balance(
         credits=credits,
         balance_error=balance_error,
-        credit_usd=kie_settings.credit_usd,
-        credit_byn=kie_settings.credit_byn,
+        nano_banana_2_usd=kie_settings.pricing.nano_banana_2_usd,
+        nano_banana_pro_usd=(
+            kie_settings.pricing.nano_banana_pro_usd
+            or kie_settings.pricing.nano_1k_2k_usd
+        ),
         usd_to_rub=kie_settings.usd_to_rub,
     )
     keyboard = build_grs_balance_keyboard(workspace_id=callback_data.workspace_id)
@@ -104,63 +111,74 @@ def _render_grs_balance(
     *,
     credits: Decimal | None,
     balance_error: str | None,
-    credit_usd: Decimal,
-    credit_byn: Decimal,
+    nano_banana_2_usd: Decimal,
+    nano_banana_pro_usd: Decimal,
     usd_to_rub: Decimal,
 ) -> str:
     lines = ["<b>Мяу · баланс GRS AI</b>", ""]
+    per_credit_usd = _grs_credit_usd(
+        nano_banana_2_usd=nano_banana_2_usd,
+        nano_banana_pro_usd=nano_banana_pro_usd,
+    )
     if credits is None:
         lines.append("Баланс аккаунта: <b>не получен</b>")
     else:
         lines.extend(
             [
                 f"Баланс аккаунта: <b>{_format_credits(credits)} кредитов</b>",
-                "Стоимость остатка: "
-                f"<b>{_format_money(credits, credit_usd=credit_usd, credit_byn=credit_byn, usd_to_rub=usd_to_rub)}</b>",
+                "Расчётная стоимость остатка: "
+                f"<b>{_format_usd_rub(credits * per_credit_usd, usd_to_rub=usd_to_rub)}</b>",
             ]
         )
     if balance_error:
-        lines.extend(["", f"<i>Баланс временно недоступен: {escape(balance_error)}</i>"])
+        lines.extend(
+            [
+                "",
+                f"<i>Баланс временно недоступен: {escape(balance_error)}</i>",
+            ]
+        )
     lines.extend(
         [
             "",
-            "<b>Расчётная стоимость одной генерации</b>",
+            "<b>Расчётная себестоимость одной генерации</b>",
             "• Nano Banana 2: <b>≈ 1 200 кредитов</b> · "
-            + _format_money(
-                Decimal("1200"),
-                credit_usd=credit_usd,
-                credit_byn=credit_byn,
-                usd_to_rub=usd_to_rub,
-            ),
+            + _format_usd_rub(nano_banana_2_usd, usd_to_rub=usd_to_rub),
             "• Nano Banana Pro: <b>≈ 1 800 кредитов</b> · "
-            + _format_money(
-                Decimal("1800"),
-                credit_usd=credit_usd,
-                credit_byn=credit_byn,
-                usd_to_rub=usd_to_rub,
-            ),
+            + _format_usd_rub(nano_banana_pro_usd, usd_to_rub=usd_to_rub),
             "",
-            "Баланс запрашивается только при открытии или обновлении этого экрана. Перед генерацией бот его больше не проверяет.",
+            "Баланс запрашивается только при открытии или обновлении этого экрана. "
+            "Перед генерацией бот его больше не проверяет.",
         ]
     )
     return "\n".join(lines)
 
 
-def _format_credits(value: Decimal) -> str:
-    return f"{int(value.quantize(Decimal('1'), rounding=ROUND_HALF_UP)):,}".replace(",", " ")
-
-
-def _format_money(
-    credits: Decimal,
+def _grs_credit_usd(
     *,
-    credit_usd: Decimal,
-    credit_byn: Decimal,
-    usd_to_rub: Decimal,
-) -> str:
-    usd = (credits * credit_usd).quantize(_USD_QUANTUM, rounding=ROUND_HALF_UP)
+    nano_banana_2_usd: Decimal,
+    nano_banana_pro_usd: Decimal,
+) -> Decimal:
+    rates = []
+    if nano_banana_2_usd > 0:
+        rates.append(nano_banana_2_usd / _NANO_BANANA_2_CREDITS)
+    if nano_banana_pro_usd > 0:
+        rates.append(nano_banana_pro_usd / _NANO_BANANA_PRO_CREDITS)
+    if not rates:
+        return Decimal("0")
+    return sum(rates, Decimal("0")) / Decimal(len(rates))
+
+
+def _format_credits(value: Decimal) -> str:
+    return f"{int(value.quantize(Decimal('1'), rounding=ROUND_HALF_UP)):,}".replace(
+        ",",
+        " ",
+    )
+
+
+def _format_usd_rub(usd: Decimal, *, usd_to_rub: Decimal) -> str:
+    normalized_usd = usd.quantize(_USD_QUANTUM, rounding=ROUND_HALF_UP)
     rub = (usd * usd_to_rub).quantize(_RUB_QUANTUM, rounding=ROUND_HALF_UP)
-    byn = (credits * credit_byn).quantize(_BYN_QUANTUM, rounding=ROUND_HALF_UP)
-    return f"{usd} $ · {rub} ₽ · {byn} BYN"
+    return f"{normalized_usd} $ · {rub} ₽"
 
 
 __all__ = (
