@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from velvet_bot.nbrb_runtime import install_nbrb_exchange_rate
 from velvet_bot.runtime_stability import install_runtime_stability
 
 __all__ = ("run_application",)
@@ -13,7 +12,6 @@ def __getattr__(name: str) -> Any:
         raise AttributeError(name)
 
     install_runtime_stability()
-    install_nbrb_exchange_rate()
 
     from velvet_bot.app.bootstrap import run_application as application
 
