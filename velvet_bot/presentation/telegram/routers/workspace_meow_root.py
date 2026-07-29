@@ -104,10 +104,13 @@ async def handle_meow_root_entry(
         )
         text = (
             "<b>Мяу</b>\n\n"
-            f"<b>Фото</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
-            "Можно использовать текст и референсы из базы или Telegram.\n\n"
+            f"<b>Фото</b> — {grs_line}; Seedream 5 Pro, Qwen Image 2.0, "
+            "Wan 2.7 Image и FLUX.2 Pro через Kie.ai. Отправьте фото или текст: "
+            "бот запросит недостающую часть, покажет итог, настройки и "
+            "предварительную стоимость до запуска. Референсы можно брать из "
+            "системного архива, личных пространств или Telegram.\n\n"
             "<b>Видео</b> — фото и описание движения превращаются в видео через "
-            "Grok Imagine v1, Seedance 1.5 Pro или Wan 2.7.\n\n"
+            "Grok Imagine v1, Grok Imagine Video 1.5, Seedance 1.5 Pro или Wan 2.7.\n\n"
             f"Параллельных генераций: <b>до {kie_settings.max_concurrent_generations}</b>. "
             f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
             "Баланс Kie и баланс GRS AI вынесены в отдельные экраны. "
