@@ -11,6 +11,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from aiogram.exceptions import TelegramAPIError
+from asyncpg import PostgresError
 
 from velvet_bot.domains.ai_usage import AITask
 from velvet_bot.domains.media_generation.friendly_worker import (
@@ -208,9 +209,20 @@ def _is_grs_violation_error(error: BaseException) -> bool:
 
 
 def _provider_attempt_from_payload(payload: object) -> int:
-    if not isinstance(payload, Mapping):
+    parsed_payload = payload
+    if isinstance(parsed_payload, str):
+        try:
+            parsed_payload = json.loads(parsed_payload)
+        except json.JSONDecodeError:
+            return 0
+    if not isinstance(parsed_payload, Mapping):
         return 0
-    runtime = payload.get("kie_campaign")
+    runtime = parsed_payload.get("kie_campaign")
+    if isinstance(runtime, str):
+        try:
+            runtime = json.loads(runtime)
+        except json.JSONDecodeError:
+            return 0
     if not isinstance(runtime, Mapping):
         return 0
     try:
@@ -245,7 +257,7 @@ async def _queue_fail_with_grs_violation_limit(
             provider_attempt = _provider_attempt_from_payload(
                 row["payload"] if row is not None else None
             )
-        except Exception:
+        except (PostgresError, KeyError, TypeError, ValueError, RuntimeError, OSError):
             provider_attempt = 0
         if _violation_retry_limit_reached(error, provider_attempt):
             return await queue.fail_terminal(
