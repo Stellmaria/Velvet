@@ -52,6 +52,17 @@ def load_kie_settings() -> KieSettings:
         raise RuntimeError("KIE_FILE_UPLOAD_BASE_URL не может быть пустым.")
 
     legacy_seedream = os.getenv("KIE_SEEDREAM_5_PRO_MODEL", "").strip()
+    legacy_grok_video = os.getenv("KIE_GROK_IMAGINE_VIDEO_MODEL", "").strip()
+    legacy_grok_image_to_video = (
+        legacy_grok_video
+        if "image-to-video" in legacy_grok_video.casefold()
+        else ""
+    )
+    grok_image_to_video = (
+        os.getenv("KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL", "").strip()
+        or legacy_grok_image_to_video
+        or "grok-imagine/image-to-video"
+    )
     models = KieModelCatalog(
         seedream_5_pro=legacy_seedream,
         seedream_5_pro_text=os.getenv(
@@ -65,12 +76,7 @@ def load_kie_settings() -> KieSettings:
         nano_banana_pro=(
             os.getenv("KIE_NANO_BANANA_PRO_MODEL", "nano-banana-pro").strip()
         ),
-        grok_imagine_video=(
-            os.getenv(
-                "KIE_GROK_IMAGINE_VIDEO_MODEL",
-                "grok-imagine/text-to-video",
-            ).strip()
-        ),
+        grok_imagine_video=grok_image_to_video,
     )
     usd_to_rub = _parse_non_negative_decimal(
         os.getenv("KIE_USD_TO_RUB", "0"),
@@ -85,14 +91,15 @@ def load_kie_settings() -> KieSettings:
             (KieModelAlias.NANO_BANANA_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.GROK_IMAGINE_VIDEO, KieInputMode.PHOTO_TEXT),
         )
         try:
             for alias, input_mode in required_routes:
                 models.provider_model(alias, input_mode=input_mode)
         except ValueError as error:
             raise RuntimeError(
-                "KIE_ENABLED=true требует model id для Nano Banana Pro и "
-                "обоих режимов Seedream 5 Pro."
+                "KIE_ENABLED=true требует model id для Nano Banana Pro, "
+                "обоих режимов Seedream 5 Pro и Grok Imagine image-to-video."
             ) from error
 
     pricing = KiePricing(
