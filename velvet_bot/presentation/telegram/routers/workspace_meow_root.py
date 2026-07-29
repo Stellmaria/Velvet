@@ -17,6 +17,7 @@ def _build_root_keyboard(
     *,
     workspace_id: int,
     enabled: bool,
+    grs_enabled: bool,
 ) -> InlineKeyboardMarkup:
     base = build_meow_root_keyboard(workspace_id=workspace_id, enabled=enabled)
     if not enabled:
@@ -34,6 +35,18 @@ def _build_root_keyboard(
             )
         ]
     )
+    if grs_enabled:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="Баланс GRS AI",
+                    callback_data=MeowCallback(
+                        action="grs_balance",
+                        workspace_id=workspace_id,
+                    ).pack(),
+                )
+            ]
+        )
     if back_row:
         rows.append(back_row)
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -64,8 +77,8 @@ async def handle_meow_root_entry(
             "Grok Imagine v1, Seedance 1.5 Pro или Wan 2.6.\n\n"
             f"Параллельных генераций: <b>до {kie_settings.max_concurrent_generations}</b>. "
             f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
-            "В разделе баланса видны кредиты аккаунта Kie, очередь и фактические "
-            "списания Kie. GRS использует отдельный ключ и собственный баланс."
+            "Баланс Kie и баланс GRS AI вынесены в отдельные экраны. "
+            "GRS больше не проверяется автоматически перед генерацией."
         )
     else:
         text = (
@@ -76,6 +89,7 @@ async def handle_meow_root_entry(
     keyboard = _build_root_keyboard(
         workspace_id=callback_data.workspace_id,
         enabled=kie_settings.enabled,
+        grs_enabled=bool(kie_settings.grs_api_key),
     )
     if isinstance(callback.message, Message):
         if callback.message.photo or callback.message.video or callback.message.document:
