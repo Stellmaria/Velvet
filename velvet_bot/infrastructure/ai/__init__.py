@@ -18,7 +18,7 @@ _GROK_V1_IMAGE_TO_VIDEO = "grok-imagine/image-to-video"
 
 
 class KieClient(BaseKieClient):
-    """Kie client with exact compatibility for the legacy Grok v1 contract."""
+    """Hybrid GRS/Kie client with exact legacy Grok v1 compatibility."""
 
     async def create_task(
         self,
@@ -26,6 +26,8 @@ class KieClient(BaseKieClient):
         *,
         callback_url: str | None = None,
     ) -> str:
+        if request.model.is_grs:
+            return await super().create_task(request, callback_url=callback_url)
         provider_model = self.models.provider_model_for_request(request)
         provider_input = dict(request.to_input())
         if provider_model == _GROK_V1_IMAGE_TO_VIDEO:
@@ -46,11 +48,11 @@ class KieClient(BaseKieClient):
             self._transport,
             "POST",
             f"{self.base_url}/jobs/createTask",
-            self._headers(),
+            self._headers(self.api_key),
             payload,
             self.timeout_seconds,
         )
-        self._ensure_success(response, operation="createTask")
+        self._ensure_kie_success(response, operation="createTask")
         data = response.get("data")
         task_id = data.get("taskId") if isinstance(data, Mapping) else None
         task_id_text = str(task_id or "").strip()
@@ -65,11 +67,11 @@ class KieClient(BaseKieClient):
             self._transport,
             "GET",
             f"{self.base_url}/chat/credit",
-            self._headers(),
+            self._headers(self.api_key),
             None,
             self.timeout_seconds,
         )
-        self._ensure_success(response, operation="chat/credit")
+        self._ensure_kie_success(response, operation="chat/credit")
         raw_value = response.get("data")
         try:
             credits = Decimal(str(raw_value).strip())
