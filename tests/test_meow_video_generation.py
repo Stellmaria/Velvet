@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from collections.abc import Mapping
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -10,9 +11,11 @@ from velvet_bot.domains.media_generation import (
     KieContentMode,
     KieInputMode,
     KieModelAlias,
+    KieModelCatalog,
     KiePricing,
     KieReferenceImage,
 )
+from velvet_bot.infrastructure.ai import KieClient
 from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
     _build_request,
     _validated_settings,
@@ -77,7 +80,7 @@ class MeowVideoUIContractTests(unittest.TestCase):
 
 
 class MeowVideoRequestTests(unittest.TestCase):
-    def test_grok_v1_payload_uses_one_image_prompt_and_mature_override(self) -> None:
+    def test_grok_v1_domain_request_keeps_mature_override_until_adapter(self) -> None:
         request = _build_request(
             reference=_reference(),
             prompt="Slow dolly-in while hair and curtains move in the wind.",
@@ -143,6 +146,47 @@ class MeowVideoRequestTests(unittest.TestCase):
                     "meow_video_mode": "spicy",
                 }
             ),
+        )
+
+
+class KieGrokClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
+    async def test_adapter_sends_documented_v1_duration_and_fields(self) -> None:
+        calls: list[Mapping[str, object]] = []
+
+        def transport(method, url, headers, payload, timeout):
+            del method, url, headers, timeout
+            if payload is not None:
+                calls.append(payload)
+            return {"code": 200, "data": {"taskId": "grok-provider-1"}}
+
+        client = KieClient(
+            api_key="secret",
+            models=KieModelCatalog(
+                grok_imagine_video="grok-imagine/image-to-video"
+            ),
+            transport=transport,
+        )
+        request = _build_request(
+            reference=_reference(),
+            prompt="Slow camera orbit.",
+            resolution="480p",
+            duration=6,
+            aspect_ratio="16:9",
+            mode="normal",
+        ).with_image_urls(("https://files.example/portrait.png",))
+
+        task_id = await client.create_task(request)
+
+        self.assertEqual("grok-provider-1", task_id)
+        self.assertEqual(1, len(calls))
+        provider_input = calls[0]["input"]
+        self.assertIsInstance(provider_input, Mapping)
+        assert isinstance(provider_input, Mapping)
+        self.assertEqual("6", provider_input["duration"])
+        self.assertNotIn("nsfw_checker", provider_input)
+        self.assertEqual(
+            ["https://files.example/portrait.png"],
+            provider_input["image_urls"],
         )
 
 
