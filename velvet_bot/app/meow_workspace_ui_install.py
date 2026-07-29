@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
 from velvet_bot import workspace_ui
 from velvet_bot.core.access import policy
 from velvet_bot.domains.meow_runtime import MeowRuntimeRepository, MeowRuntimeService
@@ -39,7 +41,11 @@ def install_meow_workspace_ui() -> None:
     controller = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_controller"
     )
-    original = presentation.build_workspace_home_presentation
+    workspaces_router = importlib.import_module(
+        "velvet_bot.presentation.telegram.routers.workspaces"
+    )
+    original_home = presentation.build_workspace_home_presentation
+    original_modules_keyboard = workspace_ui.build_modules_keyboard
 
     async def build_home_with_meow_visibility(**kwargs: Any):
         product_service = kwargs["workspace_product_service"]
@@ -47,10 +53,29 @@ def install_meow_workspace_ui() -> None:
         kwargs["meow_runtime_service"] = MeowRuntimeService(
             MeowRuntimeRepository(database)
         )
-        return await original(**kwargs)
+        return await original_home(**kwargs)
+
+    def build_modules_with_meow_entry(workspace_id: int, modules):
+        markup = original_modules_keyboard(workspace_id, modules)
+        rows = [list(row) for row in markup.inline_keyboard]
+        for row in rows:
+            if row and "Ауф · генерация" in row[0].text:
+                row.append(
+                    InlineKeyboardButton(
+                        text="Открыть",
+                        callback_data=workspace_ui.workspace_callback(
+                            "meow",
+                            workspace_id=workspace_id,
+                        ),
+                    )
+                )
+                break
+        return InlineKeyboardMarkup(inline_keyboard=rows)
 
     presentation.build_workspace_home_presentation = build_home_with_meow_visibility
     controller.build_workspace_home_presentation = build_home_with_meow_visibility
+    workspace_ui.build_modules_keyboard = build_modules_with_meow_entry
+    workspaces_router.build_modules_keyboard = build_modules_with_meow_entry
     _INSTALLED = True
 
 
