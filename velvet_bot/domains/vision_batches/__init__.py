@@ -4,12 +4,12 @@ from .models import (
     VisionBatchProgress,
     VisionBatchStatus,
 )
-from .repository import VisionBatchRepository
 from .service import (
     VISION_BATCH_TASK_TYPE,
     VisionBatchService,
     build_vision_batch_service,
 )
+from .store import VisionBatchRepository
 from .worker import (
     TargetedVisionService,
     VisionBatchQueueConsumer,
