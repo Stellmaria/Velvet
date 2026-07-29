@@ -7,7 +7,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,7 @@ JsonTransport = Callable[
     [str, str, Mapping[str, str], Mapping[str, object] | None, float],
     Mapping[str, Any],
 ]
+TaskUpdateCallback = Callable[[KieTaskRecord, int], Awaitable[None]]
 
 
 class KieError(RuntimeError):
@@ -124,7 +125,7 @@ class KieClient:
         callback_url: str | None = None,
     ) -> str:
         payload: dict[str, object] = {
-            "model": self.models.provider_model(request.model),
+            "model": self.models.provider_model_for_request(request),
             "input": request.to_input(),
         }
         if callback_url and callback_url.strip():
@@ -164,9 +165,15 @@ class KieClient:
         except ValueError as error:
             raise KieProtocolError(str(error)) from error
 
-    async def wait_for_task(self, task_id: str) -> KieTaskRecord:
+    async def wait_for_task(
+        self,
+        task_id: str,
+        *,
+        on_update: TaskUpdateCallback | None = None,
+    ) -> KieTaskRecord:
         deadline = time.monotonic() + self.task_timeout_seconds
         transient_attempt = 0
+        poll_count = 0
         while True:
             if time.monotonic() >= deadline:
                 raise TimeoutError(
@@ -176,6 +183,9 @@ class KieClient:
             try:
                 record = await self.get_task(task_id)
                 transient_attempt = 0
+                poll_count += 1
+                if on_update is not None:
+                    await on_update(record, poll_count)
             except KieTransientError:
                 transient_attempt += 1
                 await asyncio.sleep(
