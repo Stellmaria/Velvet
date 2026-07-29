@@ -8,16 +8,14 @@ import urllib.parse
 from collections.abc import Mapping
 from dataclasses import replace
 from decimal import Decimal, InvalidOperation
+from html import escape
 from typing import Any
 
 from aiogram.exceptions import TelegramAPIError
 from asyncpg import PostgresError
 
 from velvet_bot.domains.ai_usage import AITask
-from velvet_bot.domains.media_generation.friendly_worker import (
-    FriendlyKieGenerationWorker,
-    _request_from_payload,
-)
+from velvet_bot.domains.media_generation.friendly_worker import FriendlyKieGenerationWorker
 from velvet_bot.domains.media_generation.models import (
     KieGenerationRequest,
     KieTaskRecord,
@@ -52,6 +50,40 @@ _CREDIT_KEYS = frozenset(
         "remaincredits",
         "availablecredits",
         "leftcredits",
+    }
+)
+_GRS_REASON_KEYS = frozenset(
+    {
+        "message",
+        "msg",
+        "reason",
+        "detail",
+        "details",
+        "blockedreason",
+        "blockreason",
+        "violationreason",
+        "moderationreason",
+        "safetyreason",
+        "category",
+        "categories",
+        "code",
+        "errorcode",
+        "policy",
+        "policycategory",
+    }
+)
+_GENERIC_VIOLATION_VALUES = frozenset(
+    {
+        "violation",
+        "content violation",
+        "content_violation",
+        "moderation violation",
+        "moderation_violation",
+        "moderated",
+        "failed",
+        "fail",
+        "error",
+        "запрос отклонён модерацией grs ai.",
     }
 )
 _INSTALLED = False
@@ -101,6 +133,65 @@ def _extract_grs_credits(value: object) -> Decimal | None:
                 if parsed is not None:
                     return parsed
     return None
+
+
+def _provider_reason_text(value: object) -> str | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, Mapping):
+        return None
+    if isinstance(value, (list, tuple, set)):
+        parts = [
+            text
+            for item in value
+            if (text := _provider_reason_text(item)) is not None
+        ]
+        return ", ".join(parts) if parts else None
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    if not text:
+        return None
+    if text.casefold() in _GENERIC_VIOLATION_VALUES:
+        return None
+    return text[:300]
+
+
+def _extract_grs_violation_reason(value: object) -> str | None:
+    """Return only provider-supplied moderation details, never an invented reason."""
+
+    found: list[str] = []
+    seen: set[str] = set()
+
+    def add(candidate: object) -> None:
+        text = _provider_reason_text(candidate)
+        if text is None:
+            return
+        identity = text.casefold()
+        if identity in seen:
+            return
+        seen.add(identity)
+        found.append(text)
+
+    def walk(item: object, depth: int) -> None:
+        if depth > 5:
+            return
+        if isinstance(item, Mapping):
+            for key, nested in item.items():
+                if _normalized_key(key) in _GRS_REASON_KEYS:
+                    if isinstance(nested, Mapping):
+                        walk(nested, depth + 1)
+                    else:
+                        add(nested)
+            for nested in item.values():
+                if isinstance(nested, (Mapping, list, tuple)):
+                    walk(nested, depth + 1)
+        elif isinstance(item, (list, tuple)):
+            for nested in item:
+                walk(nested, depth + 1)
+
+    walk(value, 0)
+    if not found:
+        return None
+    return "; ".join(found)[:600]
 
 
 async def _get_grs_credits_resilient(client: KieClient) -> Decimal:
@@ -158,11 +249,8 @@ def _from_grs_api_with_violation(
 
     normalized = dict(payload)
     normalized["status"] = "failed"
-    message = str(
-        payload.get("message")
-        or payload.get("msg")
-        or "Запрос отклонён модерацией GRS AI."
-    ).strip()
+    reason = _extract_grs_violation_reason(payload)
+    message = reason or "Запрос отклонён модерацией GRS AI."
     failure = payload.get("error")
     if isinstance(failure, Mapping):
         failure_payload = dict(failure)
@@ -179,7 +267,7 @@ def _from_grs_api_with_violation(
         record,
         state=KieTaskState.FAIL,
         failure_code=record.failure_code or status,
-        failure_message=record.failure_message or message,
+        failure_message=reason or record.failure_message or message,
         raw=dict(payload),
     )
 
@@ -206,6 +294,15 @@ def _is_grs_violation_record(record: KieTaskRecord) -> bool:
 
 def _is_grs_violation_error(error: BaseException) -> bool:
     return isinstance(error, KieTaskFailed) and _is_grs_violation_record(error.record)
+
+
+def _grs_violation_reason_from_error(error: BaseException) -> str | None:
+    if not isinstance(error, KieTaskFailed):
+        return None
+    reason = _extract_grs_violation_reason(error.record.raw)
+    if reason is not None:
+        return reason
+    return _provider_reason_text(error.record.failure_message)
 
 
 def _provider_attempt_from_payload(payload: object) -> int:
@@ -275,8 +372,46 @@ async def _queue_fail_with_grs_violation_limit(
     )
 
 
+def _sanitize_meow_text(text: str) -> str:
+    """Remove internal content-mode labels that do not control GRS moderation."""
+
+    cleaned = re.sub(
+        r"(?m)^Контент: <b>Mature</b>(?: · модерация GRS активна)?\n?",
+        "",
+        str(text),
+    )
+    legacy_queue = (
+        "Задача поставлена в очередь. Worker скачает выбранные Telegram-фото, "
+        "временно загрузит их в Kie и только затем вызовет модель."
+    )
+    if legacy_queue in cleaned:
+        destination = "GRS AI" if "Nano Banana" in cleaned else "выбранному провайдеру"
+        cleaned = cleaned.replace(
+            legacy_queue,
+            "Задача поставлена в очередь. Референсы будут подготовлены "
+            f"и затем отправлены в {destination}.",
+        )
+    legacy_mature_paragraph = (
+        "Mature-режим включён. Для Seedream бот передаст документированный "
+        "<code>nsfw_checker=false</code>. У Nano Banana Pro отдельного API-флага "
+        "отключения фильтра нет, поэтому действует политика самого провайдера."
+    )
+    cleaned = cleaned.replace(
+        legacy_mature_paragraph,
+        "После выбора модели будут показаны доступные варианты качества.",
+    )
+    return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+
+
+def _reason_status_text(error: BaseException) -> str:
+    reason = _grs_violation_reason_from_error(error)
+    if reason is None:
+        return "GRS AI не передал конкретную причину блокировки."
+    return f"Причина GRS AI: {reason}"
+
+
 class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
-    """Add one bounded moderation retry and a live terminal GRS balance."""
+    """Add one bounded moderation retry, reason details and a live GRS balance."""
 
     def _friendly_progress_text(
         self,
@@ -286,18 +421,14 @@ class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
         percent: int,
         stage: str,
     ) -> str:
-        text = super()._friendly_progress_text(
-            task=task,
-            request=request,
-            percent=percent,
-            stage=stage,
-        )
-        if request.model.is_grs:
-            text = text.replace(
-                f"Контент: <b>{request.content_mode.display_name}</b>",
-                f"Контент: <b>{request.content_mode.display_name}</b> · модерация GRS активна",
+        return _sanitize_meow_text(
+            super()._friendly_progress_text(
+                task=task,
+                request=request,
+                percent=percent,
+                stage=stage,
             )
-        return text
+        )
 
     async def _report_retry_or_terminal(
         self,
@@ -320,6 +451,7 @@ class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
             )
             return
 
+        reason_text = _reason_status_text(error)
         will_retry = bool(getattr(failure, "will_retry", False))
         if request is not None and will_retry:
             delay = int(getattr(failure, "retry_delay_seconds", 0) or 0)
@@ -330,7 +462,7 @@ class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
                 percent=max(5, progress.last_percent if progress else 5),
                 stage=(
                     "GRS AI отклонил первую попытку модерацией. "
-                    f"Автоматически повторяю один раз через {delay} сек."
+                    f"{reason_text} Автоматически повторяю один раз через {delay} сек."
                 ),
                 force=True,
             )
@@ -344,7 +476,7 @@ class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
                 percent=100,
                 stage=(
                     "GRS AI повторно отклонил запрос модерацией. "
-                    "Новые платные отправки остановлены."
+                    f"{reason_text} Новые платные отправки остановлены."
                 ),
                 force=True,
             )
@@ -362,7 +494,6 @@ class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
         chat_id = _optional_int(task.payload.get("chat_id"))
         if chat_id is None:
             return
-        request = _request_from_payload(task.payload)
         balance: Decimal | None = None
         try:
             balance = await self._client.get_grs_credits()
@@ -373,16 +504,22 @@ class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
             if balance is not None
             else "Баланс GRS после остановки: <b>не удалось проверить</b>"
         )
+        reason = _grs_violation_reason_from_error(error)
+        reason_line = (
+            f"<b>Причина GRS AI:</b> {escape(reason)}"
+            if reason is not None
+            else "<b>Причина:</b> GRS AI не передал конкретных деталей."
+        )
         try:
             await self._bot.send_message(
                 chat_id,
                 "<b>Мяу не смог завершить генерацию</b>\n\n"
                 "Провайдер: <b>GRS AI</b>\n"
                 "Запрос дважды отклонён модерацией провайдера.\n"
+                f"{reason_line}\n"
                 "Автоматический повтор: <b>выполнен 1 раз</b>\n"
                 f"{balance_line}\n\n"
-                "Режим Mature не отключает модерацию Nano Banana. "
-                "Окончательное возвращение кредитов может отразиться с задержкой.\n"
+                "Возврат кредитов у провайдера может отразиться с задержкой.\n"
                 f"Задача: <code>{task.id}</code>",
             )
         except TelegramAPIError:
@@ -390,13 +527,87 @@ class ResilientFriendlyKieGenerationWorker(FriendlyKieGenerationWorker):
         finally:
             self._provider_balances.pop(str(task.id), None)
 
+    async def _deliver_best_effort(
+        self,
+        *,
+        chat_id: int | None,
+        request: KieGenerationRequest,
+        record: KieTaskRecord,
+    ) -> None:
+        if chat_id is None:
+            return
+        provider = "GRS AI" if request.model.is_grs else "Kie.ai"
+        caption = (
+            f"<b>Мяу · {escape(request.model.display_name)}</b>\n"
+            f"Провайдер: <b>{provider}</b>\n"
+            f"Качество: <b>{escape(request.resolution)}</b>\n"
+            f"Референсов: <b>{len(request.references)}</b>\n"
+            f"Задача провайдера: <code>{escape(record.task_id)}</code>"
+        )
+        try:
+            if not record.result_urls:
+                await self._bot.send_message(
+                    chat_id,
+                    caption + f"\n\n{provider} завершил задачу без URL результата.",
+                )
+                return
+            for index, url in enumerate(record.result_urls):
+                item_caption = caption if index == 0 else None
+                if request.model.is_video:
+                    await self._bot.send_video(
+                        chat_id,
+                        video=url,
+                        caption=item_caption,
+                    )
+                else:
+                    await self._bot.send_photo(
+                        chat_id,
+                        photo=url,
+                        caption=item_caption,
+                    )
+        except TelegramAPIError:
+            return
+
 
 def _format_credits(value: Decimal) -> str:
     return f"{int(value.quantize(Decimal('1'))):,}".replace(",", " ")
 
 
+def _install_meow_text_cleanup() -> None:
+    workspace_meow = importlib.import_module(
+        "velvet_bot.presentation.telegram.routers.workspace_meow"
+    )
+    original_edit_or_answer = workspace_meow._edit_or_answer
+    original_format_request_review = workspace_meow.format_request_review
+
+    async def edit_or_answer_without_internal_content_mode(
+        callback,
+        *,
+        text: str,
+        reply_markup,
+    ) -> None:
+        await original_edit_or_answer(
+            callback,
+            text=_sanitize_meow_text(text),
+            reply_markup=reply_markup,
+        )
+
+    def format_request_review_without_internal_content_mode(**kwargs: Any) -> str:
+        return _sanitize_meow_text(original_format_request_review(**kwargs))
+
+    workspace_meow._edit_or_answer = edit_or_answer_without_internal_content_mode
+    workspace_meow.format_request_review = (
+        format_request_review_without_internal_content_mode
+    )
+
+    workspace_meow_grs = importlib.import_module(
+        "velvet_bot.presentation.telegram.routers.workspace_meow_grs"
+    )
+    workspace_meow_grs._edit_or_answer = edit_or_answer_without_internal_content_mode
+
+
 def install_grs_resilience() -> None:
-    """Install GRS status, retry and balance compatibility before workers start."""
+    """Install GRS status, retry, reason, balance and UI compatibility."""
 
     global _INSTALLED
     if _INSTALLED:
@@ -404,6 +615,7 @@ def install_grs_resilience() -> None:
     KieTaskRecord.from_grs_api = classmethod(_from_grs_api_with_violation)  # type: ignore[method-assign]
     KieTaskQueueService.fail = _queue_fail_with_grs_violation_limit  # type: ignore[method-assign]
     KieClient.get_grs_credits = _get_grs_credits_resilient  # type: ignore[method-assign]
+    _install_meow_text_cleanup()
     workers = importlib.import_module("velvet_bot.app.workers")
     workers.KieGenerationWorker = ResilientFriendlyKieGenerationWorker
     _INSTALLED = True
