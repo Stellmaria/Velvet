@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from velvet_bot.core.access import policy
+import importlib
+from typing import Any
+
 from velvet_bot import workspace_ui
+from velvet_bot.core.access import policy
+from velvet_bot.domains.meow_runtime import MeowRuntimeRepository, MeowRuntimeService
 
 _INSTALLED = False
 
@@ -29,6 +33,24 @@ def install_meow_workspace_ui() -> None:
             state_prefixes.append(prefix)
     policy.WORKSPACE_MEMBER_FSM_STATE_PREFIXES = tuple(state_prefixes)
 
+    presentation = importlib.import_module(
+        "velvet_bot.presentation.telegram.workspace_home_presentation"
+    )
+    controller = importlib.import_module(
+        "velvet_bot.presentation.telegram.workspace_home_controller"
+    )
+    original = presentation.build_workspace_home_presentation
+
+    async def build_home_with_meow_visibility(**kwargs: Any):
+        product_service = kwargs["workspace_product_service"]
+        database = product_service._product._database
+        kwargs["meow_runtime_service"] = MeowRuntimeService(
+            MeowRuntimeRepository(database)
+        )
+        return await original(**kwargs)
+
+    presentation.build_workspace_home_presentation = build_home_with_meow_visibility
+    controller.build_workspace_home_presentation = build_home_with_meow_visibility
     _INSTALLED = True
 
 
