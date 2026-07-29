@@ -132,8 +132,10 @@ class MeowGenerationDispatcher:
         for provider in (MeowProvider.GRS, MeowProvider.KIE):
             queue = self._queues[provider]
             configured_limit = settings.limit_for(provider)
-            running = await queue.running_count()
-            available = max(0, configured_limit - running)
+            database_running = await queue.running_count()
+            live_tasks = len(self._active[provider])
+            occupied = max(database_running, live_tasks)
+            available = max(0, configured_limit - occupied)
             if available <= 0:
                 continue
             queued = await queue.queued_count()
@@ -173,11 +175,17 @@ class MeowGenerationDispatcher:
                 except asyncio.CancelledError:
                     continue
                 except Exception:
-                    logger.exception("Meow generation task escaped worker boundary provider=%s", provider)
+                    logger.exception(
+                        "Meow generation task escaped worker boundary provider=%s",
+                        provider,
+                    )
 
     async def _runtime_settings(self):
         now = time.monotonic()
-        if self._settings is None or now - self._settings_loaded_at >= _SETTINGS_CACHE_SECONDS:
+        if (
+            self._settings is None
+            or now - self._settings_loaded_at >= _SETTINGS_CACHE_SECONDS
+        ):
             self._settings = await self._runtime.runtime_settings()
             self._settings_loaded_at = now
         return self._settings
