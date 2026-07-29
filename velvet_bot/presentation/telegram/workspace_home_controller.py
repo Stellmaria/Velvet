@@ -22,6 +22,9 @@ from velvet_bot.presentation.telegram.routers.workspace_meow_grs import (
 from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
     handle_meow_balance,
 )
+from velvet_bot.presentation.telegram.routers.workspace_meow_grs_balance import (
+    handle_meow_grs_balance,
+)
 from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
     handle_meow_root_entry,
 )
@@ -129,6 +132,10 @@ def register_workspace_home(router: Router) -> None:
     router.callback_query.register(
         handle_meow_balance,
         MeowCallback.filter(F.action == "balance"),
+    )
+    router.callback_query.register(
+        handle_meow_grs_balance,
+        MeowCallback.filter(F.action == "grs_balance"),
     )
     router.callback_query.register(
         handle_meow_video_entry,
