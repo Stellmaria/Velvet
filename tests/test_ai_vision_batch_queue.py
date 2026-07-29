@@ -63,15 +63,23 @@ def _plan(*, candidate_ids: tuple[int, ...] = (10, 20)) -> VisionBatchPlan:
 
 
 class _FakeUsage:
-    def __init__(self, *, daily: str = "100", monthly: str = "100") -> None:
+    def __init__(
+        self,
+        *,
+        daily: str = "100",
+        monthly: str = "100",
+        max_request: str = "250",
+    ) -> None:
         self.daily = Decimal(daily)
         self.monthly = Decimal(monthly)
+        self.max_request = Decimal(max_request)
         self.paused = False
 
     async def status(self):
         return SimpleNamespace(
             daily_remaining_rub=self.daily,
             ordinary_month_remaining_rub=self.monthly,
+            max_request_rub=self.max_request,
             paused=self.paused,
             pause_reason=None,
         )
@@ -209,6 +217,7 @@ class VisionBatchServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(Decimal("0.7200"), plan.max_cost_per_item_rub)
         self.assertEqual(Decimal("1.4400"), plan.estimated_cost_rub)
         self.assertEqual((10, 20), plan.candidate_ids)
+        self.assertTrue(plan.metadata["within_per_request_limit"])
         self.assertTrue(plan.metadata["within_current_budget"])
 
     async def test_start_rechecks_budget_and_records_deduplication(self) -> None:
@@ -252,6 +261,18 @@ class VisionBatchServiceTests(unittest.IsolatedAsyncioTestCase):
         )
         with patch.dict(os.environ, {"AI_VISION_QUEUE_ENABLED": "true"}, clear=False):
             with self.assertRaisesRegex(VisionBatchError, "дневной"):
+                await service.start(plan_id=plan.id, created_by=1)
+
+    async def test_start_is_blocked_by_per_request_limit(self) -> None:
+        plan = _plan()
+        service = VisionBatchService(
+            repository=_FakeRepository(plan),
+            queue_service=_FakeQueue(),
+            usage_service=_FakeUsage(max_request="1"),
+            settings=_settings(),
+        )
+        with patch.dict(os.environ, {"AI_VISION_QUEUE_ENABLED": "true"}, clear=False):
+            with self.assertRaisesRegex(VisionBatchError, "per-request"):
                 await service.start(plan_id=plan.id, created_by=1)
 
     def test_cloud_cascade_cost_sums_only_configured_routes(self) -> None:
