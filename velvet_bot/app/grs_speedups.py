@@ -13,23 +13,34 @@ from aiogram.exceptions import TelegramAPIError
 import velvet_bot.app.grs_resilience as grs_resilience
 from velvet_bot.app.grs_campaign_retry import CampaignGrsGenerationWorker
 from velvet_bot.domains.ai_usage import AITask
+from velvet_bot.domains.media_generation.economy_worker import (
+    KieGenerationWorker as EconomyKieGenerationWorker,
+)
+from velvet_bot.domains.media_generation.economy_worker import _reference_url_failure
 from velvet_bot.domains.media_generation.friendly_worker import FriendlyKieGenerationWorker
-from velvet_bot.domains.media_generation.models import KieGenerationRequest
+from velvet_bot.domains.media_generation.models import (
+    KieGenerationRequest,
+    KieTaskRecord,
+)
 from velvet_bot.domains.media_generation.worker import (
     KieGenerationWorker as BaseKieGenerationWorker,
 )
 from velvet_bot.domains.media_generation.worker import _ProgressMessage, _optional_int
 from velvet_bot.infrastructure.ai import KieClient
+from velvet_bot.workers import PeriodicWorkerSpec
 
 _REFERENCE_CACHE_TTL_SECONDS = 20 * 60
 _REFERENCE_CACHE_MAX_ENTRIES = 256
 _REFERENCE_UPLOAD_CONCURRENCY = 3
 _MAX_POLL_INTERVAL_SECONDS = 2.0
+_MEDIA_WORKER_INTERVAL_SECONDS = 1.0
 _GRS_BALANCE_LINE = re.compile(r"(?m)^Баланс GRS:.*(?:\n|$)")
 
 _INSTALLED = False
 _ORIGINAL_CLIENT_INIT = KieClient.__init__
 _ORIGINAL_FRIENDLY_TEXT = FriendlyKieGenerationWorker._friendly_progress_text
+_ORIGINAL_RECORD_PROVIDER_RESULT = EconomyKieGenerationWorker._record_provider_result
+_ORIGINAL_PERIODIC_SPEC_INIT = PeriodicWorkerSpec.__init__
 
 # Temporary provider URLs are deliberately cached only in memory and only briefly.
 # A process restart or the short TTL automatically discards stale entries.
@@ -77,6 +88,20 @@ async def _remember_reference_url(key: str, url: str) -> None:
             _REFERENCE_URL_CACHE.popitem(last=False)
 
 
+async def _forget_reference_urls(urls: tuple[str, ...]) -> None:
+    if not urls:
+        return
+    stale = set(urls)
+    async with _REFERENCE_CACHE_LOCK:
+        keys = [
+            key
+            for key, (_, url) in _REFERENCE_URL_CACHE.items()
+            if url in stale
+        ]
+        for key in keys:
+            _REFERENCE_URL_CACHE.pop(key, None)
+
+
 def _fast_client_init(self: KieClient, *args: Any, **kwargs: Any) -> None:
     configured = float(kwargs.get("poll_interval_seconds", 4))
     kwargs["poll_interval_seconds"] = min(
@@ -84,6 +109,29 @@ def _fast_client_init(self: KieClient, *args: Any, **kwargs: Any) -> None:
         _MAX_POLL_INTERVAL_SECONDS,
     )
     _ORIGINAL_CLIENT_INIT(self, *args, **kwargs)
+
+
+def _fast_periodic_spec_init(
+    self: PeriodicWorkerSpec,
+    *args: Any,
+    **kwargs: Any,
+) -> None:
+    positional = list(args)
+    name = kwargs.get("name")
+    if name is None and positional:
+        name = positional[0]
+    if str(name or "").startswith("kie-media-generation"):
+        if "interval_seconds" in kwargs:
+            kwargs["interval_seconds"] = min(
+                float(kwargs["interval_seconds"]),
+                _MEDIA_WORKER_INTERVAL_SECONDS,
+            )
+        elif len(positional) >= 3:
+            positional[2] = min(
+                float(positional[2]),
+                _MEDIA_WORKER_INTERVAL_SECONDS,
+            )
+    _ORIGINAL_PERIODIC_SPEC_INIT(self, *positional, **kwargs)
 
 
 async def _fast_start_progress(
@@ -211,6 +259,31 @@ async def _fast_upload_references(
     return request.with_image_urls(tuple(urls))
 
 
+async def _record_provider_result_with_cache_invalidation(
+    self: EconomyKieGenerationWorker,
+    *,
+    task: AITask,
+    runtime: dict[str, object],
+    record: KieTaskRecord,
+    status: str,
+) -> dict[str, object]:
+    cached_urls = tuple(
+        str(value).strip()
+        for value in runtime.get("image_urls", ())
+        if str(value).strip()
+    ) if isinstance(runtime.get("image_urls"), (list, tuple)) else ()
+    updated = await _ORIGINAL_RECORD_PROVIDER_RESULT(
+        self,
+        task=task,
+        runtime=runtime,
+        record=record,
+        status=status,
+    )
+    if status == "fail" and _reference_url_failure(record):
+        await _forget_reference_urls(cached_urls)
+    return updated
+
+
 async def _notify_terminal_without_balance(
     self: CampaignGrsGenerationWorker,
     task: AITask,
@@ -263,6 +336,7 @@ def install_grs_speedups() -> None:
     if _INSTALLED:
         return
     KieClient.__init__ = _fast_client_init  # type: ignore[method-assign]
+    PeriodicWorkerSpec.__init__ = _fast_periodic_spec_init  # type: ignore[method-assign]
     FriendlyKieGenerationWorker._start_progress = (  # type: ignore[method-assign]
         _fast_start_progress
     )
@@ -271,6 +345,9 @@ def install_grs_speedups() -> None:
     )
     BaseKieGenerationWorker._upload_references = (  # type: ignore[method-assign]
         _fast_upload_references
+    )
+    EconomyKieGenerationWorker._record_provider_result = (  # type: ignore[method-assign]
+        _record_provider_result_with_cache_invalidation
     )
     CampaignGrsGenerationWorker._notify_terminal_failure_best_effort = (  # type: ignore[method-assign]
         _notify_terminal_without_balance
