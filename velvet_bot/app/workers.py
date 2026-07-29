@@ -25,6 +25,7 @@ from velvet_bot.domains.ai_usage import (
 )
 from velvet_bot.domains.media_generation.worker import KieGenerationWorker
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
+from velvet_bot.domains.vision_batches import build_vision_batch_consumer
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
 from velvet_bot.domains.vision_routing.integration import (
     CascadeMediaAIRepository,
@@ -236,21 +237,39 @@ def build_worker_manager(
             ),
             max_attempts=settings.ai_vision_max_attempts,
         )
-        manager.register(
-            PeriodicWorkerSpec(
-                name="ai-vision",
-                description="Каскадный смысловой VL-анализ изображений",
-                interval_seconds=8,
-                runner=partial(
-                    _run_ai_locked,
-                    ai_lock,
-                    partial(
-                        run_ai_vision_once_with_terminal_skip_info,
-                        ai_service.process_once,
-                    ),
-                ),
+        if _env_enabled("AI_VISION_QUEUE_ENABLED"):
+            batch_consumer = build_vision_batch_consumer(
+                bot=bot,
+                database=database,
+                settings=settings,
+                usage_service=active_usage_service,
+                queue_service=active_task_queue_service,
+                cache_chat_id=cache_chat_id,
             )
-        )
+            manager.register(
+                PeriodicWorkerSpec(
+                    name="ai-vision-queue",
+                    description="Пакетная очередь смыслового VL-анализа",
+                    interval_seconds=3,
+                    runner=batch_consumer.process_once,
+                )
+            )
+        else:
+            manager.register(
+                PeriodicWorkerSpec(
+                    name="ai-vision",
+                    description="Каскадный смысловой VL-анализ изображений",
+                    interval_seconds=8,
+                    runner=partial(
+                        _run_ai_locked,
+                        ai_lock,
+                        partial(
+                            run_ai_vision_once_with_terminal_skip_info,
+                            ai_service.process_once,
+                        ),
+                    ),
+                )
+            )
         manager.register(
             PeriodicWorkerSpec(
                 name="ai-quality",
