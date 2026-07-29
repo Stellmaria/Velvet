@@ -28,13 +28,13 @@ class KieClient(BaseKieClient):
         provider_model = self.models.provider_model_for_request(request)
         provider_input = dict(request.to_input())
         if provider_model == _GROK_V1_IMAGE_TO_VIDEO:
-            # Grok v1 documents duration as a JSON string and does not declare
-            # nsfw_checker. Keep the shared domain request rich, but send only
-            # fields supported by this exact provider route.
-            provider_input.pop("nsfw_checker", None)
-            duration = provider_input.get("duration")
-            if duration is not None:
-                provider_input["duration"] = str(duration)
+            # Single-image Grok v1 derives framing and motion defaults from the
+            # source image. Keep the owner-facing flow minimal and send only the
+            # documented controls that matter here. nsfw_checker=false is kept
+            # intentionally so Kie does not apply its additional content filter.
+            provider_input.pop("aspect_ratio", None)
+            provider_input.pop("duration", None)
+            provider_input.pop("mode", None)
         payload: dict[str, object] = {
             "model": provider_model,
             "input": provider_input,
