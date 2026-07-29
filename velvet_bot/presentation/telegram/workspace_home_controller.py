@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -9,21 +10,18 @@ from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
-from velvet_bot.presentation.telegram.routers.workspace_meow import (
-    MeowCallback,
-    MeowForm,
-    handle_meow_prompt,
-    handle_meow_reference_message,
-    handle_meow_reference_text,
-)
-from velvet_bot.presentation.telegram.routers.workspace_meow_grs import (
-    handle_meow_action,
-)
+from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
 from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
     handle_meow_balance,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_grs_balance import (
     handle_meow_grs_balance,
+)
+from velvet_bot.presentation.telegram.routers.workspace_meow_photo import (
+    MeowPhotoForm,
+    handle_meow_photo_action,
+    handle_meow_photo_command,
+    handle_meow_photo_input,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
     handle_meow_root_entry,
@@ -146,7 +144,7 @@ def register_workspace_home(router: Router) -> None:
         MeowVideoCallback.filter(),
     )
     router.callback_query.register(
-        handle_meow_action,
+        handle_meow_photo_action,
         MeowCallback.filter(),
     )
     router.message.register(
@@ -159,21 +157,20 @@ def register_workspace_home(router: Router) -> None:
         MeowVideoForm.waiting_prompt,
         F.text,
     )
-    router.message.register(
-        handle_meow_reference_message,
-        MeowForm.collecting_references,
-        F.photo | F.document,
-    )
-    router.message.register(
-        handle_meow_reference_text,
-        MeowForm.collecting_references,
-        F.text,
-    )
-    router.message.register(
-        handle_meow_prompt,
-        MeowForm.waiting_prompt,
-        F.text,
-    )
+    for photo_state in (
+        MeowPhotoForm.collecting_input,
+        MeowPhotoForm.reviewing_input,
+    ):
+        router.message.register(
+            handle_meow_photo_command,
+            photo_state,
+            Command("refs", "references"),
+        )
+        router.message.register(
+            handle_meow_photo_input,
+            photo_state,
+            F.photo | F.document | F.text,
+        )
 
 
 __all__ = (
