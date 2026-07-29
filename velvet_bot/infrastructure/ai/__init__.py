@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import urllib.parse
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -17,6 +18,7 @@ from .kie import (
 )
 
 _GROK_V1_IMAGE_TO_VIDEO = "grok-imagine/image-to-video"
+_GRS_TASK_PREFIX = "grs:"
 
 
 class KieClient(BaseKieClient):
@@ -92,6 +94,73 @@ class KieClient(BaseKieClient):
         if not task_id_text:
             raise KieProtocolError("Kie.ai createTask не вернул taskId.")
         return task_id_text
+
+    async def _create_grs_task(self, request: KieGenerationRequest) -> str:
+        """Submit GRS work asynchronously so image generation cannot time out the POST."""
+
+        if self.grs_api_key is None:
+            raise KieError("Для Nano Banana 2/Pro не задан GRS_API_KEY.")
+        model_id = self.models.provider_model_for_request(request)
+        payload = request.to_grs_input(model_id=model_id)
+        payload["replyType"] = "async"
+        response = await asyncio.to_thread(
+            self._transport,
+            "POST",
+            f"{self.grs_base_url}/v1/api/generate",
+            self._headers(self.grs_api_key),
+            payload,
+            self.timeout_seconds,
+        )
+        raw_task_id = str(response.get("id") or "").strip()
+        if not raw_task_id:
+            message = str(
+                response.get("message")
+                or response.get("msg")
+                or response.get("error")
+                or "GRS AI не вернул id асинхронной задачи."
+            )
+            raise KieProtocolError(message)
+        task_id = f"{_GRS_TASK_PREFIX}{raw_task_id}"
+        self._grs_initial_responses[task_id] = dict(response)
+        return task_id
+
+    async def get_grs_credits(self) -> Decimal:
+        """Return the current GRS API-key balance without exposing the key in errors."""
+
+        if self.grs_api_key is None:
+            raise KieError("Для проверки баланса не задан GRS_API_KEY.")
+        query = urllib.parse.urlencode({"apikey": self.grs_api_key})
+        try:
+            response = await asyncio.to_thread(
+                self._transport,
+                "GET",
+                f"{self.grs_base_url}/client/common/getCredits?{query}",
+                self._headers(self.grs_api_key),
+                None,
+                self.timeout_seconds,
+            )
+        except KieError:
+            raise KieTransientError("Не удалось получить баланс GRS AI.") from None
+
+        code = response.get("code")
+        if code not in (None, 200, "200"):
+            raise KieError("GRS AI отклонил запрос баланса.")
+        raw_value: object = response.get("data")
+        if isinstance(raw_value, Mapping):
+            raw_value = (
+                raw_value.get("credits")
+                or raw_value.get("balance")
+                or raw_value.get("value")
+            )
+        if raw_value is None:
+            raw_value = response.get("credits") or response.get("balance")
+        try:
+            credits = Decimal(str(raw_value).strip())
+        except (InvalidOperation, ValueError) as error:
+            raise KieProtocolError("GRS AI не вернул числовой баланс кредитов.") from error
+        if not credits.is_finite() or credits < 0:
+            raise KieProtocolError("GRS AI вернул некорректный баланс кредитов.")
+        return credits
 
     async def get_account_credits(self) -> Decimal:
         """Return the live Kie account balance from the official Common API."""
