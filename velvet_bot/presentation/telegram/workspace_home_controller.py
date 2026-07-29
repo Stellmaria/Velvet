@@ -20,7 +20,7 @@ from velvet_bot.presentation.telegram.routers.workspace_meow import (
 from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
     handle_meow_root_entry,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
+from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
     MeowVideoCallback,
     MeowVideoForm,
     handle_meow_video_action,
@@ -36,9 +36,8 @@ from velvet_bot.presentation.telegram.workspace_home_presentation import (
 )
 from velvet_bot.workspace_ui import WorkspaceCallback
 
-# Aiogram uses ':' as its default CallbackData separator, while aspect ratios
-# legitimately contain the same symbol (for example 9:16). Keep the public
-# values intact and move this callback family to an isolated separator.
+# Aiogram uses ':' as its default CallbackData separator, while older callback
+# values may contain the same symbol. Keep this callback family isolated.
 setattr(MeowVideoCallback, "__separator__", "|")
 
 
