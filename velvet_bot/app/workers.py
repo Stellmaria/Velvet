@@ -24,6 +24,7 @@ from velvet_bot.domains.ai_usage import (
     build_ai_usage_service,
 )
 from velvet_bot.domains.media_generation.file_delivery_worker import KieGenerationWorker
+from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.vision_batches import build_vision_batch_consumer
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
@@ -164,22 +165,36 @@ def build_worker_manager(
             poll_interval_seconds=active_kie_settings.poll_interval_seconds,
             task_timeout_seconds=active_kie_settings.task_timeout_seconds,
         )
-        kie_worker = KieGenerationWorker(
-            bot=bot,
-            queue=active_task_queue_service,
-            client=kie_client,
-            executor=AIRequestExecutor(active_usage_service),
-            pricing=active_kie_settings.pricing,
-            usd_to_rub=active_kie_settings.usd_to_rub,
+        kie_queue = KieTaskQueueService(
+            database=database,
+            max_attempts=active_kie_settings.generation_max_attempts,
         )
-        manager.register(
-            PeriodicWorkerSpec(
-                name="kie-media-generation",
-                description="Генерация изображений через Мяу",
-                interval_seconds=3,
-                runner=kie_worker.process_once,
+        for slot in range(1, active_kie_settings.max_concurrent_generations + 1):
+            worker_name = (
+                "kie-media-generation"
+                if slot == 1
+                else f"kie-media-generation-{slot}"
             )
-        )
+            kie_worker = KieGenerationWorker(
+                bot=bot,
+                queue=kie_queue,
+                client=kie_client,
+                executor=AIRequestExecutor(active_usage_service),
+                pricing=active_kie_settings.pricing,
+                usd_to_rub=active_kie_settings.usd_to_rub,
+                worker_id=worker_name,
+            )
+            manager.register(
+                PeriodicWorkerSpec(
+                    name=worker_name,
+                    description=(
+                        "Генерация фото и видео через Мяу "
+                        f"· слот {slot}/{active_kie_settings.max_concurrent_generations}"
+                    ),
+                    interval_seconds=3,
+                    runner=kie_worker.process_once,
+                )
+            )
     if _env_enabled("KRITA_WATERMARK_ENABLED"):
         watermark_service = WatermarkService(
             bot=bot,
