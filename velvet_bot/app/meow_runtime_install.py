@@ -3,13 +3,19 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
 from velvet_bot.core.config.kie import load_kie_settings
 from velvet_bot.domains.ai_usage import build_ai_usage_service
 from velvet_bot.domains.meow_runtime.cancellable_worker import (
     build_cancellable_worker_class,
 )
 from velvet_bot.domains.meow_runtime.dispatcher import MeowGenerationDispatcher
+from velvet_bot.domains.meow_runtime.repository import MeowRuntimeRepository
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
+from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.infrastructure.ai import KieClient
+from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
 from velvet_bot.workers import PeriodicWorkerSpec
 
 _INSTALLED = False
@@ -84,6 +90,42 @@ def install_meow_runtime_dispatcher() -> None:
                 description="Динамическая очередь Kie/GRS · Стэл 100 · пространство до 20",
                 interval_seconds=1,
                 runner=dispatcher.run,
+            )
+        )
+
+        runtime_repository = MeowRuntimeRepository(database)
+
+        async def notify_initial_setup() -> None:
+            if not await runtime_repository.claim_setup_notice():
+                return
+            await bot.send_message(
+                GLOBAL_WORKSPACE_CREATOR_ID,
+                "<b>⚙️ Первичная настройка Мяу</b>\n\n"
+                "Динамический диспетчер включён. Стартовые пределы: "
+                "<b>Kie 100</b>, <b>GRS 100</b>, пространство <b>5</b> с возможностью "
+                "увеличения до <b>20</b>.\n\n"
+                "Откройте управление, проверьте значения и подтвердите настройку.",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="Открыть параллельность Мяу",
+                                callback_data=MeowCallback(
+                                    action="runtime",
+                                    workspace_id=DEFAULT_WORKSPACE_ID,
+                                ).pack(),
+                            )
+                        ]
+                    ]
+                ),
+            )
+
+        manager.register(
+            PeriodicWorkerSpec(
+                name="meow-runtime-setup-notice",
+                description="Однократное подтверждение лимитов Мяу",
+                interval_seconds=86400,
+                runner=notify_initial_setup,
             )
         )
         return manager
