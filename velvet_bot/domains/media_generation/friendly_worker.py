@@ -13,6 +13,7 @@ from velvet_bot.domains.ai_usage import AITask
 from velvet_bot.infrastructure.ai import KieError
 
 from .economy_worker import KieGenerationWorker as EconomyKieGenerationWorker
+from .file_delivery_worker import _result_filename
 from .models import KieGenerationRequest, KieModelAlias, KieTaskRecord
 from .worker import _ProgressMessage, _optional_int, render_progress_bar
 
@@ -206,41 +207,65 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         request: KieGenerationRequest,
         record: KieTaskRecord,
     ) -> None:
+        """Download provider results and send both preview and original file."""
         if chat_id is None:
             return
         provider = "GRS AI" if request.model.is_grs else "Kie.ai"
+        media_name = "Видео" if request.model.is_video else "Изображение"
         caption = (
             f"<b>Мяу · {escape(request.model.display_name)}</b>\n"
             f"Провайдер: <b>{provider}</b>\n"
+            f"{media_name}: <b>готово</b>\n"
             f"Качество: <b>{escape(request.resolution)}</b>\n"
             f"Референсов: <b>{len(request.references)}</b>\n"
             f"Контент: <b>{escape(request.content_mode.display_name)}</b>\n"
-            f"Задача провайдера: <code>{escape(record.task_id)}</code>"
+            f"Задача провайдера: <code>{escape(record.task_id)}</code>\n\n"
+            f"Результат скачан ботом напрямую с {provider}. Ниже отправлены "
+            "предпросмотр и оригинальный файл."
         )
         try:
             if not record.result_urls:
-                await self._bot.send_message(
-                    chat_id,
-                    caption + f"\n\n{provider} завершил задачу без URL результата.",
+                await self._send_telegram_with_retry(
+                    "empty result notice",
+                    lambda: self._bot.send_message(
+                        chat_id,
+                        caption + f"\n\n{provider} завершил задачу без URL результата.",
+                    ),
                 )
                 return
-            for index, url in enumerate(record.result_urls):
-                item_caption = caption if index == 0 else None
+            for index, url in enumerate(record.result_urls, start=1):
+                item_caption = caption if index == 1 else None
+                result = await self._download_result(url)
+                filename = _result_filename(
+                    url=url,
+                    provider_task_id=record.task_id,
+                    index=index,
+                    mime_type=result.mime_type,
+                    video=request.model.is_video,
+                )
                 if request.model.is_video:
-                    await self._bot.send_video(
-                        chat_id,
-                        video=url,
+                    await self._send_video_and_document(
+                        chat_id=chat_id,
+                        payload=result.payload,
+                        filename=filename,
                         caption=item_caption,
                     )
                 else:
-                    await self._bot.send_photo(
-                        chat_id,
-                        photo=url,
+                    await self._send_image_and_document(
+                        chat_id=chat_id,
+                        payload=result.payload,
+                        filename=filename,
                         caption=item_caption,
                     )
         except TelegramAPIError:
             logger.exception(
-                "%s task %s succeeded but Telegram delivery failed",
+                "%s task %s succeeded but Telegram file delivery failed",
+                provider,
+                record.task_id,
+            )
+        except (RuntimeError, ValueError, OSError):
+            logger.exception(
+                "%s task %s succeeded but original result download failed",
                 provider,
                 record.task_id,
             )
