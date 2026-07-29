@@ -17,11 +17,13 @@ from velvet_bot.domains.media_generation import (
 )
 from velvet_bot.infrastructure.ai import KieClient
 from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
-    _build_request,
-    _validated_settings,
-    build_video_review_keyboard,
-    build_video_settings_keyboard,
     build_video_source_keyboard,
+)
+from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
+    _build_request,
+    _validated_resolution,
+    build_video_quality_keyboard,
+    build_video_review_keyboard,
 )
 
 
@@ -51,63 +53,52 @@ class MeowVideoUIContractTests(unittest.TestCase):
             _labels(build_video_source_keyboard(workspace_id=9)),
         )
 
-    def test_settings_keyboard_exposes_safe_grok_v1_options(self) -> None:
+    def test_quality_keyboard_exposes_only_resolution_and_edit_actions(self) -> None:
         labels = _labels(
-            build_video_settings_keyboard(
+            build_video_quality_keyboard(
                 workspace_id=9,
                 resolution="480p",
-                duration=6,
-                aspect_ratio="9:16",
-                mode="normal",
             )
         )
-        self.assertIn("✓ 480p", labels)
-        self.assertIn("720p", labels)
-        self.assertIn("✓ 6 сек", labels)
-        self.assertIn("10 сек", labels)
-        self.assertIn("✓ 9:16", labels)
-        self.assertIn("16:9", labels)
-        self.assertIn("✓ Обычный", labels)
-        self.assertIn("Весёлый", labels)
+        self.assertEqual(
+            [
+                "✓ 480p",
+                "720p",
+                "Изменить фото",
+                "Изменить текст",
+                "Отмена",
+            ],
+            labels,
+        )
+        self.assertNotIn("Normal", labels)
+        self.assertNotIn("Fun", labels)
         self.assertNotIn("Spicy", labels)
-        self.assertIn("Проверить и запустить", labels)
+        self.assertFalse(any("сек" in label for label in labels))
+        self.assertFalse(any(":" in label for label in labels))
 
     def test_review_requires_explicit_launch(self) -> None:
         self.assertEqual(
-            ["Запустить видео", "Изменить параметры", "Отмена"],
+            ["Запустить видео", "Изменить качество", "Отмена"],
             _labels(build_video_review_keyboard(workspace_id=9)),
         )
 
 
 class MeowVideoRequestTests(unittest.TestCase):
-    def test_grok_v1_domain_request_keeps_mature_override_until_adapter(self) -> None:
+    def test_domain_request_keeps_filter_override_for_provider_adapter(self) -> None:
         request = _build_request(
             reference=_reference(),
             prompt="Slow dolly-in while hair and curtains move in the wind.",
             resolution="720p",
-            duration=10,
-            aspect_ratio="9:16",
-            mode="fun",
         ).with_image_urls(("https://files.example/portrait.png",))
 
         self.assertIs(request.model, KieModelAlias.GROK_IMAGINE_VIDEO)
         self.assertIs(request.input_mode, KieInputMode.PHOTO_TEXT)
         self.assertIs(request.content_mode, KieContentMode.MATURE)
         self.assertEqual(1, len(request.references))
-        self.assertEqual(
-            {
-                "prompt": "Slow dolly-in while hair and curtains move in the wind.",
-                "aspect_ratio": "9:16",
-                "resolution": "720p",
-                "duration": 10,
-                "mode": "fun",
-                "image_urls": ["https://files.example/portrait.png"],
-                "nsfw_checker": False,
-            },
-            request.to_input(),
-        )
+        self.assertEqual(False, request.extra_input["nsfw_checker"])
+        self.assertEqual("720p", request.resolution)
 
-    def test_video_price_is_duration_and_resolution_aware(self) -> None:
+    def test_video_price_uses_hidden_minimum_duration_for_budget_guard(self) -> None:
         pricing = KiePricing(
             grok_480p_usd_per_second=Decimal("0.008"),
             grok_720p_usd_per_second=Decimal("0.015"),
@@ -116,41 +107,28 @@ class MeowVideoRequestTests(unittest.TestCase):
             reference=_reference(),
             prompt="motion",
             resolution="480p",
-            duration=6,
-            aspect_ratio="9:16",
-            mode="normal",
         )
         high = _build_request(
             reference=_reference(),
             prompt="motion",
             resolution="720p",
-            duration=10,
-            aspect_ratio="16:9",
-            mode="normal",
         )
         self.assertEqual(Decimal("0.048"), pricing.estimate_usd(low))
-        self.assertEqual(Decimal("0.150"), pricing.estimate_usd(high))
+        self.assertEqual(Decimal("0.090"), pricing.estimate_usd(high))
         self.assertEqual(
-            Decimal("15.00"),
+            Decimal("9.00"),
             pricing.estimate_rub(high, usd_to_rub=Decimal("100")),
         )
 
-    def test_invalid_state_values_fall_back_to_bounded_defaults(self) -> None:
+    def test_invalid_resolution_falls_back_to_480p(self) -> None:
         self.assertEqual(
-            ("480p", 6, "9:16", "normal"),
-            _validated_settings(
-                {
-                    "meow_video_resolution": "8K",
-                    "meow_video_duration": 999,
-                    "meow_video_aspect_ratio": "4:5",
-                    "meow_video_mode": "spicy",
-                }
-            ),
+            "480p",
+            _validated_resolution({"meow_video_resolution": "8K"}),
         )
 
 
 class KieGrokClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
-    async def test_adapter_sends_documented_v1_duration_and_fields(self) -> None:
+    async def test_adapter_sends_minimal_uncensored_single_image_payload(self) -> None:
         calls: list[Mapping[str, object]] = []
 
         def transport(method, url, headers, payload, timeout):
@@ -169,10 +147,7 @@ class KieGrokClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         request = _build_request(
             reference=_reference(),
             prompt="Slow camera orbit.",
-            resolution="480p",
-            duration=6,
-            aspect_ratio="16:9",
-            mode="normal",
+            resolution="720p",
         ).with_image_urls(("https://files.example/portrait.png",))
 
         task_id = await client.create_task(request)
@@ -182,12 +157,18 @@ class KieGrokClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         provider_input = calls[0]["input"]
         self.assertIsInstance(provider_input, Mapping)
         assert isinstance(provider_input, Mapping)
-        self.assertEqual("6", provider_input["duration"])
-        self.assertNotIn("nsfw_checker", provider_input)
         self.assertEqual(
-            ["https://files.example/portrait.png"],
-            provider_input["image_urls"],
+            {
+                "prompt": "Slow camera orbit.",
+                "resolution": "720p",
+                "image_urls": ["https://files.example/portrait.png"],
+                "nsfw_checker": False,
+            },
+            dict(provider_input),
         )
+        self.assertNotIn("duration", provider_input)
+        self.assertNotIn("aspect_ratio", provider_input)
+        self.assertNotIn("mode", provider_input)
 
 
 class KieGrokConfigTests(unittest.TestCase):
