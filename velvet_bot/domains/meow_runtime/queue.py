@@ -131,16 +131,31 @@ class ProviderMeowTaskQueueService(KieTaskQueueService):
         return int(value or 0)
 
     async def cancellation_requested(self, *, task_id: UUID) -> bool:
+        requested, _ = await self._cancellation_state(task_id=task_id)
+        return requested
+
+    async def _cancellation_state(self, *, task_id: UUID) -> tuple[bool, bool]:
         async with self._database.acquire() as connection:
-            value = await connection.fetchval(
+            row = await connection.fetchrow(
                 """
-                SELECT COALESCE((payload->>'cancel_requested')::BOOLEAN, FALSE)
+                SELECT
+                    COALESCE((payload->>'cancel_requested')::BOOLEAN, FALSE)
+                        AS cancel_requested,
+                    COALESCE(
+                        NULLIF(
+                            payload->'kie_campaign'->>'active_provider_task_id',
+                            ''
+                        ) IS NOT NULL,
+                        FALSE
+                    ) AS provider_started
                 FROM ai_tasks
                 WHERE id = $1::UUID
                 """,
                 task_id,
             )
-        return bool(value)
+        if row is None:
+            return False, False
+        return bool(row["cancel_requested"]), bool(row["provider_started"])
 
     async def fail(
         self,
@@ -151,16 +166,27 @@ class ProviderMeowTaskQueueService(KieTaskQueueService):
         base_delay_seconds: int = 30,
         max_delay_seconds: int = 3600,
     ) -> AITaskFailureResult | None:
-        if isinstance(error, KieTaskFailed) and await self.cancellation_requested(
+        cancel_requested, provider_started = await self._cancellation_state(
             task_id=task_id
-        ):
+        )
+        should_finish_cancelled = cancel_requested and (
+            not provider_started or isinstance(error, KieTaskFailed)
+        )
+        if should_finish_cancelled:
+            if provider_started:
+                reason = (
+                    "Пользователь запросил остановку. Уже отправленная provider-задача "
+                    "завершилась ошибкой; новая платная попытка не запускается."
+                )
+            else:
+                reason = (
+                    "Пользователь отменил задачу до получения provider task id; "
+                    "подготовка или отправка завершилась ошибкой, повтор не запускается."
+                )
             cancelled = await self.finish_cancelled(
                 task_id=task_id,
                 worker_id=worker_id,
-                reason=(
-                    "Пользователь запросил остановку. Уже отправленная provider-задача "
-                    "завершилась ошибкой; новая платная попытка не запускается."
-                ),
+                reason=reason,
             )
             if cancelled is None:
                 return None
