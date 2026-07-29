@@ -53,9 +53,14 @@ def load_kie_settings() -> KieSettings:
 
     legacy_seedream = os.getenv("KIE_SEEDREAM_5_PRO_MODEL", "").strip()
     legacy_grok_video = os.getenv("KIE_GROK_IMAGINE_VIDEO_MODEL", "").strip()
+    legacy_grok_image_to_video = (
+        legacy_grok_video
+        if "image-to-video" in legacy_grok_video.casefold()
+        else ""
+    )
     grok_image_to_video = (
         os.getenv("KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL", "").strip()
-        or legacy_grok_video
+        or legacy_grok_image_to_video
         or "grok-imagine/image-to-video"
     )
     models = KieModelCatalog(
