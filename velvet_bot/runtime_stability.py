@@ -35,6 +35,13 @@ _ASYNCIO_CLOSE_NETWORK_MARKERS = (
     "connection was closed in the middle of operation",
     "connection reset by peer",
 )
+
+_QWEN_UNAVAILABLE_MARKERS = (
+    "qwen quality service is unavailable",
+    "workspace qwen service is unavailable",
+    "ai vision service is unavailable",
+)
+
 _LOOP_GUARD_INSTALLED: set[int] = set()
 
 
@@ -46,9 +53,11 @@ def _record_message(record: logging.LogRecord) -> str:
 
 
 def is_recoverable_aiogram_polling_record(record: logging.LogRecord) -> bool:
-    """Return True for transient transport noise already handled by a retry loop."""
+    """Return True for known runtime noise that does not require owner action."""
 
     message = _record_message(record)
+    if any(marker in message for marker in _QWEN_UNAVAILABLE_MARKERS):
+        return True
     if record.name == "asyncio":
         return (
             "task exception was never retrieved" in message
@@ -113,7 +122,7 @@ def install_asyncio_exception_guard(loop: asyncio.AbstractEventLoop) -> None:
 
 
 async def acknowledge_legacy_polling_noise(repository: Any) -> int:
-    """Close old recoverable Telegram transport incidents so owner digests stay useful."""
+    """Close old non-actionable incidents so owner digests stay useful."""
 
     database = getattr(repository, "_database", None)
     if database is None:
@@ -121,58 +130,63 @@ async def acknowledge_legacy_polling_noise(repository: Any) -> int:
 
     async with database.acquire() as connection:
         result = await connection.execute(
-  """
-  UPDATE error_incidents
-  SET acknowledged_at = COALESCE(acknowledged_at, NOW()),
-      acknowledged_by = COALESCE(acknowledged_by, 0)
-  WHERE acknowledged_at IS NULL
-    AND (
-          (
-              logger_name = 'aiogram.dispatcher'
+            """
+            UPDATE error_incidents
+            SET acknowledged_at = COALESCE(acknowledged_at, NOW()),
+                acknowledged_by = COALESCE(acknowledged_by, 0)
+            WHERE acknowledged_at IS NULL
               AND (
                     (
-                        LOWER(summary) LIKE '%failed to fetch updates%'
-                        AND LOWER(summary) LIKE '%telegramnetworkerror%'
+                        logger_name = 'aiogram.dispatcher'
                         AND (
-                               LOWER(summary) LIKE '%serverdisconnectederror%'
-                            OR LOWER(summary) LIKE '%server disconnected%'
-                            OR LOWER(summary) LIKE '%clientconnectorerror%'
+                              (
+                                  LOWER(summary) LIKE '%failed to fetch updates%'
+                                  AND LOWER(summary) LIKE '%telegramnetworkerror%'
+                                  AND (
+                                         LOWER(summary) LIKE '%serverdisconnectederror%'
+                                      OR LOWER(summary) LIKE '%server disconnected%'
+                                      OR LOWER(summary) LIKE '%clientconnectorerror%'
+                                      OR LOWER(summary) LIKE '%cannot connect to host api.telegram.org%'
+                                      OR LOWER(summary) LIKE '%превышен таймаут семафора%'
+                                      OR LOWER(summary) LIKE '%semaphore timeout%'
+                                      OR LOWER(summary) LIKE '%connection reset by peer%'
+                                      OR LOWER(summary) LIKE '%connection timed out%'
+                                  )
+                              )
+                              OR LOWER(summary) LIKE 'sleep for % seconds and try again%'
+                        )
+                    )
+                    OR (
+                        logger_name = 'velvet_bot.presentation.telegram.router'
+                        AND LOWER(summary) LIKE '%unhandled bot error%'
+                        AND (
+                               LOWER(summary) LIKE '%clientconnectorerror%'
                             OR LOWER(summary) LIKE '%cannot connect to host api.telegram.org%'
                             OR LOWER(summary) LIKE '%превышен таймаут семафора%'
+                            OR LOWER(summary) LIKE '%подключение к сети было разорвано%'
                             OR LOWER(summary) LIKE '%semaphore timeout%'
                             OR LOWER(summary) LIKE '%connection reset by peer%'
                             OR LOWER(summary) LIKE '%connection timed out%'
                         )
                     )
-                    OR LOWER(summary) LIKE 'sleep for % seconds and try again%'
-              )
-          )
-          OR (
-              logger_name = 'velvet_bot.presentation.telegram.router'
-              AND LOWER(summary) LIKE '%unhandled bot error%'
-              AND (
-                     LOWER(summary) LIKE '%clientconnectorerror%'
-                  OR LOWER(summary) LIKE '%cannot connect to host api.telegram.org%'
-                  OR LOWER(summary) LIKE '%превышен таймаут семафора%'
-                  OR LOWER(summary) LIKE '%подключение к сети было разорвано%'
-                  OR LOWER(summary) LIKE '%semaphore timeout%'
-                  OR LOWER(summary) LIKE '%connection reset by peer%'
-                  OR LOWER(summary) LIKE '%connection timed out%'
-              )
-          )
-          OR (
-              logger_name = 'asyncio'
-              AND LOWER(summary) LIKE '%task exception was never retrieved%'
-              AND LOWER(summary) LIKE '%connection.close()%'
-              AND (
-                     LOWER(summary) LIKE '%connectionabortederror%'
-                  OR LOWER(summary) LIKE '%connectionreseterror%'
-                  OR LOWER(summary) LIKE '%подключение к сети было разорвано%'
-                  OR LOWER(summary) LIKE '%connection was closed in the middle of operation%'
-              )
-          )
-        )
-  """
+                    OR (
+                        logger_name = 'asyncio'
+                        AND LOWER(summary) LIKE '%task exception was never retrieved%'
+                        AND LOWER(summary) LIKE '%connection.close()%'
+                        AND (
+                               LOWER(summary) LIKE '%connectionabortederror%'
+                            OR LOWER(summary) LIKE '%connectionreseterror%'
+                            OR LOWER(summary) LIKE '%подключение к сети было разорвано%'
+                            OR LOWER(summary) LIKE '%connection was closed in the middle of operation%'
+                        )
+                    )
+                    OR (
+                           LOWER(summary) LIKE '%qwen quality service is unavailable%'
+                        OR LOWER(summary) LIKE '%workspace qwen service is unavailable%'
+                        OR LOWER(summary) LIKE '%ai vision service is unavailable%'
+                    )
+                  )
+            """
         )
     try:
         return int(str(result).rsplit(" ", 1)[-1])
@@ -200,7 +214,7 @@ def install_runtime_stability() -> None:
             closed = await acknowledge_legacy_polling_noise(self._repository)
             if closed:
                 logger.info(
-                    "Acknowledged %s recoverable Telegram polling incidents",
+                    "Acknowledged %s non-actionable runtime incidents",
                     closed,
                 )
         except asyncio.CancelledError:
@@ -213,7 +227,7 @@ def install_runtime_stability() -> None:
             TimeoutError,
         ) as error:
             logger.warning(
-                "Could not acknowledge legacy Telegram polling incidents: %s",
+                "Could not acknowledge legacy runtime incidents: %s",
                 error,
             )
         await _ORIGINAL_ERROR_CENTER_START(self)
