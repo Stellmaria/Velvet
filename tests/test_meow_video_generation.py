@@ -55,6 +55,8 @@ class MeowVideoUIContractTests(unittest.TestCase):
     def test_model_keyboard_exposes_wan_27(self) -> None:
         labels = _labels(build_video_model_keyboard(workspace_id=9, model="wan"))
         self.assertIn("✓ Wan 2.7", labels)
+        self.assertIn("Grok v1 · дёшево", labels)
+        self.assertIn("Grok 1.5 · качество", labels)
         self.assertIn("Seedance 1.5 Pro", labels)
         self.assertNotIn("Wan 2.6", labels)
 
@@ -147,6 +149,22 @@ class MeowVideoUIContractTests(unittest.TestCase):
 
 
 class MeowVideoRequestTests(unittest.TestCase):
+    def test_grok_15_request_uses_separate_contract_without_legacy_mode(self) -> None:
+        request = _build_request(
+            reference=_reference(),
+            prompt="Natural cinematic movement.",
+            model="grok15",
+            resolution="720p",
+            duration=8,
+        ).with_image_urls(("https://files.example/portrait.png",))
+        self.assertIs(request.model, KieModelAlias.GROK_IMAGINE_VIDEO_15)
+        payload = request.to_input()
+        self.assertEqual(["https://files.example/portrait.png"], payload["image_urls"])
+        self.assertEqual(8, payload["duration"])
+        self.assertEqual("auto", payload["aspect_ratio"])
+        self.assertIs(False, payload["nsfw_checker"])
+        self.assertNotIn("mode", payload)
+
     def test_seedance_request_keeps_hidden_provider_controls(self) -> None:
         request = _build_request(
             reference=_reference(),
@@ -231,6 +249,21 @@ class KieVideoClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
             return {"code": 200, "data": {"taskId": "provider-task-1"}}
 
         return KieClient(api_key="secret", models=models, transport=transport), calls
+
+    async def test_grok_15_adapter_uses_preview_model_and_new_payload(self) -> None:
+        client, calls = self._client_and_calls(
+            KieModelCatalog(grok_imagine_video_15="grok-imagine-video-1-5-preview")
+        )
+        request = _build_request(
+            reference=_reference(), prompt="Slow camera move.", model="grok15",
+            resolution="480p", duration=9,
+        ).with_image_urls(("https://files.example/portrait.png",))
+        await client.create_task(request)
+        self.assertEqual("grok-imagine-video-1-5-preview", calls[0]["model"])
+        provider_input = calls[0]["input"]
+        assert isinstance(provider_input, Mapping)
+        self.assertEqual(9, provider_input["duration"])
+        self.assertNotIn("mode", provider_input)
 
     async def test_seedance_adapter_uses_numeric_duration_and_audio(self) -> None:
         client, calls = self._client_and_calls(
@@ -321,6 +354,7 @@ class KieVideoConfigTests(unittest.TestCase):
             clear=False,
         ):
             settings = load_kie_settings()
+        self.assertEqual("grok-imagine-video-1-5-preview", settings.models.grok_imagine_video_15)
         self.assertEqual("wan/2-7-image-to-video", settings.models.wan_26_image_to_video)
         self.assertEqual(Decimal("0.08"), settings.pricing.wan_720p_usd_per_second)
         self.assertEqual(Decimal("0.12"), settings.pricing.wan_1080p_usd_per_second)

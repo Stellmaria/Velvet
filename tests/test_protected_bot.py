@@ -3,8 +3,14 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, call, patch
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramNetworkError
-from aiogram.methods import GetMe, SendDocument, SendMessage, SendPhoto
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
+from aiogram.methods import (
+    EditMessageText,
+    GetMe,
+    SendDocument,
+    SendMessage,
+    SendPhoto,
+)
 
 import velvet_bot.public_archive_display as public_display
 from velvet_bot.protected_bot import ProtectedMediaBot, protect_private_media_method
@@ -160,7 +166,71 @@ class ProtectedMediaBotAsyncTests(unittest.IsolatedAsyncioTestCase):
             [call(2.0), call(4.0), call(8.0), call(15.0)],
         )
 
-    async def test_non_get_me_network_errors_are_not_retried(self) -> None:
+    async def test_edit_message_text_retries_transient_network_errors(self) -> None:
+        bot = ProtectedMediaBot(
+            token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
+        )
+        method = EditMessageText(
+            chat_id=100,
+            message_id=777,
+            text="Generation: 50%",
+        )
+        network_error = TelegramNetworkError(
+            method=method,
+            message="ServerDisconnectedError: Server disconnected",
+        )
+        request = AsyncMock(
+            side_effect=(network_error, SimpleNamespace(message_id=777))
+        )
+        sleep = AsyncMock()
+
+        try:
+            with (
+                patch.object(Bot, "__call__", new=request),
+                patch("velvet_bot.protected_bot.asyncio.sleep", new=sleep),
+            ):
+                result = await bot(method)
+        finally:
+            await bot.session.close()
+
+        self.assertEqual(result.message_id, 777)
+        self.assertEqual(request.await_count, 2)
+        self.assertEqual(sleep.await_args_list, [call(1.0)])
+
+    async def test_edit_message_text_accepts_already_applied_retry(self) -> None:
+        bot = ProtectedMediaBot(
+            token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
+        )
+        method = EditMessageText(
+            chat_id=100,
+            message_id=777,
+            text="Generation: 50%",
+        )
+        network_error = TelegramNetworkError(
+            method=method,
+            message="ServerDisconnectedError: Server disconnected",
+        )
+        already_applied = TelegramBadRequest(
+            method=method,
+            message="Bad Request: message is not modified",
+        )
+        request = AsyncMock(side_effect=(network_error, already_applied))
+        sleep = AsyncMock()
+
+        try:
+            with (
+                patch.object(Bot, "__call__", new=request),
+                patch("velvet_bot.protected_bot.asyncio.sleep", new=sleep),
+            ):
+                result = await bot(method)
+        finally:
+            await bot.session.close()
+
+        self.assertIs(result, True)
+        self.assertEqual(request.await_count, 2)
+        self.assertEqual(sleep.await_args_list, [call(1.0)])
+
+    async def test_non_idempotent_network_errors_are_not_retried(self) -> None:
         bot = ProtectedMediaBot(
             token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
         )
