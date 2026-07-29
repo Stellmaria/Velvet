@@ -13,10 +13,12 @@ from velvet_bot.presentation.telegram.routers.workspace_meow import (
     MeowCallback,
     MeowForm,
     handle_meow_action,
-    handle_meow_entry,
     handle_meow_prompt,
     handle_meow_reference_message,
     handle_meow_reference_text,
+)
+from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
+    handle_meow_root_entry,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
     MeowVideoCallback,
@@ -112,7 +114,7 @@ def register_workspace_home(router: Router) -> None:
         WorkspaceCallback.filter(F.action == "home"),
     )
     router.callback_query.register(
-        handle_meow_entry,
+        handle_meow_root_entry,
         WorkspaceCallback.filter(F.action == "meow"),
     )
     router.callback_query.register(
