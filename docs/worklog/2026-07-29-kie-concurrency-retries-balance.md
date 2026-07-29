@@ -3,7 +3,7 @@
 - Дата: 2026-07-29
 - ID: 2026-07-29-kie-concurrency-retries-balance
 - Линия/фаза: Мяу / Kie runtime / учёт провайдера
-- Статус: частично
+- Статус: завершено
 - Ветка: agent/kie-concurrency-retries-balance
 - Базовый commit: 26aef0b7850dd9b14810d715ff33375a2c4e683d
 
@@ -51,10 +51,14 @@
 
 - добавлены runtime-настройки параллельности и попыток;
 - добавлен `KieTaskQueueService`, повышающий max attempts в базе при claim;
-- worker manager создаёт до четырёх независимых Kie-слотов;
+- worker manager создаёт до четырёх независимых Kie-слотов с разными `locked_by`;
+- PostgreSQL `SKIP LOCKED` сохраняет однократный захват каждой задачи;
 - скачивание референсов, CDN-результатов и Telegram-отправки получили одиннадцать попыток;
 - `KieClient` получил официальный метод чтения баланса;
-- добавлен экран живого баланса, очереди и последних списаний.
+- добавлен экран живого баланса, очереди и последних списаний;
+- provider credits и локальная себестоимость в рублях выводятся раздельно;
+- добавлены контрактные тесты runtime defaults, balance endpoint и Telegram presentation;
+- navigation inventory обновлён до 504 Python-файлов, 86 файлов с кнопками и 961 inline-кнопки без нарушений.
 
 ### Миграции и совместимость
 
@@ -62,22 +66,25 @@
 
 ### Проверки
 
-CI будет запущен после открытия draft PR. Особое внимание: типы async callback для Telegram retry, worker registry, Kie config defaults, callback inventory и SQL JSONB extraction.
+- tests run `30446287271`: success, 1552 теста;
+- type check run `30446287439`: success;
+- Docker build run `30446287227`: success;
+- project notes contract run `30446287687`: success;
+- первый прогон также подтвердил прохождение всех 1552 тестов по коду и потребовал только обновить navigation inventory.
 
 ### PR и commit
 
 - ветка: `agent/kie-concurrency-retries-balance`;
-- PR будет создан после первичной сборки изменений;
-- итоговый merge commit будет записан после зелёного CI.
+- PR: #367 `Добавить параллельные Kie-задачи, 11 повторов и баланс`;
+- финальный head перед документационным commit: `aa7d7fc81f78089a9fcaeba79d2c4801cf052ff3`;
+- итоговый merge commit будет записан GitHub после слияния.
 
 ### Незавершённое
 
-- добавить unit-тесты live balance endpoint и runtime defaults;
-- открыть draft PR;
-- исправить результаты полного CI;
-- обновить Telegram navigation inventory;
-- слить изменение в `main`.
+- выполнить после deployment живую проверку `chat/credit` с серверным API key;
+- запустить несколько недорогих Grok-задач одновременно и подтвердить четыре active slot;
+- проверить фактические `creditsConsumed` у Grok, Seedance и Wan на аккаунте владельца.
 
 ### Следующий шаг
 
-Открыть draft PR, дождаться всех обязательных проверок, исправить контрактные расхождения и после зелёного CI слить изменение в `main`.
+Слить зелёный PR в `main`, обновить бота через Supervisor и выполнить live smoke-test баланса и параллельной очереди.
