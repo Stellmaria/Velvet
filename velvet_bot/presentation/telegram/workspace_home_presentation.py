@@ -53,6 +53,18 @@ def build_workspace_owner_home_keyboard(
         modules=modules,
     )
     rows = [list(row) for row in base.inline_keyboard]
+    rows.insert(
+        1 if rows else 0,
+        [
+            InlineKeyboardButton(
+                text="Мяу",
+                callback_data=workspace_callback(
+                    "meow",
+                    workspace_id=workspace.id,
+                ),
+            )
+        ],
+    )
     if not workspace.is_system:
         close_row = rows.pop() if rows else []
         rows.extend(
