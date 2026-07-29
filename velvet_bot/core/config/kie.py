@@ -43,21 +43,13 @@ def load_kie_settings() -> KieSettings:
     )
     api_key = os.getenv("KIE_API_KEY", "").strip() or None
     grs_api_key = os.getenv("GRS_API_KEY", "").strip() or None
-    base_url = (
-        os.getenv("KIE_BASE_URL", "https://api.kie.ai/api/v1")
-        .strip()
-        .rstrip("/")
-    )
+    base_url = os.getenv("KIE_BASE_URL", "https://api.kie.ai/api/v1").strip().rstrip("/")
     file_upload_base_url = (
         os.getenv("KIE_FILE_UPLOAD_BASE_URL", "https://kieai.redpandaai.co")
         .strip()
         .rstrip("/")
     )
-    grs_base_url = (
-        os.getenv("GRS_BASE_URL", "https://grsaiapi.com")
-        .strip()
-        .rstrip("/")
-    )
+    grs_base_url = os.getenv("GRS_BASE_URL", "https://grsaiapi.com").strip().rstrip("/")
     if not base_url:
         raise RuntimeError("KIE_BASE_URL не может быть пустым.")
     if not file_upload_base_url:
@@ -68,9 +60,7 @@ def load_kie_settings() -> KieSettings:
     legacy_seedream = os.getenv("KIE_SEEDREAM_5_PRO_MODEL", "").strip()
     legacy_grok_video = os.getenv("KIE_GROK_IMAGINE_VIDEO_MODEL", "").strip()
     legacy_grok_image_to_video = (
-        legacy_grok_video
-        if "image-to-video" in legacy_grok_video.casefold()
-        else ""
+        legacy_grok_video if "image-to-video" in legacy_grok_video.casefold() else ""
     )
     grok_image_to_video = (
         os.getenv("KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL", "").strip()
@@ -81,9 +71,11 @@ def load_kie_settings() -> KieSettings:
         os.getenv("KIE_SEEDANCE_15_PRO_MODEL", "").strip()
         or "bytedance/seedance-1.5-pro"
     )
+    # Prefer the new explicit name. Keep the old variable only as a deployment bridge.
     wan_image_to_video = (
-        os.getenv("KIE_WAN_26_IMAGE_TO_VIDEO_MODEL", "").strip()
-        or "wan/2-6-image-to-video"
+        os.getenv("KIE_WAN_27_IMAGE_TO_VIDEO_MODEL", "").strip()
+        or os.getenv("KIE_WAN_26_IMAGE_TO_VIDEO_MODEL", "").strip()
+        or "wan/2-7-image-to-video"
     )
     models = KieModelCatalog(
         seedream_5_pro=legacy_seedream,
@@ -106,6 +98,7 @@ def load_kie_settings() -> KieSettings:
         ),
         grok_imagine_video=grok_image_to_video,
         seedance_15_pro_video=seedance_image_to_video,
+        # Field name stays stable so already queued tasks remain readable.
         wan_26_image_to_video=wan_image_to_video,
     )
     usd_to_rub = _parse_non_negative_decimal(
@@ -148,69 +141,45 @@ def load_kie_settings() -> KieSettings:
             ) from error
 
     pricing = KiePricing(
-        seedream_basic_usd=_env_decimal(
-            "KIE_SEEDREAM_BASIC_USD",
-            "0.075",
-        ),
-        seedream_high_usd=_env_decimal(
-            "KIE_SEEDREAM_HIGH_USD",
-            "0.15",
-        ),
-        nano_1k_2k_usd=_env_decimal(
-            "KIE_NANO_1K_2K_USD",
-            "0.09",
-        ),
-        nano_4k_usd=_env_decimal(
-            "KIE_NANO_4K_USD",
-            "0.12",
-        ),
-        nano_banana_2_usd=_env_decimal(
-            "GRS_NANO_BANANA_2_USD",
-            "0.02",
-        ),
-        nano_banana_pro_usd=_env_decimal(
-            "GRS_NANO_BANANA_PRO_USD",
-            "0.03",
-        ),
+        seedream_basic_usd=_env_decimal("KIE_SEEDREAM_BASIC_USD", "0.075"),
+        seedream_high_usd=_env_decimal("KIE_SEEDREAM_HIGH_USD", "0.15"),
+        nano_1k_2k_usd=_env_decimal("KIE_NANO_1K_2K_USD", "0.09"),
+        nano_4k_usd=_env_decimal("KIE_NANO_4K_USD", "0.12"),
+        nano_banana_2_usd=_env_decimal("GRS_NANO_BANANA_2_USD", "0.02"),
+        nano_banana_pro_usd=_env_decimal("GRS_NANO_BANANA_PRO_USD", "0.03"),
         grok_480p_usd_per_second=_env_decimal(
-            "KIE_GROK_480P_USD_PER_SECOND",
-            "0.008",
+            "KIE_GROK_480P_USD_PER_SECOND", "0.008"
         ),
         grok_720p_usd_per_second=_env_decimal(
-            "KIE_GROK_720P_USD_PER_SECOND",
-            "0.015",
+            "KIE_GROK_720P_USD_PER_SECOND", "0.015"
         ),
         seedance_480p_no_audio_usd_per_second=_env_decimal(
-            "KIE_SEEDANCE_15_480P_NO_AUDIO_USD_PER_SECOND",
-            "0.00875",
+            "KIE_SEEDANCE_15_480P_NO_AUDIO_USD_PER_SECOND", "0.00875"
         ),
         seedance_720p_no_audio_usd_per_second=_env_decimal(
-            "KIE_SEEDANCE_15_720P_NO_AUDIO_USD_PER_SECOND",
-            "0.0175",
+            "KIE_SEEDANCE_15_720P_NO_AUDIO_USD_PER_SECOND", "0.0175"
         ),
         seedance_1080p_no_audio_usd_per_second=_env_decimal(
-            "KIE_SEEDANCE_15_1080P_NO_AUDIO_USD_PER_SECOND",
-            "0.0375",
+            "KIE_SEEDANCE_15_1080P_NO_AUDIO_USD_PER_SECOND", "0.0375"
         ),
         seedance_480p_audio_usd_per_second=_env_decimal(
-            "KIE_SEEDANCE_15_480P_AUDIO_USD_PER_SECOND",
-            "0.0175",
+            "KIE_SEEDANCE_15_480P_AUDIO_USD_PER_SECOND", "0.0175"
         ),
         seedance_720p_audio_usd_per_second=_env_decimal(
-            "KIE_SEEDANCE_15_720P_AUDIO_USD_PER_SECOND",
-            "0.035",
+            "KIE_SEEDANCE_15_720P_AUDIO_USD_PER_SECOND", "0.035"
         ),
         seedance_1080p_audio_usd_per_second=_env_decimal(
-            "KIE_SEEDANCE_15_1080P_AUDIO_USD_PER_SECOND",
-            "0.075",
+            "KIE_SEEDANCE_15_1080P_AUDIO_USD_PER_SECOND", "0.075"
         ),
-        wan_720p_usd_per_second=_env_decimal(
+        wan_720p_usd_per_second=_env_decimal_with_legacy(
+            "KIE_WAN_27_720P_USD_PER_SECOND",
             "KIE_WAN_26_720P_USD_PER_SECOND",
-            "0.07",
+            "0.08",
         ),
-        wan_1080p_usd_per_second=_env_decimal(
+        wan_1080p_usd_per_second=_env_decimal_with_legacy(
+            "KIE_WAN_27_1080P_USD_PER_SECOND",
             "KIE_WAN_26_1080P_USD_PER_SECOND",
-            "0.105",
+            "0.12",
         ),
     )
     return KieSettings(
@@ -268,6 +237,17 @@ def _env_decimal(variable_name: str, default: str) -> Decimal:
         os.getenv(variable_name, default),
         variable_name=variable_name,
     )
+
+
+def _env_decimal_with_legacy(
+    variable_name: str, legacy_variable_name: str, default: str
+) -> Decimal:
+    value = (
+        os.getenv(variable_name, "").strip()
+        or os.getenv(legacy_variable_name, "").strip()
+        or default
+    )
+    return _parse_non_negative_decimal(value, variable_name=variable_name)
 
 
 def _parse_non_negative_decimal(value: str, *, variable_name: str) -> Decimal:

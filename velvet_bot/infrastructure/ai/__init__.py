@@ -15,14 +15,16 @@ from .kie import (
     KieProtocolError,
     KieTaskFailed,
     KieTransientError,
+    _build_wan_27_input,
 )
 
 _GROK_V1_IMAGE_TO_VIDEO = "grok-imagine/image-to-video"
+_WAN_27_IMAGE_TO_VIDEO = "wan/2-7-image-to-video"
 _GRS_TASK_PREFIX = "grs:"
 
 
 class KieClient(BaseKieClient):
-    """Hybrid GRS/Kie client with exact legacy Grok v1 compatibility."""
+    """Hybrid GRS/Kie client with exact provider compatibility."""
 
     def __init__(
         self,
@@ -64,18 +66,22 @@ class KieClient(BaseKieClient):
         if request.model.is_grs:
             return await super().create_task(request, callback_url=callback_url)
         provider_model = self.models.provider_model_for_request(request)
-        provider_input = dict(request.to_input())
+        provider_input: Mapping[str, object] = request.to_input()
         if provider_model == _GROK_V1_IMAGE_TO_VIDEO:
             # Single-image Grok v1 derives framing and motion defaults from the
             # source image. Keep the owner-facing flow minimal and send only the
             # documented controls that matter here. nsfw_checker=false is kept
             # intentionally so Kie does not apply its additional content filter.
-            provider_input.pop("aspect_ratio", None)
-            provider_input.pop("duration", None)
-            provider_input.pop("mode", None)
+            grok_input = dict(provider_input)
+            grok_input.pop("aspect_ratio", None)
+            grok_input.pop("duration", None)
+            grok_input.pop("mode", None)
+            provider_input = grok_input
+        elif provider_model == _WAN_27_IMAGE_TO_VIDEO:
+            provider_input = _build_wan_27_input(provider_input)
         payload: dict[str, object] = {
             "model": provider_model,
-            "input": provider_input,
+            "input": dict(provider_input),
         }
         if callback_url and callback_url.strip():
             payload["callBackUrl"] = callback_url.strip()
@@ -180,7 +186,7 @@ class KieClient(BaseKieClient):
         except (InvalidOperation, ValueError) as error:
             raise KieProtocolError("Kie.ai chat/credit не вернул числовой баланс.") from error
         if not credits.is_finite() or credits < 0:
-            raise KieProtocolError("Kie.ai chat/credit вернул некорректный баланс.")
+            raise KieProtocolError("Kie.ai вернул некорректный баланс кредитов.")
         return credits
 
 

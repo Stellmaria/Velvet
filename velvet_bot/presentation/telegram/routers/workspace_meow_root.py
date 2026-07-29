@@ -74,7 +74,7 @@ async def handle_meow_root_entry(
             f"<b>Создать</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
             "Можно использовать текст и референсы из базы или Telegram.\n\n"
             "<b>Оживить</b> — фото и описание движения превращаются в видео через "
-            "Grok Imagine v1, Seedance 1.5 Pro или Wan 2.6.\n\n"
+            "Grok Imagine v1, Seedance 1.5 Pro или Wan 2.7.\n\n"
             f"Параллельных генераций: <b>до {kie_settings.max_concurrent_generations}</b>. "
             f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
             "Баланс Kie и баланс GRS AI вынесены в отдельные экраны. "
