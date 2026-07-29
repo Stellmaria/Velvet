@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from datetime import datetime, timezone
-from types import SimpleNamespace
 from uuid import uuid4
 
 from velvet_bot.domains.meow_runtime import (
@@ -46,12 +46,10 @@ class _FakeRepository:
 
     async def set_provider_limit(self, *, provider, limit, updated_by_user_id):
         if provider is MeowProvider.KIE:
-            self.runtime = MeowRuntimeSettings(
-                **{
-                    **self.runtime.__dict__,
-                    "kie_concurrency_limit": limit,
-                    "updated_by_user_id": updated_by_user_id,
-                }
+            self.runtime = replace(
+                self.runtime,
+                kie_concurrency_limit=limit,
+                updated_by_user_id=updated_by_user_id,
             )
         return self.runtime
 
