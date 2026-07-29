@@ -16,9 +16,13 @@ def __getattr__(name: str) -> Any:
     from velvet_bot.app.bootstrap import run_application as application
 
     async def configured_run_application() -> None:
+        from velvet_bot.domains.media_generation.friendly_worker import (
+            install_friendly_media_worker,
+        )
         from velvet_bot.infrastructure.ai_model_routing import install_ai_model_routing
 
         install_ai_model_routing()
+        install_friendly_media_worker()
         await application()
 
     globals()[name] = configured_run_application
