@@ -1,9 +1,10 @@
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 from aiogram import Bot
-from aiogram.methods import SendDocument, SendMessage, SendPhoto
+from aiogram.exceptions import TelegramNetworkError
+from aiogram.methods import GetMe, SendDocument, SendMessage, SendPhoto
 
 import velvet_bot.public_archive_display as public_display
 from velvet_bot.protected_bot import ProtectedMediaBot, protect_private_media_method
@@ -103,6 +104,86 @@ class ProtectedMediaBotAsyncTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIs(first.protect_content, False)
         self.assertIs(second.protect_content, False)
+
+    async def test_get_me_retries_transient_network_errors(self) -> None:
+        bot = ProtectedMediaBot(
+            token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
+        )
+        method = GetMe()
+        network_error = TelegramNetworkError(
+            method=method,
+            message="temporary Telegram outage",
+        )
+        request = AsyncMock(
+            side_effect=(network_error, network_error, SimpleNamespace(username="bot"))
+        )
+        sleep = AsyncMock()
+
+        try:
+            with (
+                patch.object(Bot, "__call__", new=request),
+                patch("velvet_bot.protected_bot.asyncio.sleep", new=sleep),
+            ):
+                result = await bot(method)
+        finally:
+            await bot.session.close()
+
+        self.assertEqual(result.username, "bot")
+        self.assertEqual(request.await_count, 3)
+        self.assertEqual(sleep.await_args_list, [call(2.0), call(4.0)])
+
+    async def test_get_me_raises_after_retry_budget_is_exhausted(self) -> None:
+        bot = ProtectedMediaBot(
+            token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
+        )
+        method = GetMe()
+        network_error = TelegramNetworkError(
+            method=method,
+            message="Telegram remains unavailable",
+        )
+        request = AsyncMock(side_effect=network_error)
+        sleep = AsyncMock()
+
+        try:
+            with (
+                patch.object(Bot, "__call__", new=request),
+                patch("velvet_bot.protected_bot.asyncio.sleep", new=sleep),
+                self.assertRaises(TelegramNetworkError),
+            ):
+                await bot(method)
+        finally:
+            await bot.session.close()
+
+        self.assertEqual(request.await_count, 5)
+        self.assertEqual(
+            sleep.await_args_list,
+            [call(2.0), call(4.0), call(8.0), call(15.0)],
+        )
+
+    async def test_non_get_me_network_errors_are_not_retried(self) -> None:
+        bot = ProtectedMediaBot(
+            token="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"
+        )
+        method = SendMessage(chat_id=100, text="test")
+        network_error = TelegramNetworkError(
+            method=method,
+            message="send outcome is uncertain",
+        )
+        request = AsyncMock(side_effect=network_error)
+        sleep = AsyncMock()
+
+        try:
+            with (
+                patch.object(Bot, "__call__", new=request),
+                patch("velvet_bot.protected_bot.asyncio.sleep", new=sleep),
+                self.assertRaises(TelegramNetworkError),
+            ):
+                await bot(method)
+        finally:
+            await bot.session.close()
+
+        self.assertEqual(request.await_count, 1)
+        sleep.assert_not_awaited()
 
     async def test_public_archive_photo_is_protected_in_group_chat(self) -> None:
         sent_message = SimpleNamespace()
