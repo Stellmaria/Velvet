@@ -84,20 +84,51 @@ class KieTaskState(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class KieModelCatalog:
-    seedream_5_pro: str
+    """Provider model ids separated from stable internal aliases.
+
+    ``seedream_5_pro`` is retained as a legacy fallback for existing server
+    environments. New deployments should set the explicit text and image ids.
+    """
+
+    seedream_5_pro: str = ""
+    seedream_5_pro_text: str = ""
+    seedream_5_pro_image: str = ""
     nano_banana_pro: str = "nano-banana-pro"
     grok_imagine_video: str = "grok-imagine/text-to-video"
 
-    def provider_model(self, alias: KieModelAlias) -> str:
-        mapping = {
-            KieModelAlias.SEEDREAM_5_PRO: self.seedream_5_pro,
-            KieModelAlias.NANO_BANANA_PRO: self.nano_banana_pro,
-            KieModelAlias.GROK_IMAGINE_VIDEO: self.grok_imagine_video,
-        }
-        model = mapping[alias].strip()
-        if not model:
-            raise ValueError(f"Для {alias.value} не задан model id Kie.ai.")
-        return model
+    def provider_model(
+        self,
+        alias: KieModelAlias,
+        *,
+        input_mode: KieInputMode | None = None,
+    ) -> str:
+        if alias is KieModelAlias.SEEDREAM_5_PRO:
+            if input_mode is KieInputMode.TEXT:
+                legacy_text = (
+                    self.seedream_5_pro
+                    if "text-to-image" in self.seedream_5_pro.casefold()
+                    else ""
+                )
+                model = self.seedream_5_pro_text or legacy_text
+            else:
+                model = self.seedream_5_pro_image or self.seedream_5_pro
+        elif alias is KieModelAlias.NANO_BANANA_PRO:
+            model = self.nano_banana_pro
+        else:
+            model = self.grok_imagine_video
+        normalized = model.strip()
+        if not normalized:
+            mode_suffix = f" для режима {input_mode.value}" if input_mode else ""
+            raise ValueError(
+                f"Для {alias.value}{mode_suffix} не задан model id Kie.ai."
+            )
+        return normalized
+
+    def provider_model_for_request(self, request: "KieGenerationRequest") -> str:
+        return self.provider_model(
+            request.model,
+            input_mode=request.input_mode,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -266,10 +297,12 @@ class KieGenerationRequest:
             payload.update(
                 {
                     "quality": self.provider_quality,
-                    "image_urls": list(self.image_urls),
                     "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
                 }
             )
+            if self.input_mode is not KieInputMode.TEXT:
+                payload["image_urls"] = list(self.image_urls)
+            payload["output_format"] = self.output_format.strip() or "png"
         elif self.model is KieModelAlias.NANO_BANANA_PRO:
             payload.update(
                 {
@@ -431,20 +464,3 @@ def _optional_int(value: object) -> int | None:
 def _optional_text(value: object) -> str | None:
     text = str(value or "").strip()
     return text or None
-
-
-__all__ = (
-    "KIE_GENERATION_TASK_TYPE",
-    "MAX_KIE_REFERENCES",
-    "MAX_KIE_REFERENCE_BYTES",
-    "KieContentMode",
-    "KieGenerationRequest",
-    "KieInputMode",
-    "KieModelAlias",
-    "KieModelCatalog",
-    "KiePricing",
-    "KieReferenceImage",
-    "KieTaskRecord",
-    "KieTaskState",
-    "KieUploadedFile",
-)
