@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from html import escape
-from typing import Any
 
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
@@ -22,6 +21,9 @@ _MODEL_NAMES = {
     "seedance_15_pro_video": "Seedance 1.5 Pro",
     "wan_26_image_to_video": "Wan 2.6",
 }
+_USD_QUANTUM = Decimal("0.0001")
+_RUB_QUANTUM = Decimal("0.01")
+_BYN_QUANTUM = Decimal("0.0001")
 
 
 def build_kie_balance_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
@@ -84,6 +86,9 @@ async def handle_meow_balance(
         balance_error=balance_error,
         summary=summary,
         recent=recent,
+        credit_usd=kie_settings.credit_usd,
+        credit_byn=kie_settings.credit_byn,
+        usd_to_rub=kie_settings.usd_to_rub,
         concurrency=kie_settings.max_concurrent_generations,
         attempts=kie_settings.generation_max_attempts,
     )
@@ -109,7 +114,6 @@ async def _load_kie_usage(
         usage = await connection.fetchrow(
             f"""SELECT
                     COALESCE(SUM({credits_sql}) FILTER (WHERE status='success'),0) AS consumed_credits,
-                    COALESCE(SUM(actual_cost_rub) FILTER (WHERE status='success'),0) AS actual_cost_rub,
                     COUNT(*) FILTER (WHERE status='success') AS success_count,
                     COUNT(*) FILTER (WHERE status='error') AS error_count,
                     COUNT(*) FILTER (WHERE status='reserved') AS reserved_count
@@ -126,7 +130,6 @@ async def _load_kie_usage(
         rows = await connection.fetch(
             f"""SELECT
                     COALESCE(metadata->>'model_alias',model) AS model_name,
-                    actual_cost_rub,
                     {credits_sql} AS consumed_credits,
                     completed_at
                 FROM ai_usage_events
@@ -136,7 +139,6 @@ async def _load_kie_usage(
         )
     summary = {
         "consumed_credits": Decimal(usage["consumed_credits"] or 0) if usage else Decimal("0"),
-        "actual_cost_rub": Decimal(usage["actual_cost_rub"] or 0) if usage else Decimal("0"),
         "success_count": int(usage["success_count"] or 0) if usage else 0,
         "error_count": int(usage["error_count"] or 0) if usage else 0,
         "reserved_count": int(usage["reserved_count"] or 0) if usage else 0,
@@ -152,19 +154,28 @@ def _render_balance(
     balance_error: str | None,
     summary: dict[str, object],
     recent: tuple[dict[str, object], ...],
+    credit_usd: Decimal,
+    credit_byn: Decimal,
+    usd_to_rub: Decimal,
     concurrency: int,
     attempts: int,
 ) -> str:
+    consumed_credits = _decimal(summary["consumed_credits"])
     if live_credits is None:
-        live_line = "Баланс аккаунта: <b>не получен</b>"
+        live_lines = ["Баланс аккаунта: <b>не получен</b>"]
     else:
-        live_line = f"Баланс аккаунта: <b>{_format_credits(live_credits)} кредитов</b>"
+        live_lines = [
+            f"Баланс аккаунта: <b>{_format_credits(live_credits)} кредитов</b>",
+            "Стоимость остатка: "
+            f"<b>{_format_credit_money(live_credits, credit_usd=credit_usd, credit_byn=credit_byn, usd_to_rub=usd_to_rub)}</b>",
+        ]
     lines = [
         "<b>Мяу · баланс Kie</b>",
         "",
-        live_line,
-        f"Списано по сохранённым задачам: <b>{_format_credits(_decimal(summary['consumed_credits']))} кредитов</b>",
-        f"Учтённая себестоимость: <b>{_format_rub(_decimal(summary['actual_cost_rub']))}</b>",
+        *live_lines,
+        f"Списано по сохранённым задачам: <b>{_format_credits(consumed_credits)} кредитов</b>",
+        "Себестоимость списаний: "
+        f"<b>{_format_credit_money(consumed_credits, credit_usd=credit_usd, credit_byn=credit_byn, usd_to_rub=usd_to_rub)}</b>",
         "",
         f"Активно: <b>{int(summary['running'])}/{concurrency}</b>",
         f"В очереди: <b>{int(summary['queued'])}</b>",
@@ -182,13 +193,26 @@ def _render_balance(
         for row in recent:
             alias = str(row.get("model_name") or "kie")
             model = _MODEL_NAMES.get(alias, alias)
-            credits = _format_credits(_decimal(row.get("consumed_credits")))
-            rub = _format_rub(_decimal(row.get("actual_cost_rub")))
-            lines.append(f"• {escape(model)}: <b>{credits} кр.</b> · {rub}")
+            credits_value = _decimal(row.get("consumed_credits"))
+            credits = _format_credits(credits_value)
+            money = _format_credit_money(
+                credits_value,
+                credit_usd=credit_usd,
+                credit_byn=credit_byn,
+                usd_to_rub=usd_to_rub,
+            )
+            lines.append(f"• {escape(model)}: <b>{credits} кр.</b> · {money}")
+    one_credit = _format_credit_money(
+        Decimal("1"),
+        credit_usd=credit_usd,
+        credit_byn=credit_byn,
+        usd_to_rub=usd_to_rub,
+    )
     lines.extend(
         [
             "",
-            "Кредиты берутся из ответа Kie <code>creditsConsumed</code>. Рубли — локальная себестоимость по настроенным тарифам.",
+            f"Расчёт себестоимости: <b>1 кредит = {one_credit}</b>.",
+            "Кредиты берутся из ответа Kie <code>creditsConsumed</code>; деньги теперь считаются от фактического числа кредитов, а не от приблизительного тарифа модели.",
         ]
     )
     return "\n".join(lines)
@@ -197,7 +221,7 @@ def _render_balance(
 def _decimal(value: object) -> Decimal:
     try:
         return Decimal(value or 0)
-    except (TypeError, ValueError):
+    except (InvalidOperation, TypeError, ValueError):
         return Decimal("0")
 
 
@@ -206,9 +230,32 @@ def _format_credits(value: Decimal) -> str:
     return normalized.rstrip("0").rstrip(".") if "." in normalized else normalized
 
 
-def _format_rub(value: Decimal) -> str:
-    normalized = f"{value:,.2f}".replace(",", "\u00a0").replace(".", ",")
-    return f"{normalized} ₽"
+def _format_credit_money(
+    credits: Decimal,
+    *,
+    credit_usd: Decimal,
+    credit_byn: Decimal,
+    usd_to_rub: Decimal,
+) -> str:
+    usd = (credits * credit_usd).quantize(_USD_QUANTUM, rounding=ROUND_HALF_UP)
+    rub = (usd * usd_to_rub).quantize(_RUB_QUANTUM, rounding=ROUND_HALF_UP)
+    byn = (credits * credit_byn).quantize(_BYN_QUANTUM, rounding=ROUND_HALF_UP)
+    return " · ".join(
+        (
+            f"{_format_number(usd, places=4, minimum_places=2)} $",
+            f"{_format_number(rub, places=2, minimum_places=2)} ₽",
+            f"{_format_number(byn, places=4, minimum_places=2)} BYN",
+        )
+    )
+
+
+def _format_number(value: Decimal, *, places: int, minimum_places: int) -> str:
+    text = f"{value:,.{places}f}"
+    integer, fraction = text.split(".", 1)
+    fraction = fraction.rstrip("0")
+    fraction += "0" * max(0, minimum_places - len(fraction))
+    integer = integer.replace(",", "\u00a0")
+    return f"{integer},{fraction}"
 
 
 __all__ = (
