@@ -1,20 +1,25 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from collections.abc import AsyncIterator, Collection
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Any
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 from aiogram.methods import (
     AnswerCallbackQuery,
+    GetMe,
     SendAnimation,
     SendDocument,
     SendMediaGroup,
     SendPhoto,
     SendVideo,
 )
+
+logger = logging.getLogger(__name__)
 
 _PROTECTED_MEDIA_METHODS = (
     SendAnimation,
@@ -28,6 +33,7 @@ _STALE_CALLBACK_MARKERS = (
     "response timeout expired",
     "query id is invalid",
 )
+_GET_ME_RETRY_DELAYS_SECONDS = (2.0, 4.0, 8.0, 15.0)
 
 
 def protect_private_media_method(
@@ -117,9 +123,27 @@ class ProtectedMediaBot(Bot):
             method,
             unprotected_private_user_ids=unprotected_ids,
         )
-        try:
-            return await super().__call__(method, request_timeout=request_timeout)
-        except TelegramBadRequest as error:
-            if is_expired_callback_answer(method, error):
-                return True
-            raise
+        retry_delays = (
+            _GET_ME_RETRY_DELAYS_SECONDS if isinstance(method, GetMe) else ()
+        )
+        for attempt in range(len(retry_delays) + 1):
+            try:
+                return await super().__call__(method, request_timeout=request_timeout)
+            except TelegramNetworkError as error:
+                if attempt >= len(retry_delays):
+                    raise
+                delay = retry_delays[attempt]
+                logger.warning(
+                    "Telegram getMe network request failed; retrying in %.1f seconds "
+                    "(attempt %s/%s): %s",
+                    delay,
+                    attempt + 2,
+                    len(retry_delays) + 1,
+                    error,
+                )
+                await asyncio.sleep(delay)
+            except TelegramBadRequest as error:
+                if is_expired_callback_answer(method, error):
+                    return True
+                raise
+        raise RuntimeError("unreachable Telegram request retry state")
