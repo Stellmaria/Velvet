@@ -6,8 +6,10 @@ from decimal import Decimal
 
 from velvet_bot.app.grs_resilience import (
     _extract_grs_credits,
+    _extract_grs_violation_reason,
     _from_grs_api_with_violation,
     _get_grs_credits_resilient,
+    _sanitize_meow_text,
     _violation_retry_limit_reached,
 )
 from velvet_bot.domains.media_generation import (
@@ -35,6 +37,33 @@ class GrsViolationStatusTests(unittest.TestCase):
         self.assertEqual("content policy", record.failure_message)
         self.assertEqual("violation", record.raw["status"])
 
+    def test_nested_provider_reason_is_preserved_for_owner_message(self) -> None:
+        payload = {
+            "id": "14-safety",
+            "status": "violation",
+            "error": {
+                "code": "SAFETY_FILTER",
+                "details": {
+                    "blockedReason": "sexual_content",
+                    "category": "IMAGE_SAFETY",
+                },
+            },
+        }
+
+        reason = _extract_grs_violation_reason(payload)
+
+        self.assertIsNotNone(reason)
+        self.assertIn("SAFETY_FILTER", reason)
+        self.assertIn("sexual_content", reason)
+        self.assertIn("IMAGE_SAFETY", reason)
+
+    def test_status_only_violation_does_not_invent_a_reason(self) -> None:
+        self.assertIsNone(
+            _extract_grs_violation_reason(
+                {"id": "14-moderated", "status": "violation"}
+            )
+        )
+
     def test_violation_retry_is_limited_to_two_provider_attempts(self) -> None:
         record = _from_grs_api_with_violation(
             KieTaskRecord,
@@ -45,6 +74,34 @@ class GrsViolationStatusTests(unittest.TestCase):
 
         self.assertFalse(_violation_retry_limit_reached(error, 1))
         self.assertTrue(_violation_retry_limit_reached(error, 2))
+
+
+class GrsOwnerTextTests(unittest.TestCase):
+    def test_internal_mature_line_is_removed_without_touching_prompt(self) -> None:
+        source = (
+            "<b>Проверьте запрос</b>\n\n"
+            "Контент: <b>Mature</b>\n\n"
+            "<b>Текст</b>\nMature portrait with cinematic light"
+        )
+
+        cleaned = _sanitize_meow_text(source)
+
+        self.assertNotIn("Контент: <b>Mature</b>", cleaned)
+        self.assertIn("Mature portrait with cinematic light", cleaned)
+
+    def test_banana_queue_message_names_grs_without_worker_jargon(self) -> None:
+        source = (
+            "<b>Мяу · Nano Banana Pro</b>\n\n"
+            "Задача поставлена в очередь. Worker скачает выбранные Telegram-фото, "
+            "временно загрузит их в Kie и только затем вызовет модель.\n\n"
+            "Контент: <b>Mature</b>"
+        )
+
+        cleaned = _sanitize_meow_text(source)
+
+        self.assertIn("отправлены в GRS AI", cleaned)
+        self.assertNotIn("Worker", cleaned)
+        self.assertNotIn("Контент:", cleaned)
 
 
 class GrsBalanceFallbackTests(unittest.TestCase):
