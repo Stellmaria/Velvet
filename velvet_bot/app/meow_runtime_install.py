@@ -5,6 +5,9 @@ from typing import Any
 
 from velvet_bot.core.config.kie import load_kie_settings
 from velvet_bot.domains.ai_usage import build_ai_usage_service
+from velvet_bot.domains.meow_runtime.cancellable_worker import (
+    build_cancellable_worker_class,
+)
 from velvet_bot.domains.meow_runtime.dispatcher import MeowGenerationDispatcher
 from velvet_bot.infrastructure.ai import KieClient
 from velvet_bot.workers import PeriodicWorkerSpec
@@ -71,7 +74,9 @@ def install_meow_runtime_dispatcher() -> None:
             pricing=kie_settings.pricing,
             usd_to_rub=kie_settings.usd_to_rub,
             max_attempts=kie_settings.generation_max_attempts,
-            worker_class=workers.KieGenerationWorker,
+            worker_class=build_cancellable_worker_class(
+                workers.KieGenerationWorker
+            ),
         )
         manager.register(
             PeriodicWorkerSpec(
