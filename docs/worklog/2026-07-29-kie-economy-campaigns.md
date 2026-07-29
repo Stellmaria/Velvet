@@ -3,9 +3,9 @@
 - Дата: 2026-07-29
 - ID: 2026-07-29-kie-economy-campaigns
 - Линия/фаза: Мяу / Kie runtime / экономные повторы
-- Статус: частично
+- Статус: завершено
 - Ветка: agent/kie-economy-campaigns
-- Базовый commit: main после PR #367
+- Базовый commit: b2e61ae4a4089e15011fbf39a3b9e964e61f85fe
 
 ## Перед началом
 
@@ -40,7 +40,7 @@
 - подтверждённый provider fail запускает следующую попытку;
 - потерянный/неподтверждённый ответ createTask останавливает автоповтор;
 - первый success завершает campaign и не создаёт новые provider-задачи;
-- tests, type check, Docker build и project notes contract проходят.
+- tests, type check, Docker build, backup restore drill и project notes contract проходят.
 
 ### Риски и ограничения
 
@@ -57,33 +57,44 @@
 - добавлен Economy Kie worker с последовательными provider-попытками;
 - campaign runtime хранится в ai_tasks.payload;
 - кэшируются URL референсов, active provider task id и история попыток;
+- временный сбой polling продолжает уже принятую provider-задачу;
+- новая платная попытка создаётся только после подтверждённого Kie state=fail;
+- неподтверждённый ответ createTask завершает кампанию без рискованного дубликата;
 - charged failures передают creditsConsumed в AI usage ledger;
 - лимит конфигурации и модель AI task расширены до 50;
 - добавлена миграция z013_kie_economy_campaigns.sql;
-- серверный пример env обновлён до 50 попыток.
+- серверный пример env обновлён до 50 попыток;
+- navigation inventory обновлён до 505 Python-файлов и 961 inline-кнопки без нарушений.
 
 ### Миграции и совместимость
 
-Миграция заменяет constraint ai_tasks_attempts_check и разрешает max_attempts от 1 до 50. Существующие задачи сохраняются. KieTaskQueueService поднимает max_attempts старых активных Kie-задач до текущего значения конфигурации при следующем claim.
+Миграция заменяет constraint ai_tasks_attempts_check и разрешает max_attempts от 1 до 50. Существующие задачи сохраняются. KieTaskQueueService поднимает max_attempts старых активных Kie-задач до текущего значения конфигурации при следующем claim. Backup restore drill подтвердил создание дампа и восстановление свежей базы с новой миграцией.
 
 ### Проверки
 
-CI будет запущен после открытия draft PR. Особое внимание: mypy для nested provider_operation, миграционный contract, worker registry, charged failure accounting и Telegram navigation inventory.
+Финальный функциональный head `8f5d6aa005b697f7e4dcc33c738df0d9eb4fff37` прошёл:
+
+- tests run `30456131545`: success, 1561 тест;
+- type check run `30456131975`: success;
+- Docker build run `30456131432`: success;
+- backup restore drill run `30456131426`: success;
+- project notes contract run `30456131404`: success;
+- Telegram navigation inventory: 505 Python-файлов, 86 файлов с кнопками, 961 inline-кнопка, нарушений нет.
 
 ### PR и commit
 
-- ветка: agent/kie-economy-campaigns;
-- PR будет создан после первичной сборки;
-- итоговый merge commit будет записан после зелёного CI.
+- ветка: `agent/kie-economy-campaigns`;
+- PR: #370;
+- функциональный head: `8f5d6aa005b697f7e4dcc33c738df0d9eb4fff37`;
+- итоговый merge commit будет записан после финального CI документационного commit.
 
 ### Незавершённое
 
-- открыть draft PR;
-- исправить результаты CI;
-- добавить integration coverage для сохранения campaign runtime в PostgreSQL;
-- обновить navigation inventory при необходимости;
-- слить изменение в main.
+- live smoke-тест с реальным KIE_API_KEY;
+- проверить последовательность из нескольких подтверждённых provider fail на дешёвой модели;
+- проверить продолжение сохранённого provider task id после controlled restart;
+- проверить фактический creditsConsumed для failed-задачи конкретной модели.
 
 ### Следующий шаг
 
-Открыть draft PR, проверить полный CI и устранить типовые и контрактные расхождения до merge.
+После зелёного финального CI снять draft, проверить review-треды и слить PR #370 в main. Затем обновить сервер, применить миграцию и провести дешёвый live smoke-тест.
