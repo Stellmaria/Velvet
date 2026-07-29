@@ -9,11 +9,44 @@ from velvet_bot.domains.meow_runtime import (
     MeowRuntimeAccessError,
     MeowRuntimeService,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow import (
-    MeowCallback,
-    build_meow_root_keyboard,
-)
+from velvet_bot.presentation.telegram.routers import workspace_meow as workspace_meow_router
+from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
 from velvet_bot.workspace_ui import WorkspaceCallback
+
+
+_ORIGINAL_BUILD_MEOW_ROOT_KEYBOARD = workspace_meow_router.build_meow_root_keyboard
+_ROOT_BUTTON_LABELS = {
+    "Создать": "Фото",
+    "Оживить": "Видео",
+}
+
+
+def build_meow_root_keyboard(
+    *,
+    workspace_id: int,
+    enabled: bool,
+) -> InlineKeyboardMarkup:
+    base = _ORIGINAL_BUILD_MEOW_ROOT_KEYBOARD(
+        workspace_id=workspace_id,
+        enabled=enabled,
+    )
+    rows: list[list[InlineKeyboardButton]] = []
+    for row in base.inline_keyboard:
+        updated_row: list[InlineKeyboardButton] = []
+        for button in row:
+            label = _ROOT_BUTTON_LABELS.get(button.text)
+            if label is None:
+                updated_row.append(button)
+                continue
+            copy_method = getattr(button, "model_copy", None)
+            if copy_method is None:
+                copy_method = button.copy
+            updated_row.append(copy_method(update={"text": label}))
+        rows.append(updated_row)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+workspace_meow_router.build_meow_root_keyboard = build_meow_root_keyboard
 
 
 def _build_root_keyboard(
@@ -130,10 +163,10 @@ async def handle_meow_root_entry(
             )
         text = (
             "<b>Мяу</b>\n\n"
-            f"<b>Создать</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
+            f"<b>Фото</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
             "Можно использовать текст и референсы из базы или Telegram.\n\n"
-            "<b>Оживить</b> — фото и описание движения превращаются в видео через "
-            "Grok Imagine v1, Seedance 1.5 Pro или Wan 2.7.\n\n"
+            "<b>Видео</b> — фото и описание движения превращаются в видео через "
+            "Grok Imagine v1, Grok Imagine 1.5, Seedance 1.5 Pro или Wan 2.7.\n\n"
             f"Параллельность: {concurrency}.\n"
             f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
             "Настройки применяются из PostgreSQL без перезапуска бота."
@@ -163,4 +196,7 @@ async def handle_meow_root_entry(
     await callback.answer()
 
 
-__all__ = ("handle_meow_root_entry",)
+__all__ = (
+    "build_meow_root_keyboard",
+    "handle_meow_root_entry",
+)
