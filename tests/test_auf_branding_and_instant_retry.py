@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from aiogram.exceptions import TelegramNetworkError
 from aiogram.methods import SendMessage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -9,6 +10,10 @@ from velvet_bot.app.auf_branding import _brand_auf_text, _brand_telegram_value
 from velvet_bot.app.grs_campaign_retry import (
     _retry_delays_for_error,
     _violation_retry_stage,
+)
+from velvet_bot.app.telegram_progress_resilience import (
+    _log_transient_progress_failure,
+    _provider_reason_without_unsafe_chatter,
 )
 from velvet_bot.domains.media_generation import KieTaskRecord, KieTaskState
 from velvet_bot.infrastructure.ai import KieTaskFailed
@@ -78,6 +83,33 @@ class InstantGrsViolationRetryTests(unittest.TestCase):
         self.assertIn("попытку 3/50", stage)
         self.assertIn("запускается сразу", stage)
         self.assertNotIn("через 30 сек", stage)
+
+    def test_unsafe_image_chatter_is_not_a_provider_diagnostic(self) -> None:
+        self.assertIsNone(
+            _provider_reason_without_unsafe_chatter(
+                "Извините, но я не могу создавать небезопасные изображения."
+            )
+        )
+        self.assertEqual(
+            "IMAGE_SAFETY",
+            _provider_reason_without_unsafe_chatter("IMAGE_SAFETY"),
+        )
+
+    def test_transient_progress_disconnect_is_only_a_warning(self) -> None:
+        error = TelegramNetworkError(
+            method=SendMessage(chat_id=1, text="progress"),
+            message="ServerDisconnectedError: Server disconnected",
+        )
+
+        with self.assertLogs(
+            "velvet_bot.app.telegram_progress_resilience",
+            level="WARNING",
+        ) as captured:
+            _log_transient_progress_failure("task-1", error)
+
+        output = "\n".join(captured.output)
+        self.assertIn("generation continues", output)
+        self.assertNotIn("Traceback", output)
 
 
 if __name__ == "__main__":
