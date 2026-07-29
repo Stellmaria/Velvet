@@ -12,10 +12,12 @@ from velvet_bot.domains.workspaces.service import WorkspaceAccessError, Workspac
 from velvet_bot.presentation.telegram.routers.workspace_meow import (
     MeowCallback,
     MeowForm,
-    handle_meow_action,
     handle_meow_prompt,
     handle_meow_reference_message,
     handle_meow_reference_text,
+)
+from velvet_bot.presentation.telegram.routers.workspace_meow_grs import (
+    handle_meow_action,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
     handle_meow_balance,
