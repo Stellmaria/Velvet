@@ -21,6 +21,7 @@ class MeowProvider(StrEnum):
         return (
             "seedream_5_pro",
             "grok_imagine_video",
+            "grok_imagine_video_15",
             "seedance_15_pro_video",
             "wan_26_image_to_video",
         )
