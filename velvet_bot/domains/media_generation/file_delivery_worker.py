@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import BufferedInputFile
 
 from .models import KieGenerationRequest, KieTaskRecord
@@ -18,7 +18,7 @@ from .worker import KieGenerationWorker as BaseKieGenerationWorker
 logger = logging.getLogger(__name__)
 
 _RESULT_DOWNLOAD_ATTEMPTS = 3
-_RESULT_DOWNLOAD_TIMEOUT_SECONDS = 90
+_RESULT_DOWNLOAD_TIMEOUT_SECONDS = 120
 _RESULT_DOWNLOAD_RETRY_DELAYS = (1.0, 3.0)
 _RESULT_MAX_BYTES = 50 * 1024 * 1024
 _DEFAULT_RESULT_USER_AGENT = (
@@ -36,6 +36,7 @@ _IMAGE_SUFFIXES = {
     ".tif",
     ".tiff",
 }
+_VIDEO_SUFFIXES = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
 _MIME_SUFFIXES = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
@@ -44,6 +45,11 @@ _MIME_SUFFIXES = {
     "image/gif": ".gif",
     "image/bmp": ".bmp",
     "image/tiff": ".tiff",
+    "video/mp4": ".mp4",
+    "video/quicktime": ".mov",
+    "video/x-m4v": ".m4v",
+    "video/webm": ".webm",
+    "video/x-matroska": ".mkv",
 }
 
 
@@ -54,7 +60,7 @@ class _DownloadedResult:
 
 
 class KieGenerationWorker(BaseKieGenerationWorker):
-    """Deliver image generations as original files instead of compressed photos."""
+    """Download Kie results and upload bytes to Telegram instead of remote URLs."""
 
     async def _deliver_best_effort(
         self,
@@ -65,13 +71,15 @@ class KieGenerationWorker(BaseKieGenerationWorker):
     ) -> None:
         if chat_id is None:
             return
+        media_name = "Видео" if request.model.is_video else "Изображение"
         caption = (
             f"<b>Мяу · {escape(request.model.display_name)}</b>\n"
+            f"{media_name}: <b>готово</b>\n"
             f"Качество: <b>{escape(request.resolution)}</b>\n"
             f"Референсов: <b>{len(request.references)}</b>\n"
             f"Контент: <b>{escape(request.content_mode.display_name)}</b>\n"
             f"Задача Kie: <code>{escape(record.task_id)}</code>\n\n"
-            "Оригинальный файл без сжатия Telegram."
+            "Файл скачан ботом напрямую с Kie перед отправкой в Telegram."
         )
         try:
             if not record.result_urls:
@@ -82,28 +90,29 @@ class KieGenerationWorker(BaseKieGenerationWorker):
                 return
             for index, url in enumerate(record.result_urls, start=1):
                 item_caption = caption if index == 1 else None
-                if request.model.is_video:
-                    await self._bot.send_video(
-                        chat_id,
-                        video=url,
-                        caption=item_caption,
-                    )
-                    continue
                 result = await self._download_result(url)
                 filename = _result_filename(
                     url=url,
                     provider_task_id=record.task_id,
                     index=index,
                     mime_type=result.mime_type,
+                    video=request.model.is_video,
                 )
-                await self._bot.send_document(
-                    chat_id,
-                    document=BufferedInputFile(
-                        result.payload,
+                upload = BufferedInputFile(result.payload, filename=filename)
+                if request.model.is_video:
+                    await self._send_video_with_document_fallback(
+                        chat_id=chat_id,
+                        upload=upload,
+                        payload=result.payload,
                         filename=filename,
-                    ),
-                    caption=item_caption,
-                )
+                        caption=item_caption,
+                    )
+                else:
+                    await self._bot.send_document(
+                        chat_id,
+                        document=upload,
+                        caption=item_caption,
+                    )
         except TelegramAPIError:
             logger.exception(
                 "Kie task %s succeeded but Telegram file delivery failed",
@@ -113,6 +122,33 @@ class KieGenerationWorker(BaseKieGenerationWorker):
             logger.exception(
                 "Kie task %s succeeded but original result download failed",
                 record.task_id,
+            )
+
+    async def _send_video_with_document_fallback(
+        self,
+        *,
+        chat_id: int,
+        upload: BufferedInputFile,
+        payload: bytes,
+        filename: str,
+        caption: str | None,
+    ) -> None:
+        try:
+            await self._bot.send_video(
+                chat_id,
+                video=upload,
+                caption=caption,
+                supports_streaming=True,
+            )
+        except TelegramBadRequest as error:
+            logger.warning(
+                "Telegram rejected Kie video preview; sending original document: %s",
+                error,
+            )
+            await self._bot.send_document(
+                chat_id,
+                document=BufferedInputFile(payload, filename=filename),
+                caption=(caption or "") + "\n\nОригинальный видеофайл.",
             )
 
     async def _download_result(self, url: str) -> _DownloadedResult:
@@ -173,7 +209,7 @@ def _download_result_http(
         normalized_url,
         headers={
             "User-Agent": user_agent,
-            "Accept": "image/*,application/octet-stream;q=0.9,*/*;q=0.8",
+            "Accept": "video/*,image/*,application/octet-stream;q=0.9,*/*;q=0.8",
         },
         method="GET",
     )
@@ -204,11 +240,14 @@ def _result_filename(
     provider_task_id: str,
     index: int,
     mime_type: str | None,
+    video: bool,
 ) -> str:
     path = urllib.parse.unquote(urllib.parse.urlparse(url).path)
     suffix = Path(path).suffix.casefold()
-    if suffix not in _IMAGE_SUFFIXES:
-        suffix = _MIME_SUFFIXES.get((mime_type or "").casefold(), ".png")
+    allowed_suffixes = _VIDEO_SUFFIXES if video else _IMAGE_SUFFIXES
+    if suffix not in allowed_suffixes:
+        fallback = ".mp4" if video else ".png"
+        suffix = _MIME_SUFFIXES.get((mime_type or "").casefold(), fallback)
     safe_task_id = "".join(
         character if character.isalnum() or character in {"-", "_"} else "-"
         for character in provider_task_id
