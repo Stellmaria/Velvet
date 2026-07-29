@@ -27,6 +27,8 @@ class KieSettings:
     usd_to_rub: Decimal
     models: KieModelCatalog
     pricing: KiePricing
+    max_concurrent_generations: int = 4
+    generation_max_attempts: int = 11
 
 
 def load_kie_settings() -> KieSettings:
@@ -201,6 +203,20 @@ def load_kie_settings() -> KieSettings:
         usd_to_rub=usd_to_rub,
         models=models,
         pricing=pricing,
+        max_concurrent_generations=parse_bounded_integer(
+            os.getenv("KIE_MAX_CONCURRENT_GENERATIONS", "4"),
+            variable_name="KIE_MAX_CONCURRENT_GENERATIONS",
+            default=4,
+            minimum=1,
+            maximum=8,
+        ),
+        generation_max_attempts=parse_bounded_integer(
+            os.getenv("KIE_GENERATION_MAX_ATTEMPTS", "11"),
+            variable_name="KIE_GENERATION_MAX_ATTEMPTS",
+            default=11,
+            minimum=1,
+            maximum=20,
+        ),
     )
 
 

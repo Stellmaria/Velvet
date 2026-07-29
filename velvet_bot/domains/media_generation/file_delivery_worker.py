@@ -1,25 +1,36 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.exceptions import (
+    TelegramAPIError,
+    TelegramBadRequest,
+    TelegramNetworkError,
+)
 from aiogram.types import BufferedInputFile
 
-from .models import KieGenerationRequest, KieTaskRecord
+from .models import (
+    MAX_KIE_REFERENCE_BYTES,
+    KieGenerationRequest,
+    KieReferenceImage,
+    KieTaskRecord,
+)
 from .worker import KieGenerationWorker as BaseKieGenerationWorker
 
 logger = logging.getLogger(__name__)
 
-_RESULT_DOWNLOAD_ATTEMPTS = 3
+_RETRY_ATTEMPTS = 11
 _RESULT_DOWNLOAD_TIMEOUT_SECONDS = 120
-_RESULT_DOWNLOAD_RETRY_DELAYS = (1.0, 3.0)
+_REFERENCE_DOWNLOAD_TIMEOUT_SECONDS = 90
 _RESULT_MAX_BYTES = 50 * 1024 * 1024
 _DEFAULT_RESULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -62,6 +73,46 @@ class _DownloadedResult:
 class KieGenerationWorker(BaseKieGenerationWorker):
     """Download Kie results, then send Telegram preview and original file."""
 
+    async def _download_reference(self, reference: KieReferenceImage) -> bytes:
+        errors: list[BaseException] = []
+        for attempt in range(1, _RETRY_ATTEMPTS + 1):
+            try:
+                destination = io.BytesIO()
+                await self._bot.download(
+                    reference.telegram_file_id,
+                    destination=destination,
+                    timeout=_REFERENCE_DOWNLOAD_TIMEOUT_SECONDS,
+                    seek=True,
+                )
+                value = destination.getvalue()
+                if not value:
+                    raise RuntimeError("Telegram вернул пустой файл референса.")
+                if len(value) > MAX_KIE_REFERENCE_BYTES:
+                    raise ValueError("Референс для Kie.ai должен быть не больше 10 МБ.")
+                return value
+            except asyncio.CancelledError:
+                raise
+            except TelegramBadRequest as error:
+                errors.append(error)
+                break
+            except (
+                TelegramNetworkError,
+                TimeoutError,
+                ConnectionError,
+                OSError,
+                TelegramAPIError,
+            ) as error:
+                errors.append(error)
+                if attempt >= _RETRY_ATTEMPTS:
+                    break
+                await asyncio.sleep(_retry_delay(attempt))
+            except (RuntimeError, ValueError) as error:
+                errors.append(error)
+                break
+        if errors:
+            raise RuntimeError(f"Не удалось скачать референс: {errors[-1]}") from errors[-1]
+        raise RuntimeError("Telegram вернул пустой файл референса.")
+
     async def _deliver_best_effort(
         self,
         *,
@@ -84,9 +135,12 @@ class KieGenerationWorker(BaseKieGenerationWorker):
         )
         try:
             if not record.result_urls:
-                await self._bot.send_message(
-                    chat_id,
-                    caption + "\n\nKie завершил задачу без URL результата.",
+                await self._send_telegram_with_retry(
+                    "empty result notice",
+                    lambda: self._bot.send_message(
+                        chat_id,
+                        caption + "\n\nKie завершил задачу без URL результата.",
+                    ),
                 )
                 return
             for index, url in enumerate(record.result_urls, start=1):
@@ -134,10 +188,13 @@ class KieGenerationWorker(BaseKieGenerationWorker):
     ) -> None:
         preview_sent = True
         try:
-            await self._bot.send_photo(
-                chat_id,
-                photo=BufferedInputFile(payload, filename=filename),
-                caption=caption,
+            await self._send_telegram_with_retry(
+                "image preview",
+                lambda: self._bot.send_photo(
+                    chat_id,
+                    photo=BufferedInputFile(payload, filename=filename),
+                    caption=caption,
+                ),
             )
         except TelegramBadRequest as error:
             preview_sent = False
@@ -148,10 +205,13 @@ class KieGenerationWorker(BaseKieGenerationWorker):
         document_caption = "Оригинальный файл изображения."
         if not preview_sent and caption:
             document_caption = caption + "\n\n" + document_caption
-        await self._bot.send_document(
-            chat_id,
-            document=BufferedInputFile(payload, filename=filename),
-            caption=document_caption,
+        await self._send_telegram_with_retry(
+            "image document",
+            lambda: self._bot.send_document(
+                chat_id,
+                document=BufferedInputFile(payload, filename=filename),
+                caption=document_caption,
+            ),
         )
 
     async def _send_video_and_document(
@@ -164,11 +224,14 @@ class KieGenerationWorker(BaseKieGenerationWorker):
     ) -> None:
         preview_sent = True
         try:
-            await self._bot.send_video(
-                chat_id,
-                video=BufferedInputFile(payload, filename=filename),
-                caption=caption,
-                supports_streaming=True,
+            await self._send_telegram_with_retry(
+                "video preview",
+                lambda: self._bot.send_video(
+                    chat_id,
+                    video=BufferedInputFile(payload, filename=filename),
+                    caption=caption,
+                    supports_streaming=True,
+                ),
             )
         except TelegramBadRequest as error:
             preview_sent = False
@@ -179,11 +242,43 @@ class KieGenerationWorker(BaseKieGenerationWorker):
         document_caption = "Оригинальный видеофайл."
         if not preview_sent and caption:
             document_caption = caption + "\n\n" + document_caption
-        await self._bot.send_document(
-            chat_id,
-            document=BufferedInputFile(payload, filename=filename),
-            caption=document_caption,
+        await self._send_telegram_with_retry(
+            "video document",
+            lambda: self._bot.send_document(
+                chat_id,
+                document=BufferedInputFile(payload, filename=filename),
+                caption=document_caption,
+            ),
         )
+
+    async def _send_telegram_with_retry(
+        self,
+        operation_name: str,
+        operation: Callable[[], Awaitable[object]],
+    ) -> object:
+        errors: list[TelegramAPIError] = []
+        for attempt in range(1, _RETRY_ATTEMPTS + 1):
+            try:
+                return await operation()
+            except asyncio.CancelledError:
+                raise
+            except TelegramBadRequest:
+                raise
+            except TelegramAPIError as error:
+                errors.append(error)
+                if attempt >= _RETRY_ATTEMPTS:
+                    break
+                logger.warning(
+                    "Telegram Kie delivery retry operation=%s attempt=%s/%s: %s",
+                    operation_name,
+                    attempt + 1,
+                    _RETRY_ATTEMPTS,
+                    error,
+                )
+                await asyncio.sleep(_retry_delay(attempt))
+        if errors:
+            raise errors[-1]
+        raise RuntimeError(f"Telegram operation {operation_name} did not execute.")
 
     async def _download_result(self, url: str) -> _DownloadedResult:
         user_agent = str(
@@ -191,7 +286,7 @@ class KieGenerationWorker(BaseKieGenerationWorker):
             or _DEFAULT_RESULT_USER_AGENT
         ).strip()
         errors: list[BaseException] = []
-        for attempt in range(1, _RESULT_DOWNLOAD_ATTEMPTS + 1):
+        for attempt in range(1, _RETRY_ATTEMPTS + 1):
             try:
                 return await asyncio.to_thread(
                     _download_result_http,
@@ -205,9 +300,9 @@ class KieGenerationWorker(BaseKieGenerationWorker):
             except urllib.error.HTTPError as error:
                 errors.append(error)
                 retryable = error.code == 429 or error.code >= 500
-                if not retryable or attempt >= _RESULT_DOWNLOAD_ATTEMPTS:
+                if not retryable or attempt >= _RETRY_ATTEMPTS:
                     break
-                await asyncio.sleep(_RESULT_DOWNLOAD_RETRY_DELAYS[attempt - 1])
+                await asyncio.sleep(_retry_delay(attempt))
             except (
                 urllib.error.URLError,
                 TimeoutError,
@@ -215,9 +310,9 @@ class KieGenerationWorker(BaseKieGenerationWorker):
                 OSError,
             ) as error:
                 errors.append(error)
-                if attempt >= _RESULT_DOWNLOAD_ATTEMPTS:
+                if attempt >= _RETRY_ATTEMPTS:
                     break
-                await asyncio.sleep(_RESULT_DOWNLOAD_RETRY_DELAYS[attempt - 1])
+                await asyncio.sleep(_retry_delay(attempt))
             except (RuntimeError, ValueError) as error:
                 errors.append(error)
                 break
@@ -226,6 +321,10 @@ class KieGenerationWorker(BaseKieGenerationWorker):
                 f"Не удалось скачать оригинальный результат Kie: {errors[-1]}"
             ) from errors[-1]
         raise RuntimeError("Kie вернул пустой оригинальный файл.")
+
+
+def _retry_delay(attempt: int) -> float:
+    return float(min(30, 2 ** max(0, int(attempt) - 1)))
 
 
 def _download_result_http(
