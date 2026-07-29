@@ -13,7 +13,7 @@ from velvet_bot.infrastructure.ai import KieClient
 
 from .models import MeowProvider
 from .queue import ProviderMeowTaskQueueService
-from .repository import MeowRuntimeRepository
+from .store import MeowRuntimeRepository
 
 logger = logging.getLogger(__name__)
 
@@ -142,8 +142,6 @@ class MeowGenerationDispatcher:
             spawn_count = min(available, queued)
             for _ in range(spawn_count):
                 self._spawn(provider)
-                # Let the claim transaction commit before another task for the same
-                # workspace evaluates its running quota.
                 await asyncio.sleep(0)
 
     def _spawn(self, provider: MeowProvider) -> None:
@@ -170,15 +168,17 @@ class MeowGenerationDispatcher:
             finished = {task for task in tasks if task.done()}
             tasks.difference_update(finished)
             for task in finished:
-                try:
-                    task.result()
-                except asyncio.CancelledError:
+                if task.cancelled():
                     continue
-                except Exception:
-                    logger.exception(
-                        "Meow generation task escaped worker boundary provider=%s",
-                        provider,
-                    )
+                error = task.exception()
+                if error is None:
+                    continue
+                logger.error(
+                    "Meow generation task escaped worker boundary provider=%s: %s",
+                    provider,
+                    error,
+                    exc_info=(type(error), error, error.__traceback__),
+                )
 
     async def _runtime_settings(self):
         now = time.monotonic()
