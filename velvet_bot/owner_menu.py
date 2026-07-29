@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.presentation.telegram.analytics_navigation import AnalyticsCallback
 from velvet_bot.presentation.telegram.routers.characters.contracts import (
     AdminDirectoryCallback,
@@ -50,6 +51,15 @@ def build_owner_main_keyboard() -> InlineKeyboardMarkup:
                     text="🌐 Публичные архивы",
                     callback_data=workspace_callback("publics"),
                 ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🐈 Мяу",
+                    callback_data=workspace_callback(
+                        "meow",
+                        workspace_id=DEFAULT_WORKSPACE_ID,
+                    ),
+                )
             ],
             [
                 InlineKeyboardButton(
@@ -139,6 +149,7 @@ def owner_help_text() -> str:
         "или запрет каждого модуля кнопками.\n"
         "🌐 <b>Публичные архивы</b> — просмотр пространств, владельцы которых "
         "включили публичный read-only режим.\n"
+        "🐈 <b>Мяу</b> — генерация изображений через Kie.ai из текста и референсов.\n"
         "💧 <b>Водяной знак</b> — отправка изображения в локальную Krita, "
         "preview, выбор угла, цвета, прозрачности, размера и отступа.\n"
         "🧰 <b>Все действия</b> — формы создания персонажей, тем, историй, "
