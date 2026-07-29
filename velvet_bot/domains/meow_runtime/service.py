@@ -11,7 +11,7 @@ from .models import (
     MeowRuntimeSettings,
     WorkspaceMeowSettings,
 )
-from .repository import MeowRuntimeRepository
+from .store import MeowRuntimeRepository
 
 
 class MeowRuntimeAccessError(PermissionError):
@@ -106,7 +106,12 @@ class MeowRuntimeService:
                 "Модуль Мяу не разрешён Стэл, выключен владельцем или недоступен вашей роли."
             )
 
-    async def is_workspace_owner(self, *, workspace_id: int, actor_user_id: int) -> bool:
+    async def is_workspace_owner(
+        self,
+        *,
+        workspace_id: int,
+        actor_user_id: int,
+    ) -> bool:
         return await self._repository.is_workspace_owner(
             workspace_id=workspace_id,
             user_id=actor_user_id,
