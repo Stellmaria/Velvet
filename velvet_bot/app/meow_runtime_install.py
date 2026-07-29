@@ -11,7 +11,7 @@ from velvet_bot.domains.meow_runtime.cancellable_worker import (
     build_cancellable_worker_class,
 )
 from velvet_bot.domains.meow_runtime.dispatcher import MeowGenerationDispatcher
-from velvet_bot.domains.meow_runtime.repository import MeowRuntimeRepository
+from velvet_bot.domains.meow_runtime.store import MeowRuntimeRepository
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.infrastructure.ai import KieClient
@@ -87,16 +87,18 @@ def install_meow_runtime_dispatcher() -> None:
         manager.register(
             PeriodicWorkerSpec(
                 name="meow-generation-dispatcher",
-                description="Динамическая очередь Kie/GRS · Стэл 100 · пространство до 20",
+                description=(
+                    "Динамическая очередь Kie/GRS · Стэл 100 · пространство до 20"
+                ),
                 interval_seconds=1,
                 runner=dispatcher.run,
             )
         )
 
-        runtime_repository = MeowRuntimeRepository(database)
+        runtime_store = MeowRuntimeRepository(database)
 
         async def notify_initial_setup() -> None:
-            if not await runtime_repository.claim_setup_notice():
+            if not await runtime_store.claim_setup_notice():
                 return
             await bot.send_message(
                 GLOBAL_WORKSPACE_CREATOR_ID,
