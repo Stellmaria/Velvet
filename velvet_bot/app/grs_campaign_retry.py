@@ -84,6 +84,45 @@ def _provider_reason_without_model_chatter(value: object) -> str | None:
     return text
 
 
+def _retry_delays_for_error(
+    error: BaseException,
+    base_delay_seconds: int,
+    max_delay_seconds: int,
+) -> tuple[int, int]:
+    """Return zero delay only for a confirmed GRS moderation rejection."""
+
+    if grs_resilience._is_grs_violation_error(error):
+        return 0, 0
+    return (
+        max(0, int(base_delay_seconds)),
+        max(0, int(max_delay_seconds)),
+    )
+
+
+async def _queue_fail_with_instant_grs_violation(
+    queue: KieTaskQueueService,
+    *,
+    task_id,
+    worker_id: str,
+    error: BaseException,
+    base_delay_seconds: int,
+    max_delay_seconds: int,
+):
+    effective_base, effective_max = _retry_delays_for_error(
+        error,
+        base_delay_seconds,
+        max_delay_seconds,
+    )
+    return await grs_resilience._ORIGINAL_QUEUE_FAIL(
+        queue,
+        task_id=task_id,
+        worker_id=worker_id,
+        error=error,
+        base_delay_seconds=effective_base,
+        max_delay_seconds=effective_max,
+    )
+
+
 def _violation_retry_stage(
     *,
     provider_attempt: int,
@@ -93,10 +132,10 @@ def _violation_retry_stage(
 ) -> str:
     attempt = max(1, int(provider_attempt))
     limit = max(attempt, int(max_attempts))
-    delay = max(0, int(delay_seconds))
+    del delay_seconds
     return (
         f"GRS AI отклонил попытку {attempt}/{limit}. "
-        f"{reason_text} Следующая последовательная попытка через {delay} сек."
+        f"{reason_text} Следующая последовательная попытка запускается сразу."
     )
 
 
@@ -143,7 +182,6 @@ class CampaignGrsGenerationWorker(
         reason_text = grs_resilience._reason_status_text(error)
         will_retry = bool(getattr(failure, "will_retry", False))
         if request is not None and will_retry:
-            delay = int(getattr(failure, "retry_delay_seconds", 0) or 0)
             await self._publish_progress(
                 progress,
                 task=task,
@@ -152,7 +190,7 @@ class CampaignGrsGenerationWorker(
                 stage=_violation_retry_stage(
                     provider_attempt=provider_attempt,
                     max_attempts=task.max_attempts,
-                    delay_seconds=delay,
+                    delay_seconds=0,
                     reason_text=reason_text,
                 ),
                 force=True,
@@ -209,7 +247,7 @@ class CampaignGrsGenerationWorker(
         try:
             await self._bot.send_message(
                 chat_id,
-                "<b>Мяу не смог завершить генерацию</b>\n\n"
+                "<b>Ауф не смог завершить генерацию</b>\n\n"
                 "Провайдер: <b>GRS AI</b>\n"
                 f"Последовательная кампания исчерпала <b>{attempts}/{task.max_attempts}</b> попыток.\n"
                 f"{reason_line}\n"
@@ -232,7 +270,7 @@ def install_grs_campaign_retry() -> None:
 
     grs_resilience._provider_reason_text = _provider_reason_without_model_chatter
     KieClient._create_grs_task = _create_grs_task_with_image_output_guard  # type: ignore[method-assign]
-    KieTaskQueueService.fail = grs_resilience._ORIGINAL_QUEUE_FAIL  # type: ignore[method-assign]
+    KieTaskQueueService.fail = _queue_fail_with_instant_grs_violation  # type: ignore[method-assign]
 
     workers = importlib.import_module("velvet_bot.app.workers")
     workers.KieGenerationWorker = CampaignGrsGenerationWorker
