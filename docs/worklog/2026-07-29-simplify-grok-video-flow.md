@@ -3,7 +3,7 @@
 - Дата: 2026-07-29
 - ID: 2026-07-29-simplify-grok-video-flow
 - Линия/фаза: Мяу / генерация видео / UX и provider contract
-- Статус: частично
+- Статус: завершено
 - Ветка: agent/simplify-grok-video-flow
 - Базовый commit: 591ad986ad5583a06f361d41bb508cfd009ba70f
 
@@ -51,7 +51,8 @@
 - Kie adapter удаляет mode, duration и aspect_ratio перед `createTask`;
 - `nsfw_checker=false` сохраняется в фактическом provider payload;
 - production routing переключён на упрощённый controller;
-- тесты проверяют минимальный JSON на границе Kie.
+- тесты проверяют минимальный JSON на границе Kie;
+- navigation inventory обновлён до 502 Python-файлов и 947 inline-кнопок.
 
 ### Миграции и совместимость
 
@@ -59,11 +60,14 @@
 
 ### Проверки
 
-Ожидаются GitHub Actions: tests, type check, Docker build и project notes contract.
+- tests run `30432687645`: success, 1 538 тестов;
+- type check run `30432687663`: success;
+- Docker build run `30432687621`: success;
+- project notes contract run `30432687596`: success.
 
 ### PR и commit
 
-PR будет создан после первичной проверки ветки. Текущая ветка: `agent/simplify-grok-video-flow`.
+PR #364. Проверенный head перед финальной записью: `8674e468c5ed3587693bda0e61ce7cf655f124b2`.
 
 ### Незавершённое
 
@@ -71,4 +75,4 @@ PR будет создан после первичной проверки вет
 
 ### Следующий шаг
 
-Запустить полный CI, исправить возможные контрактные расхождения, обновить navigation inventory, затем слить PR в main.
+Слить PR #364 в main, обновить локальный бот через Supervisor и выполнить одну тестовую генерацию 480p с внешним изображением.
