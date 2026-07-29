@@ -41,7 +41,7 @@
 
 ### Фактически сделано
 
-- добавлен `channel_analytics_datetime_compat`;
+- добавлен `velvet_bot.app.channel_analytics_datetime_compat` без нового корневого модуля;
 - Unix timestamps преобразуются через `datetime.fromtimestamp(..., timezone.utc)`;
 - нормализуются и `date`, и `edit_date`;
 - совместимость устанавливается до импорта application bootstrap;
@@ -54,17 +54,17 @@
 
 ### Проверки
 
-Добавлены unit-тесты `tests/test_channel_analytics_datetime_compat.py`. Полный CI запускается в PR.
+Добавлены unit-тесты `tests/test_channel_analytics_datetime_compat.py`. Первый полный прогон подтвердил работу новых тестов, но потребовал перенести модуль из корня `velvet_bot` внутрь существующего пакета `app`, чтобы сохранить архитектурный лимит корневых модулей. Финальный CI запускается повторно.
 
 ### PR и commit
 
-- PR: будет создан после публикации ветки;
+- PR: `#374`;
 - ветка: `agent/fix-channel-edit-timestamp`;
 - базовый commit: `cadb647ad1027ec8836ab5051891993216cdacf8`.
 
 ### Незавершённое
 
-Нужно дождаться CI и выполнить обновление Supervisor после слияния.
+Нужно дождаться повторного CI и выполнить обновление Supervisor после слияния.
 
 ### Следующий шаг
 
