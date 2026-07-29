@@ -67,6 +67,10 @@ def load_kie_settings() -> KieSettings:
         or legacy_grok_image_to_video
         or "grok-imagine/image-to-video"
     )
+    grok_15_image_to_video = (
+        os.getenv("KIE_GROK_IMAGINE_VIDEO_15_MODEL", "").strip()
+        or "grok-imagine-video-1-5-preview"
+    )
     seedance_image_to_video = (
         os.getenv("KIE_SEEDANCE_15_PRO_MODEL", "").strip()
         or "bytedance/seedance-1.5-pro"
@@ -97,6 +101,7 @@ def load_kie_settings() -> KieSettings:
             or "nano-banana-pro"
         ),
         grok_imagine_video=grok_image_to_video,
+        grok_imagine_video_15=grok_15_image_to_video,
         seedance_15_pro_video=seedance_image_to_video,
         # Field name stays stable so already queued tasks remain readable.
         wan_26_image_to_video=wan_image_to_video,
@@ -128,6 +133,7 @@ def load_kie_settings() -> KieSettings:
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.GROK_IMAGINE_VIDEO, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.GROK_IMAGINE_VIDEO_15, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.SEEDANCE_15_PRO_VIDEO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.WAN_26_IMAGE_TO_VIDEO, KieInputMode.PHOTO_TEXT),
         )
@@ -137,7 +143,7 @@ def load_kie_settings() -> KieSettings:
         except ValueError as error:
             raise RuntimeError(
                 "KIE_ENABLED=true требует model id для Nano Banana 2/Pro в GRS, "
-                "обоих режимов Seedream 5 Pro и трёх image-to-video моделей."
+                "обоих режимов Seedream 5 Pro и четырёх image-to-video моделей."
             ) from error
 
     pricing = KiePricing(
@@ -152,6 +158,12 @@ def load_kie_settings() -> KieSettings:
         ),
         grok_720p_usd_per_second=_env_decimal(
             "KIE_GROK_720P_USD_PER_SECOND", "0.015"
+        ),
+        grok_15_480p_usd_per_second=_env_decimal(
+            "KIE_GROK_15_480P_USD_PER_SECOND", "0.0725"
+        ),
+        grok_15_720p_usd_per_second=_env_decimal(
+            "KIE_GROK_15_720P_USD_PER_SECOND", "0.125"
         ),
         seedance_480p_no_audio_usd_per_second=_env_decimal(
             "KIE_SEEDANCE_15_480P_NO_AUDIO_USD_PER_SECOND", "0.00875"

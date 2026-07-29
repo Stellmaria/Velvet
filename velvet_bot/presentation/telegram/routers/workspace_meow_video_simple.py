@@ -31,22 +31,26 @@ MeowVideoCallback = legacy.MeowVideoCallback
 MeowVideoForm = legacy.MeowVideoForm
 
 _GROK_MODEL_ID = "grok-imagine/image-to-video"
+_GROK_15_MODEL_ID = "grok-imagine-video-1-5-preview"
 _SEEDANCE_MODEL_ID = "bytedance/seedance-1.5-pro"
 _WAN_MODEL_ID = "wan/2-7-image-to-video"
-_MODEL_CODES = ("grok", "seedance", "wan")
+_MODEL_CODES = ("grok", "grok15", "seedance", "wan")
 _MODEL_ALIASES = {
     "grok": KieModelAlias.GROK_IMAGINE_VIDEO,
+    "grok15": KieModelAlias.GROK_IMAGINE_VIDEO_15,
     "seedance": KieModelAlias.SEEDANCE_15_PRO_VIDEO,
     # The internal alias is kept for queued-task compatibility. The provider route is Wan 2.7.
     "wan": KieModelAlias.WAN_26_IMAGE_TO_VIDEO,
 }
 _MODEL_NAMES = {
     "grok": "Grok Imagine v1",
+    "grok15": "Grok Imagine Video 1.5",
     "seedance": "Seedance 1.5 Pro",
     "wan": "Wan 2.7",
 }
 _MODEL_EXPECTED_IDS = {
     "grok": _GROK_MODEL_ID,
+    "grok15": _GROK_15_MODEL_ID,
     "seedance": _SEEDANCE_MODEL_ID,
     "wan": _WAN_MODEL_ID,
 }
@@ -68,7 +72,8 @@ def _selected(label: str, active: bool) -> str:
 def build_video_model_keyboard(*, workspace_id: int, model: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=_selected("Grok · дёшево", model == "grok"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok"))],
+            [InlineKeyboardButton(text=_selected("Grok v1 · дёшево", model == "grok"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok"))],
+            [InlineKeyboardButton(text=_selected("Grok 1.5 · качество", model == "grok15"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok15"))],
             [InlineKeyboardButton(text=_selected("Seedance 1.5 Pro", model == "seedance"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="seedance"))],
             [InlineKeyboardButton(text=_selected("Wan 2.7", model == "wan"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="wan"))],
             [
@@ -109,7 +114,7 @@ def build_video_settings_keyboard(
             InlineKeyboardButton(text=_selected("Первый кадр", wan_mode == "first"), callback_data=legacy._callback("wan_mode", workspace_id=workspace_id, value="first")),
             InlineKeyboardButton(text=_selected("Первый + последний", wan_mode == "first_last"), callback_data=legacy._callback("wan_mode", workspace_id=workspace_id, value="first_last")),
         ])
-    if model in {"seedance", "wan"}:
+    if model in {"grok15", "seedance", "wan"}:
         rows.append([
             InlineKeyboardButton(text=f"Длительность · {duration} сек", callback_data=legacy._callback("duration_input", workspace_id=workspace_id)),
             InlineKeyboardButton(text="Изменить промт", callback_data=legacy._callback("change_prompt", workspace_id=workspace_id)),
@@ -167,7 +172,8 @@ def _model_text(*, model: str) -> str:
         "<b>Мяу · Оживить · модель</b>\n\n"
         "Выберите движок видео. После выбора бот применит сохранённый стандартный "
         "шаблон этой модели, если он уже есть.\n\n"
-        "• <b>Grok</b> — самый дешёвый вариант.\n"
+        "• <b>Grok v1</b> — самый дешёвый вариант.\n"
+        "• <b>Grok 1.5</b> — более качественное движение и длительность до 15 секунд.\n"
         "• <b>Seedance</b> — разрешение, длительность и звук.\n"
         "• <b>Wan 2.7</b> — первый кадр либо первый и последний кадры.\n\n"
         f"Текущая модель: <b>{escape(_MODEL_NAMES[model])}</b>."
@@ -353,7 +359,7 @@ async def handle_meow_video_prompt(
     if target == "duration":
         duration = _parse_duration(message.text or "")
         model = _validated_model(data)
-        if model not in {"seedance", "wan"}:
+        if model not in {"grok15", "seedance", "wan"}:
             await message.answer("У этой модели длительность задаётся автоматически.")
             return
         if duration is None:
@@ -472,7 +478,7 @@ async def handle_meow_video_action(
         return
     if action == "duration_input":
         data = await state.get_data()
-        if _validated_model(data) not in {"seedance", "wan"}:
+        if _validated_model(data) not in {"grok15", "seedance", "wan"}:
             await callback.answer("Длительность этой модели задаётся автоматически.", show_alert=True)
             return
         await state.update_data(meow_video_text_target="duration")
@@ -778,6 +784,19 @@ def _build_request(
     last_reference: KieReferenceImage | None = None,
     wan_mode: str = "first",
 ) -> KieGenerationRequest:
+    if model == "grok15":
+        return KieGenerationRequest(
+            model=KieModelAlias.GROK_IMAGINE_VIDEO_15,
+            input_mode=KieInputMode.PHOTO_TEXT,
+            prompt=prompt,
+            references=(reference,),
+            content_mode=KieContentMode.MATURE,
+            aspect_ratio="auto",
+            resolution=resolution,
+            duration_seconds=duration or 8,
+            output_format="mp4",
+            extra_input={"nsfw_checker": False},
+        )
     if model == "seedance":
         return KieGenerationRequest(
             model=KieModelAlias.SEEDANCE_15_PRO_VIDEO,
@@ -857,7 +876,9 @@ async def _apply_model_defaults(
     state: FSMContext, *, model: str,
     template: Mapping[str, object] | None = None,
 ) -> None:
-    if model == "seedance":
+    if model == "grok15":
+        await state.update_data(meow_video_model=model, meow_video_resolution="480p", meow_video_duration=8, meow_video_generate_audio=False, meow_video_wan_mode="first")
+    elif model == "seedance":
         await state.update_data(meow_video_model=model, meow_video_resolution="720p", meow_video_duration=5, meow_video_generate_audio=False, meow_video_wan_mode="first")
     elif model == "wan":
         await state.update_data(meow_video_model=model, meow_video_resolution="720p", meow_video_duration=5, meow_video_generate_audio=False, meow_video_wan_mode="first")
@@ -934,7 +955,7 @@ def _validated_resolution(data: Mapping[str, object] | object, *, model: str | N
     resolved_model = model or _validated_model(data)
     resolution = str(data.get("meow_video_resolution") or "") if isinstance(data, Mapping) else ""
     allowed = _allowed_resolutions(resolved_model)
-    default = "480p" if resolved_model == "grok" else "720p"
+    default = "480p" if resolved_model in {"grok", "grok15"} else "720p"
     return resolution if resolution in allowed else default
 
 

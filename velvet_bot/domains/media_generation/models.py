@@ -45,6 +45,7 @@ class KieModelAlias(StrEnum):
     NANO_BANANA_2 = "nano_banana_2"
     NANO_BANANA_PRO = "nano_banana_pro"
     GROK_IMAGINE_VIDEO = "grok_imagine_video"
+    GROK_IMAGINE_VIDEO_15 = "grok_imagine_video_15"
     SEEDANCE_15_PRO_VIDEO = "seedance_15_pro_video"
     WAN_26_IMAGE_TO_VIDEO = "wan_26_image_to_video"
 
@@ -55,6 +56,7 @@ class KieModelAlias(StrEnum):
             self.NANO_BANANA_2: "Nano Banana 2",
             self.NANO_BANANA_PRO: "Nano Banana Pro",
             self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",
+            self.GROK_IMAGINE_VIDEO_15: "Grok Imagine Video 1.5",
             self.SEEDANCE_15_PRO_VIDEO: "Seedance 1.5 Pro",
             self.WAN_26_IMAGE_TO_VIDEO: "Wan 2.6",
         }[self]
@@ -63,6 +65,7 @@ class KieModelAlias(StrEnum):
     def is_video(self) -> bool:
         return self in {
             self.GROK_IMAGINE_VIDEO,
+            self.GROK_IMAGINE_VIDEO_15,
             self.SEEDANCE_15_PRO_VIDEO,
             self.WAN_26_IMAGE_TO_VIDEO,
         }
@@ -110,6 +113,7 @@ class KieModelCatalog:
     nano_banana_2: str = "nano-banana-2"
     nano_banana_pro: str = "nano-banana-pro"
     grok_imagine_video: str = "grok-imagine/image-to-video"
+    grok_imagine_video_15: str = "grok-imagine-video-1-5-preview"
     seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"
     wan_26_image_to_video: str = "wan/2-6-image-to-video"
 
@@ -135,6 +139,8 @@ class KieModelCatalog:
             model = self.nano_banana_pro
         elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:
             model = self.grok_imagine_video
+        elif alias is KieModelAlias.GROK_IMAGINE_VIDEO_15:
+            model = self.grok_imagine_video_15
         elif alias is KieModelAlias.SEEDANCE_15_PRO_VIDEO:
             model = self.seedance_15_pro_video
         else:
@@ -167,6 +173,8 @@ class KiePricing:
     nano_banana_pro_usd: Decimal | None = None
     grok_480p_usd_per_second: Decimal = Decimal("0.008")
     grok_720p_usd_per_second: Decimal = Decimal("0.015")
+    grok_15_480p_usd_per_second: Decimal = Decimal("0.0725")
+    grok_15_720p_usd_per_second: Decimal = Decimal("0.125")
     seedance_480p_no_audio_usd_per_second: Decimal = Decimal("0.00875")
     seedance_720p_no_audio_usd_per_second: Decimal = Decimal("0.0175")
     seedance_1080p_no_audio_usd_per_second: Decimal = Decimal("0.0375")
@@ -198,6 +206,13 @@ class KiePricing:
                 self.grok_720p_usd_per_second
                 if request.resolution.casefold() == "720p"
                 else self.grok_480p_usd_per_second
+            )
+            return rate * Decimal(request.duration_seconds)
+        if request.model is KieModelAlias.GROK_IMAGINE_VIDEO_15:
+            rate = (
+                self.grok_15_720p_usd_per_second
+                if request.resolution.casefold() == "720p"
+                else self.grok_15_480p_usd_per_second
             )
             return rate * Decimal(request.duration_seconds)
         if request.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:
@@ -395,6 +410,16 @@ class KieGenerationRequest:
                     "resolution": self.resolution.strip() or "480p",
                     "duration": self.duration_seconds,
                     "mode": self.mode.strip() or "normal",
+                    "image_urls": list(self.image_urls),
+                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                }
+            )
+        elif self.model is KieModelAlias.GROK_IMAGINE_VIDEO_15:
+            payload.update(
+                {
+                    "aspect_ratio": self.aspect_ratio.strip() or "auto",
+                    "resolution": self.resolution.strip() or "480p",
+                    "duration": self.duration_seconds,
                     "image_urls": list(self.image_urls),
                     "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
                 }
