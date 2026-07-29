@@ -23,6 +23,7 @@ def __getattr__(name: str) -> Any:
         from velvet_bot.app.auf_branding import install_auf_branding
         from velvet_bot.app.grs_campaign_retry import install_grs_campaign_retry
         from velvet_bot.app.grs_resilience import install_grs_resilience
+        from velvet_bot.app.grs_speedups import install_grs_speedups
         from velvet_bot.app.telegram_progress_resilience import (
             install_telegram_progress_resilience,
         )
@@ -35,6 +36,7 @@ def __getattr__(name: str) -> Any:
         install_friendly_media_worker()
         install_grs_resilience()
         install_grs_campaign_retry()
+        install_grs_speedups()
         install_telegram_progress_resilience()
         install_auf_branding()
         await application()
