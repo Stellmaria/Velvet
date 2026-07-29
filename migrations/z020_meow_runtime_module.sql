@@ -1,3 +1,24 @@
+ALTER TABLE workspace_modules
+    DROP CONSTRAINT IF EXISTS workspace_modules_module_key_check;
+
+ALTER TABLE workspace_modules
+    ADD CONSTRAINT workspace_modules_module_key_check
+    CHECK (
+        module_key IN (
+            'characters',
+            'archive',
+            'taxonomy',
+            'references',
+            'public_archive',
+            'watermark',
+            'qwen',
+            'publications',
+            'analytics',
+            'team',
+            'meow'
+        )
+    );
+
 CREATE TABLE IF NOT EXISTS meow_runtime_settings (
     singleton_id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (singleton_id = 1),
     kie_concurrency_limit INTEGER NOT NULL DEFAULT 100
