@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID, uuid4
 
+from asyncpg.exceptions import PostgresError
+
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
@@ -21,12 +23,13 @@ from velvet_bot.domains.vision_batches.models import (
     VisionBatchProgress,
     VisionBatchStatus,
 )
-from velvet_bot.domains.vision_batches.repository import VisionBatchRepository
+from velvet_bot.domains.vision_batches.store import VisionBatchRepository
 
 
 VISION_BATCH_TASK_TYPE = "vision.semantic-profile"
 _MAX_ESTIMATED_INPUT_TOKENS = 6000
 _MAX_OUTPUT_TOKENS = 1200
+_STALE_START_SECONDS = 300
 
 
 class VisionBatchService:
@@ -121,11 +124,17 @@ class VisionBatchService:
         plan = await self._repository.get(plan_id=plan_id)
         if plan is None:
             raise VisionBatchError("План VL-партии не найден.")
-        if plan.status is not VisionBatchStatus.PLANNED:
+        now = datetime.now(timezone.utc)
+        stale_start = bool(
+            plan.status is VisionBatchStatus.STARTING
+            and plan.started_at is not None
+            and plan.started_at <= now - timedelta(seconds=_STALE_START_SECONDS)
+        )
+        if plan.status is not VisionBatchStatus.PLANNED and not stale_start:
             raise VisionBatchError(
                 f"План нельзя запустить из статуса {plan.status.value}."
             )
-        if plan.expires_at <= datetime.now(timezone.utc):
+        if plan.expires_at <= now:
             await self._repository.claim_start(plan_id=plan_id)
             raise VisionBatchError("Срок подтверждения VL-партии истёк.")
         budget = await self._usage.status()
@@ -170,19 +179,18 @@ class VisionBatchService:
                 for media_id in claimed.candidate_ids
             )
             results = await self._queue.enqueue_many(requests)
-            created_ids = tuple(
-                result.task.id for result in results if result.created
-            )
+            task_ids = tuple(result.task.id for result in results)
+            created_count = sum(1 for result in results if result.created)
             await self._repository.attach_created_tasks(
                 plan_id=claimed.id,
-                task_ids=created_ids,
+                task_ids=task_ids,
             )
             return await self._repository.mark_queued(
                 plan_id=claimed.id,
-                created_task_count=len(created_ids),
-                deduplicated_task_count=len(results) - len(created_ids),
+                created_task_count=created_count,
+                deduplicated_task_count=len(results) - created_count,
             )
-        except Exception as error:
+        except (PostgresError, RuntimeError, ValueError) as error:
             await self._repository.mark_error(plan_id=claimed.id, error=error)
             raise
 
