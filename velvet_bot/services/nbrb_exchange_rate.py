@@ -174,12 +174,21 @@ class DailyNbrbExchangeRateService:
         repository: NbrbExchangeRateRepository,
         client: NbrbRateClient,
         timezone_name: str = "Europe/Minsk",
+        on_rate: Callable[[Decimal], None] | None = None,
     ) -> None:
         self._repository = repository
         self._client = client
         self._timezone = ZoneInfo(timezone_name)
+        self._on_rate = on_rate
+        self._restored = False
 
     async def process_once(self) -> int:
+        if not self._restored:
+            self._restored = True
+            stored = await self._repository.latest_success()
+            if stored is not None:
+                self._apply_rate(stored.usd_to_rub)
+
         check_date = datetime.now(self._timezone).date()
         if not await self._repository.claim_daily_attempt(check_date):
             return 0
@@ -195,12 +204,17 @@ class DailyNbrbExchangeRateService:
             await self._repository.mark_error(check_date=check_date, error=error)
             logger.warning("Daily NBRB exchange-rate refresh failed: %s", error)
             return 0
+        self._apply_rate(snapshot.usd_to_rub)
         logger.info(
             "NBRB exchange rate updated effective_date=%s usd_to_rub=%s",
             snapshot.effective_date,
             snapshot.usd_to_rub,
         )
         return 1
+
+    def _apply_rate(self, value: Decimal) -> None:
+        if self._on_rate is not None and value > 0:
+            self._on_rate(value)
 
 
 def _parse_rates(payload: Any) -> NbrbRateSnapshot:
