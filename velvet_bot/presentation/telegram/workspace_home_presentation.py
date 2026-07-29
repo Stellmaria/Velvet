@@ -6,6 +6,7 @@ from typing import Sequence
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from velvet_bot.domains.meow_runtime import MeowRuntimeService
 from velvet_bot.domains.workspaces.models import Workspace, WorkspaceRole
 from velvet_bot.domains.workspaces.product_models import WorkspaceModuleSetting
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
@@ -44,27 +45,33 @@ def build_workspace_owner_home_keyboard(
     public_enabled: bool,
     modules: Sequence[WorkspaceModuleSetting],
     show_button_hints: bool = True,
+    meow_visible: bool = True,
 ) -> InlineKeyboardMarkup:
     """Build the canonical owner keyboard without hidden controller state."""
 
     base = build_workspace_home_keyboard(
         workspace,
         public_enabled=public_enabled,
-        modules=modules,
+        modules=tuple(modules),
     )
     rows = [list(row) for row in base.inline_keyboard]
-    rows.insert(
-        1 if rows else 0,
-        [
-            InlineKeyboardButton(
-                text="Мяу",
-                callback_data=workspace_callback(
-                    "meow",
-                    workspace_id=workspace.id,
-                ),
-            )
-        ],
+    meow_enabled = any(
+        item.module_key == "meow" and item.is_allowed and item.is_enabled
+        for item in modules
     )
+    if meow_enabled and meow_visible:
+        rows.insert(
+            1 if rows else 0,
+            [
+                InlineKeyboardButton(
+                    text="Мяу",
+                    callback_data=workspace_callback(
+                        "meow",
+                        workspace_id=workspace.id,
+                    ),
+                )
+            ],
+        )
     if not workspace.is_system:
         close_row = rows.pop() if rows else []
         rows.extend(
@@ -133,6 +140,7 @@ async def build_workspace_home_presentation(
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
     global_owner: bool,
+    meow_runtime_service: MeowRuntimeService | None = None,
 ) -> WorkspaceHomePresentation:
     """Load role-aware workspace home data through public service contracts."""
 
@@ -153,11 +161,18 @@ async def build_workspace_home_presentation(
         show_button_hints = await workspace_product_service.get_button_hints(
             workspace.id
         )
+        meow_visible = True
+        if meow_runtime_service is not None:
+            meow_visible = await meow_runtime_service.module_is_visible(
+                workspace_id=workspace.id,
+                actor_user_id=user_id,
+            )
         keyboard = build_workspace_owner_home_keyboard(
             workspace,
             public_enabled=settings.public_archive_enabled,
             modules=modules,
             show_button_hints=show_button_hints,
+            meow_visible=meow_visible,
         )
         role_label = "владелец"
         suffix = f"\nРоль: <b>{role_label}</b>"
