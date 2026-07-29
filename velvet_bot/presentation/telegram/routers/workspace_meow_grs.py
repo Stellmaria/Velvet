@@ -19,29 +19,39 @@ from velvet_bot.presentation.telegram.routers.workspace_meow import (
 )
 
 
-def build_model_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+def build_model_keyboard(
+    *,
+    workspace_id: int,
+    grs_enabled: bool = True,
+) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    if grs_enabled:
+        rows.extend(
             [
-                InlineKeyboardButton(
-                    text="Nano Banana 2",
-                    callback_data=_callback(
-                        "model",
-                        workspace_id=workspace_id,
-                        value=KieModelAlias.NANO_BANANA_2.value,
-                    ),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="Nano Banana Pro",
-                    callback_data=_callback(
-                        "model",
-                        workspace_id=workspace_id,
-                        value=KieModelAlias.NANO_BANANA_PRO.value,
-                    ),
-                )
-            ],
+                [
+                    InlineKeyboardButton(
+                        text="Nano Banana 2",
+                        callback_data=_callback(
+                            "model",
+                            workspace_id=workspace_id,
+                            value=KieModelAlias.NANO_BANANA_2.value,
+                        ),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="Nano Banana Pro",
+                        callback_data=_callback(
+                            "model",
+                            workspace_id=workspace_id,
+                            value=KieModelAlias.NANO_BANANA_PRO.value,
+                        ),
+                    )
+                ],
+            ]
+        )
+    rows.extend(
+        [
             [
                 InlineKeyboardButton(
                     text="Seedream 5 Pro",
@@ -64,9 +74,16 @@ def build_model_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
             ],
         ]
     )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def model_selection_text() -> str:
+def model_selection_text(*, grs_enabled: bool = True) -> str:
+    if not grs_enabled:
+        return (
+            "<b>Выберите модель</b>\n\n"
+            "Seedream 5 Pro доступен через Kie.ai. Nano Banana 2 и Nano Banana Pro "
+            "появятся после настройки <code>GRS_API_KEY</code>."
+        )
     return (
         "<b>Выберите модель</b>\n\n"
         "Nano Banana 2 и Nano Banana Pro отправляются через GRS AI. "
@@ -95,21 +112,34 @@ async def handle_meow_action(
         if not kie_settings.enabled:
             await callback.answer("AI-генерация выключена на сервере.", show_alert=True)
             return
+        grs_enabled = bool(kie_settings.grs_api_key)
         await state.set_state(MeowForm.choosing_model)
         await _edit_or_answer(
             callback,
-            text=model_selection_text(),
-            reply_markup=build_model_keyboard(workspace_id=workspace_id),
+            text=model_selection_text(grs_enabled=grs_enabled),
+            reply_markup=build_model_keyboard(
+                workspace_id=workspace_id,
+                grs_enabled=grs_enabled,
+            ),
         )
         return
-    if action == "model" and callback_data.value == KieModelAlias.NANO_BANANA_2.value:
+    if action == "model" and callback_data.value in {
+        KieModelAlias.NANO_BANANA_2.value,
+        KieModelAlias.NANO_BANANA_PRO.value,
+    }:
         if not access_policy.allows_user(callback.from_user):
             await callback.answer("Мяу доступен только владельцу бота.", show_alert=True)
             return
         if not kie_settings.enabled:
             await callback.answer("AI-генерация выключена на сервере.", show_alert=True)
             return
-        model = KieModelAlias.NANO_BANANA_2
+        if not kie_settings.grs_api_key:
+            await callback.answer(
+                "Nano Banana 2/Pro требуют GRS_API_KEY на сервере.",
+                show_alert=True,
+            )
+            return
+        model = KieModelAlias(str(callback_data.value))
         try:
             kie_settings.models.provider_model(model)
         except ValueError as error:
