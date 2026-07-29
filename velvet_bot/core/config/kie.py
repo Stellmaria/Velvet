@@ -7,7 +7,12 @@ from decimal import Decimal, InvalidOperation
 from dotenv import load_dotenv
 
 from velvet_bot.core.config.settings import parse_boolean, parse_bounded_integer
-from velvet_bot.domains.media_generation import KieModelCatalog, KiePricing
+from velvet_bot.domains.media_generation import (
+    KieInputMode,
+    KieModelAlias,
+    KieModelCatalog,
+    KiePricing,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,8 +51,17 @@ def load_kie_settings() -> KieSettings:
     if not file_upload_base_url:
         raise RuntimeError("KIE_FILE_UPLOAD_BASE_URL не может быть пустым.")
 
+    legacy_seedream = os.getenv("KIE_SEEDREAM_5_PRO_MODEL", "").strip()
     models = KieModelCatalog(
-        seedream_5_pro=os.getenv("KIE_SEEDREAM_5_PRO_MODEL", "").strip(),
+        seedream_5_pro=legacy_seedream,
+        seedream_5_pro_text=os.getenv(
+            "KIE_SEEDREAM_5_PRO_TEXT_MODEL",
+            "seedream/5-pro-text-to-image",
+        ).strip(),
+        seedream_5_pro_image=os.getenv(
+            "KIE_SEEDREAM_5_PRO_IMAGE_MODEL",
+            legacy_seedream or "seedream/5-pro-image-to-image",
+        ).strip(),
         nano_banana_pro=(
             os.getenv("KIE_NANO_BANANA_PRO_MODEL", "nano-banana-pro").strip()
         ),
@@ -66,11 +80,20 @@ def load_kie_settings() -> KieSettings:
         raise RuntimeError("KIE_ENABLED=true требует непустой KIE_API_KEY.")
     if enabled and usd_to_rub <= 0:
         raise RuntimeError("KIE_ENABLED=true требует KIE_USD_TO_RUB больше нуля.")
-    if enabled and (not models.seedream_5_pro or not models.nano_banana_pro):
-        raise RuntimeError(
-            "KIE_ENABLED=true требует model id для Seedream 5 Pro и "
-            "Nano Banana Pro."
+    if enabled:
+        required_routes = (
+            (KieModelAlias.NANO_BANANA_PRO, KieInputMode.TEXT),
+            (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.TEXT),
+            (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.PHOTO_TEXT),
         )
+        try:
+            for alias, input_mode in required_routes:
+                models.provider_model(alias, input_mode=input_mode)
+        except ValueError as error:
+            raise RuntimeError(
+                "KIE_ENABLED=true требует model id для Nano Banana Pro и "
+                "обоих режимов Seedream 5 Pro."
+            ) from error
 
     pricing = KiePricing(
         seedream_basic_usd=_parse_non_negative_decimal(
