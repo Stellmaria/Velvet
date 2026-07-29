@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Generic, TypeVar, cast
@@ -23,6 +23,7 @@ from velvet_bot.domains.ai_usage.models import (
 
 T = TypeVar("T")
 BudgetWarningHandler = Callable[[AIBudgetWarning], Awaitable[None]]
+FailureUsageResolver = Callable[[BaseException], AIProviderResult[object] | None]
 
 
 class AIBudgetExceeded(RuntimeError):
@@ -100,12 +101,22 @@ class AIUsageService:
         error: BaseException,
         *,
         latency_ms: int,
+        actual_cost_rub: Decimal = Decimal("0"),
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        metadata: Mapping[str, object] | None = None,
     ) -> None:
         await self._repository.fail(
             request_id=reservation.request_id,
             latency_ms=latency_ms,
             error=error,
+            actual_cost_rub=actual_cost_rub,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            metadata=dict(metadata or {}),
         )
+        if actual_cost_rub > 0:
+            await self._emit_budget_warning_if_needed()
 
     async def cancel(self, reservation: AIReservation, *, reason: str) -> None:
         await self._repository.cancel(
@@ -243,6 +254,7 @@ class AIRequestExecutor(Generic[T]):
         *,
         context: AIRequestContext,
         operation: Callable[[], Awaitable[AIProviderResult[T]]],
+        failure_usage: FailureUsageResolver | None = None,
     ) -> T:
         reservation = await self._usage_service.reserve(context)
         started = time.monotonic()
@@ -256,10 +268,17 @@ class AIRequestExecutor(Generic[T]):
             raise
         except BaseException as error:
             latency_ms = _latency_ms(started)
+            charged = failure_usage(error) if failure_usage is not None else None
             await self._usage_service.fail(
                 reservation,
                 error,
                 latency_ms=latency_ms,
+                actual_cost_rub=(
+                    charged.actual_cost_rub if charged is not None else Decimal("0")
+                ),
+                input_tokens=charged.input_tokens if charged is not None else 0,
+                output_tokens=charged.output_tokens if charged is not None else 0,
+                metadata=charged.metadata if charged is not None else None,
             )
             raise
 
@@ -281,4 +300,5 @@ __all__ = (
     "AIRequestExecutor",
     "AIUsageService",
     "BudgetWarningHandler",
+    "FailureUsageResolver",
 )
