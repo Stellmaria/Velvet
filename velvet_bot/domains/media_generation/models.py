@@ -42,6 +42,7 @@ class KieContentMode(StrEnum):
 
 class KieModelAlias(StrEnum):
     SEEDREAM_5_PRO = "seedream_5_pro"
+    NANO_BANANA_2 = "nano_banana_2"
     NANO_BANANA_PRO = "nano_banana_pro"
     GROK_IMAGINE_VIDEO = "grok_imagine_video"
     SEEDANCE_15_PRO_VIDEO = "seedance_15_pro_video"
@@ -51,6 +52,7 @@ class KieModelAlias(StrEnum):
     def display_name(self) -> str:
         return {
             self.SEEDREAM_5_PRO: "Seedream 5 Pro",
+            self.NANO_BANANA_2: "Nano Banana 2",
             self.NANO_BANANA_PRO: "Nano Banana Pro",
             self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",
             self.SEEDANCE_15_PRO_VIDEO: "Seedance 1.5 Pro",
@@ -66,8 +68,16 @@ class KieModelAlias(StrEnum):
         }
 
     @property
+    def is_grs(self) -> bool:
+        return self in {self.NANO_BANANA_2, self.NANO_BANANA_PRO}
+
+    @property
+    def provider_name(self) -> str:
+        return "grs" if self.is_grs else "kie"
+
+    @property
     def supported_photo_resolutions(self) -> tuple[str, ...]:
-        if self is self.NANO_BANANA_PRO:
+        if self in {self.NANO_BANANA_2, self.NANO_BANANA_PRO}:
             return ("1K", "2K", "4K")
         if self is self.SEEDREAM_5_PRO:
             return ("1K", "2K")
@@ -97,6 +107,7 @@ class KieModelCatalog:
     seedream_5_pro: str = ""
     seedream_5_pro_text: str = ""
     seedream_5_pro_image: str = ""
+    nano_banana_2: str = "nano-banana-2"
     nano_banana_pro: str = "nano-banana-pro"
     grok_imagine_video: str = "grok-imagine/image-to-video"
     seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"
@@ -118,6 +129,8 @@ class KieModelCatalog:
                 model = self.seedream_5_pro_text or legacy_text
             else:
                 model = self.seedream_5_pro_image or self.seedream_5_pro
+        elif alias is KieModelAlias.NANO_BANANA_2:
+            model = self.nano_banana_2
         elif alias is KieModelAlias.NANO_BANANA_PRO:
             model = self.nano_banana_pro
         elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:
@@ -129,8 +142,9 @@ class KieModelCatalog:
         normalized = model.strip()
         if not normalized:
             mode_suffix = f" для режима {input_mode.value}" if input_mode else ""
+            provider = "GRS AI" if alias.is_grs else "Kie.ai"
             raise ValueError(
-                f"Для {alias.value}{mode_suffix} не задан model id Kie.ai."
+                f"Для {alias.value}{mode_suffix} не задан model id {provider}."
             )
         return normalized
 
@@ -145,8 +159,12 @@ class KieModelCatalog:
 class KiePricing:
     seedream_basic_usd: Decimal = Decimal("0.075")
     seedream_high_usd: Decimal = Decimal("0.15")
+    # Legacy Kie values remain for environment compatibility.
     nano_1k_2k_usd: Decimal = Decimal("0.09")
     nano_4k_usd: Decimal = Decimal("0.12")
+    # Conservative USD-equivalent budget estimates for GRS billing.
+    nano_banana_2_usd: Decimal = Decimal("0.02")
+    nano_banana_pro_usd: Decimal | None = None
     grok_480p_usd_per_second: Decimal = Decimal("0.008")
     grok_720p_usd_per_second: Decimal = Decimal("0.015")
     seedance_480p_no_audio_usd_per_second: Decimal = Decimal("0.00875")
@@ -165,7 +183,11 @@ class KiePricing:
                 if request.resolution.casefold() == "2k"
                 else self.seedream_basic_usd
             )
+        if request.model is KieModelAlias.NANO_BANANA_2:
+            return self.nano_banana_2_usd
         if request.model is KieModelAlias.NANO_BANANA_PRO:
+            if self.nano_banana_pro_usd is not None:
+                return self.nano_banana_pro_usd
             return (
                 self.nano_4k_usd
                 if request.resolution.casefold() == "4k"
@@ -210,7 +232,7 @@ class KiePricing:
         usd_to_rub: Decimal,
     ) -> Decimal:
         if usd_to_rub <= 0:
-            raise ValueError("Курс USD/RUB для Kie.ai должен быть больше нуля.")
+            raise ValueError("Курс USD/RUB для AI-генерации должен быть больше нуля.")
         return (self.estimate_usd(request) * usd_to_rub).quantize(
             _MONEY_QUANTUM,
             rounding=ROUND_UP,
@@ -240,7 +262,7 @@ class KieReferenceImage:
             "image/png",
             "image/webp",
         }:
-            raise ValueError("Kie принимает референсы только JPG, PNG или WEBP.")
+            raise ValueError("Провайдер принимает референсы только JPG, PNG или WEBP.")
         if self.file_size is not None and self.file_size > MAX_KIE_REFERENCE_BYTES:
             raise ValueError("Референс должен быть не больше 10 МБ.")
 
@@ -290,13 +312,13 @@ class KieGenerationRequest:
     def __post_init__(self) -> None:
         prompt = self.prompt.strip()
         if not self.aspect_ratio.strip():
-            raise ValueError("Соотношение сторон Kie.ai не может быть пустым.")
+            raise ValueError("Соотношение сторон не может быть пустым.")
         if self.duration_seconds <= 0:
             raise ValueError("Длительность видео должна быть положительной.")
         if len(self.references) > MAX_KIE_REFERENCES:
             raise ValueError("Можно использовать не больше пяти референсов.")
         if any(not url.strip() for url in self.image_urls):
-            raise ValueError("URL референсов Kie.ai не могут быть пустыми.")
+            raise ValueError("URL референсов не могут быть пустыми.")
         if self.input_mode is KieInputMode.TEXT:
             if not prompt:
                 raise ValueError("Для режима Текст нужен промт.")
@@ -329,6 +351,18 @@ class KieGenerationRequest:
             raise ValueError("Количество загруженных URL не совпадает с референсами.")
         return replace(self, image_urls=image_urls)
 
+    def to_grs_input(self, *, model_id: str) -> dict[str, object]:
+        if not self.model.is_grs:
+            raise ValueError("GRS payload доступен только для Nano Banana 2/Pro.")
+        return {
+            "model": model_id.strip(),
+            "prompt": self.provider_prompt,
+            "images": list(self.image_urls),
+            "aspectRatio": self.aspect_ratio.strip(),
+            "imageSize": self.resolution.upper(),
+            "replyType": "json",
+        }
+
     def to_input(self) -> dict[str, object]:
         payload: dict[str, object] = {"prompt": self.provider_prompt}
         if self.model is KieModelAlias.SEEDREAM_5_PRO:
@@ -342,7 +376,10 @@ class KieGenerationRequest:
             if self.input_mode is not KieInputMode.TEXT:
                 payload["image_urls"] = list(self.image_urls)
             payload["output_format"] = self.output_format.strip() or "png"
-        elif self.model is KieModelAlias.NANO_BANANA_PRO:
+        elif self.model in {
+            KieModelAlias.NANO_BANANA_2,
+            KieModelAlias.NANO_BANANA_PRO,
+        }:
             payload.update(
                 {
                     "aspect_ratio": self.aspect_ratio.strip(),
@@ -414,7 +451,7 @@ class KieGenerationRequest:
             input_mode = KieInputMode(input_mode_text)
             content_mode = KieContentMode(content_mode_text)
         except ValueError as error:
-            raise ValueError("Неизвестные параметры Kie-задачи в очереди.") from error
+            raise ValueError("Неизвестные параметры AI-задачи в очереди.") from error
         references_value = payload.get("references")
         references = (
             tuple(
@@ -485,6 +522,63 @@ class KieTaskRecord:
             failure_code=_optional_text(data.get("failCode")),
             failure_message=_optional_text(data.get("failMsg")),
             raw=dict(data),
+        )
+
+    @classmethod
+    def from_grs_api(
+        cls,
+        payload: Mapping[str, Any],
+        *,
+        task_id: str | None = None,
+    ) -> "KieTaskRecord":
+        raw_task_id = str(payload.get("id") or "").strip()
+        normalized_task_id = str(task_id or raw_task_id).strip()
+        if not normalized_task_id:
+            raise ValueError("GRS AI не вернул id задачи.")
+        status = str(payload.get("status") or "").strip().casefold()
+        state_map = {
+            "waiting": KieTaskState.WAITING,
+            "pending": KieTaskState.WAITING,
+            "submitted": KieTaskState.WAITING,
+            "queued": KieTaskState.QUEUING,
+            "queuing": KieTaskState.QUEUING,
+            "processing": KieTaskState.GENERATING,
+            "running": KieTaskState.GENERATING,
+            "generating": KieTaskState.GENERATING,
+            "succeeded": KieTaskState.SUCCESS,
+            "success": KieTaskState.SUCCESS,
+            "completed": KieTaskState.SUCCESS,
+            "failed": KieTaskState.FAIL,
+            "fail": KieTaskState.FAIL,
+            "error": KieTaskState.FAIL,
+        }
+        state = state_map.get(status)
+        if state is None:
+            raise ValueError(f"Неизвестное состояние GRS AI: {status or '<пусто>'}")
+        results = payload.get("results")
+        result_urls = (
+            tuple(
+                str(item.get("url") or "").strip()
+                for item in results
+                if isinstance(item, Mapping) and str(item.get("url") or "").strip()
+            )
+            if isinstance(results, (list, tuple))
+            else ()
+        )
+        failure = payload.get("error")
+        failure_message = _optional_text(
+            failure.get("message") if isinstance(failure, Mapping) else failure
+        ) or _optional_text(payload.get("message") or payload.get("msg"))
+        failure_code = _optional_text(
+            failure.get("code") if isinstance(failure, Mapping) else payload.get("code")
+        )
+        return cls(
+            task_id=normalized_task_id,
+            state=state,
+            result_urls=result_urls,
+            failure_code=failure_code,
+            failure_message=failure_message,
+            raw=dict(payload),
         )
 
 
