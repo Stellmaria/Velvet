@@ -22,6 +22,7 @@ def __getattr__(name: str) -> Any:
     from velvet_bot.app.bootstrap import run_application as application
 
     async def configured_run_application() -> None:
+        from velvet_bot.app.grs_campaign_retry import install_grs_campaign_retry
         from velvet_bot.app.grs_resilience import install_grs_resilience
         from velvet_bot.domains.media_generation.friendly_worker import (
             install_friendly_media_worker,
@@ -31,6 +32,7 @@ def __getattr__(name: str) -> Any:
         install_ai_model_routing()
         install_friendly_media_worker()
         install_grs_resilience()
+        install_grs_campaign_retry()
         await application()
 
     globals()[name] = configured_run_application

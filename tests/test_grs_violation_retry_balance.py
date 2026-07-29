@@ -4,20 +4,27 @@ import asyncio
 import unittest
 from decimal import Decimal
 
+from velvet_bot.app.grs_campaign_retry import (
+    _provider_reason_without_model_chatter,
+    _violation_retry_stage,
+    _with_image_output_guard,
+)
 from velvet_bot.app.grs_resilience import (
     _extract_grs_credits,
     _extract_grs_violation_reason,
     _from_grs_api_with_violation,
     _get_grs_credits_resilient,
     _sanitize_meow_text,
-    _violation_retry_limit_reached,
 )
 from velvet_bot.domains.media_generation import (
+    KieGenerationRequest,
+    KieInputMode,
+    KieModelAlias,
     KieModelCatalog,
     KieTaskRecord,
     KieTaskState,
 )
-from velvet_bot.infrastructure.ai import KieClient, KieError, KieTaskFailed
+from velvet_bot.infrastructure.ai import KieClient, KieError
 
 
 class GrsViolationStatusTests(unittest.TestCase):
@@ -64,16 +71,43 @@ class GrsViolationStatusTests(unittest.TestCase):
             )
         )
 
-    def test_violation_retry_is_limited_to_two_provider_attempts(self) -> None:
-        record = _from_grs_api_with_violation(
-            KieTaskRecord,
-            {"id": "14-moderated", "status": "violation"},
-            task_id="grs:14-moderated",
+    def test_language_model_chatter_is_not_a_moderation_diagnostic(self) -> None:
+        self.assertIsNone(
+            _provider_reason_without_model_chatter(
+                "Я просто языковая модель, мои возможности ограничены. Эта задача не для меня."
+            )
         )
-        error = KieTaskFailed(record)
+        self.assertEqual(
+            "IMAGE_SAFETY",
+            _provider_reason_without_model_chatter("IMAGE_SAFETY"),
+        )
 
-        self.assertFalse(_violation_retry_limit_reached(error, 1))
-        self.assertTrue(_violation_retry_limit_reached(error, 2))
+    def test_retry_stage_uses_full_campaign_limit(self) -> None:
+        stage = _violation_retry_stage(
+            provider_attempt=17,
+            max_attempts=50,
+            delay_seconds=30,
+            reason_text="GRS AI не передал конкретную причину блокировки.",
+        )
+
+        self.assertIn("попытку 17/50", stage)
+        self.assertIn("Следующая последовательная попытка", stage)
+        self.assertNotIn("один раз", stage)
+
+    def test_image_output_guard_preserves_owner_prompt(self) -> None:
+        request = KieGenerationRequest(
+            model=KieModelAlias.NANO_BANANA_PRO,
+            input_mode=KieInputMode.TEXT,
+            prompt="Cinematic portrait with exact facial identity",
+            resolution="2K",
+        )
+
+        guarded = _with_image_output_guard(request)
+
+        self.assertIn(request.prompt, guarded.prompt)
+        self.assertIn("return image output only", guarded.prompt)
+        self.assertEqual(request.model, guarded.model)
+        self.assertEqual(request.resolution, guarded.resolution)
 
 
 class GrsOwnerTextTests(unittest.TestCase):
