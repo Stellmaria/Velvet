@@ -63,6 +63,14 @@ def load_kie_settings() -> KieSettings:
         or legacy_grok_image_to_video
         or "grok-imagine/image-to-video"
     )
+    seedance_image_to_video = (
+        os.getenv("KIE_SEEDANCE_15_PRO_MODEL", "").strip()
+        or "bytedance/seedance-1.5-pro"
+    )
+    wan_image_to_video = (
+        os.getenv("KIE_WAN_26_IMAGE_TO_VIDEO_MODEL", "").strip()
+        or "wan/2-6-image-to-video"
+    )
     models = KieModelCatalog(
         seedream_5_pro=legacy_seedream,
         seedream_5_pro_text=os.getenv(
@@ -77,14 +85,8 @@ def load_kie_settings() -> KieSettings:
             os.getenv("KIE_NANO_BANANA_PRO_MODEL", "nano-banana-pro").strip()
         ),
         grok_imagine_video=grok_image_to_video,
-        seedance_15_pro_video=os.getenv(
-            "KIE_SEEDANCE_15_PRO_MODEL",
-            "bytedance/seedance-1.5-pro",
-        ).strip(),
-        wan_26_image_to_video=os.getenv(
-            "KIE_WAN_26_IMAGE_TO_VIDEO_MODEL",
-            "wan/2-6-image-to-video",
-        ).strip(),
+        seedance_15_pro_video=seedance_image_to_video,
+        wan_26_image_to_video=wan_image_to_video,
     )
     usd_to_rub = _parse_non_negative_decimal(
         os.getenv("KIE_USD_TO_RUB", "0"),
