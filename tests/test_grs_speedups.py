@@ -119,8 +119,8 @@ class GrsReferenceSpeedupTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, worker._queue.heartbeats)
         self.assertEqual(
             tuple(
-                f"https://files.invalid/queue-id-{index}-reference-{index}.jpg"
-                for index in range(1, 6)
+                f"https://files.invalid/queue-id-{index + 1}-reference-{index}.jpg"
+                for index in range(5)
             ),
             prepared.image_urls,
         )
