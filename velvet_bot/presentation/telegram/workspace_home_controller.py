@@ -36,6 +36,11 @@ from velvet_bot.presentation.telegram.workspace_home_presentation import (
 )
 from velvet_bot.workspace_ui import WorkspaceCallback
 
+# Aiogram uses ':' as its default CallbackData separator, while aspect ratios
+# legitimately contain the same symbol (for example 9:16). Keep the public
+# values intact and move this callback family to an isolated separator.
+setattr(MeowVideoCallback, "__separator__", "|")
+
 
 def _is_global_owner(user_id: int) -> bool:
     return int(user_id) == GLOBAL_WORKSPACE_CREATOR_ID
