@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -28,11 +29,27 @@ class KieClient(BaseKieClient):
         grs_base_url: str | None = None,
         **kwargs: Any,
     ) -> None:
-        # Configuration is injected by the application. Do not let a unit test or
-        # auxiliary Kie-only client silently inherit production GRS credentials.
+        # Runtime clients may use the configured environment for backward
+        # compatibility. Mocked clients must never inherit production secrets,
+        # otherwise local unit tests become accidental live provider calls.
+        mocked_transport = kwargs.get("transport") is not None
+        resolved_grs_key = grs_api_key
+        resolved_grs_base_url = grs_base_url
+        if not mocked_transport:
+            if resolved_grs_key is None:
+                resolved_grs_key = os.getenv("GRS_API_KEY", "")
+            if resolved_grs_base_url is None:
+                resolved_grs_base_url = os.getenv(
+                    "GRS_BASE_URL",
+                    "https://grsaiapi.com",
+                )
         super().__init__(
-            grs_api_key=grs_api_key if grs_api_key is not None else " ",
-            grs_base_url=grs_base_url or "https://grsaiapi.com",
+            grs_api_key=(
+                resolved_grs_key
+                if resolved_grs_key is not None
+                else " "
+            ),
+            grs_base_url=resolved_grs_base_url or "https://grsaiapi.com",
             **kwargs,
         )
 
