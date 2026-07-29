@@ -22,6 +22,8 @@ class KieRuntimeSettingsTests(unittest.TestCase):
             {
                 "KIE_ENABLED": "false",
                 "KIE_USD_TO_RUB": "0",
+                "KIE_CREDIT_USD": "0.005",
+                "KIE_CREDIT_BYN": "0.019",
                 "KIE_MAX_CONCURRENT_GENERATIONS": "4",
                 "KIE_GENERATION_MAX_ATTEMPTS": "11",
             },
@@ -31,6 +33,8 @@ class KieRuntimeSettingsTests(unittest.TestCase):
 
         self.assertEqual(4, settings.max_concurrent_generations)
         self.assertEqual(11, settings.generation_max_attempts)
+        self.assertEqual(Decimal("0.005"), settings.credit_usd)
+        self.assertEqual(Decimal("0.019"), settings.credit_byn)
 
     def test_retry_delay_is_bounded(self) -> None:
         self.assertEqual(1.0, _retry_delay(1))
@@ -78,13 +82,12 @@ class KieBalancePresentationTests(unittest.TestCase):
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertEqual(["Обновить баланс", "↩️ Мяу"], labels)
 
-    def test_balance_text_separates_provider_credits_and_local_rubles(self) -> None:
+    def test_balance_text_converts_provider_credits_to_three_currencies(self) -> None:
         text = _render_balance(
             live_credits=Decimal("100"),
             balance_error=None,
             summary={
                 "consumed_credits": Decimal("25"),
-                "actual_cost_rub": Decimal("19.50"),
                 "success_count": 2,
                 "error_count": 1,
                 "reserved_count": 1,
@@ -95,16 +98,21 @@ class KieBalancePresentationTests(unittest.TestCase):
                 {
                     "model_name": "grok_imagine_video",
                     "consumed_credits": Decimal("8"),
-                    "actual_cost_rub": Decimal("4.80"),
                 },
             ),
+            credit_usd=Decimal("0.005"),
+            credit_byn=Decimal("0.019"),
+            usd_to_rub=Decimal("78.0172"),
             concurrency=4,
             attempts=11,
         )
 
         self.assertIn("100 кредитов", text)
+        self.assertIn("0,50 $ · 39,01 ₽ · 1,90 BYN", text)
         self.assertIn("25 кредитов", text)
-        self.assertIn("19,50 ₽", text)
+        self.assertIn("0,125 $ · 9,75 ₽ · 0,475 BYN", text)
+        self.assertIn("8 кр.</b> · 0,04 $ · 3,12 ₽ · 0,152 BYN", text)
+        self.assertIn("1 кредит = 0,005 $ · 0,39 ₽ · 0,019 BYN", text)
         self.assertIn("2/4", text)
         self.assertIn("11", text)
         self.assertIn("Grok Imagine v1", text)

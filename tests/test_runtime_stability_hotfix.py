@@ -61,6 +61,31 @@ class RuntimeStabilityTests(unittest.IsolatedAsyncioTestCase):
                     module.is_recoverable_aiogram_polling_record(_record(message))
                 )
 
+    def test_filters_optional_qwen_unavailable_warnings(self) -> None:
+        records = (
+            _record(
+                "Qwen quality service is unavailable provider=ollama "
+                "base_url=http://127.0.0.1:11434 model=qwen3-vl:8b",
+                level=logging.WARNING,
+                name="velvet_bot.ai_quality",
+            ),
+            _record(
+                "Workspace Qwen service is unavailable provider=ollama "
+                "base_url=http://127.0.0.1:11434 model=qwen3-vl:8b",
+                level=logging.WARNING,
+                name="velvet_bot.services.workspace_qwen_quality",
+            ),
+            _record(
+                "AI vision service is unavailable provider=ollama base_url=cascade "
+                "model=qwen3-vl:8b. The bot continues without semantic analysis.",
+                level=logging.WARNING,
+                name="velvet_bot.ai_vision",
+            ),
+        )
+        for record in records:
+            with self.subTest(message=record.getMessage()):
+                self.assertTrue(module.is_recoverable_aiogram_polling_record(record))
+
     def test_keeps_non_network_polling_failures(self) -> None:
         messages = (
             "Failed to fetch updates - TelegramConflictError: "
@@ -100,6 +125,9 @@ class RuntimeStabilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("sleep for % seconds and try again", query)
         self.assertIn("velvet_bot.presentation.telegram.router", query)
         self.assertIn("подключение к сети было разорвано", query)
+        self.assertIn("qwen quality service is unavailable", query)
+        self.assertIn("workspace qwen service is unavailable", query)
+        self.assertIn("ai vision service is unavailable", query)
 
     async def test_missing_database_is_safe(self) -> None:
         self.assertEqual(
