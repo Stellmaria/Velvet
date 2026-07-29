@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import time
 import urllib.error
 import urllib.parse
@@ -30,6 +31,7 @@ _DEFAULT_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/131.0.0.0 Safari/537.36"
 )
+_GRS_TASK_PREFIX = "grs:"
 
 
 class KieError(RuntimeError):
@@ -48,10 +50,13 @@ class KieTaskFailed(KieError):
     def __init__(self, record: KieTaskRecord) -> None:
         self.record = record
         details = record.failure_message or record.failure_code or "неизвестная ошибка"
-        super().__init__(f"Kie.ai task {record.task_id} завершилась ошибкой: {details}")
+        provider = "GRS AI" if record.task_id.startswith(_GRS_TASK_PREFIX) else "Kie.ai"
+        super().__init__(f"{provider} task {record.task_id} завершилась ошибкой: {details}")
 
 
 class KieClient:
+    """Route Seedream/video to Kie and Nano Banana 2/Pro to GRS AI."""
+
     def __init__(
         self,
         *,
@@ -59,6 +64,8 @@ class KieClient:
         models: KieModelCatalog,
         base_url: str = "https://api.kie.ai/api/v1",
         file_upload_base_url: str = "https://kieai.redpandaai.co",
+        grs_api_key: str | None = None,
+        grs_base_url: str | None = None,
         timeout_seconds: float = 60,
         poll_interval_seconds: float = 4,
         task_timeout_seconds: float = 900,
@@ -70,14 +77,19 @@ class KieClient:
         if not user_agent.strip():
             raise ValueError("Kie User-Agent не может быть пустым.")
         self.api_key = api_key.strip()
+        self.grs_api_key = str(grs_api_key or os.getenv("GRS_API_KEY", "")).strip() or None
         self.models = models
         self.base_url = base_url.rstrip("/")
         self.file_upload_base_url = file_upload_base_url.rstrip("/")
+        self.grs_base_url = str(
+            grs_base_url or os.getenv("GRS_BASE_URL", "https://grsaiapi.com")
+        ).strip().rstrip("/")
         self.timeout_seconds = max(1.0, float(timeout_seconds))
         self.poll_interval_seconds = max(1.0, float(poll_interval_seconds))
         self.task_timeout_seconds = max(10.0, float(task_timeout_seconds))
         self.user_agent = user_agent.strip()
         self._transport = transport or _request_json
+        self._grs_initial_responses: dict[str, Mapping[str, Any]] = {}
 
     async def upload_reference(
         self,
@@ -87,9 +99,9 @@ class KieClient:
         file_name: str,
     ) -> KieUploadedFile:
         if not payload:
-            raise ValueError("Нельзя загрузить в Kie.ai пустой референс.")
+            raise ValueError("Нельзя загрузить пустой референс.")
         if len(payload) > MAX_KIE_REFERENCE_BYTES:
-            raise ValueError("Референс для Kie.ai должен быть не больше 10 МБ.")
+            raise ValueError("Референс должен быть не больше 10 МБ.")
         normalized_mime = mime_type.strip().casefold()
         if normalized_mime not in {
             "image/jpeg",
@@ -97,14 +109,14 @@ class KieClient:
             "image/png",
             "image/webp",
         }:
-            raise ValueError("Kie.ai принимает референсы только JPG, PNG или WEBP.")
+            raise ValueError("Провайдер принимает референсы только JPG, PNG или WEBP.")
         safe_name = Path(file_name or "reference.jpg").name or "reference.jpg"
         encoded = base64.b64encode(payload).decode("ascii")
         response = await asyncio.to_thread(
             self._transport,
             "POST",
             f"{self.file_upload_base_url}/api/file-base64-upload",
-            self._headers(),
+            self._headers(self.api_key),
             {
                 "base64Data": f"data:{normalized_mime};base64,{encoded}",
                 "uploadPath": "velvet/references",
@@ -113,7 +125,7 @@ class KieClient:
             self.timeout_seconds,
         )
         if response.get("success") is not True and response.get("code") != 200:
-            self._ensure_success(response, operation="file-base64-upload")
+            self._ensure_kie_success(response, operation="file-base64-upload")
         data = response.get("data")
         if not isinstance(data, Mapping):
             raise KieProtocolError("Kie.ai upload не вернул объект data.")
@@ -133,6 +145,10 @@ class KieClient:
         *,
         callback_url: str | None = None,
     ) -> str:
+        if request.model.is_grs and (
+            self.grs_api_key is not None or request.model.value == "nano_banana_2"
+        ):
+            return await self._create_grs_task(request)
         payload: dict[str, object] = {
             "model": self.models.provider_model_for_request(request),
             "input": request.to_input(),
@@ -143,11 +159,11 @@ class KieClient:
             self._transport,
             "POST",
             f"{self.base_url}/jobs/createTask",
-            self._headers(),
+            self._headers(self.api_key),
             payload,
             self.timeout_seconds,
         )
-        self._ensure_success(response, operation="createTask")
+        self._ensure_kie_success(response, operation="createTask")
         data = response.get("data")
         task_id = data.get("taskId") if isinstance(data, Mapping) else None
         task_id_text = str(task_id or "").strip()
@@ -155,22 +171,73 @@ class KieClient:
             raise KieProtocolError("Kie.ai createTask не вернул taskId.")
         return task_id_text
 
+    async def _create_grs_task(self, request: KieGenerationRequest) -> str:
+        if self.grs_api_key is None:
+            raise KieError("Для Nano Banana 2/Pro не задан GRS_API_KEY.")
+        model_id = self.models.provider_model_for_request(request)
+        response = await asyncio.to_thread(
+            self._transport,
+            "POST",
+            f"{self.grs_base_url}/v1/api/generate",
+            self._headers(self.grs_api_key),
+            request.to_grs_input(model_id=model_id),
+            self.timeout_seconds,
+        )
+        raw_task_id = str(response.get("id") or "").strip()
+        if not raw_task_id:
+            message = str(
+                response.get("message")
+                or response.get("msg")
+                or response.get("error")
+                or "GRS AI не вернул id задачи."
+            )
+            raise KieProtocolError(message)
+        task_id = f"{_GRS_TASK_PREFIX}{raw_task_id}"
+        self._grs_initial_responses[task_id] = dict(response)
+        return task_id
+
     async def get_task(self, task_id: str) -> KieTaskRecord:
         task_id_text = task_id.strip()
         if not task_id_text:
             raise ValueError("task_id не может быть пустым.")
+        if task_id_text.startswith(_GRS_TASK_PREFIX):
+            return await self._get_grs_task(task_id_text)
         query = urllib.parse.urlencode({"taskId": task_id_text})
         response = await asyncio.to_thread(
             self._transport,
             "GET",
             f"{self.base_url}/jobs/recordInfo?{query}",
-            self._headers(),
+            self._headers(self.api_key),
             None,
             self.timeout_seconds,
         )
-        self._ensure_success(response, operation="recordInfo")
+        self._ensure_kie_success(response, operation="recordInfo")
         try:
             return KieTaskRecord.from_api(response)
+        except ValueError as error:
+            raise KieProtocolError(str(error)) from error
+
+    async def _get_grs_task(self, task_id: str) -> KieTaskRecord:
+        cached = self._grs_initial_responses.pop(task_id, None)
+        if cached is not None:
+            try:
+                return KieTaskRecord.from_grs_api(cached, task_id=task_id)
+            except ValueError as error:
+                raise KieProtocolError(str(error)) from error
+        if self.grs_api_key is None:
+            raise KieError("Для polling Nano Banana 2/Pro не задан GRS_API_KEY.")
+        raw_task_id = task_id.removeprefix(_GRS_TASK_PREFIX)
+        query = urllib.parse.urlencode({"id": raw_task_id})
+        response = await asyncio.to_thread(
+            self._transport,
+            "GET",
+            f"{self.grs_base_url}/v1/api/result?{query}",
+            self._headers(self.grs_api_key),
+            None,
+            self.timeout_seconds,
+        )
+        try:
+            return KieTaskRecord.from_grs_api(response, task_id=task_id)
         except ValueError as error:
             raise KieProtocolError(str(error)) from error
 
@@ -185,8 +252,9 @@ class KieClient:
         poll_count = 0
         while True:
             if time.monotonic() >= deadline:
+                provider = "GRS AI" if task_id.startswith(_GRS_TASK_PREFIX) else "Kie.ai"
                 raise TimeoutError(
-                    f"Kie.ai task {task_id} не завершилась за "
+                    f"{provider} task {task_id} не завершилась за "
                     f"{int(self.task_timeout_seconds)} сек."
                 )
             try:
@@ -207,16 +275,16 @@ class KieClient:
                 raise KieTaskFailed(record)
             await asyncio.sleep(self.poll_interval_seconds)
 
-    def _headers(self) -> dict[str, str]:
+    def _headers(self, api_key: str) -> dict[str, str]:
         return {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": self.user_agent,
         }
 
     @staticmethod
-    def _ensure_success(payload: Mapping[str, Any], *, operation: str) -> None:
+    def _ensure_kie_success(payload: Mapping[str, Any], *, operation: str) -> None:
         code = payload.get("code")
         if code == 200:
             return
@@ -263,16 +331,16 @@ def _request_json(
             else KieError
         )
         raise error_type(
-            f"Kie.ai HTTP {error.code} для {method} {url}: {message[:500]}"
+            f"AI provider HTTP {error.code} для {method} {url}: {message[:500]}"
         ) from error
     except (urllib.error.URLError, TimeoutError, OSError) as error:
-        raise KieTransientError(f"Сетевая ошибка Kie.ai: {error}") from error
+        raise KieTransientError(f"Сетевая ошибка AI provider: {error}") from error
     try:
         parsed = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise KieProtocolError("Kie.ai вернул некорректный JSON.") from error
+        raise KieProtocolError("AI provider вернул некорректный JSON.") from error
     if not isinstance(parsed, Mapping):
-        raise KieProtocolError("Kie.ai вернул JSON не в виде объекта.")
+        raise KieProtocolError("AI provider вернул JSON не в виде объекта.")
     return parsed
 
 
