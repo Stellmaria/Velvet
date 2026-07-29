@@ -51,11 +51,15 @@ async def handle_meow_root_entry(
         return
     await state.clear()
     if kie_settings.enabled:
+        grs_line = (
+            "Nano Banana 2 и Nano Banana Pro через GRS AI"
+            if kie_settings.grs_api_key
+            else "Nano Banana 2/Pro скрыты до настройки GRS_API_KEY"
+        )
         text = (
             "<b>Мяу</b>\n\n"
-            "<b>Создать</b> — Nano Banana 2 и Nano Banana Pro через GRS AI, "
-            "Seedream 5 Pro через Kie.ai. Можно использовать текст и референсы "
-            "из базы или Telegram.\n\n"
+            f"<b>Создать</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
+            "Можно использовать текст и референсы из базы или Telegram.\n\n"
             "<b>Оживить</b> — фото и описание движения превращаются в видео через "
             "Grok Imagine v1, Seedance 1.5 Pro или Wan 2.6.\n\n"
             f"Параллельных генераций: <b>до {kie_settings.max_concurrent_generations}</b>. "
