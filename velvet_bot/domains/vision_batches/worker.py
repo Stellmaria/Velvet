@@ -13,8 +13,8 @@ from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.core.config import Settings
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
-from velvet_bot.domains.vision_batches.repository import VisionBatchRepository
 from velvet_bot.domains.vision_batches.service import VISION_BATCH_TASK_TYPE
+from velvet_bot.domains.vision_batches.store import VisionBatchRepository
 from velvet_bot.domains.vision_routing import build_vision_cascade_router
 from velvet_bot.domains.vision_routing.integration import (
     CascadeMediaAIRepository,
