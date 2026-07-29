@@ -4,12 +4,11 @@ import os
 import unittest
 from collections.abc import Mapping
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import patch
 
 from velvet_bot.core.config.kie import load_kie_settings
 from velvet_bot.domains.media_generation import (
-    KieContentMode,
-    KieInputMode,
     KieModelAlias,
     KieModelCatalog,
     KiePricing,
@@ -21,28 +20,27 @@ from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
     _build_request,
+    _parse_duration,
+    _settings_text,
     _validated_resolution,
     build_video_model_keyboard,
     build_video_review_keyboard,
     build_video_settings_keyboard,
+    build_video_template_keyboard,
 )
 
 
 def _labels(keyboard) -> list[str]:
-    return [
-        button.text
-        for row in keyboard.inline_keyboard
-        for button in row
-    ]
+    return [button.text for row in keyboard.inline_keyboard for button in row]
 
 
-def _reference() -> KieReferenceImage:
+def _reference(name: str = "portrait.png") -> KieReferenceImage:
     return KieReferenceImage(
-        telegram_file_id="telegram-file",
-        telegram_file_unique_id="telegram-unique",
+        telegram_file_id=f"telegram-{name}",
+        telegram_file_unique_id=f"unique-{name}",
         source="upload",
         mime_type="image/png",
-        file_name="portrait.png",
+        file_name=name,
         file_size=1024,
     )
 
@@ -54,42 +52,19 @@ class MeowVideoUIContractTests(unittest.TestCase):
             _labels(build_video_source_keyboard(workspace_id=9)),
         )
 
-    def test_model_keyboard_exposes_three_video_engines(self) -> None:
-        self.assertEqual(
-            [
-                "✓ Grok · дёшево",
-                "Seedance · баланс",
-                "Wan · максимум",
-                "Изменить фото",
-                "Изменить текст",
-                "Отмена",
-            ],
-            _labels(build_video_model_keyboard(workspace_id=9, model="grok")),
-        )
+    def test_model_keyboard_exposes_wan_27(self) -> None:
+        labels = _labels(build_video_model_keyboard(workspace_id=9, model="wan"))
+        self.assertIn("✓ Wan 2.7", labels)
+        self.assertIn("Seedance 1.5 Pro", labels)
+        self.assertNotIn("Wan 2.6", labels)
 
-    def test_grok_settings_only_show_480p_and_720p(self) -> None:
-        labels = _labels(
-            build_video_settings_keyboard(
-                workspace_id=9,
-                model="grok",
-                resolution="480p",
-                duration=6,
-                generate_audio=False,
-            )
-        )
-        self.assertIn("✓ 480p", labels)
-        self.assertIn("720p", labels)
-        self.assertNotIn("1080p", labels)
-        self.assertFalse(any("сек" in label for label in labels))
-        self.assertNotIn("Со звуком", labels)
-
-    def test_seedance_settings_offer_audio_and_three_resolutions(self) -> None:
+    def test_seedance_settings_only_expose_requested_controls(self) -> None:
         labels = _labels(
             build_video_settings_keyboard(
                 workspace_id=9,
                 model="seedance",
                 resolution="720p",
-                duration=5,
+                duration=8,
                 generate_audio=True,
             )
         )
@@ -98,127 +73,150 @@ class MeowVideoUIContractTests(unittest.TestCase):
         self.assertIn("1080p", labels)
         self.assertIn("Без звука", labels)
         self.assertIn("✓ Со звуком", labels)
-        self.assertFalse(any("сек" in label for label in labels))
+        self.assertIn("Длительность · 8 сек", labels)
+        self.assertIn("Стандартный шаблон", labels)
+        self.assertFalse(any("Fixed" in label for label in labels))
+        self.assertFalse(any("NSFW" in label for label in labels))
 
-    def test_wan_settings_offer_resolution_and_duration(self) -> None:
+    def test_wan_settings_use_frame_mode_and_free_duration_input(self) -> None:
         labels = _labels(
             build_video_settings_keyboard(
                 workspace_id=9,
                 model="wan",
                 resolution="1080p",
-                duration=10,
+                duration=11,
                 generate_audio=False,
+                wan_mode="first_last",
+                has_last_frame=False,
             )
         )
         self.assertIn("720p", labels)
         self.assertIn("✓ 1080p", labels)
-        self.assertIn("5 сек", labels)
-        self.assertIn("✓ 10 сек", labels)
-        self.assertIn("15 сек", labels)
-        self.assertNotIn("Со звуком", labels)
+        self.assertIn("Первый кадр", labels)
+        self.assertIn("✓ Первый + последний", labels)
+        self.assertIn("Длительность · 11 сек", labels)
+        self.assertIn("Добавить последний кадр", labels)
+        self.assertNotIn("5 сек", labels)
+        self.assertNotIn("10 сек", labels)
+        self.assertNotIn("15 сек", labels)
+        self.assertFalse(any("Watermark" in label for label in labels))
+        self.assertFalse(any("Seed" in label for label in labels))
+
+    def test_template_keyboard_can_save_and_apply(self) -> None:
+        self.assertEqual(
+            ["Сохранить текущие стандартом", "Применить стандартный", "К параметрам"],
+            _labels(build_video_template_keyboard(workspace_id=9, has_template=True)),
+        )
+
+    def test_settings_show_current_and_comparative_cost(self) -> None:
+        text = _settings_text(
+            model="wan",
+            resolution="1080p",
+            duration=10,
+            generate_audio=False,
+            wan_mode="first",
+            estimated_usd=Decimal("1.20"),
+            estimated_rub=Decimal("120.00"),
+            cost_change={
+                "old_usd": "0.40",
+                "old_rub": "40.00",
+                "new_usd": "1.20",
+                "new_rub": "120.00",
+                "reason": "разрешение 720p → 1080p",
+            },
+        )
+        self.assertIn("Текущая расчётная стоимость", text)
+        self.assertIn("Предварительный анализ стоимости", text)
+        self.assertIn("Было:", text)
+        self.assertIn("Стало:", text)
+        self.assertIn("Разница:", text)
+        self.assertIn("Причина:", text)
+
+    def test_duration_parser_accepts_arbitrary_supported_integer(self) -> None:
+        self.assertEqual(8, _parse_duration("8"))
+        self.assertEqual(12, _parse_duration("12 сек"))
+        self.assertIsNone(_parse_duration("1"))
+        self.assertIsNone(_parse_duration("16"))
+        self.assertIsNone(_parse_duration("пять"))
 
     def test_review_requires_explicit_launch(self) -> None:
         self.assertEqual(
-            [
-                "Запустить видео",
-                "Изменить параметры",
-                "Изменить модель",
-                "Отмена",
-            ],
+            ["Запустить видео", "Изменить параметры", "Изменить модель", "Отмена"],
             _labels(build_video_review_keyboard(workspace_id=9)),
         )
 
 
 class MeowVideoRequestTests(unittest.TestCase):
-    def test_grok_request_keeps_uncensored_override(self) -> None:
-        request = _build_request(
-            reference=_reference(),
-            prompt="Slow dolly-in.",
-            model="grok",
-            resolution="720p",
-        ).with_image_urls(("https://files.example/portrait.png",))
-        self.assertIs(request.model, KieModelAlias.GROK_IMAGINE_VIDEO)
-        self.assertIs(request.input_mode, KieInputMode.PHOTO_TEXT)
-        self.assertIs(request.content_mode, KieContentMode.MATURE)
-        self.assertEqual(False, request.extra_input["nsfw_checker"])
-
-    def test_seedance_request_keeps_audio_and_uncensored_override(self) -> None:
+    def test_seedance_request_keeps_hidden_provider_controls(self) -> None:
         request = _build_request(
             reference=_reference(),
             prompt="Camera circles the subject.",
             model="seedance",
             resolution="1080p",
-            duration=5,
+            duration=8,
             generate_audio=True,
         ).with_image_urls(("https://files.example/portrait.png",))
         self.assertIs(request.model, KieModelAlias.SEEDANCE_15_PRO_VIDEO)
         self.assertEqual(True, request.extra_input["generate_audio"])
+        self.assertEqual(False, request.extra_input["fixed_lens"])
         self.assertEqual(False, request.extra_input["nsfw_checker"])
-        self.assertEqual(5, request.duration_seconds)
+        self.assertEqual(8, request.duration_seconds)
 
-    def test_wan_request_keeps_selected_duration(self) -> None:
+    def test_wan_request_keeps_two_frame_mode_and_hidden_overrides(self) -> None:
         request = _build_request(
-            reference=_reference(),
+            reference=_reference("first.png"),
+            last_reference=_reference("last.png"),
             prompt="Natural body motion and a slow push-in.",
             model="wan",
             resolution="1080p",
-            duration=15,
-        ).with_image_urls(("https://files.example/portrait.png",))
+            duration=12,
+            wan_mode="first_last",
+        ).with_image_urls(
+            ("https://files.example/first.png", "https://files.example/last.png")
+        )
         self.assertIs(request.model, KieModelAlias.WAN_26_IMAGE_TO_VIDEO)
-        self.assertEqual(15, request.duration_seconds)
+        self.assertEqual(12, request.duration_seconds)
+        self.assertEqual("first_last", request.extra_input["wan_mode"])
+        self.assertEqual(True, request.extra_input["prompt_extend"])
+        self.assertEqual(False, request.extra_input["watermark"])
         self.assertEqual(False, request.extra_input["nsfw_checker"])
 
-    def test_pricing_distinguishes_audio_and_models(self) -> None:
+    def test_pricing_distinguishes_audio_resolution_and_duration(self) -> None:
         pricing = KiePricing(
             seedance_720p_no_audio_usd_per_second=Decimal("0.0175"),
             seedance_720p_audio_usd_per_second=Decimal("0.035"),
-            wan_720p_usd_per_second=Decimal("0.07"),
+            wan_720p_usd_per_second=Decimal("0.08"),
+            wan_1080p_usd_per_second=Decimal("0.12"),
         )
         seedance_silent = _build_request(
-            reference=_reference(),
-            prompt="motion",
-            model="seedance",
-            resolution="720p",
-            duration=5,
-            generate_audio=False,
+            reference=_reference(), prompt="motion", model="seedance",
+            resolution="720p", duration=8, generate_audio=False,
         )
         seedance_audio = _build_request(
-            reference=_reference(),
-            prompt="motion",
-            model="seedance",
-            resolution="720p",
-            duration=5,
-            generate_audio=True,
+            reference=_reference(), prompt="motion", model="seedance",
+            resolution="720p", duration=8, generate_audio=True,
         )
-        wan = _build_request(
-            reference=_reference(),
-            prompt="motion",
-            model="wan",
-            resolution="720p",
-            duration=5,
+        wan_720 = _build_request(
+            reference=_reference(), prompt="motion", model="wan",
+            resolution="720p", duration=8,
         )
-        self.assertEqual(Decimal("0.0875"), pricing.estimate_usd(seedance_silent))
-        self.assertEqual(Decimal("0.175"), pricing.estimate_usd(seedance_audio))
-        self.assertEqual(Decimal("0.35"), pricing.estimate_usd(wan))
-        self.assertEqual(
-            Decimal("35.00"),
-            pricing.estimate_rub(wan, usd_to_rub=Decimal("100")),
+        wan_1080 = _build_request(
+            reference=_reference(), prompt="motion", model="wan",
+            resolution="1080p", duration=8,
         )
+        self.assertEqual(Decimal("0.1400"), pricing.estimate_usd(seedance_silent))
+        self.assertEqual(Decimal("0.280"), pricing.estimate_usd(seedance_audio))
+        self.assertEqual(Decimal("0.64"), pricing.estimate_usd(wan_720))
+        self.assertEqual(Decimal("0.96"), pricing.estimate_usd(wan_1080))
 
     def test_invalid_resolution_uses_model_default(self) -> None:
         self.assertEqual(
             "480p",
-            _validated_resolution(
-                {"meow_video_resolution": "8K"},
-                model="grok",
-            ),
+            _validated_resolution({"meow_video_resolution": "8K"}, model="grok"),
         )
         self.assertEqual(
             "720p",
-            _validated_resolution(
-                {"meow_video_resolution": "8K"},
-                model="wan",
-            ),
+            _validated_resolution({"meow_video_resolution": "8K"}, model="wan"),
         )
 
 
@@ -234,31 +232,7 @@ class KieVideoClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
 
         return KieClient(api_key="secret", models=models, transport=transport), calls
 
-    async def test_grok_adapter_sends_minimal_payload(self) -> None:
-        client, calls = self._client_and_calls(
-            KieModelCatalog(grok_imagine_video="grok-imagine/image-to-video")
-        )
-        request = _build_request(
-            reference=_reference(),
-            prompt="Slow camera orbit.",
-            model="grok",
-            resolution="720p",
-        ).with_image_urls(("https://files.example/portrait.png",))
-        await client.create_task(request)
-        provider_input = calls[0]["input"]
-        self.assertIsInstance(provider_input, Mapping)
-        assert isinstance(provider_input, Mapping)
-        self.assertEqual(
-            {
-                "prompt": "Slow camera orbit.",
-                "resolution": "720p",
-                "image_urls": ["https://files.example/portrait.png"],
-                "nsfw_checker": False,
-            },
-            dict(provider_input),
-        )
-
-    async def test_seedance_adapter_uses_input_urls_and_audio(self) -> None:
+    async def test_seedance_adapter_uses_numeric_duration_and_audio(self) -> None:
         client, calls = self._client_and_calls(
             KieModelCatalog(seedance_15_pro_video="bytedance/seedance-1.5-pro")
         )
@@ -267,56 +241,69 @@ class KieVideoClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
             prompt="Natural movement with ambient sound.",
             model="seedance",
             resolution="720p",
-            duration=5,
+            duration=8,
             generate_audio=True,
         ).with_image_urls(("https://files.example/portrait.png",))
         await client.create_task(request)
         provider_input = calls[0]["input"]
         self.assertIsInstance(provider_input, Mapping)
         assert isinstance(provider_input, Mapping)
-        self.assertEqual(
-            {
-                "prompt": "Natural movement with ambient sound.",
-                "input_urls": ["https://files.example/portrait.png"],
-                "aspect_ratio": "1:1",
-                "resolution": "720p",
-                "duration": 5,
-                "fixed_lens": False,
-                "generate_audio": True,
-                "nsfw_checker": False,
-            },
-            dict(provider_input),
-        )
+        self.assertEqual(8, provider_input["duration"])
+        self.assertEqual(True, provider_input["generate_audio"])
+        self.assertEqual(False, provider_input["fixed_lens"])
+        self.assertEqual(False, provider_input["nsfw_checker"])
 
-    async def test_wan_adapter_uses_string_duration(self) -> None:
+    async def test_wan_27_adapter_uses_first_and_last_frame_urls(self) -> None:
         client, calls = self._client_and_calls(
-            KieModelCatalog(wan_26_image_to_video="wan/2-6-image-to-video")
+            KieModelCatalog(wan_26_image_to_video="wan/2-7-image-to-video")
         )
         request = _build_request(
-            reference=_reference(),
+            reference=_reference("first.png"),
+            last_reference=_reference("last.png"),
             prompt="Slow cinematic push-in.",
             model="wan",
             resolution="1080p",
             duration=10,
-        ).with_image_urls(("https://files.example/portrait.png",))
+            wan_mode="first_last",
+        ).with_image_urls(
+            ("https://files.example/first.png", "https://files.example/last.png")
+        )
         await client.create_task(request)
+        self.assertEqual("wan/2-7-image-to-video", calls[0]["model"])
         provider_input = calls[0]["input"]
         self.assertIsInstance(provider_input, Mapping)
         assert isinstance(provider_input, Mapping)
         self.assertEqual(
             {
                 "prompt": "Slow cinematic push-in.",
-                "image_urls": ["https://files.example/portrait.png"],
-                "duration": "10",
+                "first_frame_url": "https://files.example/first.png",
+                "last_frame_url": "https://files.example/last.png",
                 "resolution": "1080p",
+                "duration": 10,
+                "prompt_extend": True,
+                "watermark": False,
                 "nsfw_checker": False,
             },
             dict(provider_input),
         )
 
+    async def test_wan_27_adapter_omits_last_frame_in_first_only_mode(self) -> None:
+        client, calls = self._client_and_calls(
+            KieModelCatalog(wan_26_image_to_video="wan/2-7-image-to-video")
+        )
+        request = _build_request(
+            reference=_reference(), prompt="Subtle movement.", model="wan",
+            resolution="720p", duration=7, wan_mode="first",
+        ).with_image_urls(("https://files.example/portrait.png",))
+        await client.create_task(request)
+        provider_input = calls[0]["input"]
+        assert isinstance(provider_input, Mapping)
+        self.assertNotIn("last_frame_url", provider_input)
+        self.assertEqual(7, provider_input["duration"])
+
 
 class KieVideoConfigTests(unittest.TestCase):
-    def test_video_model_defaults_are_image_to_video_routes(self) -> None:
+    def test_video_model_defaults_use_wan_27(self) -> None:
         with patch.dict(
             os.environ,
             {
@@ -324,47 +311,41 @@ class KieVideoConfigTests(unittest.TestCase):
                 "KIE_GROK_IMAGINE_VIDEO_MODEL": "",
                 "KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL": "",
                 "KIE_SEEDANCE_15_PRO_MODEL": "",
+                "KIE_WAN_27_IMAGE_TO_VIDEO_MODEL": "",
                 "KIE_WAN_26_IMAGE_TO_VIDEO_MODEL": "",
+                "KIE_WAN_27_720P_USD_PER_SECOND": "",
+                "KIE_WAN_26_720P_USD_PER_SECOND": "",
+                "KIE_WAN_27_1080P_USD_PER_SECOND": "",
+                "KIE_WAN_26_1080P_USD_PER_SECOND": "",
             },
             clear=False,
         ):
             settings = load_kie_settings()
-        self.assertEqual(
-            "grok-imagine/image-to-video",
-            settings.models.grok_imagine_video,
-        )
-        self.assertEqual(
-            "bytedance/seedance-1.5-pro",
-            settings.models.seedance_15_pro_video,
-        )
-        self.assertEqual(
-            "wan/2-6-image-to-video",
-            settings.models.wan_26_image_to_video,
-        )
+        self.assertEqual("wan/2-7-image-to-video", settings.models.wan_26_image_to_video)
+        self.assertEqual(Decimal("0.08"), settings.pricing.wan_720p_usd_per_second)
+        self.assertEqual(Decimal("0.12"), settings.pricing.wan_1080p_usd_per_second)
 
-    def test_explicit_video_env_values_are_loaded(self) -> None:
+    def test_new_wan_env_values_take_priority_over_legacy(self) -> None:
         with patch.dict(
             os.environ,
             {
                 "KIE_ENABLED": "false",
-                "KIE_SEEDANCE_15_PRO_MODEL": "custom/seedance",
-                "KIE_WAN_26_IMAGE_TO_VIDEO_MODEL": "custom/wan",
-                "KIE_SEEDANCE_15_720P_AUDIO_USD_PER_SECOND": "0.123",
-                "KIE_WAN_26_1080P_USD_PER_SECOND": "0.456",
+                "KIE_WAN_27_IMAGE_TO_VIDEO_MODEL": "custom/wan-27",
+                "KIE_WAN_26_IMAGE_TO_VIDEO_MODEL": "legacy/wan-26",
+                "KIE_WAN_27_1080P_USD_PER_SECOND": "0.456",
+                "KIE_WAN_26_1080P_USD_PER_SECOND": "0.999",
             },
             clear=False,
         ):
             settings = load_kie_settings()
-        self.assertEqual("custom/seedance", settings.models.seedance_15_pro_video)
-        self.assertEqual("custom/wan", settings.models.wan_26_image_to_video)
-        self.assertEqual(
-            Decimal("0.123"),
-            settings.pricing.seedance_720p_audio_usd_per_second,
-        )
-        self.assertEqual(
-            Decimal("0.456"),
-            settings.pricing.wan_1080p_usd_per_second,
-        )
+        self.assertEqual("custom/wan-27", settings.models.wan_26_image_to_video)
+        self.assertEqual(Decimal("0.456"), settings.pricing.wan_1080p_usd_per_second)
+
+    def test_template_migration_has_one_standard_per_workspace_and_model(self) -> None:
+        migration = Path("migrations/917_meow_video_templates.sql").read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS workspace_video_templates", migration)
+        self.assertIn("PRIMARY KEY (workspace_id, model)", migration)
+        self.assertIn("duration_seconds BETWEEN 2 AND 15", migration)
 
 
 if __name__ == "__main__":
