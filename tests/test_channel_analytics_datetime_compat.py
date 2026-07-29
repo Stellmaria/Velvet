@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from velvet_bot.channel_analytics_datetime_compat import (
+from velvet_bot.app.channel_analytics_datetime_compat import (
     _normalize_telegram_datetime,
     _parse_channel_post_with_normalized_dates,
 )
