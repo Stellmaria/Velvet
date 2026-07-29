@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from velvet_bot.domains.media_generation import KieGenerationRequest
 
@@ -19,6 +20,21 @@ _GROK_V1_IMAGE_TO_VIDEO = "grok-imagine/image-to-video"
 
 class KieClient(BaseKieClient):
     """Hybrid GRS/Kie client with exact legacy Grok v1 compatibility."""
+
+    def __init__(
+        self,
+        *,
+        grs_api_key: str | None = None,
+        grs_base_url: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        # Configuration is injected by the application. Do not let a unit test or
+        # auxiliary Kie-only client silently inherit production GRS credentials.
+        super().__init__(
+            grs_api_key=grs_api_key if grs_api_key is not None else " ",
+            grs_base_url=grs_base_url or "https://grsaiapi.com",
+            **kwargs,
+        )
 
     async def create_task(
         self,
