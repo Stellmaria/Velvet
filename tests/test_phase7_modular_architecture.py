@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import unittest
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,6 +12,8 @@ from velvet_bot.app.commands import (
     build_public_commands,
 )
 from velvet_bot.app.workers import build_worker_manager
+from velvet_bot.core.config.kie import KieSettings
+from velvet_bot.domains.media_generation import KieModelCatalog, KiePricing
 from velvet_bot.presentation.telegram.router import get_root_router
 
 
@@ -39,11 +42,27 @@ class CommandCatalogTests(unittest.TestCase):
 
 
 class WorkerRegistryTests(unittest.TestCase):
+    @staticmethod
+    def _disabled_kie_settings() -> KieSettings:
+        return KieSettings(
+            enabled=False,
+            api_key=None,
+            base_url="https://api.kie.ai/api/v1",
+            file_upload_base_url="https://kieai.redpandaai.co",
+            timeout_seconds=60,
+            poll_interval_seconds=4,
+            task_timeout_seconds=900,
+            usd_to_rub=Decimal("0"),
+            models=KieModelCatalog(),
+            pricing=KiePricing(),
+        )
+
     def _build_manager(self):
         return build_worker_manager(
             bot=object(),  # type: ignore[arg-type]
             database=object(),  # type: ignore[arg-type]
             backup_service=object(),  # type: ignore[arg-type]
+            kie_settings=self._disabled_kie_settings(),
         )
 
     def test_application_registers_expected_workers(self) -> None:
