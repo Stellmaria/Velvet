@@ -27,6 +27,8 @@ class KieSettings:
     usd_to_rub: Decimal
     models: KieModelCatalog
     pricing: KiePricing
+    credit_usd: Decimal = Decimal("0.005")
+    credit_byn: Decimal = Decimal("0.019")
     max_concurrent_generations: int = 4
     generation_max_attempts: int = 11
 
@@ -94,10 +96,22 @@ def load_kie_settings() -> KieSettings:
         os.getenv("KIE_USD_TO_RUB", "0"),
         variable_name="KIE_USD_TO_RUB",
     )
+    credit_usd = _parse_non_negative_decimal(
+        os.getenv("KIE_CREDIT_USD", "0.005"),
+        variable_name="KIE_CREDIT_USD",
+    )
+    credit_byn = _parse_non_negative_decimal(
+        os.getenv("KIE_CREDIT_BYN", "0.019"),
+        variable_name="KIE_CREDIT_BYN",
+    )
     if enabled and not api_key:
         raise RuntimeError("KIE_ENABLED=true требует непустой KIE_API_KEY.")
     if enabled and usd_to_rub <= 0:
         raise RuntimeError("KIE_ENABLED=true требует KIE_USD_TO_RUB больше нуля.")
+    if enabled and credit_usd <= 0:
+        raise RuntimeError("KIE_ENABLED=true требует KIE_CREDIT_USD больше нуля.")
+    if enabled and credit_byn <= 0:
+        raise RuntimeError("KIE_ENABLED=true требует KIE_CREDIT_BYN больше нуля.")
     if enabled:
         required_routes = (
             (KieModelAlias.NANO_BANANA_PRO, KieInputMode.TEXT),
@@ -203,6 +217,8 @@ def load_kie_settings() -> KieSettings:
         usd_to_rub=usd_to_rub,
         models=models,
         pricing=pricing,
+        credit_usd=credit_usd,
+        credit_byn=credit_byn,
         max_concurrent_generations=parse_bounded_integer(
             os.getenv("KIE_MAX_CONCURRENT_GENERATIONS", "4"),
             variable_name="KIE_MAX_CONCURRENT_GENERATIONS",
