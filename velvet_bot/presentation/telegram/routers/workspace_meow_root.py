@@ -2,14 +2,41 @@ from __future__ import annotations
 
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.core.access import AccessPolicy
 from velvet_bot.core.config.kie import KieSettings
 from velvet_bot.presentation.telegram.routers.workspace_meow import (
+    MeowCallback,
     build_meow_root_keyboard,
 )
 from velvet_bot.workspace_ui import WorkspaceCallback
+
+
+def _build_root_keyboard(
+    *,
+    workspace_id: int,
+    enabled: bool,
+) -> InlineKeyboardMarkup:
+    base = build_meow_root_keyboard(workspace_id=workspace_id, enabled=enabled)
+    if not enabled:
+        return base
+    rows = list(base.inline_keyboard)
+    back_row = rows.pop() if rows else []
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="Баланс Kie · очередь",
+                callback_data=MeowCallback(
+                    action="balance",
+                    workspace_id=workspace_id,
+                ).pack(),
+            )
+        ]
+    )
+    if back_row:
+        rows.append(back_row)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def handle_meow_root_entry(
@@ -28,9 +55,12 @@ async def handle_meow_root_entry(
             "<b>Мяу</b>\n\n"
             "<b>Создать</b> — изображения через Nano Banana Pro и Seedream 5 Pro. "
             "Можно использовать текст и референсы из базы или Telegram.\n\n"
-            "<b>Оживить</b> — одно фото и описание движения превращаются в видео "
-            "через Grok Imagine v1. Перед платным запуском бот покажет параметры "
-            "и расчётную себестоимость."
+            "<b>Оживить</b> — фото и описание движения превращаются в видео через "
+            "Grok Imagine v1, Seedance 1.5 Pro или Wan 2.6.\n\n"
+            f"Параллельных генераций: <b>до {kie_settings.max_concurrent_generations}</b>. "
+            f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
+            "В разделе баланса видны живые кредиты аккаунта Kie, очередь и фактические "
+            "списания, которые провайдер вернул по завершённым задачам."
         )
     else:
         text = (
@@ -38,7 +68,7 @@ async def handle_meow_root_entry(
             "Интерфейс установлен, но Kie.ai выключен. Заполните KIE_API_KEY, "
             "KIE_USD_TO_RUB и model id, затем включите KIE_ENABLED=true."
         )
-    keyboard = build_meow_root_keyboard(
+    keyboard = _build_root_keyboard(
         workspace_id=callback_data.workspace_id,
         enabled=kie_settings.enabled,
     )
