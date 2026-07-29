@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
+from decimal import Decimal, InvalidOperation
 
 from velvet_bot.domains.media_generation import KieGenerationRequest
 
@@ -56,6 +57,27 @@ class KieClient(BaseKieClient):
         if not task_id_text:
             raise KieProtocolError("Kie.ai createTask не вернул taskId.")
         return task_id_text
+
+    async def get_account_credits(self) -> Decimal:
+        """Return the live Kie account balance from the official Common API."""
+
+        response = await asyncio.to_thread(
+            self._transport,
+            "GET",
+            f"{self.base_url}/chat/credit",
+            self._headers(),
+            None,
+            self.timeout_seconds,
+        )
+        self._ensure_success(response, operation="chat/credit")
+        raw_value = response.get("data")
+        try:
+            credits = Decimal(str(raw_value).strip())
+        except (InvalidOperation, ValueError) as error:
+            raise KieProtocolError("Kie.ai chat/credit не вернул числовой баланс.") from error
+        if not credits.is_finite() or credits < 0:
+            raise KieProtocolError("Kie.ai chat/credit вернул некорректный баланс.")
+        return credits
 
 
 __all__ = (
