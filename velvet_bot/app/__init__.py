@@ -20,6 +20,7 @@ def __getattr__(name: str) -> Any:
     from velvet_bot.app.bootstrap import run_application as application
 
     async def configured_run_application() -> None:
+        from velvet_bot.app.auf_branding import install_auf_branding
         from velvet_bot.app.auf_cancel_ui_install import install_auf_cancel_ui
         from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
         from velvet_bot.app.auf_photo_ratio_callback_fix import (
@@ -67,6 +68,7 @@ def __getattr__(name: str) -> Any:
         install_original_image_delivery_hotfix()
         install_original_video_delivery_hotfix()
         install_krita_remote_worker()
+        install_auf_branding()
         await application()
 
     globals()[name] = configured_run_application
