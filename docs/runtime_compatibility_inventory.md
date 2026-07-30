@@ -2,7 +2,7 @@
 
 Актуальный реестр активных runtime compatibility-компонентов для issue #418.
 Канонический машинно-проверяемый источник находится в
-`velvet_bot/presentation/telegram/compatibility_contracts.py`.
+`velvet_bot/presentation/telegram/runtime_contracts.py`.
 
 Все восемь компонентов остаются активными только до миграции consumers. Ни один из
 них не признан постоянным monkeypatch-контрактом.
