@@ -24,6 +24,16 @@
 - Generated baseline фиксирует 596 production Python files, 3306 functions, 136 registered transitional private accesses и 0 blocking known contracts.
 - Exact/normalized/semantic duplicate groups фиксируются как 55/92/9 и имеют owner/target/retirement issue.
 
+### Package-wide architecture drift gate
+
+- Добавлен AST inventory всех 604 production modules под `velvet_bot` с layer/target classification, LOC, functions/classes/handlers, complexity proxy и import observations.
+- Зафиксированы 128 870 production LOC, 113 root modules, 84 Router imports, 35 repositories и ordered graph из 27 startup installers.
+- SQL/`Database.acquire`, aiogram/domain boundaries, dynamic imports, foreign assignments, installer-like files, `_INSTALLED`, package `__getattr__`, Any/type-ignore и monolith debt агрегируются в устойчивые file/category fingerprints.
+- Current baseline содержит 518 observed fingerprints и 518 complete exemptions с owner, reason, consumers, replacement, removal condition, regression test и issue.
+- Новый fingerprint падает как unregistered violation; удалённый debt падает как stale exemption.
+- Root-module и shared-private SHA-256 fingerprints связывают package gate с existing generated inventories.
+- Temporary exact-head baseline generator удалил себя после обычного fast-forward commit и отсутствует в итоговом tree.
+
 ### P3 structure and canonical boundaries
 
 - Root Telegram Router собирается четырьмя ordered domain bundles без direct `velvet_bot.handlers.*` imports.
@@ -61,7 +71,7 @@
 
 - PR #450/#456 recovery layers сохраняют готовые provider results при Telegram/CDN failures, но считаются временной stabilization до unified durable delivery #457.
 - Startup всё ещё использует 27 side-effect installer stages; target explicit composition ведётся в #455.
-- Ауф portal/UI, provider adapters, package-wide drift gates и root-module migration продолжаются в #458/#459/#460/#463.
+- Ауф portal/UI, provider adapters и root-module migration продолжаются в #458/#459/#463; package gate #460 измеряет и блокирует рост debt, но не исправляет его автоматически.
 - Historical `meow_*` migrations и dual-read FSM/transport compatibility остаются до live retirement #438; новые persistent `meow_*` identifiers запрещены.
 
 ## [1.3.0] - 2026-07-17

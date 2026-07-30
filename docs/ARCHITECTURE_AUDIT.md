@@ -2,12 +2,13 @@
 
 Дата актуализации: 30 июля 2026 года.
 
-Проверенный baseline `main`: `9a32e5f1118c89bff3c91f0d517c38bd8bad24e7`.
+Проверенный baseline `main` перед срезом: `d18ad4fd24b3dfa84d255148aee065b97b52ea9b`.
 
 ## Объём проверки
 
 Проверены:
 
+- все 604 production Python modules под `velvet_bot`;
 - application bootstrap и startup composition;
 - Router bundles и порядок Telegram controllers;
 - domain/application/infrastructure boundaries;
@@ -15,17 +16,52 @@
 - Ауф wallet, provider routing, charging, queue и delivery;
 - shared/private cross-module contracts;
 - runtime installers, foreign assignments и compatibility components;
-- generated architecture, repository, navigation и stability inventories;
+- SQL/database acquire, dynamic imports и typing debt;
+- module size, maximum function length, handlers, env/polling и worker observations;
+- generated package, architecture, repository, navigation и stability inventories;
 - Supervisor, branch maintenance, backup и CI contracts;
 - canonical status documents и открытые operational gates.
 
 ## Итог
 
-Velvet имеет рабочие логические domain/application/persistence boundaries, закрытый private-pool debt, централизованный Telegram root Router и нулевой active legacy-handler layer. Это реальное достижение, а не традиционное переименование папок с последующим объявлением победы.
+Velvet имеет рабочие логические domain/application/persistence boundaries, закрытый private-pool debt, централизованный Telegram root Router и нулевой active legacy-handler layer. Package-wide inventory теперь блокирует новый незарегистрированный debt внутри существующих packages, где один root-count раньше бодро сообщал, что всё прекрасно, пока monkeypatch-граф разрастался этажом ниже.
 
-Целевая архитектура при этом ещё не достигнута. Главный correctness-risk переместился в `velvet_bot/app` и media generation layers: startup собирается цепочкой side-effect installers, итоговые workers/controllers зависят от runtime assignments, а delivery распределена между canonical classes и временными hotfix/recovery layers.
+Целевая архитектура при этом ещё не достигнута. Главный correctness-risk остаётся в `velvet_bot/app` и media generation layers: startup собирается цепочкой side-effect installers, итоговые workers/controllers зависят от runtime assignments, а delivery распределена между canonical classes и временными hotfix/recovery layers.
 
 ## Воспроизводимый baseline
+
+### Package-wide scan
+
+По `docs/package_architecture_inventory.*` и `docs/package_architecture_exemptions.json`:
+
+- production modules: **604**;
+- production LOC: **128 870**;
+- layer counts: application 14, composition 52, core 7, domain 175, infrastructure 17, other 1, presentation 213, root 114, service 8, worker 3;
+- startup installer stages: **27**;
+- registered file/category fingerprints: **518**;
+- mandatory exemptions: **518**;
+- unregistered fingerprints: **0**;
+- stale exemptions: **0**.
+
+Текущие fingerprint categories:
+
+- SQL outside persistence: **107**;
+- `Database.acquire()` outside persistence: **88**;
+- `Any` usage: **106**;
+- foreign assignments: **37**;
+- `_INSTALLED` sentinels: **39**;
+- installer/hotfix/fix modules: **22**;
+- package `__getattr__`: **20**;
+- domain aiogram imports: **19**;
+- dynamic imports: **17**;
+- `type: ignore`: **15**, из них `method-assign`: **7**;
+- monolithic modules: **16**;
+- monolithic functions: **24**;
+- domain import из app/presentation: **1**.
+
+Это registered debt, не список автоматически исправленных дефектов. Fingerprint агрегируется по `file + category + содержимое наблюдаемого debt`, поэтому простой сдвиг строк не создаёт шум, а новый SQL/assignment/typing escape меняет ID и требует review.
+
+Exemptions распределены между owner issues #455/#457/#458/#459/#460/#463 и обязаны содержать owner, reason, consumers, replacement, removal condition, regression test и issue reference.
 
 ### Telegram composition
 
@@ -63,7 +99,7 @@ Velvet имеет рабочие логические domain/application/persist
 - normalized near-duplicate groups: **92**;
 - semantic near-duplicate groups: **9**.
 
-Ноль blocking known contracts означает, что перечисленные обязательные private APIs мигрированы. Это не означает нулевой transitional debt: 136 accesses остаются зарегистрированным burn-down baseline для #419/#455/#457/#458/#459.
+Package gate связывает shared/private и root-module SHA-256 fingerprints. Ноль blocking known contracts означает, что перечисленные обязательные private APIs мигрированы. Это не означает нулевой transitional debt: 136 accesses остаются зарегистрированным burn-down baseline для #419/#455/#457/#458/#459.
 
 ### Navigation
 
@@ -124,19 +160,33 @@ PR #475 закрыл #461:
 - force-push, automatic merge и conflict resolution отсутствуют;
 - giant runner-PR «не сливать» больше не является допустимым процессом.
 
+### Package-wide drift gate
+
+PR #478 закрывает #460:
+
+- scanner читает весь `velvet_bot`, не импортируя application runtime;
+- machine inventory и human Markdown генерируются одной командой;
+- current violations и exemptions обязаны совпадать один к одному;
+- новый fingerprint падает как unregistered violation;
+- удалённый debt падает как stale exemption;
+- root/shared fingerprint drift требует отдельной классификации;
+- blocking known private contract count обязан оставаться 0;
+- temporary baseline workflow удалён из итогового tree;
+- unit-test CI выполняет полный `--check` на каждом PR.
+
 ## Текущая физическая структура
 
 ```text
 velvet_bot/
-  app/                         bootstrap и переходные runtime installers
-  application/                 transport-neutral use cases
-  core/                        config, access и базовые contracts
-  domains/                     domain models, services и 34 repositories
-  infrastructure/              PostgreSQL/provider/Telegram/filesystem adapters
-  presentation/telegram/       root Router, 4 bundles, views и adapters
-  services/                    integration/application services
-  workers/                     WorkerManager и worker boundaries
-  *.py                         113 root modules, 110 non-facade migration targets
+  app/                         bootstrap и 52 composition modules/installers
+  application/                 14 transport-neutral use-case modules
+  core/                        7 config/access/base contract modules
+  domains/                     175 domain modules и 34 repositories
+  infrastructure/              17 PostgreSQL/provider/Telegram/filesystem adapters
+  presentation/                213 Telegram presentation modules
+  services/                    8 integration/application service modules
+  workers/                     3 worker boundary modules
+  *.py                         113 classified root modules + package __init__
 ```
 
 ## Главный P0: startup composition
@@ -147,6 +197,8 @@ velvet_bot/
 - 25 installers внутри configured startup;
 - всего **27 side-effect installation stages**.
 
+Package inventory теперь фиксирует exact order, origin module и detected patched symbols каждого stage. Первый stage — `install_runtime_stability`, последний — `install_auf_branding`.
+
 Подтверждённые риски:
 
 - package `__getattr__` запускает runtime side effects;
@@ -156,7 +208,7 @@ velvet_bot/
 - ошибка посередине может оставить partial patched state;
 - новый hotfix вынужден угадывать фактический subclass после предыдущих installers.
 
-Target: typed `ApplicationComposition`, factories/registries и explicit dependency assembly по #455.
+Target: typed `ApplicationComposition`, factories/registries и explicit dependency assembly по #455. Package exemptions с owner `application-composition` должны уменьшаться по мере migration, а не просто менять fingerprints.
 
 ## Главный P0: media delivery
 
@@ -179,6 +231,8 @@ Target #457:
 - redelivery без provider submit и нового списания;
 - удаление runtime `_deliver_best_effort` assignments и temporary hotfixes.
 
+Media-delivery exemptions в package registry дают measurable burn-down и должны удаляться вместе с retiring patches.
+
 ## P1 canonical boundaries
 
 ### Ауф portal/UI — #458
@@ -191,18 +245,11 @@ Kie/GRS routing, model labels, retry и error normalization должны ста�
 
 ### Package-wide drift gates — #460
 
-Existing inventories видят важную часть debt, но постоянный CI gate должен дополнительно блокировать:
-
-- новый unregistered foreign symbol/method assignment;
-- новый SQL/database acquire в app/presentation;
-- новые `*_install.py`, `*_hotfix.py`, `*_fix.py` без exception record;
-- рост `type: ignore[method-assign]` и broad `Any`;
-- возврат moved modules и private contracts;
-- незарегистрированный рост monolithic modules.
+Статус: governance gate завершён. Он не исправляет существующие 518 fingerprints, но делает их measurable, owned и non-silent. Обновление generated baseline без содержательного worklog и issue-backed change не считается исправлением.
 
 ### Root modules — #463
 
-Из 113 root modules только 3 имеют justified public-facade contract. Остальные 110 мигрируются bounded families. Giant move PR запрещён: физический перенос не должен одновременно менять behavior.
+Из 113 root modules только 3 имеют justified public-facade contract. Остальные 110 мигрируются bounded families. Giant move PR запрещён: физический перенос не должен одновременно менять behavior. Root fingerprint связан с package gate и не может измениться без классификации.
 
 ## Ауф product/economy status
 
@@ -238,6 +285,8 @@ Historical migrations, compatibility packages и dual-read `meow_*` FSM/transpor
 - business operation сначала получает use case/domain service;
 - новый installer/hotfix требует issue, owner и removal condition;
 - foreign assignment требует зарегистрированный transitional contract;
+- новый/изменённый package fingerprint требует reviewed exemption либо удаления debt;
+- stale exemption удаляется вместе с debt, а не хранится как памятник;
 - delivery behavior не расширяется новым patch layer без #457 plan;
 - старый applied SQL не редактируется;
 - feature branch mutation не создаёт runner-PR;

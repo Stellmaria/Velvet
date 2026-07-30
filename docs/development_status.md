@@ -4,7 +4,7 @@
 
 Текущая стабильная версия: `1.3.0`.
 
-Актуальный `main` на момент синхронизации: `9a32e5f1118c89bff3c91f0d517c38bd8bad24e7`.
+Актуальный `main` на момент начала среза: `d18ad4fd24b3dfa84d255148aee065b97b52ea9b`.
 
 ## Назначение
 
@@ -49,6 +49,7 @@ Velvet Archive — owner-oriented архивный Telegram-бот. Его до�
 - release/tag workflows;
 - project notes contract;
 - безопасный manual branch-maintenance workflow;
+- package-wide architecture drift gate;
 - стабильный релиз `1.3.0`.
 
 Windows-, staging-, provider- и offsite-проверки перечислены отдельно. Наличие кода и зелёного CI не закрывает внешнюю эксплуатационную проверку.
@@ -64,11 +65,12 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 - PR #473 отделил API-себестоимость от розничной цены, добавил фиксированные пакеты, команды `/velvet_grant`, `/velvet_user`, `/velvet_users`, privacy-safe user registry и системную изоляцию референсов;
 - старые операции и завершённые задачи не пересчитываются новыми тарифами.
 
-### Shared contracts и branch maintenance
+### Shared contracts, docs и branch maintenance
 
 - PR #462 создал package-wide shared-helper inventory и публичные Telegram contracts;
 - PR #468/#469 мигрировали Supervisor и Ауф editing families с private cross-module helpers;
-- PR #475 добавил SHA-guarded `workflow_dispatch` для deterministic maintenance непротектированных веток без giant runner-PR, force-push и automatic conflict resolution.
+- PR #475 добавил SHA-guarded `workflow_dispatch` для deterministic maintenance непротектированных веток без giant runner-PR, force-push и automatic conflict resolution;
+- PR #476 синхронизировал canonical status, project memory, architecture audit и changelog с generated inventories.
 
 ### Важная граница совместимости
 
@@ -84,25 +86,33 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 - root Router direct imports `velvet_bot.handlers.*`: **0**;
 - duplicate registrations между четырьмя Router bundles: **0**;
 - central/root repositories: **0**;
-- blocking known private helper contracts: **0**.
+- blocking known private helper contracts: **0**;
+- незарегистрированный package-wide architecture debt: **0** — каждый observed fingerprint обязан иметь reviewed exemption.
 
 ### Воспроизводимые текущие числа
 
-По generated inventories текущего `main`:
+По generated inventories текущего среза:
 
+- production modules package-wide: **604**;
+- production LOC: **128 870**;
 - root modules `velvet_bot/*.py`: **113**;
 - активные Router imports в четырёх bundles: **84**;
 - runtime compatibility components: **8**;
 - repository modules: **35**;
 - domain repositories: **34**;
 - infrastructure PostgreSQL adapters: **1**;
+- startup installer stages: **27**;
+- registered package architecture fingerprints: **518**;
+- mandatory package exemptions: **518**;
 - production Python files в shared-contract inventory: **596**;
 - функций inventoried: **3306**;
 - registered private cross-module debt: **136**;
 - exact / normalized / semantic duplicate groups: **55 / 92 / 9**;
 - Telegram navigation scan: **604 Python files**, **1024 inline buttons**, **0 violations**.
 
-Источники: `docs/architecture_layout_inventory.*`, `docs/repository_layout_inventory.*`, `docs/shared_contract_inventory.*`, `docs/generated/telegram_navigation_inventory.md`.
+518 package fingerprints — это измеренный текущий debt, а не 518 исправленных проблем. Новый или изменённый fingerprint блокирует CI до явного owner/reason/replacement/removal issue review; удалённый debt требует удаления stale exemption.
+
+Источники: `docs/package_architecture_inventory.*`, `docs/package_architecture_exemptions.json`, `docs/architecture_layout_inventory.*`, `docs/repository_layout_inventory.*`, `docs/shared_contract_inventory.*`, `docs/generated/telegram_navigation_inventory.md`.
 
 ### Текущий installer graph
 
@@ -113,7 +123,7 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 - итоговый worker/UI behavior зависит от порядка runtime assignments;
 - package `__getattr__` всё ещё запускает composition side effects.
 
-Это не target architecture. Исправление ведётся в #455, а единый media delivery pipeline — в #457.
+Package inventory фиксирует для каждого stage origin module и detected patched symbols. Это не target architecture. Исправление ведётся в #455, а единый media delivery pipeline — в #457.
 
 ## P3 и текущий кодовый долг
 
@@ -125,11 +135,12 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 - root Router собирается четырьмя ordered bundles;
 - активные Telegram controllers перенесены в canonical presentation paths;
 - старые handler aliases удалены;
-- repository layout ограничен domain/infrastructure boundaries.
+- repository layout ограничен domain/infrastructure boundaries;
+- package-wide drift gate #460 введён и связывает root/router/repository/shared baselines.
 
 ### P3F typing
 
-Первый bounded mypy gate действует и проходит в CI. Расширение scope выполняется постепенно; включение strict mode на весь repository одним PR запрещено.
+Первый bounded mypy gate действует и проходит в CI. Расширение scope выполняется постепенно; включение strict mode на весь repository одним PR запрещено. Package inventory отдельно fingerprinted текущие `Any`, `type: ignore` и `method-assign` usages, чтобы их рост не проходил тихо.
 
 ### Приоритет P0/P1
 
@@ -137,11 +148,10 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 2. #457 — единый durable provider-neutral media delivery/redelivery pipeline.
 3. #458 — перенос Ауф portal/UI из `app/*_install.py` в application/presentation.
 4. #459 — canonical provider adapters, routing и retry contracts.
-5. #460 — package-wide architecture drift inventory и CI gates.
-6. #463 — bounded migration 110 non-facade root modules.
-7. #419 — дальнейшее сжигание зарегистрированного shared/private helper debt.
+5. #463 — bounded migration 110 non-facade root modules.
+6. #419 — дальнейшее сжигание зарегистрированного shared/private helper debt.
 
-PR #450/#456 считаются временной stabilization, а не целевой delivery architecture.
+PR #450/#456 считаются временной stabilization, а не целевой delivery architecture. #460 закрывает измерение и CI-контроль, но не подменяет burn-down перечисленных задач.
 
 ## Эксплуатационные обязательства
 
@@ -163,19 +173,22 @@ PR #450/#456 считаются временной stabilization, а не цел
 - `docs/architecture_target.md` — целевая структура;
 - `docs/ARCHITECTURE_AUDIT.md` — текущий аудит;
 - `docs/stabilization_policy.md` — ворота стабилизации;
-- `docs/*_inventory.*` — воспроизводимые измерения;
+- `docs/package_architecture_inventory.*` — полный module/installer/violation baseline;
+- `docs/package_architecture_exemptions.json` — mandatory owners и retirement conditions;
+- `docs/*_inventory.*` — остальные воспроизводимые измерения;
 - `docs/runbooks/branch_maintenance.md` — безопасная mutation feature-веток;
 - `docs/worklog/` — проверяемая история работ;
 - `CHANGELOG.md` — только слитые заметные изменения.
 
-CI блокирует содержательный PR без завершённого worklog.
+CI блокирует содержательный PR без завершённого worklog и блокирует новый/stale architecture fingerprint без reviewed exemption.
 
 ## Правила дальнейшей разработки
 
 - Telegram controller не получает новый SQL;
 - business operation создаётся через use case/domain service;
-- новый installer/hotfix не добавляется без issue и removal condition;
+- новый installer/hotfix не добавляется без issue, owner и removal condition;
 - private cross-module access не становится новым публичным contract молча;
+- изменение registered package debt обновляет fingerprint только вместе с содержательным worklog и issue-backed review;
 - feature branch maintenance использует PR либо SHA-guarded workflow, но не runner-PR «не сливать»;
 - старые applied migrations не редактируются;
 - infrastructure capability не называется production-ready без доступной live-проверки;

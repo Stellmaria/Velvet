@@ -10,7 +10,7 @@
 
 1. код, migrations, tests и слитые PR в `main`;
 2. `docs/development_status.md`;
-3. generated architecture/stability/shared inventories;
+3. generated package/architecture/stability/shared inventories;
 4. `docs/stabilization_policy.md`;
 5. этот документ;
 6. worklog и historical plans.
@@ -46,7 +46,7 @@ Velvet Archive — owner-oriented архивный Telegram-бот для пер
 
 ## Фаза 7. Модульная архитектура
 
-Статус: логические boundaries введены, физическая структура переходная.
+Статус: логические boundaries и package-wide governance введены, физическая структура переходная.
 
 Созданы и используются:
 
@@ -55,13 +55,15 @@ Velvet Archive — owner-oriented архивный Telegram-бот для пер
 - infrastructure adapters;
 - Telegram presentation root и четыре Router bundles;
 - core config/access contracts;
-- WorkerManager и lifecycle boundaries.
+- WorkerManager и lifecycle boundaries;
+- package-wide AST inventory и mandatory exemption registry.
 
 Не завершено физически:
 
 - 113 root modules, из которых 110 non-facade должны мигрировать bounded families по #463;
 - startup graph из 27 side-effect installers по #455;
-- часть Ауф/provider/delivery/UI logic остаётся в `app/*_install.py`.
+- часть Ауф/provider/delivery/UI logic остаётся в `app/*_install.py`;
+- 518 registered package fingerprints должны уменьшаться owner-by-owner, а не скрываться обновлением baseline.
 
 ## Фазы 8–11. Управление и production foundation
 
@@ -72,7 +74,8 @@ Velvet Archive — owner-oriented архивный Telegram-бот для пер
 - Python 3.13, PostgreSQL 16, Docker и healthcheck;
 - automated restore drill, release/tag workflows;
 - project notes contract;
-- SHA-guarded branch maintenance.
+- SHA-guarded branch maintenance;
+- package architecture drift gate.
 
 Живая Windows-проверка Supervisor остаётся обязательством #409.
 
@@ -80,7 +83,7 @@ Velvet Archive — owner-oriented архивный Telegram-бот для пер
 
 Статус исторических срезов: завершены.
 
-Закрыты прежние controller/SQL/repository boundaries, но формулировка «опасные runtime monkeypatch-мосты удалены» больше не является общей истиной: новый installer graph Ауф/media содержит зарегистрированный runtime assignment debt. Его target cleanup описан в #455/#457/#458/#459.
+Закрыты прежние controller/SQL/repository boundaries, но формулировка «опасные runtime monkeypatch-мосты удалены» больше не является общей истиной: новый installer graph Ауф/media содержит зарегистрированный runtime assignment debt. Его target cleanup описан в #455/#457/#458/#459 и измеряется package exemptions.
 
 ## Фаза 18. Публичная граница PostgreSQL
 
@@ -121,10 +124,9 @@ Target architecture ещё не достигнута:
 - #455 — explicit composition;
 - #457 — durable unified delivery pipeline;
 - #458 — portal/UI в application/presentation;
-- #459 — provider adapters/routing/retry;
-- #460 — package-wide architecture gates.
+- #459 — provider adapters/routing/retry.
 
-PR #450/#456 считаются временной stabilization delivery, а не конечным design.
+PR #450/#456 считаются временной stabilization delivery, а не конечным design. Package gate #460 завершён и измеряет debt, но не подменяет перечисленные migrations.
 
 Historical migrations и dual-read `meow_*` aliases остаются до live retirement #438. Новые `meow_*` identifiers запрещены.
 
@@ -165,7 +167,7 @@ Generated baseline:
 
 ## P3A. Синхронизация источников истины
 
-Статус: обновляется вместе с `main`, текущая синхронизация — issue #425.
+Статус: завершено PR #476 / issue #425; дальше обновляется вместе с `main`.
 
 Canonical docs обязаны отличать shipped code от live obligations и temporary stabilization от target architecture.
 
@@ -204,9 +206,25 @@ Canonical docs обязаны отличать shipped code от live obligation
 
 Первый bounded mypy gate действует. Scope расширяется постепенно; repository-wide strict mode одним изменением запрещён.
 
+## P3G. Package-wide architecture drift gate
+
+Статус: завершено issue #460 / PR #478 после зелёного merge.
+
+Current reproducible baseline:
+
+- 604 production modules;
+- 128 870 LOC;
+- 27 ordered startup installer stages;
+- 518 registered file/category fingerprints;
+- 518 complete exemptions;
+- 0 unregistered fingerprints;
+- 0 stale exemptions.
+
+Scanner покрывает layers/targets, imports, aiogram boundaries, SQL/acquire, dynamic imports, foreign assignments, installers, `_INSTALLED`, package `__getattr__`, Any/cast/type-ignore, module/function size, handlers, env/polling и worker observations. Root/shared fingerprints связываются с existing inventories. Новый debt невозможно добавить тихим изменением внутри существующего файла: изменится fingerprint и CI потребует issue-backed exemption.
+
 ## Shared/private contract inventory
 
-Package-wide inventory текущего `main`:
+Package-wide shared inventory текущего baseline:
 
 - 596 production Python files;
 - 3306 functions;
@@ -214,7 +232,7 @@ Package-wide inventory текущего `main`:
 - 0 blocking known private contracts;
 - 55 exact, 92 normalized и 9 semantic duplicate groups.
 
-Canonical helpers уже созданы, но transitional debt закрывается family-by-family по #419/#455/#457/#458/#459.
+Canonical helpers уже созданы, но transitional debt закрывается family-by-family по #419/#455/#457/#458/#459. Package gate отслеживает fingerprint shared-private baseline и не позволяет изменить его незаметно.
 
 # Открытые обязательства
 
@@ -224,9 +242,8 @@ Canonical helpers уже созданы, но transitional debt закрывае
 2. #457 — unified durable media delivery.
 3. #458 — canonical Ауф application/presentation boundaries.
 4. #459 — provider adapters/routing/retry.
-5. #460 — package-wide architecture drift inventory.
-6. #463 — root module migration.
-7. #419 — shared/private helper burn-down.
+5. #463 — root module migration.
+6. #419 — shared/private helper burn-down.
 
 ## На целевых средах
 
@@ -248,7 +265,10 @@ Canonical helpers уже созданы, но transitional debt закрывае
 - repository root/central debt 0;
 - generated navigation violations 0;
 - blocking known private helper contracts 0;
-- safe branch maintenance #461.
+- safe branch maintenance #461;
+- canonical docs sync #425;
+- package-wide architecture drift gate #460;
+- unregistered/stale package architecture fingerprints 0/0.
 
 Не закрыты эксплуатационно:
 
@@ -270,5 +290,7 @@ Canonical helpers уже созданы, но transitional debt закрывае
 5. не смешивать behavior change и physical migration без необходимости;
 6. провести tests/CI и зафиксировать PR/commit;
 7. оставить явный остаток и следующий шаг.
+
+Любое изменение registered package debt должно уменьшать/удалять fingerprint либо сопровождаться новым issue-backed exemption. Простое обновление generated baseline ради зелёного CI не считается архитектурной работой.
 
 Живая проверка, которую CI не способен выполнить, не помечается завершённой по факту существования кода.
