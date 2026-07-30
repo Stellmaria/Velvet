@@ -455,12 +455,17 @@ def _references_from_data(value: object) -> tuple[KieReferenceImage, ...]:
     )
 
 
+def _state_value(data: Mapping[str, object], key: str) -> object:
+    if key in data:
+        return data[key]
+    return data.get(key.replace("auf_", "meow_", 1))
+
 async def _session_data(
     state: FSMContext,
 ) -> tuple[int, KieInputMode | None, str, tuple[KieReferenceImage, ...]]:
     data = await state.get_data()
     return (
-        _optional_int(data.get("auf_workspace_id")) or 0,
+        _optional_int(_state_value(data, "auf_workspace_id")) or 0,
         _parse_mode(_state_value(data, "auf_input_mode")),
         str(_state_value(data, "auf_prompt") or "").strip(),
         _references_from_data(_state_value(data, "auf_references")),

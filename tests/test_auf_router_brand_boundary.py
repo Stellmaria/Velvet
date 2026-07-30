@@ -99,3 +99,13 @@ def test_active_routers_write_only_auf_fsm_keys_and_labels() -> None:
 def test_runtime_branding_monkey_patch_is_not_installed() -> None:
     app = _read(ROOT / "velvet_bot/app/__init__.py")
     assert "install_auf_branding" not in app
+
+
+
+def test_core_router_defines_and_uses_state_dual_read() -> None:
+    core = _read(ROUTERS / "workspace_auf.py")
+    assert "def _state_value(" in core
+    assert '_state_value(data, "auf_workspace_id")' in core
+    assert '_state_value(data, "auf_input_mode")' in core
+    assert '_state_value(data, "auf_prompt")' in core
+    assert '_state_value(data, "auf_references")' in core
