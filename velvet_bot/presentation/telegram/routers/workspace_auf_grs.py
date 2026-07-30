@@ -15,7 +15,7 @@ from velvet_bot.presentation.telegram.routers.workspace_auf import (
     _edit_or_answer,
     _quality_selection_text,
     build_quality_keyboard,
-    handle_auf_action,
+    handle_auf_action as _handle_base_auf_action,
 )
 
 
@@ -156,7 +156,7 @@ async def handle_auf_action(
             ),
         )
         return
-    await handle_auf_action(
+    await _handle_base_auf_action(
         callback,
         callback_data,
         state,
