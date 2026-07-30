@@ -68,7 +68,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:428` `_apply_engagement`: report-public-engagement-write-failure.
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:461` `_apply_engagement`: preserve-engagement-on-ui-refresh-failure.
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:577` `handle_public_download`: report-public-download-failure.
-- `velvet_bot/presentation/telegram/routers/publication/center.py:585` `handle_publication_callback`: report-publication-failure.
+- `velvet_bot/presentation/telegram/routers/publication/center.py:588` `handle_publication_callback`: report-publication-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/backup_center.py:393` `handle_backup_callback`: report-backup-callback-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:323` `handle_quality_upload_reply`: compensate-manual-quality-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:479` `handle_set_analyze`: compensate-set-analysis-callback-job.
