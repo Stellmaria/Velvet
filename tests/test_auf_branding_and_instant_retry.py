@@ -6,7 +6,11 @@ from aiogram.exceptions import TelegramNetworkError
 from aiogram.methods import SendMessage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from velvet_bot.app.auf_branding import _brand_auf_text, _brand_telegram_value
+from velvet_bot.app.auf_branding import (
+    _brand_auf_text,
+    _brand_telegram_value,
+    _brand_velvet_currency_text,
+)
 from velvet_bot.app.grs_campaign_retry import (
     _retry_delays_for_error,
     _violation_retry_stage,
@@ -55,6 +59,33 @@ class AufBrandingTests(unittest.TestCase):
             "workspace:meow",
             branded.reply_markup.inline_keyboard[0][0].callback_data,
         )
+
+    def test_user_currency_is_velvets_while_module_name_stays_auf(self) -> None:
+        text = (
+            "<b>Ауф</b>\n"
+            "Мои задачи Ауф\n"
+            "Кошелёк Ауф\n"
+            "Баланс Ауф: 0 Ауф\n"
+            "Цена: 1 Ауф, 2 Ауф, 5 Ауф, 11 Ауф, 21 Ауф, 1,5 Ауф\n"
+            "Стоимость в Ауф\n"
+            "Цена Ауф устарела.\n"
+            "без операции Ауф"
+        )
+
+        branded = _brand_velvet_currency_text(text)
+
+        self.assertIn("<b>Ауф</b>", branded)
+        self.assertIn("Мои задачи Ауф", branded)
+        self.assertIn("Кошелёк вельветов", branded)
+        self.assertIn("Баланс вельветов: 0 вельветов", branded)
+        self.assertIn(
+            "Цена: 1 вельвет, 2 вельвета, 5 вельветов, "
+            "11 вельветов, 21 вельвет, 1,5 вельвета",
+            branded,
+        )
+        self.assertIn("Стоимость в вельветах", branded)
+        self.assertIn("Цена в вельветах устарела", branded)
+        self.assertIn("без списания вельветов", branded)
 
     def test_identifier_fields_are_never_rebranded(self) -> None:
         payload = {
