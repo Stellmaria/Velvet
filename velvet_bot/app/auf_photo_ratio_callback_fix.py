@@ -4,7 +4,7 @@ import importlib
 
 from aiogram.types import InlineKeyboardMarkup
 
-from velvet_bot.presentation.telegram.routers import workspace_meow_photo as photo_router
+from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router
 
 _INSTALLED = False
 _RATIO_SEPARATOR_REPLACEMENT = "x"
@@ -76,7 +76,7 @@ def install_auf_photo_ratio_callback_fix() -> None:
     controller = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_controller"
     )
-    original_action = controller.handle_scoped_meow_action
+    original_action = controller.handle_scoped_auf_action
 
     async def handle_scoped_auf_action_with_safe_ratio(
         callback,
@@ -87,9 +87,9 @@ def install_auf_photo_ratio_callback_fix() -> None:
         database,
         ai_usage_service,
         ai_task_queue_service,
-        meow_runtime_service,
-        meow_wallet_service,
-        meow_purchase_service,
+        auf_runtime_service,
+        auf_wallet_service,
+        auf_purchase_service,
     ) -> None:
         if callback_data.action == "photo_ratio":
             decoded = decode_photo_ratio_callback_value(callback_data.value)
@@ -103,13 +103,13 @@ def install_auf_photo_ratio_callback_fix() -> None:
             database,
             ai_usage_service,
             ai_task_queue_service,
-            meow_runtime_service,
-            meow_wallet_service,
-            meow_purchase_service,
+            auf_runtime_service,
+            auf_wallet_service,
+            auf_purchase_service,
         )
 
     photo_router._ratio_keyboard = build_safe_photo_ratio_keyboard
-    controller.handle_scoped_meow_action = handle_scoped_auf_action_with_safe_ratio
+    controller.handle_scoped_auf_action = handle_scoped_auf_action_with_safe_ratio
     _INSTALLED = True
 
 

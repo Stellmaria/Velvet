@@ -30,9 +30,9 @@ from velvet_bot.domains.media_generation.worker import (
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import WorkspaceModuleSetting
 from velvet_bot.infrastructure.ai import KieError
-from velvet_bot.presentation.telegram.routers.workspace_meow import (
-    build_meow_mode_keyboard,
-    build_meow_root_keyboard,
+from velvet_bot.presentation.telegram.routers.workspace_auf import (
+    build_auf_mode_keyboard,
+    build_auf_root_keyboard,
     build_model_keyboard,
     build_quality_keyboard,
     build_request_review_keyboard,
@@ -159,11 +159,11 @@ class AufUIContractTests(unittest.TestCase):
     def test_generation_root_has_create_and_animate(self) -> None:
         self.assertEqual(
             ["Создать", "Оживить", "↩️ Моё пространство"],
-            _labels(build_meow_root_keyboard(workspace_id=9, enabled=True)),
+            _labels(build_auf_root_keyboard(workspace_id=9, enabled=True)),
         )
 
     def test_create_mode_has_text_photo_and_photo_text(self) -> None:
-        labels = _labels(build_meow_mode_keyboard(workspace_id=9))
+        labels = _labels(build_auf_mode_keyboard(workspace_id=9))
         self.assertEqual(
             ["Текст", "Фото", "Фото + текст", "Отмена"],
             labels,

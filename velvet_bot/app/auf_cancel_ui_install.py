@@ -10,7 +10,7 @@ from aiogram.types import InlineKeyboardMarkup
 from velvet_bot.domains.ai_usage import AITaskQueueService
 from velvet_bot.domains.media_generation.friendly_worker import FriendlyKieGenerationWorker
 from velvet_bot.domains.media_generation.models import KIE_GENERATION_TASK_TYPE
-from velvet_bot.presentation.telegram.routers.workspace_meow_runtime import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_runtime import (
     build_task_cancel_keyboard,
 )
 
@@ -56,10 +56,10 @@ def install_auf_cancel_ui() -> None:
     # These module paths remain stable until the generation routers themselves are
     # moved behind canonical Auf wrappers.
     photo = importlib.import_module(
-        "velvet_bot.presentation.telegram.routers.workspace_meow"
+        "velvet_bot.presentation.telegram.routers.workspace_auf"
     )
     video = importlib.import_module(
-        "velvet_bot.presentation.telegram.routers.workspace_meow_video"
+        "velvet_bot.presentation.telegram.routers.workspace_auf_video"
     )
 
     def patch_edit(module: Any) -> None:

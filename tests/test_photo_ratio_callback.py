@@ -8,7 +8,7 @@ from velvet_bot.app.auf_photo_ratio_callback_fix import (
     encode_photo_ratio_callback_value,
 )
 from velvet_bot.domains.media_generation import KieModelAlias
-from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
+from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 
 
 class PhotoRatioCallbackTests(unittest.TestCase):
@@ -35,7 +35,7 @@ class PhotoRatioCallbackTests(unittest.TestCase):
                     for button in row:
                         if not button.callback_data:
                             continue
-                        callback = MeowCallback.unpack(button.callback_data)
+                        callback = AufCallback.unpack(button.callback_data)
                         if callback.action != "photo_ratio":
                             continue
                         self.assertNotIn(":", callback.value)

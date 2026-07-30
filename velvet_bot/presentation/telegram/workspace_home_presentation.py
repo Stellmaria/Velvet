@@ -151,7 +151,7 @@ async def build_workspace_home_presentation(
     workspace_service: WorkspaceService,
     workspace_product_service: WorkspaceProductService,
     global_owner: bool,
-    meow_runtime_service: AufRuntimeService | None = None,
+    auf_runtime_service: AufRuntimeService | None = None,
 ) -> WorkspaceHomePresentation:
     """Load role-aware workspace home data through public service contracts."""
 
@@ -173,8 +173,8 @@ async def build_workspace_home_presentation(
             workspace.id
         )
         auf_visible = True
-        if meow_runtime_service is not None:
-            auf_visible = await meow_runtime_service.module_is_visible(
+        if auf_runtime_service is not None:
+            auf_visible = await auf_runtime_service.module_is_visible(
                 workspace_id=workspace.id,
                 actor_user_id=user_id,
                 module_key=AUF_MODULE_KEY,

@@ -13,7 +13,7 @@ from velvet_bot.domains.media_generation import (
     KieModelAlias,
     KieReferenceImage,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_grs_balance import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_grs_balance import (
     _render_grs_balance,
 )
 

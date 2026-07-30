@@ -15,10 +15,10 @@ from velvet_bot.domains.media_generation import (
     KieReferenceImage,
 )
 from velvet_bot.infrastructure.ai import KieClient
-from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_video import (
     build_video_source_keyboard,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_video_simple import (
     _build_request,
     _parse_duration,
     _settings_text,
@@ -230,11 +230,11 @@ class MeowVideoRequestTests(unittest.TestCase):
     def test_invalid_resolution_uses_model_default(self) -> None:
         self.assertEqual(
             "480p",
-            _validated_resolution({"meow_video_resolution": "8K"}, model="grok"),
+            _validated_resolution({"auf_video_resolution": "8K"}, model="grok"),
         )
         self.assertEqual(
             "720p",
-            _validated_resolution({"meow_video_resolution": "8K"}, model="wan"),
+            _validated_resolution({"auf_video_resolution": "8K"}, model="wan"),
         )
 
 

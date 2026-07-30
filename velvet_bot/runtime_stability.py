@@ -220,7 +220,7 @@ def _install_nbrb_worker_wrapper() -> None:
 
     import velvet_bot.app.workers as workers_module
     from velvet_bot.domains.media_generation.worker import KieGenerationWorker
-    from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
+    from velvet_bot.presentation.telegram.routers.workspace_auf_balance import (
         DailyNbrbExchangeRateService,
         NbrbExchangeRateRepository,
         NbrbRateClient,

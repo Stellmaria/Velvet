@@ -31,17 +31,22 @@ def install_auf_workspace_ui() -> None:
     # Prefixes are protocol contracts for already-sent keyboards. Keep them stable
     # until a separate callback migration introduces dual parsing.
     callback_prefixes = list(policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES)
-    for prefix in ("meow:", "mrt:", "meowv|"):
+    for prefix in ("auf:", "meow:", "mrt:", "aufv|", "meowv|"):
         if prefix not in callback_prefixes:
             callback_prefixes.append(prefix)
     policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES = tuple(callback_prefixes)
 
+
     state_prefixes = list(policy.WORKSPACE_MEMBER_FSM_STATE_PREFIXES)
     for prefix in (
         "AufRuntimeForm:",
+        "AufForm:",
+        "AufVideoForm:",
+        "AufPhotoForm:",
+        "MeowRuntimeForm:",
         "MeowForm:",
         "MeowVideoForm:",
-        "AufRuntimeForm:",
+        "MeowPhotoForm:",
     ):
         if prefix not in state_prefixes:
             state_prefixes.append(prefix)
@@ -64,7 +69,7 @@ def install_auf_workspace_ui() -> None:
         database = product_service._product._database
         # The keyword is retained because the controller signature is part of the
         # current dependency-injection contract.
-        kwargs["meow_runtime_service"] = AufRuntimeService(
+        kwargs["auf_runtime_service"] = AufRuntimeService(
             AufRuntimeRepository(database)
         )
         return await original_home(**kwargs)

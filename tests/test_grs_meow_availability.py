@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from velvet_bot.presentation.telegram.routers.workspace_meow_grs import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_grs import (
     build_model_keyboard,
     model_selection_text,
 )

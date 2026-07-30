@@ -10,7 +10,7 @@ from velvet_bot.core.config.kie import load_kie_settings
 from velvet_bot.domains.media_generation import KieModelCatalog
 from velvet_bot.domains.media_generation.file_delivery_worker import _retry_delay
 from velvet_bot.infrastructure.ai import KieClient, KieProtocolError
-from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_balance import (
     DailyNbrbExchangeRateService,
     NbrbRateClient,
     NbrbRateError,
@@ -106,7 +106,7 @@ class KieBalancePresentationTests(unittest.TestCase):
     def test_balance_keyboard_has_refresh_and_back(self) -> None:
         keyboard = build_kie_balance_keyboard(workspace_id=7)
         labels = [button.text for row in keyboard.inline_keyboard for button in row]
-        self.assertEqual(["Обновить баланс", "↩️ Мяу"], labels)
+        self.assertEqual(["Обновить баланс", "↩️ Ауф"], labels)
 
     def test_balance_text_converts_provider_credits_to_three_currencies(self) -> None:
         text = _render_balance(

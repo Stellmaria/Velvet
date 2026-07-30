@@ -26,7 +26,7 @@ from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
     WORKSPACE_MODULE_KEYS,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_runtime import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_runtime import (
     AufRuntimeCallback,
     build_task_cancel_keyboard,
 )
