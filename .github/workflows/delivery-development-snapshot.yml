@@ -27,12 +27,12 @@ jobs:
             --exclude=.git \
             --exclude=.venv \
             --exclude='**/__pycache__' \
-            -czf velvet-delivery-source.tar.gz .
+            -czf ../velvet-delivery-source.tar.gz .
 
       - name: Upload source snapshot
         uses: actions/upload-artifact@v4
         with:
           name: velvet-delivery-source-${{ github.run_id }}
-          path: velvet-delivery-source.tar.gz
+          path: ../velvet-delivery-source.tar.gz
           if-no-files-found: error
           retention-days: 3
