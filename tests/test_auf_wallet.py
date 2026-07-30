@@ -34,6 +34,8 @@ class _FakeRepository:
             provider_auf_usd=Decimal("0.02"),
             retail_auf_usd=Decimal("0.03"),
             billing_usd_to_rub=Decimal("79.85"),
+            billing_usd_to_byn=Decimal("2.92661"),
+            retail_markup_percent=Decimal("20"),
             updated_by_user_id=None,
             updated_at=datetime.now(timezone.utc),
         )
@@ -76,6 +78,7 @@ class AufWalletServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((40, 100, 250, 500, 1000, 2500), tuple(q.amount_auf for q in quotes))
         self.assertEqual(Decimal("1.20"), quotes[0].price_usd)
         self.assertEqual(Decimal("100"), quotes[0].price_rub)
+        self.assertEqual(Decimal("3.51"), quotes[0].price_byn)
         self.assertEqual(Decimal("6000"), quotes[-1].price_rub)
 
     async def test_non_owner_cannot_manage_wallet(self) -> None:
