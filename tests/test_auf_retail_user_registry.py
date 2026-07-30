@@ -4,13 +4,18 @@ import inspect
 import unittest
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 from velvet_bot.app import auf_reference_privacy_install as privacy
-from velvet_bot.domains.auf_wallet.pricing import quote_auf_payload
+from velvet_bot.domains.auf_wallet.pricing import (
+    format_owner_price_details,
+    quote_auf_payload,
+)
 from velvet_bot.domains.user_registry import TelegramUserRepository
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.presentation.telegram.middleware.user_activity import (
     _callback_metadata,
+    _chat_type_name,
     _command_name,
 )
 from velvet_bot.presentation.telegram.routers import user_management
@@ -26,7 +31,20 @@ class _PriceConnection:
         self.calls += 1
         if "FROM auf_price_versions" in query:
             return self.row
-        raise AssertionError("Retail quote must not read provider_auf_usd")
+        if "FROM auf_economy_settings" in query:
+            return {
+                "retail_auf_usd": Decimal("0.03"),
+                "billing_usd_to_rub": Decimal("80"),
+                "billing_usd_to_byn": Decimal("3"),
+                "retail_markup_percent": Decimal("20"),
+            }
+        raise AssertionError(query)
+
+    async def fetchval(self, query: str, *args):
+        self.calls += 1
+        if "FROM auf_package_prices" in query:
+            return Decimal("2")
+        raise AssertionError(query)
 
 
 class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
@@ -49,7 +67,7 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             }
         }
 
-    async def test_fixed_retail_price_is_separate_from_provider_cost(self) -> None:
+    async def test_provider_cost_plus_twenty_percent_rounds_to_whole_velvet(self) -> None:
         connection = _PriceConnection(
             {
                 "id": 1,
@@ -61,8 +79,6 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
                 "pricing_basis": "fixed",
                 "unit_cost_usd": Decimal("0.02"),
                 "extra_reference_cost_usd": Decimal("0"),
-                "retail_units": 50_000,
-                "extra_reference_retail_units": 0,
             }
         )
         quote = await quote_auf_payload(
@@ -70,10 +86,13 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             self._payload(model="nano_banana_2", resolution="2K"),
         )
         self.assertEqual(Decimal("0.02"), quote.provider_cost_usd)
-        self.assertEqual(50_000, quote.quoted_units)
-        self.assertEqual(1, connection.calls)
+        self.assertEqual(Decimal("0.024"), quote.target_retail_usd)
+        self.assertEqual(10_000, quote.quoted_units)
+        self.assertEqual(Decimal("1.0000"), quote.quoted_auf)
+        self.assertEqual(Decimal("0.025"), quote.minimum_revenue_usd)
+        self.assertEqual(3, connection.calls)
 
-    async def test_per_second_and_extra_reference_retail_prices(self) -> None:
+    async def test_seconds_and_references_are_priced_before_whole_rounding(self) -> None:
         connection = _PriceConnection(
             {
                 "id": 2,
@@ -85,8 +104,6 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
                 "pricing_basis": "per_second",
                 "unit_cost_usd": Decimal("0.035"),
                 "extra_reference_cost_usd": Decimal("0.005"),
-                "retail_units": 25_000,
-                "extra_reference_retail_units": 5_000,
             }
         )
         quote = await quote_auf_payload(
@@ -100,7 +117,34 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
         self.assertEqual(Decimal("0.185"), quote.provider_cost_usd)
-        self.assertEqual(135_000, quote.quoted_units)
+        self.assertEqual(Decimal("0.222"), quote.target_retail_usd)
+        self.assertEqual(90_000, quote.quoted_units)
+        self.assertEqual(0, quote.quoted_units % 10_000)
+
+    async def test_owner_breakdown_contains_three_currencies(self) -> None:
+        connection = _PriceConnection(
+            {
+                "id": 3,
+                "version_key": "retail:test:owner",
+                "provider": "private-provider",
+                "model_alias": "nano_banana_2",
+                "resolution": "1K",
+                "audio": None,
+                "pricing_basis": "fixed",
+                "unit_cost_usd": Decimal("0.02"),
+                "extra_reference_cost_usd": Decimal("0"),
+            }
+        )
+        quote = await quote_auf_payload(
+            connection,
+            self._payload(model="nano_banana_2", resolution="1K"),
+        )
+        text = format_owner_price_details(quote)
+        self.assertIn("$", text)
+        self.assertIn("₽ РФ", text)
+        self.assertIn("Br", text)
+        self.assertIn("только Стэл", text)
+        self.assertIn("1 вельвет", text)
 
 
 class AufReferencePrivacyTests(unittest.IsolatedAsyncioTestCase):
@@ -163,6 +207,13 @@ class UserObservabilityContractTests(unittest.TestCase):
         self.assertEqual("auf", module)
         self.assertEqual(42, workspace_id)
 
+    def test_chat_type_accepts_both_string_and_enum_shapes(self) -> None:
+        self.assertEqual("private", _chat_type_name(SimpleNamespace(type="private")))
+        self.assertEqual(
+            "supergroup",
+            _chat_type_name(SimpleNamespace(type=SimpleNamespace(value="supergroup"))),
+        )
+
     def test_grant_amount_uses_exact_decimal_units(self) -> None:
         self.assertEqual(Decimal("12.3456"), user_management._positive_amount("12,3456"))
         self.assertIsNone(user_management._positive_amount("0"))
@@ -192,21 +243,15 @@ class UserObservabilityContractTests(unittest.TestCase):
         self.assertIn("last_seen_at", migration)
         self.assertIn("command_count", migration)
 
-    def test_approved_retail_catalog_is_versioned(self) -> None:
-        migration = Path("migrations/z025_auf_retail_user_registry.sql").read_text(
-            encoding="utf-8"
-        )
-        expected_rows = (
-            "'2026-07-30:retail:nano-banana-2:1k'",
-            "0.02000000, 0, 40000",
-            "'2026-07-30:retail:nano-banana-pro:4k'",
-            "0.03000000, 0, 110000",
-            "'2026-07-30:retail:seedream-5-pro:2k'",
-            "0.15000000, 0.00500000, 90000, 5000",
-            "(2500,5490.00",
-        )
-        for expected in expected_rows:
-            self.assertIn(expected, migration)
+    def test_provider_markup_policy_is_versioned(self) -> None:
+        migration = Path(
+            "migrations/z027_auf_provider_markup_whole_velvets.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("retail_markup_percent", migration)
+        self.assertIn("20.0000", migration)
+        self.assertIn("billing_usd_to_byn", migration)
+        self.assertIn("retail_units = NULL", migration)
+        self.assertIn("rounded up to whole velvets", migration)
 
 
 if __name__ == "__main__":
