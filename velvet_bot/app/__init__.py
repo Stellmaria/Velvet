@@ -26,6 +26,9 @@ def __getattr__(name: str) -> Any:
         from velvet_bot.app.auf_branding import install_auf_branding
         from velvet_bot.app.auf_cancel_ui_install import install_auf_cancel_ui
         from velvet_bot.app.auf_charged_queue_install import install_auf_charged_queue
+        from velvet_bot.app.auf_generation_privacy_install import (
+            install_auf_generation_privacy,
+        )
         from velvet_bot.app.auf_generation_receipt_install import (
             install_auf_generation_receipts,
         )
@@ -93,6 +96,7 @@ def __getattr__(name: str) -> Any:
         # presentation methods during composition.
         install_auf_grs_brand()
         install_auf_branding()
+        install_auf_generation_privacy()
         await application()
 
     globals()[name] = configured_run_application
