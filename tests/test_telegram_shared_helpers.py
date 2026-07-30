@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ast
 import json
 import subprocess
 import sys
@@ -81,14 +82,17 @@ class SharedEditingTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(type(error)):
                     await editing.safe_edit_message_text(message, "text")
 
-    async def test_deletion_is_explicit_best_effort(self) -> None:
-        missing = FakeMessage(FakeTelegramBadRequest("message can't be deleted"))
+    async def test_deletion_suppresses_only_already_absent_messages(self) -> None:
+        missing = FakeMessage(
+            FakeTelegramBadRequest("Bad Request: message to delete not found")
+        )
         existing = FakeMessage()
+        forbidden = FakeMessage(FakeTelegramBadRequest("message can't be deleted"))
 
         self.assertFalse(await deletion.delete_message_safely(missing))
         self.assertTrue(await deletion.delete_message_safely(existing))
-        self.assertEqual(missing.delete_calls, 1)
-        self.assertEqual(existing.delete_calls, 1)
+        with self.assertRaises(FakeTelegramBadRequest):
+            await deletion.delete_message_safely(forbidden)
 
 
 class SharedNavigationTests(unittest.TestCase):
@@ -127,6 +131,23 @@ class SharedTextTests(unittest.TestCase):
         self.assertEqual("".join(chunks).replace("\n\n", ""), text.replace("\n\n", ""))
 
 
+class SharedExceptionBoundaryTests(unittest.TestCase):
+    def test_shared_editing_and_media_have_no_broad_except(self) -> None:
+        for relative in (
+            "velvet_bot/presentation/telegram/shared/editing.py",
+            "velvet_bot/presentation/telegram/shared/media.py",
+        ):
+            tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+            broad = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.ExceptHandler)
+                and isinstance(node.type, ast.Name)
+                and node.type.id in {"Exception", "BaseException"}
+            ]
+            self.assertEqual(broad, [], relative)
+
+
 class TelegramHelperInventoryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -142,34 +163,75 @@ class TelegramHelperInventoryTests(unittest.TestCase):
         )
         if completed.returncode:
             raise AssertionError(
-                "Telegram helper inventory contract failed:\n"
+                "Shared contract inventory failed:\n"
                 + completed.stderr
                 + "\n"
                 + completed.stdout
             )
         cls.inventory = json.loads(completed.stdout)
 
-    def test_every_requested_family_has_public_contracts(self) -> None:
-        contracts = self.inventory["family_contracts"]
-        self.assertEqual(len(contracts), 9)
-        for family, modules in contracts.items():
-            with self.subTest(family=family):
-                self.assertTrue(modules)
+    def test_all_requested_families_have_owned_contracts(self) -> None:
+        contracts = self.inventory["contracts"]
+        self.assertGreaterEqual(len(contracts), 14)
+        for contract in contracts:
+            with self.subTest(family=contract["family"]):
+                self.assertTrue(contract["current_owner"])
+                self.assertTrue(contract["target_contract"])
+                self.assertTrue(contract["retirement_issue"])
+                self.assertNotIn("hotfix", contract["target_contract"])
+                self.assertNotIn("_install", contract["target_contract"])
 
-    def test_duplicate_groups_are_classified(self) -> None:
-        for group in self.inventory["duplicate_groups"]:
-            with self.subTest(digest=group["digest"]):
-                self.assertIn(
-                    group["kind"],
-                    {"real-duplicate", "generated/compat", "allowed-template"},
-                )
-                self.assertTrue(group["family"])
-                self.assertGreaterEqual(len(group["occurrences"]), 2)
+    def test_known_private_contracts_are_migrated(self) -> None:
+        required = {
+            "_task_line",
+            "_load_user_tasks",
+            "_task_list_keyboard",
+            "_MODEL_NAMES",
+            "_edit_or_answer",
+            "_validated_model",
+            "_reference_from_data",
+        }
+        known = {
+            item["private_name"]: item
+            for item in self.inventory["known_private_contracts"]
+        }
+        self.assertTrue(required.issubset(known))
+        for private_name in required:
+            with self.subTest(private_name=private_name):
+                self.assertEqual(known[private_name]["status"], "migrated")
 
-    def test_private_helper_and_shared_boundary_debt_is_zero(self) -> None:
-        self.assertEqual(self.inventory["private_helper_import_count"], 0)
+    def test_exact_normalized_and_semantic_duplicates_are_classified(self) -> None:
+        valid = {
+            "real-duplicate",
+            "normalized-near-duplicate",
+            "semantic-near-duplicate",
+            "generated/compat",
+            "allowed-template",
+        }
+        for key in (
+            "exact_duplicate_groups",
+            "normalized_duplicate_groups",
+            "semantic_near_duplicate_groups",
+        ):
+            for group in self.inventory[key]:
+                with self.subTest(key=key, digest=group["digest"]):
+                    self.assertIn(group["kind"], valid)
+                    self.assertTrue(group["family"])
+                    self.assertGreaterEqual(len(group["occurrences"]), 2)
+
+    def test_image_and_video_delivery_near_duplicates_are_visible(self) -> None:
+        groups = self.inventory["semantic_near_duplicate_groups"]
+        self.assertTrue(
+            any(
+                group["family"] == "media download/preview/original delivery"
+                and len(group["occurrences"]) >= 2
+                for group in groups
+            )
+        )
+
+    def test_blocking_contract_and_shared_boundary_debt_is_zero(self) -> None:
+        self.assertEqual(self.inventory["blocking_private_contract_access_count"], 0)
         self.assertEqual(self.inventory["shared_contract_violations"], [])
-        self.assertEqual(self.inventory["missing_contract_modules"], [])
 
     def test_legacy_analytics_facade_delegates_to_shared_editor(self) -> None:
         source = (ROOT / "velvet_bot" / "safe_analytics_edit.py").read_text(encoding="utf-8")
