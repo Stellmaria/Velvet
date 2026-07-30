@@ -52,7 +52,10 @@
 - production imports и тесты переключены на canonical `Auf*`;
 - `meow_wallet` сокращён до compatibility aliases;
 - добавлен `test_auf_wallet_brand_boundary.py`, запрещающий canonical-коду зависеть от retired package;
-- исправлены два ранее добавленных worklog-файла, нарушавших общий project-notes contract.
+- исправлены два ранее добавленных worklog-файла, нарушавших общий project-notes contract;
+- callback командного пространства подтверждается до тяжёлых операций;
+- architecture, P2 stability и Telegram navigation inventories пересобраны из актуального дерева;
+- router bundle и button-audit contracts обновлены для нового командного экрана.
 
 ### Миграции и совместимость
 
@@ -61,14 +64,16 @@ SQL-схема не изменялась. Таблицы `meow_wallets`, `meow_w
 ### Проверки
 
 - bounded type check — успешно на первом head PR #405;
-- полный tests workflow, Docker build, project notes contract и restore drill запускаются повторно после worklog-исправлений;
-- Telegram navigation inventory пересобран генератором из фактического дерева.
+- Docker build и project notes contract — успешно на промежуточном head;
+- generated architecture/P2/Telegram inventories синхронизированы после устранения шести устаревших contract assertions;
+- полный CI повторно запускается на обычном commit после bot-generated inventory commit.
 
 ### PR и commit
 
 - PR: #405;
 - ветка: `agent/final-auf-wallet-layer`;
 - первый functional head: `c8d49b4f164e15a32eb64248f29c009670ac88a7`;
+- synchronized contracts head: `10d04accfa30dc0e5c4c777fd6a4e7bed86e9b38`;
 - итоговый head и merge commit фиксируются после зелёного CI и слияния.
 
 ### Незавершённое
