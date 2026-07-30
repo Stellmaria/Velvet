@@ -1,0 +1,52 @@
+name: Run Auf router cleanup
+
+on:
+  push:
+    branches:
+      - agent/auf-router-cleanup-runner
+
+permissions:
+  contents: write
+
+jobs:
+  run-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/final-auf-router-layer
+          fetch-depth: 0
+
+      - name: Execute prepared cleanup payload
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          workflow = Path('.github/workflows/temporary-finalize-auf-router-cleanup.yml')
+          text = workflow.read_text(encoding='utf-8')
+          start = "          python - <<'PY'\n"
+          end = "\n          PY\n"
+          payload = text.split(start, 1)[1].split(end, 1)[0]
+          exec(compile(dedent(payload), str(workflow), 'exec'))
+          PY
+
+          python scripts/inventory_architecture_layout.py \
+            --write \
+            --label p3d-analytics-alias-retirement
+          python scripts/update_p2_stability_inventory.py \
+            --label p2-auf-router-protocol-migration \
+            --schema-version 68
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+
+      - name: Commit cleanup to PR branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Завершить dual-read и photo-flow Ауф"
+          git push origin HEAD:agent/final-auf-router-layer
