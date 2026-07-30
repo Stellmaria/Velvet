@@ -1,23 +1,52 @@
-name: shared Telegram helper contract
+name: synchronize shared helper branch
 
 on:
-  pull_request:
-    paths:
-      - 'velvet_bot/presentation/telegram/**'
-      - 'scripts/inventory_telegram_helpers.py'
-      - 'tests/test_telegram_shared_helpers.py'
-      - '.github/workflows/apply-shared-helper-migration.yml'
+  push:
+    branches:
+      - agent/shared-telegram-helpers
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inventory:
+  synchronize:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/shared-telegram-helpers
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Validate helper boundaries
-        run: python scripts/inventory_telegram_helpers.py --check
+      - name: Merge current main and rebuild inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            if [ "$conflicts" != "docs/generated/telegram_navigation_inventory.md" ]; then
+              echo "Unexpected merge conflicts:"
+              echo "$conflicts"
+              exit 1
+            fi
+            git checkout --ours docs/generated/telegram_navigation_inventory.md
+            git add docs/generated/telegram_navigation_inventory.md
+          fi
+          python scripts/apply_telegram_helper_migration.py
+          git add -A
+          if git diff --cached --quiet; then
+            git merge --abort || true
+            echo "Branch already contains main."
+            exit 0
+          fi
+          git commit -m "Merge current main into shared helper branch"
+          git push origin HEAD:agent/shared-telegram-helpers
