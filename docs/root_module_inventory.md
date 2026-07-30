@@ -12,8 +12,8 @@
 
 - `domain`: **52**;
 - `application`: **23**;
-- `infrastructure`: **7**;
-- `presentation`: **22**;
+- `infrastructure`: **8**;
+- `presentation`: **21**;
 - `worker`: **6**;
 - `public facade`: **3**.
 
