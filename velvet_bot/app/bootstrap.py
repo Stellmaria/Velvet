@@ -250,14 +250,14 @@ async def run_application() -> None:
             logger.info("AI vision disabled; media sets use fallback heuristics")
         if kie_settings.enabled:
             logger.info(
-                "Meow/Kie enabled base_url=%s models=%s,%s,%s",
+                "Auf/Kie enabled base_url=%s models=%s,%s,%s",
                 kie_settings.base_url,
                 kie_settings.models.seedream_5_pro,
                 kie_settings.models.nano_banana_pro,
                 kie_settings.models.grok_imagine_video,
             )
         else:
-            logger.info("Meow/Kie disabled; UI remains visible in setup mode")
+            logger.info("Auf/Kie disabled; UI remains visible in setup mode")
 
         await install_command_menus(bot, settings)
         await _probe_analytics_channels(
@@ -285,7 +285,7 @@ async def run_application() -> None:
                 if settings.ai_vision_enabled
                 else "disabled"
             ),
-            meow_kie="enabled" if kie_settings.enabled else "disabled",
+            auf_kie="enabled" if kie_settings.enabled else "disabled",
             backup_dir=settings.backup_dir,
             log_chat_id=settings.log_chat_id,
             error_center="enabled",

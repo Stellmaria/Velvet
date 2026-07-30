@@ -81,7 +81,7 @@ class AufPurchaseRepository:
             async with connection.transaction():
                 existing = await connection.fetchrow(
                     """
-                    SELECT * FROM meow_purchase_invoices
+                    SELECT * FROM auf_purchase_invoices
                     WHERE idempotency_key = $1::VARCHAR
                     """,
                     key,
@@ -92,7 +92,7 @@ class AufPurchaseRepository:
                 settings = await connection.fetchrow(
                     """
                     SELECT retail_auf_usd, billing_usd_to_rub
-                    FROM meow_economy_settings
+                    FROM auf_economy_settings
                     WHERE singleton_id = 1
                     """
                 )
@@ -109,7 +109,7 @@ class AufPurchaseRepository:
                 )
                 row = await connection.fetchrow(
                     """
-                    INSERT INTO meow_purchase_invoices (
+                    INSERT INTO auf_purchase_invoices (
                         id, public_code, workspace_id,
                         package_auf, package_units, package_price_usd,
                         billing_currency, locked_exchange_rate, final_local_amount,
@@ -151,7 +151,7 @@ class AufPurchaseRepository:
         async with self._database.acquire() as connection:
             rows = await connection.fetch(
                 """
-                SELECT * FROM meow_purchase_invoices
+                SELECT * FROM auf_purchase_invoices
                 WHERE workspace_id = $1::BIGINT
                 ORDER BY created_at DESC, id DESC
                 LIMIT $2::INTEGER
@@ -164,7 +164,7 @@ class AufPurchaseRepository:
     async def invoice_by_code(self, public_code: str) -> AufPurchaseInvoice | None:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
-                "SELECT * FROM meow_purchase_invoices WHERE public_code = $1::VARCHAR",
+                "SELECT * FROM auf_purchase_invoices WHERE public_code = $1::VARCHAR",
                 _normalize_code(public_code),
             )
         return _invoice_from_row(row) if row is not None else None
@@ -182,7 +182,7 @@ class AufPurchaseRepository:
             async with connection.transaction():
                 row = await connection.fetchrow(
                     """
-                    SELECT * FROM meow_purchase_invoices
+                    SELECT * FROM auf_purchase_invoices
                     WHERE public_code = $1::VARCHAR
                     FOR UPDATE
                     """,
@@ -205,7 +205,7 @@ class AufPurchaseRepository:
                 if invoice.expires_at <= datetime.now(timezone.utc):
                     await connection.execute(
                         """
-                        UPDATE meow_purchase_invoices
+                        UPDATE auf_purchase_invoices
                         SET status = 'expired', updated_at = NOW()
                         WHERE id = $1::UUID
                         """,
@@ -215,7 +215,7 @@ class AufPurchaseRepository:
 
                 updated_wallet = await connection.fetchrow(
                     """
-                    UPDATE meow_wallets
+                    UPDATE auf_wallets
                     SET available_units = available_units + $2::BIGINT,
                         updated_at = NOW()
                     WHERE workspace_id = $1::BIGINT
@@ -230,7 +230,7 @@ class AufPurchaseRepository:
 
                 await connection.execute(
                     """
-                    INSERT INTO meow_wallet_entries (
+                    INSERT INTO auf_wallet_entries (
                         workspace_id, operation_type, amount_units,
                         available_after_units, reserved_after_units,
                         actor_user_id, invoice_id, idempotency_key,
@@ -266,7 +266,7 @@ class AufPurchaseRepository:
                 )
                 paid_row = await connection.fetchrow(
                     """
-                    UPDATE meow_purchase_invoices
+                    UPDATE auf_purchase_invoices
                     SET status = 'paid',
                         external_payment_id = COALESCE($2::VARCHAR, external_payment_id),
                         confirmed_by_user_id = $3::BIGINT,
@@ -292,7 +292,7 @@ class AufPurchaseRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
-                UPDATE meow_purchase_invoices
+                UPDATE auf_purchase_invoices
                 SET status = 'cancelled', updated_at = NOW()
                 WHERE public_code = $1::VARCHAR
                   AND workspace_id = $2::BIGINT
@@ -317,7 +317,7 @@ class AufPurchaseRepository:
         async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
-                UPDATE meow_purchase_invoices
+                UPDATE auf_purchase_invoices
                 SET status = 'expired', updated_at = NOW()
                 WHERE status = 'created' AND expires_at <= NOW()
                 """
@@ -339,7 +339,7 @@ class AufPurchaseRepository:
                         charge.workspace_id,
                         charge.task_id::TEXT AS reference,
                         'Резерв есть, а operational ai_task отсутствует.'::TEXT AS details
-                    FROM meow_task_charges AS charge
+                    FROM auf_task_charges AS charge
                     LEFT JOIN ai_tasks AS task ON task.id = charge.task_id
                     WHERE charge.status = 'reserved' AND task.id IS NULL
 
@@ -350,7 +350,7 @@ class AufPurchaseRepository:
                         charge.workspace_id,
                         charge.task_id::TEXT,
                         'Задача завершена, но charge остался reserved.'::TEXT
-                    FROM meow_task_charges AS charge
+                    FROM auf_task_charges AS charge
                     JOIN ai_tasks AS task ON task.id = charge.task_id
                     WHERE charge.status = 'reserved'
                       AND task.status IN ('success', 'error', 'cancelled')
@@ -362,10 +362,10 @@ class AufPurchaseRepository:
                         wallet.workspace_id,
                         wallet.workspace_id::TEXT,
                         'reserved_units кошелька не совпадает с суммой активных charge.'::TEXT
-                    FROM meow_wallets AS wallet
+                    FROM auf_wallets AS wallet
                     LEFT JOIN (
                         SELECT workspace_id, COALESCE(SUM(reserved_units), 0) AS total
-                        FROM meow_task_charges
+                        FROM auf_task_charges
                         WHERE status = 'reserved'
                         GROUP BY workspace_id
                     ) AS charge_total ON charge_total.workspace_id = wallet.workspace_id
@@ -378,10 +378,10 @@ class AufPurchaseRepository:
                         wallet.workspace_id,
                         wallet.workspace_id::TEXT,
                         'Текущий баланс кошелька не совпадает с последним ledger snapshot.'::TEXT
-                    FROM meow_wallets AS wallet
+                    FROM auf_wallets AS wallet
                     JOIN LATERAL (
                         SELECT available_after_units, reserved_after_units
-                        FROM meow_wallet_entries
+                        FROM auf_wallet_entries
                         WHERE workspace_id = wallet.workspace_id
                         ORDER BY created_at DESC, id DESC
                         LIMIT 1
@@ -396,8 +396,8 @@ class AufPurchaseRepository:
                         invoice.workspace_id,
                         invoice.public_code,
                         'Оплаченный счёт не имеет purchase-записи в журнале.'::TEXT
-                    FROM meow_purchase_invoices AS invoice
-                    LEFT JOIN meow_wallet_entries AS entry
+                    FROM auf_purchase_invoices AS invoice
+                    LEFT JOIN auf_wallet_entries AS entry
                       ON entry.invoice_id = invoice.id
                      AND entry.operation_type = 'purchase'
                     WHERE invoice.status = 'paid' AND entry.id IS NULL
@@ -409,8 +409,8 @@ class AufPurchaseRepository:
                         entry.workspace_id,
                         COALESCE(invoice.public_code, entry.invoice_id::TEXT),
                         'Purchase-запись не связана с оплаченным счётом.'::TEXT
-                    FROM meow_wallet_entries AS entry
-                    LEFT JOIN meow_purchase_invoices AS invoice
+                    FROM auf_wallet_entries AS entry
+                    LEFT JOIN auf_purchase_invoices AS invoice
                       ON invoice.id = entry.invoice_id
                     WHERE entry.operation_type = 'purchase'
                       AND (invoice.id IS NULL OR invoice.status <> 'paid')
@@ -450,7 +450,7 @@ class AufPurchaseRepository:
         async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
-                UPDATE meow_reconciliation_state
+                UPDATE auf_reconciliation_state
                 SET last_fingerprint = $1::VARCHAR,
                     last_sent_at = NOW(),
                     last_checked_at = NOW(),
@@ -470,7 +470,7 @@ class AufPurchaseRepository:
         async with self._database.acquire() as connection:
             await connection.execute(
                 """
-                UPDATE meow_reconciliation_state
+                UPDATE auf_reconciliation_state
                 SET last_checked_at = NOW(), updated_at = NOW()
                 WHERE singleton_id = 1
                 """

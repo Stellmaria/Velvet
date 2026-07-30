@@ -29,7 +29,7 @@ class AufWalletRepository:
                 """
                 SELECT provider_auf_usd, retail_auf_usd, billing_usd_to_rub,
                        updated_by_user_id, updated_at
-                FROM meow_economy_settings
+                FROM auf_economy_settings
                 WHERE singleton_id = 1
                 """
             )
@@ -48,7 +48,7 @@ class AufWalletRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
-                UPDATE meow_economy_settings
+                UPDATE auf_economy_settings
                 SET provider_auf_usd = $1::NUMERIC,
                     retail_auf_usd = $2::NUMERIC,
                     billing_usd_to_rub = $3::NUMERIC,
@@ -85,7 +85,7 @@ class AufWalletRepository:
             spent = await connection.fetchval(
                 """
                 SELECT COALESCE(SUM(-amount_units), 0)
-                FROM meow_wallet_entries
+                FROM auf_wallet_entries
                 WHERE workspace_id = $1::BIGINT
                   AND created_at >= $2::TIMESTAMPTZ
                   AND operation_type IN ('capture', 'manual_debit')
@@ -100,7 +100,7 @@ class AufWalletRepository:
                        available_after_units, reserved_after_units,
                        actor_user_id, task_id, invoice_id, idempotency_key,
                        comment, metadata, created_at
-                FROM meow_wallet_entries
+                FROM auf_wallet_entries
                 WHERE workspace_id = $1::BIGINT
                 ORDER BY created_at DESC, id DESC
                 LIMIT $2::INTEGER
@@ -139,7 +139,7 @@ class AufWalletRepository:
                 existing = await connection.fetchval(
                     """
                     SELECT 1
-                    FROM meow_wallet_entries
+                    FROM auf_wallet_entries
                     WHERE idempotency_key = $1::VARCHAR
                     """,
                     key,
@@ -166,7 +166,7 @@ class AufWalletRepository:
                     )
                 wallet_row = await connection.fetchrow(
                     """
-                    UPDATE meow_wallets
+                    UPDATE auf_wallets
                     SET available_units = $2::BIGINT,
                         updated_at = NOW()
                     WHERE workspace_id = $1::BIGINT
@@ -180,7 +180,7 @@ class AufWalletRepository:
                     raise RuntimeError("Кошелёк Ауф исчез во время операции.")
                 await connection.execute(
                     """
-                    INSERT INTO meow_wallet_entries (
+                    INSERT INTO auf_wallet_entries (
                         workspace_id, operation_type, amount_units,
                         available_after_units, reserved_after_units,
                         actor_user_id, task_id, invoice_id,
@@ -218,7 +218,7 @@ class AufWalletRepository:
                 await _ensure_wallet(connection, workspace_id=int(workspace_id))
                 row = await connection.fetchrow(
                     """
-                    UPDATE meow_wallets
+                    UPDATE auf_wallets
                     SET status = $2::VARCHAR,
                         updated_at = NOW()
                     WHERE workspace_id = $1::BIGINT
@@ -236,7 +236,7 @@ class AufWalletRepository:
 async def _ensure_wallet(connection: Any, *, workspace_id: int, for_update: bool = False):
     await connection.execute(
         """
-        INSERT INTO meow_wallets (workspace_id)
+        INSERT INTO auf_wallets (workspace_id)
         VALUES ($1::BIGINT)
         ON CONFLICT (workspace_id) DO NOTHING
         """,
@@ -247,7 +247,7 @@ async def _ensure_wallet(connection: Any, *, workspace_id: int, for_update: bool
         """
         SELECT workspace_id, available_units, reserved_units,
                status, created_at, updated_at
-        FROM meow_wallets
+        FROM auf_wallets
         WHERE workspace_id = $1::BIGINT
         """ + suffix,
         int(workspace_id),

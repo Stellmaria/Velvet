@@ -465,7 +465,7 @@ async def _load_user_tasks(
                 charge.quoted_units,
                 charge.status AS charge_status
             FROM ai_tasks AS task
-            LEFT JOIN meow_task_charges AS charge ON charge.task_id = task.id
+            LEFT JOIN auf_task_charges AS charge ON charge.task_id = task.id
             WHERE task.task_type = $1::VARCHAR
               AND task.created_by = $2::BIGINT
               AND task.payload ->> 'workspace_id' = $3::TEXT

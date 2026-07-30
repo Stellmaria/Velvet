@@ -20,7 +20,9 @@ def __getattr__(name: str) -> Any:
     from velvet_bot.app.bootstrap import run_application as application
 
     async def configured_run_application() -> None:
+        from velvet_bot.app.auf_branding import install_auf_branding
         from velvet_bot.app.auf_cancel_ui_install import install_auf_cancel_ui
+        from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
         from velvet_bot.app.auf_photo_ratio_callback_fix import (
             install_auf_photo_ratio_callback_fix,
         )
@@ -56,6 +58,7 @@ def __getattr__(name: str) -> Any:
         install_grs_resilience()
         install_grs_campaign_retry()
         install_grs_speedups()
+        install_auf_grs_brand()
         install_telegram_progress_resilience()
         install_auf_cancel_ui()
         install_auf_runtime_dispatcher()
@@ -69,6 +72,7 @@ def __getattr__(name: str) -> Any:
         install_original_video_delivery_hotfix()
         install_auf_result_delivery_recovery()
         install_krita_remote_worker()
+        install_auf_branding()
         await application()
 
     globals()[name] = configured_run_application

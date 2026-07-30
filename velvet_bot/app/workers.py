@@ -188,7 +188,7 @@ def build_worker_manager(
                 PeriodicWorkerSpec(
                     name=worker_name,
                     description=(
-                        "Экономная генерация фото и видео через Мяу "
+                        "Экономная генерация фото и видео через Ауф "
                         f"· слот {slot}/{active_kie_settings.max_concurrent_generations}"
                     ),
                     interval_seconds=3,

@@ -30,7 +30,7 @@ class _FakeRuntimeService:
     os.getenv("TEST_DATABASE_URL"),
     "TEST_DATABASE_URL is required for PostgreSQL integration tests",
 )
-class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
+class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
     _OWNER_ID = 799_101
 
     async def asyncSetUp(self) -> None:
@@ -52,15 +52,15 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
     async def _reset(self) -> None:
         async with self.database.acquire() as connection:
             await connection.execute(
-                "DELETE FROM ai_tasks WHERE dedupe_key LIKE 'test:meow-charge:%'"
+                "DELETE FROM ai_tasks WHERE dedupe_key LIKE 'test:auf-charge:%'"
             )
             await connection.execute(
-                "DELETE FROM meow_wallet_entries WHERE workspace_id = $1::BIGINT",
+                "DELETE FROM auf_wallet_entries WHERE workspace_id = $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
             )
             await connection.execute(
                 """
-                INSERT INTO meow_wallets (
+                INSERT INTO auf_wallets (
                     workspace_id, available_units, reserved_units, status
                 )
                 VALUES ($1::BIGINT, 0, 0, 'active')
@@ -111,7 +111,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 "user_id": created_by or self._OWNER_ID,
             },
             priority=40,
-            dedupe_key=f"test:meow-charge:{key}",
+            dedupe_key=f"test:auf-charge:{key}",
             max_attempts=3,
             created_by=created_by or self._OWNER_ID,
             estimated_cost_rub=Decimal("0"),
@@ -123,7 +123,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             amount_auf=amount,
             actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
             comment="test funding",
-            idempotency_key=f"test:meow-charge:grant:{amount}",
+            idempotency_key=f"test:auf-charge:grant:{amount}",
         )
 
     async def test_price_catalog_matches_approved_auf_values(self) -> None:
@@ -190,7 +190,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 first.task.id,
             )
             charge = await connection.fetchrow(
-                "SELECT status, captured_units, refunded_units FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT status, captured_units, refunded_units FROM auf_task_charges WHERE task_id = $1::UUID",
                 first.task.id,
             )
         self.assertIsNotNone(charge)
@@ -212,7 +212,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 result.task.id,
             )
             charge_status = await connection.fetchval(
-                "SELECT status FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT status FROM auf_task_charges WHERE task_id = $1::UUID",
                 result.task.id,
             )
         self.assertEqual("refunded", str(charge_status))
@@ -229,7 +229,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 result.task.id,
             )
             charge_status = await connection.fetchval(
-                "SELECT status FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT status FROM auf_task_charges WHERE task_id = $1::UUID",
                 result.task.id,
             )
         self.assertEqual("released", str(charge_status))
@@ -275,7 +275,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.created)
         async with self.database.acquire() as connection:
             charge_count = await connection.fetchval(
-                "SELECT COUNT(*) FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT COUNT(*) FROM auf_task_charges WHERE task_id = $1::UUID",
                 result.task.id,
             )
         self.assertEqual(0, int(charge_count or 0))

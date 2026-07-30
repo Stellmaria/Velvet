@@ -47,16 +47,16 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
     async def _reset(self) -> None:
         async with self.database.acquire() as connection:
             await connection.execute(
-                "DELETE FROM meow_wallet_entries WHERE workspace_id = $1::BIGINT",
+                "DELETE FROM auf_wallet_entries WHERE workspace_id = $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
             )
             await connection.execute(
-                "DELETE FROM meow_purchase_invoices WHERE workspace_id = $1::BIGINT",
+                "DELETE FROM auf_purchase_invoices WHERE workspace_id = $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
             )
             await connection.execute(
                 """
-                INSERT INTO meow_wallets (
+                INSERT INTO auf_wallets (
                     workspace_id, available_units, reserved_units, status
                 )
                 VALUES ($1::BIGINT, 0, 0, 'active')
@@ -70,7 +70,7 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
             )
             await connection.execute(
                 """
-                UPDATE meow_economy_settings
+                UPDATE auf_economy_settings
                 SET provider_auf_usd = 0.02,
                     retail_auf_usd = 0.03,
                     billing_usd_to_rub = 79.85,
@@ -96,7 +96,7 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         async with self.database.acquire() as connection:
             await connection.execute(
                 """
-                UPDATE meow_economy_settings
+                UPDATE auf_economy_settings
                 SET billing_usd_to_rub = 100, updated_at = NOW()
                 WHERE singleton_id = 1
                 """
@@ -114,7 +114,7 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         async with self.database.acquire() as connection:
             count = await connection.fetchval(
                 """
-                SELECT COUNT(*) FROM meow_purchase_invoices
+                SELECT COUNT(*) FROM auf_purchase_invoices
                 WHERE idempotency_key = 'test:purchase:dedupe'
                 """
             )
@@ -166,7 +166,7 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         async with self.database.acquire() as connection:
             await connection.execute(
                 """
-                UPDATE meow_purchase_invoices
+                UPDATE auf_purchase_invoices
                 SET expires_at = $2::TIMESTAMPTZ
                 WHERE id = $1::UUID
                 """,
@@ -188,7 +188,7 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         async with self.database.acquire() as connection:
             await connection.execute(
                 """
-                UPDATE meow_wallets
+                UPDATE auf_wallets
                 SET available_units = available_units + 1
                 WHERE workspace_id = $1::BIGINT
                 """,

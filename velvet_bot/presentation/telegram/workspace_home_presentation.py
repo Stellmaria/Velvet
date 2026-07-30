@@ -50,15 +50,8 @@ def build_workspace_owner_home_keyboard(
     modules: Sequence[WorkspaceModuleSetting],
     show_button_hints: bool = True,
     auf_visible: bool = True,
-    meow_visible: bool | None = None,
 ) -> InlineKeyboardMarkup:
-    """Build the canonical owner keyboard without hidden controller state.
-
-    ``meow_visible`` remains a keyword-only compatibility alias for stacked code.
-    """
-
-    if meow_visible is not None:
-        auf_visible = meow_visible
+    """Build the canonical owner keyboard without hidden controller state."""
 
     base = build_workspace_home_keyboard(
         workspace,
