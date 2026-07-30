@@ -3,7 +3,7 @@
 - Дата: 2026-07-31
 - ID: server-deployment-portability
 - Линия/фаза: hotfix/эксплуатация вне фаз — Linux VPS production migration
-- Статус: выполнено
+- Статус: завершено
 - Ветка: `agent/fix-server-deployment-portability`
 - Базовый commit: `55ef763d5783073b5fc732e87262667dbb23a6e2`
 - PR: #485
@@ -44,7 +44,7 @@ Production dump был создан PostgreSQL 17.6, серверный прим
 
 ## После завершения
 
-Статус: выполнено.
+Статус: завершено.
 
 ### Фактически сделано
 
