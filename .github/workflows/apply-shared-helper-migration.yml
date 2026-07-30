@@ -1,35 +1,23 @@
-name: apply shared Telegram helper migration
+name: shared Telegram helper contract
 
 on:
-  push:
-    branches:
-      - agent/shared-telegram-helpers
+  pull_request:
+    paths:
+      - 'velvet_bot/presentation/telegram/**'
+      - 'scripts/inventory_telegram_helpers.py'
+      - 'tests/test_telegram_shared_helpers.py'
+      - '.github/workflows/apply-shared-helper-migration.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  migrate:
-    if: github.actor != 'github-actions[bot]'
+  inventory:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent/shared-telegram-helpers
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Apply idempotent migration
-        run: python scripts/apply_telegram_helper_migration.py
-      - name: Commit generated migration
-        run: |
-          if git diff --quiet; then
-            echo "Migration already applied."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add velvet_bot docs/generated/telegram_navigation_inventory.md
-          git commit -m "P3: migrate Telegram helper consumers"
-          git push origin HEAD:agent/shared-telegram-helpers
+      - name: Validate helper boundaries
+        run: python scripts/inventory_telegram_helpers.py --check
