@@ -1,60 +1,10 @@
-from __future__ import annotations
+"""Compatibility shim for the retired Meow wallet UI installer name."""
 
-import importlib
+from velvet_bot.app.auf_wallet_ui_install import install_auf_wallet_ui
 
-from velvet_bot.presentation.telegram.routers.workspace_meow_wallet import (
-    handle_meow_wallet_action,
+install_meow_wallet_ui = install_auf_wallet_ui
+
+__all__ = (
+    "install_auf_wallet_ui",
+    "install_meow_wallet_ui",
 )
-
-_INSTALLED = False
-
-
-def install_meow_wallet_ui() -> None:
-    """Route wallet callbacks before the legacy generic Meow action handler."""
-
-    global _INSTALLED
-    if _INSTALLED:
-        return
-
-    controller = importlib.import_module(
-        "velvet_bot.presentation.telegram.workspace_home_controller"
-    )
-    original = controller.handle_scoped_meow_action
-
-    async def handle_scoped_meow_action_with_wallet(
-        callback,
-        callback_data,
-        state,
-        access_policy,
-        kie_settings,
-        database,
-        ai_usage_service,
-        ai_task_queue_service,
-        meow_runtime_service,
-        meow_wallet_service,
-    ) -> None:
-        if callback_data.action.startswith("wallet"):
-            await handle_meow_wallet_action(
-                callback,
-                callback_data,
-                state,
-                meow_wallet_service,
-            )
-            return
-        await original(
-            callback,
-            callback_data,
-            state,
-            access_policy,
-            kie_settings,
-            database,
-            ai_usage_service,
-            ai_task_queue_service,
-            meow_runtime_service,
-        )
-
-    controller.handle_scoped_meow_action = handle_scoped_meow_action_with_wallet
-    _INSTALLED = True
-
-
-__all__ = ("install_meow_wallet_ui",)
