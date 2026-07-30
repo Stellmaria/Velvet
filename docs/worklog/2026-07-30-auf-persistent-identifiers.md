@@ -5,6 +5,7 @@
 - Линия/фаза: AI media generation / storage migration
 - Статус: `завершено`
 - Ветка: `agent/auf-persistent-identifiers`
+- Базовый commit: `e24fae5f4a7b36ff2192be42807ccc227964156e`
 
 ## Перед началом
 
@@ -45,10 +46,12 @@ Python runtime, Telegram protocol и пользовательский порта
 Исторические z020-z023 сохранены без изменений. PostgreSQL `ALTER TABLE ... RENAME` сохраняет строки, FK-связи и object identity. Telegram legacy parsers не удаляются в этой фазе.
 
 ### Проверки
-Полный CI запускается после создания PR.
+Полный CI и backup restore drill запускаются на PR #446.
 
 ### PR и commit
-Фиксируются после зелёного CI и merge.
+- PR: #446;
+- storage migration head обновляется после исправлений CI;
+- merge commit фиксируется после зелёного полного набора.
 
 ### Незавершённое
 - удалить legacy callback/FSM parsers после достаточного переходного периода;
