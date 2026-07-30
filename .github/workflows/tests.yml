@@ -6,7 +6,44 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
+  refresh-generated-contracts:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout helper branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/shared-telegram-helpers
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Refresh compatibility contracts
+        run: |
+          python scripts/apply_telegram_helper_migration.py
+          python scripts/update_p2_stability_inventory.py \
+            --label p3-shared-telegram-helpers \
+            --schema-version 73
+
+      - name: Commit generated changes
+        run: |
+          if git diff --quiet; then
+            echo "Generated contracts are current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot docs
+          git commit -m "P3: refresh shared helper generated contracts"
+          git push origin HEAD:agent/shared-telegram-helpers
+
   unit-tests:
     runs-on: ubuntu-latest
     services:
