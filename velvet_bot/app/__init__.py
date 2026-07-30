@@ -28,6 +28,7 @@ def __getattr__(name: str) -> Any:
         from velvet_bot.app.auf_photo_ui_install import install_auf_photo_ui
         from velvet_bot.app.auf_reconciliation_install import install_auf_reconciliation
         from velvet_bot.app.auf_runtime_install import install_auf_runtime_dispatcher
+        from velvet_bot.app.auf_user_portal_install import install_auf_user_portal
         from velvet_bot.app.auf_wallet_ui_install import install_auf_wallet_ui
         from velvet_bot.app.auf_workspace_ui_install import install_auf_workspace_ui
         from velvet_bot.app.grs_campaign_retry import install_grs_campaign_retry
@@ -61,6 +62,7 @@ def __getattr__(name: str) -> Any:
         install_auf_wallet_ui()
         install_auf_photo_ui()
         install_auf_photo_ratio_callback_fix()
+        install_auf_user_portal()
         install_auf_branding()
         install_original_image_delivery_hotfix()
         install_original_video_delivery_hotfix()
