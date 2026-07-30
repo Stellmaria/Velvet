@@ -3,6 +3,7 @@
 !.env.example
 !.env.hermes.example
 !.env.server.example
+!.env.krita-remote.example
 .codex/
 .hermes/
 .ssh/
