@@ -62,29 +62,30 @@ PR #397 реализует кошельки и журнал Ауф поверх 
 - SQL-trigger атомарно закрывает reserve при `success`, `error` и `cancelled`;
 - добавлен запрет повторного запуска терминальной charged-задачи без нового quote;
 - финансовые ошибки показываются пользователю через Telegram alert;
-- добавлены PostgreSQL-тесты каталога, dedupe, capture, refund, release, frozen/insufficient balance и bypass Стэл.
+- добавлены PostgreSQL-тесты каталога, dedupe, capture, refund, release, frozen/insufficient balance и bypass Стэл;
+- финансовый charge сохраняется независимо от удаления старой operational-записи `ai_tasks`, поэтому аудит не стирается каскадом.
 
 ### Миграции и совместимость
 
-Добавлена `migrations/z022_meow_task_charging.sql`. Существующие задачи без `meow_task_charges` продолжают работать бесплатно по старому контракту. Новые задачи личных пространств получают charge при enqueue. Формат `ai_tasks.payload` и существующий `AIUsageService` не меняются.
+Добавлена `migrations/z022_meow_task_charging.sql`. Существующие задачи без `meow_task_charges` продолжают работать бесплатно по старому контракту. Новые задачи личных пространств получают charge при enqueue. Формат `ai_tasks.payload` и существующий `AIUsageService` не меняются. Жёсткий внешний ключ charge → `ai_tasks` не используется: это сохраняет финансовую историю при служебной очистке старых задач и не блокирует существующие test/maintenance `TRUNCATE`.
 
 ### Проверки
 
-Ожидаются GitHub Actions для итогового head ветки:
+GitHub Actions для функционального commit `8b7f938c870c2a7df7ccd62bec0bf89140f86cdc`:
 
-- полный unit/PostgreSQL suite;
-- bounded type check;
-- Docker build;
-- backup restore drill;
-- project notes contract;
-- Telegram navigation inventory.
+- `tests` run 2362 — успешно, 1629 unit- и PostgreSQL integration tests;
+- `type check` run 1015 — успешно;
+- `docker build` run 1729 — успешно;
+- `backup restore drill` run 553 — успешно.
+
+Первый прогон tests 2361 выявил несовместимость внешнего ключа с существующими `TRUNCATE ai_tasks`; схема исправлена без изменения расчётной логики, повторный прогон полностью зелёный.
 
 ### PR и commit
 
+- Draft PR: #399 `Добавить тарифы и списание Ауф за генерации`;
 - ветка: `agent/meow-task-charging`;
 - базовый PR: #397;
-- issue: #394;
-- отдельный draft PR будет создан после первого CI.
+- issue: #394.
 
 ### Незавершённое
 
@@ -95,4 +96,4 @@ PR #397 реализует кошельки и журнал Ауф поверх 
 
 ### Следующий шаг
 
-Запустить CI, исправить найденные контрактные или SQL-ошибки, затем открыть stacked draft PR поверх #397. После объединения #387/#390 добавить цену Ауф в единый финальный экран подтверждения.
+После согласования и объединения #387/#390 добавить цену Ауф и остаток в единый финальный экран подтверждения, затем реализовать счета покупки и reconciliation worker отдельным этапом #394.
