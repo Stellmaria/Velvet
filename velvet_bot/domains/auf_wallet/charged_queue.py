@@ -90,7 +90,7 @@ async def _reserve_charge(
 ) -> None:
     await connection.execute(
         """
-        INSERT INTO meow_wallets (workspace_id)
+        INSERT INTO auf_wallets (workspace_id)
         VALUES ($1::BIGINT)
         ON CONFLICT (workspace_id) DO NOTHING
         """,
@@ -99,7 +99,7 @@ async def _reserve_charge(
     wallet = await connection.fetchrow(
         """
         SELECT workspace_id, available_units, reserved_units, status
-        FROM meow_wallets
+        FROM auf_wallets
         WHERE workspace_id = $1::BIGINT
         FOR UPDATE
         """,
@@ -119,7 +119,7 @@ async def _reserve_charge(
 
     updated_wallet = await connection.fetchrow(
         """
-        UPDATE meow_wallets
+        UPDATE auf_wallets
         SET available_units = available_units - $2::BIGINT,
             reserved_units = reserved_units + $2::BIGINT,
             updated_at = NOW()
@@ -134,7 +134,7 @@ async def _reserve_charge(
 
     await connection.execute(
         """
-        INSERT INTO meow_task_charges (
+        INSERT INTO auf_task_charges (
             task_id, workspace_id, price_version_id,
             quoted_units, reserved_units, provider_cost_usd, status
         )
@@ -151,7 +151,7 @@ async def _reserve_charge(
     )
     await connection.execute(
         """
-        INSERT INTO meow_wallet_entries (
+        INSERT INTO auf_wallet_entries (
             workspace_id, operation_type, amount_units,
             available_after_units, reserved_after_units,
             actor_user_id, task_id, idempotency_key, comment, metadata

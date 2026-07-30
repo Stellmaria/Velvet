@@ -87,7 +87,7 @@ def test_primary_auf_screens_have_no_retired_russian_brand() -> None:
 def test_legacy_storage_and_callback_keys_are_centralized() -> None:
     canonical = _read("velvet_bot/domains/auf_runtime/__init__.py")
     home = _read("velvet_bot/presentation/telegram/workspace_home_presentation.py")
-    assert 'AUF_MODULE_KEY = "meow"' in canonical
+    assert 'AUF_MODULE_KEY = "auf"' in canonical
     assert 'AUF_WORKSPACE_ACTION = "auf"' in canonical
     assert 'LEGACY_AUF_WORKSPACE_ACTION = "meow"' in canonical
     assert 'item.module_key == "meow"' not in home

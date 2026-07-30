@@ -69,7 +69,7 @@ async def quote_auf_payload(
         """
         SELECT id, version_key, provider, model_alias, resolution, audio,
                pricing_basis, unit_cost_usd, extra_reference_cost_usd
-        FROM meow_price_versions
+        FROM auf_price_versions
         WHERE model_alias = $1::VARCHAR
           AND operation = 'media.generate'
           AND effective_from <= NOW()
@@ -96,7 +96,7 @@ async def quote_auf_payload(
     settings = await connection.fetchrow(
         """
         SELECT provider_auf_usd
-        FROM meow_economy_settings
+        FROM auf_economy_settings
         WHERE singleton_id = 1
         """
     )

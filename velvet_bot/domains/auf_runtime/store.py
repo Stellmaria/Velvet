@@ -21,8 +21,7 @@ from .models import (
 class AufRuntimeRepository:
     """Persistence for Auf runtime settings.
 
-    SQL table and module-key names retain ``meow`` only as a migration contract for
-    already deployed databases. Python code uses the canonical Auf vocabulary.
+    SQL table and module-key names use the canonical Auf storage contract.
     """
 
     def __init__(self, database: Database) -> None:
@@ -35,7 +34,7 @@ class AufRuntimeRepository:
                 SELECT kie_concurrency_limit, grs_concurrency_limit,
                        workspace_default_limit, workspace_max_limit,
                        configured, setup_notice_sent_at, updated_by_user_id, updated_at
-                FROM meow_runtime_settings
+                FROM auf_runtime_settings
                 WHERE singleton_id = 1
                 """
             )
@@ -59,7 +58,7 @@ class AufRuntimeRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 f"""
-                UPDATE meow_runtime_settings
+                UPDATE auf_runtime_settings
                 SET {field} = $1::INTEGER,
                     configured = TRUE,
                     updated_by_user_id = $2::BIGINT,
@@ -85,7 +84,7 @@ class AufRuntimeRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
-                UPDATE meow_runtime_settings
+                UPDATE auf_runtime_settings
                 SET configured = TRUE,
                     updated_by_user_id = $1::BIGINT,
                     updated_at = NOW()
@@ -105,7 +104,7 @@ class AufRuntimeRepository:
         async with self._database.acquire() as connection:
             result = await connection.execute(
                 """
-                UPDATE meow_runtime_settings
+                UPDATE auf_runtime_settings
                 SET setup_notice_sent_at = NOW(),
                     updated_at = NOW()
                 WHERE singleton_id = 1
@@ -119,9 +118,9 @@ class AufRuntimeRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
-                INSERT INTO workspace_meow_settings (workspace_id, concurrency_limit)
+                INSERT INTO workspace_auf_settings (workspace_id, concurrency_limit)
                 SELECT $1::BIGINT, runtime.workspace_default_limit
-                FROM meow_runtime_settings AS runtime
+                FROM auf_runtime_settings AS runtime
                 WHERE runtime.singleton_id = 1
                 ON CONFLICT (workspace_id) DO UPDATE
                 SET workspace_id = EXCLUDED.workspace_id
@@ -146,7 +145,7 @@ class AufRuntimeRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
-                INSERT INTO workspace_meow_settings (
+                INSERT INTO workspace_auf_settings (
                     workspace_id, concurrency_limit, updated_by_user_id
                 )
                 VALUES ($1::BIGINT, $2::INTEGER, $3::BIGINT)
@@ -181,7 +180,7 @@ class AufRuntimeRepository:
                 FROM workspace_members AS member
                 JOIN workspace_modules AS module
                   ON module.workspace_id = member.workspace_id
-                 AND module.module_key = 'meow'
+                 AND module.module_key = 'auf'
                 WHERE member.workspace_id = $1::BIGINT
                   AND member.user_id = $2::BIGINT
                   AND member.role = 'owner'

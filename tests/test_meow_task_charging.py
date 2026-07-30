@@ -55,12 +55,12 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 "DELETE FROM ai_tasks WHERE dedupe_key LIKE 'test:meow-charge:%'"
             )
             await connection.execute(
-                "DELETE FROM meow_wallet_entries WHERE workspace_id = $1::BIGINT",
+                "DELETE FROM auf_wallet_entries WHERE workspace_id = $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
             )
             await connection.execute(
                 """
-                INSERT INTO meow_wallets (
+                INSERT INTO auf_wallets (
                     workspace_id, available_units, reserved_units, status
                 )
                 VALUES ($1::BIGINT, 0, 0, 'active')
@@ -190,7 +190,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 first.task.id,
             )
             charge = await connection.fetchrow(
-                "SELECT status, captured_units, refunded_units FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT status, captured_units, refunded_units FROM auf_task_charges WHERE task_id = $1::UUID",
                 first.task.id,
             )
         self.assertIsNotNone(charge)
@@ -212,7 +212,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 result.task.id,
             )
             charge_status = await connection.fetchval(
-                "SELECT status FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT status FROM auf_task_charges WHERE task_id = $1::UUID",
                 result.task.id,
             )
         self.assertEqual("refunded", str(charge_status))
@@ -229,7 +229,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 result.task.id,
             )
             charge_status = await connection.fetchval(
-                "SELECT status FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT status FROM auf_task_charges WHERE task_id = $1::UUID",
                 result.task.id,
             )
         self.assertEqual("released", str(charge_status))
@@ -275,7 +275,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.created)
         async with self.database.acquire() as connection:
             charge_count = await connection.fetchval(
-                "SELECT COUNT(*) FROM meow_task_charges WHERE task_id = $1::UUID",
+                "SELECT COUNT(*) FROM auf_task_charges WHERE task_id = $1::UUID",
                 result.task.id,
             )
         self.assertEqual(0, int(charge_count or 0))

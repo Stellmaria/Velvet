@@ -185,7 +185,7 @@ class PostgreSQLAufQueueTests(unittest.IsolatedAsyncioTestCase):
             await connection.execute("DELETE FROM ai_tasks")
             await connection.execute(
                 """
-                INSERT INTO workspace_meow_settings (
+                INSERT INTO workspace_auf_settings (
                     workspace_id,
                     concurrency_limit,
                     updated_by_user_id

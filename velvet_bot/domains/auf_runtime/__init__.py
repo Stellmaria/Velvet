@@ -1,8 +1,7 @@
 """Canonical public API for the Auf generation runtime.
 
-The database schema and a few stacked branches still use the historical ``meow``
-identifier. New application code imports this package and uses ``Auf*`` names;
-the old package is only a compatibility boundary for existing imports and data.
+The database schema and application code use canonical ``Auf*`` identifiers.
+The old package exists only as a read-only Python import compatibility boundary.
 """
 
 from .dispatcher import AufGenerationDispatcher
@@ -17,9 +16,7 @@ from .queue import ProviderAufTaskQueueService
 from .service import AufRuntimeAccessError, AufRuntimeService
 from .store import AufRuntimeRepository
 
-# Persistent keys cannot be renamed independently from existing workspace rows and
-# already-sent Telegram keyboards. Keep them in one explicit compatibility boundary.
-AUF_MODULE_KEY = "meow"
+AUF_MODULE_KEY = "auf"
 AUF_WORKSPACE_ACTION = "auf"
 LEGACY_AUF_WORKSPACE_ACTION = "meow"
 

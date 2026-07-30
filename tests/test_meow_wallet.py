@@ -89,12 +89,12 @@ class PostgreSQLAufWalletTests(unittest.IsolatedAsyncioTestCase):
     async def _reset(self) -> None:
         async with self.database.acquire() as connection:
             await connection.execute(
-                "DELETE FROM meow_wallet_entries WHERE workspace_id = $1::BIGINT",
+                "DELETE FROM auf_wallet_entries WHERE workspace_id = $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
             )
             await connection.execute(
                 """
-                INSERT INTO meow_wallets (
+                INSERT INTO auf_wallets (
                     workspace_id, available_units, reserved_units, status
                 )
                 VALUES ($1::BIGINT, 0, 0, 'active')
