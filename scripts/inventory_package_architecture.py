@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import importlib.util
 import json
 import re
 import sys
@@ -56,7 +57,13 @@ def _json(path: Path) -> dict[str, Any]:
 
 
 def _production_paths() -> tuple[Path, ...]:
-    return tuple(sorted(path for path in PACKAGE.rglob("*.py") if "__pycache__" not in path.parts))
+    return tuple(
+        sorted(
+            path
+            for path in PACKAGE.rglob("*.py")
+            if "__pycache__" not in path.parts
+        )
+    )
 
 
 def _module_name(path: Path) -> str:
@@ -103,20 +110,29 @@ def _dotted(node: ast.AST) -> str:
     return ""
 
 
-def _resolve_import_from(current_module: str, level: int, module: str | None) -> str:
+def _resolve_import_from(
+    current_module: str,
+    level: int,
+    module: str | None,
+    *,
+    is_package: bool,
+) -> str:
     if level <= 0:
         return module or ""
-    parts = current_module.split(".")
-    if parts and not current_module.endswith(".__init__"):
-        parts = parts[:-1]
-    keep = max(0, len(parts) - level + 1)
-    prefix = parts[:keep]
+    package_parts = current_module.split(".") if is_package else current_module.split(".")[:-1]
+    keep = max(0, len(package_parts) - (level - 1))
+    prefix = package_parts[:keep]
     if module:
         prefix.extend(module.split("."))
     return ".".join(prefix)
 
 
-def _imports(tree: ast.Module, current_module: str) -> tuple[dict[str, str], list[str]]:
+def _imports(
+    tree: ast.Module,
+    current_module: str,
+    *,
+    is_package: bool = False,
+) -> tuple[dict[str, str], list[str]]:
     aliases: dict[str, str] = {}
     modules: list[str] = []
     for node in ast.walk(tree):
@@ -126,7 +142,12 @@ def _imports(tree: ast.Module, current_module: str) -> tuple[dict[str, str], lis
                 aliases[local] = alias.name
                 modules.append(alias.name)
         elif isinstance(node, ast.ImportFrom):
-            source = _resolve_import_from(current_module, node.level, node.module)
+            source = _resolve_import_from(
+                current_module,
+                node.level,
+                node.module,
+                is_package=is_package,
+            )
             if source:
                 modules.append(source)
             for alias in node.names:
@@ -152,9 +173,11 @@ def _function_owner(tree: ast.Module, node: ast.AST) -> str:
     return best_name
 
 
-def _stable_id(category: str, path: str, symbol: str) -> str:
+def _stable_id(category: str, path: str, line: int | None, symbol: str) -> str:
     normalized = " ".join(symbol.split())
-    digest = hashlib.sha256(f"{category}\n{path}\n{normalized}".encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha256(
+        f"{category}\n{path}\n{line or 0}\n{normalized}".encode("utf-8")
+    ).hexdigest()[:16]
     return f"{category}:{path}:{digest}"
 
 
@@ -167,7 +190,7 @@ def _violation(
     details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
-        "id": _stable_id(category, path, symbol),
+        "id": _stable_id(category, path, line, symbol),
         "category": category,
         "path": path,
         "line": line,
@@ -180,7 +203,17 @@ def _persistence_path(path: Path) -> bool:
     stem = path.stem.casefold()
     parts = {part.casefold() for part in path.parts}
     return (
-        any(token in stem for token in ("repository", "queries", "query", "store", "database", "persistence"))
+        any(
+            token in stem
+            for token in (
+                "repository",
+                "queries",
+                "query",
+                "store",
+                "database",
+                "persistence",
+            )
+        )
         or "migrations" in parts
         or "repositories" in parts
     )
@@ -192,25 +225,37 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
     source = path.read_text(encoding="utf-8")
     lines = source.splitlines()
     tree = ast.parse(source, filename=relative)
-    aliases, import_modules = _imports(tree, module)
-    functions = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    aliases, import_modules = _imports(
+        tree,
+        module,
+        is_package=path.name == "__init__.py",
+    )
+    functions = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
     classes = [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
     handlers = [
         node
         for node in functions
         if any(
-            any(token in _dotted(decorator) for token in (".message", ".callback_query", ".inline_query"))
+            any(
+                token in _dotted(decorator)
+                for token in (".message", ".callback_query", ".inline_query")
+            )
             for decorator in node.decorator_list
         )
     ]
     max_function_length = max(
         (
-            int(getattr(node, "end_lineno", node.lineno) or node.lineno) - int(node.lineno) + 1
+            int(getattr(node, "end_lineno", node.lineno) or node.lineno)
+            - int(node.lineno)
+            + 1
             for node in functions
         ),
         default=0,
     )
-    aliases_by_root = {name: origin for name, origin in aliases.items()}
     foreign_assignments: list[dict[str, Any]] = []
     sql_literals: list[dict[str, Any]] = []
     acquire_calls: list[dict[str, Any]] = []
@@ -231,21 +276,37 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
                 cast_count += 1
             if dotted in {"importlib.import_module", "__import__"}:
                 dynamic_imports.append(
-                    {"line": node.lineno, "call": dotted, "owner": _function_owner(tree, node)}
+                    {
+                        "line": node.lineno,
+                        "call": dotted,
+                        "owner": _function_owner(tree, node),
+                    }
                 )
             if dotted.endswith(".acquire"):
                 acquire_calls.append(
-                    {"line": node.lineno, "call": dotted, "owner": _function_owner(tree, node)}
+                    {
+                        "line": node.lineno,
+                        "call": dotted,
+                        "owner": _function_owner(tree, node),
+                    }
                 )
-            if dotted in {"os.getenv", "os.environ.get", "environ.get"} or dotted.endswith(".getenv"):
+            if (
+                dotted in {"os.getenv", "os.environ.get", "environ.get"}
+                or dotted.endswith(".getenv")
+            ):
                 env_reads.append(
-                    {"line": node.lineno, "call": dotted, "owner": _function_owner(tree, node)}
+                    {
+                        "line": node.lineno,
+                        "call": dotted,
+                        "owner": _function_owner(tree, node),
+                    }
                 )
             if dotted.endswith("sleep") or "poll" in dotted.casefold():
                 constants = [
                     value.value
                     for value in ast.walk(node)
-                    if isinstance(value, ast.Constant) and isinstance(value.value, (int, float))
+                    if isinstance(value, ast.Constant)
+                    and isinstance(value.value, (int, float))
                 ]
                 if constants:
                     polling_values.append(
@@ -253,7 +314,10 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
                     )
             if dotted.split(".")[-1].startswith("install_"):
                 install_calls.append({"line": node.lineno, "call": dotted})
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("install_"):
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name.startswith("install_")
+        ):
             install_definitions.append(node.name)
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             match = SQL_PATTERN.search(node.value)
@@ -268,32 +332,35 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
                     }
                 )
         if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-            if isinstance(node, ast.Assign):
-                targets = list(node.targets)
-            else:
-                targets = [node.target]
+            targets = list(node.targets) if isinstance(node, ast.Assign) else [node.target]
             for target in targets:
                 if not isinstance(target, ast.Attribute):
                     continue
                 dotted_target = _dotted(target)
                 root_name = dotted_target.split(".", 1)[0]
-                if root_name not in aliases_by_root:
+                if root_name not in aliases:
                     continue
                 foreign_assignments.append(
                     {
                         "line": target.lineno,
                         "target": dotted_target,
-                        "origin": aliases_by_root[root_name],
+                        "origin": aliases[root_name],
                         "owner": _function_owner(tree, target),
                     }
                 )
 
     layer = _layer(path)
     type_ignore_count = sum("# type: ignore" in line for line in lines)
-    method_assign_ignore_count = sum("type: ignore[method-assign]" in line for line in lines)
+    method_assign_ignore_count = sum(
+        "type: ignore[method-assign]" in line for line in lines
+    )
     installed_sentinel_count = sum("_INSTALLED" in line for line in lines)
     package_getattr = any(node.name == "__getattr__" for node in functions)
-    aiogram_imports = sorted(module_name for module_name in import_modules if module_name == "aiogram" or module_name.startswith("aiogram."))
+    aiogram_imports = sorted(
+        imported
+        for imported in import_modules
+        if imported == "aiogram" or imported.startswith("aiogram.")
+    )
 
     violations: list[dict[str, Any]] = []
     if layer in {"domain", "service"} and aiogram_imports:
@@ -324,27 +391,56 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
         for item in sql_literals:
             symbol = f"{item['owner']}:{item['keyword']}:{item['preview']}"
             violations.append(
-                _violation("sql-outside-persistence", relative, symbol, line=item["line"], details=item)
+                _violation(
+                    "sql-outside-persistence",
+                    relative,
+                    symbol,
+                    line=int(item["line"]),
+                    details=item,
+                )
             )
     if acquire_calls and not _persistence_path(path):
         for item in acquire_calls:
             symbol = f"{item['owner']}:{item['call']}"
             violations.append(
-                _violation("database-acquire-outside-persistence", relative, symbol, line=item["line"], details=item)
+                _violation(
+                    "database-acquire-outside-persistence",
+                    relative,
+                    symbol,
+                    line=int(item["line"]),
+                    details=item,
+                )
             )
     for item in foreign_assignments:
         symbol = f"{item['owner']}:{item['target']}:{item['origin']}"
         violations.append(
-            _violation("foreign-assignment", relative, symbol, line=item["line"], details=item)
+            _violation(
+                "foreign-assignment",
+                relative,
+                symbol,
+                line=int(item["line"]),
+                details=item,
+            )
         )
     for item in dynamic_imports:
         symbol = f"{item['owner']}:{item['call']}"
         violations.append(
-            _violation("dynamic-import", relative, symbol, line=item["line"], details=item)
+            _violation(
+                "dynamic-import",
+                relative,
+                symbol,
+                line=int(item["line"]),
+                details=item,
+            )
         )
     if path.name.endswith(INSTALL_FILE_SUFFIXES):
         violations.append(
-            _violation("installer-like-module", relative, path.name, details={"suffixes": INSTALL_FILE_SUFFIXES})
+            _violation(
+                "installer-like-module",
+                relative,
+                path.name,
+                details={"suffixes": INSTALL_FILE_SUFFIXES},
+            )
         )
     if method_assign_ignore_count:
         violations.append(
@@ -356,7 +452,9 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
             )
         )
     if package_getattr:
-        violations.append(_violation("package-getattr-side-effect", relative, "__getattr__"))
+        violations.append(
+            _violation("package-getattr-side-effect", relative, "__getattr__")
+        )
     if installed_sentinel_count:
         violations.append(
             _violation(
@@ -381,7 +479,10 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
                 "monolithic-function",
                 relative,
                 f"max-function-lines={max_function_length}",
-                details={"max_function_length": max_function_length, "limit": MONOLITH_FUNCTION_LIMIT},
+                details={
+                    "max_function_length": max_function_length,
+                    "limit": MONOLITH_FUNCTION_LIMIT,
+                },
             )
         )
 
@@ -399,7 +500,7 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
         "aiogram_imports": aiogram_imports,
         "sql_literal_count": len(sql_literals),
         "database_acquire_count": len(acquire_calls),
-        "private_any_count": any_count,
+        "any_count": any_count,
         "cast_count": cast_count,
         "type_ignore_count": type_ignore_count,
         "method_assign_ignore_count": method_assign_ignore_count,
@@ -416,10 +517,21 @@ def _scan_module(path: Path, root_targets: dict[str, str]) -> dict[str, Any]:
 
 
 def _load_root_targets() -> tuple[dict[str, str], dict[str, Any]]:
-    namespace: dict[str, Any] = {}
-    exec(compile(ROOT_INVENTORY_SCRIPT.read_text(encoding="utf-8"), str(ROOT_INVENTORY_SCRIPT), "exec"), namespace)
-    data = namespace["build_inventory"]()
-    targets = {str(entry["module"]): str(entry["category"]) for entry in data["entries"]}
+    module_name = "_velvet_inventory_root_modules"
+    spec = importlib.util.spec_from_file_location(module_name, ROOT_INVENTORY_SCRIPT)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Could not load root module inventory script")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+        data = module.build_inventory()
+    finally:
+        sys.modules.pop(module_name, None)
+    targets = {
+        str(entry["module"]): str(entry["category"])
+        for entry in data["entries"]
+    }
     return targets, data
 
 
@@ -439,7 +551,7 @@ def _installer_graph(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return []
     path = ROOT / str(app_init["path"])
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    aliases, _ = _imports(tree, "velvet_bot.app.__init__")
+    aliases, _ = _imports(tree, "velvet_bot.app", is_package=True)
     graph: list[dict[str, Any]] = []
     for call in sorted(app_init["install_calls"], key=lambda row: int(row["line"])):
         local = str(call["call"]).split(".")[0]
@@ -478,13 +590,20 @@ def _shared_fingerprint(shared: dict[str, Any]) -> str:
     return hashlib.sha256("\n".join(sorted(rows)).encode("utf-8")).hexdigest()
 
 
-def _suggest_exception(violation: dict[str, Any], consumers: dict[str, list[str]]) -> dict[str, Any]:
+def _suggest_exception(
+    violation: dict[str, Any],
+    consumers: dict[str, list[str]],
+) -> dict[str, Any]:
     path = str(violation["path"])
     category = str(violation["category"])
     lowered = path.casefold()
     if "media_generation" in lowered or "delivery" in lowered or "grs" in lowered:
         issue = "#457" if "delivery" in lowered or "worker" in lowered else "#459"
-    elif "auf" in lowered and category in {"sql-outside-persistence", "monolithic-module-loc", "monolithic-function"}:
+    elif "auf" in lowered and category in {
+        "sql-outside-persistence",
+        "monolithic-module-loc",
+        "monolithic-function",
+    }:
         issue = "#458"
     elif path.startswith("velvet_bot/app/") or category in {
         "foreign-assignment",
@@ -516,7 +635,10 @@ def _suggest_exception(violation: dict[str, Any], consumers: dict[str, list[str]
         "reason": f"Existing {category} debt captured by the package-wide baseline.",
         "consumers": consumer_rows,
         "replacement": f"Canonical boundary tracked by {issue}.",
-        "removal_condition": f"Remove this exemption when {issue} retires the recorded debt without behavior regression.",
+        "removal_condition": (
+            f"Remove this exemption when {issue} retires the recorded debt "
+            "without behavior regression."
+        ),
         "regression_test": "tests/test_package_architecture_inventory.py",
         "issue": issue,
     }
@@ -525,8 +647,11 @@ def _suggest_exception(violation: dict[str, Any], consumers: dict[str, list[str]
 def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
     root_targets, root_inventory = _load_root_targets()
     modules = [_scan_module(path, root_targets) for path in _production_paths()]
-    consumers = _reverse_consumers(modules)
-    violations = [violation for item in modules for violation in item["violations"]]
+    violations = [
+        violation
+        for item in modules
+        for violation in item["violations"]
+    ]
     architecture = _json(ARCHITECTURE_INVENTORY)
     repository = _json(REPOSITORY_INVENTORY)
     shared = _json(SHARED_INVENTORY)
@@ -555,17 +680,29 @@ def build_inventory(*, label: str = "working-tree") -> dict[str, Any]:
         "root_module_sha256": str(root_inventory["root_module_name_sha256"]),
         "root_unclassified_count": int(root_inventory["unclassified_count"]),
         "router_count": int(architecture["active_bundle_router_count"]),
-        "router_duplicate_count": int(architecture["duplicate_bundle_router_import_count"]),
+        "router_duplicate_count": int(
+            architecture["duplicate_bundle_router_import_count"]
+        ),
         "repository_module_count": int(repository["repository_module_count"]),
         "runtime_compatibility_components": compatibility,
         "shared_contract_summary": {
             "production_python_files": int(shared["production_python_files"]),
             "function_count": int(shared["function_count"]),
-            "private_contract_access_count": int(shared["private_contract_access_count"]),
-            "blocking_private_contract_access_count": int(shared["blocking_private_contract_access_count"]),
-            "exact_duplicate_group_count": int(shared["exact_duplicate_group_count"]),
-            "normalized_duplicate_group_count": int(shared["normalized_duplicate_group_count"]),
-            "semantic_near_duplicate_group_count": int(shared["semantic_near_duplicate_group_count"]),
+            "private_contract_access_count": int(
+                shared["private_contract_access_count"]
+            ),
+            "blocking_private_contract_access_count": int(
+                shared["blocking_private_contract_access_count"]
+            ),
+            "exact_duplicate_group_count": int(
+                shared["exact_duplicate_group_count"]
+            ),
+            "normalized_duplicate_group_count": int(
+                shared["normalized_duplicate_group_count"]
+            ),
+            "semantic_near_duplicate_group_count": int(
+                shared["semantic_near_duplicate_group_count"]
+            ),
             "private_access_sha256": _shared_fingerprint(shared),
         },
         "installer_graph": _installer_graph(modules),
@@ -586,7 +723,9 @@ def build_exemptions(data: dict[str, Any], *, label: str) -> dict[str, Any]:
         "schema_version": 1,
         "generated_from": label,
         "baseline_issue": "#460",
-        "shared_private_access_sha256": data["shared_contract_summary"]["private_access_sha256"],
+        "shared_private_access_sha256": data["shared_contract_summary"][
+            "private_access_sha256"
+        ],
         "root_module_sha256": data["root_module_sha256"],
         "exceptions": sorted(exceptions, key=lambda row: str(row["id"])),
     }
@@ -625,30 +764,45 @@ def render_markdown(data: dict[str, Any], exemptions: dict[str, Any]) -> str:
         ]
     )
     for item in data["installer_graph"]:
-        patched = ", ".join(f"`{value}`" for value in item["patched_symbols"]) or "none detected"
+        patched = (
+            ", ".join(f"`{value}`" for value in item["patched_symbols"])
+            or "none detected"
+        )
         lines.append(
-            f"{item['order']}. `{item['call']}` from `{item['origin']}`; patched symbols: {patched}."
+            f"{item['order']}. `{item['call']}` from `{item['origin']}`; "
+            f"patched symbols: {patched}."
         )
     lines.extend(["", "## Violation baseline", ""])
     for category, count in data["violation_counts"].items():
         lines.append(f"- `{category}`: **{count}**")
     lines.extend(["", "## Largest modules", ""])
-    largest = sorted(data["modules"], key=lambda row: int(row["loc"]), reverse=True)[:20]
+    largest = sorted(
+        data["modules"],
+        key=lambda row: int(row["loc"]),
+        reverse=True,
+    )[:20]
     for item in largest:
         lines.append(
-            f"- `{item['path']}`: {item['loc']} LOC, {item['function_count']} functions, max function {item['max_function_length']} lines, target `{item['target_package']}`."
+            f"- `{item['path']}`: {item['loc']} LOC, "
+            f"{item['function_count']} functions, max function "
+            f"{item['max_function_length']} lines, target "
+            f"`{item['target_package']}`."
         )
     lines.extend(["", "## Compatibility components", ""])
     for item in data["runtime_compatibility_components"]:
         lines.append(
-            f"- `{item['component']}`: owner `{item['owner']}`, replacement {item['replacement']}, expiry {item['expiry']}"
+            f"- `{item['component']}`: owner `{item['owner']}`, replacement "
+            f"{item['replacement']}, expiry {item['expiry']}"
         )
     lines.extend(
         [
             "",
             "## Gate contract",
             "",
-            "Every observed violation ID must have one versioned exemption with owner, reason, consumers, replacement, removal condition, regression test and issue reference. New or stale IDs fail CI. Shared-private and root-module fingerprints must match the reviewed baseline.",
+            "Every observed violation ID must have one versioned exemption with "
+            "owner, reason, consumers, replacement, removal condition, regression "
+            "test and issue reference. New or stale IDs fail CI. Shared-private "
+            "and root-module fingerprints must match the reviewed baseline.",
             "",
         ]
     )
@@ -663,7 +817,9 @@ def validate(data: dict[str, Any], exemptions: dict[str, Any]) -> list[str]:
     for row in rows:
         missing = sorted(REQUIRED_EXCEPTION_FIELDS - set(row))
         if missing:
-            errors.append(f"exemption missing fields {missing}: {row.get('id', '<missing-id>')}")
+            errors.append(
+                f"exemption missing fields {missing}: {row.get('id', '<missing-id>')}"
+            )
             continue
         row_id = str(row["id"])
         if row_id in registered:
@@ -675,23 +831,39 @@ def validate(data: dict[str, Any], exemptions: dict[str, Any]) -> list[str]:
             if not str(row[field]).strip():
                 errors.append(f"exemption field {field} is empty: {row_id}")
         if not str(row["issue"]).startswith("#"):
-            errors.append(f"exemption issue must be a GitHub issue reference: {row_id}")
+            errors.append(
+                f"exemption issue must be a GitHub issue reference: {row_id}"
+            )
     for row_id, violation in observed.items():
         if row_id not in registered:
             errors.append(
-                f"unregistered architecture violation {row_id}: {violation['category']} {violation['path']} {violation['symbol']}"
+                "unregistered architecture violation "
+                f"{row_id}: {violation['category']} {violation['path']} "
+                f"{violation['symbol']}"
             )
     for row_id in sorted(set(registered) - set(observed)):
-        errors.append(f"stale architecture exemption without observed violation: {row_id}")
+        errors.append(
+            f"stale architecture exemption without observed violation: {row_id}"
+        )
     shared = data["shared_contract_summary"]
     if int(shared["blocking_private_contract_access_count"]) != 0:
         errors.append(
-            f"blocking private contracts detected: {shared['blocking_private_contract_access_count']}"
+            "blocking private contracts detected: "
+            f"{shared['blocking_private_contract_access_count']}"
         )
-    if str(exemptions.get("shared_private_access_sha256", "")) != str(shared["private_access_sha256"]):
-        errors.append("shared private access fingerprint changed; review and update #460 baseline")
-    if str(exemptions.get("root_module_sha256", "")) != str(data["root_module_sha256"]):
-        errors.append("root module fingerprint changed; classify the #463 migration before updating baseline")
+    if str(exemptions.get("shared_private_access_sha256", "")) != str(
+        shared["private_access_sha256"]
+    ):
+        errors.append(
+            "shared private access fingerprint changed; review and update #460 baseline"
+        )
+    if str(exemptions.get("root_module_sha256", "")) != str(
+        data["root_module_sha256"]
+    ):
+        errors.append(
+            "root module fingerprint changed; classify the #463 migration before "
+            "updating baseline"
+        )
     if int(data["root_unclassified_count"]) != 0:
         errors.append(f"unclassified root modules: {data['root_unclassified_count']}")
     if int(data["router_duplicate_count"]) != 0:
@@ -701,7 +873,11 @@ def validate(data: dict[str, Any], exemptions: dict[str, Any]) -> list[str]:
 
 def _paths(output_dir: Path) -> tuple[Path, Path, Path]:
     if output_dir == DOCS:
-        return DEFAULT_INVENTORY_JSON, DEFAULT_INVENTORY_MD, DEFAULT_EXEMPTIONS
+        return (
+            DEFAULT_INVENTORY_JSON,
+            DEFAULT_INVENTORY_MD,
+            DEFAULT_EXEMPTIONS,
+        )
     return (
         output_dir / DEFAULT_INVENTORY_JSON.name,
         output_dir / DEFAULT_INVENTORY_MD.name,
@@ -710,7 +886,9 @@ def _paths(output_dir: Path) -> tuple[Path, Path, Path]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Inventory package-wide architecture drift")
+    parser = argparse.ArgumentParser(
+        description="Inventory package-wide architecture drift"
+    )
     parser.add_argument("--label", default="working-tree")
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--check", action="store_true")
@@ -742,9 +920,15 @@ def main(argv: list[str] | None = None) -> int:
         print(encoded, end="")
     if args.check:
         errors = validate(data, exemptions)
-        if not inventory_json.is_file() or inventory_json.read_text(encoding="utf-8") != encoded:
+        if (
+            not inventory_json.is_file()
+            or inventory_json.read_text(encoding="utf-8") != encoded
+        ):
             errors.append("package_architecture_inventory.json is stale")
-        if not inventory_md.is_file() or inventory_md.read_text(encoding="utf-8") != markdown:
+        if (
+            not inventory_md.is_file()
+            or inventory_md.read_text(encoding="utf-8") != markdown
+        ):
             errors.append("package_architecture_inventory.md is stale")
         if errors:
             for error in errors:
