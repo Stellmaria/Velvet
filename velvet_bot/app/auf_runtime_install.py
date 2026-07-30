@@ -36,7 +36,7 @@ def _remove_legacy_media_workers(manager: Any) -> None:
 
 
 def install_auf_runtime_dispatcher() -> None:
-    """Replace fixed Kie slots with the database-driven Auf dispatcher."""
+    """Replace fixed media slots with the database-driven Auf dispatcher."""
 
     global _INSTALLED
     if _INSTALLED:
@@ -89,9 +89,7 @@ def install_auf_runtime_dispatcher() -> None:
         manager.register(
             PeriodicWorkerSpec(
                 name="auf-generation-dispatcher",
-                description=(
-                    "Динамическая очередь Kie/GRS · Стэл 100 · пространство до 20"
-                ),
+                description="Динамическая очередь генерации Ауф",
                 interval_seconds=1,
                 runner=dispatcher.run,
             )
@@ -105,9 +103,8 @@ def install_auf_runtime_dispatcher() -> None:
             await bot.send_message(
                 GLOBAL_WORKSPACE_CREATOR_ID,
                 "<b>⚙️ Первичная настройка Ауф</b>\n\n"
-                "Динамический диспетчер включён. Стартовые пределы: "
-                "<b>Kie 100</b>, <b>GRS 100</b>, пространство <b>5</b> с возможностью "
-                "увеличения до <b>20</b>.\n\n"
+                "Стартовые пределы генерации настроены. Пространство начинает "
+                "с пяти одновременных задач и может быть увеличено до двадцати.\n\n"
                 "Откройте управление, проверьте значения и подтвердите настройку.",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
