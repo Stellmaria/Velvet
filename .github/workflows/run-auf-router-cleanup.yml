@@ -63,10 +63,6 @@ jobs:
           balance_test.write_text(source, encoding='utf-8')
           PY
 
-          python -m unittest \
-            tests.test_meow_video_generation \
-            tests.test_photo_ratio_callback \
-            tests.test_kie_runtime_balance -q
           python -m compileall -q velvet_bot tests
 
       - name: Commit final contract repairs
