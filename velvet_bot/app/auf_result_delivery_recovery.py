@@ -28,6 +28,14 @@ from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 logger = logging.getLogger(__name__)
 _INSTALLED = False
 _TELEGRAM_RETRY_ATTEMPTS = 4
+_DELIVERY_ERRORS = (
+    TelegramAPIError,
+    RuntimeError,
+    ValueError,
+    OSError,
+    TypeError,
+    AttributeError,
+)
 
 
 def _mapping(value: object) -> dict[str, object]:
@@ -41,7 +49,11 @@ def _result_urls(value: object) -> tuple[str, ...]:
     urls = result.get("result_urls")
     if not isinstance(urls, (list, tuple)):
         return ()
-    return tuple(str(item).strip() for item in urls if str(item).strip())
+    return tuple(
+        str(item).strip()
+        for item in urls
+        if item is not None and str(item).strip()
+    )
 
 
 def _delivery_callback(*, workspace_id: int, task_id: UUID) -> str:
@@ -116,7 +128,7 @@ async def _send_downloaded_result(
         document_sent = True
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except _DELIVERY_ERRORS:
         logger.exception("Stored result document delivery failed task=%s", record.task_id)
 
     try:
@@ -142,7 +154,7 @@ async def _send_downloaded_result(
         preview_sent = True
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except _DELIVERY_ERRORS:
         logger.exception("Stored result preview delivery failed task=%s", record.task_id)
 
     return document_sent, preview_sent
@@ -187,7 +199,7 @@ async def _send_direct_url_fallback(
         direct_sent = True
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except _DELIVERY_ERRORS:
         logger.exception("Direct result URL delivery failed task=%s", record.task_id)
 
     lines = [
@@ -213,7 +225,7 @@ async def _send_direct_url_fallback(
         )
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except _DELIVERY_ERRORS:
         logger.exception("Could not report result delivery failure task=%s", record.task_id)
     return direct_sent
 
@@ -285,7 +297,7 @@ async def _deliver_record_with_recovery(
                 )
         except asyncio.CancelledError:
             raise
-        except Exception as error:
+        except _DELIVERY_ERRORS as error:
             logger.exception(
                 "%s task %s succeeded but result delivery failed url=%s",
                 provider,
@@ -416,7 +428,7 @@ async def _redeliver_user_task(
             raise RuntimeError("Telegram не принял ни оригинал, ни предпросмотр.")
         except asyncio.CancelledError:
             raise
-        except Exception as error:
+        except _DELIVERY_ERRORS as error:
             if await _send_direct_url_fallback(
                 bot=callback.bot,
                 chat_id=chat_id,
