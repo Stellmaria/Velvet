@@ -9,12 +9,12 @@ from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.application.supervisor import load_supervisor_status
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _bot_keyboard,
     _bot_text,
     _main_keyboard,
-    _safe_edit,
     _status_text,
     _unavailable_text,
 )
@@ -57,13 +57,13 @@ async def show_supervisor_menu(
 ) -> None:
     if supervisor_client is None:
         if edit:
-            await _safe_edit(message, _unavailable_text(), _main_keyboard())
+            await edit_supervisor_message(message, _unavailable_text(), _main_keyboard())
         else:
             await message.answer(_unavailable_text())
         return
     payload = await load_supervisor_status(supervisor_client)
     if edit:
-        await _safe_edit(message, _status_text(payload), _main_keyboard())
+        await edit_supervisor_message(message, _status_text(payload), _main_keyboard())
     else:
         await message.answer(_status_text(payload), reply_markup=_main_keyboard())
 
@@ -114,9 +114,9 @@ async def handle_supervisor_status_callback(
 
         payload = await load_supervisor_status(supervisor_client)
         if callback_data.action == "bot.menu":
-            await _safe_edit(callback.message, _bot_text(payload), _bot_keyboard())
+            await edit_supervisor_message(callback.message, _bot_text(payload), _bot_keyboard())
         else:
-            await _safe_edit(callback.message, _status_text(payload), _main_keyboard())
+            await edit_supervisor_message(callback.message, _status_text(payload), _main_keyboard())
     except SupervisorClientError as error:
         await _answer_error(callback.message, error)
 
