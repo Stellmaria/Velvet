@@ -1,4 +1,4 @@
-name: Run Auf router cleanup
+name: Run Auf persistent identifier migration
 
 on:
   pull_request:
@@ -9,186 +9,586 @@ permissions:
   contents: write
 
 jobs:
-  cleanup:
+  migrate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/final-auf-router-layer
+          ref: agent/auf-persistent-identifiers
           fetch-depth: 0
 
-      - name: Integrate the user portal without restoring Meow runtime APIs
+      - name: Create transactional Auf storage migration
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           from textwrap import dedent
-          import subprocess
 
-          def from_main(path: str) -> str:
-              return subprocess.check_output(
-                  ["git", "show", f"origin/main:{path}"],
-                  text=True,
-                  encoding="utf-8",
+          root = Path('.')
+          migration = dedent(r'''
+              -- Rename the deployed Meow storage contract to the canonical Auf vocabulary.
+              -- Historical z020-z023 files remain immutable because their checksums may already
+              -- be recorded in production databases.
+
+              DROP TRIGGER IF EXISTS meow_task_charge_settlement ON ai_tasks;
+              DROP TRIGGER IF EXISTS auf_task_charge_settlement ON ai_tasks;
+              DROP TRIGGER IF EXISTS meow_charged_task_requeue_guard ON ai_tasks;
+              DROP TRIGGER IF EXISTS auf_charged_task_requeue_guard ON ai_tasks;
+              DROP FUNCTION IF EXISTS settle_meow_task_charge();
+              DROP FUNCTION IF EXISTS settle_auf_task_charge();
+              DROP FUNCTION IF EXISTS guard_meow_charged_task_requeue();
+              DROP FUNCTION IF EXISTS guard_auf_charged_task_requeue();
+
+              DO $$
+              BEGIN
+                  IF to_regclass('meow_runtime_settings') IS NOT NULL
+                     AND to_regclass('auf_runtime_settings') IS NULL THEN
+                      ALTER TABLE meow_runtime_settings RENAME TO auf_runtime_settings;
+                  END IF;
+                  IF to_regclass('workspace_meow_settings') IS NOT NULL
+                     AND to_regclass('workspace_auf_settings') IS NULL THEN
+                      ALTER TABLE workspace_meow_settings RENAME TO workspace_auf_settings;
+                  END IF;
+                  IF to_regclass('meow_economy_settings') IS NOT NULL
+                     AND to_regclass('auf_economy_settings') IS NULL THEN
+                      ALTER TABLE meow_economy_settings RENAME TO auf_economy_settings;
+                  END IF;
+                  IF to_regclass('meow_wallets') IS NOT NULL
+                     AND to_regclass('auf_wallets') IS NULL THEN
+                      ALTER TABLE meow_wallets RENAME TO auf_wallets;
+                  END IF;
+                  IF to_regclass('meow_wallet_entries') IS NOT NULL
+                     AND to_regclass('auf_wallet_entries') IS NULL THEN
+                      ALTER TABLE meow_wallet_entries RENAME TO auf_wallet_entries;
+                  END IF;
+                  IF to_regclass('meow_price_versions') IS NOT NULL
+                     AND to_regclass('auf_price_versions') IS NULL THEN
+                      ALTER TABLE meow_price_versions RENAME TO auf_price_versions;
+                  END IF;
+                  IF to_regclass('meow_task_charges') IS NOT NULL
+                     AND to_regclass('auf_task_charges') IS NULL THEN
+                      ALTER TABLE meow_task_charges RENAME TO auf_task_charges;
+                  END IF;
+                  IF to_regclass('meow_purchase_invoices') IS NOT NULL
+                     AND to_regclass('auf_purchase_invoices') IS NULL THEN
+                      ALTER TABLE meow_purchase_invoices RENAME TO auf_purchase_invoices;
+                  END IF;
+                  IF to_regclass('meow_reconciliation_state') IS NOT NULL
+                     AND to_regclass('auf_reconciliation_state') IS NULL THEN
+                      ALTER TABLE meow_reconciliation_state RENAME TO auf_reconciliation_state;
+                  END IF;
+              END;
+              $$;
+
+              ALTER SEQUENCE IF EXISTS meow_wallet_entries_id_seq
+                  RENAME TO auf_wallet_entries_id_seq;
+              ALTER SEQUENCE IF EXISTS meow_price_versions_id_seq
+                  RENAME TO auf_price_versions_id_seq;
+
+              DO $$
+              DECLARE
+                  item RECORD;
+                  replacement TEXT;
+              BEGIN
+                  FOR item IN
+                      SELECT constraint_row.conrelid,
+                             constraint_row.conrelid::REGCLASS AS relation_name,
+                             constraint_row.conname
+                      FROM pg_constraint AS constraint_row
+                      WHERE constraint_row.conname LIKE 'meow\_%' ESCAPE '\'
+                  LOOP
+                      replacement := regexp_replace(item.conname, '^meow_', 'auf_');
+                      IF NOT EXISTS (
+                          SELECT 1
+                          FROM pg_constraint
+                          WHERE conrelid = item.conrelid
+                            AND conname = replacement
+                      ) THEN
+                          EXECUTE format(
+                              'ALTER TABLE %s RENAME CONSTRAINT %I TO %I',
+                              item.relation_name,
+                              item.conname,
+                              replacement
+                          );
+                      END IF;
+                  END LOOP;
+
+                  FOR item IN
+                      SELECT index_row.schemaname,
+                             index_row.indexname
+                      FROM pg_indexes AS index_row
+                      WHERE index_row.schemaname = current_schema()
+                        AND index_row.indexname LIKE 'meow\_%' ESCAPE '\'
+                  LOOP
+                      replacement := regexp_replace(item.indexname, '^meow_', 'auf_');
+                      IF to_regclass(format('%I.%I', item.schemaname, replacement)) IS NULL THEN
+                          EXECUTE format(
+                              'ALTER INDEX %I.%I RENAME TO %I',
+                              item.schemaname,
+                              item.indexname,
+                              replacement
+                          );
+                      END IF;
+                  END LOOP;
+              END;
+              $$;
+
+              INSERT INTO workspace_modules (
+                  workspace_id, module_key, is_allowed, is_enabled,
+                  updated_by_user_id, created_at, updated_at
               )
+              SELECT workspace_id, 'auf', is_allowed, is_enabled,
+                     updated_by_user_id, created_at, updated_at
+              FROM workspace_modules
+              WHERE module_key = 'meow'
+              ON CONFLICT (workspace_id, module_key) DO UPDATE
+              SET is_allowed = EXCLUDED.is_allowed,
+                  is_enabled = EXCLUDED.is_enabled,
+                  updated_by_user_id = EXCLUDED.updated_by_user_id,
+                  updated_at = GREATEST(workspace_modules.updated_at, EXCLUDED.updated_at);
 
-          portal_path = Path("velvet_bot/app/auf_user_portal_install.py")
-          portal = from_main(str(portal_path))
-          portal = portal.replace(
-              "from velvet_bot.presentation.telegram.routers import workspace_meow_video_simple as video_router",
-              "from velvet_bot.presentation.telegram.routers import workspace_auf_video as video_core\n"
-              "from velvet_bot.presentation.telegram.routers import workspace_auf_video_simple as video_router",
-          )
-          portal = portal.replace(
-              "from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback",
-              "from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback",
-          )
-          portal = portal.replace("video_router.legacy._callback", "video_router.video_callback")
-          portal = portal.replace("MeowCallback", "AufCallback")
-          portal = portal.replace("video_router.legacy._reference_from_data", "video_core._reference_from_data")
-          portal = portal.replace("video_router.legacy._truncate", "video_core._truncate")
-          portal = portal.replace("video_router.MeowVideoForm", "video_router.AufVideoForm")
-          portal = portal.replace("video_router.legacy._edit_or_answer", "video_core._edit_or_answer")
-          portal = portal.replace("video_router.legacy._budget_block_reason", "video_core._budget_block_reason")
-          portal = portal.replace("video_router.build_meow_root_keyboard", "video_router.build_auf_root_keyboard")
-          portal = portal.replace("controller.handle_scoped_meow_action", "controller.handle_scoped_auf_action")
-          portal = portal.replace("controller.handle_scoped_meow_video_action", "controller.handle_scoped_auf_video_action")
-          portal = portal.replace("controller._require_meow_callback", "controller._require_auf_callback")
-          portal = portal.replace("meow_runtime_service", "auf_runtime_service")
-          portal = portal.replace("meow_wallet_service", "auf_wallet_service")
-          portal = portal.replace("meow_purchase_service", "auf_purchase_service")
+              DELETE FROM workspace_modules WHERE module_key = 'meow';
 
-          helper = dedent('''
-
-              def _state_value(data: Mapping[str, object], key: str) -> object:
-                  if key in data:
-                      return data[key]
-                  return data.get(key.replace("auf_", "meow_", 1))
-          ''').rstrip()
-          portal = portal.replace(
-              "\n\ndef _video_review_keyboard(",
-              helper + "\n\ndef _video_review_keyboard(",
-          )
-          for key in (
-              "auf_video_reference",
-              "auf_video_last_reference",
-              "auf_video_prompt",
-              "auf_video_session_id",
-          ):
-              portal = portal.replace(
-                  f'data.get("{key.replace("auf_", "meow_", 1)}")',
-                  f'_state_value(data, "{key}")',
+              INSERT INTO workspace_user_module_preferences (
+                  workspace_id, user_id, module_key, is_visible, created_at, updated_at
               )
-          portal = portal.replace(
-              "video_router.legacy",
-              "video_core",
+              SELECT workspace_id, user_id, 'auf', is_visible, created_at, updated_at
+              FROM workspace_user_module_preferences
+              WHERE module_key = 'meow'
+              ON CONFLICT (workspace_id, user_id, module_key) DO UPDATE
+              SET is_visible = EXCLUDED.is_visible,
+                  updated_at = GREATEST(
+                      workspace_user_module_preferences.updated_at,
+                      EXCLUDED.updated_at
+                  );
+
+              DELETE FROM workspace_user_module_preferences WHERE module_key = 'meow';
+
+              UPDATE workspace_creation_grants
+              SET allowed_modules = array_replace(allowed_modules, 'meow', 'auf'),
+                  updated_at = NOW()
+              WHERE 'meow' = ANY(allowed_modules);
+
+              ALTER TABLE workspace_modules
+                  DROP CONSTRAINT IF EXISTS workspace_modules_module_key_check;
+              ALTER TABLE workspace_modules
+                  ADD CONSTRAINT workspace_modules_module_key_check
+                  CHECK (
+                      module_key IN (
+                          'characters', 'archive', 'taxonomy', 'references',
+                          'public_archive', 'watermark', 'qwen', 'publications',
+                          'analytics', 'team', 'auf'
+                      )
+                  );
+
+              CREATE OR REPLACE FUNCTION settle_auf_task_charge()
+              RETURNS TRIGGER
+              LANGUAGE plpgsql
+              AS $$
+              DECLARE
+                  charge auf_task_charges%ROWTYPE;
+                  wallet auf_wallets%ROWTYPE;
+                  restored BIGINT;
+                  entry_operation VARCHAR(32);
+                  entry_amount BIGINT;
+                  final_charge_status VARCHAR(24);
+              BEGIN
+                  IF NEW.status = OLD.status OR NEW.status NOT IN ('success', 'error', 'cancelled') THEN
+                      RETURN NEW;
+                  END IF;
+
+                  SELECT * INTO charge
+                  FROM auf_task_charges
+                  WHERE task_id = NEW.id
+                  FOR UPDATE;
+
+                  IF NOT FOUND OR charge.status <> 'reserved' THEN
+                      RETURN NEW;
+                  END IF;
+
+                  SELECT * INTO wallet
+                  FROM auf_wallets
+                  WHERE workspace_id = charge.workspace_id
+                  FOR UPDATE;
+
+                  IF NOT FOUND THEN
+                      RAISE EXCEPTION 'Auf wallet % is missing for charged task %',
+                          charge.workspace_id, NEW.id;
+                  END IF;
+                  IF wallet.reserved_units < charge.reserved_units THEN
+                      RAISE EXCEPTION 'Auf reserved balance mismatch for task %', NEW.id;
+                  END IF;
+
+                  restored := CASE WHEN NEW.status = 'success' THEN 0 ELSE charge.reserved_units END;
+                  entry_operation := CASE
+                      WHEN NEW.status = 'success' THEN 'capture'
+                      WHEN NEW.status = 'error' THEN 'refund'
+                      ELSE 'release'
+                  END;
+                  entry_amount := CASE
+                      WHEN NEW.status = 'success' THEN -charge.reserved_units
+                      ELSE charge.reserved_units
+                  END;
+                  final_charge_status := CASE
+                      WHEN NEW.status = 'success' THEN 'captured'
+                      WHEN NEW.status = 'error' THEN 'refunded'
+                      ELSE 'released'
+                  END;
+
+                  UPDATE auf_wallets
+                  SET available_units = available_units + restored,
+                      reserved_units = reserved_units - charge.reserved_units,
+                      updated_at = NOW()
+                  WHERE workspace_id = charge.workspace_id
+                  RETURNING * INTO wallet;
+
+                  UPDATE auf_task_charges
+                  SET reserved_units = 0,
+                      captured_units = CASE
+                          WHEN NEW.status = 'success' THEN quoted_units
+                          ELSE captured_units
+                      END,
+                      refunded_units = CASE
+                          WHEN NEW.status IN ('error', 'cancelled') THEN quoted_units
+                          ELSE refunded_units
+                      END,
+                      status = final_charge_status,
+                      updated_at = NOW()
+                  WHERE task_id = NEW.id;
+
+                  INSERT INTO auf_wallet_entries (
+                      workspace_id, operation_type, amount_units,
+                      available_after_units, reserved_after_units,
+                      actor_user_id, task_id, idempotency_key, comment, metadata
+                  )
+                  VALUES (
+                      charge.workspace_id,
+                      entry_operation,
+                      entry_amount,
+                      wallet.available_units,
+                      wallet.reserved_units,
+                      NEW.created_by,
+                      NEW.id,
+                      'task:' || NEW.id::TEXT || ':' || entry_operation,
+                      CASE
+                          WHEN NEW.status = 'success' THEN 'Списание за успешную генерацию.'
+                          WHEN NEW.status = 'error' THEN 'Возврат после ошибки без результата.'
+                          ELSE 'Возврат после отмены задачи.'
+                      END,
+                      jsonb_build_object('task_status', NEW.status)
+                  )
+                  ON CONFLICT (idempotency_key) DO NOTHING;
+
+                  RETURN NEW;
+              END;
+              $$;
+
+              CREATE TRIGGER auf_task_charge_settlement
+              AFTER UPDATE OF status ON ai_tasks
+              FOR EACH ROW
+              EXECUTE FUNCTION settle_auf_task_charge();
+
+              CREATE OR REPLACE FUNCTION guard_auf_charged_task_requeue()
+              RETURNS TRIGGER
+              LANGUAGE plpgsql
+              AS $$
+              BEGIN
+                  IF OLD.status IN ('success', 'error', 'cancelled')
+                     AND NEW.status = 'queued'
+                     AND EXISTS (
+                         SELECT 1 FROM auf_task_charges WHERE task_id = OLD.id
+                     ) THEN
+                      RAISE EXCEPTION 'Charged Auf tasks must be recreated with a fresh price quote';
+                  END IF;
+                  RETURN NEW;
+              END;
+              $$;
+
+              CREATE TRIGGER auf_charged_task_requeue_guard
+              BEFORE UPDATE OF status ON ai_tasks
+              FOR EACH ROW
+              EXECUTE FUNCTION guard_auf_charged_task_requeue();
+          ''').lstrip()
+          (root / 'migrations/z024_auf_persistent_identifiers.sql').write_text(
+              migration,
+              encoding='utf-8',
           )
 
-          forbidden = (
-              "workspace_meow",
-              "MeowCallback",
-              "handle_scoped_meow",
-              "_require_meow_callback",
-              "video_router.legacy",
-              "video_router.MeowVideoForm",
-          )
-          for token in forbidden:
-              if token in portal:
-                  raise SystemExit(f"portal still contains retired runtime token: {token}")
-          allowed_meow = {
-              'return data.get(key.replace("auf_", "meow_", 1))',
-              'LEFT JOIN meow_task_charges AS charge ON charge.task_id = task.id',
+          replacements = {
+              'workspace_meow_settings': 'workspace_auf_settings',
+              'meow_runtime_settings': 'auf_runtime_settings',
+              'meow_economy_settings': 'auf_economy_settings',
+              'meow_wallet_entries': 'auf_wallet_entries',
+              'meow_wallets': 'auf_wallets',
+              'meow_price_versions': 'auf_price_versions',
+              'meow_task_charges': 'auf_task_charges',
+              'meow_purchase_invoices': 'auf_purchase_invoices',
+              'meow_reconciliation_state': 'auf_reconciliation_state',
           }
-          for line in portal.splitlines():
-              if "meow_" in line and line.strip() not in allowed_meow:
-                  raise SystemExit(f"unexpected persistent Meow token in portal: {line}")
-          portal_path.write_text(portal, encoding="utf-8")
-
-          test_path = Path("tests/test_auf_user_portal.py")
-          test = from_main(str(test_path))
-          if "test_portal_uses_only_canonical_auf_runtime_api" not in test:
-              test = test.replace(
-                  "\n\nif __name__ == \"__main__\":",
-                  dedent('''
-
-                      def test_portal_uses_only_canonical_auf_runtime_api(self) -> None:
-                          source = Path(
-                              "velvet_bot/app/auf_user_portal_install.py"
-                          ).read_text(encoding="utf-8")
-                          self.assertIn("workspace_auf_video_simple", source)
-                          self.assertIn("AufCallback", source)
-                          self.assertIn("handle_scoped_auf_action", source)
-                          self.assertIn("handle_scoped_auf_video_action", source)
-                          self.assertIn('key.replace("auf_", "meow_", 1)', source)
-                          self.assertNotIn("workspace_meow", source)
-                          self.assertNotIn("MeowCallback", source)
-                          self.assertNotIn("handle_scoped_meow", source)
-                          self.assertNotIn("video_router.legacy", source)
-                  ''') + "\n\nif __name__ == \"__main__\":",
+          source_paths = [
+              *sorted((root / 'velvet_bot/domains/auf_runtime').glob('*.py')),
+              *sorted((root / 'velvet_bot/domains/auf_wallet').glob('*.py')),
+              root / 'velvet_bot/app/auf_user_portal_install.py',
+          ]
+          for path in source_paths:
+              source = path.read_text(encoding='utf-8')
+              for old, new in replacements.items():
+                  source = source.replace(old, new)
+              source = source.replace(
+                  'SQL table and module-key names retain ``meow`` only as a migration contract for\n    already deployed databases. Python code uses the canonical Auf vocabulary.',
+                  'SQL table and module-key names use the canonical Auf storage contract.',
               )
-          test_path.write_text(test, encoding="utf-8")
+              path.write_text(source, encoding='utf-8')
 
-          worklog_path = Path("docs/worklog/2026-07-30-auf-user-portal.md")
-          worklog = from_main(str(worklog_path))
-          worklog = worklog.replace(
-              "Новых миграций нет. Текущие callback-префиксы и FSM-ключи не меняются.",
-              "Новых SQL-миграций нет. Портал использует canonical `auf:`/`aufv|` callback-префиксы и `auf_video_*` FSM-ключи с fallback-чтением прежних значений.",
+          runtime_api = root / 'velvet_bot/domains/auf_runtime/__init__.py'
+          source = runtime_api.read_text(encoding='utf-8')
+          source = source.replace(
+              'The database schema and a few stacked branches still use the historical ``meow``\nidentifier. New application code imports this package and uses ``Auf*`` names;\nthe old package is only a compatibility boundary for existing imports and data.',
+              'The database schema and application code use canonical ``Auf*`` identifiers.\nThe old package exists only as a read-only Python import compatibility boundary.',
           )
-          worklog = worklog.replace(
-              "- добавлены unit- и контрактные регрессии.",
-              "- добавлены unit- и контрактные регрессии;\n"
-              "- portal installer переведён с `workspace_meow*`, `MeowCallback` и старых controller hooks на canonical Ауф API.",
+          source = source.replace(
+              '# Persistent keys cannot be renamed independently from existing workspace rows and\n# already-sent Telegram keyboards. Keep them in one explicit compatibility boundary.\nAUF_MODULE_KEY = "meow"',
+              'AUF_MODULE_KEY = "auf"',
           )
-          worklog_path.write_text(worklog, encoding="utf-8")
+          runtime_api.write_text(source, encoding='utf-8')
 
-          app_path = Path("velvet_bot/app/__init__.py")
-          app = app_path.read_text(encoding="utf-8")
-          if "install_auf_user_portal" not in app:
-              app = app.replace(
-                  "        from velvet_bot.app.auf_runtime_install import install_auf_runtime_dispatcher\n",
-                  "        from velvet_bot.app.auf_runtime_install import install_auf_runtime_dispatcher\n"
-                  "        from velvet_bot.app.auf_user_portal_install import install_auf_user_portal\n",
-              )
-              app = app.replace(
-                  "        install_auf_photo_ratio_callback_fix()\n",
-                  "        install_auf_photo_ratio_callback_fix()\n"
-                  "        install_auf_user_portal()\n",
-              )
-          app = app.replace(
-              "        from velvet_bot.app.auf_branding import install_auf_branding\n",
-              "",
-          ).replace("        install_auf_branding()\n", "")
-          app_path.write_text(app, encoding="utf-8")
+          product_models = root / 'velvet_bot/domains/workspaces/product_models.py'
+          source = product_models.read_text(encoding='utf-8')
+          source = source.replace('    "meow",\n', '    "auf",\n')
+          product_models.write_text(source, encoding='utf-8')
 
-          migration_log = Path("docs/worklog/2026-07-30-auf-router-protocol-migration.md")
-          text = migration_log.read_text(encoding="utf-8")
-          marker = "- пользовательский портал Ауф интегрирован поверх canonical callbacks, FSM и controller hooks;"
-          if marker not in text:
-              text = text.replace(
-                  "- SQL migration test снова проверяет существующий persistent-файл `917_meow_video_templates.sql`.\n",
-                  "- SQL migration test снова проверяет существующий persistent-файл `917_meow_video_templates.sql`;\n"
-                  f"{marker}\n"
-                  "- portal SQL join к `meow_task_charges` сохранён как deployed storage contract.\n",
+          runtime_store = root / 'velvet_bot/domains/auf_runtime/store.py'
+          source = runtime_store.read_text(encoding='utf-8').replace(
+              "module.module_key = 'meow'",
+              "module.module_key = 'auf'",
+          )
+          runtime_store.write_text(source, encoding='utf-8')
+
+          presentation = root / 'velvet_bot/presentation/telegram/workspace_home_presentation.py'
+          source = presentation.read_text(encoding='utf-8')
+          source = source.replace('    meow_visible: bool | None = None,\n', '')
+          source = source.replace(
+              '    """Build the canonical owner keyboard without hidden controller state.\n\n'
+              '    ``meow_visible`` remains a keyword-only compatibility alias for stacked code.\n'
+              '    """\n\n'
+              '    if meow_visible is not None:\n'
+              '        auf_visible = meow_visible\n',
+              '    """Build the canonical owner keyboard without hidden controller state."""\n',
+          )
+          presentation.write_text(source, encoding='utf-8')
+
+          dispatcher = root / 'velvet_bot/app/dispatcher.py'
+          source = dispatcher.read_text(encoding='utf-8')
+          source = source.replace('        "meow_runtime_service": auf_runtime_service,\n', '')
+          source = source.replace('        "meow_wallet_service": auf_wallet_service,\n', '')
+          source = source.replace('        "meow_purchase_service": auf_purchase_service,\n', '')
+          dispatcher.write_text(source, encoding='utf-8')
+
+          test_paths = (
+              'tests/test_meow_runtime_module.py',
+              'tests/test_meow_wallet.py',
+              'tests/test_meow_task_charging.py',
+              'tests/test_meow_purchase_invoices.py',
+              'tests/test_auf_runtime_brand_boundary.py',
+              'tests/test_auf_wallet_brand_boundary.py',
+              'tests/test_auf_user_portal.py',
+              'tests/test_meow_generation.py',
+          )
+          for relative in test_paths:
+              path = root / relative
+              source = path.read_text(encoding='utf-8')
+              for old, new in replacements.items():
+                  source = source.replace(old, new)
+              source = source.replace('AUF_MODULE_KEY = "meow"', 'AUF_MODULE_KEY = "auf"')
+              source = source.replace("module_key = 'meow'", "module_key = 'auf'")
+              source = source.replace('"meow" in WORKSPACE_MODULE_KEYS', '"auf" in WORKSPACE_MODULE_KEYS')
+              path.write_text(source, encoding='utf-8')
+
+          contract = dedent('''
+              from __future__ import annotations
+
+              import os
+              import unittest
+              from pathlib import Path
+
+              from velvet_bot.database import Database
+
+              ROOT = Path(__file__).resolve().parents[1]
+              OLD_TABLES = (
+                  "meow_runtime_settings",
+                  "workspace_meow_settings",
+                  "meow_economy_settings",
+                  "meow_wallets",
+                  "meow_wallet_entries",
+                  "meow_price_versions",
+                  "meow_task_charges",
+                  "meow_purchase_invoices",
+                  "meow_reconciliation_state",
               )
-          migration_log.write_text(text, encoding="utf-8")
+              NEW_TABLES = tuple(name.replace("meow", "auf", 1) for name in OLD_TABLES)
+
+
+              class AufPersistentIdentifierContractTests(unittest.TestCase):
+                  def test_canonical_sources_do_not_query_retired_tables(self) -> None:
+                      paths = (
+                          *sorted((ROOT / "velvet_bot/domains/auf_runtime").glob("*.py")),
+                          *sorted((ROOT / "velvet_bot/domains/auf_wallet").glob("*.py")),
+                          ROOT / "velvet_bot/app/auf_user_portal_install.py",
+                      )
+                      for path in paths:
+                          source = path.read_text(encoding="utf-8")
+                          for old_table in OLD_TABLES:
+                              self.assertNotIn(old_table, source, str(path))
+
+                  def test_module_catalog_uses_auf_key(self) -> None:
+                      source = (ROOT / "velvet_bot/domains/workspaces/product_models.py").read_text(
+                          encoding="utf-8"
+                      )
+                      self.assertIn('"auf"', source)
+                      self.assertNotIn('"meow"', source)
+
+                  def test_historical_migrations_are_immutable_and_z024_exists(self) -> None:
+                      for name in (
+                          "z020_meow_runtime_module.sql",
+                          "z021_meow_wallets.sql",
+                          "z022_meow_task_charging.sql",
+                          "z023_meow_purchase_invoices.sql",
+                      ):
+                          self.assertTrue((ROOT / "migrations" / name).is_file())
+                      migration = (
+                          ROOT / "migrations/z024_auf_persistent_identifiers.sql"
+                      ).read_text(encoding="utf-8")
+                      self.assertIn("ALTER TABLE meow_wallets RENAME TO auf_wallets", migration)
+                      self.assertIn("settle_auf_task_charge", migration)
+                      self.assertIn("array_replace(allowed_modules, 'meow', 'auf')", migration)
+
+
+              @unittest.skipUnless(
+                  os.getenv("TEST_DATABASE_URL"),
+                  "TEST_DATABASE_URL is required for PostgreSQL integration tests",
+              )
+              class PostgreSQLAufPersistentIdentifierTests(unittest.IsolatedAsyncioTestCase):
+                  async def asyncSetUp(self) -> None:
+                      self.database = Database(os.environ["TEST_DATABASE_URL"])
+                      await self.database.initialize()
+
+                  async def asyncTearDown(self) -> None:
+                      await self.database.close()
+
+                  async def test_only_canonical_tables_and_module_rows_remain(self) -> None:
+                      async with self.database.acquire() as connection:
+                          for table in NEW_TABLES:
+                              self.assertIsNotNone(await connection.fetchval(
+                                  "SELECT to_regclass($1::TEXT)", table
+                              ))
+                          for table in OLD_TABLES:
+                              self.assertIsNone(await connection.fetchval(
+                                  "SELECT to_regclass($1::TEXT)", table
+                              ))
+                          self.assertEqual(
+                              0,
+                              await connection.fetchval(
+                                  "SELECT COUNT(*) FROM workspace_modules WHERE module_key = 'meow'"
+                              ),
+                          )
+                          self.assertGreater(
+                              await connection.fetchval(
+                                  "SELECT COUNT(*) FROM workspace_modules WHERE module_key = 'auf'"
+                              ),
+                              0,
+                          )
+
+
+              if __name__ == "__main__":
+                  unittest.main()
+          ''').lstrip()
+          (root / 'tests/test_auf_persistent_identifiers.py').write_text(
+              contract,
+              encoding='utf-8',
+          )
+
+          worklog = dedent('''
+              # 2026-07-30 — миграция persistent identifiers Ауф
+
+              - Дата: 2026-07-30
+              - ID: `auf-persistent-identifiers`
+              - Линия/фаза: AI media generation / storage migration
+              - Статус: `завершено`
+              - Ветка: `agent/auf-persistent-identifiers`
+
+              ## Перед началом
+
+              ### Цель
+              Удалить последний deployed storage-слой Meow без потери кошельков, счетов, тарифов, task charges, runtime settings и workspace module preferences.
+
+              ### Исходный контекст
+              Python runtime, Telegram protocol и пользовательский портал уже используют canonical Ауф API. Исторические таблицы, trigger names и module key оставались `meow_*` ради отдельной безопасной миграции.
+
+              ### Планируемый объём
+              - добавить неизменяемую следующую миграцию `z024`;
+              - переименовать девять таблиц, sequences, constraints и indexes;
+              - пересоздать финансовые triggers/functions с именами Ауф;
+              - перенести module rows, user preferences и creation grants с `meow` на `auf`;
+              - переключить repositories и portal queries на новые identifiers;
+              - удалить legacy DI aliases, не затрагивая read-only Telegram callback compatibility.
+
+              ### Критерии готовности
+              - старые migration-файлы z020-z023 не меняются;
+              - после initialize существуют только `auf_*` таблицы;
+              - существующие данные сохраняются через PostgreSQL RENAME, а не копирование;
+              - полный PostgreSQL test suite, type check, Docker build и restore drill проходят.
+
+              ### Риски и ограничения
+              Старые callback prefixes и exact FSM class names остаются в `workspace_auf_legacy.py` до окончания переходного периода. Это transport compatibility, а не storage schema.
+
+              ## После завершения
+
+              ### Фактически сделано
+              - добавлена транзакционная migration `z024_auf_persistent_identifiers.sql`;
+              - runtime, wallet, pricing, invoices, reconciliation и portal queries используют `auf_*` tables;
+              - workspace module key, preferences и grants переведены на `auf`;
+              - settlement/requeue functions и triggers пересозданы под canonical именами;
+              - legacy DI aliases удалены из dispatcher;
+              - добавлены static и PostgreSQL integration contracts.
+
+              ### Миграции и совместимость
+              Исторические z020-z023 сохранены без изменений. PostgreSQL `ALTER TABLE ... RENAME` сохраняет строки, FK-связи и object identity. Telegram legacy parsers не удаляются в этой фазе.
+
+              ### Проверки
+              Полный CI запускается после создания PR.
+
+              ### PR и commit
+              Фиксируются после зелёного CI и merge.
+
+              ### Незавершённое
+              - удалить legacy callback/FSM parsers после достаточного переходного периода;
+              - удалить retired Python import shims после закрытия внешних веток.
+
+              ### Следующий шаг
+              Выполнить restore drill и полный CI, затем слить migration PR до следующего функционального изменения Ауф.
+          ''').lstrip()
+          (root / 'docs/worklog/2026-07-30-auf-persistent-identifiers.md').write_text(
+              worklog,
+              encoding='utf-8',
+          )
           PY
 
           python scripts/inventory_architecture_layout.py \
             --write \
             --label p3d-analytics-alias-retirement
           python scripts/update_p2_stability_inventory.py \
-            --label p2-auf-router-protocol-migration \
-            --schema-version 71
+            --label p2-auf-persistent-identifiers \
+            --schema-version 72
           python scripts/telegram_navigation_inventory.py \
             --root velvet_bot \
             --markdown docs/generated/telegram_navigation_inventory.md
           python -m compileall -q velvet_bot tests
 
-      - name: Commit canonical user portal integration
+      - name: Commit persistent identifier migration
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Интегрировать пользовательский портал в canonical Ауф"
-          git push origin HEAD:agent/final-auf-router-layer
+          git commit -m "Мигрировать persistent identifiers с Meow на Ауф"
+          git push origin HEAD:agent/auf-persistent-identifiers
