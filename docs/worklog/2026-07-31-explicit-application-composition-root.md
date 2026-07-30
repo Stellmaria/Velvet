@@ -27,6 +27,7 @@
 - экспортировать обычную `run_application` из `velvet_bot.app`;
 - блокировать расхождение declared и actual feature-stage order;
 - добавить regression tests порядка, phase boundary и explicit package export;
+- научить package-wide scanner читать typed composition вместо старого package `__getattr__`;
 - пересчитать package-wide architecture inventory exact-head workflow.
 
 ### Критерии готовности
@@ -36,6 +37,7 @@
 - bootstrap runner импортируется только после двух bootstrap stages;
 - feature installer modules импортируются только после bootstrap runner;
 - расхождение declared и actual stage order завершается явной ошибкой;
+- package scanner сохраняет 27-stage graph и patch evidence после переноса source layout;
 - package inventory и exemptions соответствуют новому source layout;
 - unit tests, type check, Docker build и project notes contract проходят.
 
@@ -53,8 +55,10 @@
 - `velvet_bot/app/__init__.py` стал обычным explicit export без `__getattr__` и package import side effects;
 - default composition перечисляет все 27 stages и делает порядок читаемым без анализа import history;
 - runtime guard блокирует расхождение declared и actual feature stage order;
-- добавлены unit tests полного order contract, phase boundary, drift guard и package export;
-- exact-head workflow пересчитал generated package inventory/exemptions и удалил себя в generated commit `d37df56ea4fc1aa7f10333563bd250e56d652f0b`.
+- package architecture scanner читает `CompositionStage` из `build_application_composition()` и `_build_feature_stages()`, сохраняя origin и patched-symbol evidence;
+- generated baseline фиксирует 605 production modules, 129 015 LOC, 516 registered fingerprints/exemptions и 27 startup stages;
+- добавлены unit tests полного order contract, phase boundary, drift guard, package export и generated graph;
+- exact-head workflow пересчитал inventory, проверил targeted contracts и удалил себя вместе с временным patch-файлом в commit `19784cbfd6d9d1ef0f8e411d4eb017202b79a540`.
 
 ### Миграции и совместимость
 
@@ -63,6 +67,7 @@
 ### Проверки
 
 - `tests/test_application_composition.py`;
+- `tests/test_package_architecture_inventory.py`;
 - полный unit test suite;
 - `python scripts/inventory_package_architecture.py --check --label p1-package-architecture-baseline`;
 - bounded type check;
@@ -76,7 +81,7 @@
 - PR: #483;
 - ветка: `agent/p0-explicit-application-composition`;
 - базовый commit: `2cb9a96ec5ce5066436c83323279855047cb67a7`;
-- generated package baseline: `d37df56ea4fc1aa7f10333563bd250e56d652f0b`;
+- generated scanner/baseline commit: `19784cbfd6d9d1ef0f8e411d4eb017202b79a540`;
 - итоговый squash merge commit фиксируется GitHub после зелёного CI.
 
 ### Незавершённое
