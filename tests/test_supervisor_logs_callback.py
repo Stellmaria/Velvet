@@ -40,7 +40,7 @@ class SupervisorLogsCallbackTests(unittest.IsolatedAsyncioTestCase):
         supervisor_client = SimpleNamespace(logs=AsyncMock(side_effect=logs))
 
         with patch(
-            "velvet_bot.presentation.telegram.routers.supervisor.logs._safe_edit",
+            "velvet_bot.presentation.telegram.routers.supervisor.logs.edit_supervisor_message",
             new=AsyncMock(side_effect=edit),
         ):
             await handle_supervisor_logs_callback(
