@@ -21,14 +21,16 @@ from velvet_bot.domains.media_generation import (
     KieModelAlias,
     KieReferenceImage,
 )
-from velvet_bot.presentation.telegram.routers import workspace_auf_video as legacy
+from velvet_bot.presentation.telegram.routers.workspace_auf_video import (
+    AufVideoCallback,
+    AufVideoForm,
+    _callback as video_callback,
+)
 from velvet_bot.presentation.telegram.routers.workspace_auf import (
     AufCallback,
     build_auf_root_keyboard,
 )
 
-AufVideoCallback = legacy.AufVideoCallback
-AufVideoForm = legacy.AufVideoForm
 
 _GROK_MODEL_ID = "grok-imagine/image-to-video"
 _GROK_15_MODEL_ID = "grok-imagine-video-1-5-preview"
@@ -72,15 +74,15 @@ def _selected(label: str, active: bool) -> str:
 def build_video_model_keyboard(*, workspace_id: int, model: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=_selected("Grok v1 · дёшево", model == "grok"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok"))],
-            [InlineKeyboardButton(text=_selected("Grok 1.5 · качество", model == "grok15"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="grok15"))],
-            [InlineKeyboardButton(text=_selected("Seedance 1.5 Pro", model == "seedance"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="seedance"))],
-            [InlineKeyboardButton(text=_selected("Wan 2.7", model == "wan"), callback_data=legacy._callback("model", workspace_id=workspace_id, value="wan"))],
+            [InlineKeyboardButton(text=_selected("Grok v1 · дёшево", model == "grok"), callback_data=video_callback("model", workspace_id=workspace_id, value="grok"))],
+            [InlineKeyboardButton(text=_selected("Grok 1.5 · качество", model == "grok15"), callback_data=video_callback("model", workspace_id=workspace_id, value="grok15"))],
+            [InlineKeyboardButton(text=_selected("Seedance 1.5 Pro", model == "seedance"), callback_data=video_callback("model", workspace_id=workspace_id, value="seedance"))],
+            [InlineKeyboardButton(text=_selected("Wan 2.7", model == "wan"), callback_data=video_callback("model", workspace_id=workspace_id, value="wan"))],
             [
-                InlineKeyboardButton(text="Изменить фото", callback_data=legacy._callback("change_photo", workspace_id=workspace_id)),
-                InlineKeyboardButton(text="Изменить промт", callback_data=legacy._callback("change_prompt", workspace_id=workspace_id)),
+                InlineKeyboardButton(text="Изменить фото", callback_data=video_callback("change_photo", workspace_id=workspace_id)),
+                InlineKeyboardButton(text="Изменить промт", callback_data=video_callback("change_prompt", workspace_id=workspace_id)),
             ],
-            [InlineKeyboardButton(text="Отмена", callback_data=legacy._callback("cancel", workspace_id=workspace_id))],
+            [InlineKeyboardButton(text="Отмена", callback_data=video_callback("cancel", workspace_id=workspace_id))],
         ]
     )
 
@@ -100,40 +102,40 @@ def build_video_settings_keyboard(
         rows.append([
             InlineKeyboardButton(
                 text=_selected(item, item == resolution),
-                callback_data=legacy._callback("resolution", workspace_id=workspace_id, value=item),
+                callback_data=video_callback("resolution", workspace_id=workspace_id, value=item),
             )
             for item in values
         ])
     if model == "seedance":
         rows.append([
-            InlineKeyboardButton(text=_selected("Без звука", not generate_audio), callback_data=legacy._callback("audio", workspace_id=workspace_id, value="off")),
-            InlineKeyboardButton(text=_selected("Со звуком", generate_audio), callback_data=legacy._callback("audio", workspace_id=workspace_id, value="on")),
+            InlineKeyboardButton(text=_selected("Без звука", not generate_audio), callback_data=video_callback("audio", workspace_id=workspace_id, value="off")),
+            InlineKeyboardButton(text=_selected("Со звуком", generate_audio), callback_data=video_callback("audio", workspace_id=workspace_id, value="on")),
         ])
     if model == "wan":
         rows.append([
-            InlineKeyboardButton(text=_selected("Первый кадр", wan_mode == "first"), callback_data=legacy._callback("wan_mode", workspace_id=workspace_id, value="first")),
-            InlineKeyboardButton(text=_selected("Первый + последний", wan_mode == "first_last"), callback_data=legacy._callback("wan_mode", workspace_id=workspace_id, value="first_last")),
+            InlineKeyboardButton(text=_selected("Первый кадр", wan_mode == "first"), callback_data=video_callback("wan_mode", workspace_id=workspace_id, value="first")),
+            InlineKeyboardButton(text=_selected("Первый + последний", wan_mode == "first_last"), callback_data=video_callback("wan_mode", workspace_id=workspace_id, value="first_last")),
         ])
     if model in {"grok15", "seedance", "wan"}:
         rows.append([
-            InlineKeyboardButton(text=f"Длительность · {duration} сек", callback_data=legacy._callback("duration_input", workspace_id=workspace_id)),
-            InlineKeyboardButton(text="Изменить промт", callback_data=legacy._callback("change_prompt", workspace_id=workspace_id)),
+            InlineKeyboardButton(text=f"Длительность · {duration} сек", callback_data=video_callback("duration_input", workspace_id=workspace_id)),
+            InlineKeyboardButton(text="Изменить промт", callback_data=video_callback("change_prompt", workspace_id=workspace_id)),
         ])
         if model == "wan" and wan_mode == "first_last":
             rows.append([InlineKeyboardButton(
                 text="Последний кадр · загружен" if has_last_frame else "Добавить последний кадр",
-                callback_data=legacy._callback("last_frame", workspace_id=workspace_id),
+                callback_data=video_callback("last_frame", workspace_id=workspace_id),
             )])
-        rows.append([InlineKeyboardButton(text="Стандартный шаблон", callback_data=legacy._callback("templates", workspace_id=workspace_id))])
+        rows.append([InlineKeyboardButton(text="Стандартный шаблон", callback_data=video_callback("templates", workspace_id=workspace_id))])
     else:
-        rows.append([InlineKeyboardButton(text="Изменить промт", callback_data=legacy._callback("change_prompt", workspace_id=workspace_id))])
+        rows.append([InlineKeyboardButton(text="Изменить промт", callback_data=video_callback("change_prompt", workspace_id=workspace_id))])
     rows.extend([
-        [InlineKeyboardButton(text="Проверить и запустить", callback_data=legacy._callback("review", workspace_id=workspace_id))],
+        [InlineKeyboardButton(text="Проверить и запустить", callback_data=video_callback("review", workspace_id=workspace_id))],
         [
-            InlineKeyboardButton(text="Изменить модель", callback_data=legacy._callback("models", workspace_id=workspace_id)),
-            InlineKeyboardButton(text="Изменить фото", callback_data=legacy._callback("change_photo", workspace_id=workspace_id)),
+            InlineKeyboardButton(text="Изменить модель", callback_data=video_callback("models", workspace_id=workspace_id)),
+            InlineKeyboardButton(text="Изменить фото", callback_data=video_callback("change_photo", workspace_id=workspace_id)),
         ],
-        [InlineKeyboardButton(text="Отмена", callback_data=legacy._callback("cancel", workspace_id=workspace_id))],
+        [InlineKeyboardButton(text="Отмена", callback_data=video_callback("cancel", workspace_id=workspace_id))],
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -150,20 +152,20 @@ def build_video_quality_keyboard(*, workspace_id: int, resolution: str) -> Inlin
 
 def build_video_review_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Запустить видео", callback_data=legacy._callback("submit", workspace_id=workspace_id))],
+        [InlineKeyboardButton(text="Запустить видео", callback_data=video_callback("submit", workspace_id=workspace_id))],
         [
-            InlineKeyboardButton(text="Изменить параметры", callback_data=legacy._callback("settings", workspace_id=workspace_id)),
-            InlineKeyboardButton(text="Изменить модель", callback_data=legacy._callback("models", workspace_id=workspace_id)),
+            InlineKeyboardButton(text="Изменить параметры", callback_data=video_callback("settings", workspace_id=workspace_id)),
+            InlineKeyboardButton(text="Изменить модель", callback_data=video_callback("models", workspace_id=workspace_id)),
         ],
-        [InlineKeyboardButton(text="Отмена", callback_data=legacy._callback("cancel", workspace_id=workspace_id))],
+        [InlineKeyboardButton(text="Отмена", callback_data=video_callback("cancel", workspace_id=workspace_id))],
     ])
 
 
 def build_video_template_keyboard(*, workspace_id: int, has_template: bool) -> InlineKeyboardMarkup:
-    rows = [[InlineKeyboardButton(text="Сохранить текущие стандартом", callback_data=legacy._callback("template_save", workspace_id=workspace_id))]]
+    rows = [[InlineKeyboardButton(text="Сохранить текущие стандартом", callback_data=video_callback("template_save", workspace_id=workspace_id))]]
     if has_template:
-        rows.append([InlineKeyboardButton(text="Применить стандартный", callback_data=legacy._callback("template_apply", workspace_id=workspace_id))])
-    rows.append([InlineKeyboardButton(text="К параметрам", callback_data=legacy._callback("settings", workspace_id=workspace_id))])
+        rows.append([InlineKeyboardButton(text="Применить стандартный", callback_data=video_callback("template_apply", workspace_id=workspace_id))])
+    rows.append([InlineKeyboardButton(text="К параметрам", callback_data=video_callback("settings", workspace_id=workspace_id))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -486,7 +488,7 @@ async def handle_auf_video_action(
         await legacy._edit_or_answer(
             callback,
             text=(f"<b>Введите длительность</b>\n\nОтправьте целое число от {_MIN_VIDEO_DURATION_SECONDS} до {_MAX_VIDEO_DURATION_SECONDS} секунд. После ввода бот сразу пересчитает стоимость."),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="К параметрам", callback_data=legacy._callback("settings", workspace_id=workspace_id))]]),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="К параметрам", callback_data=video_callback("settings", workspace_id=workspace_id))]]),
         )
         return
     if action == "wan_mode":
@@ -512,8 +514,8 @@ async def handle_auf_video_action(
             callback,
             text="<b>Отправьте последний кадр Wan 2.7</b>\n\nПринимаются Telegram-фото и документы JPG, PNG или WEBP до 10 МБ.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="К параметрам", callback_data=legacy._callback("settings", workspace_id=workspace_id)),
-                InlineKeyboardButton(text="Отмена", callback_data=legacy._callback("cancel", workspace_id=workspace_id)),
+                InlineKeyboardButton(text="К параметрам", callback_data=video_callback("settings", workspace_id=workspace_id)),
+                InlineKeyboardButton(text="Отмена", callback_data=video_callback("cancel", workspace_id=workspace_id)),
             ]]),
         )
         return
@@ -523,7 +525,7 @@ async def handle_auf_video_action(
         await legacy._edit_or_answer(
             callback,
             text=f"<b>Измените промт движения</b>\n\nОтправьте новый текст до {_MAX_PROMPT_LENGTH} символов.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="К параметрам", callback_data=legacy._callback("settings", workspace_id=workspace_id))]]),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="К параметрам", callback_data=video_callback("settings", workspace_id=workspace_id))]]),
         )
         return
     if action == "templates":

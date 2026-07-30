@@ -59,26 +59,8 @@ class AufVideoCallback(CallbackData, prefix="aufv"):
     item_id: int = 0
     offset: int = 0
 
-class LegacyAufVideoCallback(CallbackData, prefix="meowv"):
-    """Parse video callbacks emitted before the Auf protocol migration."""
-
-    action: str
-    workspace_id: int = 0
-    value: str = ""
-    item_id: int = 0
-    offset: int = 0
-
 
 class AufVideoForm(StatesGroup):
-    choosing_reference = State()
-    waiting_reference = State()
-    waiting_prompt = State()
-    choosing_settings = State()
-    reviewing = State()
-
-class LegacyAufVideoForm(StatesGroup):
-    """Recognize video forms created before the Auf state migration."""
-
     choosing_reference = State()
     waiting_reference = State()
     waiting_prompt = State()

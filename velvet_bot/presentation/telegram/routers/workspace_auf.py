@@ -50,15 +50,6 @@ class AufCallback(CallbackData, prefix="auf"):
     item_id: int = 0
     offset: int = 0
 
-class LegacyAufCallback(CallbackData, prefix="meow"):
-    """Parse callback payloads emitted before the Auf protocol migration."""
-
-    action: str
-    workspace_id: int = 0
-    value: str = ""
-    item_id: int = 0
-    offset: int = 0
-
 
 class AufForm(StatesGroup):
     collecting_references = State()

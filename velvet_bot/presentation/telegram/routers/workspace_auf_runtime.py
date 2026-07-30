@@ -30,9 +30,6 @@ class AufRuntimeForm(StatesGroup):
     waiting_limit = State()
 
 
-# Compatibility aliases for imports from stacked branches.
-AufRuntimeCallback = AufRuntimeCallback
-AufRuntimeForm = AufRuntimeForm
 
 
 def _callback(action: str, *, workspace_id: int, value: str = "") -> str:

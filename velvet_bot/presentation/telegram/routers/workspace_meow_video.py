@@ -2,6 +2,11 @@
 
 from velvet_bot.presentation.telegram.routers import workspace_auf_video as _canonical
 from velvet_bot.presentation.telegram.routers.workspace_auf_video import *  # noqa: F403
+from velvet_bot.presentation.telegram.routers.workspace_auf_legacy import (
+    LegacyMeowVideoCallback as MeowVideoCallback,
+    MeowVideoForm,
+)
+
 
 def __getattr__(name: str):
     direct = getattr(_canonical, name, None)
@@ -9,7 +14,3 @@ def __getattr__(name: str):
         return direct
     mapped = name.replace("Meow", "Auf").replace("meow", "auf")
     return getattr(_canonical, mapped)
-
-
-MeowVideoCallback = _canonical.LegacyMeowVideoCallback
-MeowVideoForm = _canonical.LegacyMeowVideoForm
