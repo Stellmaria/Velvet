@@ -15,10 +15,10 @@ from velvet_bot.domains.media_generation import (
     KieReferenceImage,
 )
 from velvet_bot.infrastructure.ai import KieClient
-from velvet_bot.presentation.telegram.routers.workspace_meow_video import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_video import (
     build_video_source_keyboard,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_video_simple import (
     _build_request,
     _parse_duration,
     _settings_text,
@@ -230,11 +230,11 @@ class MeowVideoRequestTests(unittest.TestCase):
     def test_invalid_resolution_uses_model_default(self) -> None:
         self.assertEqual(
             "480p",
-            _validated_resolution({"meow_video_resolution": "8K"}, model="grok"),
+            _validated_resolution({"auf_video_resolution": "8K"}, model="grok"),
         )
         self.assertEqual(
             "720p",
-            _validated_resolution({"meow_video_resolution": "8K"}, model="wan"),
+            _validated_resolution({"auf_video_resolution": "8K"}, model="wan"),
         )
 
 
@@ -376,7 +376,7 @@ class KieVideoConfigTests(unittest.TestCase):
         self.assertEqual(Decimal("0.456"), settings.pricing.wan_1080p_usd_per_second)
 
     def test_template_migration_has_one_standard_per_workspace_and_model(self) -> None:
-        migration = Path("migrations/917_meow_video_templates.sql").read_text(encoding="utf-8")
+        migration = Path("migrations/917_auf_video_templates.sql").read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE IF NOT EXISTS workspace_video_templates", migration)
         self.assertIn("PRIMARY KEY (workspace_id, model)", migration)
         self.assertIn("duration_seconds BETWEEN 2 AND 15", migration)

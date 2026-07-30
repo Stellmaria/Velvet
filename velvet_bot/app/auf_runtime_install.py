@@ -17,7 +17,7 @@ from velvet_bot.domains.auf_runtime.cancellable_worker import (
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.infrastructure.ai import KieClient
-from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
+from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 from velvet_bot.workers import PeriodicWorkerSpec
 
 _INSTALLED = False
@@ -114,7 +114,7 @@ def install_auf_runtime_dispatcher() -> None:
                         [
                             InlineKeyboardButton(
                                 text="Открыть параллельность Ауф",
-                                callback_data=MeowCallback(
+                                callback_data=AufCallback(
                                     action="runtime",
                                     workspace_id=DEFAULT_WORKSPACE_ID,
                                 ).pack(),

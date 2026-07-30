@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from velvet_bot.domains.media_generation.models import KieModelAlias, KieModelCatalog
-from velvet_bot.presentation.telegram.routers.workspace_meow_balance import _MODEL_NAMES
+from velvet_bot.presentation.telegram.routers.workspace_auf_balance import _MODEL_NAMES
 
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +32,7 @@ class VideoModelLabelTests(unittest.TestCase):
             / "presentation"
             / "telegram"
             / "routers"
-            / "workspace_meow_root.py"
+            / "workspace_auf_root.py"
         ).read_text(encoding="utf-8")
         self.assertIn("Grok Imagine v1", source)
         self.assertIn("Grok Imagine Video 1.5", source)

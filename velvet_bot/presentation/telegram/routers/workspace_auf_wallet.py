@@ -16,7 +16,7 @@ from velvet_bot.domains.auf_wallet import (
     AufWalletStatus,
     format_auf_units,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
+from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 from velvet_bot.workspace_ui import workspace_callback
 
 _OPERATION_LABELS = {
@@ -39,7 +39,7 @@ _INVOICE_LABELS = {
 
 
 def _callback(action: str, *, workspace_id: int, value: str = "") -> str:
-    return MeowCallback(
+    return AufCallback(
         action=action,
         workspace_id=int(workspace_id),
         value=value,
@@ -205,7 +205,7 @@ async def _render_wallet(
 
 async def handle_auf_wallet_action(
     callback: CallbackQuery,
-    callback_data: MeowCallback,
+    callback_data: AufCallback,
     state: FSMContext,
     auf_wallet_service: AufWalletService,
     auf_purchase_service: AufPurchaseService,

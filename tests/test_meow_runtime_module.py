@@ -26,7 +26,7 @@ from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
     WORKSPACE_MODULE_KEYS,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_runtime import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_runtime import (
     AufRuntimeCallback,
     build_task_cancel_keyboard,
 )
@@ -185,7 +185,7 @@ class PostgreSQLAufQueueTests(unittest.IsolatedAsyncioTestCase):
             await connection.execute("DELETE FROM ai_tasks")
             await connection.execute(
                 """
-                INSERT INTO workspace_meow_settings (
+                INSERT INTO workspace_auf_settings (
                     workspace_id,
                     concurrency_limit,
                     updated_by_user_id

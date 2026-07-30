@@ -573,12 +573,12 @@ def _format_credits(value: Decimal) -> str:
     return f"{int(value.quantize(Decimal('1'))):,}".replace(",", " ")
 
 
-def _install_meow_text_cleanup() -> None:
-    workspace_meow = importlib.import_module(
-        "velvet_bot.presentation.telegram.routers.workspace_meow"
+def _install_auf_text_cleanup() -> None:
+    workspace_auf = importlib.import_module(
+        "velvet_bot.presentation.telegram.routers.workspace_auf"
     )
-    original_edit_or_answer = workspace_meow._edit_or_answer
-    original_format_request_review = workspace_meow.format_request_review
+    original_edit_or_answer = workspace_auf._edit_or_answer
+    original_format_request_review = workspace_auf.format_request_review
 
     async def edit_or_answer_without_internal_content_mode(
         callback,
@@ -595,15 +595,15 @@ def _install_meow_text_cleanup() -> None:
     def format_request_review_without_internal_content_mode(**kwargs: Any) -> str:
         return _sanitize_meow_text(original_format_request_review(**kwargs))
 
-    workspace_meow._edit_or_answer = edit_or_answer_without_internal_content_mode
-    workspace_meow.format_request_review = (
+    workspace_auf._edit_or_answer = edit_or_answer_without_internal_content_mode
+    workspace_auf.format_request_review = (
         format_request_review_without_internal_content_mode
     )
 
-    workspace_meow_grs = importlib.import_module(
-        "velvet_bot.presentation.telegram.routers.workspace_meow_grs"
+    workspace_auf_grs = importlib.import_module(
+        "velvet_bot.presentation.telegram.routers.workspace_auf_grs"
     )
-    workspace_meow_grs._edit_or_answer = edit_or_answer_without_internal_content_mode
+    workspace_auf_grs._edit_or_answer = edit_or_answer_without_internal_content_mode
 
 
 def install_grs_resilience() -> None:
@@ -615,7 +615,7 @@ def install_grs_resilience() -> None:
     KieTaskRecord.from_grs_api = classmethod(_from_grs_api_with_violation)  # type: ignore[method-assign]
     KieTaskQueueService.fail = _queue_fail_with_grs_violation_limit  # type: ignore[method-assign]
     KieClient.get_grs_credits = _get_grs_credits_resilient  # type: ignore[method-assign]
-    _install_meow_text_cleanup()
+    _install_auf_text_cleanup()
     workers = importlib.import_module("velvet_bot.app.workers")
     workers.KieGenerationWorker = ResilientFriendlyKieGenerationWorker
     _INSTALLED = True

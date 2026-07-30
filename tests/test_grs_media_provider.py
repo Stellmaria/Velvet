@@ -17,7 +17,7 @@ from velvet_bot.domains.media_generation import (
     KieTaskState,
 )
 from velvet_bot.infrastructure.ai import KieClient, KieTaskFailed
-from velvet_bot.presentation.telegram.routers.workspace_meow_grs import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_grs import (
     build_model_keyboard,
     model_selection_text,
 )

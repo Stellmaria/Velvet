@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from aiogram import F, Router
+from aiogram.filters import or_f
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -15,39 +16,43 @@ from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
-from velvet_bot.presentation.telegram.routers.workspace_meow import (
-    MeowCallback,
-    MeowForm,
-    handle_meow_prompt as handle_legacy_meow_prompt,
-    handle_meow_reference_message as handle_legacy_meow_reference_message,
-    handle_meow_reference_text as handle_legacy_meow_reference_text,
+from velvet_bot.presentation.telegram.routers.workspace_auf import (
+    AufCallback,
+    AufForm,
+    LegacyMeowCallback,
+    LegacyMeowForm,
+    handle_auf_prompt as handle_legacy_meow_prompt,
+    handle_auf_reference_message as handle_legacy_meow_reference_message,
+    handle_auf_reference_text as handle_legacy_meow_reference_text,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_grs import (
-    handle_meow_action as handle_legacy_meow_action,
+from velvet_bot.presentation.telegram.routers.workspace_auf_grs import (
+    handle_auf_action as handle_legacy_meow_action,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
-    handle_meow_balance,
+from velvet_bot.presentation.telegram.routers.workspace_auf_balance import (
+    handle_auf_balance,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_grs_balance import (
-    handle_meow_grs_balance,
+from velvet_bot.presentation.telegram.routers.workspace_auf_grs_balance import (
+    handle_auf_grs_balance,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_root import (
     handle_auf_root_entry,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_runtime import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_runtime import (
     AufRuntimeCallback,
     AufRuntimeForm,
     handle_auf_runtime_action,
     handle_auf_runtime_callback,
     handle_auf_runtime_limit_input,
 )
-from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
-    MeowVideoCallback,
-    MeowVideoForm,
-    handle_meow_video_action as handle_legacy_meow_video_action,
-    handle_meow_video_entry as handle_legacy_meow_video_entry,
-    handle_meow_video_prompt as handle_legacy_meow_video_prompt,
-    handle_meow_video_reference_message as handle_legacy_meow_video_reference_message,
+from velvet_bot.presentation.telegram.routers.workspace_auf_video_simple import (
+    AufVideoCallback,
+    AufVideoForm,
+    LegacyMeowVideoCallback,
+    LegacyMeowVideoForm,
+    handle_auf_video_action as handle_legacy_auf_video_action,
+    handle_auf_video_entry as handle_legacy_auf_video_entry,
+    handle_auf_video_prompt as handle_legacy_auf_video_prompt,
+    handle_auf_video_reference_message as handle_legacy_auf_video_reference_message,
 )
 from velvet_bot.presentation.telegram.workspace_command_menu import (
     install_workspace_scoped_commands,
@@ -59,14 +64,14 @@ from velvet_bot.workspace_ui import WorkspaceCallback
 
 # Aiogram uses ':' as its default CallbackData separator, while older callback
 # values may contain the same symbol. Keep this callback family isolated.
-setattr(MeowVideoCallback, "__separator__", "|")
+setattr(AufVideoCallback, "__separator__", "|")
 
 
 def _is_global_owner(user_id: int) -> bool:
     return int(user_id) == GLOBAL_WORKSPACE_CREATOR_ID
 
 
-class _MeowScopedAccessPolicy:
+class _AufScopedAccessPolicy:
     """Permit one already-authorized Meow handler without widening global access."""
 
     moderator_user_ids = frozenset()
@@ -181,34 +186,34 @@ async def handle_workspace_home(
 
 async def handle_scoped_meow_action(
     callback: CallbackQuery,
-    callback_data: MeowCallback,
+    callback_data: AufCallback | LegacyMeowCallback,
     state: FSMContext,
     access_policy,
     kie_settings,
     database,
     ai_usage_service,
     ai_task_queue_service,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if callback_data.action in {"runtime", "visibility_toggle"}:
         await handle_auf_runtime_action(
             callback,
             callback_data,
             state,
-            meow_runtime_service,
+            auf_runtime_service,
         )
         return
     if not await _require_meow_callback(
         callback,
         workspace_id=callback_data.workspace_id,
-        service=meow_runtime_service,
+        service=auf_runtime_service,
     ):
         return
     await handle_legacy_meow_action(
         callback,
         callback_data,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
         database,
         ai_usage_service,
@@ -216,51 +221,51 @@ async def handle_scoped_meow_action(
     )
 
 
-async def handle_scoped_meow_video_entry(
+async def handle_scoped_auf_video_entry(
     callback: CallbackQuery,
-    callback_data: MeowCallback,
+    callback_data: AufCallback | LegacyMeowCallback,
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_callback(
         callback,
         workspace_id=callback_data.workspace_id,
-        service=meow_runtime_service,
+        service=auf_runtime_service,
     ):
         return
-    await handle_legacy_meow_video_entry(
+    await handle_legacy_auf_video_entry(
         callback,
         callback_data,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
     )
 
 
-async def handle_scoped_meow_video_action(
+async def handle_scoped_auf_video_action(
     callback: CallbackQuery,
-    callback_data: MeowVideoCallback,
+    callback_data: AufVideoCallback | LegacyMeowVideoCallback,
     state: FSMContext,
     access_policy,
     kie_settings,
     database,
     ai_usage_service,
     ai_task_queue_service,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_callback(
         callback,
         workspace_id=callback_data.workspace_id,
-        service=meow_runtime_service,
+        service=auf_runtime_service,
     ):
         return
-    await handle_legacy_meow_video_action(
+    await handle_legacy_auf_video_action(
         callback,
         callback_data,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
         database,
         ai_usage_service,
@@ -273,19 +278,19 @@ async def handle_scoped_meow_prompt(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
         state,
-        workspace_key="meow_workspace_id",
-        service=meow_runtime_service,
+        workspace_key="auf_workspace_id",
+        service=auf_runtime_service,
     ):
         return
     await handle_legacy_meow_prompt(
         message,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
     )
 
@@ -295,19 +300,19 @@ async def handle_scoped_meow_reference_message(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
         state,
-        workspace_key="meow_workspace_id",
-        service=meow_runtime_service,
+        workspace_key="auf_workspace_id",
+        service=auf_runtime_service,
     ):
         return
     await handle_legacy_meow_reference_message(
         message,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
     )
 
@@ -317,63 +322,63 @@ async def handle_scoped_meow_reference_text(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
         state,
-        workspace_key="meow_workspace_id",
-        service=meow_runtime_service,
+        workspace_key="auf_workspace_id",
+        service=auf_runtime_service,
     ):
         return
     await handle_legacy_meow_reference_text(
         message,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
     )
 
 
-async def handle_scoped_meow_video_reference_message(
+async def handle_scoped_auf_video_reference_message(
     message: Message,
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
         state,
-        workspace_key="meow_video_workspace_id",
-        service=meow_runtime_service,
+        workspace_key="auf_video_workspace_id",
+        service=auf_runtime_service,
     ):
         return
-    await handle_legacy_meow_video_reference_message(
+    await handle_legacy_auf_video_reference_message(
         message,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
     )
 
 
-async def handle_scoped_meow_video_prompt(
+async def handle_scoped_auf_video_prompt(
     message: Message,
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: AufRuntimeService,
+    auf_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
         state,
-        workspace_key="meow_video_workspace_id",
-        service=meow_runtime_service,
+        workspace_key="auf_video_workspace_id",
+        service=auf_runtime_service,
     ):
         return
-    await handle_legacy_meow_video_prompt(
+    await handle_legacy_auf_video_prompt(
         message,
         state,
-        _MeowScopedAccessPolicy(),
+        _AufScopedAccessPolicy(),
         kie_settings,
     )
 
@@ -390,28 +395,28 @@ def register_workspace_home(router: Router) -> None:
         WorkspaceCallback.filter(F.action == "meow"),
     )
     router.callback_query.register(
-        handle_meow_balance,
-        MeowCallback.filter(F.action == "balance"),
+        handle_auf_balance,
+        _auf_callback_filter(F.action == "balance"),
     )
     router.callback_query.register(
-        handle_meow_grs_balance,
-        MeowCallback.filter(F.action == "grs_balance"),
+        handle_auf_grs_balance,
+        _auf_callback_filter(F.action == "grs_balance"),
     )
     router.callback_query.register(
-        handle_scoped_meow_video_entry,
-        MeowCallback.filter(F.action == "animate"),
+        handle_scoped_auf_video_entry,
+        _auf_callback_filter(F.action == "animate"),
     )
     router.callback_query.register(
         handle_auf_runtime_callback,
         AufRuntimeCallback.filter(),
     )
     router.callback_query.register(
-        handle_scoped_meow_video_action,
-        MeowVideoCallback.filter(),
+        handle_scoped_auf_video_action,
+        _auf_video_callback_filter(),
     )
     router.callback_query.register(
         handle_scoped_meow_action,
-        MeowCallback.filter(),
+        _auf_callback_filter(),
     )
     router.message.register(
         handle_auf_runtime_limit_input,
@@ -419,28 +424,28 @@ def register_workspace_home(router: Router) -> None:
         F.text,
     )
     router.message.register(
-        handle_scoped_meow_video_reference_message,
-        MeowVideoForm.waiting_reference,
+        handle_scoped_auf_video_reference_message,
+        AufVideoForm.waiting_reference,
         F.photo | F.document,
     )
     router.message.register(
-        handle_scoped_meow_video_prompt,
-        MeowVideoForm.waiting_prompt,
+        handle_scoped_auf_video_prompt,
+        AufVideoForm.waiting_prompt,
         F.text,
     )
     router.message.register(
         handle_scoped_meow_reference_message,
-        MeowForm.collecting_references,
+        AufForm.collecting_references,
         F.photo | F.document,
     )
     router.message.register(
         handle_scoped_meow_reference_text,
-        MeowForm.collecting_references,
+        AufForm.collecting_references,
         F.text,
     )
     router.message.register(
         handle_scoped_meow_prompt,
-        MeowForm.waiting_prompt,
+        AufForm.waiting_prompt,
         F.text,
     )
 

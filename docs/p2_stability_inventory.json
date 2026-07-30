@@ -1,6 +1,6 @@
 {
-  "schema_version": 65,
-  "generated_from_commit": "p2-auf-wallet-domain-migration",
+  "schema_version": 66,
+  "generated_from_commit": "p2-auf-router-protocol-migration",
   "broad_exception_total": 88,
   "broad_exception_files": 53,
   "broad_exception_approved": 88,

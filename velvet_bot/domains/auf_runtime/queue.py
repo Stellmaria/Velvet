@@ -36,7 +36,7 @@ class ProviderAufTaskQueueService(KieTaskQueueService):
                        SELECT task.id
                        FROM ai_tasks AS task
                        CROSS JOIN ai_runtime_state AS runtime
-                       LEFT JOIN workspace_meow_settings AS workspace_limit
+                       LEFT JOIN workspace_auf_settings AS workspace_limit
                          ON workspace_limit.workspace_id =
                             NULLIF(task.payload->>'workspace_id', '')::BIGINT
                        CROSS JOIN meow_runtime_settings AS auf_runtime
@@ -149,7 +149,7 @@ class ProviderAufTaskQueueService(KieTaskQueueService):
                         COALESCE(running.running_count, 0) AS running_count
                     FROM ai_tasks AS task
                     CROSS JOIN meow_runtime_settings AS runtime
-                    LEFT JOIN workspace_meow_settings AS workspace_limit
+                    LEFT JOIN workspace_auf_settings AS workspace_limit
                       ON workspace_limit.workspace_id =
                          NULLIF(task.payload->>'workspace_id', '')::BIGINT
                     LEFT JOIN running_by_workspace AS running

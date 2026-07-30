@@ -15,8 +15,8 @@ from velvet_bot.domains.auf_wallet import (
     format_auf_units,
 )
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
-from velvet_bot.presentation.telegram.routers import workspace_meow_photo as photo_router
-from velvet_bot.presentation.telegram.routers.workspace_meow_photo_adjustments import (
+from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router
+from velvet_bot.presentation.telegram.routers.workspace_auf_photo_adjustments import (
     handle_photo_remove_last,
 )
 
@@ -50,7 +50,7 @@ async def _show_auf_final(
 ) -> None:
     data = await state.get_data()
     request = photo_router._request(data)
-    workspace_id = int(data.get("meow_workspace_id") or 0)
+    workspace_id = int(data.get("auf_workspace_id") or 0)
     quote = await AufPricingRepository(database).quote(
         {
             "workspace_id": workspace_id,
@@ -126,7 +126,7 @@ async def _enqueue_auf_photo(
     database,
 ) -> None:
     data = await state.get_data()
-    workspace_id = int(data.get("meow_workspace_id") or 0)
+    workspace_id = int(data.get("auf_workspace_id") or 0)
     request = photo_router._request(data)
     expected_version = str(data.get("auf_expected_price_version") or "").strip()
     expected_units = int(data.get("auf_expected_quoted_units") or 0)
@@ -179,7 +179,7 @@ async def _enqueue_auf_photo(
             f"Зарезервировано: <b>{format_auf_units(expected_units)}</b>\n"
             f"Задача: <code>{result.task.id}</code>"
         ),
-        reply_markup=photo_router.build_meow_root_keyboard(
+        reply_markup=photo_router.build_auf_root_keyboard(
             workspace_id=workspace_id,
             enabled=True,
         ),
@@ -208,7 +208,7 @@ def install_auf_photo_ui() -> None:
         database,
         ai_usage_service,
         ai_task_queue_service,
-        meow_runtime_service,
+        auf_runtime_service,
         meow_wallet_service,
         meow_purchase_service,
     ) -> None:
@@ -223,7 +223,7 @@ def install_auf_photo_ui() -> None:
                 database,
                 ai_usage_service,
                 ai_task_queue_service,
-                meow_runtime_service,
+                auf_runtime_service,
                 meow_wallet_service,
                 meow_purchase_service,
             )
@@ -231,7 +231,7 @@ def install_auf_photo_ui() -> None:
         if not await controller._require_meow_callback(
             callback,
             workspace_id=callback_data.workspace_id,
-            service=meow_runtime_service,
+            service=auf_runtime_service,
         ):
             return
         if action == "photo_remove_last":
@@ -261,11 +261,11 @@ def install_auf_photo_ui() -> None:
                 database=database,
             )
             return
-        await photo_router.handle_meow_photo_action(
+        await photo_router.handle_auf_photo_action(
             callback,
             callback_data,
             state,
-            controller._MeowScopedAccessPolicy(),
+            controller._AufScopedAccessPolicy(),
             kie_settings,
             database,
             ai_usage_service,
@@ -277,19 +277,19 @@ def install_auf_photo_ui() -> None:
         state,
         access_policy,
         kie_settings,
-        meow_runtime_service,
+        auf_runtime_service,
     ) -> None:
         if not await controller._require_meow_message(
             message,
             state,
-            workspace_key="meow_workspace_id",
-            service=meow_runtime_service,
+            workspace_key="auf_workspace_id",
+            service=auf_runtime_service,
         ):
             return
-        await photo_router.handle_meow_photo_input(
+        await photo_router.handle_auf_photo_input(
             message,
             state,
-            controller._MeowScopedAccessPolicy(),
+            controller._AufScopedAccessPolicy(),
             kie_settings,
         )
 
@@ -299,19 +299,19 @@ def install_auf_photo_ui() -> None:
         access_policy,
         kie_settings,
         database,
-        meow_runtime_service,
+        auf_runtime_service,
     ) -> None:
         if not await controller._require_meow_message(
             message,
             state,
-            workspace_key="meow_workspace_id",
-            service=meow_runtime_service,
+            workspace_key="auf_workspace_id",
+            service=auf_runtime_service,
         ):
             return
-        await photo_router.handle_meow_photo_command(
+        await photo_router.handle_auf_photo_command(
             message,
             state,
-            controller._MeowScopedAccessPolicy(),
+            controller._AufScopedAccessPolicy(),
             kie_settings,
             database,
         )

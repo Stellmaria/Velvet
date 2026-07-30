@@ -20,11 +20,13 @@ from .store import AufRuntimeRepository
 # Persistent keys cannot be renamed independently from existing workspace rows and
 # already-sent Telegram keyboards. Keep them in one explicit compatibility boundary.
 AUF_MODULE_KEY = "meow"
-AUF_WORKSPACE_ACTION = "meow"
+AUF_WORKSPACE_ACTION = "auf"
+LEGACY_AUF_WORKSPACE_ACTION = "meow"
 
 __all__ = (
     "AUF_MODULE_KEY",
     "AUF_WORKSPACE_ACTION",
+    "LEGACY_AUF_WORKSPACE_ACTION",
     "AufCancellationResult",
     "AufGenerationDispatcher",
     "AufProvider",
