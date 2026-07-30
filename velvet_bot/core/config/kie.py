@@ -100,6 +100,18 @@ def load_kie_settings() -> KieSettings:
             or os.getenv("KIE_NANO_BANANA_PRO_MODEL", "").strip()
             or "nano-banana-pro"
         ),
+        qwen2_image_edit=os.getenv(
+            "KIE_QWEN2_IMAGE_EDIT_MODEL",
+            "qwen2/image-edit",
+        ).strip(),
+        wan_27_image=os.getenv(
+            "KIE_WAN_27_IMAGE_MODEL",
+            "wan/2-7-image",
+        ).strip(),
+        flux_2_pro_image=os.getenv(
+            "KIE_FLUX_2_PRO_IMAGE_MODEL",
+            "flux-2/pro-image-to-image",
+        ).strip(),
         grok_imagine_video=grok_image_to_video,
         grok_imagine_video_15=grok_15_image_to_video,
         seedance_15_pro_video=seedance_image_to_video,
@@ -128,10 +140,13 @@ def load_kie_settings() -> KieSettings:
         raise RuntimeError("KIE_ENABLED=true требует KIE_CREDIT_BYN больше нуля.")
     if enabled:
         required_routes = (
-            (KieModelAlias.NANO_BANANA_2, KieInputMode.TEXT),
-            (KieModelAlias.NANO_BANANA_PRO, KieInputMode.TEXT),
+            (KieModelAlias.NANO_BANANA_2, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.NANO_BANANA_PRO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.QWEN2_IMAGE_EDIT, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.WAN_27_IMAGE, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.FLUX_2_PRO_IMAGE, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.GROK_IMAGINE_VIDEO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.GROK_IMAGINE_VIDEO_15, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.SEEDANCE_15_PRO_VIDEO, KieInputMode.PHOTO_TEXT),
@@ -142,8 +157,9 @@ def load_kie_settings() -> KieSettings:
                 models.provider_model(alias, input_mode=input_mode)
         except ValueError as error:
             raise RuntimeError(
-                "KIE_ENABLED=true требует model id для Nano Banana 2/Pro в GRS, "
-                "обоих режимов Seedream 5 Pro и четырёх image-to-video моделей."
+                "KIE_ENABLED=true требует model id для обоих режимов Seedream 5 Pro, Qwen Image "
+                "2.0, Wan 2.7 Image, FLUX.2 Pro, Nano Banana 2/Pro и четырёх "
+                "image-to-video моделей."
             ) from error
 
     pricing = KiePricing(
@@ -153,6 +169,11 @@ def load_kie_settings() -> KieSettings:
         nano_4k_usd=_env_decimal("KIE_NANO_4K_USD", "0.12"),
         nano_banana_2_usd=_env_decimal("GRS_NANO_BANANA_2_USD", "0.02"),
         nano_banana_pro_usd=_env_decimal("GRS_NANO_BANANA_PRO_USD", "0.03"),
+        qwen2_image_edit_usd=_env_decimal("KIE_QWEN2_IMAGE_EDIT_USD", "0.02"),
+        wan_27_1k_usd=_env_decimal("KIE_WAN_27_IMAGE_1K_USD", "0.05"),
+        wan_27_2k_usd=_env_decimal("KIE_WAN_27_IMAGE_2K_USD", "0.08"),
+        flux_2_pro_1k_usd=_env_decimal("KIE_FLUX_2_PRO_IMAGE_1K_USD", "0.045"),
+        flux_2_pro_2k_usd=_env_decimal("KIE_FLUX_2_PRO_IMAGE_2K_USD", "0.075"),
         grok_480p_usd_per_second=_env_decimal(
             "KIE_GROK_480P_USD_PER_SECOND", "0.008"
         ),
