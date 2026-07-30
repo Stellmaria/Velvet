@@ -38,6 +38,7 @@ from velvet_bot.domains.media_generation import (
     KieModelAlias,
     KieReferenceImage,
 )
+from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback
 from velvet_bot.reference_catalog import get_reference_page
 from velvet_bot.reference_media import validate_reference_document
 from velvet_bot.workspace_ui import WorkspaceCallback, workspace_callback
@@ -409,22 +410,9 @@ def _budget_block_reason(
     return None
 
 
-async def _edit_or_answer(
-    callback: CallbackQuery,
-    *,
-    text: str,
-    reply_markup: InlineKeyboardMarkup,
-) -> None:
-    if isinstance(callback.message, Message):
-        if callback.message.photo or callback.message.video or callback.message.document:
-            await callback.message.answer(text, reply_markup=reply_markup)
-        else:
-            try:
-                await callback.message.edit_text(text, reply_markup=reply_markup)
-            except TelegramBadRequest as error:
-                if "message is not modified" not in str(error).casefold():
-                    await callback.message.answer(text, reply_markup=reply_markup)
-    await callback.answer()
+# Local compatibility alias for the existing router implementation. External
+# consumers must import the public Auf editing contract instead.
+_edit_or_answer = edit_or_answer_auf_callback
 
 
 def _is_owner(callback: CallbackQuery, access_policy: AccessPolicy) -> bool:

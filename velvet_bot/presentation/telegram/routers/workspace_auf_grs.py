@@ -8,11 +8,11 @@ from velvet_bot.core.config.kie import KieSettings
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
 from velvet_bot.domains.media_generation import KieModelAlias
+from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback
 from velvet_bot.presentation.telegram.routers.workspace_auf import (
     AufCallback,
     AufForm,
     _callback,
-    _edit_or_answer,
     _quality_selection_text,
     build_quality_keyboard,
     handle_auf_action as _handle_base_auf_action,
@@ -112,7 +112,7 @@ async def handle_auf_action(
             return
         grs_enabled = bool(kie_settings.grs_api_key)
         await state.set_state(AufForm.choosing_model)
-        await _edit_or_answer(
+        await edit_or_answer_auf_callback(
             callback,
             text=model_selection_text(grs_enabled=grs_enabled),
             reply_markup=build_model_keyboard(
@@ -148,7 +148,7 @@ async def handle_auf_action(
             return
         await state.update_data(auf_model=model.value)
         await state.set_state(AufForm.choosing_quality)
-        await _edit_or_answer(
+        await edit_or_answer_auf_callback(
             callback,
             text=_quality_selection_text(model),
             reply_markup=build_quality_keyboard(

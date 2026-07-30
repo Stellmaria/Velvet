@@ -1,10 +1,10 @@
 # Shared contract inventory
 
-- Production Python files: **595**
-- Functions inventoried: **3305**
-- Registered private cross-module debt: **144**
+- Production Python files: **596**
+- Functions inventoried: **3306**
+- Registered private cross-module debt: **136**
 - Blocking known private contracts: **0**
-- Exact duplicate groups: **56**
+- Exact duplicate groups: **55**
 - Normalized near-duplicate groups: **92**
 - Semantic near-duplicate groups: **9**
 
@@ -49,24 +49,19 @@
 - `velvet_bot/app/auf_grs_brand_install.py:135` `grs_resilience.ResilientFriendlyKieGenerationWorker._deliver_best_effort` (assignment, media download/preview/original delivery).
 - `velvet_bot/app/auf_grs_brand_install.py:138` `CampaignGrsGenerationWorker._deliver_best_effort` (assignment, media download/preview/original delivery).
 - `velvet_bot/app/auf_photo_ratio_callback_fix.py:111` `photo_router._ratio_keyboard` (assignment, state compatibility accessors).
-- `velvet_bot/app/auf_photo_ui_install.py:41` `photo_router._final_keyboard` (module-attribute, state compatibility accessors).
-- `velvet_bot/app/auf_photo_ui_install.py:102` `photo_router._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/app/auf_photo_ui_install.py:114` `photo_router._truncate` (module-attribute, state compatibility accessors).
-- `velvet_bot/app/auf_photo_ui_install.py:151` `photo_router._budget_block_reason` (module-attribute, state compatibility accessors).
-- `velvet_bot/app/auf_photo_ui_install.py:179` `photo_router._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/app/auf_photo_ui_install.py:238` `controller._require_auf_callback` (module-attribute, callback navigation and back buttons).
-- `velvet_bot/app/auf_photo_ui_install.py:248` `photo_router._model` (module-attribute, state compatibility accessors).
-- `velvet_bot/app/auf_photo_ui_install.py:289` `controller._require_auf_message` (module-attribute, owner/editor/member guards).
-- `velvet_bot/app/auf_photo_ui_install.py:311` `controller._require_auf_message` (module-attribute, owner/editor/member guards).
+- `velvet_bot/app/auf_photo_ui_install.py:42` `photo_router._final_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_ui_install.py:115` `photo_router._truncate` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_ui_install.py:152` `photo_router._budget_block_reason` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_ui_install.py:239` `controller._require_auf_callback` (module-attribute, callback navigation and back buttons).
+- `velvet_bot/app/auf_photo_ui_install.py:249` `photo_router._model` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_ui_install.py:290` `controller._require_auf_message` (module-attribute, owner/editor/member guards).
+- `velvet_bot/app/auf_photo_ui_install.py:312` `controller._require_auf_message` (module-attribute, owner/editor/member guards).
 - `velvet_bot/app/grs_campaign_retry.py:15` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
 - `velvet_bot/app/grs_campaign_retry.py:45` `KieClient._create_grs_task` (module-attribute, other repeated implementation).
 - `velvet_bot/app/grs_campaign_retry.py:116` `grs_resilience._ORIGINAL_QUEUE_FAIL` (module-attribute, media download/preview/original delivery).
 - `velvet_bot/app/grs_campaign_retry.py:233` `grs_resilience._format_credits` (module-attribute, other repeated implementation).
 - `velvet_bot/app/grs_campaign_retry.py:272` `KieClient._create_grs_task` (assignment, other repeated implementation).
 - `velvet_bot/app/grs_resilience.py:25` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
-- `velvet_bot/app/grs_resilience.py:580` `workspace_auf._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/app/grs_resilience.py:598` `workspace_auf._edit_or_answer` (assignment, safe edit/send fallback).
-- `velvet_bot/app/grs_resilience.py:606` `workspace_auf_grs._edit_or_answer` (assignment, safe edit/send fallback).
 - `velvet_bot/app/grs_speedups.py:19` `from velvet_bot.domains.media_generation.economy_worker import _reference_url_failure` (direct-import, other repeated implementation).
 - `velvet_bot/app/grs_speedups.py:28` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
 - `velvet_bot/app/grs_speedups.py:41` `FriendlyKieGenerationWorker._friendly_progress_text` (module-attribute, repeated progress-card updates).
@@ -139,15 +134,12 @@
 - `velvet_bot/presentation/telegram/routers/supervisor/status.py:13` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/workspace_analytics_characters.py:16` `from velvet_bot.presentation.telegram.routers.analytics_controllers.channel import _character_lines` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/workspace_analytics_characters.py:19` `from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard import _rank_lines` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_grs.py:11` `from velvet_bot.presentation.telegram.routers.workspace_auf import _callback` (direct-import, callback navigation and back buttons).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_grs.py:11` `from velvet_bot.presentation.telegram.routers.workspace_auf import _edit_or_answer` (direct-import, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:29` `from velvet_bot.presentation.telegram.routers.workspace_auf import _budget_block_reason` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:29` `from velvet_bot.presentation.telegram.routers.workspace_auf import _callback` (direct-import, callback navigation and back buttons).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:29` `from velvet_bot.presentation.telegram.routers.workspace_auf import _edit_or_answer` (direct-import, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:29` `from velvet_bot.presentation.telegram.routers.workspace_auf import _format_rub` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:29` `from velvet_bot.presentation.telegram.routers.workspace_auf import _format_usd` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:7` `from velvet_bot.presentation.telegram.routers.workspace_auf import _callback` (direct-import, callback navigation and back buttons).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:7` `from velvet_bot.presentation.telegram.routers.workspace_auf import _edit_or_answer` (direct-import, safe edit/send fallback).
+- `velvet_bot/presentation/telegram/routers/workspace_auf_grs.py:12` `from velvet_bot.presentation.telegram.routers.workspace_auf import _callback` (direct-import, callback navigation and back buttons).
+- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:30` `from velvet_bot.presentation.telegram.routers.workspace_auf import _budget_block_reason` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:30` `from velvet_bot.presentation.telegram.routers.workspace_auf import _callback` (direct-import, callback navigation and back buttons).
+- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:30` `from velvet_bot.presentation.telegram.routers.workspace_auf import _format_rub` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:30` `from velvet_bot.presentation.telegram.routers.workspace_auf import _format_usd` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:8` `from velvet_bot.presentation.telegram.routers.workspace_auf import _callback` (direct-import, callback navigation and back buttons).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:14` `photo_router._edit_references_keyboard` (module-attribute, state compatibility accessors).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:44` `photo_router._edit_references_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:53` `photo_router._references` (module-attribute, state compatibility accessors).
@@ -191,7 +183,7 @@
 - **provider/model labels**: 42 functions; shared transport/domain signals despite different names and literals.
 - **repeated progress-card updates**: 6 functions; shared transport/domain signals despite different names and literals.
 - **retry/backoff policies**: 6 functions; shared transport/domain signals despite different names and literals.
-- **safe edit/send fallback**: 59 functions; shared transport/domain signals despite different names and literals.
+- **safe edit/send fallback**: 58 functions; shared transport/domain signals despite different names and literals.
 - **state compatibility accessors**: 5 functions; shared transport/domain signals despite different names and literals.
 - **task payload/result mapping/formatting**: 21 functions; shared transport/domain signals despite different names and literals.
 - **workspace task history/ownership queries**: 14 functions; shared transport/domain signals despite different names and literals.

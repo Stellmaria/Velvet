@@ -53,7 +53,34 @@ async def safe_edit_callback_text(
     )
 
 
+async def edit_or_answer_callback_text(
+    callback: CallbackQuery,
+    *,
+    text: str,
+    reply_markup: InlineKeyboardMarkup,
+) -> None:
+    """Edit a callback card or send a replacement when Telegram cannot edit it.
+
+    Media-backed messages are answered with a new text card. Text messages are edited;
+    an unchanged payload is ignored, while other Telegram bad requests fall back to a
+    new answer. The callback is acknowledged exactly once after presentation handling.
+    """
+
+    message = callback.message
+    if isinstance(message, Message):
+        if message.photo or message.video or message.document:
+            await message.answer(text, reply_markup=reply_markup)
+        else:
+            try:
+                await message.edit_text(text, reply_markup=reply_markup)
+            except TelegramBadRequest as error:
+                if not is_message_not_modified(error):
+                    await message.answer(text, reply_markup=reply_markup)
+    await callback.answer()
+
+
 __all__ = (
+    "edit_or_answer_callback_text",
     "is_message_not_modified",
     "safe_edit_callback_text",
     "safe_edit_message_text",
