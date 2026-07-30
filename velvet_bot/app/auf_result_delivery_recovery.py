@@ -36,6 +36,14 @@ _DELIVERY_ERRORS = (
     TypeError,
     AttributeError,
 )
+_DELIVERY_ERRORS = (
+    TelegramAPIError,
+    RuntimeError,
+    ValueError,
+    OSError,
+    TypeError,
+    AttributeError,
+)
 
 
 def _mapping(value: object) -> dict[str, object]:
