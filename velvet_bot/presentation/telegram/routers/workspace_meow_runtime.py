@@ -8,27 +8,35 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from velvet_bot.domains.meow_runtime import (
-    MeowProvider,
-    MeowRuntimeAccessError,
-    MeowRuntimeService,
+from velvet_bot.domains.auf_runtime import (
+    AUF_WORKSPACE_ACTION,
+    AufProvider,
+    AufRuntimeAccessError,
+    AufRuntimeService,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
 from velvet_bot.workspace_ui import workspace_callback
 
 
-class MeowRuntimeCallback(CallbackData, prefix="mrt"):
+class AufRuntimeCallback(CallbackData, prefix="mrt"):
+    """Runtime callback payload; the prefix is stable for sent keyboards."""
+
     action: str
     workspace_id: int = 0
     value: str = ""
 
 
-class MeowRuntimeForm(StatesGroup):
+class AufRuntimeForm(StatesGroup):
     waiting_limit = State()
 
 
+# Compatibility aliases for imports from stacked branches.
+MeowRuntimeCallback = AufRuntimeCallback
+MeowRuntimeForm = AufRuntimeForm
+
+
 def _callback(action: str, *, workspace_id: int, value: str = "") -> str:
-    return MeowRuntimeCallback(
+    return AufRuntimeCallback(
         action=action,
         workspace_id=workspace_id,
         value=value,
@@ -72,7 +80,7 @@ def _runtime_keyboard(
                         callback_data=_callback(
                             "limit_input",
                             workspace_id=workspace_id,
-                            value=MeowProvider.KIE.value,
+                            value=AufProvider.KIE.value,
                         ),
                     ),
                     InlineKeyboardButton(
@@ -80,7 +88,7 @@ def _runtime_keyboard(
                         callback_data=_callback(
                             "limit_input",
                             workspace_id=workspace_id,
-                            value=MeowProvider.GRS.value,
+                            value=AufProvider.GRS.value,
                         ),
                     ),
                 ],
@@ -147,8 +155,11 @@ def _runtime_keyboard(
     rows.append(
         [
             InlineKeyboardButton(
-                text="↩️ Мяу",
-                callback_data=workspace_callback("meow", workspace_id=workspace_id),
+                text="↩️ Ауф",
+                callback_data=workspace_callback(
+                    AUF_WORKSPACE_ACTION,
+                    workspace_id=workspace_id,
+                ),
             )
         ]
     )
@@ -159,7 +170,7 @@ async def _runtime_text(
     *,
     workspace_id: int,
     user_id: int,
-    service: MeowRuntimeService,
+    service: AufRuntimeService,
 ) -> tuple[str, bool, bool]:
     await service.require_workspace_access(
         workspace_id=workspace_id,
@@ -172,7 +183,7 @@ async def _runtime_text(
     global_owner = service.is_global_owner(user_id)
     if not global_owner:
         return (
-            "<b>⚙️ Мяу · параллельность пространства</b>\n\n"
+            "<b>⚙️ Ауф · параллельность пространства</b>\n\n"
             f"Одновременно может работать: <b>{workspace.concurrency_limit}</b> задач.\n"
             "Допустимый диапазон: <b>1–20</b>. Остальные запросы сохраняются "
             "в очереди.\n\nГлобальные пределы Kie и GRS управляются Стэл.",
@@ -188,7 +199,7 @@ async def _runtime_text(
         for item in snapshots
     )
     text = (
-        "<b>⚙️ Мяу · параллельность</b>\n\n"
+        "<b>⚙️ Ауф · параллельность</b>\n\n"
         f"Kie.ai: <b>{runtime.kie_concurrency_limit}/100</b>\n"
         f"GRS AI: <b>{runtime.grs_concurrency_limit}/100</b>\n"
         f"Лимит нового пространства: <b>{runtime.workspace_default_limit}</b>\n"
@@ -205,7 +216,7 @@ async def _render_runtime(
     callback: CallbackQuery,
     *,
     workspace_id: int,
-    service: MeowRuntimeService,
+    service: AufRuntimeService,
 ) -> None:
     try:
         text, global_owner, configured = await _runtime_text(
@@ -213,7 +224,7 @@ async def _render_runtime(
             user_id=callback.from_user.id,
             service=service,
         )
-    except (MeowRuntimeAccessError, ValueError) as error:
+    except (AufRuntimeAccessError, ValueError) as error:
         await callback.answer(str(error), show_alert=True)
         return
     if isinstance(callback.message, Message):
@@ -228,11 +239,11 @@ async def _render_runtime(
     await callback.answer()
 
 
-async def handle_meow_runtime_action(
+async def handle_auf_runtime_action(
     callback: CallbackQuery,
     callback_data: MeowCallback,
     state: FSMContext,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     workspace_id = callback_data.workspace_id
     if callback_data.action == "runtime":
@@ -244,7 +255,7 @@ async def handle_meow_runtime_action(
         )
         return
     if callback_data.action != "visibility_toggle":
-        await callback.answer("Неизвестное действие настроек Мяу.", show_alert=True)
+        await callback.answer("Неизвестное действие настроек Ауф.", show_alert=True)
         return
     current = await meow_runtime_service.module_is_visible(
         workspace_id=workspace_id,
@@ -256,13 +267,13 @@ async def handle_meow_runtime_action(
             actor_user_id=callback.from_user.id,
             is_visible=not current,
         )
-    except MeowRuntimeAccessError as error:
+    except AufRuntimeAccessError as error:
         await callback.answer(str(error), show_alert=True)
         return
     await callback.answer(
-        "Мяу показан в вашем меню."
+        "Ауф показан в вашем меню."
         if visible
-        else "Мяу скрыт только в вашем меню.",
+        else "Ауф скрыт только в вашем меню.",
         show_alert=True,
     )
 
@@ -271,7 +282,7 @@ async def _cancel_task(
     callback: CallbackQuery,
     *,
     value: str,
-    service: MeowRuntimeService,
+    service: AufRuntimeService,
 ) -> None:
     try:
         task_id = UUID(value)
@@ -283,7 +294,7 @@ async def _cancel_task(
             task_id=task_id,
             actor_user_id=callback.from_user.id,
         )
-    except (PermissionError, MeowRuntimeAccessError) as error:
+    except (PermissionError, AufRuntimeAccessError) as error:
         await callback.answer(str(error), show_alert=True)
         return
     if result is None:
@@ -300,11 +311,11 @@ async def _cancel_task(
     await callback.answer(text, show_alert=True)
 
 
-async def handle_meow_runtime_callback(
+async def handle_auf_runtime_callback(
     callback: CallbackQuery,
-    callback_data: MeowRuntimeCallback,
+    callback_data: AufRuntimeCallback,
     state: FSMContext,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     action = callback_data.action
     workspace_id = callback_data.workspace_id
@@ -318,13 +329,13 @@ async def handle_meow_runtime_callback(
         return
     if action == "max_limits":
         try:
-            for provider in MeowProvider:
+            for provider in AufProvider:
                 await meow_runtime_service.set_provider_limit(
                     actor_user_id=user_id,
                     provider=provider,
                     limit=100,
                 )
-        except MeowRuntimeAccessError as error:
+        except AufRuntimeAccessError as error:
             await callback.answer(str(error), show_alert=True)
             return
         await _render_runtime(
@@ -338,7 +349,7 @@ async def handle_meow_runtime_callback(
             await meow_runtime_service.confirm_runtime_settings(
                 actor_user_id=user_id
             )
-        except MeowRuntimeAccessError as error:
+        except AufRuntimeAccessError as error:
             await callback.answer(str(error), show_alert=True)
             return
         await _render_runtime(
@@ -354,7 +365,7 @@ async def handle_meow_runtime_callback(
                 actor_user_id=user_id,
                 limit=int(callback_data.value),
             )
-        except (ValueError, MeowRuntimeAccessError) as error:
+        except (ValueError, AufRuntimeAccessError) as error:
             await callback.answer(str(error), show_alert=True)
             return
         await _render_runtime(
@@ -364,13 +375,13 @@ async def handle_meow_runtime_callback(
         )
         return
     if action != "limit_input":
-        await callback.answer("Неизвестная команда runtime Мяу.", show_alert=True)
+        await callback.answer("Неизвестная команда runtime Ауф.", show_alert=True)
         return
 
-    await state.set_state(MeowRuntimeForm.waiting_limit)
+    await state.set_state(AufRuntimeForm.waiting_limit)
     await state.update_data(
-        meow_runtime_workspace_id=workspace_id,
-        meow_runtime_limit_target=callback_data.value,
+        auf_runtime_workspace_id=workspace_id,
+        auf_runtime_limit_target=callback_data.value,
     )
     if isinstance(callback.message, Message):
         maximum = 20 if callback_data.value == "workspace" else 100
@@ -394,14 +405,22 @@ async def handle_meow_runtime_callback(
     await callback.answer()
 
 
-async def handle_meow_runtime_limit_input(
+async def handle_auf_runtime_limit_input(
     message: Message,
     state: FSMContext,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     data = await state.get_data()
-    workspace_id = int(data.get("meow_runtime_workspace_id") or 0)
-    target = str(data.get("meow_runtime_limit_target") or "")
+    workspace_id = int(
+        data.get("auf_runtime_workspace_id")
+        or data.get("meow_runtime_workspace_id")
+        or 0
+    )
+    target = str(
+        data.get("auf_runtime_limit_target")
+        or data.get("meow_runtime_limit_target")
+        or ""
+    )
     try:
         limit = int((message.text or "").strip())
         if target == "workspace":
@@ -415,7 +434,7 @@ async def handle_meow_runtime_limit_input(
                 f"<b>{settings.concurrency_limit}</b>."
             )
         else:
-            provider = MeowProvider(target)
+            provider = AufProvider(target)
             settings = await meow_runtime_service.set_provider_limit(
                 actor_user_id=message.from_user.id,
                 provider=provider,
@@ -425,7 +444,7 @@ async def handle_meow_runtime_limit_input(
                 f"Лимит {escape(provider.display_name)} установлен: "
                 f"<b>{settings.limit_for(provider)}</b>."
             )
-    except (ValueError, MeowRuntimeAccessError) as error:
+    except (ValueError, AufRuntimeAccessError) as error:
         await message.answer(str(error))
         return
     await state.clear()
@@ -435,7 +454,7 @@ async def handle_meow_runtime_limit_input(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="↩️ К настройкам Мяу",
+                        text="↩️ К настройкам Ауф",
                         callback_data=MeowCallback(
                             action="runtime",
                             workspace_id=workspace_id,
@@ -447,10 +466,21 @@ async def handle_meow_runtime_limit_input(
     )
 
 
+# Existing router registration imports the historical handler names.
+handle_meow_runtime_action = handle_auf_runtime_action
+handle_meow_runtime_callback = handle_auf_runtime_callback
+handle_meow_runtime_limit_input = handle_auf_runtime_limit_input
+
+
 __all__ = (
+    "AufRuntimeCallback",
+    "AufRuntimeForm",
     "MeowRuntimeCallback",
     "MeowRuntimeForm",
     "build_task_cancel_keyboard",
+    "handle_auf_runtime_action",
+    "handle_auf_runtime_callback",
+    "handle_auf_runtime_limit_input",
     "handle_meow_runtime_action",
     "handle_meow_runtime_callback",
     "handle_meow_runtime_limit_input",
