@@ -32,7 +32,7 @@ async def safe_edit_message_text(
     resolved_bad_request_type = bad_request_type or TelegramBadRequest
     try:
         await message.edit_text(text, reply_markup=reply_markup, **edit_kwargs)
-    except Exception as error:
+    except Exception as error:  # p2-approved-boundary:typed-telegram-edit-error-dispatch
         if not isinstance(error, resolved_bad_request_type):
             raise
         if not is_message_not_modified(error):
