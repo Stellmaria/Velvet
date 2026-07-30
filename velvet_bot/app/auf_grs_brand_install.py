@@ -10,12 +10,15 @@ from velvet_bot.app.grs_campaign_retry import CampaignGrsGenerationWorker
 from velvet_bot.domains.ai_usage import AITask
 from velvet_bot.domains.media_generation.friendly_worker import FriendlyKieGenerationWorker
 from velvet_bot.domains.media_generation.models import KieGenerationRequest, KieTaskRecord
+from velvet_bot.domains.media_generation.worker import (
+    KieGenerationWorker as BaseKieGenerationWorker,
+)
 
 _INSTALLED = False
 
 
 def _sanitize_auf_text(text: str) -> str:
-    """Remove retired setup prose without reintroducing the Meow brand."""
+    """Remove retired setup prose and normalize visible product branding."""
 
     cleaned = re.sub(
         r"(?m)^Контент: <b>Mature</b>(?: · модерация GRS активна)?\n?",
@@ -41,6 +44,15 @@ def _sanitize_auf_text(text: str) -> str:
     cleaned = cleaned.replace(
         legacy_mature_paragraph,
         "После выбора модели будут показаны доступные варианты качества.",
+    )
+    cleaned = (
+        cleaned.replace("🐈 <b>Мяу</b>", "🐕 <b>Ауф</b>")
+        .replace("🐈 Мяу", "🐕 Ауф")
+        .replace("МЯУ", "АУФ")
+        .replace("Мяу", "Ауф")
+        .replace("мяу", "ауф")
+        .replace("MEOW", "AUF")
+        .replace("Meow", "Auf")
     )
     return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
@@ -106,7 +118,7 @@ async def _deliver_best_effort_auf(
 
 
 def install_auf_grs_brand() -> None:
-    """Make the active GRS worker use only canonical Auf presentation text."""
+    """Make every active media worker use canonical Auf presentation text."""
 
     global _INSTALLED
     if _INSTALLED:
@@ -119,6 +131,7 @@ def install_auf_grs_brand() -> None:
     grs_resilience.ResilientFriendlyKieGenerationWorker._friendly_progress_text = (  # type: ignore[method-assign]
         _friendly_progress_text_auf
     )
+    BaseKieGenerationWorker._deliver_best_effort = _deliver_best_effort_auf  # type: ignore[method-assign]
     grs_resilience.ResilientFriendlyKieGenerationWorker._deliver_best_effort = (  # type: ignore[method-assign]
         _deliver_best_effort_auf
     )
