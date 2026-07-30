@@ -139,7 +139,9 @@ class MeowWalletService:
         self._require_global_owner(actor_user_id)
         return await self._repository.set_status(
             workspace_id=int(workspace_id),
-            status=(MeowWalletStatus.FROZEN if frozen else MeowWalletStatus.ACTIVE),
+            status=(
+                MeowWalletStatus.FROZEN if frozen else MeowWalletStatus.ACTIVE
+            ),
         )
 
     async def update_economy_settings(
@@ -177,7 +179,9 @@ class MeowWalletService:
 
     def _require_global_owner(self, actor_user_id: int) -> None:
         if not self.is_global_owner(actor_user_id):
-            raise MeowWalletAccessError("Управление экономикой Ауф доступно только Стэл.")
+            raise MeowWalletAccessError(
+                "Управление экономикой Ауф доступно только Стэл."
+            )
 
 
 def _package_quote(
@@ -186,11 +190,19 @@ def _package_quote(
 ) -> MeowAufPackageQuote:
     usd = (Decimal(amount_auf) * settings.retail_auf_usd).quantize(Decimal("0.01"))
     raw_rub = usd * settings.billing_usd_to_rub
+    rounding_step = Decimal(100) if raw_rub >= Decimal(1000) else Decimal(10)
     rub = (
-        (raw_rub / Decimal(10)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-        * Decimal(10)
+        (raw_rub / rounding_step).quantize(
+            Decimal("1"),
+            rounding=ROUND_HALF_UP,
+        )
+        * rounding_step
     )
-    return MeowAufPackageQuote(amount_auf=amount_auf, price_usd=usd, price_rub=rub)
+    return MeowAufPackageQuote(
+        amount_auf=amount_auf,
+        price_usd=usd,
+        price_rub=rub,
+    )
 
 
 __all__ = (
