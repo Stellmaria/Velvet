@@ -3,18 +3,52 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot import workspace_ui
-from velvet_bot.core.access import policy
+from velvet_bot.core.config.kie import KieSettings
 from velvet_bot.domains.auf_runtime import (
     AUF_MODULE_KEY,
     AUF_WORKSPACE_ACTION,
+    AufRuntimeAccessError,
     AufRuntimeRepository,
     AufRuntimeService,
 )
+from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
+from velvet_bot.presentation.telegram.routers.workspace_auf_root import build_auf_root_view
 
 _INSTALLED = False
+
+
+async def handle_auf_workspace_command(
+    message: Message,
+    state: FSMContext,
+    workspace_service: WorkspaceService,
+    kie_settings: KieSettings,
+    auf_runtime_service: AufRuntimeService,
+) -> None:
+    """Open Auf for the caller's active personal workspace."""
+
+    user_id = message.from_user.id if message.from_user else 0
+    try:
+        workspace = await workspace_service.resolve_active_workspace(
+            user_id=user_id,
+            global_owner=auf_runtime_service.is_global_owner(user_id),
+        )
+        text, keyboard = await build_auf_root_view(
+            workspace_id=workspace.id,
+            user_id=user_id,
+            kie_settings=kie_settings,
+            auf_runtime_service=auf_runtime_service,
+        )
+    except (WorkspaceAccessError, AufRuntimeAccessError, ValueError) as error:
+        await message.answer(str(error))
+        return
+
+    await state.clear()
+    await message.answer(text, reply_markup=keyboard)
 
 
 def install_auf_workspace_ui() -> None:
@@ -24,33 +58,9 @@ def install_auf_workspace_ui() -> None:
 
     workspace_ui.MODULE_LABELS[AUF_MODULE_KEY] = "🐕 Ауф · генерация"
     workspace_ui.MODULE_HELP[AUF_MODULE_KEY] = (
-        "Создание изображений и видео через Kie.ai и GRS AI. Стэл разрешает модуль, "
-        "владелец пространства включает его и задаёт параллельность до 20 задач."
+        "Создание изображений и видео. Владелец пространства включает модуль "
+        "и задаёт допустимую параллельность задач."
     )
-
-    # Prefixes are protocol contracts for already-sent keyboards. Keep them stable
-    # until a separate callback migration introduces dual parsing.
-    callback_prefixes = list(policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES)
-    for prefix in ("auf:", "meow:", "mrt:", "aufv|", "meowv|"):
-        if prefix not in callback_prefixes:
-            callback_prefixes.append(prefix)
-    policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES = tuple(callback_prefixes)
-
-
-    state_prefixes = list(policy.WORKSPACE_MEMBER_FSM_STATE_PREFIXES)
-    for prefix in (
-        "AufRuntimeForm:",
-        "AufForm:",
-        "AufVideoForm:",
-        "AufPhotoForm:",
-        "MeowRuntimeForm:",
-        "MeowForm:",
-        "MeowVideoForm:",
-        "MeowPhotoForm:",
-    ):
-        if prefix not in state_prefixes:
-            state_prefixes.append(prefix)
-    policy.WORKSPACE_MEMBER_FSM_STATE_PREFIXES = tuple(state_prefixes)
 
     presentation = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_presentation"
@@ -63,6 +73,7 @@ def install_auf_workspace_ui() -> None:
     )
     original_home = presentation.build_workspace_home_presentation
     original_modules_keyboard = workspace_ui.build_modules_keyboard
+    original_register = controller.register_workspace_home
 
     async def build_home_with_auf_visibility(**kwargs: Any):
         product_service = kwargs["workspace_product_service"]
@@ -91,11 +102,19 @@ def install_auf_workspace_ui() -> None:
                 break
         return InlineKeyboardMarkup(inline_keyboard=rows)
 
+    def register_workspace_home_with_auf_command(router) -> None:
+        # Register before FSM handlers so /auf is also a recovery entry from an
+        # interrupted generation form. The handler still checks active workspace,
+        # ownership and module policy through AufRuntimeService.
+        router.message.register(handle_auf_workspace_command, Command("auf"))
+        original_register(router)
+
     presentation.build_workspace_home_presentation = build_home_with_auf_visibility
     controller.build_workspace_home_presentation = build_home_with_auf_visibility
+    controller.register_workspace_home = register_workspace_home_with_auf_command
     workspace_ui.build_modules_keyboard = build_modules_with_auf_entry
     workspaces_router.build_modules_keyboard = build_modules_with_auf_entry
     _INSTALLED = True
 
 
-__all__ = ("install_auf_workspace_ui",)
+__all__ = ("handle_auf_workspace_command", "install_auf_workspace_ui")

@@ -90,6 +90,7 @@ PANEL_COMMANDS = {
     "archive_shortcuts",
     "taxonomy_manage",
     "structure_manage",
+    "auf",
 }
 FORM_COMMANDS = {
     "create",

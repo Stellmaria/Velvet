@@ -61,7 +61,6 @@ def __getattr__(name: str) -> Any:
         install_grs_resilience()
         install_grs_campaign_retry()
         install_grs_speedups()
-        install_auf_grs_brand()
         install_telegram_progress_resilience()
         install_auf_cancel_ui()
         install_auf_runtime_dispatcher()
@@ -76,6 +75,9 @@ def __getattr__(name: str) -> Any:
         install_auf_result_delivery_recovery()
         install_auf_active_delivery_fix()
         install_krita_remote_worker()
+        # Privacy and branding must run last because several installers replace
+        # presentation methods during composition.
+        install_auf_grs_brand()
         install_auf_branding()
         await application()
 

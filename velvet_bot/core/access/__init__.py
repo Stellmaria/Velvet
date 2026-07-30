@@ -26,6 +26,26 @@ from velvet_bot.core.access.policy import (
     normalize_username,
 )
 
+_AUF_WORKSPACE_CALLBACK_PREFIXES = (
+    "auf:",
+    "aufv:",
+    "aufv|",
+    "mrt:",
+    "meow:",
+    "meowv:",
+    "meowv|",
+)
+_AUF_WORKSPACE_FSM_STATE_PREFIXES = (
+    "AufForm:",
+    "AufPhotoForm:",
+    "AufVideoForm:",
+    "AufRuntimeForm:",
+    "MeowForm:",
+    "MeowPhotoForm:",
+    "MeowVideoForm:",
+    "MeowRuntimeForm:",
+)
+
 # Personal workspace owners must be able to reach their own setup and lifecycle
 # routes without being mistaken for global bot owners.
 WORKSPACE_MEMBER_COMMANDS = _BASE_WORKSPACE_MEMBER_COMMANDS | frozenset(
@@ -42,11 +62,13 @@ WORKSPACE_MEMBER_COMMANDS = _BASE_WORKSPACE_MEMBER_COMMANDS | frozenset(
         "taxonomy_manage",
         "structure_manage",
         "save_set",
+        "auf",
     }
 )
 WORKSPACE_MEMBER_CALLBACK_PREFIXES = (
     *_BASE_WORKSPACE_MEMBER_CALLBACK_PREFIXES,
     "wq:",
+    *_AUF_WORKSPACE_CALLBACK_PREFIXES,
 )
 OWNER_ONLY_COMMANDS = _BASE_OWNER_ONLY_COMMANDS | frozenset(
     {
@@ -88,7 +110,16 @@ def is_workspace_member_callback_data(value: str | None) -> bool:
 def is_workspace_member_fsm_state_name(value: object | None) -> bool:
     return bool(
         _base_workspace_member_fsm_state_name(value)
-        or (value and str(value).startswith("WorkspaceQwenForm:"))
+        or (
+            value
+            and (
+                str(value).startswith("WorkspaceQwenForm:")
+                or any(
+                    str(value).startswith(prefix)
+                    for prefix in _AUF_WORKSPACE_FSM_STATE_PREFIXES
+                )
+            )
+        )
     )
 
 

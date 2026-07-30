@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from decimal import Decimal, ROUND_HALF_UP
-from html import escape
 
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
@@ -26,7 +25,7 @@ def build_grs_balance_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Обновить баланс GRS",
+                    text="Обновить служебный статус",
                     callback_data=AufCallback(
                         action="grs_balance",
                         workspace_id=workspace_id,
@@ -51,14 +50,20 @@ async def handle_auf_grs_balance(
     kie_settings: KieSettings,
 ) -> None:
     if not access_policy.allows_user(callback.from_user):
-        await callback.answer("Баланс GRS доступен только владельцу.", show_alert=True)
+        await callback.answer(
+            "Служебный статус доступен только владельцу.",
+            show_alert=True,
+        )
         return
     await state.clear()
     if not kie_settings.enabled:
-        await callback.answer("AI-генерация выключена на сервере.", show_alert=True)
+        await callback.answer("Генерация сейчас недоступна.", show_alert=True)
         return
     if kie_settings.api_key is None or kie_settings.grs_api_key is None:
-        await callback.answer("GRS AI не настроен на сервере.", show_alert=True)
+        await callback.answer(
+            "Этот служебный экран сейчас недоступен.",
+            show_alert=True,
+        )
         return
 
     credits: Decimal | None = None
@@ -83,9 +88,9 @@ async def handle_auf_grs_balance(
             timeout=_GRS_BALANCE_TIMEOUT_SECONDS,
         )
     except TimeoutError:
-        balance_error = "GRS AI не ответил за 8 секунд."
-    except KieError as error:
-        balance_error = str(error)
+        balance_error = "Служебный статус не ответил вовремя."
+    except KieError:
+        balance_error = "Служебный статус временно недоступен."
 
     text = _render_grs_balance(
         credits=credits,
@@ -115,39 +120,20 @@ def _render_grs_balance(
     nano_banana_pro_usd: Decimal,
     usd_to_rub: Decimal,
 ) -> str:
-    lines = ["<b>Ауф · баланс GRS AI</b>", ""]
-    per_credit_usd = _grs_credit_usd(
-        nano_banana_2_usd=nano_banana_2_usd,
-        nano_banana_pro_usd=nano_banana_pro_usd,
+    del nano_banana_2_usd, nano_banana_pro_usd, usd_to_rub
+    lines = ["<b>Ауф · служебный статус генерации</b>", ""]
+    lines.append(
+        "Состояние: <b>доступно</b>"
+        if credits is not None
+        else "Состояние: <b>временно недоступно</b>"
     )
-    if credits is None:
-        lines.append("Баланс аккаунта: <b>не получен</b>")
-    else:
-        lines.extend(
-            [
-                f"Баланс аккаунта: <b>{_format_credits(credits)} кредитов</b>",
-                "Расчётная стоимость остатка: "
-                f"<b>{_format_usd_rub(credits * per_credit_usd, usd_to_rub=usd_to_rub)}</b>",
-            ]
-        )
     if balance_error:
-        lines.extend(
-            [
-                "",
-                f"<i>Баланс временно недоступен: {escape(balance_error)}</i>",
-            ]
-        )
+        lines.extend(["", f"<i>{balance_error}</i>"])
     lines.extend(
         [
             "",
-            "<b>Расчётная себестоимость одной генерации</b>",
-            "• Nano Banana 2: <b>≈ 1 200 кредитов</b> · "
-            + _format_usd_rub(nano_banana_2_usd, usd_to_rub=usd_to_rub),
-            "• Nano Banana Pro: <b>≈ 1 800 кредитов</b> · "
-            + _format_usd_rub(nano_banana_pro_usd, usd_to_rub=usd_to_rub),
-            "",
-            "Баланс запрашивается только при открытии или обновлении этого экрана. "
-            "Перед генерацией бот его больше не проверяет.",
+            "Названия внешних сервисов, их баланс, тарифы и технические "
+            "идентификаторы в пользовательском интерфейсе не показываются.",
         ]
     )
     return "\n".join(lines)
