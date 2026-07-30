@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/auf-router-cleanup-runner
+  pull_request:
+    branches:
+      - agent/auf-router-cleanup-runner
 
 permissions:
   contents: write
