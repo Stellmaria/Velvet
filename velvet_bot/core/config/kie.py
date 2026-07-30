@@ -157,9 +157,9 @@ def load_kie_settings() -> KieSettings:
                 models.provider_model(alias, input_mode=input_mode)
         except ValueError as error:
             raise RuntimeError(
-                "KIE_ENABLED=true требует model id для Seedream 5 Pro, Qwen Image "
-                "2.0, Wan 2.7 Image, FLUX.2 Pro, Nano Banana 2/Pro и четырёх "
-                "image-to-video моделей."
+                "KIE_ENABLED=true требует model id для обоих режимов Seedream 5 Pro, "
+                "Qwen Image 2.0, Wan 2.7 Image, FLUX.2 Pro, Nano Banana 2/Pro и "
+                "четырёх image-to-video моделей."
             ) from error
 
     pricing = KiePricing(
