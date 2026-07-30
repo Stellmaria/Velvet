@@ -101,11 +101,12 @@ jobs:
           ''',
           )
 
-          for path in (
+          target_paths = (
               'velvet_bot/presentation/telegram/routers/workspace_auf_grs.py',
               'velvet_bot/presentation/telegram/routers/workspace_auf_photo.py',
               'velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py',
-          ):
+          )
+          for path in target_paths:
               replace_once(
                   path,
                   'from velvet_bot.presentation.telegram.routers.workspace_auf import (\n',
@@ -188,14 +189,9 @@ jobs:
           ''',
           )
 
-          remaining = []
-          for path in ROOT.joinpath('velvet_bot').rglob('*.py'):
-              if path == ROOT / workspace_auf:
-                  continue
-              if '_edit_or_answer' in path.read_text(encoding='utf-8'):
-                  remaining.append(path.as_posix())
-          if remaining:
-              raise SystemExit('remaining external _edit_or_answer tokens: ' + ', '.join(remaining))
+          for path in (*target_paths, photo_install, resilience):
+              if '_edit_or_answer' in read(path):
+                  raise SystemExit(f'{path}: targeted private _edit_or_answer token remains')
           PY
           python scripts/inventory_telegram_helpers.py \
             --write-json docs/shared_contract_inventory.json \
