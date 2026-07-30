@@ -11,7 +11,7 @@ from velvet_bot.domains.auf_runtime import (
     AufGenerationDispatcher,
     AufRuntimeRepository,
 )
-from velvet_bot.domains.meow_runtime.cancellable_worker import (
+from velvet_bot.domains.auf_runtime.cancellable_worker import (
     build_cancellable_worker_class,
 )
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
