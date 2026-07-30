@@ -34,7 +34,7 @@ class MeowRuntimeRepository:
                 """
             )
         if row is None:
-            raise RuntimeError("Настройки параллельности Мяу не инициализированы.")
+            raise RuntimeError("Настройки параллельности Ауф не инициализированы.")
         return _runtime_from_row(row)
 
     async def set_provider_limit(
@@ -92,7 +92,7 @@ class MeowRuntimeRepository:
                 int(updated_by_user_id),
             )
         if row is None:
-            raise RuntimeError("Не удалось подтвердить настройки Мяу.")
+            raise RuntimeError("Не удалось подтвердить настройки Ауф.")
         return _runtime_from_row(row)
 
     async def claim_setup_notice(self) -> bool:
@@ -125,7 +125,7 @@ class MeowRuntimeRepository:
                 int(workspace_id),
             )
         if row is None:
-            raise RuntimeError("Не удалось загрузить настройки Мяу пространства.")
+            raise RuntimeError("Не удалось загрузить настройки Ауф пространства.")
         return _workspace_from_row(row)
 
     async def set_workspace_limit(
@@ -159,7 +159,7 @@ class MeowRuntimeRepository:
             raise RuntimeError("Не удалось обновить лимит пространства.")
         return _workspace_from_row(row)
 
-    async def can_use_meow(
+    async def can_use_auf(
         self,
         *,
         workspace_id: int,
@@ -186,6 +186,9 @@ class MeowRuntimeRepository:
                 int(user_id),
             )
         return bool(value)
+
+    # Compatibility entry point for stacked branches and older service imports.
+    can_use_meow = can_use_auf
 
     async def is_workspace_owner(
         self,
@@ -327,7 +330,7 @@ class MeowRuntimeRepository:
                     row["created_by"]
                 )
                 if not global_owner and owner_id != int(requested_by_user_id):
-                    raise PermissionError("Можно отменять только свои задачи Мяу.")
+                    raise PermissionError("Можно отменять только свои задачи Ауф.")
                 status = str(row["status"])
                 campaign = _mapping(payload.get("kie_campaign"))
                 provider_started = bool(campaign.get("active_provider_task_id"))
