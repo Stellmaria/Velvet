@@ -28,6 +28,9 @@ def __getattr__(name: str) -> Any:
         )
         from velvet_bot.app.auf_photo_ui_install import install_auf_photo_ui
         from velvet_bot.app.auf_reconciliation_install import install_auf_reconciliation
+        from velvet_bot.app.auf_result_delivery_recovery import (
+            install_auf_result_delivery_recovery,
+        )
         from velvet_bot.app.auf_runtime_install import install_auf_runtime_dispatcher
         from velvet_bot.app.auf_user_portal_install import install_auf_user_portal
         from velvet_bot.app.auf_wallet_ui_install import install_auf_wallet_ui
@@ -67,6 +70,7 @@ def __getattr__(name: str) -> Any:
         install_auf_user_portal()
         install_original_image_delivery_hotfix()
         install_original_video_delivery_hotfix()
+        install_auf_result_delivery_recovery()
         install_krita_remote_worker()
         install_auf_branding()
         await application()
