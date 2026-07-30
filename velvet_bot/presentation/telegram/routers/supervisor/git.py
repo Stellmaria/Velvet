@@ -6,13 +6,13 @@ from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.application.supervisor import load_supervisor_status
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _confirm_keyboard,
     _git_keyboard,
     _git_text,
     _operation_accepted,
-    _safe_edit,
 )
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
 
@@ -82,11 +82,11 @@ async def handle_supervisor_git_callback(
     try:
         if action == "git.menu":
             payload = await load_supervisor_status(supervisor_client)
-            await _safe_edit(callback.message, _git_text(payload), _git_keyboard())
+            await edit_supervisor_message(callback.message, _git_text(payload), _git_keyboard())
             await callback.answer()
             return
         if action == "update.ask":
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 _UPDATE_TEXT,
                 _confirm_keyboard(
@@ -98,7 +98,7 @@ async def handle_supervisor_git_callback(
             await callback.answer()
             return
         if action == "rollback.ask":
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 _ROLLBACK_TEXT,
                 _confirm_keyboard(
