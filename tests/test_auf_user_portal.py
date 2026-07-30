@@ -88,7 +88,7 @@ class AufUserPortalPresentationTests(unittest.TestCase):
         self.assertIsNone(captured["estimated_usd"])
         self.assertIsNone(captured["estimated_rub"])
         self.assertIsNone(captured["cost_change"])
-        self.assertIn("Цена в Ауф", text)
+        self.assertIn("цена в Ауф", text)
         self.assertNotIn("$", text)
 
     def test_task_line_contains_only_user_facing_charge(self) -> None:
