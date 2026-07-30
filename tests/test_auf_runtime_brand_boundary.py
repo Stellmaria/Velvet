@@ -68,7 +68,7 @@ def test_canonical_runtime_does_not_import_retired_package() -> None:
 
     for path in paths:
         source = _read(path)
-        assert "velvet_bot.domains.meow_runtime" not in source, path
+        assert "velvet_bot.domains.auf_runtime" not in source, path
         assert "class Meow" not in source, path
         assert "ProviderMeow" not in source, path
 
