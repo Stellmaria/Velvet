@@ -16,7 +16,7 @@ from velvet_bot.domains.media_generation import (
     KieReferenceImage,
     KieTaskState,
 )
-from velvet_bot.infrastructure.ai import KieClient, KieTaskFailed
+from velvet_bot.infrastructure.ai import KieClient, KieError, KieTaskFailed
 from velvet_bot.presentation.telegram.routers.workspace_auf_grs import (
     build_model_keyboard,
     model_selection_text,
@@ -107,7 +107,32 @@ class GrsMediaProviderTests(unittest.TestCase):
         self.assertEqual("Bearer grs-secret", calls[0][2]["Authorization"])
         self.assertEqual("nano-banana-pro", calls[0][3]["model"])
 
-    def test_grs_async_task_polls_result_endpoint(self) -> None:
+    def test_banana_never_falls_back_to_kie_without_grs_key(self) -> None:
+        calls: list[str] = []
+
+        def transport(method, url, headers, payload, timeout):
+            calls.append(url)
+            return {"code": 200, "data": {"taskId": "wrong-provider"}}
+
+        client = KieClient(
+            api_key="kie-secret",
+            grs_api_key=None,
+            models=KieModelCatalog(),
+            transport=transport,
+        )
+        request = KieGenerationRequest(
+            model=KieModelAlias.NANO_BANANA_PRO,
+            input_mode=KieInputMode.TEXT,
+            prompt="portrait",
+            resolution="1K",
+        )
+
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(KieError, "GRS_API_KEY"):
+                asyncio.run(client.create_task(request))
+        self.assertEqual([], calls)
+
+    def test_grs_async_task_polls_result_endpoint_with_grs_key(self) -> None:
         responses = iter(
             [
                 {"id": "14-task-2", "status": "submitted", "results": []},
@@ -118,10 +143,10 @@ class GrsMediaProviderTests(unittest.TestCase):
                 },
             ]
         )
-        calls: list[tuple[str, str]] = []
+        calls: list[tuple[str, str, str]] = []
 
         def transport(method, url, headers, payload, timeout):
-            calls.append((method, url))
+            calls.append((method, url, str(headers.get("Authorization") or "")))
             return next(responses)
 
         client = KieClient(
@@ -147,7 +172,11 @@ class GrsMediaProviderTests(unittest.TestCase):
             record = asyncio.run(scenario())
         self.assertEqual(KieTaskState.SUCCESS, record.state)
         self.assertEqual(
-            ("GET", "https://grs.example/v1/api/result?id=14-task-2"),
+            (
+                "GET",
+                "https://grs.example/v1/api/result?id=14-task-2",
+                "Bearer grs-secret",
+            ),
             calls[1],
         )
 
