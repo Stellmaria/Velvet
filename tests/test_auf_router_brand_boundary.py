@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from velvet_bot.app.composition import build_application_composition
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTERS = ROOT / "velvet_bot/presentation/telegram/routers"
@@ -95,11 +97,11 @@ class AufRouterBrandBoundaryTests(unittest.TestCase):
         self.assertIn('key.replace("auf_", "meow_", 1)', core)
 
     def test_final_telegram_branding_guard_is_installed_last(self) -> None:
-        app = _read(ROOT / "velvet_bot/app/__init__.py")
-        self.assertIn("install_auf_branding", app)
+        stage_names = build_application_composition().stage_names
+        self.assertEqual("install_auf_branding", stage_names[-1])
         self.assertLess(
-            app.index("install_krita_remote_worker()"),
-            app.index("install_auf_branding()"),
+            stage_names.index("install_krita_remote_worker"),
+            stage_names.index("install_auf_branding"),
         )
         branding = _read(ROOT / "velvet_bot/app/auf_branding.py")
         self.assertIn('field_name in _IDENTIFIER_FIELDS', branding)
