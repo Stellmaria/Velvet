@@ -5,7 +5,9 @@ from decimal import Decimal
 from velvet_bot.database import Database
 
 
-async def active_package_prices(database: Database) -> dict[int, Decimal]:
+async def active_package_prices(database: Database | None) -> dict[int, Decimal]:
+    if database is None:
+        return {}
     async with database.acquire() as connection:
         rows = await connection.fetch(
             """
@@ -20,7 +22,12 @@ async def active_package_prices(database: Database) -> dict[int, Decimal]:
     return {int(row["package_auf"]): Decimal(row["price_rub"]) for row in rows}
 
 
-async def active_package_price(database: Database, package_auf: int) -> Decimal | None:
+async def active_package_price(
+    database: Database | None,
+    package_auf: int,
+) -> Decimal | None:
+    if database is None:
+        return None
     async with database.acquire() as connection:
         value = await connection.fetchval(
             """
