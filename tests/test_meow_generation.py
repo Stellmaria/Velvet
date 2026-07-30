@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.domains.ai_usage import AITask, AITaskStatus
+from velvet_bot.domains.auf_runtime import AUF_MODULE_KEY
 from velvet_bot.domains.media_generation import (
     KIE_GENERATION_TASK_TYPE,
     KieContentMode,
@@ -47,7 +48,11 @@ def _workspace() -> Workspace:
     return Workspace(9, "private-9", "Мой архив", False, now, now)
 
 
-def _modules(*, meow_allowed: bool = True, meow_enabled: bool = True) -> tuple[WorkspaceModuleSetting, ...]:
+def _modules(
+    *,
+    auf_allowed: bool = True,
+    auf_enabled: bool = True,
+) -> tuple[WorkspaceModuleSetting, ...]:
     now = datetime.now(UTC)
     return (
         WorkspaceModuleSetting(
@@ -61,9 +66,9 @@ def _modules(*, meow_allowed: bool = True, meow_enabled: bool = True) -> tuple[W
         ),
         WorkspaceModuleSetting(
             workspace_id=9,
-            module_key="meow",
-            is_allowed=meow_allowed,
-            is_enabled=meow_enabled if meow_allowed else False,
+            module_key=AUF_MODULE_KEY,
+            is_allowed=auf_allowed,
+            is_enabled=auf_enabled if auf_allowed else False,
             updated_by_user_id=1,
             created_at=now,
             updated_at=now,
@@ -124,34 +129,34 @@ def _task(request: KieGenerationRequest, *, attempt_count: int = 1) -> AITask:
     )
 
 
-class MeowUIContractTests(unittest.TestCase):
-    def test_owner_home_contains_meow_when_module_is_allowed_and_enabled(self) -> None:
+class AufUIContractTests(unittest.TestCase):
+    def test_owner_home_contains_auf_when_module_is_allowed_and_enabled(self) -> None:
         keyboard = build_workspace_owner_home_keyboard(
             _workspace(),
             public_enabled=False,
             modules=_modules(),
         )
         labels = _labels(keyboard)
-        self.assertIn("Мяу", labels)
-        self.assertNotIn("🐈 Мяу", labels)
+        self.assertIn("Ауф", labels)
+        self.assertNotIn("Мяу", labels)
 
-    def test_owner_home_hides_meow_without_system_permission(self) -> None:
+    def test_owner_home_hides_auf_without_system_permission(self) -> None:
         keyboard = build_workspace_owner_home_keyboard(
             _workspace(),
             public_enabled=False,
-            modules=_modules(meow_allowed=False, meow_enabled=False),
+            modules=_modules(auf_allowed=False, auf_enabled=False),
         )
-        self.assertNotIn("Мяу", _labels(keyboard))
+        self.assertNotIn("Ауф", _labels(keyboard))
 
-    def test_owner_home_hides_meow_when_workspace_disables_module(self) -> None:
+    def test_owner_home_hides_auf_when_workspace_disables_module(self) -> None:
         keyboard = build_workspace_owner_home_keyboard(
             _workspace(),
             public_enabled=False,
-            modules=_modules(meow_allowed=True, meow_enabled=False),
+            modules=_modules(auf_allowed=True, auf_enabled=False),
         )
-        self.assertNotIn("Мяу", _labels(keyboard))
+        self.assertNotIn("Ауф", _labels(keyboard))
 
-    def test_meow_root_has_create_and_animate(self) -> None:
+    def test_generation_root_has_create_and_animate(self) -> None:
         self.assertEqual(
             ["Создать", "Оживить", "↩️ Моё пространство"],
             _labels(build_meow_root_keyboard(workspace_id=9, enabled=True)),
@@ -253,7 +258,7 @@ class _FakeBot:
         return destination
 
 
-class MeowWorkerTests(unittest.IsolatedAsyncioTestCase):
+class AufWorkerTests(unittest.IsolatedAsyncioTestCase):
     async def test_worker_uploads_reference_then_generates_seedream_photo(self) -> None:
         request = KieGenerationRequest(
             model=KieModelAlias.SEEDREAM_5_PRO,
