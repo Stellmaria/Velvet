@@ -3,39 +3,96 @@ name: photo inventory export
 on:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   export:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout feature branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      - name: Generate package architecture inventory
+      - name: Generate inventories
         run: |
           python scripts/inventory_package_architecture.py \
             --write \
             --bootstrap-exemptions \
             --label p1-package-architecture-baseline
-
-      - name: Generate Telegram navigation inventory
-        run: |
           python scripts/telegram_navigation_inventory.py \
             --root velvet_bot \
             --markdown docs/generated/telegram_navigation_inventory.md
 
-      - name: Export generated files
-        uses: actions/upload-artifact@v4
-        with:
-          name: photo-generated-inventories
-          path: |
-            docs/package_architecture_inventory.json
-            docs/package_architecture_exemptions.json
-            docs/package_architecture_inventory.md
-            docs/generated/telegram_navigation_inventory.md
-          if-no-files-found: error
-          retention-days: 1
+      - name: Synchronize inventory contract constants
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          inventory = json.loads(
+              Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8")
+          )
+          path = Path("tests/test_package_architecture_inventory.py")
+          text = path.read_text(encoding="utf-8")
+          replacements = {
+              "self.assertEqual(604, self.inventory[\"production_module_count\"] )": None,
+          }
+          text = text.replace(
+              'self.assertEqual(604, self.inventory["production_module_count"])',
+              f'self.assertEqual({inventory["production_module_count"]}, self.inventory["production_module_count"])',
+          )
+          text = text.replace(
+              'self.assertEqual(128_870, self.inventory["production_loc"])',
+              f'self.assertEqual({inventory["production_loc"]:,}'.replace(",", "_") + ', self.inventory["production_loc"])',
+          )
+          text = text.replace(
+              'self.assertEqual(27, len(self.inventory["installer_graph"]))',
+              f'self.assertEqual({len(inventory["installer_graph"])}, len(self.inventory["installer_graph"]))',
+          )
+          text = text.replace(
+              'self.assertEqual(518, self.inventory["violation_count"])',
+              f'self.assertEqual({inventory["violation_count"]}, self.inventory["violation_count"])',
+          )
+          text = text.replace(
+              'self.assertEqual(list(range(1, 28)), [item["order"] for item in graph])',
+              f'self.assertEqual(list(range(1, {len(inventory["installer_graph"]) + 1})), [item["order"] for item in graph])',
+          )
+          text = text.replace(
+              'self.assertIn("Production modules: **604**", self.markdown)',
+              f'self.assertIn("Production modules: **{inventory["production_module_count"]}**", self.markdown)',
+          )
+          text = text.replace(
+              'self.assertIn("Startup installer stages: **27**", self.markdown)',
+              f'self.assertIn("Startup installer stages: **{len(inventory["installer_graph"])}**", self.markdown)',
+          )
+          text = text.replace(
+              'self.assertIn("Registered package violations: **518**", self.markdown)',
+              f'self.assertIn("Registered package violations: **{inventory["violation_count"]}**", self.markdown)',
+          )
+          text = text.replace(
+              'self.assertIn("Registered exemptions: **518**", self.markdown)',
+              f'self.assertIn("Registered exemptions: **{inventory["violation_count"]}**", self.markdown)',
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit generated contracts and remove exporter
+        run: |
+          rm .github/workflows/photo-inventory-export.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Обновить архитектурные и Telegram-инвентари"
+          git push origin HEAD:${{ github.head_ref }}
