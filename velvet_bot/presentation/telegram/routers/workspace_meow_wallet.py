@@ -6,6 +6,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.domains.meow_wallet import (
+    AUF_PACKAGES,
+    MeowInvoiceError,
+    MeowInvoiceStatus,
+    MeowPurchaseService,
     MeowWalletAccessError,
     MeowWalletOperation,
     MeowWalletService,
@@ -25,6 +29,13 @@ _OPERATION_LABELS = {
     MeowWalletOperation.MANUAL_DEBIT: "ручное списание",
     MeowWalletOperation.ADJUSTMENT: "корректировка",
 }
+_INVOICE_LABELS = {
+    MeowInvoiceStatus.CREATED: "ожидает оплаты",
+    MeowInvoiceStatus.PAID: "оплачен",
+    MeowInvoiceStatus.EXPIRED: "истёк",
+    MeowInvoiceStatus.CANCELLED: "отменён",
+    MeowInvoiceStatus.REFUNDED: "возвращён",
+}
 
 
 def _callback(action: str, *, workspace_id: int, value: str = "") -> str:
@@ -40,8 +51,50 @@ def _wallet_keyboard(
     workspace_id: int,
     global_owner: bool,
     frozen: bool,
+    invoices,
 ) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text=f"{amount} Ауф",
+                callback_data=_callback(
+                    "wallet_buy",
+                    workspace_id=workspace_id,
+                    value=str(amount),
+                ),
+            )
+            for amount in AUF_PACKAGES[:3]
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"{amount} Ауф",
+                callback_data=_callback(
+                    "wallet_buy",
+                    workspace_id=workspace_id,
+                    value=str(amount),
+                ),
+            )
+            for amount in AUF_PACKAGES[3:]
+        ],
+    ]
+    pending = [item for item in invoices if item.status is MeowInvoiceStatus.CREATED]
+    for invoice in pending[:3]:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=(
+                        f"✅ Подтвердить {invoice.public_code}"
+                        if global_owner
+                        else f"✖ Отменить {invoice.public_code}"
+                    ),
+                    callback_data=_callback(
+                        "wallet_invoice_confirm" if global_owner else "wallet_invoice_cancel",
+                        workspace_id=workspace_id,
+                        value=invoice.public_code,
+                    ),
+                )
+            ]
+        )
     if global_owner:
         rows.append(
             [
@@ -86,21 +139,35 @@ def _entry_line(entry) -> str:
     return f"• {sign}{amount} · {escape(label)}{comment}"
 
 
+def _invoice_line(invoice) -> str:
+    label = _INVOICE_LABELS[invoice.status]
+    return (
+        f"• <code>{invoice.public_code}</code> · {invoice.package_auf} Ауф · "
+        f"{invoice.final_local_amount:.0f} ₽ · {escape(label)}"
+    )
+
+
 async def _render_wallet(
     callback: CallbackQuery,
     *,
     workspace_id: int,
-    service: MeowWalletService,
+    wallet_service: MeowWalletService,
+    purchase_service: MeowPurchaseService,
 ) -> None:
     try:
-        overview = await service.overview(
+        overview = await wallet_service.overview(
             workspace_id=workspace_id,
             actor_user_id=callback.from_user.id,
             history_limit=8,
         )
-        quotes = await service.package_quotes(
+        quotes = await wallet_service.package_quotes(
             workspace_id=workspace_id,
             actor_user_id=callback.from_user.id,
+        )
+        invoices = await purchase_service.recent_invoices(
+            workspace_id=workspace_id,
+            actor_user_id=callback.from_user.id,
+            limit=5,
         )
     except (PermissionError, ValueError) as error:
         await callback.answer(str(error), show_alert=True)
@@ -114,6 +181,9 @@ async def _render_wallet(
         f"• <b>{quote.amount_auf} Ауф</b> · {quote.price_rub:.0f} ₽ · ${quote.price_usd:.2f}"
         for quote in quotes
     )
+    invoice_lines = "\n".join(_invoice_line(item) for item in invoices)
+    if not invoice_lines:
+        invoice_lines = "• счетов пока нет"
     text = (
         "<b>💳 Кошелёк Ауф</b>\n\n"
         f"Доступно: <b>{format_auf_units(wallet.available_units)}</b>\n"
@@ -122,6 +192,10 @@ async def _render_wallet(
         f"Статус: <b>{'заморожен' if wallet.status is MeowWalletStatus.FROZEN else 'активен'}</b>\n\n"
         "<b>Пакеты по текущему курсу</b>\n"
         f"{packages}\n\n"
+        "Нажмите пакет, чтобы создать счёт с зафиксированным курсом на 24 часа. "
+        "Оплата подтверждается Стэл вручную; повторное подтверждение не начислит Ауф дважды.\n\n"
+        "<b>Последние счета</b>\n"
+        f"{invoice_lines}\n\n"
         "<b>Последние операции</b>\n"
         f"{history}\n\n"
         "1 Ауф покрывает до $0.02 расходов API. Розничная цена одного Ауф — $0.03. "
@@ -132,8 +206,9 @@ async def _render_wallet(
             text,
             reply_markup=_wallet_keyboard(
                 workspace_id=workspace_id,
-                global_owner=service.is_global_owner(callback.from_user.id),
+                global_owner=wallet_service.is_global_owner(callback.from_user.id),
                 frozen=wallet.status is MeowWalletStatus.FROZEN,
+                invoices=invoices,
             ),
         )
     await callback.answer()
@@ -144,6 +219,7 @@ async def handle_meow_wallet_action(
     callback_data: MeowCallback,
     state: FSMContext,
     meow_wallet_service: MeowWalletService,
+    meow_purchase_service: MeowPurchaseService,
 ) -> None:
     workspace_id = int(callback_data.workspace_id)
     action = callback_data.action
@@ -152,12 +228,38 @@ async def handle_meow_wallet_action(
         await _render_wallet(
             callback,
             workspace_id=workspace_id,
-            service=meow_wallet_service,
+            wallet_service=meow_wallet_service,
+            purchase_service=meow_purchase_service,
         )
         return
 
+    alert: str | None = None
     try:
-        if action == "wallet_grant":
+        if action == "wallet_buy":
+            invoice = await meow_purchase_service.create_invoice(
+                workspace_id=workspace_id,
+                package_auf=int(callback_data.value),
+                actor_user_id=callback.from_user.id,
+                idempotency_key=f"telegram-wallet-invoice:{callback.id}",
+            )
+            alert = (
+                f"Счёт {invoice.public_code}: {invoice.package_auf} Ауф за "
+                f"{invoice.final_local_amount:.0f} ₽. Курс зафиксирован на 24 часа."
+            )
+        elif action == "wallet_invoice_confirm":
+            invoice, _ = await meow_purchase_service.confirm_paid(
+                public_code=callback_data.value,
+                actor_user_id=callback.from_user.id,
+            )
+            alert = f"Оплата {invoice.public_code} подтверждена. Начислено {invoice.package_auf} Ауф."
+        elif action == "wallet_invoice_cancel":
+            invoice = await meow_purchase_service.cancel_invoice(
+                public_code=callback_data.value,
+                workspace_id=workspace_id,
+                actor_user_id=callback.from_user.id,
+            )
+            alert = f"Счёт {invoice.public_code} отменён."
+        elif action == "wallet_grant":
             amount = int(callback_data.value)
             await meow_wallet_service.grant(
                 workspace_id=workspace_id,
@@ -181,14 +283,17 @@ async def handle_meow_wallet_action(
         else:
             await callback.answer("Неизвестная команда кошелька Ауф.", show_alert=True)
             return
-    except (MeowWalletAccessError, ValueError, RuntimeError) as error:
+    except (MeowInvoiceError, MeowWalletAccessError, PermissionError, ValueError, RuntimeError) as error:
         await callback.answer(str(error), show_alert=True)
         return
 
+    if alert:
+        await callback.answer(alert, show_alert=True)
     await _render_wallet(
         callback,
         workspace_id=workspace_id,
-        service=meow_wallet_service,
+        wallet_service=meow_wallet_service,
+        purchase_service=meow_purchase_service,
     )
 
 
