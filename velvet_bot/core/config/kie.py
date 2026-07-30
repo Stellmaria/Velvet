@@ -95,11 +95,10 @@ def load_kie_settings() -> KieSettings:
             "GRS_NANO_BANANA_2_MODEL",
             "nano-banana-2",
         ).strip(),
-        nano_banana_pro=(
-            os.getenv("GRS_NANO_BANANA_PRO_MODEL", "").strip()
-            or os.getenv("KIE_NANO_BANANA_PRO_MODEL", "").strip()
-            or "nano-banana-pro"
-        ),
+        nano_banana_pro=os.getenv(
+            "GRS_NANO_BANANA_PRO_MODEL",
+            "nano-banana-pro",
+        ).strip(),
         qwen2_image_edit=os.getenv(
             "KIE_QWEN2_IMAGE_EDIT_MODEL",
             "qwen2/image-edit",
@@ -132,6 +131,10 @@ def load_kie_settings() -> KieSettings:
     )
     if enabled and not api_key:
         raise RuntimeError("KIE_ENABLED=true требует непустой KIE_API_KEY.")
+    if enabled and not grs_api_key:
+        raise RuntimeError(
+            "KIE_ENABLED=true требует непустой GRS_API_KEY для Nano Banana 2/Pro."
+        )
     if enabled and usd_to_rub <= 0:
         raise RuntimeError("KIE_ENABLED=true требует KIE_USD_TO_RUB больше нуля.")
     if enabled and credit_usd <= 0:
@@ -157,16 +160,14 @@ def load_kie_settings() -> KieSettings:
                 models.provider_model(alias, input_mode=input_mode)
         except ValueError as error:
             raise RuntimeError(
-                "KIE_ENABLED=true требует model id для обоих режимов Seedream 5 Pro, Qwen Image "
-                "2.0, Wan 2.7 Image, FLUX.2 Pro, Nano Banana 2/Pro и четырёх "
-                "image-to-video моделей."
+                "KIE_ENABLED=true требует model id Kie.ai для Seedream 5 Pro, "
+                "Qwen Image 2.0, Wan 2.7 Image, FLUX.2 Pro и video-моделей, "
+                "а также GRS model id для Nano Banana 2/Pro."
             ) from error
 
     pricing = KiePricing(
         seedream_basic_usd=_env_decimal("KIE_SEEDREAM_BASIC_USD", "0.075"),
         seedream_high_usd=_env_decimal("KIE_SEEDREAM_HIGH_USD", "0.15"),
-        nano_1k_2k_usd=_env_decimal("KIE_NANO_1K_2K_USD", "0.09"),
-        nano_4k_usd=_env_decimal("KIE_NANO_4K_USD", "0.12"),
         nano_banana_2_usd=_env_decimal("GRS_NANO_BANANA_2_USD", "0.02"),
         nano_banana_pro_usd=_env_decimal("GRS_NANO_BANANA_PRO_USD", "0.03"),
         qwen2_image_edit_usd=_env_decimal("KIE_QWEN2_IMAGE_EDIT_USD", "0.02"),
