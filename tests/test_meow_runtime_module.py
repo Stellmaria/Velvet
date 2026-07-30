@@ -10,15 +10,16 @@ from uuid import uuid4
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskRequest, build_ai_task_queue_service
-from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
-from velvet_bot.domains.meow_runtime import (
-    MeowProvider,
-    MeowRuntimeAccessError,
-    MeowRuntimeService,
-    MeowRuntimeSettings,
-    WorkspaceMeowSettings,
+from velvet_bot.domains.auf_runtime import (
+    AUF_MODULE_KEY,
+    AufProvider,
+    AufRuntimeAccessError,
+    AufRuntimeService,
+    AufRuntimeSettings,
+    ProviderAufTaskQueueService,
+    WorkspaceAufSettings,
 )
-from velvet_bot.domains.meow_runtime.queue import ProviderMeowTaskQueueService
+from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import (
     DEFAULT_PERSONAL_MODULE_KEYS,
@@ -26,7 +27,7 @@ from velvet_bot.domains.workspaces.product_models import (
     WORKSPACE_MODULE_KEYS,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_runtime import (
-    MeowRuntimeCallback,
+    AufRuntimeCallback,
     build_task_cancel_keyboard,
 )
 
@@ -34,7 +35,7 @@ from velvet_bot.presentation.telegram.routers.workspace_meow_runtime import (
 class _FakeRepository:
     def __init__(self) -> None:
         now = datetime.now(timezone.utc)
-        self.runtime = MeowRuntimeSettings(
+        self.runtime = AufRuntimeSettings(
             kie_concurrency_limit=100,
             grs_concurrency_limit=100,
             workspace_default_limit=5,
@@ -44,7 +45,7 @@ class _FakeRepository:
             updated_by_user_id=None,
             updated_at=now,
         )
-        self.workspace = WorkspaceMeowSettings(
+        self.workspace = WorkspaceAufSettings(
             workspace_id=7,
             concurrency_limit=5,
             updated_by_user_id=None,
@@ -53,7 +54,7 @@ class _FakeRepository:
         self.visible = True
 
     async def set_provider_limit(self, *, provider, limit, updated_by_user_id):
-        if provider is MeowProvider.KIE:
+        if provider is AufProvider.KIE:
             self.runtime = replace(
                 self.runtime,
                 kie_concurrency_limit=limit,
@@ -65,13 +66,14 @@ class _FakeRepository:
         return self.runtime
 
     async def can_use_meow(self, *, workspace_id, user_id, global_owner):
+        # Repository protocol name is retained until the storage migration.
         return global_owner or (workspace_id == 7 and user_id == 77)
 
     async def workspace_settings(self, workspace_id):
         return self.workspace
 
     async def set_workspace_limit(self, *, workspace_id, limit, updated_by_user_id):
-        self.workspace = WorkspaceMeowSettings(
+        self.workspace = WorkspaceAufSettings(
             workspace_id=workspace_id,
             concurrency_limit=limit,
             updated_by_user_id=updated_by_user_id,
@@ -92,24 +94,24 @@ class _FakeRepository:
         return is_visible
 
 
-class MeowRuntimeServiceTests(unittest.IsolatedAsyncioTestCase):
+class AufRuntimeServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_global_limits_are_owner_only_and_bounded(self) -> None:
-        service = MeowRuntimeService(_FakeRepository())
-        with self.assertRaises(MeowRuntimeAccessError):
+        service = AufRuntimeService(_FakeRepository())
+        with self.assertRaises(AufRuntimeAccessError):
             await service.set_provider_limit(
                 actor_user_id=77,
-                provider=MeowProvider.KIE,
+                provider=AufProvider.KIE,
                 limit=50,
             )
         with self.assertRaises(ValueError):
             await service.set_provider_limit(
                 actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-                provider=MeowProvider.KIE,
+                provider=AufProvider.KIE,
                 limit=101,
             )
 
     async def test_workspace_owner_can_select_limit_up_to_twenty(self) -> None:
-        service = MeowRuntimeService(_FakeRepository())
+        service = AufRuntimeService(_FakeRepository())
         settings = await service.set_workspace_limit(
             workspace_id=7,
             actor_user_id=77,
@@ -125,7 +127,7 @@ class MeowRuntimeServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_visibility_is_personal_and_owner_controlled(self) -> None:
         repository = _FakeRepository()
-        service = MeowRuntimeService(repository)
+        service = AufRuntimeService(repository)
         visible = await service.set_module_visible(
             workspace_id=7,
             actor_user_id=77,
@@ -135,10 +137,10 @@ class MeowRuntimeServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(repository.visible)
 
 
-class MeowModuleContractTests(unittest.TestCase):
-    def test_meow_is_explicit_module_not_default_personal_grant(self) -> None:
-        self.assertIn("meow", WORKSPACE_MODULE_KEYS)
-        self.assertNotIn("meow", DEFAULT_PERSONAL_MODULE_KEYS)
+class AufModuleContractTests(unittest.TestCase):
+    def test_auf_is_explicit_module_not_default_personal_grant(self) -> None:
+        self.assertIn(AUF_MODULE_KEY, WORKSPACE_MODULE_KEYS)
+        self.assertNotIn(AUF_MODULE_KEY, DEFAULT_PERSONAL_MODULE_KEYS)
 
     def test_cancel_callback_stays_within_telegram_limit(self) -> None:
         task_id = uuid4()
@@ -146,14 +148,14 @@ class MeowModuleContractTests(unittest.TestCase):
         callback_data = keyboard.inline_keyboard[0][0].callback_data
         self.assertIsNotNone(callback_data)
         self.assertLessEqual(len(callback_data or ""), 64)
-        parsed = MeowRuntimeCallback.unpack(callback_data or "")
+        parsed = AufRuntimeCallback.unpack(callback_data or "")
         self.assertEqual("cancel_task", parsed.action)
         self.assertEqual(str(task_id), parsed.value)
 
     def test_provider_routes_are_disjoint(self) -> None:
         self.assertTrue(
-            set(MeowProvider.KIE.model_aliases).isdisjoint(
-                MeowProvider.GRS.model_aliases
+            set(AufProvider.KIE.model_aliases).isdisjoint(
+                AufProvider.GRS.model_aliases
             )
         )
 
@@ -162,16 +164,16 @@ class MeowModuleContractTests(unittest.TestCase):
     os.getenv("TEST_DATABASE_URL"),
     "TEST_DATABASE_URL is required for PostgreSQL integration tests",
 )
-class PostgreSQLMeowQueueTests(unittest.IsolatedAsyncioTestCase):
+class PostgreSQLAufQueueTests(unittest.IsolatedAsyncioTestCase):
     _WORKSPACE_OWNER_ID = 799_001
 
     async def asyncSetUp(self) -> None:
         self.database = Database(os.environ["TEST_DATABASE_URL"])
         await self.database.initialize()
         self.tasks = build_ai_task_queue_service(database=self.database)
-        self.queue = ProviderMeowTaskQueueService(
+        self.queue = ProviderAufTaskQueueService(
             database=self.database,
-            provider=MeowProvider.KIE,
+            provider=AufProvider.KIE,
         )
         await self._reset()
 
@@ -210,7 +212,7 @@ class PostgreSQLMeowQueueTests(unittest.IsolatedAsyncioTestCase):
                     "user_id": created_by,
                 },
                 priority=40,
-                dedupe_key=f"test:meow-runtime:{created_by}:{index}",
+                dedupe_key=f"test:auf-runtime:{created_by}:{index}",
                 max_attempts=3,
                 created_by=created_by,
                 estimated_cost_rub=Decimal("0"),
