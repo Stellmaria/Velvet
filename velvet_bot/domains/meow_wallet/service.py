@@ -51,9 +51,9 @@ class MeowWalletService:
         actor_user_id: int,
         history_limit: int = 10,
     ) -> MeowWalletOverview:
-        await self._runtime.require_workspace_access(
-            workspace_id=int(workspace_id),
-            actor_user_id=int(actor_user_id),
+        await self._require_workspace_access(
+            workspace_id=workspace_id,
+            actor_user_id=actor_user_id,
         )
         return await self._repository.overview(
             int(workspace_id),
@@ -67,12 +67,13 @@ class MeowWalletService:
     async def package_quotes(
         self,
         *,
+        workspace_id: int,
         actor_user_id: int,
     ) -> tuple[MeowAufPackageQuote, ...]:
-        await self._runtime.require_workspace_access(
-            workspace_id=1,
-            actor_user_id=int(actor_user_id),
-        ) if self.is_global_owner(actor_user_id) else None
+        await self._require_workspace_access(
+            workspace_id=workspace_id,
+            actor_user_id=actor_user_id,
+        )
         settings = await self._repository.economy_settings()
         return tuple(_package_quote(amount, settings) for amount in AUF_PACKAGES)
 
@@ -161,6 +162,17 @@ class MeowWalletService:
             retail_auf_usd=retail_auf_usd,
             billing_usd_to_rub=billing_usd_to_rub,
             updated_by_user_id=int(actor_user_id),
+        )
+
+    async def _require_workspace_access(
+        self,
+        *,
+        workspace_id: int,
+        actor_user_id: int,
+    ) -> None:
+        await self._runtime.require_workspace_access(
+            workspace_id=int(workspace_id),
+            actor_user_id=int(actor_user_id),
         )
 
     def _require_global_owner(self, actor_user_id: int) -> None:
