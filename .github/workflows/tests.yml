@@ -5,8 +5,77 @@ on:
   push:
     branches:
       - main
+      - agent/shared-contract-sync
+
+permissions:
+  contents: write
 
 jobs:
+  integrate-shared-contracts:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/shared-contract-sync
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Merge feature branch safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin agent/shared-telegram-helpers
+          set +e
+          git merge --no-commit --no-ff origin/agent/shared-telegram-helpers
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            allowed=".github/workflows/tests.yml
+docs/generated/telegram_navigation_inventory.md
+tests/test_auf_active_delivery_fix.py
+velvet_bot/app/auf_active_delivery_fix.py"
+            unexpected="$(comm -23 <(printf '%s\n' "$conflicts" | sort) <(printf '%s\n' "$allowed" | sort))"
+            if [ -n "$unexpected" ]; then
+              echo "Unexpected merge conflicts:"
+              echo "$unexpected"
+              exit 1
+            fi
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              if [ "$path" = ".github/workflows/tests.yml" ]; then
+                git checkout --ours -- "$path"
+              else
+                git checkout --theirs -- "$path"
+              fi
+              git add "$path"
+            done <<< "$conflicts"
+          fi
+          python scripts/inventory_telegram_helpers.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md
+          python scripts/update_p2_stability_inventory.py \
+            --label p3-package-shared-contracts \
+            --schema-version 74
+          python scripts/inventory_architecture_layout.py \
+            --write \
+            --label p3d-analytics-alias-retirement
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/inventory_telegram_helpers.py --check
+          git add -A
+          git commit -m "Merge shared contracts onto current main"
+          git push origin HEAD:agent/shared-contract-sync
+
   unit-tests:
     runs-on: ubuntu-latest
     services:
