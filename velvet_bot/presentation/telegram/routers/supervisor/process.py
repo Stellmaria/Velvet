@@ -5,11 +5,11 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _confirm_keyboard,
     _operation_accepted,
-    _safe_edit,
 )
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
 
@@ -50,7 +50,7 @@ async def handle_supervisor_process_callback(
 
     try:
         if callback_data.action == "restart.ask":
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 _RESTART_TEXT,
                 _confirm_keyboard(
