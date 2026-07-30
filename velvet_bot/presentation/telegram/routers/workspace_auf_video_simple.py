@@ -25,6 +25,8 @@ from velvet_bot.presentation.telegram.routers.workspace_auf_video import (
     AufVideoCallback,
     AufVideoForm,
     _callback as video_callback,
+    _format_rub,
+    _format_usd,
 )
 from velvet_bot.presentation.telegram.routers.workspace_auf import (
     AufCallback,
@@ -197,14 +199,14 @@ def _money_change_lines(change: Mapping[str, object] | None) -> list[str]:
     else:
         sign = "+" if delta_usd > 0 else "−"
         delta_line = (
-            f"Разница: <b>{sign}{legacy._format_usd(abs(delta_usd))}</b> · "
-            f"<b>{sign}{legacy._format_rub(abs(delta_rub))}</b>"
+            f"Разница: <b>{sign}{_format_usd(abs(delta_usd))}</b> · "
+            f"<b>{sign}{_format_rub(abs(delta_rub))}</b>"
         )
     return [
         "",
         "<b>Предварительный анализ стоимости</b>",
-        f"Было: <b>{legacy._format_usd(old_usd)}</b> · <b>{legacy._format_rub(old_rub)}</b>",
-        f"Стало: <b>{legacy._format_usd(new_usd)}</b> · <b>{legacy._format_rub(new_rub)}</b>",
+        f"Было: <b>{_format_usd(old_usd)}</b> · <b>{_format_rub(old_rub)}</b>",
+        f"Стало: <b>{_format_usd(new_usd)}</b> · <b>{_format_rub(new_rub)}</b>",
         delta_line,
         f"Причина: {reason}.",
     ]
@@ -239,7 +241,7 @@ def _settings_text(
     if model == "seedance":
         lines.append("Fixed lens: <b>выключен</b>")
     if estimated_usd is not None and estimated_rub is not None:
-        lines.extend(["", f"Текущая расчётная стоимость: <b>{legacy._format_usd(estimated_usd)}</b> · <b>{legacy._format_rub(estimated_rub)}</b>"])
+        lines.extend(["", f"Текущая расчётная стоимость: <b>{_format_usd(estimated_usd)}</b> · <b>{_format_rub(estimated_rub)}</b>"])
     lines.extend(_money_change_lines(cost_change))
     return "\n".join(lines)
 
@@ -262,7 +264,7 @@ def _review_text(
     settings.extend([
         "Watermark: <b>выключен</b>",
         "NSFW checker Kie: <b>выключен</b>",
-        f"Расчётная стоимость: <b>{legacy._format_usd(estimated_usd)}</b> · <b>{legacy._format_rub(estimated_rub)}</b>",
+        f"Расчётная стоимость: <b>{_format_usd(estimated_usd)}</b> · <b>{_format_rub(estimated_rub)}</b>",
         "", f"<b>Движение и сцена</b>\n{escape(legacy._truncate(prompt, 3500))}", "",
         "После запуска задача попадёт в очередь. Повторное нажатие в этой сессии не создаст вторую платную генерацию.",
     ])
@@ -773,7 +775,7 @@ async def _submit_video(
     if model == "wan":
         details.append(f"Кадры: <b>{_wan_mode_name(wan_mode)}</b>")
     details.extend([
-        f"Расчётная стоимость: <b>{legacy._format_usd(estimated_usd)}</b> · <b>{legacy._format_rub(estimated_rub)}</b>",
+        f"Расчётная стоимость: <b>{_format_usd(estimated_usd)}</b> · <b>{_format_rub(estimated_rub)}</b>",
         f"Задача: <code>{result.task.id}</code>",
     ])
     await legacy._edit_or_answer(callback, text="\n".join(details), reply_markup=build_auf_root_keyboard(workspace_id=workspace_id, enabled=True))
