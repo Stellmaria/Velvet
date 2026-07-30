@@ -64,6 +64,17 @@ def _build_root_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
+                    text="💳 Ауф · баланс",
+                    callback_data=MeowCallback(
+                        action="wallet",
+                        workspace_id=workspace_id,
+                    ).pack(),
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
                     text="⚙️ Параллельность",
                     callback_data=MeowCallback(
                         action="runtime",
@@ -169,6 +180,7 @@ async def handle_meow_root_entry(
             "Grok Imagine v1, Grok Imagine 1.5, Seedance 1.5 Pro или Wan 2.7.\n\n"
             f"Параллельность: {concurrency}.\n"
             f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
+            "Баланс Ауф и пакеты покупки доступны отдельной кнопкой. "
             "Настройки применяются из PostgreSQL без перезапуска бота."
         )
     else:
