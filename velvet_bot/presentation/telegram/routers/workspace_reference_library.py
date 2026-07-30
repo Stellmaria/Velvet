@@ -10,7 +10,9 @@ from html import escape
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType, ParseMode
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import BaseFilter, Command, CommandObject
+from aiogram.filters import BaseFilter, Command, CommandObject, StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -98,6 +100,10 @@ _REFADD_MENTION_FILTER = re.compile(
 class PersonalReferenceContext:
     workspace_id: int
     error: str | None = None
+
+
+class WorkspaceReferenceComparisonForm(StatesGroup):
+    waiting_result = State()
 
 
 class PersonalReferenceWorkspaceFilter(BaseFilter):
@@ -201,15 +207,22 @@ async def _reject_access(
 )
 async def handle_workspace_qwen_entry(
     callback: CallbackQuery,
+<<<<<<< Updated upstream
     callback_data: WorkspaceCallback,
     personal_reference_context: PersonalReferenceContext,
 ) -> None:
     """Expose only the tenant-safe Qwen reference workflow, never system jobs."""
+=======
+    personal_reference_context: PersonalReferenceContext,
+) -> None:
+    """Expose the tenant-safe Qwen capability without opening system Quality Center."""
+>>>>>>> Stashed changes
     if await _reject_access(callback, personal_reference_context):
         return
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
+<<<<<<< Updated upstream
     if callback_data.workspace_id != personal_reference_context.workspace_id:
         await callback.answer(
             "Кнопка относится к другому пространству. Откройте меню заново.",
@@ -243,6 +256,40 @@ async def handle_workspace_qwen_entry(
     except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             await callback.message.answer(text, reply_markup=keyboard)
+=======
+    await callback.message.answer(
+        "<b>🤖 Qwen · личное пространство</b>\n\n"
+        "Здесь Qwen сравнивает готовый результат с референсом выбранного персонажа. "
+        "Откройте библиотеку, выберите референс и нажмите «Сравнить результат» — "
+        "после этого останется только отправить изображение.\n\n"
+        "Общий Quality Center, медиасеты и очередь обработки Velvet Anatomy "
+        "не показываются в личном пространстве.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🧬 Открыть референсы",
+                        callback_data=WorkspaceCallback(
+                            action="module",
+                            workspace_id=personal_reference_context.workspace_id,
+                            module_key="references",
+                        ).pack(),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="↩️ Моё пространство",
+                        callback_data=WorkspaceCallback(
+                            action="home",
+                            workspace_id=personal_reference_context.workspace_id,
+                            module_key="",
+                        ).pack(),
+                    )
+                ],
+            ]
+        ),
+    )
+>>>>>>> Stashed changes
     await callback.answer()
 
 
@@ -714,6 +761,7 @@ async def handle_workspace_reference_callback(
     bot: Bot,
     workspace_service: WorkspaceService,
     audit_logger: TelegramAuditLogger,
+    state: FSMContext,
 ) -> None:
     await _handle_workspace_reference_callback(
         callback,
@@ -723,6 +771,7 @@ async def handle_workspace_reference_callback(
         bot,
         workspace_service,
         audit_logger,
+        state,
     )
 
 
@@ -734,6 +783,7 @@ async def _handle_workspace_reference_callback(
     bot: Bot,
     workspace_service: WorkspaceService,
     audit_logger: TelegramAuditLogger,
+    state: FSMContext,
 ) -> None:
     if await _reject_access(callback, personal_reference_context):
         return
@@ -756,11 +806,43 @@ async def _handle_workspace_reference_callback(
         await callback.answer()
         return
     if callback_data.action == "compare_help":
-        await callback.answer(
-            f"Ответьте на результат командой /compare_ref {page.character.name} "
-            f"{page.offset + 1}",
-            show_alert=True,
+        if not isinstance(callback.message, Message) or callback.message.chat.type != ChatType.PRIVATE:
+            await callback.answer(
+                "Сравнение запускается в личном чате с ботом.", show_alert=True
+            )
+            return
+        if page.reference.id != callback_data.reference_id:
+            await callback.answer(
+                "Список изменился. Откройте референсы заново.", show_alert=True
+            )
+            return
+        try:
+            await require_reference_workspace_access(
+                database,
+                workspace_service,
+                workspace_id=personal_reference_context.workspace_id,
+                user_id=callback.from_user.id,
+                minimum_role="reviewer",
+                require_qwen=True,
+            )
+        except WorkspaceAccessError as error:
+            await callback.answer(str(error), show_alert=True)
+            return
+        await state.set_state(WorkspaceReferenceComparisonForm.waiting_result)
+        await state.update_data(
+            workspace_id=personal_reference_context.workspace_id,
+            character_id=page.character.id,
+            reference_id=page.reference.id,
+            reference_offset=page.offset,
+            reference_total=page.total,
         )
+        await callback.message.answer(
+            f"<b>🔎 Сравнение с референсом {page.offset + 1}</b>\n\n"
+            f"Персонаж: <b>{escape(page.character.name)}</b>.\n"
+            "Теперь отправьте фотографию или изображение-документ с результатом. "
+            "Бот сравнит его только с выбранным референсом этого пространства."
+        )
+        await callback.answer()
         return
     if callback_data.action in {"delete_prompt", "cancel_delete", "delete"}:
         try:
@@ -943,6 +1025,74 @@ async def block_workspace_guest_reference_leak(
 
 
 @router.message(
+    StateFilter(WorkspaceReferenceComparisonForm.waiting_result),
+    F.photo | F.document,
+    F.chat.type == ChatType.PRIVATE,
+    PersonalReferenceWorkspaceFilter("reviewer", require_qwen=True),
+)
+async def handle_workspace_reference_comparison_result(
+    message: Message,
+    state: FSMContext,
+    personal_reference_context: PersonalReferenceContext,
+    database: Database,
+    bot: Bot,
+    audit_logger: TelegramAuditLogger | None = None,
+) -> None:
+    if await _reject_access(message, personal_reference_context):
+        await state.clear()
+        return
+    data = await state.get_data()
+    if int(data.get("workspace_id") or 0) != personal_reference_context.workspace_id:
+        await state.clear()
+        await message.answer("Сеанс сравнения устарел. Откройте референс заново.")
+        return
+    character_id = int(data.get("character_id") or 0)
+    reference_id = int(data.get("reference_id") or 0)
+    offset = int(data.get("reference_offset") or 0)
+    page = await get_reference_page(
+        database,
+        character_id,
+        offset,
+        workspace_id=personal_reference_context.workspace_id,
+    )
+    if page is None or page.reference is None or page.reference.id != reference_id:
+        await state.clear()
+        await message.answer("Выбранный референс изменён или удалён. Откройте его заново.")
+        return
+    await state.clear()
+    await _compare_workspace_reference_result(
+        message,
+        context=personal_reference_context,
+        database=database,
+        bot=bot,
+        audit_logger=audit_logger,
+        character=page.character,
+        reference=page.reference,
+        reference_index=page.offset + 1,
+        reference_total=page.total,
+    )
+
+
+@router.message(
+    StateFilter(WorkspaceReferenceComparisonForm.waiting_result),
+    F.chat.type == ChatType.PRIVATE,
+    PersonalReferenceWorkspaceFilter("reviewer", require_qwen=True),
+)
+async def prompt_workspace_reference_comparison_result(
+    message: Message,
+    state: FSMContext,
+    personal_reference_context: PersonalReferenceContext,
+) -> None:
+    if await _reject_access(message, personal_reference_context):
+        await state.clear()
+        return
+    await message.answer(
+        "Жду фотографию или изображение-документ с результатом. "
+        "Чтобы выбрать другой референс, откройте его карточку и нажмите «Сравнить результат»."
+    )
+
+
+@router.message(
     Command("compare_ref", "compare_reference"),
     PersonalReferenceWorkspaceFilter("reviewer", require_qwen=True),
 )
@@ -992,6 +1142,35 @@ async def handle_workspace_reference_comparison(
         )
         return
     reference = references[reference_index - 1]
+    await _compare_workspace_reference_result(
+        message,
+        context=personal_reference_context,
+        database=database,
+        bot=bot,
+        audit_logger=audit_logger,
+        character=character,
+        reference=reference,
+        reference_index=reference_index,
+        reference_total=len(references),
+    )
+
+
+async def _compare_workspace_reference_result(
+    message: Message,
+    *,
+    context: PersonalReferenceContext,
+    database: Database,
+    bot: Bot,
+    audit_logger: TelegramAuditLogger | None,
+    character: Character,
+    reference: CharacterReference,
+    reference_index: int,
+    reference_total: int,
+) -> None:
+    result_file = _result_file(message)
+    if result_file is None:
+        await message.answer("Отправьте фотографию или изображение-документ с результатом.")
+        return
     settings = load_settings()
     if not settings.ai_vision_enabled:
         await message.answer("Локальный Qwen сейчас отключён в настройках бота.")
@@ -1017,7 +1196,7 @@ async def handle_workspace_reference_comparison(
             report = await client.compare(reference_bytes, result_bytes)
         report_id = await _save_report(
             database,
-            workspace_id=personal_reference_context.workspace_id,
+            workspace_id=context.workspace_id,
             character_id=character.id,
             reference_id=reference.id,
             result_file_id=result_file_id,
@@ -1032,7 +1211,7 @@ async def handle_workspace_reference_comparison(
     except Exception as error:  # p2-approved-boundary: report-workspace-reference-comparison
         logger.exception(
             "Workspace reference comparison failed workspace_id=%s character_id=%s reference_id=%s",
-            personal_reference_context.workspace_id,
+            context.workspace_id,
             character.id,
             reference.id,
         )
@@ -1040,7 +1219,7 @@ async def handle_workspace_reference_comparison(
             await audit_logger.error(
                 "Ошибка сравнения с референсом личного пространства",
                 error,
-                workspace_id=personal_reference_context.workspace_id,
+                workspace_id=context.workspace_id,
                 character_id=character.id,
                 reference_id=reference.id,
                 result_file_id=result_file_id,
@@ -1056,7 +1235,7 @@ async def handle_workspace_reference_comparison(
             report_id=report_id,
             character=character,
             reference_index=reference_index,
-            reference_total=len(references),
+            reference_total=reference_total,
             report=report,
         )
     )
@@ -1065,5 +1244,6 @@ async def handle_workspace_reference_comparison(
 __all__ = (
     "PersonalReferenceSessionFilter",
     "PersonalReferenceWorkspaceFilter",
+    "WorkspaceReferenceComparisonForm",
     "router",
 )

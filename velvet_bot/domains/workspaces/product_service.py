@@ -49,6 +49,7 @@ class WorkspaceModuleAccessError(PermissionError):
 class WorkspaceStartState:
     can_create: bool
     owned_workspaces: tuple[Workspace, ...]
+    member_workspaces: tuple[Workspace, ...]
     public_workspaces: tuple[Workspace, ...]
     member_workspaces: tuple[Workspace, ...] = ()
 
@@ -140,6 +141,7 @@ class WorkspaceProductService:
         return owned < grant.max_workspaces
 
     async def get_start_state(self, user_id: int) -> WorkspaceStartState:
+<<<<<<< Updated upstream
         owned = await self._product.list_owned_personal_workspaces(int(user_id))
         owned_ids = {item.id for item in owned}
         available = await self._workspace_service.list_for_user(
@@ -149,6 +151,21 @@ class WorkspaceProductService:
         return WorkspaceStartState(
             can_create=await self.can_create_workspace(int(user_id)),
             owned_workspaces=owned,
+=======
+        owned_workspaces = await self._product.list_owned_personal_workspaces(int(user_id))
+        owned_ids = {item.id for item in owned_workspaces}
+        available_workspaces = await self._workspace_service.list_for_user(
+            user_id=int(user_id)
+        )
+        return WorkspaceStartState(
+            can_create=await self.can_create_workspace(int(user_id)),
+            owned_workspaces=owned_workspaces,
+            member_workspaces=tuple(
+                item
+                for item in available_workspaces
+                if not item.is_system and item.id not in owned_ids
+            ),
+>>>>>>> Stashed changes
             public_workspaces=await self._product.list_public_workspaces(),
             member_workspaces=tuple(
                 item
@@ -336,7 +353,11 @@ class WorkspaceProductService:
         actor_user_id: int,
         global_owner: bool = False,
     ) -> tuple[WorkspaceModuleSetting, ...]:
+<<<<<<< Updated upstream
         """Return visible module availability after a read-only membership check."""
+=======
+        """Return module policy after verifying that the caller is a member."""
+>>>>>>> Stashed changes
         await self._workspace_service.require_role(
             workspace_id=int(workspace_id),
             user_id=int(actor_user_id),

@@ -42,8 +42,13 @@ PUBLIC_WORKSPACE_CALLBACK_ACTIONS = frozenset(
         "adduniverse",
         "addstory",
         "krimport",
+<<<<<<< Updated upstream
         "quick",
         "spaces",
+=======
+        "memberhome",
+        "memberselect",
+>>>>>>> Stashed changes
     }
 )
 PUBLIC_CALLBACK_PREFIX = "pub:"

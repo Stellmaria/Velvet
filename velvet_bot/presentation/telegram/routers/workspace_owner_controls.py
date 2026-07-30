@@ -227,6 +227,7 @@ def _workspace_home_keyboard(
         close_row = rows.pop() if rows else []
         rows.extend(
             [
+<<<<<<< Updated upstream
                 [
                     InlineKeyboardButton(
                         text="🧭 Настроить архив",
@@ -260,6 +261,36 @@ def _workspace_home_keyboard(
                 button.text in {"🙈 Скрыть все подсказки", "ℹ️ Показать подсказки"}
                 or (not show_button_hints and button.text == "ℹ️")
             )
+=======
+                InlineKeyboardButton(
+                    text="🧭 Настройка и гид",
+                    callback_data=WorkspaceOnboardingCallback(
+                        action="intro",
+                        workspace_id=workspace.id,
+                        key="",
+                    ).pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🧭 Настроить архив",
+                    callback_data=WorkspaceOnboardingCallback(
+                        action="intro",
+                        workspace_id=workspace.id,
+                        key="",
+                    ).pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🗑 Удалить пространство",
+                    callback_data=workspace_callback(
+                        "delete",
+                        workspace_id=workspace.id,
+                    ),
+                )
+            ],
+>>>>>>> Stashed changes
         ]
         if filtered:
             filtered_rows.append(filtered)

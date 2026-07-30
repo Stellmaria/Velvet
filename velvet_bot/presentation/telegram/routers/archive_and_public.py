@@ -69,6 +69,9 @@ from velvet_bot.presentation.telegram.routers.workspace_watermark import (
 from velvet_bot.presentation.telegram.routers.workspace_owner_controls import (
     router as workspace_owner_controls_router,
 )
+from velvet_bot.presentation.telegram.routers.workspace_member_home import (
+    router as workspace_member_home_router,
+)
 from velvet_bot.presentation.telegram.routers.workspaces import (
     router as workspaces_router,
 )
@@ -234,8 +237,15 @@ router.include_router(workspace_team_router)
 router.include_router(workspace_watermark_templates_router)
 router.include_router(workspace_watermark_router)
 router.include_router(workspace_owner_controls_router)
+<<<<<<< Updated upstream
 # The tenant publication entry must precede generic `wsp:module` help. The
 # publication capture router remains below reference/save flows.
+=======
+router.include_router(workspace_member_home_router)
+# The publication dashboard owns `wsp:module:publications`; it must precede the
+# generic workspace callback router. Its text/media capture router stays near
+# the archive catch-all below so it cannot preempt save/reference handlers.
+>>>>>>> Stashed changes
 router.include_router(workspace_publication_entry_router)
 router.include_router(workspaces_router)
 router.include_router(public_media_display_router)

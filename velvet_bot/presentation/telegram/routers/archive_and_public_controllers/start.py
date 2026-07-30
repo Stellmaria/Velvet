@@ -47,9 +47,18 @@ async def handle_start(
     )
     personal_count = len(state.owned_workspaces) + len(state.member_workspaces)
     if state.owned_workspaces:
+<<<<<<< Updated upstream
         extra += "\n\nУ вас есть личный архив. Его настройки доступны отдельно."
     if state.member_workspaces:
         extra += "\n\nВам также доступны пространства команд, в которых вам выдали роль."
+=======
+        extra += "\n\nУ вас есть личное пространство. Его настройки доступны отдельно."
+    if state.member_workspaces:
+        extra += (
+            "\n\nВы состоите в команде личного пространства. Откройте его, "
+            "чтобы работать в пределах своей роли."
+        )
+>>>>>>> Stashed changes
     await message.answer(
         "<b>Velvet Archive</b>\n\n"
         "Можно просматривать только архивы, владельцы которых включили публичный "
@@ -58,9 +67,14 @@ async def handle_start(
         + extra,
         reply_markup=build_start_keyboard(
             can_create=state.can_create,
+<<<<<<< Updated upstream
             has_workspace=bool(personal_count),
             workspace_count=personal_count,
             has_owned_workspace=bool(state.owned_workspaces),
+=======
+            has_workspace=bool(state.owned_workspaces),
+            has_member_workspace=bool(state.member_workspaces),
+>>>>>>> Stashed changes
         ),
     )
 

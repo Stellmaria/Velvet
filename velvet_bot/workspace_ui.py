@@ -36,9 +36,13 @@ MODULE_HELP: dict[WorkspaceModuleKey, str] = {
     "references": "Личная библиотека референсов персонажей и сравнение результата с внешностью.",
     "public_archive": "Перевод архива в режим read-only для публичного просмотра. По умолчанию выключен.",
     "watermark": "Подготовка публичных копий с вашим знаком и правилами скачивания.",
-    "qwen": "Проверка качества, сравнение с референсом, анализ композиции и очередь доработки.",
-    "publications": "Черновики, очередь и публикация материалов в подключённые каналы.",
-    "analytics": "Статистика только вашего пространства: персонажи, просмотры, лайки и публикации.",
+    "qwen": (
+        "Сравнение результата с референсом доступно из личной библиотеки референсов. "
+        "Полный Quality Center, медиасеты и общая AI-очередь пока остаются "
+        "системными инструментами Velvet Anatomy."
+    ),
+    "publications": "Черновики, проверка, очередь и публикация материалов в подключённый канал пространства.",
+    "analytics": "Статистика только подключённых каналов пространства: публикации, персонажи и обсуждения.",
     "team": "Добавление редакторов, проверяющих и администраторов вашего пространства.",
 }
 
@@ -73,8 +77,12 @@ def build_start_keyboard(
     *,
     can_create: bool,
     has_workspace: bool,
+<<<<<<< Updated upstream
     workspace_count: int = 0,
     has_owned_workspace: bool = True,
+=======
+    has_member_workspace: bool = False,
+>>>>>>> Stashed changes
 ) -> InlineKeyboardMarkup:
     rows = [
         [
@@ -112,6 +120,113 @@ def build_start_keyboard(
                 )
             ]
         )
+    if has_member_workspace:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="👥 Пространство команды",
+                    callback_data=workspace_callback("memberhome"),
+                )
+            ]
+        )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+_MEMBER_ROLE_LABELS = {
+    "owner": "Владелец",
+    "admin": "Администратор",
+    "editor": "Редактор",
+    "reviewer": "Проверяющий",
+    "viewer": "Наблюдатель",
+}
+_MEMBER_MODULE_ROLES = {
+    "characters": frozenset({"owner", "admin", "editor"}),
+    "archive": frozenset({"owner", "admin", "editor", "reviewer", "viewer"}),
+    "references": frozenset({"owner", "admin", "editor", "reviewer", "viewer"}),
+    "watermark": frozenset({"owner", "admin"}),
+    "qwen": frozenset({"owner", "admin", "editor", "reviewer"}),
+    "publications": frozenset({"owner", "admin", "editor"}),
+    "analytics": frozenset({"owner", "admin", "editor", "reviewer"}),
+    "team": frozenset({"owner", "admin"}),
+}
+
+
+def build_member_workspace_select_keyboard(
+    workspaces: tuple[Workspace, ...],
+) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=f"👥 {item.name}"[:42],
+                callback_data=workspace_callback("memberselect", workspace_id=item.id),
+            )
+        ]
+        for item in workspaces
+    ]
+    rows.append(
+        [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def format_workspace_member_home(
+    workspace: Workspace,
+    *,
+    role: str,
+    enabled_modules: int,
+) -> str:
+    role_label = _MEMBER_ROLE_LABELS.get(role, role)
+    return (
+        f"<b>{escape(workspace.name)}</b>\n\n"
+        f"Ваша роль: <b>{escape(role_label)}</b>\n"
+        f"Доступных разделов: <b>{enabled_modules}</b>\n\n"
+        "Здесь показаны только действия, доступные вашей роли. Настройки "
+        "пространства, публичность, модули и удаление остаются у владельца."
+    )
+
+
+def build_workspace_member_home_keyboard(
+    workspace_id: int,
+    *,
+    role: str,
+    modules: tuple[WorkspaceModuleSetting, ...],
+) -> InlineKeyboardMarkup:
+    enabled = {item.module_key for item in modules if item.is_allowed and item.is_enabled}
+    allowed_for_role = _MEMBER_MODULE_ROLES
+    rows: list[list[InlineKeyboardButton]] = []
+    for module_key in (
+        "characters",
+        "archive",
+        "references",
+        "watermark",
+        "qwen",
+        "publications",
+        "analytics",
+        "team",
+    ):
+        if module_key not in enabled or role not in allowed_for_role[module_key]:
+            continue
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MODULE_LABELS[module_key],
+                    callback_data=workspace_callback(
+                        "module", workspace_id=workspace_id, module_key=module_key
+                    ),
+                )
+            ]
+        )
+    rows.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    text="↩️ Другие пространства",
+                    callback_data=workspace_callback("memberhome"),
+                )
+            ],
+            [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))],
+        ]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -559,6 +674,7 @@ __all__ = (
     "WorkspaceCallback",
     "WorkspaceForm",
     "build_module_help_keyboard",
+    "build_member_workspace_select_keyboard",
     "build_modules_keyboard",
     "build_public_workspaces_keyboard",
     "build_selected_public_workspace_keyboard",
@@ -567,8 +683,13 @@ __all__ = (
     "build_taxonomy_list_keyboard",
     "build_workspace_member_home_keyboard",
     "build_workspace_home_keyboard",
+<<<<<<< Updated upstream
     "build_workspace_selector_keyboard",
+=======
+    "build_workspace_member_home_keyboard",
+>>>>>>> Stashed changes
     "format_taxonomy",
+    "format_workspace_member_home",
     "format_workspace_home",
     "workspace_callback",
 )
