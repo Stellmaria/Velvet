@@ -95,7 +95,7 @@ class AufInsufficientBalance(AufWalletError):
         self.required_units = int(required_units)
         self.available_units = int(available_units)
         super().__init__(
-            "Недостаточно Ауф: нужно "
+            "Недостаточно вельветов: нужно "
             f"{format_auf_units(self.required_units)}, доступно "
             f"{format_auf_units(self.available_units)}."
         )
@@ -110,10 +110,25 @@ def units_to_auf(value: int) -> Decimal:
     return (Decimal(int(value)) / Decimal(AUF_SCALE)).quantize(_AUF_QUANT)
 
 
+def _velvet_currency_word(amount: Decimal) -> str:
+    absolute = abs(amount)
+    if absolute != absolute.to_integral_value():
+        return "вельвета"
+    number = int(absolute)
+    if 11 <= number % 100 <= 14:
+        return "вельветов"
+    last_digit = number % 10
+    if last_digit == 1:
+        return "вельвет"
+    if last_digit in {2, 3, 4}:
+        return "вельвета"
+    return "вельветов"
+
+
 def format_auf_units(value: int, *, max_places: int = 2) -> str:
     amount = units_to_auf(value)
     rendered = f"{amount:.{max_places}f}".rstrip("0").rstrip(".")
-    return f"{rendered} Ауф"
+    return f"{rendered} {_velvet_currency_word(amount)}"
 
 
 __all__ = (
