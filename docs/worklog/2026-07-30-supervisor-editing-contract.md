@@ -4,7 +4,7 @@
 - ID: `supervisor-editing-contract`
 - Issue: #419
 - Линия/фаза: P3 shared helper family migration
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/shared-helper-safe-edit-family`
 - Базовый commit: `0b2a9b32385ad287ee2b4469ad491fd4e1e090c6`
 
@@ -18,7 +18,7 @@ contract.
 
 ### Исходный контекст
 
-После foundation PR #462 package-wide inventory фиксировал несколько прямых импортов
+После foundation PR #462 package-wide inventory фиксировал восемь прямых импортов
 `_safe_edit` из `velvet_bot.presentation.telegram.supervisor.views`. Сам helper уже
 делегировал в canonical `safe_edit_message_text`, но внешние routers продолжали зависеть
 от приватного имени presentation-модуля.
@@ -54,41 +54,55 @@ private view helpers не мигрируются попутно: смешива�
 - добавлен публичный `supervisor.editing.edit_supervisor_message`;
 - logs, status, process, git, self-control, Codex и console routers переведены на него;
 - composition router больше не импортирует неиспользуемый `_safe_edit`;
+- старые tests переведены с patch приватного имени на public editing dependency;
 - добавлен AST regression, перечисляющий семь публичных consumers;
-- wrapper contract покрыт async delegation test.
+- wrapper contract покрыт async delegation test;
+- versioned shared inventory и Telegram navigation inventory пересобраны;
+- временный inventory workflow и artifact-dump удалены до итогового CI.
 
 ### Миграции и совместимость
 
 Миграций базы данных нет. Тексты, клавиатуры, callback payloads, подтверждения,
-SupervisorClient calls и exception boundaries не изменены. Private `_safe_edit` пока
-может оставаться локальной деталью `views.py` для внутреннего consumer, но больше не
-является межмодульным контрактом.
+SupervisorClient calls и exception boundaries не изменены. Private `_safe_edit` может
+оставаться локальной деталью `views.py` для внутреннего consumer, но больше не является
+межмодульным контрактом.
+
+Package-wide baseline изменился следующим образом:
+
+- production Python files: 594 → 595;
+- functions inventoried: 3304 → 3305;
+- registered private cross-module debt: 152 → 144;
+- Supervisor private `_safe_edit` accesses: 8 → 0;
+- blocking known private contracts: 0 → 0;
+- exact/normalized/semantic groups: 56 / 92 / 9 без изменения.
 
 ### Проверки
 
-- focused contract tests: ожидают запуск в CI;
-- package-wide inventory: ожидает пересборку;
-- full unit tests: ожидают запуск;
-- type check: ожидает запуск;
-- Docker build: ожидает запуск;
-- project notes contract: ожидает запуск.
+Для чистого head `a0273d49e7a127211fb8384171092da9cba85752` успешно прошли:
+
+- full unit tests: 1758 tests;
+- type check;
+- Docker build;
+- project notes contract;
+- AST regression public Supervisor editing consumers;
+- package-wide inventory validation;
+- generated Telegram navigation inventory contract.
 
 ### PR и commit
 
+- PR: #468;
 - ветка: `agent/shared-helper-safe-edit-family`;
-- PR будет открыт после фиксации code/test/worklog scope;
-- итоговый merge commit будет указан после зелёного CI.
+- проверенный clean head: `a0273d49e7a127211fb8384171092da9cba85752`;
+- итоговый squash merge commit будет зафиксирован GitHub после merge.
 
 ### Незавершённое
 
-- пересобрать JSON/Markdown shared inventory;
-- получить зелёный полный CI;
-- завершить review и слить family-срез;
-- продолжить active installer safe-edit/state migrations отдельным PR.
+- слить PR #468 после повторного notes-only CI;
+- продолжить #419 active installer safe-edit/state family отдельным PR;
+- не смешивать следующий срез с progress/media structural work из #455/#457.
 
 ### Следующий шаг
 
-Открыть draft PR, получить точный generated inventory delta и обновить versioned
-contracts безопасным read-only способом. После слияния перейти к private safe-edit и
-state access в active Ауф installers, не затрагивая progress/media structural work из
-#455/#457.
+После merge PR #468 открыть следующий reviewable family-срез для private safe-edit и
+state access в active Ауф installers. Versioned inventory с baseline 144 использовать
+как измеримую отправную точку, а не как декоративную цифру для архитектурного отчёта.
