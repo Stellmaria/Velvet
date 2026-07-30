@@ -55,7 +55,8 @@
 - исправлены два ранее добавленных worklog-файла, нарушавших общий project-notes contract;
 - callback командного пространства подтверждается до тяжёлых операций;
 - architecture, P2 stability и Telegram navigation inventories пересобраны из актуального дерева;
-- router bundle и button-audit contracts обновлены для нового командного экрана.
+- router bundle и button-audit contracts обновлены для нового командного экрана;
+- точная подпись кнопки возврата закреплена как `↩️ Другие пространства`.
 
 ### Миграции и совместимость
 
@@ -66,7 +67,8 @@ SQL-схема не изменялась. Таблицы `meow_wallets`, `meow_w
 - bounded type check — успешно на первом head PR #405;
 - Docker build и project notes contract — успешно на промежуточном head;
 - generated architecture/P2/Telegram inventories синхронизированы после устранения шести устаревших contract assertions;
-- полный CI повторно запускается на обычном commit после bot-generated inventory commit.
+- полный набор из 1678 тестов дошёл до единственного устаревшего emoji-контракта, который исправлен;
+- полный CI повторно запускается на обычном commit после точной правки подписи.
 
 ### PR и commit
 
@@ -74,6 +76,7 @@ SQL-схема не изменялась. Таблицы `meow_wallets`, `meow_w
 - ветка: `agent/final-auf-wallet-layer`;
 - первый functional head: `c8d49b4f164e15a32eb64248f29c009670ac88a7`;
 - synchronized contracts head: `10d04accfa30dc0e5c4c777fd6a4e7bed86e9b38`;
+- exact button contract head: `8f24ec49bad35b573c33a6fdf756efc869f61064`;
 - итоговый head и merge commit фиксируются после зелёного CI и слияния.
 
 ### Незавершённое
