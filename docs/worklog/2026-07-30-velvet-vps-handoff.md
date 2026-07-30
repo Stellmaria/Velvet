@@ -45,14 +45,9 @@ Docker CLI отсутствует в текущей среде, поэтому b
 
 ### Фактически сделано
 
-- Подтверждена граница первого production stack: `docker-compose.server.yml`
-  запускает только Velvet PostgreSQL и Velvet bot; Hermes остаётся optional
-  profile без Docker socket и production data volume.
-- Подтверждено намеренное исключение второго Telegram-бота до его собственного
-  repository/start/env/database/backup contract.
-- Проверены server Compose, `.env.server.example`, runbook и deployment script;
-  runbook покрывает VPS preparation, final dump, disposable restore drill,
-  first boot без AI, smoke, rollback и постепенное включение AI.
+- Подтверждена граница первого production stack: `docker-compose.server.yml` запускает только Velvet PostgreSQL и Velvet bot; Hermes остаётся optional profile без Docker socket и production data volume.
+- Подтверждено намеренное исключение второго Telegram-бота до его собственного repository/start/env/database/backup contract.
+- Проверены server Compose, `.env.server.example`, runbook и deployment script; runbook покрывает VPS preparation, final dump, disposable restore drill, first boot без AI, smoke, rollback и постепенное включение AI.
 - Добавлена эта handoff-запись с фактическими ограничениями среды.
 
 ### Изменённые модули и контракты
@@ -62,27 +57,25 @@ Docker CLI отсутствует в текущей среде, поэтому b
 
 ### Миграции и совместимость
 
-Миграции не изменялись. Контур продолжает использовать существующий packaged
-PostgreSQL migration/restore workflow.
+Миграции не изменялись. Контур продолжает использовать существующий packaged PostgreSQL migration/restore workflow.
 
 ### Проверки
 
 - `python scripts/server_preflight.py --help` — успешно;
 - `python -m compileall -q velvet_bot scripts deploy` — успешно;
 - Docker CLI — отсутствует в локальной Windows-среде;
-- `.venv` и `.venv314` не содержат pytest, поэтому deployment contract tests
-  здесь не запускались и должны быть подтверждены CI или Docker-enabled VPS.
+- `.venv` и `.venv314` не содержат pytest, поэтому deployment contract tests здесь не запускались и должны быть подтверждены CI или Docker-enabled VPS.
+
+### PR и commit
+
+Документ подготовлен на `main` относительно базового commit `db9ad988fbc5f3d3768f35585e2a2d7200a410b1`. Production-code commit в рамках этой записи не создавался.
 
 ### Незавершённое
 
-- Выполнить `pytest` deployment-contract suite в CI/подготовленном dev env;
-- на VPS выполнить `docker compose ... config --quiet`, build, restore drill,
-  smoke и owner Telegram smoke по runbook;
-- получить второй бот как отдельный deployment contract, не смешивая его с
-  Velvet production stack.
+- выполнить `pytest` deployment-contract suite в CI/подготовленном dev env;
+- на VPS выполнить `docker compose ... config --quiet`, build, restore drill, smoke и owner Telegram smoke по runbook;
+- получить второй бот как отдельный deployment contract, не смешивая его с Velvet production stack.
 
-### Следующий конкретный шаг
+### Следующий шаг
 
-На VPS создать `.env.server` с правами 600, выполнить server preflight и
-`docker compose config --quiet`, затем сделать restore drill финального dump
-до первого запуска Velvet без AI.
+На VPS создать `.env.server` с правами 600, выполнить server preflight и `docker compose config --quiet`, затем сделать restore drill финального dump до первого запуска Velvet без AI.
