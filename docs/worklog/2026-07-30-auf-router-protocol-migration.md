@@ -48,7 +48,10 @@ SQL/module storage migration выполняется отдельной фазо�
 - photo-ratio hotfix переведён на canonical `workspace_auf_photo` и `handle_scoped_auf_action`;
 - persistent SQL identifiers возвращены к реально развёрнутой схеме;
 - retired router files сведены к compatibility delegation;
-- добавлены архитектурные контракты для router boundary, FSM dual-read и storage identifiers.
+- добавлены архитектурные контракты для router boundary, FSM dual-read и storage identifiers;
+- финальные тестовые контракты переведены на `AufCallback` и подписи «Ауф»;
+- video cost formatter больше не зависит от удалённого `legacy` alias;
+- SQL migration test снова проверяет существующий persistent-файл `917_meow_video_templates.sql`.
 
 ### Миграции и совместимость
 PostgreSQL schema и module key не менялись. Старые Telegram callback payload принимаются через `LegacyMeowCallback` и `LegacyMeowVideoCallback`; старые FSM-группы находятся только в `workspace_auf_legacy.py`. Canonical routers создают новые payload и пишут новые `auf_*` данные.
@@ -58,12 +61,15 @@ PostgreSQL schema и module key не менялись. Старые Telegram cal
 - `python -m compileall -q velvet_bot tests` — успешно на cleanup head;
 - встроенный audit подтвердил отсутствие пользовательского бренда «Мяу» в active routers;
 - core dual-read helper и fallback `auf_workspace_id → meow_workspace_id` закреплены contract test;
-- полный tests workflow, type check, Docker build и project notes contract запускаются на итоговом пользовательском commit.
+- первый полный CI выявил четыре устаревших контракта: migration path, video formatter alias, photo callback prefix и balance label;
+- все четыре причины исправлены в `43ecd36ff50b4feb770c740740baf63ef9412bf4`;
+- полный tests workflow, type check, Docker build и project notes contract повторно запускаются на итоговом пользовательском commit.
 
 ### PR и commit
 - PR: #428;
 - active-router cleanup: `eac923df754aa7821bc88a1fd8d83e14d185e200`;
 - core dual-read repair: `384df58f7aa8eac0c9416d59f5a4f33cca3fbdde`;
+- final contract repairs: `43ecd36ff50b4feb770c740740baf63ef9412bf4`;
 - merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
