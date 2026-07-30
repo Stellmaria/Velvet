@@ -89,7 +89,39 @@ class ServerPreflightTests(unittest.TestCase):
         self.assertTrue(any("API_KEY" in item for item in report.errors))
         self.assertTrue(any("цену" in item for item in report.errors))
 
-    def test_kie_requires_model_ids_and_exchange_rate(self) -> None:
+    def test_ollama_text_provider_is_rejected_on_server(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            values = _valid_values(directory)
+            values.update(
+                {
+                    "AI_TEXT_ENABLED": "true",
+                    "AI_TEXT_PROVIDER": "ollama",
+                    "AI_TEXT_BASE_URL": "http://127.0.0.1:11434",
+                    "AI_TEXT_MODEL": "legacy-model",
+                    "AI_TEXT_INPUT_RUB_PER_1M": "1",
+                    "AI_TEXT_OUTPUT_RUB_PER_1M": "1",
+                }
+            )
+            report = validate_server_environment(values, check_permissions=False)
+        self.assertTrue(any("legacy/deprecated" in item for item in report.errors))
+
+    def test_ollama_vision_provider_is_rejected_on_server(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            values = _valid_values(directory)
+            values.update(
+                {
+                    "AI_VISION_ENABLED": "true",
+                    "AI_VISION_PROVIDER": "ollama",
+                    "AI_VISION_BASE_URL": "http://127.0.0.1:11434",
+                    "AI_VISION_MODEL": "legacy-vl",
+                    "AI_VISION_FLASH_INPUT_RUB_PER_1M": "1",
+                    "AI_VISION_FLASH_OUTPUT_RUB_PER_1M": "1",
+                }
+            )
+            report = validate_server_environment(values, check_permissions=False)
+        self.assertTrue(any("legacy/deprecated" in item for item in report.errors))
+
+    def test_media_generation_requires_kie_and_grs_routes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             values = _valid_values(directory)
             values.update(
@@ -98,13 +130,24 @@ class ServerPreflightTests(unittest.TestCase):
                     "KIE_API_KEY": "kie_secret_123456789",
                     "KIE_BASE_URL": "https://api.kie.ai/api/v1",
                     "KIE_FILE_UPLOAD_BASE_URL": "https://upload.invalid",
-                    "KIE_SEEDREAM_5_PRO_MODEL": "",
-                    "KIE_NANO_BANANA_PRO_MODEL": "nano-banana-pro",
+                    "GRS_API_KEY": "",
+                    "GRS_BASE_URL": "https://grsaiapi.com",
+                    "KIE_SEEDREAM_5_PRO_TEXT_MODEL": "seedream/5-pro-text-to-image",
+                    "KIE_SEEDREAM_5_PRO_IMAGE_MODEL": "seedream/5-pro-image-to-image",
+                    "KIE_QWEN2_IMAGE_EDIT_MODEL": "qwen2/image-edit",
+                    "KIE_WAN_27_IMAGE_MODEL": "wan/2-7-image",
+                    "KIE_FLUX_2_PRO_IMAGE_MODEL": "flux-2/pro-image-to-image",
+                    "GRS_NANO_BANANA_2_MODEL": "nano-banana-2",
+                    "GRS_NANO_BANANA_PRO_MODEL": "nano-banana-pro",
+                    "KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL": "grok-imagine/image-to-video",
+                    "KIE_GROK_IMAGINE_VIDEO_15_MODEL": "grok-imagine-video-1-5-preview",
+                    "KIE_SEEDANCE_15_PRO_MODEL": "bytedance/seedance-1.5-pro",
+                    "KIE_WAN_27_IMAGE_TO_VIDEO_MODEL": "wan/2-7-image-to-video",
                     "KIE_USD_TO_RUB": "",
                 }
             )
             report = validate_server_environment(values, check_permissions=False)
-        self.assertTrue(any("KIE_SEEDREAM" in item for item in report.errors))
+        self.assertTrue(any("GRS_API_KEY" in item for item in report.errors))
         self.assertTrue(any("KIE_USD_TO_RUB" in item for item in report.errors))
 
     def test_hermes_requires_different_token_and_matching_internal_key(self) -> None:
