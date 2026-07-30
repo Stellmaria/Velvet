@@ -40,11 +40,13 @@ class KieCloudflareHeaderTests(unittest.TestCase):
 
         client = KieClient(
             api_key="secret",
-            models=KieModelCatalog(),
+            models=KieModelCatalog(
+                seedream_5_pro_text="seedream/5-pro-text-to-image"
+            ),
             transport=transport,
         )
         request = KieGenerationRequest(
-            model=KieModelAlias.NANO_BANANA_PRO,
+            model=KieModelAlias.SEEDREAM_5_PRO,
             input_mode=KieInputMode.TEXT,
             prompt="portrait",
             resolution="1K",
