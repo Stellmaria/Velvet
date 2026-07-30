@@ -28,8 +28,9 @@ _MODEL_NAMES = {
     "seedream_5_pro": "Seedream 5 Pro",
     "nano_banana_pro": "Nano Banana Pro",
     "grok_imagine_video": "Grok Imagine v1",
+    "grok_imagine_video_15": "Grok Imagine Video 1.5",
     "seedance_15_pro_video": "Seedance 1.5 Pro",
-    "wan_26_image_to_video": "Wan 2.6",
+    "wan_26_image_to_video": "Wan 2.7",
 }
 _USD_QUANTUM = Decimal("0.0001")
 _RUB_QUANTUM = Decimal("0.01")
