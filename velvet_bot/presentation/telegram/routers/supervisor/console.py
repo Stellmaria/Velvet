@@ -19,6 +19,7 @@ from velvet_bot.presentation.telegram.supervisor.console_results import (
     console_operation_watch_timeout_text,
 )
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.remote_views import (
     console_keyboard,
     console_preview_keyboard,
@@ -29,7 +30,6 @@ from velvet_bot.presentation.telegram.supervisor.remote_views import (
 from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _main_keyboard,
-    _safe_edit,
     _unavailable_text,
 )
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
@@ -83,7 +83,7 @@ async def _render_operation(
 ) -> None:
     operation_id = str(operation.get("id", ""))
     finished = console_operation_finished(operation)
-    await _safe_edit(
+    await edit_supervisor_message(
         message,
         console_operation_text(operation),
         console_operation_keyboard(operation_id, finished=finished),
@@ -150,7 +150,7 @@ async def _watch_console_operation(
             if operation is not None:
                 rendered = console_operation_text(operation)
                 if rendered != last_rendered:
-                    await _safe_edit(
+                    await edit_supervisor_message(
                         message,
                         rendered,
                         console_operation_keyboard(
@@ -165,7 +165,7 @@ async def _watch_console_operation(
 
             await asyncio.sleep(_CONSOLE_WATCH_INTERVAL_SECONDS)
 
-        await _safe_edit(
+        await edit_supervisor_message(
             message,
             console_operation_watch_timeout_text(operation_id),
             console_operation_keyboard(operation_id, finished=False),
@@ -278,7 +278,11 @@ async def handle_console_callback(
     try:
         if action == "console.menu":
             commands = await _catalog(supervisor_client)
-            await _safe_edit(callback.message, console_text(commands), console_keyboard(commands))
+            await edit_supervisor_message(
+                callback.message,
+                console_text(commands),
+                console_keyboard(commands),
+            )
             await callback.answer()
             return
         if action == "console.input":
@@ -305,7 +309,7 @@ async def handle_console_callback(
             request = payload.get("request", {})
             if not isinstance(request, dict):
                 raise SupervisorClientError("Некорректный preview команды.")
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 console_preview_text(request),
                 console_preview_keyboard(str(request.get("id", ""))),
@@ -337,7 +341,7 @@ async def handle_console_callback(
             operation_id = callback_data.task_id
             operation = await _operation(supervisor_client, operation_id)
             if operation is None:
-                await _safe_edit(
+                await edit_supervisor_message(
                     callback.message,
                     console_operation_missing_text(operation_id),
                     console_operation_keyboard(operation_id, finished=False),
@@ -351,7 +355,7 @@ async def handle_console_callback(
             payload = await supervisor_client.operations(limit=20)
             raw = payload.get("operations", [])
             operations = [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 operation_history_text(operations),
                 _main_keyboard(),
