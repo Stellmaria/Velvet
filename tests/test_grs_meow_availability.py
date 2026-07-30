@@ -17,7 +17,7 @@ def _labels(keyboard) -> list[str]:
 
 
 class GrsMeowAvailabilityTests(unittest.TestCase):
-    def test_banana_models_are_hidden_until_grs_key_is_configured(self) -> None:
+    def test_banana_models_are_hidden_until_service_is_configured(self) -> None:
         labels = _labels(
             build_model_keyboard(
                 workspace_id=9,
@@ -29,8 +29,10 @@ class GrsMeowAvailabilityTests(unittest.TestCase):
             labels,
         )
         text = model_selection_text(grs_enabled=False)
-        self.assertIn("GRS_API_KEY", text)
-        self.assertNotIn("отправляются через GRS AI", text)
+        self.assertIn("временно недоступны", text)
+        self.assertNotIn("GRS_API_KEY", text)
+        self.assertNotIn("GRS AI", text)
+        self.assertNotIn("Kie.ai", text)
 
 
 if __name__ == "__main__":

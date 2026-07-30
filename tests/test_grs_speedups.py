@@ -162,7 +162,7 @@ class GrsReferenceSpeedupTests(unittest.IsolatedAsyncioTestCase):
 
 
 class GrsBalancePriceTests(unittest.TestCase):
-    def test_grs_screen_uses_grs_model_prices_not_kie_credit_price(self) -> None:
+    def test_service_balance_screen_does_not_disclose_tariffs(self) -> None:
         text = _render_grs_balance(
             credits=Decimal("3000"),
             balance_error=None,
@@ -171,10 +171,12 @@ class GrsBalancePriceTests(unittest.TestCase):
             usd_to_rub=Decimal("100"),
         )
 
-        self.assertIn("0.0200 $ · 2.00 ₽", text)
-        self.assertIn("0.0300 $ · 3.00 ₽", text)
-        self.assertIn("0.0500 $ · 5.00 ₽", text)
-        self.assertNotIn("9.00 $", text)
+        self.assertIn("Состояние: <b>доступно</b>", text)
+        self.assertNotIn("$", text)
+        self.assertNotIn("₽", text)
+        self.assertNotIn("кредит", text.casefold())
+        self.assertNotIn("GRS", text)
+        self.assertNotIn("Kie", text)
 
 
 if __name__ == "__main__":

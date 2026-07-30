@@ -179,7 +179,7 @@ class GrsMediaProviderTests(unittest.TestCase):
         with self.assertRaisesRegex(KieTaskFailed, "GRS AI"):
             asyncio.run(scenario())
 
-    def test_meow_exposes_both_grs_bananas_and_keeps_seedream(self) -> None:
+    def test_photo_ui_exposes_models_without_provider_routing(self) -> None:
         self.assertEqual(
             [
                 "Nano Banana 2",
@@ -191,8 +191,10 @@ class GrsMediaProviderTests(unittest.TestCase):
             _labels(build_model_keyboard(workspace_id=9)),
         )
         text = model_selection_text()
-        self.assertIn("GRS AI", text)
-        self.assertIn("Kie.ai", text)
+        self.assertIn("Выберите подходящую фото-модель", text)
+        self.assertNotIn("GRS AI", text)
+        self.assertNotIn("Kie.ai", text)
+        self.assertNotIn("API_KEY", text)
 
     def test_settings_load_grs_endpoint_models_and_budget_estimates(self) -> None:
         values = {

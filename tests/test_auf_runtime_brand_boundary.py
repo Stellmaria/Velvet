@@ -98,7 +98,7 @@ class AufRuntimeBrandBoundaryTests(unittest.TestCase):
         self.assertIn('auf_kie="enabled"', bootstrap)
         self.assertNotIn("Meow/Kie", bootstrap)
         self.assertNotIn("meow_kie=", bootstrap)
-        self.assertIn("<b>Ауф ·", delivery)
+        self.assertIn("<b>Ауф", delivery)
         self.assertIn("install_auf_grs_brand", delivery)
         self.assertNotIn('f"<b>Мяу ·', delivery)
         self.assertIn("генерация фото и видео через Ауф", workers)

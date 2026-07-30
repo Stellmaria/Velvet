@@ -24,6 +24,10 @@ def workspace_commands(role: str) -> tuple[BotCommand, ...]:
         BotCommand(command="refs", description="Референсы персонажа"),
         BotCommand(command="compare_ref", description="Сравнить с референсом"),
     ]
+    if role == "owner":
+        commands.append(
+            BotCommand(command="auf", description="Создать фото или видео")
+        )
     if _ROLE_RANK.get(role, 0) >= _ROLE_RANK["editor"]:
         commands.extend(
             [
