@@ -100,7 +100,7 @@ class MeowRuntimeService:
         workspace_id: int,
         actor_user_id: int,
     ) -> None:
-        allowed = await self._repository.can_use_meow(
+        allowed = await self._repository.can_use_auf(
             workspace_id=workspace_id,
             user_id=actor_user_id,
             global_owner=self.is_global_owner(actor_user_id),
