@@ -4,7 +4,7 @@ import ast
 import unittest
 from pathlib import Path
 
-from velvet_bot.presentation.telegram.compatibility_contracts import (
+from velvet_bot.presentation.telegram.runtime_contracts import (
     COMPATIBILITY_CONTRACTS,
     contract_names,
 )
