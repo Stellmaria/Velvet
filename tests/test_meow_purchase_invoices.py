@@ -6,12 +6,12 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from velvet_bot.database import Database
-from velvet_bot.domains.meow_wallet import (
-    MeowInvoiceError,
-    MeowInvoiceStatus,
-    MeowPurchaseRepository,
-    MeowPurchaseService,
-    MeowWalletRepository,
+from velvet_bot.domains.auf_wallet import (
+    AufInvoiceError,
+    AufInvoiceStatus,
+    AufPurchaseRepository,
+    AufPurchaseService,
+    AufWalletRepository,
     auf_to_units,
 )
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
@@ -28,16 +28,16 @@ class _FakeRuntimeService:
     os.getenv("TEST_DATABASE_URL"),
     "TEST_DATABASE_URL is required for PostgreSQL integration tests",
 )
-class PostgreSQLMeowPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
+class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.database = Database(os.environ["TEST_DATABASE_URL"])
         await self.database.initialize()
-        self.repository = MeowPurchaseRepository(self.database)
-        self.service = MeowPurchaseService(
+        self.repository = AufPurchaseRepository(self.database)
+        self.service = AufPurchaseService(
             self.repository,
             _FakeRuntimeService(),
         )
-        self.wallets = MeowWalletRepository(self.database)
+        self.wallets = AufWalletRepository(self.database)
         await self._reset()
 
     async def asyncTearDown(self) -> None:
@@ -127,7 +127,7 @@ class PostgreSQLMeowPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
                 public_code=invoice.public_code,
                 actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
             )
-            self.assertIs(MeowInvoiceStatus.PAID, paid.status)
+            self.assertIs(AufInvoiceStatus.PAID, paid.status)
             self.assertEqual(auf_to_units(250), wallet.available_units)
 
         overview = await self.wallets.overview(DEFAULT_WORKSPACE_ID)
@@ -154,8 +154,8 @@ class PostgreSQLMeowPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
             workspace_id=DEFAULT_WORKSPACE_ID,
             actor_user_id=77,
         )
-        self.assertIs(MeowInvoiceStatus.CANCELLED, cancelled.status)
-        with self.assertRaises(MeowInvoiceError):
+        self.assertIs(AufInvoiceStatus.CANCELLED, cancelled.status)
+        with self.assertRaises(AufInvoiceError):
             await self.service.confirm_paid(
                 public_code=invoice.public_code,
                 actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
@@ -177,7 +177,7 @@ class PostgreSQLMeowPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         stored = await self.repository.invoice_by_code(invoice.public_code)
         self.assertIsNotNone(stored)
         assert stored is not None
-        self.assertIs(MeowInvoiceStatus.EXPIRED, stored.status)
+        self.assertIs(AufInvoiceStatus.EXPIRED, stored.status)
 
     async def test_reconciliation_detects_wallet_ledger_mismatch(self) -> None:
         invoice = await self._invoice(key="reconcile", package=40)

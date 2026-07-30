@@ -6,14 +6,14 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from velvet_bot.database import Database
-from velvet_bot.domains.meow_wallet import (
+from velvet_bot.domains.auf_wallet import (
     AUF_SCALE,
-    MeowEconomySettings,
-    MeowInsufficientBalance,
-    MeowWalletAccessError,
-    MeowWalletRepository,
-    MeowWalletService,
-    MeowWalletStatus,
+    AufEconomySettings,
+    AufInsufficientBalance,
+    AufWalletAccessError,
+    AufWalletRepository,
+    AufWalletService,
+    AufWalletStatus,
     auf_to_units,
     format_auf_units,
     units_to_auf,
@@ -30,7 +30,7 @@ class _FakeRuntimeService:
 
 class _FakeRepository:
     def __init__(self) -> None:
-        self.settings = MeowEconomySettings(
+        self.settings = AufEconomySettings(
             provider_auf_usd=Decimal("0.02"),
             retail_auf_usd=Decimal("0.03"),
             billing_usd_to_rub=Decimal("79.85"),
@@ -42,7 +42,7 @@ class _FakeRepository:
         return self.settings
 
 
-class MeowWalletValueTests(unittest.TestCase):
+class AufWalletValueTests(unittest.TestCase):
     def test_auf_uses_exact_integer_units(self) -> None:
         self.assertEqual(AUF_SCALE, auf_to_units("1"))
         self.assertEqual(21_875, auf_to_units("2.1875"))
@@ -50,9 +50,9 @@ class MeowWalletValueTests(unittest.TestCase):
         self.assertEqual("2.19 Ауф", format_auf_units(21_875))
 
 
-class MeowWalletServiceTests(unittest.IsolatedAsyncioTestCase):
+class AufWalletServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_package_prices_follow_usd_rate(self) -> None:
-        service = MeowWalletService(_FakeRepository(), _FakeRuntimeService())
+        service = AufWalletService(_FakeRepository(), _FakeRuntimeService())
         quotes = await service.package_quotes(workspace_id=7, actor_user_id=77)
         self.assertEqual((40, 100, 250, 500, 1000, 2500), tuple(q.amount_auf for q in quotes))
         self.assertEqual(Decimal("1.20"), quotes[0].price_usd)
@@ -60,8 +60,8 @@ class MeowWalletServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(Decimal("6000"), quotes[-1].price_rub)
 
     async def test_non_owner_cannot_manage_wallet(self) -> None:
-        service = MeowWalletService(_FakeRepository(), _FakeRuntimeService())
-        with self.assertRaises(MeowWalletAccessError):
+        service = AufWalletService(_FakeRepository(), _FakeRuntimeService())
+        with self.assertRaises(AufWalletAccessError):
             await service.grant(
                 workspace_id=7,
                 amount_auf=40,
@@ -74,12 +74,12 @@ class MeowWalletServiceTests(unittest.IsolatedAsyncioTestCase):
     os.getenv("TEST_DATABASE_URL"),
     "TEST_DATABASE_URL is required for PostgreSQL integration tests",
 )
-class PostgreSQLMeowWalletTests(unittest.IsolatedAsyncioTestCase):
+class PostgreSQLAufWalletTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.database = Database(os.environ["TEST_DATABASE_URL"])
         await self.database.initialize()
-        self.repository = MeowWalletRepository(self.database)
-        self.service = MeowWalletService(self.repository, _FakeRuntimeService())
+        self.repository = AufWalletRepository(self.database)
+        self.service = AufWalletService(self.repository, _FakeRuntimeService())
         await self._reset()
 
     async def asyncTearDown(self) -> None:
@@ -129,7 +129,7 @@ class PostgreSQLMeowWalletTests(unittest.IsolatedAsyncioTestCase):
             comment="test",
             idempotency_key="test:wallet:grant:1",
         )
-        with self.assertRaises(MeowInsufficientBalance):
+        with self.assertRaises(AufInsufficientBalance):
             await self.service.manual_debit(
                 workspace_id=DEFAULT_WORKSPACE_ID,
                 amount_auf=2,
@@ -144,13 +144,13 @@ class PostgreSQLMeowWalletTests(unittest.IsolatedAsyncioTestCase):
             frozen=True,
             actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
         )
-        self.assertIs(MeowWalletStatus.FROZEN, frozen.status)
+        self.assertIs(AufWalletStatus.FROZEN, frozen.status)
         active = await self.service.set_frozen(
             workspace_id=DEFAULT_WORKSPACE_ID,
             frozen=False,
             actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
         )
-        self.assertIs(MeowWalletStatus.ACTIVE, active.status)
+        self.assertIs(AufWalletStatus.ACTIVE, active.status)
 
 
 if __name__ == "__main__":

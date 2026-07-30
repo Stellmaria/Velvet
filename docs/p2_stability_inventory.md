@@ -7,7 +7,7 @@ AST-инвентаризация широких исключений и callback
 - raw broad exceptions: **88** в **53** файлах;
 - approved boundaries: **88**;
 - unresolved broad exceptions: **0** в **0** файлах;
-- callback handlers: **131**;
+- callback handlers: **132**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **44**;
 - delegated callbacks: **11**.
@@ -16,14 +16,14 @@ AST-инвентаризация широких исключений и callback
 
 - `velvet_bot/ai_job_runtime.py:55` `create`: compensate-created-ai-job.
 - `velvet_bot/ai_quality.py:703` `process_once`: compensate-claimed-ai-quality.
-- `velvet_bot/ai_vision.py:725` `process_once`: compensate-claimed-ai-profile.
-- `velvet_bot/app/bootstrap.py:87` `_close_application_resources`: isolate-worker-shutdown.
-- `velvet_bot/app/bootstrap.py:93` `_close_application_resources`: best-effort-shutdown-audit.
-- `velvet_bot/app/bootstrap.py:101` `_close_application_resources`: isolate-error-center-shutdown.
-- `velvet_bot/app/bootstrap.py:110` `_close_application_resources`: isolate-bot-session-shutdown.
-- `velvet_bot/app/bootstrap.py:115` `_close_application_resources`: isolate-database-shutdown.
-- `velvet_bot/app/bootstrap.py:132` `_report_fatal_application_error`: preserve-original-fatal-error.
-- `velvet_bot/app/bootstrap.py:282` `run_application`: report-fatal-application-error.
+- `velvet_bot/ai_vision.py:743` `process_once`: compensate-claimed-ai-profile.
+- `velvet_bot/app/bootstrap.py:90` `_close_application_resources`: isolate-worker-shutdown.
+- `velvet_bot/app/bootstrap.py:96` `_close_application_resources`: best-effort-shutdown-audit.
+- `velvet_bot/app/bootstrap.py:104` `_close_application_resources`: isolate-error-center-shutdown.
+- `velvet_bot/app/bootstrap.py:113` `_close_application_resources`: isolate-bot-session-shutdown.
+- `velvet_bot/app/bootstrap.py:118` `_close_application_resources`: isolate-database-shutdown.
+- `velvet_bot/app/bootstrap.py:135` `_report_fatal_application_error`: preserve-original-fatal-error.
+- `velvet_bot/app/bootstrap.py:308` `run_application`: report-fatal-application-error.
 - `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/backup_runtime.py:163` `_create_dump_file`: cleanup-invalid-backup-artifacts.
 - `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
@@ -75,15 +75,15 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:569` `handle_set_analysis_command`: compensate-set-analysis-command-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai.py:351` `handle_prompt_check_reply`: compensate-prompt-result-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_formatting.py:287` `handle_formatting_reply`: compensate-velvet-formatting-job.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:305` `handle_image_prompt_reply`: compare-model-partial.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:338` `handle_image_prompt_reply`: compensate-image-prompt-job.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:307` `handle_image_prompt_reply`: compare-model-partial.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:365` `handle_image_prompt_reply`: compensate-image-prompt-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_visual.py:315` `handle_visual_analysis_reply`: compensate-palette-composition-job.
 - `velvet_bot/presentation/telegram/routers/references/comparison.py:282` `handle_reference_comparison`: report-reference-comparison-failure.
 - `velvet_bot/presentation/telegram/routers/references/comparison_help.py:255` `handle_reference_comparison_reply`: compensate-reference-comparison-form-job.
-- `velvet_bot/presentation/telegram/routers/supervisor/console.py:174` `_watch_console_operation`: isolate-supervisor-console-watcher.
+- `velvet_bot/presentation/telegram/routers/supervisor/console.py:175` `_watch_console_operation`: isolate-supervisor-console-watcher.
 - `velvet_bot/presentation/telegram/routers/workspace_analytics.py:132` `_ingest`: report-workspace-analytics-ingest-failure.
-- `velvet_bot/presentation/telegram/routers/workspace_publications.py:459` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
-- `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:1032` `handle_workspace_reference_comparison`: report-workspace-reference-comparison.
+- `velvet_bot/presentation/telegram/routers/workspace_publications.py:460` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
+- `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:1170` `_compare_workspace_reference_result`: report-workspace-reference-comparison.
 - `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/storage_center.py:294` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/workspace_qwen.py:1105` `handle_workspace_qwen_prompt_image`: workspace-qwen-prompt-result.

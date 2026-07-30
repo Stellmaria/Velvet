@@ -33,7 +33,11 @@ async def _edit_or_answer(
         except TelegramBadRequest as error:
             if "message is not modified" not in str(error).casefold():
                 await callback.message.answer(text, reply_markup=reply_markup)
-    await callback.answer()
+
+
+async def _notify(callback: CallbackQuery, text: str) -> None:
+    if isinstance(callback.message, Message):
+        await callback.message.answer(text)
 
 
 async def _show_choices(
@@ -43,7 +47,7 @@ async def _show_choices(
 ) -> None:
     state = await product_service.get_start_state(callback.from_user.id)
     if not state.member_workspaces:
-        await callback.answer("У вас больше нет командных пространств.", show_alert=True)
+        await _notify(callback, "У вас больше нет командных пространств.")
         return
     await _edit_or_answer(
         callback,
@@ -65,6 +69,10 @@ async def handle_workspace_member_home(
     workspace_product_service: WorkspaceProductService,
     workspace_service: WorkspaceService,
 ) -> None:
+    # Ack before database and rendering work so Telegram does not leave the button
+    # spinning while a workspace dashboard is assembled.
+    await callback.answer()
+
     if callback_data.action == "memberhome":
         await _show_choices(callback, product_service=workspace_product_service)
         return
@@ -90,7 +98,7 @@ async def handle_workspace_member_home(
             global_owner=_is_global_owner(user_id),
         )
     except WorkspaceAccessError as error:
-        await callback.answer(str(error), show_alert=True)
+        await _notify(callback, str(error))
         return
 
     enabled_modules = sum(

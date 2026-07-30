@@ -209,12 +209,12 @@ async def handle_auf_root_entry(
     await callback.answer()
 
 
-handle_meow_root_entry = handle_auf_root_entry
+handle_auf_root_entry = handle_auf_root_entry
 
 
 __all__ = (
     "build_auf_root_keyboard",
     "build_meow_root_keyboard",
     "handle_auf_root_entry",
-    "handle_meow_root_entry",
+    "handle_auf_root_entry",
 )

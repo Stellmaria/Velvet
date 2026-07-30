@@ -7,9 +7,9 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from velvet_bot.domains.meow_runtime import (
-    MeowRuntimeAccessError,
-    MeowRuntimeService,
+from velvet_bot.domains.auf_runtime import (
+    AufRuntimeAccessError,
+    AufRuntimeService,
 )
 from velvet_bot.domains.workspaces.models import Workspace
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
@@ -32,14 +32,14 @@ from velvet_bot.presentation.telegram.routers.workspace_meow_grs_balance import 
     handle_meow_grs_balance,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
-    handle_meow_root_entry,
+    handle_auf_root_entry,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_runtime import (
-    MeowRuntimeCallback,
-    MeowRuntimeForm,
-    handle_meow_runtime_action,
-    handle_meow_runtime_callback,
-    handle_meow_runtime_limit_input,
+    AufRuntimeCallback,
+    AufRuntimeForm,
+    handle_auf_runtime_action,
+    handle_auf_runtime_callback,
+    handle_auf_runtime_limit_input,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
     MeowVideoCallback,
@@ -80,14 +80,14 @@ async def _require_meow_callback(
     callback: CallbackQuery,
     *,
     workspace_id: int,
-    service: MeowRuntimeService,
+    service: AufRuntimeService,
 ) -> bool:
     try:
         await service.require_workspace_access(
             workspace_id=workspace_id,
             actor_user_id=callback.from_user.id,
         )
-    except MeowRuntimeAccessError as error:
+    except AufRuntimeAccessError as error:
         await callback.answer(str(error), show_alert=True)
         return False
     return True
@@ -98,7 +98,7 @@ async def _require_meow_message(
     state: FSMContext,
     *,
     workspace_key: str,
-    service: MeowRuntimeService,
+    service: AufRuntimeService,
 ) -> bool:
     data = await state.get_data()
     workspace_id = int(data.get(workspace_key) or 0)
@@ -107,7 +107,7 @@ async def _require_meow_message(
             workspace_id=workspace_id,
             actor_user_id=message.from_user.id if message.from_user else 0,
         )
-    except MeowRuntimeAccessError as error:
+    except AufRuntimeAccessError as error:
         await state.clear()
         await message.answer(str(error))
         return False
@@ -188,10 +188,10 @@ async def handle_scoped_meow_action(
     database,
     ai_usage_service,
     ai_task_queue_service,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if callback_data.action in {"runtime", "visibility_toggle"}:
-        await handle_meow_runtime_action(
+        await handle_auf_runtime_action(
             callback,
             callback_data,
             state,
@@ -222,7 +222,7 @@ async def handle_scoped_meow_video_entry(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_callback(
         callback,
@@ -248,7 +248,7 @@ async def handle_scoped_meow_video_action(
     database,
     ai_usage_service,
     ai_task_queue_service,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_callback(
         callback,
@@ -273,7 +273,7 @@ async def handle_scoped_meow_prompt(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
@@ -295,7 +295,7 @@ async def handle_scoped_meow_reference_message(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
@@ -317,7 +317,7 @@ async def handle_scoped_meow_reference_text(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
@@ -339,7 +339,7 @@ async def handle_scoped_meow_video_reference_message(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
@@ -361,7 +361,7 @@ async def handle_scoped_meow_video_prompt(
     state: FSMContext,
     access_policy,
     kie_settings,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     if not await _require_meow_message(
         message,
@@ -386,7 +386,7 @@ def register_workspace_home(router: Router) -> None:
         WorkspaceCallback.filter(F.action == "home"),
     )
     router.callback_query.register(
-        handle_meow_root_entry,
+        handle_auf_root_entry,
         WorkspaceCallback.filter(F.action == "meow"),
     )
     router.callback_query.register(
@@ -402,8 +402,8 @@ def register_workspace_home(router: Router) -> None:
         MeowCallback.filter(F.action == "animate"),
     )
     router.callback_query.register(
-        handle_meow_runtime_callback,
-        MeowRuntimeCallback.filter(),
+        handle_auf_runtime_callback,
+        AufRuntimeCallback.filter(),
     )
     router.callback_query.register(
         handle_scoped_meow_video_action,
@@ -414,8 +414,8 @@ def register_workspace_home(router: Router) -> None:
         MeowCallback.filter(),
     )
     router.message.register(
-        handle_meow_runtime_limit_input,
-        MeowRuntimeForm.waiting_limit,
+        handle_auf_runtime_limit_input,
+        AufRuntimeForm.waiting_limit,
         F.text,
     )
     router.message.register(

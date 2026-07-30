@@ -1,63 +1,42 @@
-from velvet_bot.domains.meow_wallet import (
-    AUF_PACKAGES,
+from velvet_bot.domains.auf_wallet.charged_queue import (
+    AufChargedTaskQueueService,
+    build_auf_charged_task_queue_service,
+)
+from velvet_bot.domains.auf_wallet.models import (
     AUF_SCALE,
-    MeowAufPackageQuote,
-    MeowChargedTaskQueueService,
-    MeowEconomySettings,
-    MeowInsufficientBalance,
-    MeowInvoiceError,
-    MeowInvoiceStatus,
-    MeowPriceNotConfigured,
-    MeowPriceQuote,
-    MeowPricingRepository,
-    MeowPurchaseInvoice,
-    MeowPurchaseRepository,
-    MeowPurchaseService,
-    MeowReconciliationIssue,
-    MeowWallet,
-    MeowWalletAccessError,
-    MeowWalletEntry,
-    MeowWalletError,
-    MeowWalletFrozen,
-    MeowWalletOperation,
-    MeowWalletOverview,
-    MeowWalletRepository,
-    MeowWalletService,
-    MeowWalletStatus,
+    AufEconomySettings,
+    AufInsufficientBalance,
+    AufWallet,
+    AufWalletEntry,
+    AufWalletError,
+    AufWalletFrozen,
+    AufWalletOperation,
+    AufWalletOverview,
+    AufWalletStatus,
     auf_to_units,
-    build_meow_charged_task_queue_service,
     format_auf_units,
     units_to_auf,
 )
-
-AufPackageQuote = MeowAufPackageQuote
-AufChargedTaskQueueService = MeowChargedTaskQueueService
-AufEconomySettings = MeowEconomySettings
-AufInsufficientBalance = MeowInsufficientBalance
-AufInvoiceError = MeowInvoiceError
-AufInvoiceStatus = MeowInvoiceStatus
-AufPriceNotConfigured = MeowPriceNotConfigured
-AufPriceQuote = MeowPriceQuote
-AufPricingRepository = MeowPricingRepository
-AufPurchaseInvoice = MeowPurchaseInvoice
-AufPurchaseRepository = MeowPurchaseRepository
-AufPurchaseService = MeowPurchaseService
-AufReconciliationIssue = MeowReconciliationIssue
-AufWallet = MeowWallet
-AufWalletAccessError = MeowWalletAccessError
-AufWalletEntry = MeowWalletEntry
-AufWalletError = MeowWalletError
-AufWalletFrozen = MeowWalletFrozen
-AufWalletOperation = MeowWalletOperation
-AufWalletOverview = MeowWalletOverview
-AufWalletRepository = MeowWalletRepository
-AufWalletService = MeowWalletService
-AufWalletStatus = MeowWalletStatus
-
-
-def build_auf_charged_task_queue_service(*, database):
-    return build_meow_charged_task_queue_service(database=database)
-
+from velvet_bot.domains.auf_wallet.pricing import (
+    AufPriceNotConfigured,
+    AufPriceQuote,
+    AufPricingRepository,
+)
+from velvet_bot.domains.auf_wallet.purchase import (
+    AufInvoiceError,
+    AufInvoiceStatus,
+    AufPurchaseInvoice,
+    AufPurchaseRepository,
+    AufPurchaseService,
+    AufReconciliationIssue,
+)
+from velvet_bot.domains.auf_wallet.service import (
+    AUF_PACKAGES,
+    AufPackageQuote,
+    AufWalletAccessError,
+    AufWalletService,
+)
+from velvet_bot.domains.auf_wallet.store import AufWalletRepository
 
 __all__ = (
     "AUF_PACKAGES",

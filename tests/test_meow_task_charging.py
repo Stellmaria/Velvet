@@ -8,13 +8,13 @@ from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskRequest
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
-from velvet_bot.domains.meow_wallet import (
-    MeowChargedTaskQueueService,
-    MeowInsufficientBalance,
-    MeowPricingRepository,
-    MeowWalletFrozen,
-    MeowWalletRepository,
-    MeowWalletService,
+from velvet_bot.domains.auf_wallet import (
+    AufChargedTaskQueueService,
+    AufInsufficientBalance,
+    AufPricingRepository,
+    AufWalletFrozen,
+    AufWalletRepository,
+    AufWalletService,
     auf_to_units,
 )
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
@@ -36,13 +36,13 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.database = Database(os.environ["TEST_DATABASE_URL"])
         await self.database.initialize()
-        self.wallets = MeowWalletRepository(self.database)
-        self.wallet_service = MeowWalletService(
+        self.wallets = AufWalletRepository(self.database)
+        self.wallet_service = AufWalletService(
             self.wallets,
             _FakeRuntimeService(),
         )
-        self.pricing = MeowPricingRepository(self.database)
-        self.queue = MeowChargedTaskQueueService(self.database)
+        self.pricing = AufPricingRepository(self.database)
+        self.queue = AufChargedTaskQueueService(self.database)
         await self._reset()
 
     async def asyncTearDown(self) -> None:
@@ -239,7 +239,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_insufficient_balance_rolls_back_task_creation(self) -> None:
         request = self._request(key="insufficient")
-        with self.assertRaises(MeowInsufficientBalance):
+        with self.assertRaises(AufInsufficientBalance):
             await self.queue.enqueue(request)
         async with self.database.acquire() as connection:
             task_count = await connection.fetchval(
@@ -256,7 +256,7 @@ class PostgreSQLMeowTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
         )
         request = self._request(key="frozen")
-        with self.assertRaises(MeowWalletFrozen):
+        with self.assertRaises(AufWalletFrozen):
             await self.queue.enqueue(request)
         async with self.database.acquire() as connection:
             task_count = await connection.fetchval(
