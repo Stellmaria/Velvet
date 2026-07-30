@@ -13,12 +13,15 @@ from velvet_bot.core.config import Settings
 from velvet_bot.core.config.kie import KieSettings, load_kie_settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
-from velvet_bot.domains.ai_usage import (
-    AITaskQueueService,
-    AIUsageService,
-    build_ai_task_queue_service,
-)
+from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
 from velvet_bot.domains.auf_runtime import AufRuntimeRepository, AufRuntimeService
+from velvet_bot.domains.auf_wallet import (
+    AufPurchaseRepository,
+    AufPurchaseService,
+    AufWalletRepository,
+    AufWalletService,
+    build_auf_charged_task_queue_service,
+)
 from velvet_bot.domains.roleplay import build_roleplay_service
 from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
@@ -77,13 +80,22 @@ def build_dispatcher(
     )
     workspace_character_service = WorkspaceCharacterService(database)
     auf_runtime_service = AufRuntimeService(AufRuntimeRepository(database))
+    auf_wallet_service = AufWalletService(
+        AufWalletRepository(database),
+        auf_runtime_service,
+    )
+    auf_purchase_service = AufPurchaseService(
+        AufPurchaseRepository(database),
+        auf_runtime_service,
+    )
 
     active_ai_usage_service = ai_usage_service or build_audited_ai_usage_service(
         database=database,
         audit_logger=audit_logger,
     )
     active_task_queue_service = (
-        ai_task_queue_service or build_ai_task_queue_service(database=database)
+        ai_task_queue_service
+        or build_auf_charged_task_queue_service(database=database)
     )
     active_kie_settings = kie_settings or load_kie_settings()
     roleplay_service = build_roleplay_service(
@@ -102,10 +114,12 @@ def build_dispatcher(
         "workspace_service": workspace_service,
         "workspace_product_service": workspace_product_service,
         "workspace_characters": workspace_character_service,
-        # Aiogram resolves handler dependencies by parameter name. Keep the old key
-        # as a protocol alias while exposing the canonical key to new handlers.
         "auf_runtime_service": auf_runtime_service,
         "meow_runtime_service": auf_runtime_service,
+        "auf_wallet_service": auf_wallet_service,
+        "meow_wallet_service": auf_wallet_service,
+        "auf_purchase_service": auf_purchase_service,
+        "meow_purchase_service": auf_purchase_service,
         "roleplay_service": roleplay_service,
         "ai_usage_service": active_ai_usage_service,
         "ai_task_queue_service": active_task_queue_service,

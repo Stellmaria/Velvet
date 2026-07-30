@@ -21,7 +21,7 @@
 
 Статус: `завершено`.
 
-- remote `origin/main` слит в отдельную recovery-ветку;
+- remote `origin/main` слит в отдельную recovery-ветку; во время push получен и интегрирован ещё один свежий wallet/charging-срез без потери локальной recovery-работы;
 - удалены все закоммиченные conflict markers из README, generated inventory и workspace/presentation-кода;
 - сохранены remote runtime-изменения и локальные workspace UX-маршруты: member-home router, member start-menu state и guided setup button;
 - устранены две обнаруженные интеграционные ошибки: дублирующий member-home builder и повторное поле `member_workspaces` в dataclass;
@@ -30,8 +30,9 @@
 ### Проверки
 
 - `python -m unittest tests.test_workspace_guided_navigation tests.test_workspace_member_dashboard tests.test_workspace_qwen_comparison_flow tests.test_workspace_product_access tests.test_workspace_onboarding tests.test_telegram_navigation_inventory -q` — 33 passed, 10 skipped без PostgreSQL;
+- после второго merge: 53 targeted tests passed, 27 skipped без PostgreSQL;
 - `python -m compileall -q velvet_bot tests` — успешно;
 - `rg '^(<<<<<<<|=======|>>>>>>>)'` — маркеры не найдены;
 - `git diff --check` — успешно.
 
-Следующий шаг: создать recovery merge commit, затем безопасно fast-forward локальную `main` на проверенную recovery-ветку и отправить интеграцию в GitHub без force-push.
+Следующий шаг: выполнить live PostgreSQL/Telegram smoke в целевой среде; safety refs оставить до подтверждения эксплуатации.
