@@ -1,12 +1,12 @@
 {
-  "schema_version": 64,
-  "generated_from_commit": "p2-workspace-callback-ack",
+  "schema_version": 65,
+  "generated_from_commit": "p2-auf-wallet-domain-migration",
   "broad_exception_total": 88,
   "broad_exception_files": 53,
   "broad_exception_approved": 88,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
-  "callback_total": 131,
+  "callback_total": 132,
   "risky_callback_total": 0,
   "risky_callback_files": 0,
   "guarded_callback_total": 44,
@@ -32,7 +32,7 @@
     {
       "path": "velvet_bot/ai_vision.py",
       "function": "process_once",
-      "line": 725,
+      "line": 743,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-claimed-ai-profile"
@@ -40,7 +40,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 87,
+      "line": 90,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-worker-shutdown"
@@ -48,7 +48,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 93,
+      "line": 96,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "best-effort-shutdown-audit"
@@ -56,7 +56,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 101,
+      "line": 104,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-error-center-shutdown"
@@ -64,7 +64,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 110,
+      "line": 113,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-bot-session-shutdown"
@@ -72,7 +72,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_close_application_resources",
-      "line": 115,
+      "line": 118,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-database-shutdown"
@@ -80,7 +80,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "_report_fatal_application_error",
-      "line": 132,
+      "line": 135,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "preserve-original-fatal-error"
@@ -88,7 +88,7 @@
     {
       "path": "velvet_bot/app/bootstrap.py",
       "function": "run_application",
-      "line": 282,
+      "line": 308,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-fatal-application-error"
@@ -504,7 +504,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
       "function": "handle_image_prompt_reply",
-      "line": 305,
+      "line": 307,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compare-model-partial"
@@ -512,7 +512,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
       "function": "handle_image_prompt_reply",
-      "line": 338,
+      "line": 365,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-image-prompt-job"
@@ -544,7 +544,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/console.py",
       "function": "_watch_console_operation",
-      "line": 174,
+      "line": 175,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-supervisor-console-watcher"
@@ -560,15 +560,15 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_publications.py",
       "function": "_handle_workspace_publication_callback",
-      "line": 459,
+      "line": 460,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-workspace-publication-failure"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
-      "function": "handle_workspace_reference_comparison",
-      "line": 1032,
+      "function": "_compare_workspace_reference_result",
+      "line": 1170,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-workspace-reference-comparison"
@@ -1433,8 +1433,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
       "function": "handle_image_prompt_start",
-      "line": 216,
-      "ack_line": 218,
+      "line": 217,
+      "ack_line": 219,
       "pre_ack_awaits": 0,
       "total_awaits": 4,
       "risk": "early_ack"
@@ -1577,8 +1577,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/console.py",
       "function": "handle_console_callback",
-      "line": 265,
-      "ack_line": 271,
+      "line": 266,
+      "ack_line": 272,
       "pre_ack_awaits": 0,
       "total_awaits": 24,
       "risk": "early_ack"
@@ -1710,6 +1710,15 @@
       "risk": "early_ack"
     },
     {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_member_home.py",
+      "function": "handle_workspace_member_home",
+      "line": 66,
+      "ack_line": 74,
+      "pre_ack_awaits": 0,
+      "total_awaits": 7,
+      "risk": "early_ack"
+    },
+    {
       "path": "velvet_bot/presentation/telegram/routers/workspace_onboarding.py",
       "function": "handle_workspace_onboarding_callback",
       "line": 799,
@@ -1802,8 +1811,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_publications.py",
       "function": "handle_workspace_publication_entry",
-      "line": 211,
-      "ack_line": 218,
+      "line": 212,
+      "ack_line": 219,
       "pre_ack_awaits": 0,
       "total_awaits": 6,
       "risk": "early_ack"
@@ -1811,7 +1820,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_publications.py",
       "function": "handle_workspace_publication_callback",
-      "line": 296,
+      "line": 297,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
@@ -1838,8 +1847,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
       "function": "handle_workspace_qwen_entry",
-      "line": 202,
-      "ack_line": 211,
+      "line": 208,
+      "ack_line": 217,
       "pre_ack_awaits": 1,
       "total_awaits": 6,
       "risk": "guarded_ack"
@@ -1847,7 +1856,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_reference_library.py",
       "function": "handle_workspace_reference_callback",
-      "line": 709,
+      "line": 715,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
