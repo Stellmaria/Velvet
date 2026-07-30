@@ -26,6 +26,6 @@ from velvet_bot.domains.auf_wallet import (
     AufWalletRepository as MeowWalletRepository,
     AufWalletService as MeowWalletService,
     AufWalletStatus as MeowWalletStatus,
-    build_auf_charged_task_queue_service as build_auf_charged_task_queue_service,
+    build_auf_charged_task_queue_service as build_meow_charged_task_queue_service,
     quote_auf_payload as quote_meow_payload,
 )
