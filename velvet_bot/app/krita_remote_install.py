@@ -122,7 +122,7 @@ def install_krita_remote_worker() -> None:
         if runtime is not None:
             try:
                 await runtime.stop()
-            except Exception:  # p2-approved-boundary: isolate-krita-remote-shutdown
+            except (OSError, RuntimeError):
                 logger.exception("Could not stop Krita remote worker API")
         await original_close(*args, **kwargs)
 
