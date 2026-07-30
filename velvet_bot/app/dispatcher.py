@@ -19,6 +19,7 @@ from velvet_bot.domains.ai_usage import (
     build_ai_task_queue_service,
 )
 from velvet_bot.domains.meow_runtime import MeowRuntimeRepository, MeowRuntimeService
+from velvet_bot.domains.meow_wallet import MeowWalletRepository, MeowWalletService
 from velvet_bot.domains.roleplay import build_roleplay_service
 from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
@@ -77,6 +78,10 @@ def build_dispatcher(
     )
     workspace_character_service = WorkspaceCharacterService(database)
     meow_runtime_service = MeowRuntimeService(MeowRuntimeRepository(database))
+    meow_wallet_service = MeowWalletService(
+        MeowWalletRepository(database),
+        meow_runtime_service,
+    )
 
     active_ai_usage_service = ai_usage_service or build_audited_ai_usage_service(
         database=database,
@@ -103,6 +108,7 @@ def build_dispatcher(
         "workspace_product_service": workspace_product_service,
         "workspace_characters": workspace_character_service,
         "meow_runtime_service": meow_runtime_service,
+        "meow_wallet_service": meow_wallet_service,
         "roleplay_service": roleplay_service,
         "ai_usage_service": active_ai_usage_service,
         "ai_task_queue_service": active_task_queue_service,
