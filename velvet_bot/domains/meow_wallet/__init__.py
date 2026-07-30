@@ -22,6 +22,14 @@ from velvet_bot.domains.meow_wallet.pricing import (
     MeowPriceQuote,
     MeowPricingRepository,
 )
+from velvet_bot.domains.meow_wallet.purchase import (
+    MeowInvoiceError,
+    MeowInvoiceStatus,
+    MeowPurchaseInvoice,
+    MeowPurchaseRepository,
+    MeowPurchaseService,
+    MeowReconciliationIssue,
+)
 from velvet_bot.domains.meow_wallet.service import (
     AUF_PACKAGES,
     MeowAufPackageQuote,
@@ -37,9 +45,15 @@ __all__ = (
     "MeowChargedTaskQueueService",
     "MeowEconomySettings",
     "MeowInsufficientBalance",
+    "MeowInvoiceError",
+    "MeowInvoiceStatus",
     "MeowPriceNotConfigured",
     "MeowPriceQuote",
     "MeowPricingRepository",
+    "MeowPurchaseInvoice",
+    "MeowPurchaseRepository",
+    "MeowPurchaseService",
+    "MeowReconciliationIssue",
     "MeowWallet",
     "MeowWalletAccessError",
     "MeowWalletEntry",
