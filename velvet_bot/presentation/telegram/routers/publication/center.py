@@ -89,6 +89,9 @@ async def _safe_edit(
 safe_edit_publication_message = _safe_edit
 
 
+safe_edit_publication_message = _safe_edit
+
+
 def _center_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
