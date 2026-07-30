@@ -51,24 +51,29 @@ provider routing. `message is not modified` остаётся единствен�
 ### Фактически сделано
 
 - создан пакет `presentation.telegram.shared`;
-- добавлены editing, navigation, deletion и text contracts;
+- добавлены editing, navigation, deletion, media и text contracts;
+- стандартные локальные safe-edit реализации переведены на shared editing contract;
+- два Telegram download/retry path переведены на shared media contract;
+- шесть private cross-controller helper imports заменены публичными контрактами;
 - `safe_analytics_edit` переведён на shared editing contract;
 - добавлены AST inventory, machine checks и regression tests;
-- draft PR #462 открыт для полного CI и поэтапной миграции остальных семейств.
+- ветка синхронизирована с актуальным `main` без потери delivery-среза Ауф.
 
 ### Миграции и совместимость
 
 Миграций базы данных нет. Callback payloads, пользовательские тексты, права доступа,
-provider routing и worker lifecycle не изменены. Корневой `safe_analytics_edit` сохранён
-как совместимый facade, но его реализация теперь делегирует публичному shared contract.
+provider routing и worker lifecycle не изменены. Совместимые локальные aliases сохранены
+там, где существующие consumers и regression tests зависят от старого имени.
 
 ### Проверки
 
-- type check: успешно на первом прогоне PR #462;
-- Docker build: успешно на первом прогоне PR #462;
-- project notes contract: исправляется этим commit;
-- полный tests workflow: выполняется, затем его inventory используется для следующего
-  миграционного среза.
+- helper boundary CI: успешно, 588 production Python files, 55 duplicate groups,
+  private helper imports: 0;
+- type check: успешно;
+- project notes contract: успешно;
+- Docker build: успешно на предыдущем полном срезе, повторный прогон выполняется;
+- полный tests workflow нашёл только compatibility alias `_download_file` и два
+  устаревших generated P2 inventory; исправления подготовлены без возврата helper-долга.
 
 ### PR и commit
 
@@ -78,12 +83,12 @@ provider routing и worker lifecycle не изменены. Корневой `sa
 
 ### Незавершённое
 
-- разобрать результат полного AST inventory;
-- перенести оставшиеся реальные helper duplicates по одному семейству;
+- восстановить compatibility alias `_download_file`;
+- регенерировать P2 stability inventory после централизации broad exception dispatch;
 - получить зелёный полный CI;
 - обновить umbrella #213 и закрыть #419.
 
 ### Следующий шаг
 
-Исправить выявленные CI inventory failures, затем последовательно мигрировать safe-edit,
-navigation/deletion, text и progress families без изменения Telegram UX.
+Применить подготовленный compatibility repair, обновить generated contracts и выполнить
+финальный полный CI на синхронизированной ветке.
