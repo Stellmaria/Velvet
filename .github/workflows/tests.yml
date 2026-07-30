@@ -26,7 +26,9 @@ jobs:
           python-version: "3.13"
 
       - name: Apply package migration
-        run: python scripts/apply_package_shared_contract_migration.py
+        run: |
+          python scripts/repair_shared_contract_inventory.py
+          python scripts/apply_package_shared_contract_migration.py
 
       - name: Commit migration
         run: |
@@ -36,7 +38,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add velvet_bot docs
+          git add velvet_bot docs scripts/shared_contract_inventory.py
           git commit -m "P3: migrate package-wide shared contracts"
           git push origin HEAD:agent/shared-telegram-helpers
 
