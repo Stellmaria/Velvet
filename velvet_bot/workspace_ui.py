@@ -27,7 +27,6 @@ MODULE_LABELS: dict[WorkspaceModuleKey, str] = {
     "publications": "📣 Публикации",
     "analytics": "📊 Аналитика",
     "team": "👤 Команда",
-    "auf": "🐺 Ауф",
 }
 
 MODULE_HELP: dict[WorkspaceModuleKey, str] = {
@@ -45,7 +44,6 @@ MODULE_HELP: dict[WorkspaceModuleKey, str] = {
     "publications": "Черновики, проверка, очередь и публикация материалов в подключённый канал пространства.",
     "analytics": "Статистика только подключённых каналов пространства: публикации, персонажи и обсуждения.",
     "team": "Добавление редакторов, проверяющих и администраторов вашего пространства.",
-    "auf": "Генерация и оживление изображений, управление балансом и задачами Ауф внутри пространства.",
 }
 
 
@@ -180,62 +178,100 @@ def format_workspace_member_home(
         f"Ваша роль: <b>{escape(role_label)}</b>\n"
         f"Доступных разделов: <b>{enabled_modules}</b>\n\n"
         "Здесь показаны только действия, доступные вашей роли. Настройки "
-        "пространства доступны владельцу и администраторам."
+        "пространства, публичность, модули и удаление остаются у владельца."
     )
 
 
-def build_workspace_member_home_keyboard(
-    workspace: Workspace,
+def build_workspace_selector_keyboard(
     *,
-    role: str,
-    modules: tuple[WorkspaceModuleSetting, ...],
+    owned_workspaces: tuple[Workspace, ...],
+    member_workspaces: tuple[Workspace, ...],
 ) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
-    settings = {item.module_key: item for item in modules}
-    actions = {
-        "characters": "characters",
-        "archive": "archive",
-        "references": "references",
-        "watermark": "watermark",
-        "qwen": "qwen",
-        "publications": "publishing",
-        "analytics": "analytics",
-        "team": "team",
-    }
-    for key, action in actions.items():
-        setting = settings.get(key)
-        if (
-            setting is None
-            or not setting.is_allowed
-            or not setting.is_enabled
-            or role not in _MEMBER_MODULE_ROLES.get(key, frozenset())
-        ):
-            continue
+    for workspace in owned_workspaces:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=MODULE_LABELS[key],
-                    callback_data=workspace_callback(action, workspace_id=workspace.id),
+                    text=f"⚙️ {workspace.name}"[:64],
+                    callback_data=workspace_callback("home", workspace_id=workspace.id),
                 )
             ]
         )
-    rows.extend(
-        [
+    for workspace in member_workspaces:
+        rows.append(
             [
                 InlineKeyboardButton(
-                    text="↩️ Другие пространства",
-                    callback_data=workspace_callback("memberhome"),
+                    text=f"🤝 {workspace.name}"[:64],
+                    callback_data=workspace_callback("home", workspace_id=workspace.id),
                 )
-            ],
+            ]
+        )
+    rows.append(
+        [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_public_workspaces_keyboard(
+    workspaces: tuple[Workspace, ...],
+) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=("🖤 " if item.is_system else "🌐 ") + item.name[:40],
+                callback_data=workspace_callback(
+                    "publicselect",
+                    workspace_id=item.id,
+                ),
+            )
+        ]
+        for item in workspaces
+    ]
+    if not rows:
+        rows.append(
             [
                 InlineKeyboardButton(
-                    text="✖ Закрыть",
-                    callback_data=workspace_callback("close", workspace_id=workspace.id),
+                    text="Публичных архивов пока нет",
+                    callback_data=workspace_callback("noop"),
+                )
+            ]
+        )
+    rows.append(
+        [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_selected_public_workspace_keyboard() -> InlineKeyboardMarkup:
+    archive_button = build_public_entry_keyboard().inline_keyboard[0][0]
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [archive_button],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Другие публичные архивы",
+                    callback_data=workspace_callback("publics"),
                 )
             ],
         ]
     )
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def format_workspace_home(
+    workspace: Workspace,
+    *,
+    public_enabled: bool,
+    enabled_modules: int,
+    allowed_modules: int,
+) -> str:
+    visibility = "🌐 публичный read-only" if public_enabled else "🔒 приватный"
+    return (
+        f"<b>{escape(workspace.name)}</b>\n\n"
+        f"Статус архива: <b>{visibility}</b>\n"
+        f"Модули: <b>{enabled_modules}/{allowed_modules}</b> включено\n\n"
+        "Здесь отображаются только функции вашего пространства. "
+        "Supervisor, Git, Codex и системные резервные копии сюда не входят."
+    )
 
 
 def build_workspace_home_keyboard(
@@ -244,45 +280,118 @@ def build_workspace_home_keyboard(
     public_enabled: bool,
     modules: tuple[WorkspaceModuleSetting, ...],
 ) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-    settings = {item.module_key: item for item in modules}
-    actions = {
-        "characters": "characters",
-        "archive": "archive",
-        "taxonomy": "taxonomy",
-        "references": "references",
-        "watermark": "watermark",
-        "qwen": "qwen",
-        "publications": "publishing",
-        "analytics": "analytics",
-        "team": "team",
-    }
-    for key, action in actions.items():
-        setting = settings.get(key)
-        if setting is None or not setting.is_allowed or not setting.is_enabled:
+    enabled = {item.module_key for item in modules if item.is_allowed and item.is_enabled}
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text="🧭 Быстрые действия",
+                callback_data=workspace_callback("quick", workspace_id=workspace.id),
+            )
+        ]
+    ]
+    if "characters" in enabled:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="👥 Персонажи",
+                    callback_data=workspace_callback(
+                        "module",
+                        workspace_id=workspace.id,
+                        module_key="characters",
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="ℹ️",
+                    callback_data=workspace_callback(
+                        "modulehelp",
+                        workspace_id=workspace.id,
+                        module_key="characters",
+                    ),
+                ),
+            ]
+        )
+    if "archive" in enabled:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🖼 Архив",
+                    callback_data=workspace_callback(
+                        "module",
+                        workspace_id=workspace.id,
+                        module_key="archive",
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="ℹ️",
+                    callback_data=workspace_callback(
+                        "modulehelp",
+                        workspace_id=workspace.id,
+                        module_key="archive",
+                    ),
+                ),
+            ]
+        )
+    if "taxonomy" in enabled:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🗂 Категории и вселенные",
+                    callback_data=workspace_callback(
+                        "taxonomy",
+                        workspace_id=workspace.id,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="ℹ️",
+                    callback_data=workspace_callback(
+                        "modulehelp",
+                        workspace_id=workspace.id,
+                        module_key="taxonomy",
+                    ),
+                ),
+            ]
+        )
+    for module_key in (
+        "references",
+        "watermark",
+        "qwen",
+        "publications",
+        "analytics",
+        "team",
+    ):
+        if module_key not in enabled:
             continue
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=MODULE_LABELS[key],
-                    callback_data=workspace_callback(action, workspace_id=workspace.id),
-                )
+                    text=MODULE_LABELS[module_key],
+                    callback_data=workspace_callback(
+                        "module",
+                        workspace_id=workspace.id,
+                        module_key=module_key,
+                    ),
+                ),
+                InlineKeyboardButton(
+                    text="ℹ️",
+                    callback_data=workspace_callback(
+                        "modulehelp",
+                        workspace_id=workspace.id,
+                        module_key=module_key,
+                    ),
+                ),
             ]
         )
-    public_setting = settings.get("public_archive")
-    if public_setting is not None and public_setting.is_allowed:
+    if "public_archive" in enabled:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=(
-                        "🔒 Сделать приватным" if public_enabled else "🌐 Сделать публичным"
-                    ),
+                    text=("🔒 Сделать приватным" if public_enabled else "🌐 Сделать публичным"),
                     callback_data=workspace_callback(
-                        "publicoff" if public_enabled else "publicon",
+                        "visibility",
                         workspace_id=workspace.id,
                     ),
                 )
-            ]
+            ],
         )
     rows.extend(
         [
@@ -295,10 +404,67 @@ def build_workspace_home_keyboard(
                     ),
                 )
             ],
+            [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))],
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_workspace_member_home_keyboard(
+    workspace: Workspace | int,
+    *,
+    role: str,
+    modules: tuple[WorkspaceModuleSetting, ...],
+) -> InlineKeyboardMarkup:
+    """Show only entries whose handlers accept the member's role."""
+    workspace_id = int(workspace.id if isinstance(workspace, Workspace) else workspace)
+    enabled = {item.module_key for item in modules if item.is_allowed and item.is_enabled}
+    role_rank = {"viewer": 10, "reviewer": 20, "editor": 30, "admin": 40}.get(
+        role,
+        0,
+    )
+    rows: list[list[InlineKeyboardButton]] = []
+
+    def add_module(module_key: WorkspaceModuleKey) -> None:
+        if module_key not in enabled:
+            return
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MODULE_LABELS[module_key],
+                    callback_data=workspace_callback(
+                        "module",
+                        workspace_id=workspace_id,
+                        module_key=module_key,
+                    ),
+                )
+            ]
+        )
+
+    if role_rank >= 30:
+        add_module("characters")
+    add_module("archive")
+    add_module("references")
+    if role_rank >= 20:
+        add_module("qwen")
+        add_module("analytics")
+    if role_rank >= 30:
+        add_module("publications")
+    if role_rank >= 40:
+        add_module("watermark")
+        add_module("team")
+    rows.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    text="↩️ Другие пространства",
+                    callback_data=workspace_callback("memberhome"),
+                )
+            ],
             [
                 InlineKeyboardButton(
                     text="✖ Закрыть",
-                    callback_data=workspace_callback("close", workspace_id=workspace.id),
+                    callback_data=workspace_callback("close"),
                 )
             ],
         ]
@@ -306,74 +472,32 @@ def build_workspace_home_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def format_workspace_home(
-    workspace: Workspace,
-    *,
-    public_enabled: bool,
-    enabled_modules: int,
-    allowed_modules: int,
-) -> str:
-    return (
-        f"<b>{escape(workspace.name)}</b>\n\n"
-        f"Статус: {'🌐 публичный' if public_enabled else '🔒 приватный'}\n"
-        f"Модули: <b>{enabled_modules}/{allowed_modules}</b> включено."
-    )
-
-
-def format_workspace_list_item(workspace: Workspace) -> str:
-    suffix = " · системное" if workspace.is_system else ""
-    return f"{escape(workspace.name)}{suffix}"
-
-
-def build_workspace_list_keyboard(
-    workspaces: tuple[Workspace, ...],
-) -> InlineKeyboardMarkup:
-    rows = [
-        [
-            InlineKeyboardButton(
-                text=format_workspace_list_item(workspace),
-                callback_data=workspace_callback(
-                    "select",
-                    workspace_id=workspace.id,
-                ),
-            )
-        ]
-        for workspace in workspaces
-    ]
-    rows.append(
-        [
-            InlineKeyboardButton(
-                text="↩️ Назад",
-                callback_data=workspace_callback("start"),
-            )
-        ]
-    )
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-def build_module_settings_keyboard(
-    workspace: Workspace,
+def build_modules_keyboard(
+    workspace_id: int,
     modules: tuple[WorkspaceModuleSetting, ...],
 ) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for item in modules:
-        status = "✅" if item.is_enabled else "⛔"
+        if not item.is_allowed:
+            status = "⛔"
+        else:
+            status = "✅" if item.is_enabled else "➖"
         label = MODULE_LABELS[item.module_key]
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"{status} {label}",
+                    text=f"{status} {label}"[:42],
                     callback_data=workspace_callback(
                         "modtoggle",
-                        workspace_id=workspace.id,
+                        workspace_id=workspace_id,
                         module_key=item.module_key,
                     ),
                 ),
                 InlineKeyboardButton(
-                    text="?",
+                    text="ℹ️",
                     callback_data=workspace_callback(
-                        "modhelp",
-                        workspace_id=workspace.id,
+                        "modulehelpmodules",
+                        workspace_id=workspace_id,
                         module_key=item.module_key,
                     ),
                 ),
@@ -383,34 +507,138 @@ def build_module_settings_keyboard(
         [
             InlineKeyboardButton(
                 text="↩️ Моё пространство",
-                callback_data=workspace_callback("home", workspace_id=workspace.id),
+                callback_data=workspace_callback("home", workspace_id=workspace_id),
             )
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def module_help_text(module_key: WorkspaceModuleKey) -> str:
-    return f"<b>{MODULE_LABELS[module_key]}</b>\n\n{MODULE_HELP[module_key]}"
-
-
 def build_module_help_keyboard(
     workspace_id: int,
+    *,
+    parent: str = "home",
 ) -> InlineKeyboardMarkup:
+    action = "modules" if parent == "modules" else "home"
+    text = "↩️ Назад к модулям" if parent == "modules" else "↩️ Моё пространство"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="↩️ К модулям",
-                    callback_data=workspace_callback(
-                        "modules",
-                        workspace_id=workspace_id,
-                    ),
+                    text=text,
+                    callback_data=workspace_callback(action, workspace_id=workspace_id),
                 )
             ]
         ]
     )
 
 
-def build_public_mode_keyboard() -> InlineKeyboardMarkup:
-    return build_public_entry_keyboard()
+
+def format_taxonomy(
+    workspace: Workspace,
+    *,
+    categories: tuple[WorkspaceCategory, ...],
+    universes: tuple[WorkspaceUniverse, ...],
+    stories: tuple[WorkspaceStory, ...],
+) -> str:
+    return (
+        f"<b>🗂 {escape(workspace.name)} · структура</b>\n\n"
+        f"Категории: <b>{len(categories)}</b>\n"
+        f"Вселенные: <b>{len(universes)}</b>\n"
+        f"Истории: <b>{len(stories)}</b>\n\n"
+        "Можно создавать свои значения. Они принадлежат только этому архиву. "
+        "КР доступна как необязательный шаблон из Velvet Anatomy."
+    )
+
+
+def build_taxonomy_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📁 Категории",
+                    callback_data=workspace_callback("categories", workspace_id=workspace_id),
+                ),
+                InlineKeyboardButton(
+                    text="🎭 Вселенные",
+                    callback_data=workspace_callback("universes", workspace_id=workspace_id),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📖 Истории",
+                    callback_data=workspace_callback("stories", workspace_id=workspace_id),
+                ),
+                InlineKeyboardButton(
+                    text="💎 Добавить КР",
+                    callback_data=workspace_callback("krimport", workspace_id=workspace_id),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="➕ Категория",
+                    callback_data=workspace_callback("addcategory", workspace_id=workspace_id),
+                ),
+                InlineKeyboardButton(
+                    text="➕ Вселенная",
+                    callback_data=workspace_callback("adduniverse", workspace_id=workspace_id),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="➕ История",
+                    callback_data=workspace_callback("addstory", workspace_id=workspace_id),
+                ),
+                InlineKeyboardButton(
+                    text="ℹ️ Что это",
+                    callback_data=workspace_callback(
+                        "modulehelp",
+                        workspace_id=workspace_id,
+                        module_key="taxonomy",
+                    ),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Моё пространство",
+                    callback_data=workspace_callback("home", workspace_id=workspace_id),
+                )
+            ],
+        ]
+    )
+
+
+def build_taxonomy_list_keyboard(workspace_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="↩️ Структура",
+                    callback_data=workspace_callback("taxonomy", workspace_id=workspace_id),
+                )
+            ]
+        ]
+    )
+
+
+__all__ = (
+    "MODULE_HELP",
+    "MODULE_LABELS",
+    "WorkspaceCallback",
+    "WorkspaceForm",
+    "build_module_help_keyboard",
+    "build_member_workspace_select_keyboard",
+    "build_modules_keyboard",
+    "build_public_workspaces_keyboard",
+    "build_selected_public_workspace_keyboard",
+    "build_start_keyboard",
+    "build_taxonomy_keyboard",
+    "build_taxonomy_list_keyboard",
+    "build_workspace_member_home_keyboard",
+    "build_workspace_home_keyboard",
+    "build_workspace_selector_keyboard",
+    "format_taxonomy",
+    "format_workspace_member_home",
+    "format_workspace_home",
+    "workspace_callback",
+)
