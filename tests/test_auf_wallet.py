@@ -47,7 +47,26 @@ class AufWalletValueTests(unittest.TestCase):
         self.assertEqual(AUF_SCALE, auf_to_units("1"))
         self.assertEqual(21_875, auf_to_units("2.1875"))
         self.assertEqual(Decimal("2.1875"), units_to_auf(21_875))
-        self.assertEqual("2.19 Ауф", format_auf_units(21_875))
+        self.assertEqual("2.19 вельвета", format_auf_units(21_875))
+
+    def test_velvet_currency_uses_russian_plural_forms(self) -> None:
+        cases = {
+            "0": "0 вельветов",
+            "1": "1 вельвет",
+            "2": "2 вельвета",
+            "5": "5 вельветов",
+            "11": "11 вельветов",
+            "21": "21 вельвет",
+            "22": "22 вельвета",
+            "25": "25 вельветов",
+            "1.5": "1.5 вельвета",
+        }
+        for raw_amount, expected in cases.items():
+            with self.subTest(raw_amount=raw_amount):
+                self.assertEqual(
+                    expected,
+                    format_auf_units(auf_to_units(raw_amount)),
+                )
 
 
 class AufWalletServiceTests(unittest.IsolatedAsyncioTestCase):

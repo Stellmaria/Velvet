@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from aiogram import Bot
@@ -35,6 +36,7 @@ _PROVIDER_URL_RE = re.compile(
     r"https?://[^\s<>]*(?:kie\.ai|grsai\.com)[^\s<>]*",
     flags=re.IGNORECASE,
 )
+_AUF_AMOUNT_RE = re.compile(r"(?<![\w])(?P<amount>\d+(?:[.,]\d+)?)\s+Ауф\b")
 
 
 def _brand_auf_text(value: str) -> str:
@@ -50,6 +52,52 @@ def _brand_auf_text(value: str) -> str:
         .replace("Meow", "Auf")
         .replace("meow", "auf")
     )
+
+
+def _velvet_currency_word(raw_amount: str) -> str:
+    try:
+        amount = abs(Decimal(raw_amount.replace(",", ".")))
+    except InvalidOperation:
+        return "вельветов"
+    if amount != amount.to_integral_value():
+        return "вельвета"
+    number = int(amount)
+    if 11 <= number % 100 <= 14:
+        return "вельветов"
+    last_digit = number % 10
+    if last_digit == 1:
+        return "вельвет"
+    if last_digit in {2, 3, 4}:
+        return "вельвета"
+    return "вельветов"
+
+
+def _brand_velvet_currency_text(value: str) -> str:
+    """Expose the wallet currency as velvets while keeping the Auf module name."""
+
+    branded = str(value)
+    exact_replacements = {
+        "Точная цена в Ауф": "Точная цена в вельветах",
+        "Стоимость в Ауф": "Стоимость в вельветах",
+        "Цена Ауф устарела": "Цена в вельветах устарела",
+        "Недостаточно Ауф": "Недостаточно вельветов",
+        "без операции Ауф": "без списания вельветов",
+        "списаний Ауф нет": "списаний вельветов нет",
+        "Баланс Ауф": "Баланс вельветов",
+        "баланс Ауф": "баланс вельветов",
+        "Кошелёк Ауф": "Кошелёк вельветов",
+        "Списание Ауф": "Списание вельветов",
+        "одного Ауф": "одного вельвета",
+        "начислит Ауф дважды": "начислит вельветы дважды",
+    }
+    for old, new in exact_replacements.items():
+        branded = branded.replace(old, new)
+
+    def replace_amount(match: re.Match[str]) -> str:
+        raw_amount = match.group("amount")
+        return f"{raw_amount} {_velvet_currency_word(raw_amount)}"
+
+    return _AUF_AMOUNT_RE.sub(replace_amount, branded)
 
 
 def _redact_public_technical_text(value: str) -> str:
@@ -148,7 +196,7 @@ def _redact_public_technical_text(value: str) -> str:
         cleaned,
     )
     cleaned = re.sub(
-        r"(?mi)(?:Kie\.ai|GRS AI) завершил(?:а)? задачу без URL результата\.?",
+        r"(?mi)(?:Kie\.ai|GRS AI) завершил(?:а)? задачу без URL результата\. ?",
         "Сервис завершил задачу без доступного результата.",
         cleaned,
     )
@@ -188,7 +236,9 @@ def _brand_telegram_value(
     if isinstance(value, str):
         if field_name in _IDENTIFIER_FIELDS:
             return value
-        return _redact_public_technical_text(_brand_auf_text(value))
+        return _redact_public_technical_text(
+            _brand_velvet_currency_text(_brand_auf_text(value))
+        )
     if isinstance(value, list):
         return [
             _brand_telegram_value(
@@ -265,6 +315,7 @@ def install_auf_branding() -> None:
 __all__ = (
     "_brand_auf_text",
     "_brand_telegram_value",
+    "_brand_velvet_currency_text",
     "_redact_public_technical_text",
     "install_auf_branding",
 )

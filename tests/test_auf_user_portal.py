@@ -21,7 +21,10 @@ class AufUserPortalKeyboardTests(unittest.TestCase):
             quoted_units=45_000,
             can_submit=True,
         )
-        self.assertEqual("Запустить · 4.5 Ауф", keyboard.inline_keyboard[0][0].text)
+        self.assertEqual(
+            "Запустить · 4.5 вельвета",
+            keyboard.inline_keyboard[0][0].text,
+        )
         callback_data = keyboard.inline_keyboard[0][0].callback_data or ""
         self.assertIn("submit", callback_data)
         self.assertNotIn("$", callback_data)
@@ -109,7 +112,7 @@ class AufUserPortalPresentationTests(unittest.TestCase):
             }
         )
         self.assertIn("Grok Imagine v1", line)
-        self.assertIn("4.5 Ауф", line)
+        self.assertIn("4.5 вельвета", line)
         self.assertIn("списано", line)
         self.assertNotIn("provider", line.casefold())
         self.assertNotIn("$", line)
