@@ -167,6 +167,8 @@ class UserObservabilityContractTests(unittest.TestCase):
         self.assertEqual(Decimal("12.3456"), user_management._positive_amount("12,3456"))
         self.assertIsNone(user_management._positive_amount("0"))
         self.assertIsNone(user_management._positive_amount("1.00001"))
+        self.assertIsNone(user_management._positive_amount("NaN"))
+        self.assertIsNone(user_management._positive_amount("Infinity"))
 
     def test_public_wallet_source_hides_internal_costs(self) -> None:
         source = inspect.getsource(workspace_auf_wallet._render_wallet)
