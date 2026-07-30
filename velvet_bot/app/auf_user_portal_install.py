@@ -19,8 +19,8 @@ from velvet_bot.domains.auf_wallet import (
 )
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE, KieInputMode
 from velvet_bot.presentation.telegram.routers import workspace_auf_wallet as wallet_router
-from velvet_bot.presentation.telegram.routers import workspace_meow_video_simple as video_router
-from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
+from velvet_bot.presentation.telegram.routers import workspace_auf_video_simple as video_router
+from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 
 _INSTALLED = False
 _TASK_PAGE_SIZE = 8
@@ -108,7 +108,7 @@ def _video_review_keyboard(
 
 
 def _wallet_tasks_callback(*, workspace_id: int, offset: int = 0) -> str:
-    return MeowCallback(
+    return AufCallback(
         action="wallet_tasks",
         workspace_id=int(workspace_id),
         offset=max(0, int(offset)),
@@ -545,7 +545,7 @@ def _task_list_keyboard(
             [
                 InlineKeyboardButton(
                     text="↩️ Кошелёк",
-                    callback_data=MeowCallback(
+                    callback_data=AufCallback(
                         action="wallet", workspace_id=workspace_id
                     ).pack(),
                 )
