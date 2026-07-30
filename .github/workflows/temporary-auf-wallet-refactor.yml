@@ -1,0 +1,343 @@
+name: Temporary Auf wallet refactor
+
+on:
+  push:
+    branches:
+      - agent/complete-auf-wallet-layer
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/complete-auf-wallet-layer
+          fetch-depth: 0
+
+      - name: Move wallet implementation behind Auf API
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('.')
+          old_domain = root / 'velvet_bot/domains/meow_wallet'
+          new_domain = root / 'velvet_bot/domains/auf_wallet'
+          new_domain.mkdir(parents=True, exist_ok=True)
+
+          replacements = [
+              ('velvet_bot.domains.meow_runtime', 'velvet_bot.domains.auf_runtime'),
+              ('velvet_bot.domains.meow_wallet', 'velvet_bot.domains.auf_wallet'),
+              ('velvet_bot.presentation.telegram.routers.workspace_meow_wallet',
+               'velvet_bot.presentation.telegram.routers.workspace_auf_wallet'),
+              ('velvet_bot.app.meow_wallet_ui_install',
+               'velvet_bot.app.auf_wallet_ui_install'),
+              ('build_meow_charged_task_queue_service',
+               'build_auf_charged_task_queue_service'),
+              ('quote_meow_payload', 'quote_auf_payload'),
+              ('MeowChargedTaskQueueService', 'AufChargedTaskQueueService'),
+              ('MeowReconciliationIssue', 'AufReconciliationIssue'),
+              ('MeowPurchaseRepository', 'AufPurchaseRepository'),
+              ('MeowPurchaseInvoice', 'AufPurchaseInvoice'),
+              ('MeowPurchaseService', 'AufPurchaseService'),
+              ('MeowInvoiceStatus', 'AufInvoiceStatus'),
+              ('MeowInvoiceError', 'AufInvoiceError'),
+              ('MeowPriceNotConfigured', 'AufPriceNotConfigured'),
+              ('MeowPricingRepository', 'AufPricingRepository'),
+              ('MeowPriceQuote', 'AufPriceQuote'),
+              ('MeowRuntimeService', 'AufRuntimeService'),
+              ('MeowAufPackageQuote', 'AufPackageQuote'),
+              ('MeowEconomySettings', 'AufEconomySettings'),
+              ('MeowInsufficientBalance', 'AufInsufficientBalance'),
+              ('MeowWalletAccessError', 'AufWalletAccessError'),
+              ('MeowWalletOperation', 'AufWalletOperation'),
+              ('MeowWalletOverview', 'AufWalletOverview'),
+              ('MeowWalletRepository', 'AufWalletRepository'),
+              ('MeowWalletService', 'AufWalletService'),
+              ('MeowWalletStatus', 'AufWalletStatus'),
+              ('MeowWalletFrozen', 'AufWalletFrozen'),
+              ('MeowWalletEntry', 'AufWalletEntry'),
+              ('MeowWalletError', 'AufWalletError'),
+              ('MeowWallet', 'AufWallet'),
+              ('paid Meow generation tasks', 'paid Auf generation tasks'),
+          ]
+
+          def transform(text: str) -> str:
+              for old, new in replacements:
+                  text = text.replace(old, new)
+              return text
+
+          for name in (
+              '__init__.py',
+              'models.py',
+              'store.py',
+              'service.py',
+              'pricing.py',
+              'purchase.py',
+              'charged_queue.py',
+          ):
+              source = old_domain / name
+              (new_domain / name).write_text(
+                  transform(source.read_text(encoding='utf-8')),
+                  encoding='utf-8',
+              )
+
+          old_router = root / 'velvet_bot/presentation/telegram/routers/workspace_meow_wallet.py'
+          new_router = root / 'velvet_bot/presentation/telegram/routers/workspace_auf_wallet.py'
+          new_router.write_text(
+              transform(old_router.read_text(encoding='utf-8')).replace(
+                  'handle_meow_wallet_action = handle_auf_wallet_action\n\n',
+                  '',
+              ).replace(
+                  '__all__ = ("handle_auf_wallet_action", "handle_meow_wallet_action")',
+                  '__all__ = ("handle_auf_wallet_action",)',
+              ),
+              encoding='utf-8',
+          )
+
+          installer = root / 'velvet_bot/app/auf_wallet_ui_install.py'
+          installer_text = transform(installer.read_text(encoding='utf-8'))
+          installer_text = installer_text.replace(
+              'meow_runtime_service,', 'auf_runtime_service,'
+          ).replace(
+              'meow_wallet_service,', 'auf_wallet_service,'
+          ).replace(
+              'meow_purchase_service,', 'auf_purchase_service,'
+          ).replace(
+              'meow_wallet_service,\n                meow_purchase_service,',
+              'auf_wallet_service,\n                auf_purchase_service,'
+          ).replace(
+              'meow_runtime_service,\n        )', 'auf_runtime_service,\n        )'
+          )
+          installer.write_text(installer_text, encoding='utf-8')
+
+          # Switch production code and tests to canonical wallet imports and symbols.
+          excluded = {
+              old_domain,
+              old_router,
+              root / 'velvet_bot/app/meow_wallet_ui_install.py',
+          }
+          for base in (root / 'velvet_bot', root / 'tests'):
+              for path in base.rglob('*.py'):
+                  if path in excluded or old_domain in path.parents:
+                      continue
+                  original = path.read_text(encoding='utf-8')
+                  updated = transform(original)
+                  if updated != original:
+                      path.write_text(updated, encoding='utf-8')
+
+          # Explicit compatibility shims. Implementations must never return here.
+          (old_domain / 'models.py').write_text('''\
+          """Compatibility aliases for retired Meow wallet model names."""
+
+          from velvet_bot.domains.auf_wallet.models import (
+              AUF_SCALE,
+              AufEconomySettings,
+              AufInsufficientBalance,
+              AufWallet,
+              AufWalletEntry,
+              AufWalletError,
+              AufWalletFrozen,
+              AufWalletOperation,
+              AufWalletOverview,
+              AufWalletStatus,
+              auf_to_units,
+              format_auf_units,
+              units_to_auf,
+          )
+
+          MeowEconomySettings = AufEconomySettings
+          MeowInsufficientBalance = AufInsufficientBalance
+          MeowWallet = AufWallet
+          MeowWalletEntry = AufWalletEntry
+          MeowWalletError = AufWalletError
+          MeowWalletFrozen = AufWalletFrozen
+          MeowWalletOperation = AufWalletOperation
+          MeowWalletOverview = AufWalletOverview
+          MeowWalletStatus = AufWalletStatus
+
+          __all__ = (
+              "AUF_SCALE", "MeowEconomySettings", "MeowInsufficientBalance",
+              "MeowWallet", "MeowWalletEntry", "MeowWalletError",
+              "MeowWalletFrozen", "MeowWalletOperation", "MeowWalletOverview",
+              "MeowWalletStatus", "auf_to_units", "format_auf_units", "units_to_auf",
+          )
+          ''', encoding='utf-8')
+
+          (old_domain / 'store.py').write_text('''\
+          """Compatibility alias for the retired Meow wallet repository name."""
+
+          from velvet_bot.domains.auf_wallet.store import (
+              AufWalletRepository,
+              _ensure_wallet,
+              _wallet_from_row,
+          )
+
+          MeowWalletRepository = AufWalletRepository
+
+          __all__ = ("MeowWalletRepository",)
+          ''', encoding='utf-8')
+
+          (old_domain / 'service.py').write_text('''\
+          """Compatibility aliases for retired Meow wallet service names."""
+
+          from velvet_bot.domains.auf_wallet.service import (
+              AUF_PACKAGES,
+              AufPackageQuote,
+              AufWalletAccessError,
+              AufWalletService,
+          )
+
+          MeowAufPackageQuote = AufPackageQuote
+          MeowWalletAccessError = AufWalletAccessError
+          MeowWalletService = AufWalletService
+
+          __all__ = (
+              "AUF_PACKAGES", "MeowAufPackageQuote",
+              "MeowWalletAccessError", "MeowWalletService",
+          )
+          ''', encoding='utf-8')
+
+          (old_domain / 'pricing.py').write_text('''\
+          """Compatibility aliases for retired Meow pricing names."""
+
+          from velvet_bot.domains.auf_wallet.pricing import (
+              AufPriceNotConfigured,
+              AufPriceQuote,
+              AufPricingRepository,
+              quote_auf_payload,
+          )
+
+          MeowPriceNotConfigured = AufPriceNotConfigured
+          MeowPriceQuote = AufPriceQuote
+          MeowPricingRepository = AufPricingRepository
+          quote_meow_payload = quote_auf_payload
+
+          __all__ = (
+              "MeowPriceNotConfigured", "MeowPriceQuote",
+              "MeowPricingRepository", "quote_meow_payload",
+          )
+          ''', encoding='utf-8')
+
+          (old_domain / 'purchase.py').write_text('''\
+          """Compatibility aliases for retired Meow purchase names."""
+
+          from velvet_bot.domains.auf_wallet.purchase import (
+              AufInvoiceError,
+              AufInvoiceStatus,
+              AufPurchaseInvoice,
+              AufPurchaseRepository,
+              AufPurchaseService,
+              AufReconciliationIssue,
+          )
+
+          MeowInvoiceError = AufInvoiceError
+          MeowInvoiceStatus = AufInvoiceStatus
+          MeowPurchaseInvoice = AufPurchaseInvoice
+          MeowPurchaseRepository = AufPurchaseRepository
+          MeowPurchaseService = AufPurchaseService
+          MeowReconciliationIssue = AufReconciliationIssue
+
+          __all__ = (
+              "MeowInvoiceError", "MeowInvoiceStatus", "MeowPurchaseInvoice",
+              "MeowPurchaseRepository", "MeowPurchaseService",
+              "MeowReconciliationIssue",
+          )
+          ''', encoding='utf-8')
+
+          (old_domain / 'charged_queue.py').write_text('''\
+          """Compatibility aliases for the retired Meow charged queue names."""
+
+          from velvet_bot.domains.auf_wallet.charged_queue import (
+              AufChargedTaskQueueService,
+              build_auf_charged_task_queue_service,
+          )
+
+          MeowChargedTaskQueueService = AufChargedTaskQueueService
+          build_meow_charged_task_queue_service = build_auf_charged_task_queue_service
+
+          __all__ = (
+              "MeowChargedTaskQueueService",
+              "build_meow_charged_task_queue_service",
+          )
+          ''', encoding='utf-8')
+
+          (old_domain / '__init__.py').write_text('''\
+          """Compatibility package for retired Meow wallet imports.
+
+          All implementations live in :mod:`velvet_bot.domains.auf_wallet`.
+          """
+
+          from velvet_bot.domains.auf_wallet import *  # noqa: F403
+          from velvet_bot.domains.auf_wallet import (
+              AufChargedTaskQueueService as MeowChargedTaskQueueService,
+              AufEconomySettings as MeowEconomySettings,
+              AufInsufficientBalance as MeowInsufficientBalance,
+              AufInvoiceError as MeowInvoiceError,
+              AufInvoiceStatus as MeowInvoiceStatus,
+              AufPackageQuote as MeowAufPackageQuote,
+              AufPriceNotConfigured as MeowPriceNotConfigured,
+              AufPriceQuote as MeowPriceQuote,
+              AufPricingRepository as MeowPricingRepository,
+              AufPurchaseInvoice as MeowPurchaseInvoice,
+              AufPurchaseRepository as MeowPurchaseRepository,
+              AufPurchaseService as MeowPurchaseService,
+              AufReconciliationIssue as MeowReconciliationIssue,
+              AufWallet as MeowWallet,
+              AufWalletAccessError as MeowWalletAccessError,
+              AufWalletEntry as MeowWalletEntry,
+              AufWalletError as MeowWalletError,
+              AufWalletFrozen as MeowWalletFrozen,
+              AufWalletOperation as MeowWalletOperation,
+              AufWalletOverview as MeowWalletOverview,
+              AufWalletRepository as MeowWalletRepository,
+              AufWalletService as MeowWalletService,
+              AufWalletStatus as MeowWalletStatus,
+              build_auf_charged_task_queue_service as build_meow_charged_task_queue_service,
+              quote_auf_payload as quote_meow_payload,
+          )
+          ''', encoding='utf-8')
+
+          old_router.write_text('''\
+          """Compatibility alias for the retired Meow wallet router path."""
+
+          from velvet_bot.presentation.telegram.routers.workspace_auf_wallet import (
+              handle_auf_wallet_action,
+          )
+
+          handle_meow_wallet_action = handle_auf_wallet_action
+
+          __all__ = ("handle_auf_wallet_action", "handle_meow_wallet_action")
+          ''', encoding='utf-8')
+
+          (root / 'velvet_bot/app/meow_wallet_ui_install.py').write_text('''\
+          """Compatibility shim for the retired Meow wallet UI installer name."""
+
+          from velvet_bot.app.auf_wallet_ui_install import install_auf_wallet_ui
+
+          install_meow_wallet_ui = install_auf_wallet_ui
+
+          __all__ = ("install_auf_wallet_ui", "install_meow_wallet_ui")
+          ''', encoding='utf-8')
+          PY
+
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+
+      - name: Commit transformed sources
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot tests docs/generated/telegram_navigation_inventory.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Перенести весь кошелёк в домен Ауф"
+          git push origin HEAD:agent/complete-auf-wallet-layer
