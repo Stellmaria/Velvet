@@ -53,7 +53,7 @@ async def download_telegram_file(
             errors.append(RuntimeError("Telegram вернул пустой файл."))
         except asyncio.CancelledError:
             raise
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary:typed-telegram-download-error-dispatch
             if isinstance(error, bad_request_type):
                 errors.append(error)
                 break
