@@ -51,7 +51,9 @@ SQL/module storage migration выполняется отдельной фазо�
 - добавлены архитектурные контракты для router boundary, FSM dual-read и storage identifiers;
 - финальные тестовые контракты переведены на `AufCallback` и подписи «Ауф»;
 - video cost formatter больше не зависит от удалённого `legacy` alias;
-- SQL migration test снова проверяет существующий persistent-файл `917_meow_video_templates.sql`.
+- SQL migration test снова проверяет существующий persistent-файл `917_meow_video_templates.sql`;
+- пользовательский портал Ауф интегрирован поверх canonical callbacks, FSM и controller hooks;
+- portal SQL join к `meow_task_charges` сохранён как deployed storage contract.
 
 ### Миграции и совместимость
 PostgreSQL schema и module key не менялись. Старые Telegram callback payload принимаются через `LegacyMeowCallback` и `LegacyMeowVideoCallback`; старые FSM-группы находятся только в `workspace_auf_legacy.py`. Canonical routers создают новые payload и пишут новые `auf_*` данные.

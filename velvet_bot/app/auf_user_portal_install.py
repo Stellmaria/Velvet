@@ -19,6 +19,7 @@ from velvet_bot.domains.auf_wallet import (
 )
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE, KieInputMode
 from velvet_bot.presentation.telegram.routers import workspace_auf_wallet as wallet_router
+from velvet_bot.presentation.telegram.routers import workspace_auf_video as video_core
 from velvet_bot.presentation.telegram.routers import workspace_auf_video_simple as video_router
 from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 
@@ -64,6 +65,11 @@ def _mapping(value: object) -> dict[str, object]:
     return {}
 
 
+def _state_value(data: Mapping[str, object], key: str) -> object:
+    if key in data:
+        return data[key]
+    return data.get(key.replace("auf_", "meow_", 1))
+
 def _video_review_keyboard(
     *, workspace_id: int, quoted_units: int, can_submit: bool
 ) -> InlineKeyboardMarkup:
@@ -73,7 +79,7 @@ def _video_review_keyboard(
             if can_submit
             else "Пересчитать баланс и цену"
         ),
-        callback_data=video_router.legacy._callback(
+        callback_data=video_router.video_callback(
             "submit" if can_submit else "review",
             workspace_id=workspace_id,
         ),
@@ -84,13 +90,13 @@ def _video_review_keyboard(
             [
                 InlineKeyboardButton(
                     text="Изменить параметры",
-                    callback_data=video_router.legacy._callback(
+                    callback_data=video_router.video_callback(
                         "settings", workspace_id=workspace_id
                     ),
                 ),
                 InlineKeyboardButton(
                     text="Изменить модель",
-                    callback_data=video_router.legacy._callback(
+                    callback_data=video_router.video_callback(
                         "models", workspace_id=workspace_id
                     ),
                 ),
@@ -98,7 +104,7 @@ def _video_review_keyboard(
             [
                 InlineKeyboardButton(
                     text="Отмена",
-                    callback_data=video_router.legacy._callback(
+                    callback_data=video_router.video_callback(
                         "cancel", workspace_id=workspace_id
                     ),
                 )
@@ -153,13 +159,13 @@ def _user_settings_text(original, **kwargs) -> str:
 
 
 def _video_request_from_state(data: Mapping[str, object]):
-    reference = video_router.legacy._reference_from_data(
-        (data.get("auf_video_reference") or data.get("meow_video_reference"))
+    reference = video_core._reference_from_data(
+        _state_value(data, "auf_video_reference")
     )
-    last_reference = video_router.legacy._reference_from_data(
-        (data.get("auf_video_last_reference") or data.get("meow_video_last_reference"))
+    last_reference = video_core._reference_from_data(
+        _state_value(data, "auf_video_last_reference")
     )
-    prompt = str((data.get("auf_video_prompt") or data.get("meow_video_prompt")) or "").strip()
+    prompt = str(_state_value(data, "auf_video_prompt") or "").strip()
     if reference is None or not prompt:
         raise ValueError("Сессия устарела: нужны первый кадр и промт.")
 
@@ -292,14 +298,14 @@ async def _show_video_auf_review(
             "<b>Стоимость в Ауф</b>",
             *wallet_lines,
             "",
-            f"<b>Движение и сцена</b>\n{escape(video_router.legacy._truncate(prompt, 3500))}",
+            f"<b>Движение и сцена</b>\n{escape(video_core._truncate(prompt, 3500))}",
             "",
             "<i>Цена фиксируется при подтверждении. Если тариф изменится до "
             "резервирования, бот попросит подтвердить новую сумму.</i>",
         ]
     )
     await state.set_state(video_router.AufVideoForm.reviewing)
-    await video_router.legacy._edit_or_answer(
+    await video_core._edit_or_answer(
         callback,
         text="\n".join(lines),
         reply_markup=_video_review_keyboard(
@@ -321,7 +327,7 @@ async def _submit_video_with_auf(
     wallet_service,
 ) -> None:
     data = await state.get_data()
-    session_id = str((data.get("auf_video_session_id") or data.get("meow_video_session_id")) or "").strip()
+    session_id = str(_state_value(data, "auf_video_session_id") or "").strip()
     expected_version = str(
         data.get("auf_video_expected_price_version") or ""
     ).strip()
@@ -364,7 +370,7 @@ async def _submit_video_with_auf(
     estimated_rub = kie_settings.pricing.estimate_rub(
         request, usd_to_rub=kie_settings.usd_to_rub
     )
-    block_reason = video_router.legacy._budget_block_reason(
+    block_reason = video_core._budget_block_reason(
         await ai_usage_service.status(), estimated_cost_rub=estimated_rub
     )
     if block_reason is not None:
@@ -431,7 +437,7 @@ async def _submit_video_with_auf(
             f"<b>{format_auf_units(expected_units)}</b>"
         )
     details.append(f"Задача: <code>{result.task.id}</code>")
-    await video_router.legacy._edit_or_answer(
+    await video_core._edit_or_answer(
         callback,
         text="\n".join(details),
         reply_markup=video_router.build_auf_root_keyboard(
@@ -581,7 +587,7 @@ async def _render_user_tasks(
             else "• задач пока нет"
         )
     )
-    await video_router.legacy._edit_or_answer(
+    await video_core._edit_or_answer(
         callback,
         text=text,
         reply_markup=_task_list_keyboard(
@@ -631,6 +637,8 @@ def install_auf_user_portal() -> None:
         ai_usage_service,
         ai_task_queue_service,
         auf_runtime_service,
+        auf_wallet_service,
+        auf_purchase_service,
     ) -> None:
         if callback_data.action == "wallet_tasks":
             if not await controller._require_auf_callback(
@@ -657,7 +665,9 @@ def install_auf_user_portal() -> None:
             ai_usage_service,
             ai_task_queue_service,
             auf_runtime_service,
-                )
+            auf_wallet_service,
+            auf_purchase_service,
+        )
 
     async def handle_scoped_auf_user_video_action(
         callback,

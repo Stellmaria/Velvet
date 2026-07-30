@@ -123,5 +123,20 @@ class AufUserPortalPresentationTests(unittest.TestCase):
         self.assertIn("Системные задачи, другие участники", source)
 
 
+def test_portal_uses_only_canonical_auf_runtime_api(self) -> None:
+    source = Path(
+        "velvet_bot/app/auf_user_portal_install.py"
+    ).read_text(encoding="utf-8")
+    self.assertIn("workspace_auf_video_simple", source)
+    self.assertIn("AufCallback", source)
+    self.assertIn("handle_scoped_auf_action", source)
+    self.assertIn("handle_scoped_auf_video_action", source)
+    self.assertIn('key.replace("auf_", "meow_", 1)', source)
+    self.assertNotIn("workspace_meow", source)
+    self.assertNotIn("MeowCallback", source)
+    self.assertNotIn("handle_scoped_meow", source)
+    self.assertNotIn("video_router.legacy", source)
+
+
 if __name__ == "__main__":
     unittest.main()
