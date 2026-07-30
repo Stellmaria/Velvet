@@ -1,0 +1,38 @@
+name: delivery development snapshot
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/delivery-development-snapshot.yml
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - name: Build source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude=.git \
+            --exclude=.venv \
+            --exclude='**/__pycache__' \
+            -czf velvet-delivery-source.tar.gz .
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: velvet-delivery-source-${{ github.run_id }}
+          path: velvet-delivery-source.tar.gz
+          if-no-files-found: error
+          retention-days: 3
