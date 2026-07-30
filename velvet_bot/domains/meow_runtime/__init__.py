@@ -19,7 +19,7 @@ MeowProvider = AufProvider
 MeowProviderSnapshot = AufProviderSnapshot
 MeowRuntimeAccessError = AufRuntimeAccessError
 MeowRuntimeRepository = AufRuntimeRepository
-AufRuntimeService = AufRuntimeService
+MeowRuntimeService = AufRuntimeService
 MeowRuntimeSettings = AufRuntimeSettings
 WorkspaceMeowSettings = WorkspaceAufSettings
 
@@ -29,7 +29,7 @@ __all__ = (
     "MeowProviderSnapshot",
     "MeowRuntimeAccessError",
     "MeowRuntimeRepository",
-    "AufRuntimeService",
+    "MeowRuntimeService",
     "MeowRuntimeSettings",
     "WorkspaceMeowSettings",
 )
