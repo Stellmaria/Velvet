@@ -44,7 +44,6 @@ from velvet_bot.presentation.telegram.supervisor.views import (
     _logs_text,
     _main_keyboard,
     _operation_accepted,
-    _safe_edit,
     _status_text,
     _task_keyboard,
     _task_status_label,
