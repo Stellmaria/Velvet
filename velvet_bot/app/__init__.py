@@ -24,6 +24,7 @@ def __getattr__(name: str) -> Any:
         from velvet_bot.app.grs_campaign_retry import install_grs_campaign_retry
         from velvet_bot.app.grs_resilience import install_grs_resilience
         from velvet_bot.app.grs_speedups import install_grs_speedups
+        from velvet_bot.app.krita_remote_install import install_krita_remote_worker
         from velvet_bot.app.original_video_delivery_hotfix import (
             install_original_video_delivery_hotfix,
         )
@@ -43,6 +44,7 @@ def __getattr__(name: str) -> Any:
         install_telegram_progress_resilience()
         install_auf_branding()
         install_original_video_delivery_hotfix()
+        install_krita_remote_worker()
         await application()
 
     globals()[name] = configured_run_application
