@@ -573,6 +573,102 @@ def _reverse_consumers(modules: list[dict[str, Any]]) -> dict[str, list[str]]:
 
 def _installer_graph(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
     by_module = {str(row["module"]): row for row in modules}
+
+    def graph_row(
+        *,
+        order: int,
+        line: int,
+        call: str,
+        origin: str,
+    ) -> dict[str, Any]:
+        owner_module = origin.rsplit(".", 1)[0] if "." in origin else origin
+        owner_row = by_module.get(owner_module, {})
+        return {
+            "order": order,
+            "line": line,
+            "call": call,
+            "origin": origin,
+            "owner_module": owner_module,
+            "patched_symbols": list(
+                owner_row.get("foreign_assignment_targets", [])
+            ),
+        }
+
+    composition = by_module.get("velvet_bot.app.composition")
+    if composition is not None:
+        path = ROOT / str(composition["path"])
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        aliases, _ = _imports(
+            tree,
+            "velvet_bot.app.composition",
+            is_package=False,
+        )
+        functions = {
+            node.name: node
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        wrapper_origins: dict[str, str] = {}
+        for name, function in functions.items():
+            if not name.startswith("_install_"):
+                continue
+            installer_calls = [
+                node
+                for node in ast.walk(function)
+                if isinstance(node, ast.Call)
+                and _dotted(node.func).split(".")[-1].startswith("install_")
+            ]
+            if len(installer_calls) != 1:
+                continue
+            local = _dotted(installer_calls[0].func)
+            wrapper_origins[name] = aliases.get(local, local)
+
+        def declared_stages(function_name: str) -> list[dict[str, Any]]:
+            function = functions.get(function_name)
+            if function is None:
+                return []
+            stages: list[dict[str, Any]] = []
+            for node in ast.walk(function):
+                if not isinstance(node, ast.Call):
+                    continue
+                if _dotted(node.func).split(".")[-1] != "CompositionStage":
+                    continue
+                if len(node.args) < 2:
+                    continue
+                label = node.args[0]
+                if not isinstance(label, ast.Constant) or not isinstance(
+                    label.value, str
+                ):
+                    continue
+                installer = _dotted(node.args[1])
+                origin = wrapper_origins.get(
+                    installer,
+                    aliases.get(installer, installer),
+                )
+                stages.append(
+                    {
+                        "line": int(node.lineno),
+                        "call": label.value,
+                        "origin": origin,
+                    }
+                )
+            return sorted(stages, key=lambda row: int(row["line"]))
+
+        declared = [
+            *declared_stages("build_application_composition"),
+            *declared_stages("_build_feature_stages"),
+        ]
+        if declared:
+            return [
+                graph_row(
+                    order=index,
+                    line=int(item["line"]),
+                    call=str(item["call"]),
+                    origin=str(item["origin"]),
+                )
+                for index, item in enumerate(declared, start=1)
+            ]
+
     app_init = by_module.get("velvet_bot.app")
     if app_init is None:
         return []
@@ -580,23 +676,21 @@ def _installer_graph(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     aliases, _ = _imports(tree, "velvet_bot.app", is_package=True)
     graph: list[dict[str, Any]] = []
-    for call in sorted(app_init["install_calls"], key=lambda row: int(row["line"])):
+    for call in sorted(
+        app_init["install_calls"],
+        key=lambda row: int(row["line"]),
+    ):
         local = str(call["call"]).split(".")[0]
         origin = aliases.get(local, local)
-        owner_module = origin.rsplit(".", 1)[0] if "." in origin else origin
-        owner_row = by_module.get(owner_module, {})
         graph.append(
-            {
-                "order": len(graph) + 1,
-                "line": int(call["line"]),
-                "call": str(call["call"]),
-                "origin": origin,
-                "owner_module": owner_module,
-                "patched_symbols": list(owner_row.get("foreign_assignment_targets", [])),
-            }
+            graph_row(
+                order=len(graph) + 1,
+                line=int(call["line"]),
+                call=str(call["call"]),
+                origin=origin,
+            )
         )
     return graph
-
 
 def _shared_fingerprint(shared: dict[str, Any]) -> str:
     rows = [

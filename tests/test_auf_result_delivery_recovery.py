@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -12,6 +11,7 @@ from velvet_bot.app.auf_result_delivery_recovery import (
     send_downloaded_result,
     task_delivery_buttons,
 )
+from velvet_bot.app.composition import build_application_composition
 from velvet_bot.application.media_tasks import task_result_urls
 from velvet_bot.domains.media_generation import (
     KieGenerationRequest,
@@ -184,11 +184,11 @@ class AufResultDeliveryContractTests(unittest.TestCase):
         )
 
     def test_recovery_installs_after_existing_delivery_hotfixes(self) -> None:
-        source = Path("velvet_bot/app/__init__.py").read_text(encoding="utf-8")
-        portal = source.index("install_auf_user_portal()")
-        image = source.index("install_original_image_delivery_hotfix()")
-        video = source.index("install_original_video_delivery_hotfix()")
-        recovery = source.index("install_auf_result_delivery_recovery()")
+        stage_names = build_application_composition().stage_names
+        portal = stage_names.index("install_auf_user_portal")
+        image = stage_names.index("install_original_image_delivery_hotfix")
+        video = stage_names.index("install_original_video_delivery_hotfix")
+        recovery = stage_names.index("install_auf_result_delivery_recovery")
         self.assertLess(portal, recovery)
         self.assertLess(image, recovery)
         self.assertLess(video, recovery)
