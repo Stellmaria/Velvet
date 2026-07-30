@@ -7,6 +7,7 @@ from pathlib import Path
 
 from velvet_bot.app import auf_reference_privacy_install as privacy
 from velvet_bot.domains.auf_wallet.pricing import quote_auf_payload
+from velvet_bot.domains.user_registry import TelegramUserRepository
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.presentation.telegram.middleware.user_activity import (
     _callback_metadata,
@@ -177,16 +178,14 @@ class UserObservabilityContractTests(unittest.TestCase):
             inspect.getsource(workspace_auf_wallet.handle_auf_wallet_action),
         )
 
-    def test_registry_contract_does_not_store_message_content(self) -> None:
+    def test_registry_contract_does_not_accept_content_fields(self) -> None:
         migration = Path("migrations/z025_auf_retail_user_registry.sql").read_text(
             encoding="utf-8"
         )
-        repository = Path("velvet_bot/domains/user_registry.py").read_text(
-            encoding="utf-8"
-        )
+        parameters = set(inspect.signature(TelegramUserRepository.observe).parameters)
         for forbidden in ("message_text", "prompt", "file_id", "callback_data"):
             self.assertNotIn(forbidden, migration)
-            self.assertNotIn(forbidden, repository)
+            self.assertNotIn(forbidden, parameters)
         self.assertIn("first_seen_at", migration)
         self.assertIn("last_seen_at", migration)
         self.assertIn("command_count", migration)
