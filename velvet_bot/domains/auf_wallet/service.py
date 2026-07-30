@@ -26,6 +26,7 @@ class AufPackageQuote:
     amount_auf: int
     price_usd: Decimal
     price_rub: Decimal
+    price_byn: Decimal
 
 
 class AufWalletAccessError(PermissionError):
@@ -85,13 +86,17 @@ class AufWalletService:
             if fixed_rub is None:
                 quotes.append(_package_quote(amount, settings))
                 continue
+            price_usd = (fixed_rub / settings.billing_usd_to_rub).quantize(
+                Decimal("0.01")
+            )
             quotes.append(
                 AufPackageQuote(
                     amount_auf=amount,
-                    price_usd=(fixed_rub / settings.billing_usd_to_rub).quantize(
+                    price_usd=price_usd,
+                    price_rub=fixed_rub,
+                    price_byn=(price_usd * settings.billing_usd_to_byn).quantize(
                         Decimal("0.01")
                     ),
-                    price_rub=fixed_rub,
                 )
             )
         return tuple(quotes)
@@ -169,6 +174,8 @@ class AufWalletService:
         provider_auf_usd: Decimal,
         retail_auf_usd: Decimal,
         billing_usd_to_rub: Decimal,
+        billing_usd_to_byn: Decimal,
+        retail_markup_percent: Decimal,
         actor_user_id: int,
     ) -> AufEconomySettings:
         self._require_global_owner(actor_user_id)
@@ -178,10 +185,16 @@ class AufWalletService:
             raise ValueError("Розничная цена Ауф не может быть ниже покрытия API.")
         if billing_usd_to_rub <= 0:
             raise ValueError("Курс USD/RUB должен быть больше нуля.")
+        if billing_usd_to_byn <= 0:
+            raise ValueError("Курс USD/BYN должен быть больше нуля.")
+        if retail_markup_percent < 0 or retail_markup_percent > 1000:
+            raise ValueError("Наценка должна быть от 0 до 1000 процентов.")
         return await self._repository.update_economy_settings(
             provider_auf_usd=provider_auf_usd,
             retail_auf_usd=retail_auf_usd,
             billing_usd_to_rub=billing_usd_to_rub,
+            billing_usd_to_byn=billing_usd_to_byn,
+            retail_markup_percent=retail_markup_percent,
             updated_by_user_id=int(actor_user_id),
         )
 
@@ -221,6 +234,7 @@ def _package_quote(
         amount_auf=amount_auf,
         price_usd=usd,
         price_rub=rub,
+        price_byn=(usd * settings.billing_usd_to_byn).quantize(Decimal("0.01")),
     )
 
 
