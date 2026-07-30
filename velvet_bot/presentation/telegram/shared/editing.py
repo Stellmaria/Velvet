@@ -19,7 +19,7 @@ async def safe_edit_message_text(
     text: str,
     *,
     reply_markup: InlineKeyboardMarkup | None = None,
-    bad_request_type: type[BaseException] = TelegramBadRequest,
+    bad_request_type: type[BaseException] | None = None,
     **edit_kwargs: Any,
 ) -> bool:
     """Edit a Telegram text message and ignore only the unchanged-message response.
@@ -29,10 +29,11 @@ async def safe_edit_message_text(
     always re-raised.
     """
 
+    resolved_bad_request_type = bad_request_type or TelegramBadRequest
     try:
         await message.edit_text(text, reply_markup=reply_markup, **edit_kwargs)
     except Exception as error:
-        if not isinstance(error, bad_request_type):
+        if not isinstance(error, resolved_bad_request_type):
             raise
         if not is_message_not_modified(error):
             raise
@@ -46,7 +47,7 @@ async def safe_edit_callback_text(
     *,
     reply_markup: InlineKeyboardMarkup | None = None,
     unavailable_text: str = "Меню больше недоступно.",
-    bad_request_type: type[BaseException] = TelegramBadRequest,
+    bad_request_type: type[BaseException] | None = None,
     **edit_kwargs: Any,
 ) -> bool:
     """Edit the message behind a callback while preserving inaccessible-message UX."""
