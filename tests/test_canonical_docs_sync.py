@@ -99,7 +99,7 @@ class CanonicalDocsSyncTests(unittest.TestCase):
             self.assertIn("#438", document)
             self.assertIn("meow_*", document)
 
-        self.assertIn("27 side-effect installer stages", self.audit)
+        self.assertIn("27 side-effect installation stages", self.audit)
         self.assertIn("PR #450/#456", self.audit)
         self.assertIn("временной stabilization", self.status)
         self.assertIn("не закрывается зелёным CI", self.audit)
@@ -112,7 +112,7 @@ class CanonicalDocsSyncTests(unittest.TestCase):
         for document in (self.status, self.memory, self.audit, self.changelog):
             self.assertIn("branch maintenance", document.casefold())
         self.assertIn("PR #475", self.audit)
-        self.assertIn("#461", self.status)
+        self.assertIn("#461", self.audit)
 
     def test_changelog_contains_only_current_merged_architecture_story(self) -> None:
         self.assertIn("## [Unreleased]", self.changelog)
