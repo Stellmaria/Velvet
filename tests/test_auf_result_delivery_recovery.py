@@ -7,12 +7,12 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from velvet_bot.app.auf_result_delivery_recovery import (
-    _deliver_record_with_recovery,
-    _delivery_callback,
-    _result_urls,
-    _send_downloaded_result,
-    _task_delivery_buttons,
+    deliver_record_with_recovery,
+    delivery_callback,
+    send_downloaded_result,
+    task_delivery_buttons,
 )
+from velvet_bot.application.media_tasks import task_result_urls
 from velvet_bot.domains.media_generation import (
     KieGenerationRequest,
     KieInputMode,
@@ -58,7 +58,7 @@ class AufResultDeliveryRecoveryTests(unittest.IsolatedAsyncioTestCase):
             result_urls=("https://cdn.example/result.png",),
         )
 
-        await _deliver_record_with_recovery(
+        await deliver_record_with_recovery(
             worker,
             chat_id=100,
             request=_request(),
@@ -92,7 +92,7 @@ class AufResultDeliveryRecoveryTests(unittest.IsolatedAsyncioTestCase):
             result_urls=(),
         )
 
-        await _deliver_record_with_recovery(
+        await deliver_record_with_recovery(
             worker,
             chat_id=100,
             request=_request(),
@@ -114,7 +114,7 @@ class AufResultDeliveryRecoveryTests(unittest.IsolatedAsyncioTestCase):
             result_urls=("https://cdn.example/result.png",),
         )
 
-        document_sent, preview_sent = await _send_downloaded_result(
+        document_sent, preview_sent = await send_downloaded_result(
             bot=bot,
             chat_id=100,
             request=_request(),
@@ -135,7 +135,7 @@ class AufResultDeliveryRecoveryTests(unittest.IsolatedAsyncioTestCase):
 class AufResultDeliveryContractTests(unittest.TestCase):
     def test_delivery_callback_fits_telegram_limit_and_roundtrips(self) -> None:
         task_id = uuid4()
-        value = _delivery_callback(workspace_id=1, task_id=task_id)
+        value = delivery_callback(workspace_id=1, task_id=task_id)
         self.assertLessEqual(len(value), 64)
         parsed = AufCallback.unpack(value)
         self.assertEqual("deliver", parsed.action)
@@ -144,7 +144,7 @@ class AufResultDeliveryContractTests(unittest.TestCase):
     def test_only_success_tasks_with_saved_urls_get_delivery_buttons(self) -> None:
         ready_id = uuid4()
         empty_id = uuid4()
-        portal = SimpleNamespace(_MODEL_NAMES={"nano_banana_pro": "Nano Banana Pro"})
+        portal = SimpleNamespace(MODEL_NAMES={"nano_banana_pro": "Nano Banana Pro"})
         page = [
             {
                 "id": ready_id,
@@ -157,7 +157,7 @@ class AufResultDeliveryContractTests(unittest.TestCase):
                 "payload": {"request": {"model": "nano_banana_pro"}},
             },
         ]
-        rows = _task_delivery_buttons(
+        rows = task_delivery_buttons(
             portal=portal,
             page=page,
             results={
@@ -172,7 +172,7 @@ class AufResultDeliveryContractTests(unittest.TestCase):
     def test_result_url_parser_ignores_empty_values(self) -> None:
         self.assertEqual(
             ("https://a.example/a.png",),
-            _result_urls(
+            task_result_urls(
                 {
                     "result_urls": [
                         "https://a.example/a.png",
