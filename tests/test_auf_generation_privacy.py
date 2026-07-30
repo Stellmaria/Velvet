@@ -45,13 +45,14 @@ class AufGenerationPrivacyTests(unittest.TestCase):
             ),
         )
 
-    def test_owner_real_costs_use_three_currencies_without_velvets(self) -> None:
+    def test_owner_real_costs_use_three_currencies_without_accounting_price(self) -> None:
         text = format_owner_real_costs(self._quote())
         self.assertIn("$0.2500", text)
         self.assertIn("20.00 ₽ РФ", text)
         self.assertIn("0.75 Br", text)
         self.assertIn("+20%", text)
-        self.assertNotIn("вельвет", text.casefold())
+        self.assertNotIn("Учётная цена", text)
+        self.assertNotIn("Списание Стэл", text)
         self.assertNotIn("ауф", text.casefold())
 
     def test_user_receipt_removes_attempt_details(self) -> None:
