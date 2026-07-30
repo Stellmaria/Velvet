@@ -1,3 +1,7 @@
+from velvet_bot.domains.meow_wallet.charged_queue import (
+    MeowChargedTaskQueueService,
+    build_meow_charged_task_queue_service,
+)
 from velvet_bot.domains.meow_wallet.models import (
     AUF_SCALE,
     MeowEconomySettings,
@@ -13,6 +17,11 @@ from velvet_bot.domains.meow_wallet.models import (
     format_auf_units,
     units_to_auf,
 )
+from velvet_bot.domains.meow_wallet.pricing import (
+    MeowPriceNotConfigured,
+    MeowPriceQuote,
+    MeowPricingRepository,
+)
 from velvet_bot.domains.meow_wallet.service import (
     AUF_PACKAGES,
     MeowAufPackageQuote,
@@ -25,8 +34,12 @@ __all__ = (
     "AUF_PACKAGES",
     "AUF_SCALE",
     "MeowAufPackageQuote",
+    "MeowChargedTaskQueueService",
     "MeowEconomySettings",
     "MeowInsufficientBalance",
+    "MeowPriceNotConfigured",
+    "MeowPriceQuote",
+    "MeowPricingRepository",
     "MeowWallet",
     "MeowWalletAccessError",
     "MeowWalletEntry",
@@ -38,6 +51,7 @@ __all__ = (
     "MeowWalletService",
     "MeowWalletStatus",
     "auf_to_units",
+    "build_meow_charged_task_queue_service",
     "format_auf_units",
     "units_to_auf",
 )
