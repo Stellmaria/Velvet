@@ -1,0 +1,80 @@
+name: temporary fix pr428
+
+on:
+  push:
+    branches:
+      - agent/final-auf-router-layer
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/final-auf-router-layer
+          fetch-depth: 0
+
+      - name: Apply focused fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py")
+          text = path.read_text(encoding="utf-8")
+          marker = "from velvet_bot.presentation.telegram.routers.workspace_auf_video import (\n"
+          import_line = "from velvet_bot.presentation.telegram.routers import workspace_auf_video as legacy\n"
+          if import_line not in text:
+              text = text.replace(marker, import_line + marker, 1)
+          path.write_text(text, encoding="utf-8")
+
+          path = Path("tests/test_meow_video_generation.py")
+          text = path.read_text(encoding="utf-8").replace(
+              "migrations/917_auf_video_templates.sql",
+              "migrations/917_meow_video_templates.sql",
+          )
+          path.write_text(text, encoding="utf-8")
+
+          path = Path("tests/test_photo_ratio_callback.py")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace(
+              "from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback",
+              "from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback",
+          ).replace("MeowCallback.unpack", "AufCallback.unpack")
+          path.write_text(text, encoding="utf-8")
+
+          path = Path("tests/test_kie_runtime_balance.py")
+          text = path.read_text(encoding="utf-8").replace(
+              '["Обновить баланс", "↩️ Мяу"]',
+              '["Обновить баланс", "↩️ Ауф"]',
+          )
+          path.write_text(text, encoding="utf-8")
+
+          path = Path("docs/generated/telegram_navigation_inventory.md")
+          text = path.read_text(encoding="utf-8").replace(
+              "Python files scanned: **576**",
+              "Python files scanned: **577**",
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py \
+                  tests/test_meow_video_generation.py \
+                  tests/test_photo_ratio_callback.py \
+                  tests/test_kie_runtime_balance.py \
+                  docs/generated/telegram_navigation_inventory.md
+          git commit -m "Исправить регрессии CI после переноса роутеров на Ауф"
+          git push origin HEAD:agent/final-auf-router-layer
