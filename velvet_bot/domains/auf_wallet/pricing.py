@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING
+from html import escape
 from typing import Any
 
 from velvet_bot.database import Database
 
-from .models import AUF_SCALE, units_to_auf
+from .models import AUF_SCALE, format_auf_units, units_to_auf
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,11 +22,50 @@ class AufPriceQuote:
     duration_seconds: int
     reference_count: int
     provider_cost_usd: Decimal
+    markup_percent: Decimal
+    target_retail_usd: Decimal
+    minimum_revenue_usd: Decimal
+    billing_usd_to_rub: Decimal
+    billing_usd_to_byn: Decimal
     quoted_units: int
 
     @property
     def quoted_auf(self) -> Decimal:
         return units_to_auf(self.quoted_units)
+
+    @property
+    def provider_cost_rub(self) -> Decimal:
+        return self.provider_cost_usd * self.billing_usd_to_rub
+
+    @property
+    def provider_cost_byn(self) -> Decimal:
+        return self.provider_cost_usd * self.billing_usd_to_byn
+
+    @property
+    def target_retail_rub(self) -> Decimal:
+        return self.target_retail_usd * self.billing_usd_to_rub
+
+    @property
+    def target_retail_byn(self) -> Decimal:
+        return self.target_retail_usd * self.billing_usd_to_byn
+
+    @property
+    def minimum_revenue_rub(self) -> Decimal:
+        return self.minimum_revenue_usd * self.billing_usd_to_rub
+
+    @property
+    def minimum_revenue_byn(self) -> Decimal:
+        return self.minimum_revenue_usd * self.billing_usd_to_byn
+
+    @property
+    def minimum_profit_usd(self) -> Decimal:
+        return self.minimum_revenue_usd - self.provider_cost_usd
+
+    @property
+    def actual_markup_percent(self) -> Decimal:
+        if self.provider_cost_usd <= 0:
+            return Decimal("0")
+        return self.minimum_profit_usd / self.provider_cost_usd * Decimal("100")
 
 
 class AufPriceNotConfigured(ValueError):
@@ -68,8 +108,7 @@ async def quote_auf_payload(
     row = await connection.fetchrow(
         """
         SELECT id, version_key, provider, model_alias, resolution, audio,
-               pricing_basis, unit_cost_usd, extra_reference_cost_usd,
-               retail_units, extra_reference_retail_units
+               pricing_basis, unit_cost_usd, extra_reference_cost_usd
         FROM auf_price_versions
         WHERE model_alias = $1::VARCHAR
           AND operation = 'media.generate'
@@ -105,42 +144,56 @@ async def quote_auf_payload(
     if extra_reference_cost > 0 and reference_count > 1:
         provider_cost += extra_reference_cost * Decimal(reference_count - 1)
 
-    retail_units_value = row["retail_units"]
-    if retail_units_value is not None:
-        retail_units = int(retail_units_value)
-        quoted_units = (
-            retail_units * duration_seconds
-            if pricing_basis == "per_second"
-            else retail_units
-        )
-        extra_reference_retail_units = int(
-            row["extra_reference_retail_units"] or 0
-        )
-        if extra_reference_retail_units > 0 and reference_count > 1:
-            quoted_units += extra_reference_retail_units * (reference_count - 1)
-    else:
-        settings = await connection.fetchrow(
-            """
-            SELECT provider_auf_usd
-            FROM auf_economy_settings
-            WHERE singleton_id = 1
-            """
-        )
-        if settings is None:
-            raise RuntimeError("Настройки экономики Ауф не инициализированы.")
-        provider_auf_usd = Decimal(settings["provider_auf_usd"])
-        if provider_auf_usd <= 0:
-            raise RuntimeError("Покрытие API одного Ауф должно быть больше нуля.")
-        quoted_units = int(
-            (
-                provider_cost
-                / provider_auf_usd
-                * Decimal(AUF_SCALE)
-            ).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-        )
+    settings = await connection.fetchrow(
+        """
+        SELECT retail_auf_usd, billing_usd_to_rub, billing_usd_to_byn,
+               retail_markup_percent
+        FROM auf_economy_settings
+        WHERE singleton_id = 1
+        """
+    )
+    if settings is None:
+        raise RuntimeError("Настройки экономики Ауф не инициализированы.")
+    retail_auf_usd = Decimal(settings["retail_auf_usd"])
+    usd_to_rub = Decimal(settings["billing_usd_to_rub"])
+    usd_to_byn = Decimal(settings["billing_usd_to_byn"])
+    markup_percent = Decimal(settings["retail_markup_percent"])
+    if retail_auf_usd <= 0 or usd_to_rub <= 0 or usd_to_byn <= 0:
+        raise RuntimeError("Курсы и стоимость вельвета должны быть больше нуля.")
+    if markup_percent < 0:
+        raise RuntimeError("Наценка Ауф не может быть отрицательной.")
 
-    if quoted_units <= 0:
-        raise RuntimeError("Расчётная цена генерации в Ауф получилась нулевой.")
+    package_floor_rub = await connection.fetchval(
+        """
+        SELECT MIN(price_rub / package_auf::NUMERIC)
+        FROM auf_package_prices
+        WHERE is_active = TRUE
+          AND effective_from <= NOW()
+          AND (effective_to IS NULL OR effective_to > NOW())
+        """
+    )
+    minimum_rub_per_auf = (
+        Decimal(package_floor_rub)
+        if package_floor_rub is not None
+        else retail_auf_usd * usd_to_rub
+    )
+    if minimum_rub_per_auf <= 0:
+        raise RuntimeError("Минимальная стоимость вельвета должна быть больше нуля.")
+
+    markup_multiplier = Decimal("1") + markup_percent / Decimal("100")
+    target_retail_usd = provider_cost * markup_multiplier
+    target_retail_rub = target_retail_usd * usd_to_rub
+    whole_auf = max(
+        1,
+        int(
+            (target_retail_rub / minimum_rub_per_auf).to_integral_value(
+                rounding=ROUND_CEILING
+            )
+        ),
+    )
+    quoted_units = whole_auf * AUF_SCALE
+    minimum_revenue_rub = minimum_rub_per_auf * Decimal(whole_auf)
+    minimum_revenue_usd = minimum_revenue_rub / usd_to_rub
 
     return AufPriceQuote(
         price_version_id=int(row["id"]),
@@ -152,8 +205,42 @@ async def quote_auf_payload(
         duration_seconds=duration_seconds,
         reference_count=reference_count,
         provider_cost_usd=provider_cost,
+        markup_percent=markup_percent,
+        target_retail_usd=target_retail_usd,
+        minimum_revenue_usd=minimum_revenue_usd,
+        billing_usd_to_rub=usd_to_rub,
+        billing_usd_to_byn=usd_to_byn,
         quoted_units=quoted_units,
     )
+
+
+def format_owner_price_details(quote: AufPriceQuote) -> str:
+    """Render provider economics only for an already-authorized creator view."""
+
+    return (
+        "<b>Служебная экономика · только Стэл</b>\n"
+        f"Провайдер: <code>{escape(quote.provider.upper())}</code>\n"
+        f"Себестоимость: {_money_triplet(quote.provider_cost_usd, quote)}\n"
+        f"Цена +{_compact_decimal(quote.markup_percent)}%: "
+        f"{_money_triplet(quote.target_retail_usd, quote)}\n"
+        f"Списание: <b>{format_auf_units(quote.quoted_units, max_places=0)}</b>\n"
+        "Минимальная выручка по самому выгодному пакету: "
+        f"{_money_triplet(quote.minimum_revenue_usd, quote)}\n"
+        "Минимальная прибыль: "
+        f"{_money_triplet(quote.minimum_profit_usd, quote)} · "
+        f"{_compact_decimal(quote.actual_markup_percent)}%"
+    )
+
+
+def _money_triplet(usd: Decimal, quote: AufPriceQuote) -> str:
+    rub = usd * quote.billing_usd_to_rub
+    byn = usd * quote.billing_usd_to_byn
+    return f"<b>${usd:.4f}</b> · <b>{rub:.2f} ₽ РФ</b> · <b>{byn:.2f} Br</b>"
+
+
+def _compact_decimal(value: Decimal) -> str:
+    rendered = f"{value.quantize(Decimal('0.01')):.2f}".rstrip("0").rstrip(".")
+    return rendered or "0"
 
 
 def _positive_int(value: object, *, default: int) -> int:
@@ -168,5 +255,6 @@ __all__ = (
     "AufPriceNotConfigured",
     "AufPriceQuote",
     "AufPricingRepository",
+    "format_owner_price_details",
     "quote_auf_payload",
 )

@@ -28,6 +28,7 @@ class AufWalletRepository:
             row = await connection.fetchrow(
                 """
                 SELECT provider_auf_usd, retail_auf_usd, billing_usd_to_rub,
+                       billing_usd_to_byn, retail_markup_percent,
                        updated_by_user_id, updated_at
                 FROM auf_economy_settings
                 WHERE singleton_id = 1
@@ -43,6 +44,8 @@ class AufWalletRepository:
         provider_auf_usd: Decimal,
         retail_auf_usd: Decimal,
         billing_usd_to_rub: Decimal,
+        billing_usd_to_byn: Decimal,
+        retail_markup_percent: Decimal,
         updated_by_user_id: int,
     ) -> AufEconomySettings:
         async with self._database.acquire() as connection:
@@ -52,15 +55,20 @@ class AufWalletRepository:
                 SET provider_auf_usd = $1::NUMERIC,
                     retail_auf_usd = $2::NUMERIC,
                     billing_usd_to_rub = $3::NUMERIC,
-                    updated_by_user_id = $4::BIGINT,
+                    billing_usd_to_byn = $4::NUMERIC,
+                    retail_markup_percent = $5::NUMERIC,
+                    updated_by_user_id = $6::BIGINT,
                     updated_at = NOW()
                 WHERE singleton_id = 1
                 RETURNING provider_auf_usd, retail_auf_usd, billing_usd_to_rub,
+                          billing_usd_to_byn, retail_markup_percent,
                           updated_by_user_id, updated_at
                 """,
                 provider_auf_usd,
                 retail_auf_usd,
                 billing_usd_to_rub,
+                billing_usd_to_byn,
+                retail_markup_percent,
                 int(updated_by_user_id),
             )
         if row is None:
@@ -262,6 +270,8 @@ def _settings_from_row(row: Mapping[str, Any]) -> AufEconomySettings:
         provider_auf_usd=Decimal(row["provider_auf_usd"]),
         retail_auf_usd=Decimal(row["retail_auf_usd"]),
         billing_usd_to_rub=Decimal(row["billing_usd_to_rub"]),
+        billing_usd_to_byn=Decimal(row["billing_usd_to_byn"]),
+        retail_markup_percent=Decimal(row["retail_markup_percent"]),
         updated_by_user_id=(
             int(row["updated_by_user_id"])
             if row["updated_by_user_id"] is not None

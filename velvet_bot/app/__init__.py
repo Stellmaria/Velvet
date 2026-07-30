@@ -30,6 +30,9 @@ def __getattr__(name: str) -> Any:
             install_auf_generation_receipts,
         )
         from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
+        from velvet_bot.app.auf_owner_pricing_ui_install import (
+            install_auf_owner_pricing_ui,
+        )
         from velvet_bot.app.auf_photo_ratio_callback_fix import (
             install_auf_photo_ratio_callback_fix,
         )
@@ -78,6 +81,7 @@ def __getattr__(name: str) -> Any:
         install_auf_reference_privacy()
         install_auf_photo_ratio_callback_fix()
         install_auf_user_portal()
+        install_auf_owner_pricing_ui()
         install_original_image_delivery_hotfix()
         install_original_video_delivery_hotfix()
         install_auf_result_delivery_recovery()

@@ -9,6 +9,7 @@ from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AITaskRequest
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
 from velvet_bot.domains.auf_wallet import (
+    AUF_SCALE,
     AufChargedTaskQueueService,
     AufInsufficientBalance,
     AufPricingRepository,
@@ -126,16 +127,16 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             idempotency_key=f"test:auf-charge:grant:{amount}",
         )
 
-    async def test_price_catalog_matches_approved_retail_values(self) -> None:
+    async def test_price_catalog_uses_provider_plus_twenty_whole_values(self) -> None:
         cases = (
-            (self._request(key="quote-nb2").payload, Decimal("4")),
+            (self._request(key="quote-nb2").payload, Decimal("1")),
             (
                 self._request(
                     key="quote-nbp",
                     model="nano_banana_pro",
                     resolution="4K",
                 ).payload,
-                Decimal("11"),
+                Decimal("2"),
             ),
             (
                 self._request(
@@ -144,7 +145,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1K",
                     references=5,
                 ).payload,
-                Decimal("7"),
+                Decimal("5"),
             ),
             (
                 self._request(
@@ -154,7 +155,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     duration=5,
                     audio=True,
                 ).payload,
-                Decimal("12.5"),
+                Decimal("8"),
             ),
             (
                 self._request(
@@ -163,13 +164,18 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1080p",
                     duration=5,
                 ).payload,
-                Decimal("37.5"),
+                Decimal("27"),
             ),
         )
         for payload, expected in cases:
             with self.subTest(expected=expected):
                 quote = await self.pricing.quote(payload)
                 self.assertEqual(expected, quote.quoted_auf)
+                self.assertEqual(0, quote.quoted_units % AUF_SCALE)
+                self.assertGreaterEqual(
+                    quote.minimum_revenue_usd,
+                    quote.target_retail_usd,
+                )
 
     async def test_enqueue_reserves_once_and_success_captures(self) -> None:
         await self._grant(10)
@@ -181,8 +187,8 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.task.id, second.task.id)
 
         overview = await self.wallets.overview(DEFAULT_WORKSPACE_ID)
-        self.assertEqual(auf_to_units(6), overview.wallet.available_units)
-        self.assertEqual(auf_to_units(4), overview.wallet.reserved_units)
+        self.assertEqual(auf_to_units(9), overview.wallet.available_units)
+        self.assertEqual(auf_to_units(1), overview.wallet.reserved_units)
 
         async with self.database.acquire() as connection:
             await connection.execute(
@@ -196,15 +202,15 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(charge)
         assert charge is not None
         self.assertEqual("captured", str(charge["status"]))
-        self.assertEqual(auf_to_units(4), int(charge["captured_units"]))
+        self.assertEqual(auf_to_units(1), int(charge["captured_units"]))
         self.assertEqual(0, int(charge["refunded_units"]))
 
         overview = await self.wallets.overview(DEFAULT_WORKSPACE_ID)
-        self.assertEqual(auf_to_units(6), overview.wallet.available_units)
+        self.assertEqual(auf_to_units(9), overview.wallet.available_units)
         self.assertEqual(0, overview.wallet.reserved_units)
 
     async def test_terminal_error_refunds_full_reserve(self) -> None:
-        await self._grant(4)
+        await self._grant(1)
         result = await self.queue.enqueue(self._request(key="refund"))
         async with self.database.acquire() as connection:
             await connection.execute(
@@ -217,11 +223,11 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual("refunded", str(charge_status))
         overview = await self.wallets.overview(DEFAULT_WORKSPACE_ID)
-        self.assertEqual(auf_to_units(4), overview.wallet.available_units)
+        self.assertEqual(auf_to_units(1), overview.wallet.available_units)
         self.assertEqual(0, overview.wallet.reserved_units)
 
     async def test_cancelled_task_releases_full_reserve(self) -> None:
-        await self._grant(4)
+        await self._grant(1)
         result = await self.queue.enqueue(self._request(key="release"))
         async with self.database.acquire() as connection:
             await connection.execute(
@@ -234,7 +240,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual("released", str(charge_status))
         overview = await self.wallets.overview(DEFAULT_WORKSPACE_ID)
-        self.assertEqual(auf_to_units(4), overview.wallet.available_units)
+        self.assertEqual(auf_to_units(1), overview.wallet.available_units)
         self.assertEqual(0, overview.wallet.reserved_units)
 
     async def test_insufficient_balance_rolls_back_task_creation(self) -> None:
@@ -249,7 +255,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, int(task_count or 0))
 
     async def test_frozen_wallet_rejects_task_without_orphan(self) -> None:
-        await self._grant(4)
+        await self._grant(1)
         await self.wallet_service.set_frozen(
             workspace_id=DEFAULT_WORKSPACE_ID,
             frozen=True,

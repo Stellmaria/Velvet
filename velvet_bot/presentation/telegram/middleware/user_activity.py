@@ -67,7 +67,7 @@ async def _observation(
 
     if isinstance(event, Message):
         chat_id = int(event.chat.id)
-        chat_type = str(event.chat.type.value)
+        chat_type = _chat_type_name(event.chat)
         command = _command_name(event.text or event.caption or "")
         event_type = "command" if command else "message"
         module_key = _module_from_command(command)
@@ -80,7 +80,7 @@ async def _observation(
             chat = getattr(event.message, "chat", None)
             if chat is not None:
                 chat_id = int(chat.id)
-                chat_type = str(chat.type.value)
+                chat_type = _chat_type_name(chat)
     elif isinstance(event, InlineQuery):
         event_type = "inline"
         module_key = "inline"
@@ -105,6 +105,15 @@ async def _observation(
             "workspace_id": workspace_id,
         },
     )
+
+
+def _chat_type_name(chat: object) -> str | None:
+    raw_type = getattr(chat, "type", None)
+    if raw_type is None:
+        return None
+    value = getattr(raw_type, "value", raw_type)
+    rendered = str(value).strip()
+    return rendered or None
 
 
 def _event_user(event: TelegramObject) -> User | None:
