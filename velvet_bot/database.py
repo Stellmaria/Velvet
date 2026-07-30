@@ -84,8 +84,28 @@ def normalize_character_name(value: str) -> str:
     return clean_character_name(value).casefold()
 
 
+def _normalize_migration_bytes(content: bytes) -> bytes:
+    """Return canonical SQL bytes independent of platform line endings."""
+    return content.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
 def _migration_checksum(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    canonical = _normalize_migration_bytes(path.read_bytes())
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _migration_compatible_checksums(path: Path) -> frozenset[str]:
+    """Accept canonical LF plus historical raw LF/CRLF migration hashes."""
+    raw = path.read_bytes()
+    canonical = _normalize_migration_bytes(raw)
+    legacy_crlf = canonical.replace(b"\n", b"\r\n")
+    return frozenset(
+        {
+            hashlib.sha256(raw).hexdigest(),
+            hashlib.sha256(canonical).hexdigest(),
+            hashlib.sha256(legacy_crlf).hexdigest(),
+        }
+    )
 
 
 def _validate_migration_catalog(migration_files: list[Path]) -> None:
@@ -512,6 +532,7 @@ class Database:
             for migration_file in migration_files:
                 version = migration_file.name
                 checksum = _migration_checksum(migration_file)
+                compatible_checksums = _migration_compatible_checksums(migration_file)
                 applied = await connection.fetchrow(
                     "SELECT checksum FROM schema_migrations WHERE version = $1",
                     version,
@@ -524,10 +545,16 @@ class Database:
                             version,
                             checksum,
                         )
-                    elif str(stored_checksum) != checksum:
+                    elif str(stored_checksum) not in compatible_checksums:
                         raise RuntimeError(
                             f"Применённая миграция {version} была изменена. "
                             "Верните исходный SQL и создайте новую миграцию."
+                        )
+                    elif str(stored_checksum) != checksum:
+                        await connection.execute(
+                            "UPDATE schema_migrations SET checksum = $2 WHERE version = $1",
+                            version,
+                            checksum,
                         )
                     continue
 
