@@ -17,14 +17,16 @@ from velvet_bot.presentation.telegram.routers.workspace_meow_balance import (
 from velvet_bot.presentation.telegram.routers.workspace_meow_grs_balance import (
     handle_meow_grs_balance,
 )
+# Import the root adapter first: it replaces the legacy Create/Animate labels with
+# Photo/Video before the photo flow captures the shared root keyboard function.
+from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
+    handle_meow_root_entry,
+)
 from velvet_bot.presentation.telegram.routers.workspace_meow_photo import (
     MeowPhotoForm,
     handle_meow_photo_action,
     handle_meow_photo_command,
     handle_meow_photo_input,
-)
-from velvet_bot.presentation.telegram.routers.workspace_meow_root import (
-    handle_meow_root_entry,
 )
 from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
     MeowVideoCallback,
