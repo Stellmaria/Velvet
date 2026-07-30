@@ -227,14 +227,16 @@ class KieMediaProviderTests(unittest.TestCase):
 
         client = KieClient(
             api_key="secret",
-            models=KieModelCatalog(),
+            models=KieModelCatalog(
+                seedream_5_pro_text="seedream/5-pro-text-to-image"
+            ),
             timeout_seconds=5,
             poll_interval_seconds=1,
             task_timeout_seconds=10,
             transport=transport,
         )
         request = KieGenerationRequest(
-            model=KieModelAlias.NANO_BANANA_PRO,
+            model=KieModelAlias.SEEDREAM_5_PRO,
             input_mode=KieInputMode.TEXT,
             prompt="portrait",
             resolution="1K",
@@ -258,7 +260,7 @@ class KieMediaProviderTests(unittest.TestCase):
         )
         create_payload = calls[0][2]
         self.assertIsInstance(create_payload, dict)
-        self.assertEqual("nano-banana-pro", create_payload["model"])
+        self.assertEqual("seedream/5-pro-text-to-image", create_payload["model"])
 
     def test_failed_task_raises_typed_error(self) -> None:
         def transport(method, url, headers, payload, timeout):
