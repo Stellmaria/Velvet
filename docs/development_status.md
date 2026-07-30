@@ -1,245 +1,182 @@
 # Текущий статус разработки Velvet
 
-Дата актуализации: 21 июля 2026 года.
+Дата актуализации: 30 июля 2026 года.
 
 Текущая стабильная версия: `1.3.0`.
 
+Актуальный `main` на момент синхронизации: `9a32e5f1118c89bff3c91f0d517c38bd8bad24e7`.
+
 ## Назначение
 
-Velvet Archive — owner-oriented архивный Telegram-бот. Его домены: персонажи, истории, медиа, референсы, публикации, аналитика, AI-проверки и эксплуатация владельцем.
+Velvet Archive — owner-oriented архивный Telegram-бот. Его домены: персонажи, истории, медиа, референсы, публикации, аналитика, AI-проверки, Ауф-генерации, кошелёк и эксплуатация владельцем.
 
-Аукционный бот является отдельным продуктом. Ставки, лоты, колоды, валюты и режимы торгов в Velvet Archive не входят.
+Аукционный бот является отдельным продуктом. Ставки, лоты, колоды и режимы торгов в Velvet Archive не входят.
 
 ## Режим стабилизации
 
 Приоритет определяется `docs/stabilization_policy.md`:
 
-- стабилизировать и упрощать существующий функционал;
-- улучшать скорость, надёжность, контроль и читаемость;
-- новый код добавлять только как улучшение существующего сценария;
-- не расширять предметную область до закрытия эксплуатационных ворот.
+- стабилизировать и упрощать существующие сценарии;
+- повышать надёжность, наблюдаемость и tenant isolation;
+- новый код добавлять только как улучшение существующей функции;
+- не объявлять production-ready то, что не прошло доступную живую проверку;
+- applied migrations не редактировать.
 
-## Существующий функционал
-
-Работают:
+## Что уже работает
 
 - архив персонажей, историй, медиа и референсов;
-- категории, вселенные и несколько историй;
+- категории, вселенные, несколько историй и медиасеты;
 - публичный архив, лайки, подписки и уведомления;
-- preview и оригиналы изображений;
-- промты, медиасеты и визуальные дубли;
+- preview и оригиналы изображений/видео;
+- промты, Qwen/VL quality operations и визуальные дубли;
 - аналитика канала и обсуждений;
 - импорт истории Telegram;
 - проверка, расписание и отправка публикаций;
-- backup и restore drill;
-- WorkerManager, Error Center и owner-only диагностические ZIP-пакеты;
-- Velvet AI и Qwen quality/semantic workers;
-- Supervisor, Codex workflow и безопасная удалённая консоль.
+- backup и автоматический restore drill;
+- WorkerManager, Error Center и owner-only diagnostic bundles;
+- Supervisor, Codex workflow и безопасная удалённая консоль;
+- Ауф photo/video flows, очередь, списания, reconciliation и повторная доставка;
+- розничные тарифы в вельветах, фиксированные рублёвые пакеты и реестр пользователей.
 
 ## Production foundation
 
 Завершены в коде и CI:
 
 - Python 3.13 и PostgreSQL 16;
-- Dockerfile и Docker Compose;
-- container healthcheck и Docker CI;
-- автоматический restore drill;
-- release workflow;
-- production checklist;
+- Dockerfile, Docker Compose и healthcheck;
+- unit/integration tests, bounded type check и Docker CI;
+- автоматический backup restore drill;
+- release/tag workflows;
+- project notes contract;
+- безопасный manual branch-maintenance workflow;
 - стабильный релиз `1.3.0`.
 
-Живые Windows-, staging- и offsite-проверки перечислены отдельно и не считаются закрытыми только по наличию кода.
+Windows-, staging-, provider- и offsite-проверки перечислены отдельно. Наличие кода и зелёного CI не закрывает внешнюю эксплуатационную проверку.
+
+## Последние слитые функциональные изменения
+
+### Ауф и экономика
+
+- canonical wallet/runtime/photo/user portal поставлены серией PR #403/#404/#405/#443;
+- active Telegram protocol переведён с Мяу на Ауф PR #428;
+- persistent PostgreSQL/module identifiers мигрированы PR #446;
+- recovery готового provider result без новой генерации добавлена PR #450/#456;
+- PR #473 отделил API-себестоимость от розничной цены, добавил фиксированные пакеты, команды `/velvet_grant`, `/velvet_user`, `/velvet_users`, privacy-safe user registry и системную изоляцию референсов;
+- старые операции и завершённые задачи не пересчитываются новыми тарифами.
+
+### Shared contracts и branch maintenance
+
+- PR #462 создал package-wide shared-helper inventory и публичные Telegram contracts;
+- PR #468/#469 мигрировали Supervisor и Ауф editing families с private cross-module helpers;
+- PR #475 добавил SHA-guarded `workflow_dispatch` для deterministic maintenance непротектированных веток без giant runner-PR, force-push и automatic conflict resolution.
+
+### Важная граница совместимости
+
+Активный пользовательский и module protocol называется Ауф. Historical migrations, compatibility packages и dual-read FSM/transport aliases с `meow_*` пока существуют до live retirement #438. Их наличие не означает возврат старого бренда и не позволяет добавлять новые `meow_*` identifiers.
 
 ## Архитектурный статус
 
-### Фазы 1–6: функциональная основа
+### Закрытые линии
 
-Статус: завершены.
+- private PostgreSQL pool access: **0 production accesses**;
+- unresolved P2 broad/callback debt: **0**;
+- legacy handler files/implementations/aliases: **0**;
+- root Router direct imports `velvet_bot.handlers.*`: **0**;
+- duplicate registrations между четырьмя Router bundles: **0**;
+- central/root repositories: **0**;
+- blocking known private helper contracts: **0**.
 
-### Фаза 7: модульная архитектура
+### Воспроизводимые текущие числа
 
-Статус: основной логический перенос завершён.
+По generated inventories текущего `main`:
 
-- `main.py` является короткой точкой входа;
-- composition root и lifecycle находятся в `velvet_bot/app`;
-- application/use-case слой не зависит от aiogram;
-- доменные models, repositories и services введены для основных контуров;
-- корневой Telegram Router собирается в `velvet_bot/presentation/telegram`.
+- root modules `velvet_bot/*.py`: **113**;
+- активные Router imports в четырёх bundles: **84**;
+- runtime compatibility components: **8**;
+- repository modules: **35**;
+- domain repositories: **34**;
+- infrastructure PostgreSQL adapters: **1**;
+- production Python files в shared-contract inventory: **596**;
+- функций inventoried: **3306**;
+- registered private cross-module debt: **136**;
+- exact / normalized / semantic duplicate groups: **55 / 92 / 9**;
+- Telegram navigation scan: **604 Python files**, **1024 inline buttons**, **0 violations**.
 
-### Фазы 8–11: управление и production foundation
+Источники: `docs/architecture_layout_inventory.*`, `docs/repository_layout_inventory.*`, `docs/shared_contract_inventory.*`, `docs/generated/telegram_navigation_inventory.md`.
 
-Статус кода: завершены.
+### Текущий installer graph
 
-Supervisor self-restart/self-update требует живой проверки на целевой Windows.
+`velvet_bot/app/__init__.py` по-прежнему является переходной границей:
 
-### Фазы 12–17: архитектурная очистка P1
+- 2 side-effect installers выполняются до bootstrap;
+- 25 installers выполняются внутри configured startup;
+- итоговый worker/UI behavior зависит от порядка runtime assignments;
+- package `__getattr__` всё ещё запускает composition side effects.
 
-Статус: завершены.
+Это не target architecture. Исправление ведётся в #455, а единый media delivery pipeline — в #457.
 
-- SQL удалён из затронутых Telegram controllers;
-- publication operations используют application coordinator;
-- analytics management и owner forms разделены;
-- multi-story использует domain repositories;
-- опасные runtime monkeypatch-мосты удалены;
-- архитектурные regression-тесты блокируют возврат закрытых долгов.
+## P3 и текущий кодовый долг
 
-### Фаза 18: публичная PostgreSQL-граница
+### P3A–P3E
 
-Статус: завершена.
+Завершены:
 
-- исходно: 130 внешних обращений к `Database._require_pool()` в 35 production-файлах;
-- сейчас: 0 обращений в 0 production-файлах;
-- новые внешние обращения блокируются CI;
-- persistence основных доменов использует `Database.acquire()` и repository boundaries.
+- источники истины и generated inventories введены;
+- root Router собирается четырьмя ordered bundles;
+- активные Telegram controllers перенесены в canonical presentation paths;
+- старые handler aliases удалены;
+- repository layout ограничен domain/infrastructure boundaries.
 
-Источник измерения: `docs/private_pool_inventory.*`.
+### P3F typing
 
-### Фаза 19: Velvet AI operations
+Первый bounded mypy gate действует и проходит в CI. Расширение scope выполняется постепенно; включение strict mode на весь repository одним PR запрещено.
 
-Статус: завершена.
+### Приоритет P0/P1
 
-- единое меню качества;
-- постоянный журнал AI-заданий;
-- lifecycle `pending/processing/ready/error/interrupted`;
-- проверка изображения, референса, промта, палитры, оформления и медиасета;
-- callback contracts и PostgreSQL integration tests.
+1. #455 — explicit composition root вместо 27-stage side-effect startup graph.
+2. #457 — единый durable provider-neutral media delivery/redelivery pipeline.
+3. #458 — перенос Ауф portal/UI из `app/*_install.py` в application/presentation.
+4. #459 — canonical provider adapters, routing и retry contracts.
+5. #460 — package-wide architecture drift inventory и CI gates.
+6. #463 — bounded migration 110 non-facade root modules.
+7. #419 — дальнейшее сжигание зарегистрированного shared/private helper debt.
 
-### Фаза 20: Supervisor
-
-Статус кода: завершён.
-
-Реализованы безопасная консоль, fast-forward update, tests, rollback, lock, healthcheck, self-restart/self-update bootstrap и Telegram-отчёт операции.
-
-Не подтверждено живой эксплуатацией:
-
-1. self-restart на целевой Windows;
-2. update-and-restart;
-3. success/error Telegram report после bootstrap.
-
-## Закрытие P2 stability
-
-Статус: завершена.
-
-Актуальный generated AST-инвентарь после owner diagnostics:
-
-- broad exception boundaries: 76;
-- approved boundaries: 76;
-- unresolved boundaries: 0;
-- callback handlers: 98;
-- late/missing callbacks: 0;
-- следующий P2-срез отсутствует.
-
-Источник измерения: `docs/p2_stability_inventory.*`.
-
-Широкие перехваты сохранены только на проверенных внешних границах с логированием, компенсацией и явным пробросом отмены.
-
-## P3: организация структуры
-
-Статус: P3A–P3E завершены. Следующий кодовый срез: P3F.
-
-### P3A. Источники истины
-
-Статус: завершено.
-
-- status, project memory, architecture audit и changelog синхронизированы с `main`;
-- кодовый долг отделён от Windows/staging/backup эксплуатационных проверок;
-- generated inventories являются измеримым источником текущих чисел.
-
-### P3B. Telegram composition
-
-Статус: завершено.
-
-- корневой Router подключает четыре крупные доменные bundles;
-- 60 активных routers зарегистрированы без дублей;
-- порядок catch-all-sensitive routers фиксируется тестом;
-- прямых imports `velvet_bot.handlers.*` нет.
-
-### P3C. Физический перенос presentation
-
-Статус: завершено.
-
-Все активные Telegram controllers находятся в `velvet_bot/presentation/telegram/routers`. Физических legacy handler-файлов, implementations и module aliases осталось 0.
-
-### P3D. Compatibility retirement
-
-Статус старого handler compatibility слоя: завершено.
-
-Production legacy-consumer inventory закрыт: 0 файлов, 0 references и 0 legacy modules. Handler aliases удалены полностью.
-
-В explicit pre/post-import registry остаются 8 runtime compatibility-компонентов. Их дальнейшая классификация является отдельной cleanup-линией: постоянный contract либо удаление с regression-тестом.
-
-### P3E. Persistence layout
-
-Статус: завершено.
-
-- repository modules: 34;
-- domain repositories: 33;
-- infrastructure PostgreSQL adapters: 1;
-- central repositories: 0;
-- root repositories: 0;
-- пакет `velvet_bot/repositories` удалён;
-- новый persistence-код допускается только в domain либо reviewed infrastructure boundary.
-
-Источник измерения: `docs/repository_layout_inventory.*`.
-
-### P3F. Статическая типизация
-
-Статус: следующий кодовый срез.
-
-Статический анализ включается постепенно для transport-neutral слоёв: core, application, domains, services и workers. Первый baseline ограничивается выбранным пакетом и запрещает новые typing errors только в его scope. Полное включение strict-mode одним изменением запрещено.
-
-## Текущие production-улучшения
-
-21 июля 2026 года добавлены:
-
-- owner-only `Velvet Diagnostic Bundle v1` с redacted runtime, workers, incidents и log tail;
-- автоматическая критическая диагностика с cooldown;
-- исправление Qwen retry, сохраняющее `media_ai_profiles.analysis` как `JSONB NOT NULL`;
-- перевод permanent oversized/no-preview AI skips с `WARNING` на `INFO`, чтобы они не создавали ложные Error Center incidents.
-
-## Оставшийся кодовый долг
-
-1. P3F: ограниченный static typing baseline.
-2. Классификация 110 исторических `velvet_bot/*.py` modules.
-3. Разбор 8 explicit runtime compatibility-компонентов.
-4. Инвентаризация duplicate/shared Telegram helpers.
-5. AI duration/error/provider/model/cost-unit metrics.
-6. Heavy Runtime: idle unload, пустой polling, checkpoint/resume import.
+PR #450/#456 считаются временной stabilization, а не целевой delivery architecture.
 
 ## Эксплуатационные обязательства
 
-1. Обновить локальный `main` и перезапустить Supervisor.
-2. Выполнить smoke test owner-, AI-, media-set и diagnostic scenarios.
-3. Подтвердить Supervisor self-restart и update-and-restart на Windows.
-4. Создать отдельный staging-бот и staging-базу.
-5. Провести независимый restore drill в целевом окружении.
-6. Настроить зашифрованную внешнюю репликацию backup.
+Не закрыты одним CI:
+
+1. #407 — production cutover на Linux VPS.
+2. #409 — Supervisor self-restart/update-and-restart на целевой Windows.
+3. #410 — единый post-deploy owner/workspace/AI/Ауф smoke.
+4. #411 — staging bot/database и безопасные credentials.
+5. #412 — live Kie/GRS routes, limits, credits, payload/result contracts.
+6. #408 — encrypted offsite backup и независимый restore drill.
+7. #438 — live retirement dual-read `meow_*` compatibility.
+8. AI duration/error/provider/model/cost-unit metrics.
 
 ## Документация и контроль
 
 - `docs/project_memory.md` — долгосрочная карта;
 - `docs/development_status.md` — текущий статус;
 - `docs/architecture_target.md` — целевая структура;
-- `docs/ARCHITECTURE_AUDIT.md` — текущий архитектурный аудит;
+- `docs/ARCHITECTURE_AUDIT.md` — текущий аудит;
 - `docs/stabilization_policy.md` — ворота стабилизации;
-- `docs/private_pool_inventory.*` — закрытая PostgreSQL-граница;
-- `docs/p2_stability_inventory.*` — закрытая stability-линия;
-- `docs/legacy_handler_consumer_inventory.*` — закрытый baseline старых handler imports;
-- `docs/repository_layout_inventory.*` — завершённая P3E-карта persistence;
-- `docs/architecture_layout_inventory.*` — физическая структура, root modules и runtime compatibility;
+- `docs/*_inventory.*` — воспроизводимые измерения;
+- `docs/runbooks/branch_maintenance.md` — безопасная mutation feature-веток;
 - `docs/worklog/` — проверяемая история работ;
-- `AGENTS.md` — обязательные правила;
-- `CHANGELOG.md` — заметные изменения.
+- `CHANGELOG.md` — только слитые заметные изменения.
 
 CI блокирует содержательный PR без завершённого worklog.
 
 ## Правила дальнейшей разработки
 
-- новый код обязан улучшать существующую функцию;
 - Telegram controller не получает новый SQL;
 - business operation создаётся через use case/domain service;
-- новые внешние private pool access запрещены;
-- новые broad catches и callback acknowledgment проверяются inventory;
-- старая применённая migration не редактируется;
-- инфраструктура считается production-ready только после доступной живой проверки;
-- каждая работа имеет worklog, CI, PR/commit, остаток и следующий шаг.
+- новый installer/hotfix не добавляется без issue и removal condition;
+- private cross-module access не становится новым публичным contract молча;
+- feature branch maintenance использует PR либо SHA-guarded workflow, но не runner-PR «не сливать»;
+- старые applied migrations не редактируются;
+- infrastructure capability не называется production-ready без доступной live-проверки;
+- каждая работа фиксирует checks, PR/commit, остаток и следующий шаг.
