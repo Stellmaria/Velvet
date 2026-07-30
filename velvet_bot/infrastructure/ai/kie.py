@@ -146,9 +146,7 @@ class KieClient:
         *,
         callback_url: str | None = None,
     ) -> str:
-        if request.model.is_grs and (
-            self.grs_api_key is not None or request.model.value == "nano_banana_2"
-        ):
+        if request.model.is_grs:
             return await self._create_grs_task(request)
         provider_model = self.models.provider_model_for_request(request)
         provider_input: Mapping[str, object] = request.to_input()
@@ -237,7 +235,7 @@ class KieClient:
             self._transport,
             "GET",
             f"{self.grs_base_url}/v1/api/result?{query}",
-            self._headers(self.api_key),
+            self._headers(self.grs_api_key),
             None,
             self.timeout_seconds,
         )
