@@ -53,30 +53,21 @@ def _wallet_keyboard(
     frozen: bool,
     invoices,
 ) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = [
-        [
-            InlineKeyboardButton(
-                text=f"{amount} Ауф",
-                callback_data=_callback(
-                    "wallet_buy",
-                    workspace_id=workspace_id,
-                    value=str(amount),
-                ),
-            )
-            for amount in AUF_PACKAGES[:3]
-        ],
-        [
-            InlineKeyboardButton(
-                text=f"{amount} Ауф",
-                callback_data=_callback(
-                    "wallet_buy",
-                    workspace_id=workspace_id,
-                    value=str(amount),
-                ),
-            )
-            for amount in AUF_PACKAGES[3:]
-        ],
-    ]
+    rows: list[list[InlineKeyboardButton]] = []
+    for package_row in (AUF_PACKAGES[:3], AUF_PACKAGES[3:]):
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{amount} Ауф",
+                    callback_data=_callback(
+                        "wallet_buy",
+                        workspace_id=workspace_id,
+                        value=str(amount),
+                    ),
+                )
+                for amount in package_row
+            ]
+        )
     pending = [item for item in invoices if item.status is MeowInvoiceStatus.CREATED]
     for invoice in pending[:3]:
         rows.append(
@@ -140,10 +131,9 @@ def _entry_line(entry) -> str:
 
 
 def _invoice_line(invoice) -> str:
-    label = _INVOICE_LABELS[invoice.status]
     return (
         f"• <code>{invoice.public_code}</code> · {invoice.package_auf} Ауф · "
-        f"{invoice.final_local_amount:.0f} ₽ · {escape(label)}"
+        f"{invoice.final_local_amount:.0f} ₽ · {escape(_INVOICE_LABELS[invoice.status])}"
     )
 
 
@@ -153,6 +143,7 @@ async def _render_wallet(
     workspace_id: int,
     wallet_service: MeowWalletService,
     purchase_service: MeowPurchaseService,
+    answer_callback: bool = True,
 ) -> None:
     try:
         overview = await wallet_service.overview(
@@ -170,20 +161,17 @@ async def _render_wallet(
             limit=5,
         )
     except (PermissionError, ValueError) as error:
-        await callback.answer(str(error), show_alert=True)
+        if answer_callback:
+            await callback.answer(str(error), show_alert=True)
         return
 
     wallet = overview.wallet
     history = "\n".join(_entry_line(item) for item in overview.recent_entries)
-    if not history:
-        history = "• операций пока нет"
     packages = "\n".join(
         f"• <b>{quote.amount_auf} Ауф</b> · {quote.price_rub:.0f} ₽ · ${quote.price_usd:.2f}"
         for quote in quotes
     )
     invoice_lines = "\n".join(_invoice_line(item) for item in invoices)
-    if not invoice_lines:
-        invoice_lines = "• счетов пока нет"
     text = (
         "<b>💳 Кошелёк Ауф</b>\n\n"
         f"Доступно: <b>{format_auf_units(wallet.available_units)}</b>\n"
@@ -195,9 +183,9 @@ async def _render_wallet(
         "Нажмите пакет, чтобы создать счёт с зафиксированным курсом на 24 часа. "
         "Оплата подтверждается Стэл вручную; повторное подтверждение не начислит Ауф дважды.\n\n"
         "<b>Последние счета</b>\n"
-        f"{invoice_lines}\n\n"
+        f"{invoice_lines or '• счетов пока нет'}\n\n"
         "<b>Последние операции</b>\n"
-        f"{history}\n\n"
+        f"{history or '• операций пока нет'}\n\n"
         "1 Ауф покрывает до $0.02 расходов API. Розничная цена одного Ауф — $0.03. "
         "Дополнительная наценка при списании за модель не применяется."
     )
@@ -211,7 +199,8 @@ async def _render_wallet(
                 invoices=invoices,
             ),
         )
-    await callback.answer()
+    if answer_callback:
+        await callback.answer()
 
 
 async def handle_meow_wallet_action(
@@ -251,7 +240,10 @@ async def handle_meow_wallet_action(
                 public_code=callback_data.value,
                 actor_user_id=callback.from_user.id,
             )
-            alert = f"Оплата {invoice.public_code} подтверждена. Начислено {invoice.package_auf} Ауф."
+            alert = (
+                f"Оплата {invoice.public_code} подтверждена. "
+                f"Начислено {invoice.package_auf} Ауф."
+            )
         elif action == "wallet_invoice_cancel":
             invoice = await meow_purchase_service.cancel_invoice(
                 public_code=callback_data.value,
@@ -294,6 +286,7 @@ async def handle_meow_wallet_action(
         workspace_id=workspace_id,
         wallet_service=meow_wallet_service,
         purchase_service=meow_purchase_service,
+        answer_callback=alert is None,
     )
 
 
