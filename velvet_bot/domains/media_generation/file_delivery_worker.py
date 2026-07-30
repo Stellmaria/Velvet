@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from velvet_bot.presentation.telegram.shared.retry import (
+    TelegramRetryPolicy,
+    retry_telegram_operation,
+)
+
 import asyncio
 import io
 import logging
@@ -72,6 +77,12 @@ class _DownloadedResult:
 
 class KieGenerationWorker(BaseKieGenerationWorker):
     """Download Kie results, then send Telegram preview and original file."""
+
+    @classmethod
+    def install_delivery_handler(cls, handler) -> None:
+        """Install a delivery implementation through an explicit class hook."""
+
+        cls._deliver_best_effort = handler
 
     async def _download_reference(self, reference: KieReferenceImage) -> bytes:
         errors: list[BaseException] = []
@@ -256,29 +267,25 @@ class KieGenerationWorker(BaseKieGenerationWorker):
         operation_name: str,
         operation: Callable[[], Awaitable[object]],
     ) -> object:
-        errors: list[TelegramAPIError] = []
-        for attempt in range(1, _RETRY_ATTEMPTS + 1):
-            try:
-                return await operation()
-            except asyncio.CancelledError:
-                raise
-            except TelegramBadRequest:
-                raise
-            except TelegramAPIError as error:
-                errors.append(error)
-                if attempt >= _RETRY_ATTEMPTS:
-                    break
-                logger.warning(
-                    "Telegram Kie delivery retry operation=%s attempt=%s/%s: %s",
-                    operation_name,
-                    attempt + 1,
-                    _RETRY_ATTEMPTS,
-                    error,
-                )
-                await asyncio.sleep(_retry_delay(attempt))
-        if errors:
-            raise errors[-1]
-        raise RuntimeError(f"Telegram operation {operation_name} did not execute.")
+        policy = TelegramRetryPolicy(
+            attempts=_RETRY_ATTEMPTS,
+            delays=tuple(_retry_delay(attempt) for attempt in range(1, _RETRY_ATTEMPTS)),
+        )
+
+        def report_retry(next_attempt: int, error: TelegramAPIError) -> None:
+            logger.warning(
+                "Telegram Kie delivery retry operation=%s attempt=%s/%s: %s",
+                operation_name,
+                next_attempt,
+                _RETRY_ATTEMPTS,
+                error,
+            )
+
+        return await retry_telegram_operation(
+            operation,
+            policy=policy,
+            on_retry=report_retry,
+        )
 
     async def _download_result(self, url: str) -> _DownloadedResult:
         user_agent = str(
@@ -400,3 +407,10 @@ def _optional_int(value: object) -> int | None:
 
 
 __all__ = ("KieGenerationWorker",)
+
+
+DEFAULT_RESULT_USER_AGENT = _DEFAULT_RESULT_USER_AGENT
+RESULT_DOWNLOAD_TIMEOUT_SECONDS = _RESULT_DOWNLOAD_TIMEOUT_SECONDS
+RESULT_MAX_BYTES = _RESULT_MAX_BYTES
+download_result_http = _download_result_http
+result_filename = _result_filename

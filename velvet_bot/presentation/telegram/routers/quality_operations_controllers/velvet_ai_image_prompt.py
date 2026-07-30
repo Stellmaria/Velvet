@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from velvet_bot.presentation.telegram.shared import download_telegram_file
+
 import asyncio
 import io
 import logging
@@ -60,37 +62,25 @@ def _comparison_models(primary_model: str) -> tuple[str, ...]:
     return primary, secondary
 
 
-async def _download_image(bot: Bot, file_id: str) -> bytes:
-    errors: list[BaseException] = []
-    for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
-        try:
-            destination = io.BytesIO()
-            await bot.download(
-                file_id,
-                destination=destination,
-                timeout=_DOWNLOAD_TIMEOUT_SECONDS,
-                seek=True,
-            )
-            value = destination.getvalue()
-            if value:
-                return value
-            errors.append(RuntimeError("Telegram вернул пустой файл."))
-        except asyncio.CancelledError:
-            raise
-        except TelegramBadRequest as error:
-            errors.append(error)
-            break
-        except (TelegramNetworkError, TimeoutError, ConnectionError, OSError) as error:
-            errors.append(error)
-            if attempt >= _DOWNLOAD_ATTEMPTS:
-                break
-            await asyncio.sleep(_RETRY_DELAYS[attempt - 1])
-        except TelegramAPIError as error:
-            errors.append(error)
-            break
-    if errors:
-        raise RuntimeError(f"Не удалось скачать изображение: {errors[-1]}")
-    raise RuntimeError("Telegram вернул пустой файл.")
+async def download_image(bot: Bot, file_id: str) -> bytes:
+    return await download_telegram_file(
+        bot,
+        file_id,
+        attempts=_DOWNLOAD_ATTEMPTS,
+        timeout_seconds=_DOWNLOAD_TIMEOUT_SECONDS,
+        retry_delays=_RETRY_DELAYS,
+        failure_label="изображение",
+        network_error_types=(
+            TelegramNetworkError,
+            TimeoutError,
+            ConnectionError,
+            OSError,
+        ),
+        api_error_type=TelegramAPIError,
+    )
+
+
+_download_image = download_image
 
 
 def _result_text(

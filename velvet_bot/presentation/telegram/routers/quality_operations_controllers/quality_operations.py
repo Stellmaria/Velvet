@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from velvet_bot.presentation.telegram.shared import safe_edit_message_text
+
 import asyncio
 import io
 import logging
@@ -235,11 +237,11 @@ async def _show_menu(
     summary = await AIQualityRepository(database).summary()
     worker = worker_manager.snapshot("ai-quality")
     text, keyboard = build_quality_operations_menu(summary, worker)
-    try:
-        await message.edit_text(text, reply_markup=keyboard)
-    except TelegramBadRequest as error:
-        if "message is not modified" not in str(error).casefold():
-            raise
+    await safe_edit_message_text(
+        message,
+        text,
+        reply_markup=keyboard,
+    )
 
 
 @router.callback_query(QualityCallback.filter(F.action == "quality_ops"))

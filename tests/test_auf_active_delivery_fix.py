@@ -5,13 +5,11 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from velvet_bot.app import auf_user_portal_install as portal
 from velvet_bot.app.auf_active_delivery_fix import (
-    _provider_task_id,
-    _task_card_keyboard,
-    _task_card_text,
+    provider_task_id,
+    task_card_keyboard,
+    task_card_text,
 )
-from velvet_bot.app import auf_result_delivery_recovery as recovery
 from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 
 
@@ -38,7 +36,7 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
     def test_provider_task_id_uses_campaign_runtime_when_result_is_empty(self) -> None:
         self.assertEqual(
             "grs:provider-task",
-            _provider_task_id(
+            provider_task_id(
                 {},
                 {
                     "kie_campaign": {
@@ -50,7 +48,7 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
 
     def test_success_image_is_rendered_as_one_clear_card(self) -> None:
         row = _row()
-        text = _task_card_text(portal=portal, row=row, offset=0)
+        text = task_card_text(row=row, offset=0)
 
         self.assertIn("Последняя задача", text)
         self.assertIn("Nano Banana Pro", text)
@@ -65,9 +63,7 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
 
     def test_success_card_has_one_unambiguous_result_button(self) -> None:
         row = _row()
-        markup = _task_card_keyboard(
-            portal=portal,
-            recovery=recovery,
+        markup = task_card_keyboard(
             row=row,
             workspace_id=1,
             offset=2,
@@ -88,9 +84,7 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
         self.assertLessEqual(len(delivery.callback_data or ""), 64)
 
     def test_unfinished_task_does_not_offer_result(self) -> None:
-        markup = _task_card_keyboard(
-            portal=portal,
-            recovery=recovery,
+        markup = task_card_keyboard(
             row=_row(status="running"),
             workspace_id=1,
             offset=0,
@@ -110,14 +104,11 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("active_worker = workers.KieGenerationWorker", fix_source)
-        self.assertIn(
-            "active_worker._deliver_best_effort = recovery._deliver_record_with_recovery",
-            fix_source,
-        )
-        self.assertIn(
-            "portal._render_user_tasks = _render_user_task_card",
-            fix_source,
-        )
+        self.assertIn("active_worker.install_delivery_handler", fix_source)
+        self.assertIn("recovery.install_redelivery_handler", fix_source)
+        self.assertIn("portal.install_user_tasks_renderer", fix_source)
+        self.assertNotIn("active_worker._deliver_best_effort", fix_source)
+        self.assertNotIn("portal._render_user_tasks", fix_source)
 
 
 if __name__ == "__main__":

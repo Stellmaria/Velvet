@@ -25,9 +25,9 @@ from velvet_bot.presentation.telegram.routers import workspace_auf_video as lega
 from velvet_bot.presentation.telegram.routers.workspace_auf_video import (
     AufVideoCallback,
     AufVideoForm,
-    _callback as video_callback,
-    _format_rub,
-    _format_usd,
+    callback_data as video_callback,
+    format_rub,
+    format_usd,
 )
 from velvet_bot.presentation.telegram.routers.workspace_auf import (
     AufCallback,
@@ -200,14 +200,14 @@ def _money_change_lines(change: Mapping[str, object] | None) -> list[str]:
     else:
         sign = "+" if delta_usd > 0 else "−"
         delta_line = (
-            f"Разница: <b>{sign}{_format_usd(abs(delta_usd))}</b> · "
-            f"<b>{sign}{_format_rub(abs(delta_rub))}</b>"
+            f"Разница: <b>{sign}{format_usd(abs(delta_usd))}</b> · "
+            f"<b>{sign}{format_rub(abs(delta_rub))}</b>"
         )
     return [
         "",
         "<b>Предварительный анализ стоимости</b>",
-        f"Было: <b>{_format_usd(old_usd)}</b> · <b>{_format_rub(old_rub)}</b>",
-        f"Стало: <b>{_format_usd(new_usd)}</b> · <b>{_format_rub(new_rub)}</b>",
+        f"Было: <b>{format_usd(old_usd)}</b> · <b>{format_rub(old_rub)}</b>",
+        f"Стало: <b>{format_usd(new_usd)}</b> · <b>{format_rub(new_rub)}</b>",
         delta_line,
         f"Причина: {reason}.",
     ]
@@ -242,7 +242,7 @@ def _settings_text(
     if model == "seedance":
         lines.append("Fixed lens: <b>выключен</b>")
     if estimated_usd is not None and estimated_rub is not None:
-        lines.extend(["", f"Текущая расчётная стоимость: <b>{_format_usd(estimated_usd)}</b> · <b>{_format_rub(estimated_rub)}</b>"])
+        lines.extend(["", f"Текущая расчётная стоимость: <b>{format_usd(estimated_usd)}</b> · <b>{format_rub(estimated_rub)}</b>"])
     lines.extend(_money_change_lines(cost_change))
     return "\n".join(lines)
 
@@ -265,7 +265,7 @@ def _review_text(
     settings.extend([
         "Watermark: <b>выключен</b>",
         "NSFW checker Kie: <b>выключен</b>",
-        f"Расчётная стоимость: <b>{_format_usd(estimated_usd)}</b> · <b>{_format_rub(estimated_rub)}</b>",
+        f"Расчётная стоимость: <b>{format_usd(estimated_usd)}</b> · <b>{format_rub(estimated_rub)}</b>",
         "", f"<b>Движение и сцена</b>\n{escape(legacy._truncate(prompt, 3500))}", "",
         "После запуска задача попадёт в очередь. Повторное нажатие в этой сессии не создаст вторую платную генерацию.",
     ])
@@ -300,7 +300,7 @@ async def handle_auf_video_entry(
         auf_video_cost_change=None,
     )
     await state.set_state(AufVideoForm.choosing_reference)
-    await legacy._edit_or_answer(
+    await legacy.edit_or_answer(
         callback,
         text=(
             "<b>Ауф · Оживить</b>\n\n"
@@ -391,7 +391,7 @@ async def handle_auf_video_prompt(
     if len(prompt) > _MAX_PROMPT_LENGTH:
         await message.answer(f"Описание слишком длинное. Максимум {_MAX_PROMPT_LENGTH} символов.")
         return
-    if legacy._reference_from_data(data.get("auf_video_reference")) is None:
+    if legacy.reference_from_data(data.get("auf_video_reference")) is None:
         await state.clear()
         await message.answer("Сессия устарела: первый кадр не найден.")
         return
@@ -488,7 +488,7 @@ async def handle_auf_video_action(
             return
         await state.update_data(auf_video_text_target="duration")
         await state.set_state(AufVideoForm.waiting_prompt)
-        await legacy._edit_or_answer(
+        await legacy.edit_or_answer(
             callback,
             text=(f"<b>Введите длительность</b>\n\nОтправьте целое число от {_MIN_VIDEO_DURATION_SECONDS} до {_MAX_VIDEO_DURATION_SECONDS} секунд. После ввода бот сразу пересчитает стоимость."),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="К параметрам", callback_data=video_callback("settings", workspace_id=workspace_id))]]),
@@ -513,7 +513,7 @@ async def handle_auf_video_action(
             return
         await state.update_data(auf_video_reference_target="last")
         await state.set_state(AufVideoForm.waiting_reference)
-        await legacy._edit_or_answer(
+        await legacy.edit_or_answer(
             callback,
             text="<b>Отправьте последний кадр Wan 2.7</b>\n\nПринимаются Telegram-фото и документы JPG, PNG или WEBP до 10 МБ.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
@@ -525,7 +525,7 @@ async def handle_auf_video_action(
     if action == "change_prompt":
         await state.update_data(auf_video_text_target="prompt")
         await state.set_state(AufVideoForm.waiting_prompt)
-        await legacy._edit_or_answer(
+        await legacy.edit_or_answer(
             callback,
             text=f"<b>Измените промт движения</b>\n\nОтправьте новый текст до {_MAX_PROMPT_LENGTH} символов.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="К параметрам", callback_data=video_callback("settings", workspace_id=workspace_id))]]),
@@ -579,7 +579,7 @@ async def handle_auf_video_action(
 async def _show_models(callback: CallbackQuery, *, state: FSMContext, workspace_id: int) -> None:
     model = _validated_model(await state.get_data())
     await state.set_state(AufVideoForm.choosing_settings)
-    await legacy._edit_or_answer(callback, text=_model_text(model=model), reply_markup=build_video_model_keyboard(workspace_id=workspace_id, model=model))
+    await legacy.edit_or_answer(callback, text=_model_text(model=model), reply_markup=build_video_model_keyboard(workspace_id=workspace_id, model=model))
 
 
 async def _show_settings(
@@ -592,11 +592,11 @@ async def _show_settings(
     duration = _validated_duration(data, model=model)
     generate_audio = _validated_audio(data, model=model)
     wan_mode = _validated_wan_mode(data)
-    has_last_frame = legacy._reference_from_data(data.get("auf_video_last_reference")) is not None
+    has_last_frame = legacy.reference_from_data(data.get("auf_video_last_reference")) is not None
     estimated_usd, estimated_rub = _estimate_from_data(data, kie_settings=kie_settings)
     cost_change = data.get("auf_video_cost_change")
     await state.set_state(AufVideoForm.choosing_settings)
-    await legacy._edit_or_answer(
+    await legacy.edit_or_answer(
         callback,
         text=_settings_text(
             model=model, resolution=resolution, duration=duration,
@@ -623,7 +623,7 @@ async def _answer_settings(
     duration = _validated_duration(data, model=model)
     generate_audio = _validated_audio(data, model=model)
     wan_mode = _validated_wan_mode(data)
-    has_last_frame = legacy._reference_from_data(data.get("auf_video_last_reference")) is not None
+    has_last_frame = legacy.reference_from_data(data.get("auf_video_last_reference")) is not None
     estimated_usd, estimated_rub = _estimate_from_data(data, kie_settings=kie_settings)
     cost_change = data.get("auf_video_cost_change")
     await message.answer(
@@ -664,7 +664,7 @@ async def _show_templates(
             lines.append(f"Звук: <b>{'включён' if bool(template['generate_audio']) else 'выключен'}</b>")
         else:
             lines.append(f"Кадры: <b>{_wan_mode_name(str(template['wan_mode']))}</b>")
-    await legacy._edit_or_answer(
+    await legacy.edit_or_answer(
         callback, text="\n".join(lines),
         reply_markup=build_video_template_keyboard(workspace_id=workspace_id, has_template=template is not None),
     )
@@ -675,8 +675,8 @@ async def _show_review(
     kie_settings: KieSettings,
 ) -> None:
     data = await state.get_data()
-    reference = legacy._reference_from_data(data.get("auf_video_reference"))
-    last_reference = legacy._reference_from_data(data.get("auf_video_last_reference"))
+    reference = legacy.reference_from_data(data.get("auf_video_reference"))
+    last_reference = legacy.reference_from_data(data.get("auf_video_last_reference"))
     prompt = str(data.get("auf_video_prompt") or "").strip()
     if reference is None or not prompt:
         await callback.answer("Сессия устарела: нужны первый кадр и промт.", show_alert=True)
@@ -697,7 +697,7 @@ async def _show_review(
     estimated_usd = kie_settings.pricing.estimate_usd(request)
     estimated_rub = kie_settings.pricing.estimate_rub(request, usd_to_rub=kie_settings.usd_to_rub)
     await state.set_state(AufVideoForm.reviewing)
-    await legacy._edit_or_answer(
+    await legacy.edit_or_answer(
         callback,
         text=_review_text(
             prompt=prompt, model=model, resolution=resolution, duration=duration,
@@ -714,8 +714,8 @@ async def _submit_video(
     ai_task_queue_service: AITaskQueueService,
 ) -> None:
     data = await state.get_data()
-    reference = legacy._reference_from_data(data.get("auf_video_reference"))
-    last_reference = legacy._reference_from_data(data.get("auf_video_last_reference"))
+    reference = legacy.reference_from_data(data.get("auf_video_reference"))
+    last_reference = legacy.reference_from_data(data.get("auf_video_last_reference"))
     prompt = str(data.get("auf_video_prompt") or "").strip()
     session_id = str(data.get("auf_video_session_id") or "").strip()
     if reference is None or not prompt or not session_id:
@@ -776,10 +776,10 @@ async def _submit_video(
     if model == "wan":
         details.append(f"Кадры: <b>{_wan_mode_name(wan_mode)}</b>")
     details.extend([
-        f"Расчётная стоимость: <b>{_format_usd(estimated_usd)}</b> · <b>{_format_rub(estimated_rub)}</b>",
+        f"Расчётная стоимость: <b>{format_usd(estimated_usd)}</b> · <b>{format_rub(estimated_rub)}</b>",
         f"Задача: <code>{result.task.id}</code>",
     ])
-    await legacy._edit_or_answer(callback, text="\n".join(details), reply_markup=build_auf_root_keyboard(workspace_id=workspace_id, enabled=True))
+    await legacy.edit_or_answer(callback, text="\n".join(details), reply_markup=build_auf_root_keyboard(workspace_id=workspace_id, enabled=True))
 
 
 def _build_request(
@@ -847,13 +847,13 @@ def _build_request(
 
 
 def _estimate_from_data(data: Mapping[str, object], *, kie_settings: KieSettings) -> tuple[Decimal, Decimal]:
-    reference = legacy._reference_from_data(data.get("auf_video_reference"))
+    reference = legacy.reference_from_data(data.get("auf_video_reference"))
     if reference is None:
         reference = KieReferenceImage(telegram_file_id="estimate", source="upload", mime_type="image/jpeg", file_name="estimate.jpg")
     model = _validated_model(data)
     request = _build_request(
         reference=reference,
-        last_reference=legacy._reference_from_data(data.get("auf_video_last_reference")),
+        last_reference=legacy.reference_from_data(data.get("auf_video_last_reference")),
         prompt=str(data.get("auf_video_prompt") or "motion") or "motion",
         model=model,
         resolution=_validated_resolution(data, model=model),
@@ -1018,3 +1018,24 @@ __all__ = (
     "handle_auf_video_prompt",
     "handle_auf_video_reference_message",
 )
+
+
+MODEL_NAMES = _MODEL_NAMES
+MODEL_ALIASES = _MODEL_ALIASES
+MODEL_EXPECTED_IDS = _MODEL_EXPECTED_IDS
+settings_text = _settings_text
+validated_model = _validated_model
+validated_wan_mode = _validated_wan_mode
+validated_resolution = _validated_resolution
+validated_duration = _validated_duration
+validated_audio = _validated_audio
+build_request = _build_request
+wan_mode_name = _wan_mode_name
+
+
+def install_settings_text_renderer(renderer) -> None:
+    """Install the user-facing settings renderer through an explicit hook."""
+
+    global _settings_text, settings_text
+    _settings_text = renderer
+    settings_text = renderer

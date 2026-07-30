@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from velvet_bot.presentation.telegram.shared import safe_edit_message_text
+
 from html import escape
 from typing import Any
 
@@ -378,11 +380,11 @@ async def _safe_edit(
     text: str,
     keyboard: InlineKeyboardMarkup,
 ) -> None:
-    try:
-        await message.edit_text(text, reply_markup=keyboard)
-    except TelegramBadRequest as error:
-        if "message is not modified" not in str(error).casefold():
-            raise
+    await safe_edit_message_text(
+        message,
+        text,
+        reply_markup=keyboard,
+    )
 
 
 async def _answer_error(target: Message | CallbackQuery, error: Exception) -> None:

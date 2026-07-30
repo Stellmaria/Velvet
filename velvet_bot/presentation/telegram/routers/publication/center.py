@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from velvet_bot.presentation.telegram.shared import safe_edit_message_text
+
 import logging
 import re
 from datetime import datetime, timezone
@@ -76,11 +78,26 @@ async def _safe_edit(
     text: str,
     keyboard: InlineKeyboardMarkup,
 ) -> None:
-    try:
-        await message.edit_text(text, reply_markup=keyboard)
-    except TelegramBadRequest as error:
-        if "message is not modified" not in str(error).casefold():
-            raise
+    await safe_edit_message_text(
+        message,
+        text,
+        reply_markup=keyboard,
+    )
+
+
+safe_edit_publication_message = _safe_edit
+
+
+safe_edit_publication_message = _safe_edit
+
+
+safe_edit_publication_message = _safe_edit
+
+
+safe_edit_publication_message = _safe_edit
+
+
+safe_edit_publication_message = _safe_edit
 
 
 def _center_keyboard() -> InlineKeyboardMarkup:

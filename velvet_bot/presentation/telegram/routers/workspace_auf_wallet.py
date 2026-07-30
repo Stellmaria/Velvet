@@ -292,3 +292,14 @@ async def handle_auf_wallet_action(
 
 
 __all__ = ("handle_auf_wallet_action",)
+
+
+wallet_keyboard = _wallet_keyboard
+
+
+def install_wallet_keyboard_builder(builder) -> None:
+    """Install a wallet keyboard decorator through an explicit public hook."""
+
+    global _wallet_keyboard, wallet_keyboard
+    _wallet_keyboard = builder
+    wallet_keyboard = builder

@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+from velvet_bot.application.media_tasks import task_payload_mapping
+from velvet_bot.application.workspace_tasks import list_owned_workspace_tasks
+from velvet_bot.domains.media_generation.model_catalog import (
+    MODEL_DISPLAY_NAMES,
+    media_model_display_name,
+)
+from velvet_bot.presentation.telegram.state_compatibility import state_value
+
 import importlib
 import json
 from collections.abc import Mapping
@@ -24,19 +32,8 @@ from velvet_bot.presentation.telegram.routers import workspace_auf_video_simple 
 from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 
 _INSTALLED = False
-_TASK_PAGE_SIZE = 8
-_MODEL_NAMES = {
-    "nano_banana_2": "Nano Banana 2",
-    "nano_banana_pro": "Nano Banana Pro",
-    "seedream_5_pro": "Seedream 5 Pro",
-    "qwen2_image_edit": "Qwen Image 2.0",
-    "wan_27_image": "Wan 2.7 Image",
-    "flux_2_pro_image": "FLUX.2 Pro",
-    "grok_imagine_video": "Grok Imagine v1",
-    "grok_imagine_video_15": "Grok Imagine Video 1.5",
-    "seedance_15_pro_video": "Seedance 1.5 Pro",
-    "wan_26_image_to_video": "Wan 2.7",
-}
+TASK_PAGE_SIZE = 8
+MODEL_NAMES = MODEL_DISPLAY_NAMES
 _TASK_STATUS = {
     "queued": "⏳ в очереди",
     "running": "⚙️ выполняется",
@@ -51,24 +48,6 @@ _CHARGE_STATUS = {
     "released": "возвращено после отмены",
 }
 
-
-def _mapping(value: object) -> dict[str, object]:
-    if isinstance(value, Mapping):
-        return dict(value)
-    if isinstance(value, str):
-        try:
-            decoded = json.loads(value)
-        except json.JSONDecodeError:
-            return {}
-        if isinstance(decoded, Mapping):
-            return dict(decoded)
-    return {}
-
-
-def _state_value(data: Mapping[str, object], key: str) -> object:
-    if key in data:
-        return data[key]
-    return data.get(key.replace("auf_", "meow_", 1))
 
 def _video_review_keyboard(
     *, workspace_id: int, quoted_units: int, can_submit: bool
@@ -159,25 +138,25 @@ def _user_settings_text(original, **kwargs) -> str:
 
 
 def _video_request_from_state(data: Mapping[str, object]):
-    reference = video_core._reference_from_data(
-        _state_value(data, "auf_video_reference")
+    reference = video_core.reference_from_data(
+        state_value(data, "auf_video_reference")
     )
-    last_reference = video_core._reference_from_data(
-        _state_value(data, "auf_video_last_reference")
+    last_reference = video_core.reference_from_data(
+        state_value(data, "auf_video_last_reference")
     )
-    prompt = str(_state_value(data, "auf_video_prompt") or "").strip()
+    prompt = str(state_value(data, "auf_video_prompt") or "").strip()
     if reference is None or not prompt:
         raise ValueError("Сессия устарела: нужны первый кадр и промт.")
 
-    model = video_router._validated_model(data)
-    wan_mode = video_router._validated_wan_mode(data)
+    model = video_router.validated_model(data)
+    wan_mode = video_router.validated_wan_mode(data)
     if model == "wan" and wan_mode == "first_last" and last_reference is None:
         raise ValueError("Для этого режима загрузите последний кадр.")
 
-    resolution = video_router._validated_resolution(data, model=model)
-    duration = video_router._validated_duration(data, model=model)
-    generate_audio = video_router._validated_audio(data, model=model)
-    request = video_router._build_request(
+    resolution = video_router.validated_resolution(data, model=model)
+    duration = video_router.validated_duration(data, model=model)
+    generate_audio = video_router.validated_audio(data, model=model)
+    request = video_router.build_request(
         reference=reference,
         last_reference=last_reference,
         prompt=prompt,
@@ -278,7 +257,7 @@ async def _show_video_auf_review(
     lines = [
         "<b>Проверьте видео перед запуском</b>",
         "",
-        f"Модель: <b>{escape(video_router._MODEL_NAMES[model])}</b>",
+        f"Модель: <b>{escape(video_router.MODEL_NAMES[model])}</b>",
         f"Разрешение: <b>{escape(resolution)}</b>",
         (
             "Длительность: <b>автоматически, расчёт 6 сек</b>"
@@ -291,21 +270,21 @@ async def _show_video_auf_review(
             f"Звук: <b>{'включён' if generate_audio else 'выключен'}</b>"
         )
     if model == "wan":
-        lines.append(f"Кадры: <b>{video_router._wan_mode_name(wan_mode)}</b>")
+        lines.append(f"Кадры: <b>{video_router.wan_mode_name(wan_mode)}</b>")
     lines.extend(
         [
             "",
             "<b>Стоимость в Ауф</b>",
             *wallet_lines,
             "",
-            f"<b>Движение и сцена</b>\n{escape(video_core._truncate(prompt, 3500))}",
+            f"<b>Движение и сцена</b>\n{escape(video_core.truncate_text(prompt, 3500))}",
             "",
             "<i>Цена фиксируется при подтверждении. Если тариф изменится до "
             "резервирования, бот попросит подтвердить новую сумму.</i>",
         ]
     )
     await state.set_state(video_router.AufVideoForm.reviewing)
-    await video_core._edit_or_answer(
+    await video_core.edit_or_answer(
         callback,
         text="\n".join(lines),
         reply_markup=_video_review_keyboard(
@@ -327,7 +306,7 @@ async def _submit_video_with_auf(
     wallet_service,
 ) -> None:
     data = await state.get_data()
-    session_id = str(_state_value(data, "auf_video_session_id") or "").strip()
+    session_id = str(state_value(data, "auf_video_session_id") or "").strip()
     expected_version = str(
         data.get("auf_video_expected_price_version") or ""
     ).strip()
@@ -357,12 +336,12 @@ async def _submit_video_with_auf(
         return
 
     provider_model = kie_settings.models.provider_model(
-        video_router._MODEL_ALIASES[model],
+        video_router.MODEL_ALIASES[model],
         input_mode=KieInputMode.PHOTO_TEXT,
     )
-    if provider_model != video_router._MODEL_EXPECTED_IDS[model]:
+    if provider_model != video_router.MODEL_EXPECTED_IDS[model]:
         await callback.answer(
-            f"Неверный model id {video_router._MODEL_NAMES[model]}: {provider_model}",
+            f"Неверный model id {video_router.MODEL_NAMES[model]}: {provider_model}",
             show_alert=True,
         )
         return
@@ -370,7 +349,7 @@ async def _submit_video_with_auf(
     estimated_rub = kie_settings.pricing.estimate_rub(
         request, usd_to_rub=kie_settings.usd_to_rub
     )
-    block_reason = video_core._budget_block_reason(
+    block_reason = video_core.budget_block_reason(
         await ai_usage_service.status(), estimated_cost_rub=estimated_rub
     )
     if block_reason is not None:
@@ -411,7 +390,7 @@ async def _submit_video_with_auf(
 
     await state.clear()
     details = [
-        f"<b>Ауф · {escape(video_router._MODEL_NAMES[model])}</b>",
+        f"<b>Ауф · {escape(video_router.MODEL_NAMES[model])}</b>",
         "",
         (
             "Задача поставлена в очередь."
@@ -428,7 +407,7 @@ async def _submit_video_with_auf(
             f"Звук: <b>{'включён' if generate_audio else 'выключен'}</b>"
         )
     if model == "wan":
-        details.append(f"Кадры: <b>{video_router._wan_mode_name(wan_mode)}</b>")
+        details.append(f"Кадры: <b>{video_router.wan_mode_name(wan_mode)}</b>")
     if wallet_service.is_global_owner(callback.from_user.id):
         details.append(f"Учётная цена: <b>{format_auf_units(expected_units)}</b>")
     else:
@@ -437,7 +416,7 @@ async def _submit_video_with_auf(
             f"<b>{format_auf_units(expected_units)}</b>"
         )
     details.append(f"Задача: <code>{result.task.id}</code>")
-    await video_core._edit_or_answer(
+    await video_core.edit_or_answer(
         callback,
         text="\n".join(details),
         reply_markup=video_router.build_auf_root_keyboard(
@@ -446,44 +425,26 @@ async def _submit_video_with_auf(
     )
 
 
-async def _load_user_tasks(
+async def load_user_tasks(
     database,
     *,
     workspace_id: int,
     actor_user_id: int,
     offset: int,
 ):
-    async with database.acquire() as connection:
-        return await connection.fetch(
-            """
-            SELECT
-                task.id,
-                task.status,
-                task.payload,
-                task.created_at,
-                task.completed_at,
-                charge.quoted_units,
-                charge.status AS charge_status
-            FROM ai_tasks AS task
-            LEFT JOIN auf_task_charges AS charge ON charge.task_id = task.id
-            WHERE task.task_type = $1::VARCHAR
-              AND task.created_by = $2::BIGINT
-              AND task.payload ->> 'workspace_id' = $3::TEXT
-            ORDER BY task.created_at DESC, task.id DESC
-            LIMIT $4::INTEGER OFFSET $5::INTEGER
-            """,
-            KIE_GENERATION_TASK_TYPE,
-            int(actor_user_id),
-            str(int(workspace_id)),
-            _TASK_PAGE_SIZE + 1,
-            max(0, int(offset)),
-        )
+    return await list_owned_workspace_tasks(
+        database,
+        workspace_id=workspace_id,
+        actor_user_id=actor_user_id,
+        offset=offset,
+        page_size=TASK_PAGE_SIZE,
+    )
 
 
-def _task_line(row) -> str:
-    request = _mapping(_mapping(row["payload"]).get("request"))
+def format_user_task_line(row) -> str:
+    request = task_payload_mapping(task_payload_mapping(row["payload"]).get("request"))
     model_alias = str(request.get("model") or "").strip()
-    model = _MODEL_NAMES.get(model_alias, model_alias or "Генерация")
+    model = media_model_display_name(model_alias)
     resolution = str(request.get("resolution") or "").strip()
     try:
         duration = int(request.get("duration_seconds") or 0)
@@ -511,7 +472,7 @@ def _task_line(row) -> str:
     )
 
 
-def _task_list_keyboard(
+def build_user_task_list_keyboard(
     *, workspace_id: int, offset: int, has_next: bool
 ) -> InlineKeyboardMarkup:
     navigation: list[InlineKeyboardButton] = []
@@ -521,7 +482,7 @@ def _task_list_keyboard(
                 text="← Новее",
                 callback_data=_wallet_tasks_callback(
                     workspace_id=workspace_id,
-                    offset=max(0, offset - _TASK_PAGE_SIZE),
+                    offset=max(0, offset - TASK_PAGE_SIZE),
                 ),
             )
         )
@@ -531,7 +492,7 @@ def _task_list_keyboard(
                 text="Старее →",
                 callback_data=_wallet_tasks_callback(
                     workspace_id=workspace_id,
-                    offset=offset + _TASK_PAGE_SIZE,
+                    offset=offset + TASK_PAGE_SIZE,
                 ),
             )
         )
@@ -561,7 +522,7 @@ def _task_list_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-async def _render_user_tasks(
+async def render_user_tasks(
     callback: CallbackQuery,
     *,
     state,
@@ -570,32 +531,39 @@ async def _render_user_tasks(
     offset: int,
 ) -> None:
     await state.clear()
-    rows = await _load_user_tasks(
+    rows = await load_user_tasks(
         database,
         workspace_id=workspace_id,
         actor_user_id=callback.from_user.id,
         offset=offset,
     )
-    page = rows[:_TASK_PAGE_SIZE]
+    page = rows[:TASK_PAGE_SIZE]
     text = (
         "<b>🧾 Мои задачи Ауф</b>\n\n"
         "Показаны только генерации, созданные вами в этом пространстве. "
         "Системные задачи, другие участники и себестоимость провайдера скрыты.\n\n"
         + (
-            "\n\n".join(_task_line(row) for row in page)
+            "\n\n".join(format_user_task_line(row) for row in page)
             if page
             else "• задач пока нет"
         )
     )
-    await video_core._edit_or_answer(
+    await video_core.edit_or_answer(
         callback,
         text=text,
-        reply_markup=_task_list_keyboard(
+        reply_markup=build_user_task_list_keyboard(
             workspace_id=workspace_id,
             offset=offset,
-            has_next=len(rows) > _TASK_PAGE_SIZE,
+            has_next=len(rows) > TASK_PAGE_SIZE,
         ),
     )
+
+
+def install_user_tasks_renderer(renderer) -> None:
+    """Install a task-list renderer through an explicit public hook."""
+
+    global render_user_tasks
+    render_user_tasks = renderer
 
 
 def install_auf_user_portal() -> None:
@@ -610,8 +578,8 @@ def install_auf_user_portal() -> None:
     )
     original_action = controller.handle_scoped_auf_action
     original_video_action = controller.handle_scoped_auf_video_action
-    original_wallet_keyboard = wallet_router._wallet_keyboard
-    original_settings_text = video_router._settings_text
+    original_wallet_keyboard = wallet_router.wallet_keyboard
+    original_settings_text = video_router.settings_text
 
     def wallet_keyboard_with_tasks(
         *, workspace_id: int, global_owner: bool, frozen: bool, invoices
@@ -641,13 +609,13 @@ def install_auf_user_portal() -> None:
         auf_purchase_service,
     ) -> None:
         if callback_data.action == "wallet_tasks":
-            if not await controller._require_auf_callback(
+            if not await controller.require_auf_callback(
                 callback,
                 workspace_id=callback_data.workspace_id,
                 service=auf_runtime_service,
             ):
                 return
-            await _render_user_tasks(
+            await render_user_tasks(
                 callback,
                 state=state,
                 database=database,
@@ -694,7 +662,7 @@ def install_auf_user_portal() -> None:
                 auf_runtime_service,
             )
             return
-        if not await controller._require_auf_callback(
+        if not await controller.require_auf_callback(
             callback,
             workspace_id=callback_data.workspace_id,
             service=auf_runtime_service,
@@ -723,11 +691,20 @@ def install_auf_user_portal() -> None:
             wallet_service=auf_wallet_service,
         )
 
-    wallet_router._wallet_keyboard = wallet_keyboard_with_tasks
-    video_router._settings_text = user_settings_text
+    wallet_router.wallet_keyboard = wallet_keyboard_with_tasks
+    video_router.settings_text = user_settings_text
     controller.handle_scoped_auf_action = handle_scoped_auf_user_action
     controller.handle_scoped_auf_video_action = handle_scoped_auf_user_video_action
     _INSTALLED = True
 
 
-__all__ = ("install_auf_user_portal",)
+__all__ = (
+    "MODEL_NAMES",
+    "TASK_PAGE_SIZE",
+    "build_user_task_list_keyboard",
+    "format_user_task_line",
+    "install_auf_user_portal",
+    "install_user_tasks_renderer",
+    "load_user_tasks",
+    "render_user_tasks",
+)

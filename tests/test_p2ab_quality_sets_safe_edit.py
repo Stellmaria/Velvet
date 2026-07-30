@@ -4,6 +4,7 @@ import asyncio
 import unittest
 
 import velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets as module
+import velvet_bot.presentation.telegram.shared.editing as shared_editing
 
 
 class FakeTelegramBadRequest(Exception):
@@ -23,11 +24,11 @@ class FakeMessage:
 
 class QualitySetsSafeEditTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        self.original_bad_request = module.TelegramBadRequest
-        module.TelegramBadRequest = FakeTelegramBadRequest
+        self.original_bad_request = shared_editing.TelegramBadRequest
+        shared_editing.TelegramBadRequest = FakeTelegramBadRequest
 
     def tearDown(self) -> None:
-        module.TelegramBadRequest = self.original_bad_request
+        shared_editing.TelegramBadRequest = self.original_bad_request
 
     async def test_message_not_modified_is_ignored(self) -> None:
         message = FakeMessage(FakeTelegramBadRequest("message is not modified"))

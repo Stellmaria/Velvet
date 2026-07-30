@@ -12,7 +12,7 @@
 - активных legacy handler implementations: **0**;
 - временных handler module aliases: **0**;
 - корневых Python-модулей `velvet_bot/*.py`: **113**;
-- файлов с `compat` в имени: **6**;
+- файлов с `compat` в имени: **7**;
 - активных compatibility-компонентов: **8**.
 
 ## Router bundles

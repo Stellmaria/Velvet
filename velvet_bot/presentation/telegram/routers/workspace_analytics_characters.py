@@ -17,7 +17,7 @@ from velvet_bot.presentation.telegram.routers.analytics_controllers.channel impo
     _character_lines,
 )
 from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard import (
-    _page_keyboard,
+    build_analytics_page_keyboard as _page_keyboard,
     _rank_lines,
 )
 from velvet_bot.presentation.telegram.routers.workspace_analytics import (
