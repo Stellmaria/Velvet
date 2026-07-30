@@ -2,8 +2,8 @@
 
 - Python files scanned: **567**
 - Files with buttons: **95**
-- Buttons: **1019**
-- Inline buttons: **1019**
+- Buttons: **1018**
+- Inline buttons: **1018**
 - Reply buttons: **0**
 - Maximum literal row size: **3**
 - Violations: **0**
