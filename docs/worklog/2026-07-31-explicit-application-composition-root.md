@@ -4,7 +4,7 @@
 - ID: `explicit-application-composition-root`
 - Issue: #455
 - Линия/фаза: P0 correctness-risk architecture
-- Статус: `первый bounded slice реализован`
+- Статус: `частично`
 - Ветка: `agent/p0-explicit-application-composition`
 - Базовый commit: `2cb9a96ec5ce5066436c83323279855047cb67a7`
 
@@ -14,26 +14,36 @@
 
 Убрать неявную package-level точку входа через `velvet_bot.app.__getattr__` и выразить текущий startup order typed composition contract, не меняя фактическое поведение 27 runtime installation stages.
 
-### Ограниченный объём
+### Исходный контекст
+
+`velvet_bot/app/__init__.py` одновременно был package facade, lazy bootstrap и местом исполнения всех application-wide installers. Доступ к `run_application` запускал side effects через `__getattr__`, после чего nested function импортировала и выполняла ещё 25 feature stages. Фактическая реализация зависела от import order и не была доступна как typed object. Package-wide baseline #460 уже фиксировал 27 стадий, но не предоставлял явной composition boundary для их последовательного удаления по #455.
+
+### Планируемый объём
 
 - добавить `CompositionStage` и `ApplicationComposition`;
-- зафиксировать отдельно bootstrap stages и feature stages;
+- разделить bootstrap stages и feature stages;
 - сохранить точный порядок всех 27 текущих installers;
-- сохранить ленивые imports, чтобы runtime stability и datetime compatibility выполнялись до импорта bootstrap;
+- сохранить lazy imports, чтобы runtime stability и datetime compatibility выполнялись до импорта bootstrap;
 - экспортировать обычную `run_application` из `velvet_bot.app`;
-- добавить regression tests порядка и explicit package export;
+- блокировать расхождение declared и actual feature-stage order;
+- добавить regression tests порядка, phase boundary и explicit package export;
 - пересчитать package-wide architecture inventory exact-head workflow.
 
-### Не входит в этот срез
+### Критерии готовности
 
-- удаление самих installers и `_INSTALLED` sentinels;
-- перенос provider/delivery/UI implementations в factories;
-- удаление foreign assignments;
-- durable delivery #457;
-- provider adapters #459;
-- Auf presentation/application migration #458.
+- `velvet_bot.app` экспортирует обычную `run_application` без `__getattr__`;
+- default composition содержит все 27 текущих stages в прежнем порядке;
+- bootstrap runner импортируется только после двух bootstrap stages;
+- feature installer modules импортируются только после bootstrap runner;
+- расхождение declared и actual stage order завершается явной ошибкой;
+- package inventory и exemptions соответствуют новому source layout;
+- unit tests, type check, Docker build и project notes contract проходят.
 
-## После реализации
+### Риски и ограничения
+
+Этот срез не удаляет сами installers, `_INSTALLED` sentinels и foreign assignments. Он намеренно не меняет provider routing, charging, delivery, Telegram UI и worker behavior. Изменение import timing ограничено сохранением прежней boundary: bootstrap stages выполняются до импорта `velvet_bot.app.bootstrap`, а feature modules загружаются после него. Delivery recovery и hotfix layers остаются до #457, provider layers до #459, Ауф application/presentation migration до #458.
+
+## После завершения
 
 ### Фактически сделано
 
@@ -41,24 +51,42 @@
 - bootstrap phases выполняются до загрузки `velvet_bot.app.bootstrap.run_application`;
 - feature installer modules загружаются только после bootstrap phases и runner import;
 - `velvet_bot/app/__init__.py` стал обычным explicit export без `__getattr__` и package import side effects;
-- default composition перечисляет все 27 stages и делает фактический порядок читаемым без анализа import history;
+- default composition перечисляет все 27 stages и делает порядок читаемым без анализа import history;
 - runtime guard блокирует расхождение declared и actual feature stage order;
 - добавлены unit tests полного order contract, phase boundary, drift guard и package export;
-- временный exact-head workflow пересчитывает generated inventory и удаляет себя в generated commit.
+- exact-head workflow пересчитал generated package inventory/exemptions и удалил себя в generated commit `d37df56ea4fc1aa7f10333563bd250e56d652f0b`.
 
-### Риски и совместимость
+### Миграции и совместимость
 
-Installer implementations, их feature flags, patched symbols и relative order не изменены. Новый composition contract пока оборачивает legacy stages, а не объявляет их целевой архитектурой. Это создаёт явную точку дальнейшего burn-down: последующие PR заменяют отдельные `CompositionStage` typed registrations/factories и уменьшают package fingerprints.
+Миграций базы данных нет. Callback payload, FSM state, provider model ids, charging, task lifecycle и пользовательские тексты не изменены. Installer implementations и их relative order сохранены. Новый composition contract пока оборачивает legacy stages и служит явной точкой последующего burn-down, а не объявляет текущие patches целевой архитектурой.
 
 ### Проверки
 
 - `tests/test_application_composition.py`;
 - полный unit test suite;
-- package architecture inventory `--check`;
+- `python scripts/inventory_package_architecture.py --check --label p1-package-architecture-baseline`;
 - bounded type check;
 - Docker build;
-- project notes contract.
+- project notes contract;
+- mergeability PR и отсутствие unresolved review threads.
 
-### Следующий срез #455
+### PR и commit
 
-Перенести первую bounded family, которая не меняет provider/delivery behavior, из side-effect installer в explicit registration. Приоритет отдаётся infrastructure/model routing или isolated worker registration; delivery recovery/hotfix layers остаются до #457.
+- Issue: #455;
+- PR: #483;
+- ветка: `agent/p0-explicit-application-composition`;
+- базовый commit: `2cb9a96ec5ce5066436c83323279855047cb67a7`;
+- generated package baseline: `d37df56ea4fc1aa7f10333563bd250e56d652f0b`;
+- итоговый squash merge commit фиксируется GitHub после зелёного CI.
+
+### Незавершённое
+
+- 25 feature installers и два bootstrap installers остаются runtime side-effect stages;
+- foreign assignments и `_INSTALLED` process globals не удалены;
+- worker/provider/delivery/UI implementations ещё не передаются через factories;
+- startup rollback для partially installed legacy stages не реализован;
+- #455 остаётся открытой до полного удаления installer chain и повторяемого explicit startup.
+
+### Следующий шаг
+
+Перенести первую изолированную family, не меняющую provider/delivery behavior, из side-effect installer в explicit registration. Предпочтительный следующий bounded slice: infrastructure/model routing либо isolated worker registration. Delivery recovery/hotfix layers сохраняются до канонического pipeline #457.
