@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import os
 import unittest
 from dataclasses import replace
 from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import uuid4
 
+from velvet_bot.core.ai_budget import AIBudgetScope
+from velvet_bot.database import Database
+from velvet_bot.domains.ai_usage import AITaskRequest, build_ai_task_queue_service
+from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
 from velvet_bot.domains.meow_runtime import (
     MeowProvider,
     MeowRuntimeAccessError,
@@ -12,6 +18,8 @@ from velvet_bot.domains.meow_runtime import (
     MeowRuntimeSettings,
     WorkspaceMeowSettings,
 )
+from velvet_bot.domains.meow_runtime.queue import ProviderMeowTaskQueueService
+from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import (
     DEFAULT_PERSONAL_MODULE_KEYS,
     GLOBAL_WORKSPACE_CREATOR_ID,
@@ -148,6 +156,94 @@ class MeowModuleContractTests(unittest.TestCase):
                 MeowProvider.GRS.model_aliases
             )
         )
+
+
+@unittest.skipUnless(
+    os.getenv("TEST_DATABASE_URL"),
+    "TEST_DATABASE_URL is required for PostgreSQL integration tests",
+)
+class PostgreSQLMeowQueueTests(unittest.IsolatedAsyncioTestCase):
+    _WORKSPACE_OWNER_ID = 799_001
+
+    async def asyncSetUp(self) -> None:
+        self.database = Database(os.environ["TEST_DATABASE_URL"])
+        await self.database.initialize()
+        self.tasks = build_ai_task_queue_service(database=self.database)
+        self.queue = ProviderMeowTaskQueueService(
+            database=self.database,
+            provider=MeowProvider.KIE,
+        )
+        await self._reset()
+
+    async def asyncTearDown(self) -> None:
+        await self._reset()
+        await self.database.close()
+
+    async def _reset(self) -> None:
+        async with self.database.acquire() as connection:
+            await connection.execute("DELETE FROM ai_tasks")
+            await connection.execute(
+                """
+                INSERT INTO workspace_meow_settings (
+                    workspace_id,
+                    concurrency_limit,
+                    updated_by_user_id
+                )
+                VALUES ($1::BIGINT, 5, $2::BIGINT)
+                ON CONFLICT (workspace_id) DO UPDATE
+                SET concurrency_limit = 5,
+                    updated_by_user_id = EXCLUDED.updated_by_user_id,
+                    updated_at = NOW()
+                """,
+                DEFAULT_WORKSPACE_ID,
+                GLOBAL_WORKSPACE_CREATOR_ID,
+            )
+
+    async def _enqueue(self, *, created_by: int, index: int) -> None:
+        await self.tasks.enqueue(
+            AITaskRequest(
+                scope=AIBudgetScope.VISION,
+                task_type=KIE_GENERATION_TASK_TYPE,
+                payload={
+                    "request": {"model": "seedream_5_pro"},
+                    "workspace_id": DEFAULT_WORKSPACE_ID,
+                    "user_id": created_by,
+                },
+                priority=40,
+                dedupe_key=f"test:meow-runtime:{created_by}:{index}",
+                max_attempts=3,
+                created_by=created_by,
+                estimated_cost_rub=Decimal("0"),
+            )
+        )
+
+    async def test_workspace_quota_and_stell_priority_are_enforced(self) -> None:
+        for index in range(10):
+            await self._enqueue(created_by=self._WORKSPACE_OWNER_ID, index=index)
+        for index in range(2):
+            await self._enqueue(
+                created_by=GLOBAL_WORKSPACE_CREATOR_ID,
+                index=index,
+            )
+
+        self.assertEqual(7, await self.queue.eligible_count())
+
+        first = await self.queue.claim_next(worker_id="priority-1")
+        second = await self.queue.claim_next(worker_id="priority-2")
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        assert first is not None and second is not None
+        self.assertEqual(GLOBAL_WORKSPACE_CREATOR_ID, first.created_by)
+        self.assertEqual(GLOBAL_WORKSPACE_CREATOR_ID, second.created_by)
+
+        owner_claims = []
+        for index in range(5):
+            owner_claims.append(
+                await self.queue.claim_next(worker_id=f"owner-{index}")
+            )
+        self.assertTrue(all(task is not None for task in owner_claims))
+        self.assertIsNone(await self.queue.claim_next(worker_id="owner-over-limit"))
+        self.assertEqual(0, await self.queue.eligible_count())
 
 
 if __name__ == "__main__":
