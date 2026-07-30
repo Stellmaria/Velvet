@@ -1,0 +1,41 @@
+name: photo inventory export
+
+on:
+  pull_request:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Generate package architecture inventory
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline
+
+      - name: Generate Telegram navigation inventory
+        run: |
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+
+      - name: Export generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: photo-generated-inventories
+          path: |
+            docs/package_architecture_inventory.json
+            docs/package_architecture_exemptions.json
+            docs/package_architecture_inventory.md
+            docs/generated/telegram_navigation_inventory.md
+          if-no-files-found: error
+          retention-days: 1
