@@ -26,6 +26,7 @@ def __getattr__(name: str) -> Any:
         from velvet_bot.app.grs_speedups import install_grs_speedups
         from velvet_bot.app.meow_cancel_ui_install import install_meow_cancel_ui
         from velvet_bot.app.meow_runtime_install import install_meow_runtime_dispatcher
+        from velvet_bot.app.meow_wallet_ui_install import install_meow_wallet_ui
         from velvet_bot.app.meow_workspace_ui_install import install_meow_workspace_ui
         from velvet_bot.app.telegram_progress_resilience import (
             install_telegram_progress_resilience,
@@ -44,6 +45,7 @@ def __getattr__(name: str) -> Any:
         install_meow_cancel_ui()
         install_meow_runtime_dispatcher()
         install_meow_workspace_ui()
+        install_meow_wallet_ui()
         install_auf_branding()
         await application()
 
