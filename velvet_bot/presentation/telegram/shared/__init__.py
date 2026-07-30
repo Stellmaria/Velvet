@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .deletion import delete_message_safely, is_message_already_absent
 from .editing import (
+    edit_or_answer_callback_text,
     is_message_not_modified,
     safe_edit_callback_text,
     safe_edit_message_text,
@@ -31,6 +32,7 @@ __all__ = (
     "chunk_telegram_text",
     "delete_message_safely",
     "download_telegram_file",
+    "edit_or_answer_callback_text",
     "is_message_already_absent",
     "is_message_not_modified",
     "retry_telegram_operation",
