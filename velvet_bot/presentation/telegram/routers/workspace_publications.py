@@ -31,7 +31,7 @@ from velvet_bot.presentation.telegram.routers.publication.center import (
     _draft_text,
     _draft_title,
     _report_publication_failure,
-    _safe_edit,
+    safe_edit_publication_message as _safe_edit,
     _validation_icon,
 )
 from velvet_bot.publication_drafts import capture_publication_inbox

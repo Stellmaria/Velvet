@@ -20,7 +20,7 @@ from velvet_bot.infrastructure.pose_extractor import (
 from velvet_bot.local_ai_runtime import get_local_ai_lock
 from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_image_prompt import (
     _comparison_models,
-    _download_image,
+    download_image as _download_image,
     _message_image,
     _split_preformatted,
 )

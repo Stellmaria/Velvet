@@ -44,7 +44,7 @@ from velvet_bot.presentation.telegram.routers.references.albums import (
     send_reference_collection,
 )
 from velvet_bot.presentation.telegram.routers.references.comparison import (
-    _download_file,
+    download_reference_file as _download_file,
     _format_report,
     _result_file,
 )
