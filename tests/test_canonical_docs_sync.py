@@ -73,11 +73,10 @@ class CanonicalDocsSyncTests(unittest.TestCase):
         self.assertNotIn("30 domain repositories", self.audit)
 
     def test_shared_contract_baseline_is_represented_without_false_closure(self) -> None:
-        summary = self.shared["summary"]
-        production_files = int(summary["production_file_count"])
-        functions = int(summary["function_count"])
-        private_debt = int(summary["private_contract_access_count"])
-        blocking = int(summary["blocking_known_private_contract_count"])
+        production_files = int(self.shared["production_python_files"])
+        functions = int(self.shared["function_count"])
+        private_debt = int(self.shared["private_contract_access_count"])
+        blocking = int(self.shared["blocking_private_contract_access_count"])
 
         for document in (self.status, self.memory, self.audit):
             self.assertIn(str(production_files), document)
