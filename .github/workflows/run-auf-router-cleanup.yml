@@ -17,78 +17,63 @@ jobs:
           ref: agent/final-auf-router-layer
           fetch-depth: 0
 
-      - name: Repair core state dual-read
+      - name: Fix final Auf contract failures
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          from textwrap import dedent
 
-          core_path = Path('velvet_bot/presentation/telegram/routers/workspace_auf.py')
-          core = core_path.read_text(encoding='utf-8')
-          helper = dedent('''
-
-              def _state_value(data: Mapping[str, object], key: str) -> object:
-                  if key in data:
-                      return data[key]
-                  return data.get(key.replace("auf_", "meow_", 1))
-          ''').rstrip()
-          if 'def _state_value' not in core:
-              core = core.replace(
-                  '\n\nasync def _session_data(',
-                  helper + '\n\nasync def _session_data(',
-              )
-          core = core.replace(
-              '_optional_int(data.get("auf_workspace_id"))',
-              '_optional_int(_state_value(data, "auf_workspace_id"))',
+          video_path = Path(
+              'velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py'
           )
-          if 'def _state_value' not in core:
-              raise SystemExit('core state helper was not inserted')
-          if '_state_value(data, "auf_workspace_id")' not in core:
-              raise SystemExit('workspace id dual-read was not installed')
-          core_path.write_text(core, encoding='utf-8')
-
-          installer_path = Path('velvet_bot/app/auf_photo_ui_install.py')
-          installer = installer_path.read_text(encoding='utf-8').replace(
-              'photo_router._model((await state.get_data()).get("meow_model"))',
-              'photo_router._model(_state_value(await state.get_data(), "auf_model"))',
+          video = video_path.read_text(encoding='utf-8')
+          video = video.replace(
+              '    _callback as video_callback,\n',
+              '    _callback as video_callback,\n'
+              '    _format_rub,\n'
+              '    _format_usd,\n',
           )
-          installer_path.write_text(installer, encoding='utf-8')
+          video = video.replace('legacy._format_usd', '_format_usd')
+          video = video.replace('legacy._format_rub', '_format_rub')
+          if 'legacy._format_' in video:
+              raise SystemExit('legacy money formatter reference remains')
+          video_path.write_text(video, encoding='utf-8')
 
-          test_path = Path('tests/test_auf_router_brand_boundary.py')
-          test = test_path.read_text(encoding='utf-8')
-          marker = 'def test_core_router_defines_and_uses_state_dual_read() -> None:'
-          if marker not in test:
-              test += dedent('''
+          migration_test = Path('tests/test_meow_video_generation.py')
+          source = migration_test.read_text(encoding='utf-8').replace(
+              'migrations/917_auf_video_templates.sql',
+              'migrations/917_meow_video_templates.sql',
+          )
+          migration_test.write_text(source, encoding='utf-8')
 
+          ratio_test = Path('tests/test_photo_ratio_callback.py')
+          source = ratio_test.read_text(encoding='utf-8')
+          source = source.replace(
+              'from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback',
+              'from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback',
+          )
+          source = source.replace('MeowCallback.unpack', 'AufCallback.unpack')
+          ratio_test.write_text(source, encoding='utf-8')
 
-                  def test_core_router_defines_and_uses_state_dual_read() -> None:
-                      core = _read(ROUTERS / "workspace_auf.py")
-                      assert "def _state_value(" in core
-                      assert '_state_value(data, "auf_workspace_id")' in core
-                      assert '_state_value(data, "auf_input_mode")' in core
-                      assert '_state_value(data, "auf_prompt")' in core
-                      assert '_state_value(data, "auf_references")' in core
-              ''')
-          test_path.write_text(test, encoding='utf-8')
+          balance_test = Path('tests/test_kie_runtime_balance.py')
+          source = balance_test.read_text(encoding='utf-8').replace(
+              '["Обновить баланс", "↩️ Мяу"]',
+              '["Обновить баланс", "↩️ Ауф"]',
+          )
+          balance_test.write_text(source, encoding='utf-8')
           PY
 
-          python scripts/inventory_architecture_layout.py \
-            --write \
-            --label p3d-analytics-alias-retirement
-          python scripts/update_p2_stability_inventory.py \
-            --label p2-auf-router-protocol-migration \
-            --schema-version 70
-          python scripts/telegram_navigation_inventory.py \
-            --root velvet_bot \
-            --markdown docs/generated/telegram_navigation_inventory.md
+          python -m unittest \
+            tests.test_meow_video_generation \
+            tests.test_photo_ratio_callback \
+            tests.test_kie_runtime_balance -q
           python -m compileall -q velvet_bot tests
 
-      - name: Commit core dual-read repair
+      - name: Commit final contract repairs
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Исправить core dual-read Ауф"
+          git commit -m "Исправить финальные контракты Ауф"
           git push origin HEAD:agent/final-auf-router-layer
