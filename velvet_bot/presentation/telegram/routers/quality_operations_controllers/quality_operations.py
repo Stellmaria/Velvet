@@ -241,7 +241,6 @@ async def _show_menu(
         message,
         text,
         reply_markup=keyboard,
-        bad_request_type=TelegramBadRequest,
     )
 
 

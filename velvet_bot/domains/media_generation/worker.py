@@ -596,3 +596,7 @@ def _optional_int(value: object) -> int | None:
 
 
 __all__ = ("KieGenerationWorker", "render_progress_bar")
+
+
+ProgressMessage = _ProgressMessage
+optional_int = _optional_int

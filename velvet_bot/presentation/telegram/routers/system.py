@@ -323,7 +323,6 @@ async def _safe_edit(
         text,
         reply_markup=keyboard,
         unavailable_text="Системное меню больше недоступно.",
-        bad_request_type=TelegramBadRequest,
     )
 
 

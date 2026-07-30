@@ -13,9 +13,9 @@ from velvet_bot.domains.ai_usage import AITask
 from velvet_bot.infrastructure.ai import KieError
 
 from .economy_worker import KieGenerationWorker as EconomyKieGenerationWorker
-from .file_delivery_worker import _result_filename
+from .file_delivery_worker import result_filename
 from .models import KieGenerationRequest, KieModelAlias, KieTaskRecord
-from .worker import _ProgressMessage, _optional_int, render_progress_bar
+from .worker import ProgressMessage, optional_int, render_progress_bar
 
 logger = logging.getLogger(__name__)
 _INSTALLED = False
@@ -38,8 +38,8 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         *,
         task: AITask,
         request: KieGenerationRequest,
-    ) -> _ProgressMessage | None:
-        chat_id = _optional_int(task.payload.get("chat_id"))
+    ) -> ProgressMessage | None:
+        chat_id = optional_int(task.payload.get("chat_id"))
         if chat_id is None:
             return None
 
@@ -63,16 +63,16 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         except TelegramAPIError:
             logger.exception("Could not create friendly progress message for %s", task.id)
             return None
-        return _ProgressMessage(
+        return ProgressMessage(
             chat_id=chat_id,
-            message_id=_optional_int(getattr(message, "message_id", None)),
+            message_id=optional_int(getattr(message, "message_id", None)),
             last_percent=0,
             last_stage=stage,
         )
 
     async def _publish_progress(
         self,
-        progress: _ProgressMessage | None,
+        progress: ProgressMessage | None,
         *,
         task: AITask,
         request: KieGenerationRequest,
@@ -99,7 +99,7 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         try:
             if progress.message_id is None:
                 message = await self._bot.send_message(progress.chat_id, text)
-                progress.message_id = _optional_int(
+                progress.message_id = optional_int(
                     getattr(message, "message_id", None)
                 )
             else:
@@ -180,7 +180,7 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         task: AITask,
         error: Exception,
     ) -> None:
-        chat_id = _optional_int(task.payload.get("chat_id"))
+        chat_id = optional_int(task.payload.get("chat_id"))
         if chat_id is None:
             return
         request = _request_from_payload(task.payload)
@@ -236,7 +236,7 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
             for index, url in enumerate(record.result_urls, start=1):
                 item_caption = caption if index == 1 else None
                 result = await self._download_result(url)
-                filename = _result_filename(
+                filename = result_filename(
                     url=url,
                     provider_task_id=record.task_id,
                     index=index,

@@ -1018,3 +1018,24 @@ __all__ = (
     "handle_auf_video_prompt",
     "handle_auf_video_reference_message",
 )
+
+
+MODEL_NAMES = _MODEL_NAMES
+MODEL_ALIASES = _MODEL_ALIASES
+MODEL_EXPECTED_IDS = _MODEL_EXPECTED_IDS
+settings_text = _settings_text
+validated_model = _validated_model
+validated_wan_mode = _validated_wan_mode
+validated_resolution = _validated_resolution
+validated_duration = _validated_duration
+validated_audio = _validated_audio
+build_request = _build_request
+wan_mode_name = _wan_mode_name
+
+
+def install_settings_text_renderer(renderer) -> None:
+    """Install the user-facing settings renderer through an explicit hook."""
+
+    global _settings_text, settings_text
+    _settings_text = renderer
+    settings_text = renderer

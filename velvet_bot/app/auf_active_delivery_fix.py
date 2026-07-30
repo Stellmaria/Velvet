@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+from velvet_bot.application.media_tasks import task_result_urls
+
+from velvet_bot.application.workspace_tasks import get_owned_success_task
+
+from velvet_bot.application.media_tasks import task_payload_mapping
+from velvet_bot.domains.media_generation.model_catalog import (
+    media_model_display_name,
+)
+
 import asyncio
 import importlib
 import json
@@ -21,24 +30,12 @@ _ORIGINAL_REDELIVER: _Redeliver | None = None
 _DELIVERY_ERRORS = (RuntimeError, ValueError, OSError, TypeError, AttributeError)
 
 
-def _mapping(value: object) -> dict[str, object]:
-    if isinstance(value, Mapping):
-        return dict(value)
-    if isinstance(value, str):
-        try:
-            decoded = json.loads(value)
-        except json.JSONDecodeError:
-            return {}
-        if isinstance(decoded, Mapping):
-            return dict(decoded)
-    return {}
 
-
-def _provider_task_id(
+def provider_task_id(
     result: Mapping[str, object],
     payload: Mapping[str, object],
 ) -> str | None:
-    runtime = _mapping(payload.get("kie_campaign"))
+    runtime = task_payload_mapping(payload.get("kie_campaign"))
     for container in (result, payload, runtime):
         for key in (
             "provider_task_id",
@@ -100,7 +97,7 @@ async def _persist_provider_urls(
         )
 
 
-def _delivery_buttons_for_all_success(
+def delivery_buttons_for_all_success(
     *,
     portal: Any,
     page: Any,
@@ -115,14 +112,14 @@ def _delivery_buttons_for_all_success(
     for row in page:
         if str(row["status"]) != "success":
             continue
-        request = _mapping(_mapping(row["payload"]).get("request"))
+        request = task_payload_mapping(task_payload_mapping(row["payload"]).get("request"))
         model_alias = str(request.get("model") or "").strip()
-        model = portal._MODEL_NAMES.get(model_alias, model_alias or "Результат")
+        model = media_model_display_name(model_alias, fallback="Результат")
         rows.append(
             [
                 InlineKeyboardButton(
                     text=f"📤 Доставить · {model}"[:60],
-                    callback_data=recovery._delivery_callback(
+                    callback_data=recovery.delivery_callback(
                         workspace_id=workspace_id,
                         task_id=row["id"],
                     ),
@@ -155,7 +152,7 @@ async def _redeliver_with_provider_recovery(
         await callback.answer("Некорректный ID задачи.", show_alert=True)
         return
 
-    row = await recovery._load_owned_success_task(
+    row = await get_owned_success_task(
         database,
         task_id=task_id,
         workspace_id=workspace_id,
@@ -168,8 +165,8 @@ async def _redeliver_with_provider_recovery(
         )
         return
 
-    result = _mapping(row["result"])
-    if recovery._result_urls(result):
+    result = task_payload_mapping(row["result"])
+    if task_result_urls(result):
         await _original_redeliver()(
             callback,
             database=database,
@@ -178,8 +175,8 @@ async def _redeliver_with_provider_recovery(
         )
         return
 
-    payload = _mapping(row["payload"])
-    provider_task_id = _provider_task_id(result, payload)
+    payload = task_payload_mapping(row["payload"])
+    provider_task_id = provider_task_id(result, payload)
     if provider_task_id is None:
         await callback.answer(
             "У задачи не сохранился ID провайдера. Повторная генерация не запускалась.",
@@ -244,7 +241,7 @@ def install_auf_active_delivery_fix() -> None:
 
 
 __all__ = (
+    "delivery_buttons_for_all_success",
     "install_auf_active_delivery_fix",
-    "_delivery_buttons_for_all_success",
-    "_provider_task_id",
+    "provider_task_id",
 )

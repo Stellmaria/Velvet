@@ -88,7 +88,6 @@ async def download_reference_file(bot: Bot, file_id: str) -> bytes:
         timeout_seconds=_DOWNLOAD_TIMEOUT_SECONDS,
         retry_delays=_RETRY_DELAYS,
         failure_label="изображение",
-        bad_request_type=TelegramBadRequest,
         network_error_types=(
             TelegramNetworkError,
             TimeoutError,

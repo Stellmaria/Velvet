@@ -367,7 +367,11 @@ class _Normalizer(ast.NodeTransformer):
 
     def visit_arg(self, node: ast.arg) -> ast.AST:
         return ast.copy_location(
-            ast.arg(arg=self._name(node.arg), annotation=self.visit(node.annotation)),
+            ast.arg(arg=self._name(node.arg), annotation=(
+                self.visit(node.annotation)
+                if node.annotation is not None
+                else None
+            ),),
             node,
         )
 

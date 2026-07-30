@@ -1089,3 +1089,11 @@ __all__ = (
     "handle_auf_video_prompt",
     "handle_auf_video_reference_message",
 )
+
+
+# Public cross-module contracts. Domain/state decisions remain in this router
+# until the #458 extraction is complete.
+reference_from_data = _reference_from_data
+truncate_text = _truncate
+budget_block_reason = _budget_block_reason
+edit_or_answer = _edit_or_answer

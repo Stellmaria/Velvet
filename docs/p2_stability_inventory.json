@@ -1,9 +1,9 @@
 {
-  "schema_version": 73,
-  "generated_from_commit": "p3-shared-telegram-helpers",
-  "broad_exception_total": 90,
-  "broad_exception_files": 55,
-  "broad_exception_approved": 90,
+  "schema_version": 74,
+  "generated_from_commit": "p3-package-shared-contracts",
+  "broad_exception_total": 88,
+  "broad_exception_files": 53,
+  "broad_exception_approved": 88,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
   "callback_total": 132,
@@ -448,7 +448,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/publication/center.py",
       "function": "handle_publication_callback",
-      "line": 588,
+      "line": 587,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-publication-failure"
@@ -464,7 +464,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_upload_reply",
-      "line": 323,
+      "line": 322,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-manual-quality-job"
@@ -472,7 +472,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py",
       "function": "handle_set_analyze",
-      "line": 479,
+      "line": 478,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-set-analysis-callback-job"
@@ -480,7 +480,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py",
       "function": "handle_set_analysis_command",
-      "line": 572,
+      "line": 571,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-set-analysis-command-job"
@@ -504,7 +504,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
       "function": "handle_image_prompt_reply",
-      "line": 298,
+      "line": 297,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compare-model-partial"
@@ -512,7 +512,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
       "function": "handle_image_prompt_reply",
-      "line": 356,
+      "line": 355,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-image-prompt-job"
@@ -528,7 +528,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/references/comparison.py",
       "function": "handle_reference_comparison",
-      "line": 273,
+      "line": 272,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-reference-comparison-failure"
@@ -572,22 +572,6 @@
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-workspace-reference-comparison"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/shared/editing.py",
-      "function": "safe_edit_message_text",
-      "line": 35,
-      "handler_module": false,
-      "classification": "approved_boundary",
-      "reason": "typed-telegram-edit-error-dispatch"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/shared/media.py",
-      "function": "download_telegram_file",
-      "line": 56,
-      "handler_module": false,
-      "classification": "approved_boundary",
-      "reason": "typed-telegram-download-error-dispatch"
     },
     {
       "path": "velvet_bot/presentation/telegram/storage_center.py",
@@ -936,8 +920,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/core_operations_controllers/owner_actions.py",
       "function": "handle_owner_action_callback",
-      "line": 298,
-      "ack_line": 305,
+      "line": 297,
+      "ack_line": 304,
       "pre_ack_awaits": 0,
       "total_awaits": 12,
       "risk": "early_ack"
@@ -1035,8 +1019,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/publication/center.py",
       "function": "handle_publication_callback",
-      "line": 453,
-      "ack_line": 462,
+      "line": 452,
+      "ack_line": 461,
       "pre_ack_awaits": 0,
       "total_awaits": 35,
       "risk": "early_ack"
@@ -1080,8 +1064,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py",
       "function": "handle_quality_ai_list",
-      "line": 335,
-      "ack_line": 341,
+      "line": 334,
+      "ack_line": 340,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1089,8 +1073,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py",
       "function": "handle_quality_ai_open",
-      "line": 354,
-      "ack_line": 361,
+      "line": 353,
+      "ack_line": 360,
       "pre_ack_awaits": 0,
       "total_awaits": 6,
       "risk": "early_ack"
@@ -1098,7 +1082,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py",
       "function": "handle_quality_ai_accept",
-      "line": 410,
+      "line": 409,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
@@ -1107,7 +1091,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py",
       "function": "handle_quality_ai_fix",
-      "line": 419,
+      "line": 418,
       "ack_line": null,
       "pre_ack_awaits": 1,
       "total_awaits": 1,
@@ -1116,8 +1100,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_ai.py",
       "function": "handle_quality_ai_retry",
-      "line": 428,
-      "ack_line": 434,
+      "line": 427,
+      "ack_line": 433,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
       "risk": "guarded_ack"
@@ -1134,8 +1118,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_calibration.py",
       "function": "handle_calibration_open",
-      "line": 332,
-      "ack_line": 337,
+      "line": 331,
+      "ack_line": 336,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1143,8 +1127,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_calibration.py",
       "function": "handle_calibration_cases",
-      "line": 344,
-      "ack_line": 350,
+      "line": 343,
+      "ack_line": 349,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1152,8 +1136,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_calibration.py",
       "function": "handle_calibration_case",
-      "line": 362,
-      "ack_line": 368,
+      "line": 361,
+      "ack_line": 367,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"
@@ -1224,8 +1208,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_duplicates.py",
       "function": "handle_duplicate_list",
-      "line": 138,
-      "ack_line": 144,
+      "line": 137,
+      "ack_line": 143,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1233,8 +1217,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_duplicates.py",
       "function": "handle_duplicate_open",
-      "line": 156,
-      "ack_line": 164,
+      "line": 155,
+      "ack_line": 163,
       "pre_ack_awaits": 1,
       "total_awaits": 6,
       "risk": "guarded_ack"
@@ -1242,8 +1226,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_duplicates.py",
       "function": "handle_duplicate_confirm_menu",
-      "line": 214,
-      "ack_line": 220,
+      "line": 213,
+      "ack_line": 219,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"
@@ -1251,8 +1235,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_duplicates.py",
       "function": "handle_duplicate_delete_confirmation",
-      "line": 286,
-      "ack_line": 292,
+      "line": 285,
+      "ack_line": 291,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"
@@ -1260,8 +1244,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_duplicates.py",
       "function": "handle_duplicate_delete",
-      "line": 340,
-      "ack_line": 347,
+      "line": 339,
+      "ack_line": 346,
       "pre_ack_awaits": 0,
       "total_awaits": 8,
       "risk": "early_ack"
@@ -1269,8 +1253,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_duplicates.py",
       "function": "handle_duplicate_to_set",
-      "line": 391,
-      "ack_line": 397,
+      "line": 390,
+      "ack_line": 396,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"
@@ -1278,8 +1262,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_duplicates.py",
       "function": "handle_duplicate_decision",
-      "line": 445,
-      "ack_line": 451,
+      "line": 444,
+      "ack_line": 450,
       "pre_ack_awaits": 0,
       "total_awaits": 4,
       "risk": "early_ack"
@@ -1287,8 +1271,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_operations_menu",
-      "line": 249,
-      "ack_line": 255,
+      "line": 248,
+      "ack_line": 254,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1296,8 +1280,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_upload_start",
-      "line": 262,
-      "ack_line": 264,
+      "line": 261,
+      "ack_line": 263,
       "pre_ack_awaits": 0,
       "total_awaits": 4,
       "risk": "early_ack"
@@ -1305,8 +1289,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_recent",
-      "line": 329,
-      "ack_line": 335,
+      "line": 328,
+      "ack_line": 334,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
       "risk": "guarded_ack"
@@ -1314,8 +1298,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_retry_errors",
-      "line": 341,
-      "ack_line": 347,
+      "line": 340,
+      "ack_line": 346,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
       "risk": "guarded_ack"
@@ -1323,8 +1307,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py",
       "function": "handle_quality_run",
-      "line": 353,
-      "ack_line": 358,
+      "line": 352,
+      "ack_line": 357,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"
@@ -1332,8 +1316,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py",
       "function": "handle_set_report_list",
-      "line": 407,
-      "ack_line": 413,
+      "line": 406,
+      "ack_line": 412,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1341,8 +1325,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py",
       "function": "handle_set_report_open",
-      "line": 420,
-      "ack_line": 426,
+      "line": 419,
+      "ack_line": 425,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1350,8 +1334,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py",
       "function": "handle_set_analyze",
-      "line": 438,
-      "ack_line": 445,
+      "line": 437,
+      "ack_line": 444,
       "pre_ack_awaits": 0,
       "total_awaits": 10,
       "risk": "early_ack"
@@ -1359,8 +1343,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py",
       "function": "handle_set_photos",
-      "line": 502,
-      "ack_line": 509,
+      "line": 501,
+      "ack_line": 508,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"
@@ -1368,8 +1352,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py",
       "function": "handle_media_set_list",
-      "line": 305,
-      "ack_line": 311,
+      "line": 304,
+      "ack_line": 310,
       "pre_ack_awaits": 0,
       "total_awaits": 3,
       "risk": "early_ack"
@@ -1377,8 +1361,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py",
       "function": "handle_media_set_open",
-      "line": 326,
-      "ack_line": 333,
+      "line": 325,
+      "ack_line": 332,
       "pre_ack_awaits": 0,
       "total_awaits": 6,
       "risk": "early_ack"
@@ -1386,8 +1370,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py",
       "function": "handle_media_set_toggle",
-      "line": 357,
-      "ack_line": 363,
+      "line": 356,
+      "ack_line": 362,
       "pre_ack_awaits": 0,
       "total_awaits": 6,
       "risk": "early_ack"
@@ -1395,8 +1379,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py",
       "function": "handle_media_set_create",
-      "line": 394,
-      "ack_line": 400,
+      "line": 393,
+      "ack_line": 399,
       "pre_ack_awaits": 0,
       "total_awaits": 5,
       "risk": "early_ack"
@@ -1404,8 +1388,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_sets.py",
       "function": "handle_media_set_ignore",
-      "line": 428,
-      "ack_line": 434,
+      "line": 427,
+      "ack_line": 433,
       "pre_ack_awaits": 0,
       "total_awaits": 4,
       "risk": "early_ack"
@@ -1449,8 +1433,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
       "function": "handle_image_prompt_start",
-      "line": 208,
-      "ack_line": 210,
+      "line": 207,
+      "ack_line": 209,
       "pre_ack_awaits": 0,
       "total_awaits": 4,
       "risk": "early_ack"
@@ -1539,8 +1523,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
       "function": "handle_admin_open_multi_story",
-      "line": 225,
-      "ack_line": 233,
+      "line": 224,
+      "ack_line": 232,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
       "risk": "guarded_ack"
@@ -1548,8 +1532,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
       "function": "handle_admin_multi_story_action",
-      "line": 249,
-      "ack_line": 255,
+      "line": 248,
+      "ack_line": 254,
       "pre_ack_awaits": 0,
       "total_awaits": 16,
       "risk": "early_ack"
@@ -1557,8 +1541,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
       "function": "handle_public_open_multi_story",
-      "line": 451,
-      "ack_line": 462,
+      "line": 450,
+      "ack_line": 461,
       "pre_ack_awaits": 1,
       "total_awaits": 3,
       "risk": "guarded_ack"
@@ -1566,8 +1550,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/stories/multi_story_kr.py",
       "function": "handle_public_multi_story_action",
-      "line": 477,
-      "ack_line": 484,
+      "line": 476,
+      "ack_line": 483,
       "pre_ack_awaits": 0,
       "total_awaits": 15,
       "risk": "early_ack"
@@ -1647,8 +1631,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/system.py",
       "function": "handle_system_callback",
-      "line": 376,
-      "ack_line": 387,
+      "line": 375,
+      "ack_line": 386,
       "pre_ack_awaits": 0,
       "total_awaits": 14,
       "risk": "early_ack"

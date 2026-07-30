@@ -473,3 +473,20 @@ __all__ = (
     "handle_workspace_home",
     "register_workspace_home",
 )
+
+
+require_auf_callback = _require_auf_callback
+
+
+def install_scoped_auf_handlers(
+    *,
+    action_handler=None,
+    video_handler=None,
+) -> None:
+    """Install scoped Auf handlers without foreign module attribute mutation."""
+
+    global handle_scoped_auf_action, handle_scoped_auf_video_action
+    if action_handler is not None:
+        handle_scoped_auf_action = action_handler
+    if video_handler is not None:
+        handle_scoped_auf_video_action = video_handler

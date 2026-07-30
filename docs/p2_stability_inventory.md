@@ -4,8 +4,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **90** в **55** файлах;
-- approved boundaries: **90**;
+- raw broad exceptions: **88** в **53** файлах;
+- approved boundaries: **88**;
 - unresolved broad exceptions: **0** в **0** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
@@ -68,24 +68,22 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:428` `_apply_engagement`: report-public-engagement-write-failure.
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:461` `_apply_engagement`: preserve-engagement-on-ui-refresh-failure.
 - `velvet_bot/presentation/telegram/routers/public_archive/media_display.py:577` `handle_public_download`: report-public-download-failure.
-- `velvet_bot/presentation/telegram/routers/publication/center.py:588` `handle_publication_callback`: report-publication-failure.
+- `velvet_bot/presentation/telegram/routers/publication/center.py:587` `handle_publication_callback`: report-publication-failure.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/backup_center.py:393` `handle_backup_callback`: report-backup-callback-failure.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:323` `handle_quality_upload_reply`: compensate-manual-quality-job.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:479` `handle_set_analyze`: compensate-set-analysis-callback-job.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:572` `handle_set_analysis_command`: compensate-set-analysis-command-job.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_operations.py:322` `handle_quality_upload_reply`: compensate-manual-quality-job.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:478` `handle_set_analyze`: compensate-set-analysis-callback-job.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:571` `handle_set_analysis_command`: compensate-set-analysis-command-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai.py:351` `handle_prompt_check_reply`: compensate-prompt-result-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_formatting.py:287` `handle_formatting_reply`: compensate-velvet-formatting-job.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:298` `handle_image_prompt_reply`: compare-model-partial.
-- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:356` `handle_image_prompt_reply`: compensate-image-prompt-job.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:297` `handle_image_prompt_reply`: compare-model-partial.
+- `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py:355` `handle_image_prompt_reply`: compensate-image-prompt-job.
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_visual.py:315` `handle_visual_analysis_reply`: compensate-palette-composition-job.
-- `velvet_bot/presentation/telegram/routers/references/comparison.py:273` `handle_reference_comparison`: report-reference-comparison-failure.
+- `velvet_bot/presentation/telegram/routers/references/comparison.py:272` `handle_reference_comparison`: report-reference-comparison-failure.
 - `velvet_bot/presentation/telegram/routers/references/comparison_help.py:255` `handle_reference_comparison_reply`: compensate-reference-comparison-form-job.
 - `velvet_bot/presentation/telegram/routers/supervisor/console.py:175` `_watch_console_operation`: isolate-supervisor-console-watcher.
 - `velvet_bot/presentation/telegram/routers/workspace_analytics.py:132` `_ingest`: report-workspace-analytics-ingest-failure.
 - `velvet_bot/presentation/telegram/routers/workspace_publications.py:460` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
 - `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:1170` `_compare_workspace_reference_result`: report-workspace-reference-comparison.
-- `velvet_bot/presentation/telegram/shared/editing.py:35` `safe_edit_message_text`: typed-telegram-edit-error-dispatch.
-- `velvet_bot/presentation/telegram/shared/media.py:56` `download_telegram_file`: typed-telegram-download-error-dispatch.
 - `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/storage_center.py:294` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/workspace_qwen.py:1105` `handle_workspace_qwen_prompt_image`: workspace-qwen-prompt-result.

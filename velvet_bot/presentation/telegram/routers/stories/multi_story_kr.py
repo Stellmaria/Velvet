@@ -58,7 +58,6 @@ async def _safe_edit_text(
         message,
         text,
         reply_markup=keyboard,
-        bad_request_type=TelegramBadRequest,
     )
 
 

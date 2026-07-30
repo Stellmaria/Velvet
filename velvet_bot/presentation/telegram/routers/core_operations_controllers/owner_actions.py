@@ -269,7 +269,6 @@ async def _safe_edit(message: Message, text: str, keyboard: InlineKeyboardMarkup
         message,
         text,
         reply_markup=keyboard,
-        bad_request_type=TelegramBadRequest,
     )
 
 
