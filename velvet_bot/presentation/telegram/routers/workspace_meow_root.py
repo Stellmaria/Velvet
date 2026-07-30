@@ -169,7 +169,7 @@ async def handle_auf_root_entry(
             f"<b>Фото</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
             "Можно использовать текст и референсы из базы или Telegram.\n\n"
             "<b>Видео</b> — фото и описание движения превращаются в видео через "
-            "Grok Imagine v1, Grok Imagine 1.5, Seedance 1.5 Pro или Wan 2.7.\n\n"
+            "Grok Imagine v1, Grok Imagine Video 1.5, Seedance 1.5 Pro или Wan 2.7.\n\n"
             f"Параллельность: {concurrency}.\n"
             f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
             "Настройки применяются из PostgreSQL без перезапуска бота."
