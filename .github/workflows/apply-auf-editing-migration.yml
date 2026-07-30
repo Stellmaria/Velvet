@@ -1,0 +1,202 @@
+name: temporary Auf editing migration
+
+on:
+  push:
+    branches:
+      - agent/shared-helper-auf-edit-family
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: ${{ !contains(github.event.head_commit.message, '[auf-edit-migration]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/shared-helper-auf-edit-family
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Apply deterministic migration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          ROOT = Path('.')
+
+          def read(path: str) -> str:
+              return (ROOT / path).read_text(encoding='utf-8')
+
+          def write(path: str, value: str) -> None:
+              (ROOT / path).write_text(value, encoding='utf-8')
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              value = read(path)
+              count = value.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one exact match, found {count}')
+              write(path, value.replace(old, new, 1))
+
+          def replace_all(path: str, old: str, new: str, *, minimum: int = 1) -> int:
+              value = read(path)
+              count = value.count(old)
+              if count < minimum:
+                  raise SystemExit(f'{path}: expected at least {minimum} matches, found {count}')
+              write(path, value.replace(old, new))
+              return count
+
+          workspace_auf = 'velvet_bot/presentation/telegram/routers/workspace_auf.py'
+          replace_once(
+              workspace_auf,
+              'from velvet_bot.reference_catalog import get_reference_page\n',
+              'from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback\n'
+              'from velvet_bot.reference_catalog import get_reference_page\n',
+          )
+          replace_once(
+              workspace_auf,
+              '''async def _edit_or_answer(
+              callback: CallbackQuery,
+              *,
+              text: str,
+              reply_markup: InlineKeyboardMarkup,
+          ) -> None:
+              if isinstance(callback.message, Message):
+                  if callback.message.photo or callback.message.video or callback.message.document:
+                      await callback.message.answer(text, reply_markup=reply_markup)
+                  else:
+                      try:
+                          await callback.message.edit_text(text, reply_markup=reply_markup)
+                      except TelegramBadRequest as error:
+                          if "message is not modified" not in str(error).casefold():
+                              await callback.message.answer(text, reply_markup=reply_markup)
+              await callback.answer()
+          ''',
+              '''# Local compatibility alias for the existing router implementation. External
+          # consumers must import the public Auf editing contract instead.
+          _edit_or_answer = edit_or_answer_auf_callback
+          ''',
+          )
+
+          for path in (
+              'velvet_bot/presentation/telegram/routers/workspace_auf_grs.py',
+              'velvet_bot/presentation/telegram/routers/workspace_auf_photo.py',
+              'velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py',
+          ):
+              replace_once(
+                  path,
+                  'from velvet_bot.presentation.telegram.routers.workspace_auf import (\n',
+                  'from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback\n'
+                  'from velvet_bot.presentation.telegram.routers.workspace_auf import (\n',
+              )
+              replace_all(path, '    _edit_or_answer,\n', '', minimum=1)
+              replace_all(path, '_edit_or_answer(', 'edit_or_answer_auf_callback(', minimum=1)
+
+          photo_install = 'velvet_bot/app/auf_photo_ui_install.py'
+          replace_once(
+              photo_install,
+              'from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router\n',
+              'from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback\n'
+              'from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router\n',
+          )
+          count = replace_all(
+              photo_install,
+              'photo_router._edit_or_answer(',
+              'edit_or_answer_auf_callback(',
+              minimum=2,
+          )
+          if count != 2:
+              raise SystemExit(f'{photo_install}: expected exactly 2 private calls, found {count}')
+
+          resilience = 'velvet_bot/app/grs_resilience.py'
+          replace_once(
+              resilience,
+              'from velvet_bot.infrastructure.ai import (\n',
+              'from velvet_bot.presentation.telegram.auf_editing import install_auf_text_transformer\n'
+              'from velvet_bot.infrastructure.ai import (\n',
+          )
+          replace_once(
+              resilience,
+              '''def _install_auf_text_cleanup() -> None:
+              workspace_auf = importlib.import_module(
+                  "velvet_bot.presentation.telegram.routers.workspace_auf"
+              )
+              original_edit_or_answer = workspace_auf._edit_or_answer
+              original_format_request_review = workspace_auf.format_request_review
+
+              async def edit_or_answer_without_internal_content_mode(
+                  callback,
+                  *,
+                  text: str,
+                  reply_markup,
+              ) -> None:
+                  await original_edit_or_answer(
+                      callback,
+                      text=_sanitize_meow_text(text),
+                      reply_markup=reply_markup,
+                  )
+
+              def format_request_review_without_internal_content_mode(**kwargs: Any) -> str:
+                  return _sanitize_meow_text(original_format_request_review(**kwargs))
+
+              workspace_auf._edit_or_answer = edit_or_answer_without_internal_content_mode
+              workspace_auf.format_request_review = (
+                  format_request_review_without_internal_content_mode
+              )
+
+              workspace_auf_grs = importlib.import_module(
+                  "velvet_bot.presentation.telegram.routers.workspace_auf_grs"
+              )
+              workspace_auf_grs._edit_or_answer = edit_or_answer_without_internal_content_mode
+          ''',
+              '''def _install_auf_text_cleanup() -> None:
+              workspace_auf = importlib.import_module(
+                  "velvet_bot.presentation.telegram.routers.workspace_auf"
+              )
+              original_format_request_review = workspace_auf.format_request_review
+
+              def format_request_review_without_internal_content_mode(**kwargs: Any) -> str:
+                  return _sanitize_meow_text(original_format_request_review(**kwargs))
+
+              workspace_auf.format_request_review = (
+                  format_request_review_without_internal_content_mode
+              )
+              install_auf_text_transformer(_sanitize_meow_text)
+          ''',
+          )
+
+          private_tokens = []
+          for path in ROOT.joinpath('velvet_bot').rglob('*.py'):
+              if path == ROOT / workspace_auf:
+                  continue
+              text = path.read_text(encoding='utf-8')
+              if '_edit_or_answer' in text:
+                  private_tokens.append(path.as_posix())
+          if private_tokens:
+              raise SystemExit('remaining external _edit_or_answer tokens: ' + ', '.join(private_tokens))
+          PY
+
+      - name: Refresh versioned inventories
+        run: |
+          python scripts/inventory_telegram_helpers.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md \
+            --check
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md \
+            --check
+
+      - name: Commit migration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add velvet_bot docs/shared_contract_inventory.json docs/shared_contract_inventory.md docs/generated/telegram_navigation_inventory.md
+          git commit -m 'P3: migrate Auf edit-or-answer contracts [auf-edit-migration]'
+          git push origin HEAD:agent/shared-helper-auf-edit-family
