@@ -19,7 +19,7 @@
 
 ### Планируемый объём
 
-- перехватить любые ошибки скачивания или отправки после provider success;
+- перехватить ошибки скачивания или отправки после provider success;
 - попытаться отправить media напрямую по сохранённому provider URL;
 - всегда сообщать пользователю о частичной или неудачной доставке;
 - добавить повторную доставку готовой задачи из раздела «Мои задачи»;
@@ -44,14 +44,17 @@ Provider URL может быть временным или недоступны�
 ### Фактически сделано
 
 - добавлен installer `auf_result_delivery_recovery` после существующих image/video delivery hotfixes;
-- future delivery перехватывает ошибки скачивания и любые неожиданные ошибки Telegram delivery;
+- future delivery перехватывает известные ошибки скачивания и Telegram delivery;
 - при отказе локального скачивания выполняется резервная отправка photo/video напрямую по URL;
 - при полном отказе пользователь получает ссылку и текст ошибки вместо молчаливого завершения;
 - в «Мои задачи Ауф» для успешных задач с сохранённым URL добавляется кнопка `📤 Доставить`;
 - redelivery проверяет `task_type`, `status`, `created_by` и `workspace_id`;
 - redelivery отправляет оригинальный документ и preview независимо друг от друга;
 - новая генерация, новая provider attempt и новое списание при redelivery не выполняются;
-- добавлены регрессии для download failure, empty result, partial Telegram delivery и callback limit.
+- добавлены регрессии для download failure, empty result, partial Telegram delivery и callback limit;
+- parser сохранённых URL игнорирует `None` и пустые значения;
+- broad `Exception` catches заменены явной границей delivery-ошибок;
+- P2 stability и Telegram navigation inventories пересобраны.
 
 ### Миграции и совместимость
 
@@ -59,11 +62,16 @@ SQL-миграций нет. Формат `ai_tasks.result.result_urls` не м�
 
 ### Проверки
 
-Полный CI запускается после открытия PR: tests, type check, Docker build и project notes contract.
+- первый полный tests workflow выявил parser `None` и устаревшие generated inventories;
+- parser исправлен, exception boundary сужена, inventories пересобраны;
+- финальный tests workflow, type check, Docker build и project notes contract запущены на пользовательском commit.
 
 ### PR и commit
 
-Фиксируются после зелёного CI и merge.
+- PR: #450;
+- recovery implementation: `d68d296725476ae9d92b48a6cb25d75c66458f23`;
+- inventory/parser repair: `e52830bdf4237282cd58dec177ee9d7e0b07c66d`;
+- merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
 
