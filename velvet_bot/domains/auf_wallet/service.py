@@ -15,6 +15,7 @@ from .models import (
     AufWalletStatus,
     auf_to_units,
 )
+from .package_pricing import active_package_prices
 from .store import AufWalletRepository
 
 AUF_PACKAGES = (40, 100, 250, 500, 1_000, 2_500)
@@ -75,7 +76,25 @@ class AufWalletService:
             actor_user_id=actor_user_id,
         )
         settings = await self._repository.economy_settings()
-        return tuple(_package_quote(amount, settings) for amount in AUF_PACKAGES)
+        fixed_prices = await active_package_prices(
+            getattr(self._repository, "_database", None)
+        )
+        quotes: list[AufPackageQuote] = []
+        for amount in AUF_PACKAGES:
+            fixed_rub = fixed_prices.get(amount)
+            if fixed_rub is None:
+                quotes.append(_package_quote(amount, settings))
+                continue
+            quotes.append(
+                AufPackageQuote(
+                    amount_auf=amount,
+                    price_usd=(fixed_rub / settings.billing_usd_to_rub).quantize(
+                        Decimal("0.01")
+                    ),
+                    price_rub=fixed_rub,
+                )
+            )
+        return tuple(quotes)
 
     async def grant(
         self,

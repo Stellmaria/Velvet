@@ -27,8 +27,7 @@ def build_editor_commands() -> tuple[BotCommand, ...]:
 
 
 def build_admin_commands() -> tuple[BotCommand, ...]:
-    # Служебные slash-команды сохранены в обработчиках как аварийный резерв,
-    # но обычное меню Telegram ведёт владельца в единый кнопочный центр.
+    # Редкие служебные команды остаются в /help, а не засоряют BotFather-меню.
     return (
         BotCommand(command="start", description="Открыть центр управления"),
         BotCommand(command="menu", description="Центр управления"),
@@ -59,7 +58,7 @@ async def _set_scoped_commands(
 
 
 async def install_command_menus(bot: Bot, settings: Settings) -> None:
-    """Install compact command menus; all normal management lives in buttons."""
+    """Install compact command menus; full owner reference lives in /help."""
     await bot.set_my_commands(list(build_public_commands()))
     await _set_scoped_commands(
         bot,

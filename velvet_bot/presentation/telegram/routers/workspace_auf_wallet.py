@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 from html import escape
 
+from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -16,8 +18,11 @@ from velvet_bot.domains.auf_wallet import (
     AufWalletStatus,
     format_auf_units,
 )
+from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 from velvet_bot.workspace_ui import workspace_callback
+
+logger = logging.getLogger(__name__)
 
 _OPERATION_LABELS = {
     AufWalletOperation.GRANT: "начисление",
@@ -58,7 +63,7 @@ def _wallet_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"{amount} Ауф",
+                    text=f"{amount} вельветов",
                     callback_data=_callback(
                         "wallet_buy",
                         workspace_id=workspace_id,
@@ -132,9 +137,54 @@ def _entry_line(entry) -> str:
 
 def _invoice_line(invoice) -> str:
     return (
-        f"• <code>{invoice.public_code}</code> · {invoice.package_auf} Ауф · "
+        f"• <code>{invoice.public_code}</code> · {invoice.package_auf} вельветов · "
         f"{invoice.final_local_amount:.0f} ₽ · {escape(_INVOICE_LABELS[invoice.status])}"
     )
+
+
+async def _notify_owner_purchase_intent(
+    callback: CallbackQuery,
+    *,
+    workspace_id: int,
+    invoice,
+) -> bool:
+    username = callback.from_user.username
+    user_label = f"@{escape(username)}" if username else escape(callback.from_user.full_name)
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"Подтвердить оплату · {invoice.public_code}",
+                    callback_data=_callback(
+                        "wallet_invoice_confirm",
+                        workspace_id=workspace_id,
+                        value=invoice.public_code,
+                    ),
+                )
+            ]
+        ]
+    )
+    try:
+        await callback.bot.send_message(
+            GLOBAL_WORKSPACE_CREATOR_ID,
+            "<b>Запрос на пополнение вельветов</b>\n\n"
+            f"Пользователь: {user_label}\n"
+            f"Telegram ID: <code>{callback.from_user.id}</code>\n"
+            f"Пространство: <code>{workspace_id}</code>\n"
+            f"Пакет: <b>{invoice.package_auf} вельветов</b>\n"
+            f"К оплате: <b>{invoice.final_local_amount:.0f} ₽</b>\n"
+            f"Счёт: <code>{invoice.public_code}</code>\n\n"
+            "После получения оплаты нажмите кнопку подтверждения или используйте "
+            f"<code>/velvet_grant {callback.from_user.id} {invoice.package_auf}</code>.",
+            reply_markup=markup,
+        )
+    except TelegramAPIError:
+        logger.exception(
+            "Could not notify owner about Auf purchase intent invoice=%s",
+            invoice.public_code,
+        )
+        return False
+    return True
 
 
 async def _render_wallet(
@@ -165,36 +215,48 @@ async def _render_wallet(
             await callback.answer(str(error), show_alert=True)
         return
 
+    global_owner = wallet_service.is_global_owner(callback.from_user.id)
     wallet = overview.wallet
     history = "\n".join(_entry_line(item) for item in overview.recent_entries)
     packages = "\n".join(
-        f"• <b>{quote.amount_auf} Ауф</b> · {quote.price_rub:.0f} ₽ · ${quote.price_usd:.2f}"
+        (
+            f"• <b>{quote.amount_auf} вельветов</b> · {quote.price_rub:.0f} ₽"
+            + (f" · ${quote.price_usd:.2f}" if global_owner else "")
+        )
         for quote in quotes
     )
     invoice_lines = "\n".join(_invoice_line(item) for item in invoices)
+    internal = ""
+    if global_owner:
+        settings = await wallet_service.economy_settings(actor_user_id=callback.from_user.id)
+        internal = (
+            "\n\n<b>Внутренняя экономика</b>\n"
+            f"Покрытие API: <code>${settings.provider_auf_usd}</code> за вельвет\n"
+            f"Базовая розница: <code>${settings.retail_auf_usd}</code> за вельвет\n"
+            f"Расчётный курс: <code>{settings.billing_usd_to_rub} ₽/$</code>"
+        )
     text = (
-        "<b>💳 Кошелёк Ауф</b>\n\n"
+        "<b>💳 Кошелёк вельветов</b>\n\n"
         f"Доступно: <b>{format_auf_units(wallet.available_units)}</b>\n"
         f"В резерве: <b>{format_auf_units(wallet.reserved_units)}</b>\n"
         f"Потрачено за 30 дней: <b>{format_auf_units(overview.spent_30d_units)}</b>\n"
         f"Статус: <b>{'заморожен' if wallet.status is AufWalletStatus.FROZEN else 'активен'}</b>\n\n"
-        "<b>Пакеты по текущему курсу</b>\n"
+        "<b>Пакеты</b>\n"
         f"{packages}\n\n"
-        "Нажмите пакет, чтобы создать счёт с зафиксированным курсом на 24 часа. "
-        "Оплата подтверждается Стэл вручную; повторное подтверждение не начислит Ауф дважды.\n\n"
+        "Нажмите пакет, чтобы создать заявку на пополнение. Цена фиксируется на 24 часа. "
+        "После оплаты Стэл подтвердит заявку, и вельветы появятся на балансе.\n\n"
         "<b>Последние счета</b>\n"
         f"{invoice_lines or '• счетов пока нет'}\n\n"
         "<b>Последние операции</b>\n"
-        f"{history or '• операций пока нет'}\n\n"
-        "1 Ауф покрывает до $0.02 расходов API. Розничная цена одного Ауф — $0.03. "
-        "Дополнительная наценка при списании за модель не применяется."
+        f"{history or '• операций пока нет'}"
+        f"{internal}"
     )
     if isinstance(callback.message, Message):
         await callback.message.edit_text(
             text,
             reply_markup=_wallet_keyboard(
                 workspace_id=workspace_id,
-                global_owner=wallet_service.is_global_owner(callback.from_user.id),
+                global_owner=global_owner,
                 frozen=wallet.status is AufWalletStatus.FROZEN,
                 invoices=invoices,
             ),
@@ -231,10 +293,21 @@ async def handle_auf_wallet_action(
                 actor_user_id=callback.from_user.id,
                 idempotency_key=f"telegram-wallet-invoice:{callback.id}",
             )
-            alert = (
-                f"Счёт {invoice.public_code}: {invoice.package_auf} Ауф за "
-                f"{invoice.final_local_amount:.0f} ₽. Курс зафиксирован на 24 часа."
+            owner_notified = await _notify_owner_purchase_intent(
+                callback,
+                workspace_id=workspace_id,
+                invoice=invoice,
             )
+            if owner_notified:
+                alert = (
+                    f"Заявка {invoice.public_code}: {invoice.package_auf} вельветов за "
+                    f"{invoice.final_local_amount:.0f} ₽. Стэл получила уведомление."
+                )
+            else:
+                alert = (
+                    f"Заявка {invoice.public_code} создана, но уведомление Стэл не "
+                    "доставлено. Передайте ей код счёта вручную."
+                )
         elif action == "wallet_invoice_confirm":
             invoice, _ = await auf_purchase_service.confirm_paid(
                 public_code=callback_data.value,
@@ -242,8 +315,21 @@ async def handle_auf_wallet_action(
             )
             alert = (
                 f"Оплата {invoice.public_code} подтверждена. "
-                f"Начислено {invoice.package_auf} Ауф."
+                f"Начислено {invoice.package_auf} вельветов."
             )
+            if invoice.created_by_user_id != callback.from_user.id:
+                try:
+                    await callback.bot.send_message(
+                        invoice.created_by_user_id,
+                        "<b>Пополнение подтверждено</b>\n\n"
+                        f"Начислено: <b>{invoice.package_auf} вельветов</b>\n"
+                        f"Счёт: <code>{invoice.public_code}</code>",
+                    )
+                except TelegramAPIError:
+                    logger.exception(
+                        "Could not notify user about paid Auf invoice=%s",
+                        invoice.public_code,
+                    )
         elif action == "wallet_invoice_cancel":
             invoice = await auf_purchase_service.cancel_invoice(
                 public_code=callback_data.value,
@@ -288,7 +374,6 @@ async def handle_auf_wallet_action(
         purchase_service=auf_purchase_service,
         answer_callback=alert is None,
     )
-
 
 
 __all__ = ("handle_auf_wallet_action",)

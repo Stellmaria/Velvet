@@ -68,7 +68,8 @@ async def quote_auf_payload(
     row = await connection.fetchrow(
         """
         SELECT id, version_key, provider, model_alias, resolution, audio,
-               pricing_basis, unit_cost_usd, extra_reference_cost_usd
+               pricing_basis, unit_cost_usd, extra_reference_cost_usd,
+               retail_units, extra_reference_retail_units
         FROM auf_price_versions
         WHERE model_alias = $1::VARCHAR
           AND operation = 'media.generate'
@@ -93,36 +94,51 @@ async def quote_auf_payload(
             f"Для модели {model_alias}{suffix} не настроена цена Ауф."
         )
 
-    settings = await connection.fetchrow(
-        """
-        SELECT provider_auf_usd
-        FROM auf_economy_settings
-        WHERE singleton_id = 1
-        """
-    )
-    if settings is None:
-        raise RuntimeError("Настройки экономики Ауф не инициализированы.")
-    provider_auf_usd = Decimal(settings["provider_auf_usd"])
-    if provider_auf_usd <= 0:
-        raise RuntimeError("Покрытие API одного Ауф должно быть больше нуля.")
-
+    pricing_basis = str(row["pricing_basis"])
     unit_cost = Decimal(row["unit_cost_usd"])
     provider_cost = (
         unit_cost * Decimal(duration_seconds)
-        if str(row["pricing_basis"]) == "per_second"
+        if pricing_basis == "per_second"
         else unit_cost
     )
     extra_reference_cost = Decimal(row["extra_reference_cost_usd"])
     if extra_reference_cost > 0 and reference_count > 1:
         provider_cost += extra_reference_cost * Decimal(reference_count - 1)
 
-    quoted_units = int(
-        (
-            provider_cost
-            / provider_auf_usd
-            * Decimal(AUF_SCALE)
-        ).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    )
+    retail_units_value = row["retail_units"]
+    if retail_units_value is not None:
+        retail_units = int(retail_units_value)
+        quoted_units = (
+            retail_units * duration_seconds
+            if pricing_basis == "per_second"
+            else retail_units
+        )
+        extra_reference_retail_units = int(
+            row["extra_reference_retail_units"] or 0
+        )
+        if extra_reference_retail_units > 0 and reference_count > 1:
+            quoted_units += extra_reference_retail_units * (reference_count - 1)
+    else:
+        settings = await connection.fetchrow(
+            """
+            SELECT provider_auf_usd
+            FROM auf_economy_settings
+            WHERE singleton_id = 1
+            """
+        )
+        if settings is None:
+            raise RuntimeError("Настройки экономики Ауф не инициализированы.")
+        provider_auf_usd = Decimal(settings["provider_auf_usd"])
+        if provider_auf_usd <= 0:
+            raise RuntimeError("Покрытие API одного Ауф должно быть больше нуля.")
+        quoted_units = int(
+            (
+                provider_cost
+                / provider_auf_usd
+                * Decimal(AUF_SCALE)
+            ).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        )
+
     if quoted_units <= 0:
         raise RuntimeError("Расчётная цена генерации в Ауф получилась нулевой.")
 
