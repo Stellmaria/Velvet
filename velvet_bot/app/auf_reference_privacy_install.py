@@ -6,6 +6,7 @@ from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATO
 from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router
 
 _INSTALLED = False
+_ORIGINAL_INPUT_TEXT = photo_router._input_text
 
 
 async def _load_private_sources(
@@ -99,7 +100,7 @@ def _private_source_keyboard(workspace_id: int, sources):
 
 
 def _private_input_text(prompt, references) -> str:
-    text = photo_router._input_text_original(prompt, references)
+    text = _ORIGINAL_INPUT_TEXT(prompt, references)
     return text.replace("из архива", "из личной базы").replace(
         "референсы персонажа из архива",
         "референсы персонажа из личной базы",
@@ -122,7 +123,6 @@ def install_auf_reference_privacy() -> None:
     global _INSTALLED
     if _INSTALLED:
         return
-    photo_router._input_text_original = photo_router._input_text
     photo_router._load_sources = _load_private_sources
     photo_router._can_access_source = _can_access_private_source
     photo_router._source_keyboard = _private_source_keyboard
