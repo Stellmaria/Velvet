@@ -85,7 +85,10 @@ terminal failure последовательно переключаться на 
 - Nano Banana Pro использует VT route и последовательный fallback после
   terminal failure;
 - финальный экран очищен от provider, seed и content profile;
-- добавлены контрактные тесты payload, лимитов, Wan pricing и Banana fallback.
+- добавлены контрактные тесты payload, лимитов, Wan pricing и Banana fallback;
+- автоматически пересчитаны package architecture и Telegram navigation
+  inventories после добавления нового production-модуля и кнопок;
+- одноразовый workflow генерации инвентарей удалил себя после commit.
 
 ### Миграции и совместимость
 
@@ -98,24 +101,28 @@ Telegram handlers.
 ### Проверки
 
 - локальная синтаксическая проверка нового installer и тестового файла: успешно;
-- unit tests CI: ожидаются;
-- type check CI: ожидается;
-- docker build CI: ожидается;
-- project notes contract CI: ожидается;
+- первый CI: type check, docker build и project notes contract успешно;
+- первый unit suite: функциональные тесты успешно, выявлены только stale package
+  architecture inventory и Telegram navigation inventory;
+- package architecture inventory пересчитан: 605 modules, 28 installer stages,
+  528 зарегистрированных violations/exemptions;
+- Telegram navigation inventory пересчитан: 605 Python files, 1024 inline buttons,
+  0 navigation violations;
+- финальный unit tests CI после обновления generated contracts: ожидается;
 - live provider smoke tests: не выполнялись без расходования реального баланса.
 
 ### PR и commit
 
-- PR: будет создан после фиксации worklog;
+- PR: `#484`
 - Ветка: `agent/photo-model-input-modes`
 - Первый функциональный commit: `cb7078851855f02c47c5831edbb4fd513eff0877`
 - Подключение installer: `c8d099293315110bb931c92537c247a71675945f`
 - Контрактные тесты: `7c0651ed864bae3ad1e567d0690694f85cb8775e`
+- Generated inventories commit: `01a60d9c7a5c3fba1f2399c33fabe17c74dc3a35`
 
 ### Незавершённое
 
-- получить результаты полного CI;
-- исправить выявленные CI-регрессии;
+- получить финальный зелёный CI после обновления generated contracts;
 - выполнить отдельные live smoke-тесты Qwen с 1/2/3 референсами;
 - выполнить live smoke FLUX и Wan text/photo routes;
 - подтвердить фактическое списание Wan для `n > 1`;
@@ -123,6 +130,6 @@ Telegram handlers.
 
 ### Следующий шаг
 
-Открыть PR, дождаться полного CI и исправить только выявленные контрактные
-ошибки. После зелёного CI выполнить минимальный набор платных smoke-тестов на
-сервере отдельным контролируемым запуском.
+Дождаться финального CI и исправить только реальные регрессии. После зелёного CI
+выполнить минимальный набор платных smoke-тестов на сервере отдельным
+контролируемым запуском.
