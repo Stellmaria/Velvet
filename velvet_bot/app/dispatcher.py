@@ -13,13 +13,13 @@ from velvet_bot.core.config import Settings
 from velvet_bot.core.config.kie import KieSettings, load_kie_settings
 from velvet_bot.database import Database
 from velvet_bot.discussion_analytics_middleware import DiscussionAnalyticsMiddleware
-from velvet_bot.domains.ai_usage import (
-    AITaskQueueService,
-    AIUsageService,
-    build_ai_task_queue_service,
-)
+from velvet_bot.domains.ai_usage import AITaskQueueService, AIUsageService
 from velvet_bot.domains.meow_runtime import MeowRuntimeRepository, MeowRuntimeService
-from velvet_bot.domains.meow_wallet import MeowWalletRepository, MeowWalletService
+from velvet_bot.domains.meow_wallet import (
+    MeowWalletRepository,
+    MeowWalletService,
+    build_meow_charged_task_queue_service,
+)
 from velvet_bot.domains.roleplay import build_roleplay_service
 from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
@@ -88,7 +88,8 @@ def build_dispatcher(
         audit_logger=audit_logger,
     )
     active_task_queue_service = (
-        ai_task_queue_service or build_ai_task_queue_service(database=database)
+        ai_task_queue_service
+        or build_meow_charged_task_queue_service(database=database)
     )
     active_kie_settings = kie_settings or load_kie_settings()
     roleplay_service = build_roleplay_service(
