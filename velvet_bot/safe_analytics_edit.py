@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup
+
+from velvet_bot.presentation.telegram.shared import safe_edit_callback_text
 
 
 async def safe_analytics_edit(
@@ -9,14 +10,11 @@ async def safe_analytics_edit(
     text: str,
     keyboard: InlineKeyboardMarkup,
 ) -> None:
-    if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
-        return
-    try:
-        await callback.message.edit_text(text, reply_markup=keyboard)
-    except TelegramBadRequest as error:
-        if "message is not modified" not in str(error).casefold():
-            raise
+    await safe_edit_callback_text(
+        callback,
+        text,
+        reply_markup=keyboard,
+    )
 
 
 def install_safe_analytics_edit() -> None:
