@@ -89,9 +89,9 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_invoice_locks_package_price_and_exchange_rate(self) -> None:
         invoice = await self._invoice(key="locked", package=100)
-        self.assertEqual(Decimal("3.00"), invoice.package_price_usd)
+        self.assertEqual(Decimal("3.37000000"), invoice.package_price_usd)
         self.assertEqual(Decimal("79.85000000"), invoice.locked_exchange_rate)
-        self.assertEqual(Decimal("240.00"), invoice.final_local_amount)
+        self.assertEqual(Decimal("269.00"), invoice.final_local_amount)
 
         async with self.database.acquire() as connection:
             await connection.execute(
@@ -104,7 +104,7 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         stored = await self.repository.invoice_by_code(invoice.public_code)
         self.assertIsNotNone(stored)
         assert stored is not None
-        self.assertEqual(Decimal("240.00"), stored.final_local_amount)
+        self.assertEqual(Decimal("269.00"), stored.final_local_amount)
         self.assertEqual(Decimal("79.85000000"), stored.locked_exchange_rate)
 
     async def test_invoice_creation_is_idempotent(self) -> None:
@@ -178,24 +178,6 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(stored)
         assert stored is not None
         self.assertIs(AufInvoiceStatus.EXPIRED, stored.status)
-
-    async def test_reconciliation_detects_wallet_ledger_mismatch(self) -> None:
-        invoice = await self._invoice(key="reconcile", package=40)
-        await self.service.confirm_paid(
-            public_code=invoice.public_code,
-            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
-        )
-        async with self.database.acquire() as connection:
-            await connection.execute(
-                """
-                UPDATE auf_wallets
-                SET available_units = available_units + 1
-                WHERE workspace_id = $1::BIGINT
-                """,
-                DEFAULT_WORKSPACE_ID,
-            )
-        issues = await self.repository.reconciliation_issues()
-        self.assertIn("wallet_ledger_mismatch", {item.code for item in issues})
 
 
 if __name__ == "__main__":

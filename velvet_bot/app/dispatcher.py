@@ -23,13 +23,17 @@ from velvet_bot.domains.auf_wallet import (
     build_auf_charged_task_queue_service,
 )
 from velvet_bot.domains.roleplay import build_roleplay_service
+from velvet_bot.domains.user_registry import TelegramUserRepository
 from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
 from velvet_bot.domains.workspaces.product_service import WorkspaceProductService
 from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.domains.workspaces.service import WorkspaceService
 from velvet_bot.error_center import ErrorIncidentCenter
-from velvet_bot.presentation.telegram.middleware import OwnerAccessMiddleware
+from velvet_bot.presentation.telegram.middleware import (
+    OwnerAccessMiddleware,
+    UserActivityMiddleware,
+)
 from velvet_bot.presentation.telegram.router import get_root_router
 from velvet_bot.publication_inbox_middleware import PublicationInboxMiddleware
 from velvet_bot.reference_uploads import ReferenceUploadSessions
@@ -68,6 +72,8 @@ def build_dispatcher(
         moderator_user_ids=settings.moderator_user_ids,
     )
     access_middleware = OwnerAccessMiddleware(access_policy)
+    user_registry = TelegramUserRepository(database)
+    user_activity_middleware = UserActivityMiddleware(user_registry)
     publication_inbox_middleware = PublicationInboxMiddleware()
     discussion_middleware = DiscussionAnalyticsMiddleware()
     supervisor_client = build_supervisor_client()
@@ -114,6 +120,7 @@ def build_dispatcher(
         "workspace_service": workspace_service,
         "workspace_product_service": workspace_product_service,
         "workspace_characters": workspace_character_service,
+        "user_registry": user_registry,
         "auf_runtime_service": auf_runtime_service,
         "auf_wallet_service": auf_wallet_service,
         "auf_purchase_service": auf_purchase_service,
@@ -135,13 +142,18 @@ def build_dispatcher(
 
     dispatcher = Dispatcher()
     dispatcher.workflow_data.update(workflow_data)
+    dispatcher.message.outer_middleware(user_activity_middleware)
     dispatcher.message.outer_middleware(access_middleware)
     dispatcher.message.outer_middleware(publication_inbox_middleware)
     dispatcher.message.outer_middleware(discussion_middleware)
+    dispatcher.edited_message.outer_middleware(user_activity_middleware)
     dispatcher.edited_message.outer_middleware(access_middleware)
     dispatcher.edited_message.outer_middleware(discussion_middleware)
+    dispatcher.guest_message.outer_middleware(user_activity_middleware)
     dispatcher.guest_message.outer_middleware(access_middleware)
+    dispatcher.callback_query.outer_middleware(user_activity_middleware)
     dispatcher.callback_query.outer_middleware(access_middleware)
+    dispatcher.inline_query.outer_middleware(user_activity_middleware)
     dispatcher.inline_query.outer_middleware(access_middleware)
     dispatcher.include_router(get_root_router())
     return DispatcherBundle(dispatcher=dispatcher, access_policy=access_policy)

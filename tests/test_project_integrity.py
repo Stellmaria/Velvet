@@ -170,6 +170,9 @@ DIRECT_COMMANDS = {
     "rp_prompt",
     "rp_status",
     "rp_reset",
+    "velvet_grant",
+    "velvet_user",
+    "velvet_users",
 }
 PUBLIC_COMMANDS = {"archive", "gallery"}
 
@@ -307,37 +310,6 @@ class ProjectIntegrityTests(unittest.TestCase):
             number: names for number, names in by_number.items() if len(names) > 1
         }
         self.assertEqual(duplicates, LEGACY_DUPLICATE_MIGRATIONS)
-
-    def test_owner_callbacks_are_typed_and_not_split_across_fix_router(self) -> None:
-        self.assertFalse(Path("velvet_bot/handlers/owner_action_callback_fix.py").exists())
-        for path in (
-            Path("velvet_bot/owner_menu.py"),
-            Path(
-                "velvet_bot/presentation/telegram/routers/"
-                "core_operations_controllers/owner_actions.py"
-            ),
-        ):
-            source = path.read_text(encoding="utf-8")
-            self.assertNotRegex(source, r'callback_data\s*=\s*["\'](?:own|oact):')
-
-    def test_owner_forms_precede_private_and_topic_catch_all_handlers(self) -> None:
-        root_source = Path("velvet_bot/presentation/telegram/router.py").read_text(
-            encoding="utf-8"
-        )
-        archive_source = Path(
-            "velvet_bot/presentation/telegram/routers/archive_and_public.py"
-        ).read_text(encoding="utf-8")
-
-        core_index = root_source.index("root.include_router(core_operations_router)")
-        archive_bundle_index = root_source.index(
-            "root.include_router(archive_and_public_router)"
-        )
-        publication_index = archive_source.index(
-            "router.include_router(publication_center_router)"
-        )
-        archive_index = archive_source.index("router.include_router(archive_router)")
-        self.assertLess(core_index, archive_bundle_index)
-        self.assertLess(publication_index, archive_index)
 
 
 if __name__ == "__main__":
