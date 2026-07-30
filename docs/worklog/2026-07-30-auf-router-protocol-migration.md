@@ -50,6 +50,7 @@ PostgreSQL schema и module key не менялись. Старые Telegram cal
 
 ### Проверки
 Generated architecture, P2 stability и Telegram navigation inventories пересобираются после миграции; полный CI запускается на итоговом head.
+Точечная очистка SQL-контракта, photo FSM/data и installer chain выполняется отдельным финальным commit перед CI.
 
 ### PR и commit
 PR и итоговый commit фиксируются после зелёного CI.
