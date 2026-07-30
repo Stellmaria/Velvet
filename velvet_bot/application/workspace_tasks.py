@@ -26,9 +26,12 @@ async def list_owned_workspace_tasks(
                 task.id,
                 task.status,
                 task.payload,
+                task.result,
+                task.attempt_count,
                 task.created_at,
                 task.completed_at,
                 charge.quoted_units,
+                charge.captured_units,
                 charge.status AS charge_status
             FROM ai_tasks AS task
             LEFT JOIN auf_task_charges AS charge ON charge.task_id = task.id
@@ -58,13 +61,24 @@ async def get_owned_success_task(
     async with database.acquire() as connection:
         return await connection.fetchrow(
             """
-            SELECT id, payload, result
-            FROM ai_tasks
-            WHERE id = $1::UUID
-              AND task_type = $2::VARCHAR
-              AND status = 'success'
-              AND created_by = $3::BIGINT
-              AND payload ->> 'workspace_id' = $4::TEXT
+            SELECT
+                task.id,
+                task.status,
+                task.payload,
+                task.result,
+                task.attempt_count,
+                task.created_at,
+                task.completed_at,
+                charge.quoted_units,
+                charge.captured_units,
+                charge.status AS charge_status
+            FROM ai_tasks AS task
+            LEFT JOIN auf_task_charges AS charge ON charge.task_id = task.id
+            WHERE task.id = $1::UUID
+              AND task.task_type = $2::VARCHAR
+              AND task.status = 'success'
+              AND task.created_by = $3::BIGINT
+              AND task.payload ->> 'workspace_id' = $4::TEXT
             """,
             task_id,
             KIE_GENERATION_TASK_TYPE,
