@@ -7,12 +7,12 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.core.config.kie import load_kie_settings
 from velvet_bot.domains.ai_usage import build_ai_usage_service
-from velvet_bot.domains.auf_runtime import AufRuntimeRepository
+from velvet_bot.domains.auf_runtime import (
+    AufGenerationDispatcher,
+    AufRuntimeRepository,
+)
 from velvet_bot.domains.meow_runtime.cancellable_worker import (
     build_cancellable_worker_class,
-)
-from velvet_bot.domains.meow_runtime.dispatcher import (
-    MeowGenerationDispatcher as AufGenerationDispatcher,
 )
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
