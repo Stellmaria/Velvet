@@ -105,6 +105,11 @@ BEGIN
 END;
 $$;
 
+-- The previous constraint only permits the historical module key, so remove it
+-- before inserting canonical rows. Recreate it after the backfill is complete.
+ALTER TABLE workspace_modules
+    DROP CONSTRAINT IF EXISTS workspace_modules_module_key_check;
+
 INSERT INTO workspace_modules (
     workspace_id, module_key, is_allowed, is_enabled,
     updated_by_user_id, created_at, updated_at
@@ -141,8 +146,6 @@ SET allowed_modules = array_replace(allowed_modules, 'meow', 'auf'),
     updated_at = NOW()
 WHERE 'meow' = ANY(allowed_modules);
 
-ALTER TABLE workspace_modules
-    DROP CONSTRAINT IF EXISTS workspace_modules_module_key_check;
 ALTER TABLE workspace_modules
     ADD CONSTRAINT workspace_modules_module_key_check
     CHECK (
