@@ -1,0 +1,127 @@
+name: port auf editing contract
+
+on:
+  push:
+    branches:
+      - agent/shared-helper-auf-edit-family
+
+permissions:
+  contents: write
+
+concurrency:
+  group: port-auf-editing-contract
+  cancel-in-progress: false
+
+jobs:
+  port:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/shared-helper-auf-edit-family
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Port the reviewed feature diff onto current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main agent/shared-helper-auf-edit-family
+          git diff --binary \
+            c553dcbe61ae6225f83e7390cdd81b650cdb1208 \
+            75bdd2ba6681efde46e229478b2184b01965abba \
+            -- \
+            tests/test_auf_editing_contract.py \
+            velvet_bot/app/auf_photo_ui_install.py \
+            velvet_bot/app/grs_resilience.py \
+            velvet_bot/presentation/telegram/auf_editing.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf_grs.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf_photo.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py \
+            velvet_bot/presentation/telegram/shared/__init__.py \
+            velvet_bot/presentation/telegram/shared/editing.py \
+            > /tmp/auf-editing.patch
+          test -s /tmp/auf-editing.patch
+          git reset --hard origin/main
+          git apply --3way --index /tmp/auf-editing.patch
+
+      - name: Add worklog and regenerate inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > docs/worklog/2026-07-30-auf-editing-contract.md <<'EOF'
+          # Ауф: публичный edit-or-answer contract
+
+          ## Причина
+
+          Ауф routers и runtime installers импортировали и переназначали private `_edit_or_answer` из `workspace_auf`. Из-за этого callback editing, media fallback и GRS sanitization зависели от скрытого cross-module contract и порядка runtime patches.
+
+          ## Что изменено
+
+          - добавлен общий callback edit-or-answer helper в `presentation.telegram.shared.editing`;
+          - добавлен публичный Ауф adapter с text-transform hook;
+          - Ауф photo/GRS routers и installers переведены с private `_edit_or_answer` на публичный contract;
+          - сохранены callback acknowledgement, fallback для media-сообщений, обработка `message is not modified` и GRS text sanitization;
+          - добавлен AST regression, запрещающий возврат внешних private `_edit_or_answer` imports и assignments.
+
+          ## Проверки
+
+          - `python scripts/shared_contract_inventory.py --check`;
+          - `python scripts/telegram_navigation_inventory.py --root velvet_bot --check`;
+          - focused unit tests Ауф editing, shared helpers, navigation inventory и GRS delegation;
+          - полный GitHub Actions CI перед merge.
+
+          ## Связанные задачи
+
+          - #419
+          - #213
+          EOF
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md \
+            --check
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md \
+            --check
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run focused validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_auf_editing_contract.py' -v
+          python -m unittest discover -s tests -p 'test_telegram_shared_helpers.py' -v
+          python -m unittest discover -s tests -p 'test_telegram_navigation_inventory.py' -v
+          python -m unittest discover -s tests -p 'test_auf_grs_action_delegation.py' -v
+          python -m compileall -q \
+            velvet_bot/presentation/telegram/auf_editing.py \
+            velvet_bot/presentation/telegram/shared/editing.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf_grs.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf_photo.py \
+            velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py \
+            velvet_bot/app/auf_photo_ui_install.py \
+            velvet_bot/app/grs_resilience.py
+
+      - name: Replace stale branch history with the current-main port
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "P3: port Auf editing contract onto current main"
+          git push --force-with-lease origin HEAD:agent/shared-helper-auf-edit-family
