@@ -1,0 +1,8 @@
+services:
+  bot:
+    # API остаётся на loopback VPS. Windows подключается через SSH tunnel:
+    # ssh -N -L 8766:127.0.0.1:8766 velvet@SERVER_IP
+    ports:
+      - "127.0.0.1:${KRITA_REMOTE_HOST_PORT:-8766}:${KRITA_REMOTE_PORT:-8766}"
+    environment:
+      KRITA_BRIDGE_DIR: ${KRITA_BRIDGE_DIR:-/app/runtime/krita}

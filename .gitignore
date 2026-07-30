@@ -2,6 +2,8 @@
 .env*
 !.env.example
 !.env.hermes.example
+!.env.server.example
+!.env.krita-remote.example
 .codex/
 .hermes/
 .ssh/
@@ -10,6 +12,7 @@
 
 # Runtime data
 data/
+server-data/
 backups/
 logs/
 runtime/

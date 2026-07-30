@@ -58,7 +58,7 @@ class KieModelAlias(StrEnum):
             self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",
             self.GROK_IMAGINE_VIDEO_15: "Grok Imagine Video 1.5",
             self.SEEDANCE_15_PRO_VIDEO: "Seedance 1.5 Pro",
-            self.WAN_26_IMAGE_TO_VIDEO: "Wan 2.6",
+            self.WAN_26_IMAGE_TO_VIDEO: "Wan 2.7",
         }[self]
 
     @property
@@ -115,7 +115,8 @@ class KieModelCatalog:
     grok_imagine_video: str = "grok-imagine/image-to-video"
     grok_imagine_video_15: str = "grok-imagine-video-1-5-preview"
     seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"
-    wan_26_image_to_video: str = "wan/2-6-image-to-video"
+    # Field name stays stable so queued Wan tasks remain readable.
+    wan_26_image_to_video: str = "wan/2-7-image-to-video"
 
     def provider_model(
         self,

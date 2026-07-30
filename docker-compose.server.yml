@@ -1,0 +1,107 @@
+name: velvet
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    env_file:
+      - .env.server
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - ${VELVET_DATA_DIR:-./server-data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    stop_grace_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  bot:
+    image: ${VELVET_IMAGE:-velvet-bot:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    env_file:
+      - .env.server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ${VELVET_DATA_DIR:-./server-data}/backups:/app/backups
+      - ${VELVET_DATA_DIR:-./server-data}/logs:/app/logs
+      - ${VELVET_DATA_DIR:-./server-data}/runtime:/app/runtime
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    healthcheck:
+      test: ["CMD", "python", "scripts/container_healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    stop_grace_period: 45s
+    mem_limit: ${VELVET_BOT_MEMORY_LIMIT:-4g}
+    cpus: ${VELVET_BOT_CPU_LIMIT:-2.0}
+    pids_limit: 512
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  # Запускается только после отдельного smoke-test:
+  # docker compose --env-file .env.server -f docker-compose.server.yml \
+  #   --profile agent up -d hermes
+  # Hermes не получает production .env, docker.sock, PostgreSQL volume или
+  # рабочий каталог запущенного бота.
+  hermes:
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    profiles: ["agent"]
+    restart: unless-stopped
+    init: true
+    command: ["gateway", "run"]
+    env_file:
+      - .env.hermes
+    ports:
+      - "127.0.0.1:${HERMES_LOOPBACK_PORT:-8642}:8642"
+    volumes:
+      - ${VELVET_DATA_DIR:-./server-data}/hermes:/opt/data
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    mem_limit: ${HERMES_MEMORY_LIMIT:-4g}
+    cpus: ${HERMES_CPU_LIMIT:-2.0}
+    pids_limit: 256
+    shm_size: 1gb
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3).read()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
