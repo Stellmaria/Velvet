@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 from velvet_bot.app.auf_active_delivery_fix import (
-    _delivery_buttons_for_all_success,
-    _provider_task_id,
+    delivery_buttons_for_all_success,
+    provider_task_id,
 )
 
 
@@ -15,7 +15,7 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
     def test_provider_task_id_uses_campaign_runtime_when_result_is_empty(self) -> None:
         self.assertEqual(
             "grs:provider-task",
-            _provider_task_id(
+            provider_task_id(
                 {},
                 {
                     "kie_campaign": {
@@ -27,10 +27,8 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
 
     def test_success_task_gets_delivery_button_without_saved_url(self) -> None:
         task_id = uuid4()
-        portal = SimpleNamespace(
-            _MODEL_NAMES={"nano_banana_pro": "Nano Banana Pro"}
-        )
-        rows = _delivery_buttons_for_all_success(
+        portal = SimpleNamespace(MODEL_NAMES={"nano_banana_pro": "Nano Banana Pro"})
+        rows = delivery_buttons_for_all_success(
             portal=portal,
             page=[
                 {
@@ -58,10 +56,9 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("active_worker = workers.KieGenerationWorker", fix_source)
-        self.assertIn(
-            "active_worker._deliver_best_effort = recovery._deliver_record_with_recovery",
-            fix_source,
-        )
+        self.assertIn("active_worker.install_delivery_handler", fix_source)
+        self.assertIn("recovery.install_redelivery_handler", fix_source)
+        self.assertNotIn("active_worker._deliver_best_effort", fix_source)
 
 
 if __name__ == "__main__":
