@@ -1,38 +1,26 @@
 """Canonical public API for the Auf generation runtime.
 
 The database schema and a few stacked branches still use the historical ``meow``
-identifier. New application code must import this package and use ``Auf*`` names;
-the old package remains a compatibility boundary until the stacked PRs are merged.
+identifier. New application code imports this package and uses ``Auf*`` names;
+the old package is only a compatibility boundary for existing imports and data.
 """
 
-from velvet_bot.domains.meow_runtime import (
-    MeowCancellationResult,
-    MeowProvider,
-    MeowProviderSnapshot,
-    MeowRuntimeAccessError,
-    MeowRuntimeRepository,
-    MeowRuntimeService,
-    MeowRuntimeSettings,
-    WorkspaceMeowSettings,
+from .dispatcher import AufGenerationDispatcher
+from .models import (
+    AufCancellationResult,
+    AufProvider,
+    AufProviderSnapshot,
+    AufRuntimeSettings,
+    WorkspaceAufSettings,
 )
-from velvet_bot.domains.meow_runtime.dispatcher import MeowGenerationDispatcher
-from velvet_bot.domains.meow_runtime.queue import ProviderMeowTaskQueueService
+from .queue import ProviderAufTaskQueueService
+from .service import AufRuntimeAccessError, AufRuntimeService
+from .store import AufRuntimeRepository
 
 # Persistent keys cannot be renamed independently from existing workspace rows and
 # already-sent Telegram keyboards. Keep them in one explicit compatibility boundary.
 AUF_MODULE_KEY = "meow"
 AUF_WORKSPACE_ACTION = "meow"
-
-AufCancellationResult = MeowCancellationResult
-AufGenerationDispatcher = MeowGenerationDispatcher
-AufProvider = MeowProvider
-AufProviderSnapshot = MeowProviderSnapshot
-AufRuntimeAccessError = MeowRuntimeAccessError
-AufRuntimeRepository = MeowRuntimeRepository
-AufRuntimeService = MeowRuntimeService
-AufRuntimeSettings = MeowRuntimeSettings
-ProviderAufTaskQueueService = ProviderMeowTaskQueueService
-WorkspaceAufSettings = WorkspaceMeowSettings
 
 __all__ = (
     "AUF_MODULE_KEY",
