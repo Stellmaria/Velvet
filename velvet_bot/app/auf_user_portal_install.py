@@ -154,12 +154,12 @@ def _user_settings_text(original, **kwargs) -> str:
 
 def _video_request_from_state(data: Mapping[str, object]):
     reference = video_router.legacy._reference_from_data(
-        data.get("meow_video_reference")
+        (data.get("auf_video_reference") or data.get("meow_video_reference"))
     )
     last_reference = video_router.legacy._reference_from_data(
-        data.get("meow_video_last_reference")
+        (data.get("auf_video_last_reference") or data.get("meow_video_last_reference"))
     )
-    prompt = str(data.get("meow_video_prompt") or "").strip()
+    prompt = str((data.get("auf_video_prompt") or data.get("meow_video_prompt")) or "").strip()
     if reference is None or not prompt:
         raise ValueError("Сессия устарела: нужны первый кадр и промт.")
 
@@ -298,7 +298,7 @@ async def _show_video_auf_review(
             "резервирования, бот попросит подтвердить новую сумму.</i>",
         ]
     )
-    await state.set_state(video_router.MeowVideoForm.reviewing)
+    await state.set_state(video_router.AufVideoForm.reviewing)
     await video_router.legacy._edit_or_answer(
         callback,
         text="\n".join(lines),
@@ -321,7 +321,7 @@ async def _submit_video_with_auf(
     wallet_service,
 ) -> None:
     data = await state.get_data()
-    session_id = str(data.get("meow_video_session_id") or "").strip()
+    session_id = str((data.get("auf_video_session_id") or data.get("meow_video_session_id")) or "").strip()
     expected_version = str(
         data.get("auf_video_expected_price_version") or ""
     ).strip()
@@ -434,7 +434,7 @@ async def _submit_video_with_auf(
     await video_router.legacy._edit_or_answer(
         callback,
         text="\n".join(details),
-        reply_markup=video_router.build_meow_root_keyboard(
+        reply_markup=video_router.build_auf_root_keyboard(
             workspace_id=workspace_id, enabled=True
         ),
     )
@@ -602,8 +602,8 @@ def install_auf_user_portal() -> None:
     controller = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_controller"
     )
-    original_action = controller.handle_scoped_meow_action
-    original_video_action = controller.handle_scoped_meow_video_action
+    original_action = controller.handle_scoped_auf_action
+    original_video_action = controller.handle_scoped_auf_video_action
     original_wallet_keyboard = wallet_router._wallet_keyboard
     original_settings_text = video_router._settings_text
 
@@ -630,15 +630,13 @@ def install_auf_user_portal() -> None:
         database,
         ai_usage_service,
         ai_task_queue_service,
-        meow_runtime_service,
-        meow_wallet_service,
-        meow_purchase_service,
+        auf_runtime_service,
     ) -> None:
         if callback_data.action == "wallet_tasks":
-            if not await controller._require_meow_callback(
+            if not await controller._require_auf_callback(
                 callback,
                 workspace_id=callback_data.workspace_id,
-                service=meow_runtime_service,
+                service=auf_runtime_service,
             ):
                 return
             await _render_user_tasks(
@@ -658,10 +656,8 @@ def install_auf_user_portal() -> None:
             database,
             ai_usage_service,
             ai_task_queue_service,
-            meow_runtime_service,
-            meow_wallet_service,
-            meow_purchase_service,
-        )
+            auf_runtime_service,
+                )
 
     async def handle_scoped_auf_user_video_action(
         callback,
@@ -688,7 +684,7 @@ def install_auf_user_portal() -> None:
                 auf_runtime_service,
             )
             return
-        if not await controller._require_meow_callback(
+        if not await controller._require_auf_callback(
             callback,
             workspace_id=callback_data.workspace_id,
             service=auf_runtime_service,
@@ -719,8 +715,8 @@ def install_auf_user_portal() -> None:
 
     wallet_router._wallet_keyboard = wallet_keyboard_with_tasks
     video_router._settings_text = user_settings_text
-    controller.handle_scoped_meow_action = handle_scoped_auf_user_action
-    controller.handle_scoped_meow_video_action = handle_scoped_auf_user_video_action
+    controller.handle_scoped_auf_action = handle_scoped_auf_user_action
+    controller.handle_scoped_auf_video_action = handle_scoped_auf_user_video_action
     _INSTALLED = True
 
 
