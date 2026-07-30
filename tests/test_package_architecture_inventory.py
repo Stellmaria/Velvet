@@ -181,7 +181,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
         self.assertIn("Production modules: **605**", self.markdown)
-        self.assertIn("Production LOC: **129,015**", self.markdown)
+        self.assertIn("Production LOC: **129015**", self.markdown)
         self.assertIn("Startup installer stages: **27**", self.markdown)
         self.assertIn("Registered package violations: **516**", self.markdown)
         self.assertIn("Registered exemptions: **516**", self.markdown)
