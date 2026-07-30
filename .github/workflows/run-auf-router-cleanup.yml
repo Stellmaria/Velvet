@@ -6,10 +6,10 @@ on:
       - agent/auf-router-cleanup-runner
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  cleanup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,30 +17,189 @@ jobs:
           ref: agent/final-auf-router-layer
           fetch-depth: 0
 
-      - name: Audit retired brand in canonical code
+      - name: Migrate active router state and labels
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
+          import re
 
-          roots = (
-              Path('velvet_bot/presentation/telegram/routers'),
-              Path('velvet_bot/app'),
-              Path('velvet_bot/domains/auf_runtime'),
-              Path('velvet_bot/domains/auf_wallet'),
+          root = Path('.')
+
+          def read(relative: str) -> str:
+              return (root / relative).read_text(encoding='utf-8')
+
+          def write(relative: str, content: str) -> None:
+              (root / relative).write_text(content, encoding='utf-8')
+
+          core_path = 'velvet_bot/presentation/telegram/routers/workspace_auf.py'
+          core = read(core_path)
+          for old, new in (
+              ('meow_input_mode', 'auf_input_mode'),
+              ('meow_prompt', 'auf_prompt'),
+              ('meow_references', 'auf_references'),
+              ('meow_model', 'auf_model'),
+          ):
+              core = core.replace(old, new)
+          core = core.replace('Мяу', 'Ауф').replace('мяу', 'ауф')
+          helper = dedent('''
+
+              def _state_value(data: Mapping[str, object], key: str) -> object:
+                  if key in data:
+                      return data[key]
+                  return data.get(key.replace("auf_", "meow_", 1))
+          ''').rstrip()
+          if 'def _state_value' not in core:
+              core = core.replace('\n\nasync def _session(', helper + '\n\nasync def _session(')
+          for key in ('auf_input_mode', 'auf_prompt', 'auf_references', 'auf_model'):
+              core = core.replace(f'data.get("{key}")', f'_state_value(data, "{key}")')
+              core = core.replace(
+                  f'(await state.get_data()).get("{key}")',
+                  f'_state_value(await state.get_data(), "{key}")',
+              )
+          write(core_path, core)
+
+          grs_path = 'velvet_bot/presentation/telegram/routers/workspace_auf_grs.py'
+          grs = read(grs_path)
+          grs = grs.replace(
+              'handle_auf_action as handle_legacy_meow_action',
+              'handle_auf_action',
           )
-          needles = ('Meow', 'meow_', 'Мяу', 'мяу')
-          found = 0
-          for root in roots:
-              for path in sorted(root.glob('*.py')):
-                  if root.name == 'routers' and not path.name.startswith('workspace_auf'):
-                      continue
-                  if root.name == 'app' and not path.name.startswith('auf_'):
-                      continue
-                  for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
-                      if any(needle in line for needle in needles):
-                          print(f'{path}:{number}:{line}')
-                          found += 1
-          print(f'AUDIT_TOTAL={found}')
-          raise SystemExit(1)
+          grs = grs.replace('handle_legacy_meow_action', 'handle_auf_action')
+          grs = grs.replace('meow_model', 'auf_model')
+          grs = grs.replace('Мяу', 'Ауф').replace('мяу', 'ауф')
+          write(grs_path, grs)
+
+          text_only = (
+              'velvet_bot/presentation/telegram/routers/workspace_auf_balance.py',
+              'velvet_bot/presentation/telegram/routers/workspace_auf_grs_balance.py',
+              'velvet_bot/presentation/telegram/routers/workspace_auf_video.py',
+              'velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py',
+          )
+          for path in text_only:
+              source = read(path).replace('Мяу', 'Ауф').replace('мяу', 'ауф')
+              write(path, source)
+
+          adjustments_path = (
+              'velvet_bot/presentation/telegram/routers/'
+              'workspace_auf_photo_adjustments.py'
+          )
+          adjustments = read(adjustments_path).replace(
+              'photo_router._references(data.get("meow_references"))',
+              'photo_router._references('
+              'photo_router._state_value(data, "auf_references")'
+              ')',
+          )
+          write(adjustments_path, adjustments)
+
+          installer_path = 'velvet_bot/app/auf_photo_ui_install.py'
+          installer = read(installer_path).replace(
+              'photo_router._model((await state.get_data()).get("meow_model"))',
+              'photo_router._model('
+              '_state_value(await state.get_data(), "auf_model")'
+              ')',
+          )
+          installer = installer.replace(
+              'Install the capability-aware photo flow over the historical callback protocol.',
+              'Install the capability-aware photo flow with legacy payload dual-read.',
+          )
+          write(installer_path, installer)
+
+          app_path = 'velvet_bot/app/__init__.py'
+          app = read(app_path)
+          app = app.replace(
+              '        from velvet_bot.app.auf_branding import install_auf_branding\n',
+              '',
+          )
+          app = app.replace('        install_auf_branding()\n', '')
+          write(app_path, app)
+
+          ratio_path = 'velvet_bot/app/auf_photo_ratio_callback_fix.py'
+          ratio = read(ratio_path)
+          ratio = ratio.replace('workspace_meow_photo', 'workspace_auf_photo')
+          ratio = ratio.replace('controller.handle_scoped_meow_action', 'controller.handle_scoped_auf_action')
+          ratio = ratio.replace('meow_runtime_service', 'auf_runtime_service')
+          ratio = ratio.replace('meow_wallet_service', 'auf_wallet_service')
+          ratio = ratio.replace('meow_purchase_service', 'auf_purchase_service')
+          write(ratio_path, ratio)
+
+          boundary_path = 'tests/test_auf_router_brand_boundary.py'
+          boundary = read(boundary_path)
+          addition = dedent('''
+
+              def test_active_routers_write_only_auf_fsm_keys_and_labels() -> None:
+                  paths = (
+                      ROUTERS / "workspace_auf.py",
+                      ROUTERS / "workspace_auf_grs.py",
+                      ROUTERS / "workspace_auf_balance.py",
+                      ROUTERS / "workspace_auf_grs_balance.py",
+                      ROUTERS / "workspace_auf_video.py",
+                      ROUTERS / "workspace_auf_video_simple.py",
+                  )
+                  for path in paths:
+                      source = _read(path)
+                      assert "Мяу" not in source, path
+                      assert "мяу" not in source, path
+                  core = _read(ROUTERS / "workspace_auf.py")
+                  for key in (
+                      "meow_input_mode=",
+                      "meow_prompt=",
+                      "meow_references=",
+                      "meow_model=",
+                      'data.get("meow_',
+                  ):
+                      assert key not in core
+                  assert 'key.replace("auf_", "meow_", 1)' in core
+
+
+              def test_runtime_branding_monkey_patch_is_not_installed() -> None:
+                  app = _read(ROOT / "velvet_bot/app/__init__.py")
+                  assert "install_auf_branding" not in app
+          ''').rstrip()
+          if 'test_active_routers_write_only_auf_fsm_keys_and_labels' not in boundary:
+              boundary += addition + '\n'
+          write(boundary_path, boundary)
+
+          worklog_path = 'docs/worklog/2026-07-30-auf-router-protocol-migration.md'
+          worklog = read(worklog_path)
+          worklog = worklog.replace(
+              '- access-policy allowlist содержит новые и старые prefixes;\n',
+              '- access-policy allowlist содержит новые и старые prefixes;\n'
+              '- active photo/video routers пишут только `auf_*` FSM-ключи и используют прямые строки «Ауф»;\n'
+              '- runtime branding monkey-patch больше не устанавливается;\n',
+          )
+          write(worklog_path, worklog)
+
+          # Persistent SQL identifiers and explicit legacy boundary are intentionally allowed.
+          forbidden = []
+          for path in sorted((root / 'velvet_bot/presentation/telegram/routers').glob('workspace_auf*.py')):
+              if path.name == 'workspace_auf_legacy.py':
+                  continue
+              source = path.read_text(encoding='utf-8')
+              for needle in ('Мяу', 'мяу'):
+                  if needle in source:
+                      forbidden.append(f'{path}:{needle}')
+          if forbidden:
+              raise SystemExit('Retired user-facing brand remains: ' + ', '.join(forbidden))
           PY
+
+          python scripts/inventory_architecture_layout.py \
+            --write \
+            --label p3d-analytics-alias-retirement
+          python scripts/update_p2_stability_inventory.py \
+            --label p2-auf-router-protocol-migration \
+            --schema-version 69
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python -m compileall -q velvet_bot tests
+
+      - name: Commit completed active-router migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Очистить active routers от слоя Meow"
+          git push origin HEAD:agent/final-auf-router-layer
