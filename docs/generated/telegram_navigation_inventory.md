@@ -1,9 +1,9 @@
 # Telegram navigation inventory
 
-- Python files scanned: **533**
+- Python files scanned: **536**
 - Files with buttons: **92**
-- Buttons: **1002**
-- Inline buttons: **1002**
+- Buttons: **1004**
+- Inline buttons: **1004**
 - Reply buttons: **0**
 - Maximum literal row size: **3**
 - Violations: **0**
