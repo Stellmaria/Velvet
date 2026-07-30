@@ -33,6 +33,9 @@ def __getattr__(name: str) -> Any:
         from velvet_bot.app.grs_resilience import install_grs_resilience
         from velvet_bot.app.grs_speedups import install_grs_speedups
         from velvet_bot.app.krita_remote_install import install_krita_remote_worker
+        from velvet_bot.app.original_image_delivery_hotfix import (
+            install_original_image_delivery_hotfix,
+        )
         from velvet_bot.app.original_video_delivery_hotfix import (
             install_original_video_delivery_hotfix,
         )
@@ -57,6 +60,7 @@ def __getattr__(name: str) -> Any:
         install_auf_wallet_ui()
         install_auf_photo_ui()
         install_auf_photo_ratio_callback_fix()
+        install_original_image_delivery_hotfix()
         install_original_video_delivery_hotfix()
         install_krita_remote_worker()
         await application()
