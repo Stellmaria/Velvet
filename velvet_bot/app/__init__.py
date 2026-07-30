@@ -25,6 +25,10 @@ def __getattr__(name: str) -> Any:
         )
         from velvet_bot.app.auf_branding import install_auf_branding
         from velvet_bot.app.auf_cancel_ui_install import install_auf_cancel_ui
+        from velvet_bot.app.auf_charged_queue_install import install_auf_charged_queue
+        from velvet_bot.app.auf_generation_receipt_install import (
+            install_auf_generation_receipts,
+        )
         from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
         from velvet_bot.app.auf_photo_ratio_callback_fix import (
             install_auf_photo_ratio_callback_fix,
@@ -74,6 +78,8 @@ def __getattr__(name: str) -> Any:
         install_original_video_delivery_hotfix()
         install_auf_result_delivery_recovery()
         install_auf_active_delivery_fix()
+        install_auf_charged_queue()
+        install_auf_generation_receipts()
         install_krita_remote_worker()
         # Privacy and branding must run last because several installers replace
         # presentation methods during composition.
