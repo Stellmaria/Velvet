@@ -58,9 +58,6 @@ def _build_root_router() -> Router:
     from velvet_bot.presentation.telegram.routers.quality_operations import (
         router as quality_operations_router,
     )
-    from velvet_bot.presentation.telegram.routers.user_management import (
-        router as user_management_router,
-    )
 
     install_post_router_compatibility()
 
@@ -88,7 +85,6 @@ def _build_root_router() -> Router:
         )
         return True
 
-    root.include_router(user_management_router)
     root.include_router(core_operations_router)
     root.include_router(analytics_router)
     root.include_router(quality_operations_router)
