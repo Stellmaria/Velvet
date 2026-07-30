@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 
 from aiogram import Router
-from aiogram.types import ErrorEvent
+from aiogram.types import ErrorEvent, Message
 
+from velvet_bot.domains.meow_wallet import MeowPriceNotConfigured, MeowWalletError
 from velvet_bot.infrastructure.transient_connections import (
     is_transient_connection_error,
 )
@@ -27,6 +28,19 @@ def _is_transient_telegram_error(error: BaseException) -> bool:
     return is_transient_connection_error(error) and any(
         marker in message for marker in _TELEGRAM_TRANSPORT_MARKERS
     )
+
+
+async def _show_meow_charging_error(event: ErrorEvent) -> bool:
+    message = str(event.exception).strip() or "Не удалось рассчитать стоимость в Ауф."
+    callback = event.update.callback_query
+    if callback is not None:
+        await callback.answer(message, show_alert=True)
+        return True
+    update_message = event.update.message
+    if isinstance(update_message, Message):
+        await update_message.answer(message)
+        return True
+    return False
 
 
 def _build_root_router() -> Router:
@@ -53,6 +67,9 @@ def _build_root_router() -> Router:
 
     @root.error()
     async def handle_unhandled_error(event: ErrorEvent) -> bool:
+        if isinstance(event.exception, (MeowWalletError, MeowPriceNotConfigured)):
+            if await _show_meow_charging_error(event):
+                return True
         if _is_transient_telegram_error(event.exception):
             logger.info(
                 "Transient Telegram connection error recovered: %s",
