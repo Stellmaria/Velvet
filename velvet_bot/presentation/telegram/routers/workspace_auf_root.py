@@ -46,7 +46,6 @@ def build_auf_root_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-build_auf_root_keyboard = build_auf_root_keyboard
 workspace_auf_router.build_auf_root_keyboard = build_auf_root_keyboard
 
 
@@ -58,6 +57,9 @@ def _build_root_keyboard(
     global_owner: bool,
     module_visible: bool,
 ) -> InlineKeyboardMarkup:
+    # Provider-specific balance callbacks remain registered for compatibility with
+    # already-sent owner keyboards, but are deliberately absent from the product UI.
+    del grs_enabled, global_owner
     base = build_auf_root_keyboard(workspace_id=workspace_id, enabled=enabled)
     rows = list(base.inline_keyboard)
     back_row = rows.pop() if rows else []
@@ -99,30 +101,6 @@ def _build_root_keyboard(
                 )
             ]
         )
-        if global_owner:
-            rows.append(
-                [
-                    InlineKeyboardButton(
-                        text="Баланс Kie · очередь",
-                        callback_data=AufCallback(
-                            action="balance",
-                            workspace_id=workspace_id,
-                        ).pack(),
-                    )
-                ]
-            )
-            if grs_enabled:
-                rows.append(
-                    [
-                        InlineKeyboardButton(
-                            text="Баланс GRS AI",
-                            callback_data=AufCallback(
-                                action="grs_balance",
-                                workspace_id=workspace_id,
-                            ).pack(),
-                        )
-                    ]
-                )
     if back_row:
         rows.append(back_row)
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -142,10 +120,6 @@ async def handle_auf_root_entry(
             workspace_id=workspace_id,
             actor_user_id=user_id,
         )
-        workspace_settings = await auf_runtime_service.workspace_settings(
-            workspace_id=workspace_id,
-            actor_user_id=user_id,
-        )
     except (AufRuntimeAccessError, ValueError) as error:
         await callback.answer(str(error), show_alert=True)
         return
@@ -157,38 +131,18 @@ async def handle_auf_root_entry(
     )
     await state.clear()
     if kie_settings.enabled:
-        grs_line = (
-            "Nano Banana 2 и Nano Banana Pro через GRS AI"
-            if kie_settings.grs_api_key
-            else "Nano Banana 2/Pro скрыты до настройки GRS_API_KEY"
-        )
-        if global_owner:
-            runtime = await auf_runtime_service.runtime_settings(actor_user_id=user_id)
-            concurrency = (
-                f"Kie до <b>{runtime.kie_concurrency_limit}</b>, "
-                f"GRS до <b>{runtime.grs_concurrency_limit}</b>"
-            )
-        else:
-            concurrency = (
-                f"до <b>{workspace_settings.concurrency_limit}</b> одновременно "
-                "для этого пространства"
-            )
         text = (
             "<b>Ауф</b>\n\n"
-            f"<b>Фото</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
-            "Можно использовать текст и референсы из базы или Telegram.\n\n"
-            "<b>Видео</b> — фото и описание движения превращаются в видео через "
-            "Grok Imagine v1, Grok Imagine Video 1.5, Seedance 1.5 Pro или Wan 2.7.\n\n"
-            f"Параллельность: {concurrency}.\n"
-            f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
-            "Баланс Ауф, пакеты покупки и история операций доступны отдельной кнопкой. "
-            "Настройки применяются из PostgreSQL без перезапуска бота."
+            "<b>Фото</b> — Nano Banana 2, Nano Banana Pro и Seedream 5 Pro. "
+            "Используйте текст и референсы из базы или Telegram.\n\n"
+            "<b>Видео</b> — Grok Imagine v1, Grok Imagine Video 1.5, "
+            "Seedance 1.5 Pro и Wan 2.7. Добавьте фото и описание движения.\n\n"
+            "Баланс, пакеты покупки и история операций доступны отдельной кнопкой."
         )
     else:
         text = (
             "<b>Ауф</b>\n\n"
-            "Интерфейс установлен, но AI-генерация выключена. Заполните KIE_API_KEY, "
-            "GRS_API_KEY, KIE_USD_TO_RUB и model id, затем включите KIE_ENABLED=true."
+            "Генерация сейчас недоступна. Обратитесь к владельцу пространства."
         )
     keyboard = _build_root_keyboard(
         workspace_id=workspace_id,
@@ -209,12 +163,7 @@ async def handle_auf_root_entry(
     await callback.answer()
 
 
-handle_auf_root_entry = handle_auf_root_entry
-
-
 __all__ = (
     "build_auf_root_keyboard",
-    "build_auf_root_keyboard",
-    "handle_auf_root_entry",
     "handle_auf_root_entry",
 )
