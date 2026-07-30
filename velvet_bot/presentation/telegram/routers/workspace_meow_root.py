@@ -5,28 +5,28 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from velvet_bot.core.config.kie import KieSettings
-from velvet_bot.domains.meow_runtime import (
-    MeowRuntimeAccessError,
-    MeowRuntimeService,
+from velvet_bot.domains.auf_runtime import (
+    AufRuntimeAccessError,
+    AufRuntimeService,
 )
 from velvet_bot.presentation.telegram.routers import workspace_meow as workspace_meow_router
 from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback
 from velvet_bot.workspace_ui import WorkspaceCallback
 
 
-_ORIGINAL_BUILD_MEOW_ROOT_KEYBOARD = workspace_meow_router.build_meow_root_keyboard
+_ORIGINAL_BUILD_AUF_ROOT_KEYBOARD = workspace_meow_router.build_meow_root_keyboard
 _ROOT_BUTTON_LABELS = {
     "Создать": "Фото",
     "Оживить": "Видео",
 }
 
 
-def build_meow_root_keyboard(
+def build_auf_root_keyboard(
     *,
     workspace_id: int,
     enabled: bool,
 ) -> InlineKeyboardMarkup:
-    base = _ORIGINAL_BUILD_MEOW_ROOT_KEYBOARD(
+    base = _ORIGINAL_BUILD_AUF_ROOT_KEYBOARD(
         workspace_id=workspace_id,
         enabled=enabled,
     )
@@ -46,7 +46,10 @@ def build_meow_root_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-workspace_meow_router.build_meow_root_keyboard = build_meow_root_keyboard
+# Compatibility boundary for the pre-Auf router module. New code should import
+# build_auf_root_keyboard from this module.
+build_meow_root_keyboard = build_auf_root_keyboard
+workspace_meow_router.build_meow_root_keyboard = build_auf_root_keyboard
 
 
 def _build_root_keyboard(
@@ -57,7 +60,7 @@ def _build_root_keyboard(
     global_owner: bool,
     module_visible: bool,
 ) -> InlineKeyboardMarkup:
-    base = build_meow_root_keyboard(workspace_id=workspace_id, enabled=enabled)
+    base = build_auf_root_keyboard(workspace_id=workspace_id, enabled=enabled)
     rows = list(base.inline_keyboard)
     back_row = rows.pop() if rows else []
     if enabled:
@@ -76,9 +79,9 @@ def _build_root_keyboard(
             [
                 InlineKeyboardButton(
                     text=(
-                        "🙈 Скрыть Мяу в моём меню"
+                        "🙈 Скрыть Ауф в моём меню"
                         if module_visible
-                        else "👁 Показать Мяу в моём меню"
+                        else "👁 Показать Ауф в моём меню"
                     ),
                     callback_data=MeowCallback(
                         action="visibility_toggle",
@@ -116,12 +119,12 @@ def _build_root_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-async def handle_meow_root_entry(
+async def handle_auf_root_entry(
     callback: CallbackQuery,
     callback_data: WorkspaceCallback,
     state: FSMContext,
     kie_settings: KieSettings,
-    meow_runtime_service: MeowRuntimeService,
+    meow_runtime_service: AufRuntimeService,
 ) -> None:
     workspace_id = callback_data.workspace_id
     user_id = callback.from_user.id
@@ -134,7 +137,7 @@ async def handle_meow_root_entry(
             workspace_id=workspace_id,
             actor_user_id=user_id,
         )
-    except (MeowRuntimeAccessError, ValueError) as error:
+    except (AufRuntimeAccessError, ValueError) as error:
         await callback.answer(str(error), show_alert=True)
         return
 
@@ -162,7 +165,7 @@ async def handle_meow_root_entry(
                 "для этого пространства"
             )
         text = (
-            "<b>Мяу</b>\n\n"
+            "<b>Ауф</b>\n\n"
             f"<b>Фото</b> — {grs_line}; Seedream 5 Pro через Kie.ai. "
             "Можно использовать текст и референсы из базы или Telegram.\n\n"
             "<b>Видео</b> — фото и описание движения превращаются в видео через "
@@ -173,7 +176,7 @@ async def handle_meow_root_entry(
         )
     else:
         text = (
-            "<b>Мяу</b>\n\n"
+            "<b>Ауф</b>\n\n"
             "Интерфейс установлен, но AI-генерация выключена. Заполните KIE_API_KEY, "
             "GRS_API_KEY, KIE_USD_TO_RUB и model id, затем включите KIE_ENABLED=true."
         )
@@ -196,7 +199,14 @@ async def handle_meow_root_entry(
     await callback.answer()
 
 
+# Existing router registration imports the historical name. Keep it as an alias
+# until the callback/router stack is migrated in one coordinated change.
+handle_meow_root_entry = handle_auf_root_entry
+
+
 __all__ = (
+    "build_auf_root_keyboard",
     "build_meow_root_keyboard",
+    "handle_auf_root_entry",
     "handle_meow_root_entry",
 )
