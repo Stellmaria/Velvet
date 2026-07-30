@@ -13,6 +13,10 @@ from .models import (
 )
 from .store import MeowRuntimeRepository
 
+# Persisted before the public rename. Keep the storage key stable until a dedicated
+# database migration moves existing workspace module rows to ``auf``.
+_LEGACY_AUF_MODULE_KEY = "meow"
+
 
 class MeowRuntimeAccessError(PermissionError):
     pass
@@ -103,7 +107,7 @@ class MeowRuntimeService:
         )
         if not allowed:
             raise MeowRuntimeAccessError(
-                "Модуль Мяу не разрешён Стэл, выключен владельцем или недоступен вашей роли."
+                "Модуль Ауф не разрешён Стэл, выключен владельцем или недоступен вашей роли."
             )
 
     async def is_workspace_owner(
@@ -133,7 +137,7 @@ class MeowRuntimeService:
         *,
         workspace_id: int,
         actor_user_id: int,
-        module_key: str = "meow",
+        module_key: str = _LEGACY_AUF_MODULE_KEY,
     ) -> bool:
         return await self._repository.module_is_visible(
             workspace_id=workspace_id,
@@ -147,14 +151,14 @@ class MeowRuntimeService:
         workspace_id: int,
         actor_user_id: int,
         is_visible: bool,
-        module_key: str = "meow",
+        module_key: str = _LEGACY_AUF_MODULE_KEY,
     ) -> bool:
         if not await self._repository.is_workspace_owner(
             workspace_id=workspace_id,
             user_id=actor_user_id,
         ):
             raise MeowRuntimeAccessError(
-                "Настраивать отображение Мяу может только владелец пространства."
+                "Настраивать отображение Ауф может только владелец пространства."
             )
         return await self._repository.set_module_visible(
             workspace_id=workspace_id,
