@@ -6,9 +6,9 @@ from velvet_bot.domains.auf_runtime.service import (
 )
 
 MeowRuntimeAccessError = AufRuntimeAccessError
-AufRuntimeService = AufRuntimeService
+MeowRuntimeService = AufRuntimeService
 
 __all__ = (
     "MeowRuntimeAccessError",
-    "AufRuntimeService",
+    "MeowRuntimeService",
 )
