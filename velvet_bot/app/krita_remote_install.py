@@ -4,8 +4,8 @@ import logging
 import os
 from typing import Any
 
+from velvet_bot.domains.watermark import WatermarkRepository
 from velvet_bot.domains.watermark.remote_worker import KritaRemoteRepository
-from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
 from velvet_bot.infrastructure.krita_remote_api import (
     KritaRemoteCoordinator,
