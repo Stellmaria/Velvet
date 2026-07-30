@@ -1,25 +1,42 @@
-from velvet_bot.domains.meow_wallet.models import (
+"""Compatibility package for retired Meow wallet imports.
+
+All implementations live in :mod:`velvet_bot.domains.auf_wallet`.
+"""
+
+from velvet_bot.domains.auf_wallet import (
+    AUF_PACKAGES,
     AUF_SCALE,
-    MeowEconomySettings,
-    MeowInsufficientBalance,
-    MeowWallet,
-    MeowWalletEntry,
-    MeowWalletError,
-    MeowWalletFrozen,
-    MeowWalletOperation,
-    MeowWalletOverview,
-    MeowWalletStatus,
+    AufEconomySettings,
+    AufInsufficientBalance,
+    AufPackageQuote,
+    AufWallet,
+    AufWalletAccessError,
+    AufWalletEntry,
+    AufWalletError,
+    AufWalletFrozen,
+    AufWalletOperation,
+    AufWalletOverview,
+    AufWalletRepository,
+    AufWalletService,
+    AufWalletStatus,
     auf_to_units,
     format_auf_units,
     units_to_auf,
 )
-from velvet_bot.domains.meow_wallet.service import (
-    AUF_PACKAGES,
-    MeowAufPackageQuote,
-    MeowWalletAccessError,
-    MeowWalletService,
-)
-from velvet_bot.domains.meow_wallet.store import MeowWalletRepository
+
+MeowAufPackageQuote = AufPackageQuote
+MeowEconomySettings = AufEconomySettings
+MeowInsufficientBalance = AufInsufficientBalance
+MeowWallet = AufWallet
+MeowWalletAccessError = AufWalletAccessError
+MeowWalletEntry = AufWalletEntry
+MeowWalletError = AufWalletError
+MeowWalletFrozen = AufWalletFrozen
+MeowWalletOperation = AufWalletOperation
+MeowWalletOverview = AufWalletOverview
+MeowWalletRepository = AufWalletRepository
+MeowWalletService = AufWalletService
+MeowWalletStatus = AufWalletStatus
 
 __all__ = (
     "AUF_PACKAGES",
