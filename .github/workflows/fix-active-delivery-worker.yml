@@ -1,0 +1,327 @@
+name: Fix active Auf delivery worker
+
+on:
+  pull_request:
+    branches:
+      - agent/auf-router-cleanup-runner
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-active-delivery-worker
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch active worker and provider redelivery
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('velvet_bot/app/auf_result_delivery_recovery.py')
+          source = path.read_text(encoding='utf-8')
+
+          def replace_once(old: str, new: str) -> None:
+              global source
+              if old not in source:
+                  raise SystemExit(f'missing patch marker: {old[:100]!r}')
+              source = source.replace(old, new, 1)
+
+          replace_once(
+              'import importlib\nimport logging\n',
+              'import importlib\nimport json\nimport logging\n',
+          )
+          replace_once(
+              '    KieTaskRecord,\n)\nfrom velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback\n',
+              '    KieTaskRecord,\n    KieTaskState,\n)\nfrom velvet_bot.infrastructure.ai import KieClient\nfrom velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback\n',
+          )
+          replace_once(
+              '''def _mapping(value: object) -> dict[str, object]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    return {}
+''',
+              '''def _mapping(value: object) -> dict[str, object]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        if isinstance(decoded, Mapping):
+            return dict(decoded)
+    return {}
+''',
+          )
+
+          helper = '''
+
+def _provider_task_id(
+    result: Mapping[str, object],
+    payload: Mapping[str, object],
+) -> str | None:
+    runtime = _mapping(payload.get("kie_campaign"))
+    for container in (result, payload, runtime):
+        for key in (
+            "provider_task_id",
+            "last_provider_task_id",
+            "active_provider_task_id",
+        ):
+            value = str(container.get(key) or "").strip()
+            if value:
+                return value
+    return None
+
+
+async def _load_provider_result_urls(
+    *,
+    kie_settings,
+    provider_task_id: str,
+) -> tuple[str, ...]:
+    if not kie_settings.enabled or kie_settings.api_key is None:
+        raise RuntimeError("Провайдер генерации выключен на сервере.")
+    client = KieClient(
+        api_key=kie_settings.api_key,
+        grs_api_key=kie_settings.grs_api_key,
+        models=kie_settings.models,
+        base_url=kie_settings.base_url,
+        file_upload_base_url=kie_settings.file_upload_base_url,
+        grs_base_url=kie_settings.grs_base_url,
+        timeout_seconds=kie_settings.timeout_seconds,
+        poll_interval_seconds=kie_settings.poll_interval_seconds,
+        task_timeout_seconds=kie_settings.task_timeout_seconds,
+    )
+    record = await client.get_task(provider_task_id)
+    if record.state is not KieTaskState.SUCCESS:
+        raise RuntimeError(
+            f"Провайдер пока не подтверждает готовый результат: {record.state.value}."
+        )
+    return tuple(url for url in record.result_urls if str(url).strip())
+
+
+async def _persist_recovered_result_urls(
+    database,
+    *,
+    task_id: UUID,
+    provider_task_id: str,
+    urls: tuple[str, ...],
+) -> None:
+    async with database.acquire() as connection:
+        await connection.execute(
+            """
+            UPDATE ai_tasks
+            SET result = COALESCE(result, '{}'::JSONB)
+                         || jsonb_build_object(
+                                'provider_task_id', $2::TEXT,
+                                'result_urls', to_jsonb($3::TEXT[])
+                            ),
+                updated_at = NOW()
+            WHERE id = $1::UUID
+            """,
+            task_id,
+            provider_task_id,
+            list(urls),
+        )
+'''
+          replace_once('\n\ndef _delivery_callback(', helper + '\n\ndef _delivery_callback(')
+
+          replace_once(
+              '''async def _redeliver_user_task(
+    callback,
+    *,
+    database,
+    workspace_id: int,
+    task_id_text: str,
+) -> None:
+''',
+              '''async def _redeliver_user_task(
+    callback,
+    *,
+    database,
+    kie_settings,
+    workspace_id: int,
+    task_id_text: str,
+) -> None:
+''',
+          )
+          replace_once(
+              '''    result = _mapping(row["result"])
+    urls = _result_urls(result)
+    if not urls:
+        await callback.answer("У задачи нет сохранённого URL результата.", show_alert=True)
+        return
+
+    provider_task_id = str(result.get("provider_task_id") or task_id).strip()
+    from velvet_bot.domains.media_generation.models import KieTaskState
+
+''',
+              '''    result = _mapping(row["result"])
+    provider_task_id = _provider_task_id(result, payload)
+    urls = _result_urls(result)
+    provider_error: BaseException | None = None
+    if not urls and provider_task_id:
+        try:
+            urls = await _load_provider_result_urls(
+                kie_settings=kie_settings,
+                provider_task_id=provider_task_id,
+            )
+            if urls:
+                await _persist_recovered_result_urls(
+                    database,
+                    task_id=task_id,
+                    provider_task_id=provider_task_id,
+                    urls=urls,
+                )
+        except asyncio.CancelledError:
+            raise
+        except _DELIVERY_ERRORS as error:
+            provider_error = error
+            logger.exception(
+                "Could not recover provider URLs for completed task=%s provider_task=%s",
+                task_id,
+                provider_task_id,
+            )
+    if not urls:
+        details = (
+            f" Провайдер ответил: {str(provider_error)[:300]}"
+            if provider_error is not None
+            else " В записи отсутствует ID задачи провайдера."
+        )
+        await callback.answer(
+            "Не удалось получить URL готового результата." + details,
+            show_alert=True,
+        )
+        return
+
+    provider_task_id = provider_task_id or str(task_id)
+
+''',
+          )
+          replace_once(
+              '''        urls = _result_urls(results.get(row["id"]))
+        if not urls:
+            continue
+        request = _mapping(_mapping(row["payload"]).get("request"))
+''',
+              '''        request = _mapping(_mapping(row["payload"]).get("request"))
+''',
+          )
+          replace_once(
+              '''        await _redeliver_user_task(
+            callback,
+            database=database,
+            workspace_id=int(callback_data.workspace_id),
+            task_id_text=str(callback_data.value or ""),
+        )
+
+    FriendlyKieGenerationWorker._deliver_best_effort = _deliver_record_with_recovery
+''',
+              '''        await _redeliver_user_task(
+            callback,
+            database=database,
+            kie_settings=kie_settings,
+            workspace_id=int(callback_data.workspace_id),
+            task_id_text=str(callback_data.value or ""),
+        )
+
+    workers = importlib.import_module("velvet_bot.app.workers")
+    active_worker = workers.KieGenerationWorker
+    FriendlyKieGenerationWorker._deliver_best_effort = _deliver_record_with_recovery
+    active_worker._deliver_best_effort = _deliver_record_with_recovery
+    logger.info(
+        "Installed Auf result delivery recovery on active worker class=%s",
+        active_worker.__name__,
+    )
+''',
+          )
+          path.write_text(source, encoding='utf-8')
+
+          test_path = Path('tests/test_auf_result_delivery_recovery.py')
+          test_source = test_path.read_text(encoding='utf-8')
+          test_source = test_source.replace(
+              '    _delivery_callback,\n    _result_urls,\n',
+              '    _delivery_callback,\n    _provider_task_id,\n    _result_urls,\n',
+              1,
+          )
+          test_source = test_source.replace(
+              'def test_only_success_tasks_with_saved_urls_get_delivery_buttons(self) -> None:',
+              'def test_all_success_tasks_get_delivery_buttons(self) -> None:',
+              1,
+          )
+          test_source = test_source.replace(
+              '        self.assertEqual(1, len(rows))\n        self.assertIn("Доставить", rows[0][0].text)\n',
+              '        self.assertEqual(2, len(rows))\n        self.assertTrue(all("Доставить" in row[0].text for row in rows))\n',
+              1,
+          )
+          insert_marker = '    def test_recovery_installs_after_existing_delivery_hotfixes(self) -> None:\n'
+          extra_tests = '''    def test_provider_task_id_falls_back_to_campaign_runtime(self) -> None:
+        self.assertEqual(
+            "grs:provider-task",
+            _provider_task_id(
+                {},
+                {
+                    "kie_campaign": {
+                        "last_provider_task_id": "grs:provider-task",
+                    }
+                },
+            ),
+        )
+
+    def test_recovery_patches_the_active_worker_class(self) -> None:
+        source = Path("velvet_bot/app/auf_result_delivery_recovery.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("active_worker = workers.KieGenerationWorker", source)
+        self.assertIn(
+            "active_worker._deliver_best_effort = _deliver_record_with_recovery",
+            source,
+        )
+
+'''
+          if insert_marker not in test_source:
+              raise SystemExit('missing test insertion marker')
+          test_source = test_source.replace(insert_marker, extra_tests + insert_marker, 1)
+          test_path.write_text(test_source, encoding='utf-8')
+
+          worklog = Path('docs/worklog/2026-07-30-auf-result-delivery-recovery.md')
+          text = worklog.read_text(encoding='utf-8')
+          text += '''
+
+## Исправление production-регрессии после повторной проверки
+
+- обнаружено, что production использует `ResilientFriendlyKieGenerationWorker`, который переопределял `_deliver_best_effort` и обходил patch родительского класса;
+- installer теперь патчит фактический класс `app.workers.KieGenerationWorker` после всех GRS-composition installers;
+- кнопка повторной доставки показывается для любой успешной media-задачи;
+- если `result_urls` отсутствуют, бот восстанавливает их через provider task id из результата или `kie_campaign`, сохраняет обратно в `ai_tasks.result` и доставляет без нового списания.
+'''
+          worklog.write_text(text, encoding='utf-8')
+          PY
+
+          python scripts/update_p2_stability_inventory.py \
+            --label active-auf-delivery-worker-fix \
+            --schema-version 72
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python -m compileall -q velvet_bot tests/test_auf_result_delivery_recovery.py
+
+      - name: Commit patch to target branch
+        shell: bash
+        run: |
+          git config user.name "Stellmaria"
+          git config user.email "104767160+Stellmaria@users.noreply.github.com"
+          git add velvet_bot/app/auf_result_delivery_recovery.py \
+                  tests/test_auf_result_delivery_recovery.py \
+                  docs/worklog/2026-07-30-auf-result-delivery-recovery.md \
+                  docs/p2_stability_inventory.json \
+                  docs/p2_stability_inventory.md \
+                  docs/generated/telegram_navigation_inventory.md
+          git commit -m "Исправить доставку через фактический worker Ауф"
+          git push origin HEAD:agent/fix-active-delivery-worker
