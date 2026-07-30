@@ -14,12 +14,12 @@ from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 
 from .charged_queue_expected_quote import validate_expected_auf_quote
-from .models import AufInsufficientBalance, AufWalletFrozen
+from .models import AUF_SCALE, AufInsufficientBalance, AufWalletFrozen
 from .pricing import AufPriceQuote, quote_auf_payload
 
 
 class AufChargedTaskQueueService(AITaskQueueService):
-    """Atomically reserve Auf and enqueue paid Auf generation tasks."""
+    """Atomically reserve whole velvets and enqueue paid Auf generation tasks."""
 
     def __init__(self, database: Database) -> None:
         repository = AITaskRepository(database)
@@ -88,6 +88,9 @@ async def _reserve_charge(
     actor_user_id: int | None,
     quote: AufPriceQuote,
 ) -> None:
+    if quote.quoted_units <= 0 or quote.quoted_units % AUF_SCALE != 0:
+        raise RuntimeError("Списание генерации должно быть целым числом вельветов.")
+
     await connection.execute(
         """
         INSERT INTO auf_wallets (workspace_id)
@@ -179,6 +182,12 @@ async def _reserve_charge(
                 "duration_seconds": quote.duration_seconds,
                 "reference_count": quote.reference_count,
                 "provider_cost_usd": str(quote.provider_cost_usd),
+                "markup_percent": str(quote.markup_percent),
+                "target_retail_usd": str(quote.target_retail_usd),
+                "minimum_revenue_usd": str(quote.minimum_revenue_usd),
+                "billing_usd_to_rub": str(quote.billing_usd_to_rub),
+                "billing_usd_to_byn": str(quote.billing_usd_to_byn),
+                "whole_velvets": quote.quoted_units // AUF_SCALE,
             },
             ensure_ascii=False,
         ),
