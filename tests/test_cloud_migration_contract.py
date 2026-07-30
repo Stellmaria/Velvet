@@ -25,11 +25,16 @@ class CloudMigrationContractTests(unittest.TestCase):
 
     def test_public_environment_example_has_no_local_model_runtime(self) -> None:
         example = Path(".env.example").read_text(encoding="utf-8")
-        self.assertNotIn("OLLAMA_", example)
-        self.assertNotIn("qwen", example.casefold())
-        self.assertIn("BYESU_API_KEY", example)
-        self.assertIn("AI_TEXT_PROVIDER=openai_compatible", example)
-        self.assertIn("AI_VISION_PROVIDER=openai_compatible", example)
+        normalized = example.casefold()
+        self.assertNotIn("ollama_", normalized)
+        self.assertNotIn("qwen3-vl", normalized)
+        self.assertNotIn("hf.co/mradermacher", normalized)
+        self.assertIn("byesu_api_key", normalized)
+        self.assertIn("ai_text_provider=openai_compatible", normalized)
+        self.assertIn("ai_vision_provider=openai_compatible", normalized)
+        # Cloud Kie model IDs such as qwen2/image-edit are legitimate and must not
+        # be confused with the removed local Qwen/Ollama runtime.
+        self.assertIn("kie_qwen2_image_edit_model=qwen2/image-edit", normalized)
 
     def test_secret_files_are_excluded_from_git_and_docker_context(self) -> None:
         gitignore = Path(".gitignore").read_text(encoding="utf-8")
