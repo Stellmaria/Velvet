@@ -138,8 +138,8 @@ class MeowGenerationDispatcher:
             available = max(0, configured_limit - occupied)
             if available <= 0:
                 continue
-            queued = await queue.queued_count()
-            spawn_count = min(available, queued)
+            eligible = await queue.eligible_count()
+            spawn_count = min(available, eligible)
             for _ in range(spawn_count):
                 self._spawn(provider)
                 await asyncio.sleep(0)
