@@ -1,15 +1,27 @@
-from velvet_bot.domains.meow_runtime.models import (
-    MeowCancellationResult,
-    MeowProvider,
-    MeowProviderSnapshot,
-    MeowRuntimeSettings,
-    WorkspaceMeowSettings,
+"""Compatibility package for retired Meow runtime imports.
+
+All implementations live in :mod:`velvet_bot.domains.auf_runtime`.
+"""
+
+from velvet_bot.domains.auf_runtime import (
+    AufCancellationResult,
+    AufProvider,
+    AufProviderSnapshot,
+    AufRuntimeAccessError,
+    AufRuntimeRepository,
+    AufRuntimeService,
+    AufRuntimeSettings,
+    WorkspaceAufSettings,
 )
-from velvet_bot.domains.meow_runtime.service import (
-    MeowRuntimeAccessError,
-    MeowRuntimeService,
-)
-from velvet_bot.domains.meow_runtime.store import MeowRuntimeRepository
+
+MeowCancellationResult = AufCancellationResult
+MeowProvider = AufProvider
+MeowProviderSnapshot = AufProviderSnapshot
+MeowRuntimeAccessError = AufRuntimeAccessError
+MeowRuntimeRepository = AufRuntimeRepository
+MeowRuntimeService = AufRuntimeService
+MeowRuntimeSettings = AufRuntimeSettings
+WorkspaceMeowSettings = WorkspaceAufSettings
 
 __all__ = (
     "MeowCancellationResult",
