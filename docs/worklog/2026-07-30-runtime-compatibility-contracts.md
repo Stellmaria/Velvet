@@ -36,25 +36,28 @@
 ## После завершения
 
 ### Фактически сделано
-- добавлен `compatibility_contracts.py` с восемью типизированными contracts;
+- добавлен `runtime_contracts.py` с восемью типизированными contracts;
 - все компоненты получили решение `remove-after-consumer-migration`;
 - зафиксированы owner modules, consumers, runtime side effects и canonical replacements;
 - добавлен `docs/runtime_compatibility_inventory.md` с порядком retirement;
-- добавлен contract test на полноту, stage ordering и синхронизацию документации.
+- добавлен contract test на полноту, stage ordering и синхронизацию документации;
+- registry назван без `compat` в имени, чтобы справочный модуль не увеличивал счётчик активного compatibility-долга.
 
 ### Миграции и совместимость
 SQL, callbacks, FSM и runtime installation order не менялись. `compat.py` остаётся действующей границей, поэтому текущий production behavior сохраняется полностью.
 
 ### Проверки
-- новый unit contract проверяет совпадение registry с `PRE_IMPORT_COMPONENTS`, `POST_IMPORT_COMPONENTS` и `ACTIVE_COMPATIBILITY_COMPONENTS`;
-- CI должен выполнить полный tests workflow, type check, Docker build и project notes contract;
-- фактические результаты CI фиксируются в PR.
+- новый unit contract проверяет совпадение registry с literal `PRE_IMPORT_COMPONENTS` и `POST_IMPORT_COMPONENTS` без запуска installers;
+- первый tests workflow выявил только устаревшие generated inventories после добавления Python-файла;
+- Telegram navigation и architecture layout inventories пересобраны;
+- итоговый CI повторно запускает full tests, type check, Docker build и project notes contract.
 
 ### PR и commit
 - issue: #418;
+- PR: #449;
 - branch: `agent/p3-runtime-compatibility-contracts`;
-- PR создаётся после публикации файлов и запуска CI;
-- commits: `afd00d4f65d2f0e51a93578423b41271c07b0d3d`, `cfbff0ace05538894c3a05b3a70f3779ccd952b7`, `409178db97ce4d5e8c727a5da94f57490902aae4`.
+- current head после исправления inventories фиксируется GitHub;
+- ключевые commits: `afd00d4f65d2f0e51a93578423b41271c07b0d3d`, `bff0e5ebc05353cae3d32baa184df5a15b6507b8`, `1395f4c3713dff9eb511bc04ac8ae534e44b6085`.
 
 ### Незавершённое
 - пересборка и классификация root-module inventory;
