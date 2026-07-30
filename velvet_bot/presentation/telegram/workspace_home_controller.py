@@ -173,7 +173,7 @@ def register_workspace_home(router: Router) -> None:
         router.message.register(
             handle_meow_photo_command,
             photo_state,
-            Command("refs", "references"),
+            Command("refs"),
         )
         router.message.register(
             handle_meow_photo_input,
