@@ -24,8 +24,8 @@ def install_auf_workspace_ui() -> None:
 
     workspace_ui.MODULE_LABELS[AUF_MODULE_KEY] = "🐕 Ауф · генерация"
     workspace_ui.MODULE_HELP[AUF_MODULE_KEY] = (
-        "Создание изображений и видео через Kie.ai и GRS AI. Стэл разрешает модуль, "
-        "владелец пространства включает его и задаёт параллельность до 20 задач."
+        "Создание изображений и видео. Владелец пространства включает модуль "
+        "и задаёт допустимую параллельность задач."
     )
 
     # Prefixes are protocol contracts for already-sent keyboards. Keep them stable
@@ -35,7 +35,6 @@ def install_auf_workspace_ui() -> None:
         if prefix not in callback_prefixes:
             callback_prefixes.append(prefix)
     policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES = tuple(callback_prefixes)
-
 
     state_prefixes = list(policy.WORKSPACE_MEMBER_FSM_STATE_PREFIXES)
     for prefix in (
