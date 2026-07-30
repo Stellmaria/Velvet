@@ -65,13 +65,15 @@ PostgreSQL schema и module key не менялись. Старые Telegram cal
 - core dual-read helper и fallback `auf_workspace_id → meow_workspace_id` закреплены contract test;
 - первый полный CI выявил четыре устаревших контракта: migration path, video formatter alias, photo callback prefix и balance label;
 - все четыре причины исправлены в `43ecd36ff50b4feb770c740740baf63ef9412bf4`;
-- полный tests workflow, type check, Docker build и project notes contract повторно запускаются на итоговом пользовательском commit.
+- пользовательский портал из свежего `main` переведён на canonical Auf API и прошёл compileall в `802f42efd7b82f1c79db588aa72f438783fb80af`;
+- полный tests workflow, type check, Docker build и project notes contract запускаются на итоговом пользовательском commit.
 
 ### PR и commit
 - PR: #428;
 - active-router cleanup: `eac923df754aa7821bc88a1fd8d83e14d185e200`;
 - core dual-read repair: `384df58f7aa8eac0c9416d59f5a4f33cca3fbdde`;
 - final contract repairs: `43ecd36ff50b4feb770c740740baf63ef9412bf4`;
+- canonical user portal integration: `802f42efd7b82f1c79db588aa72f438783fb80af`;
 - merge commit фиксируется после зелёного CI.
 
 ### Незавершённое
