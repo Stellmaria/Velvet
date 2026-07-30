@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 
-from velvet_bot.presentation.telegram.routers.workspace_meow_wallet import (
+from velvet_bot.presentation.telegram.routers.workspace_auf_wallet import (
     handle_auf_wallet_action,
 )
 
@@ -30,17 +30,17 @@ def install_auf_wallet_ui() -> None:
         database,
         ai_usage_service,
         ai_task_queue_service,
-        meow_runtime_service,
-        meow_wallet_service,
-        meow_purchase_service,
+        auf_runtime_service,
+        auf_wallet_service,
+        auf_purchase_service,
     ) -> None:
         if callback_data.action.startswith("wallet"):
             await handle_auf_wallet_action(
                 callback,
                 callback_data,
                 state,
-                meow_wallet_service,
-                meow_purchase_service,
+                auf_wallet_service,
+                auf_purchase_service,
             )
             return
         await original(
@@ -52,7 +52,7 @@ def install_auf_wallet_ui() -> None:
             database,
             ai_usage_service,
             ai_task_queue_service,
-            meow_runtime_service,
+            auf_runtime_service,
         )
 
     controller.handle_scoped_meow_action = handle_scoped_auf_action_with_wallet

@@ -41,7 +41,7 @@ def install_auf_workspace_ui() -> None:
         "AufRuntimeForm:",
         "MeowForm:",
         "MeowVideoForm:",
-        "MeowRuntimeForm:",
+        "AufRuntimeForm:",
     ):
         if prefix not in state_prefixes:
             state_prefixes.append(prefix)

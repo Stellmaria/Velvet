@@ -1,71 +1,31 @@
-from velvet_bot.domains.meow_wallet.charged_queue import (
-    MeowChargedTaskQueueService,
-    build_meow_charged_task_queue_service,
-)
-from velvet_bot.domains.meow_wallet.models import (
-    AUF_SCALE,
-    MeowEconomySettings,
-    MeowInsufficientBalance,
-    MeowWallet,
-    MeowWalletEntry,
-    MeowWalletError,
-    MeowWalletFrozen,
-    MeowWalletOperation,
-    MeowWalletOverview,
-    MeowWalletStatus,
-    auf_to_units,
-    format_auf_units,
-    units_to_auf,
-)
-from velvet_bot.domains.meow_wallet.pricing import (
-    MeowPriceNotConfigured,
-    MeowPriceQuote,
-    MeowPricingRepository,
-)
-from velvet_bot.domains.meow_wallet.purchase import (
-    MeowInvoiceError,
-    MeowInvoiceStatus,
-    MeowPurchaseInvoice,
-    MeowPurchaseRepository,
-    MeowPurchaseService,
-    MeowReconciliationIssue,
-)
-from velvet_bot.domains.meow_wallet.service import (
-    AUF_PACKAGES,
-    MeowAufPackageQuote,
-    MeowWalletAccessError,
-    MeowWalletService,
-)
-from velvet_bot.domains.meow_wallet.store import MeowWalletRepository
-
-__all__ = (
-    "AUF_PACKAGES",
-    "AUF_SCALE",
-    "MeowAufPackageQuote",
-    "MeowChargedTaskQueueService",
-    "MeowEconomySettings",
-    "MeowInsufficientBalance",
-    "MeowInvoiceError",
-    "MeowInvoiceStatus",
-    "MeowPriceNotConfigured",
-    "MeowPriceQuote",
-    "MeowPricingRepository",
-    "MeowPurchaseInvoice",
-    "MeowPurchaseRepository",
-    "MeowPurchaseService",
-    "MeowReconciliationIssue",
-    "MeowWallet",
-    "MeowWalletAccessError",
-    "MeowWalletEntry",
-    "MeowWalletError",
-    "MeowWalletFrozen",
-    "MeowWalletOperation",
-    "MeowWalletOverview",
-    "MeowWalletRepository",
-    "MeowWalletService",
-    "MeowWalletStatus",
-    "auf_to_units",
-    "build_meow_charged_task_queue_service",
-    "format_auf_units",
-    "units_to_auf",
+"""Compatibility package for retired Meow wallet imports.
+All implementations live in :mod:`velvet_bot.domains.auf_wallet`.
+"""
+from velvet_bot.domains.auf_wallet import *  # noqa: F403
+from velvet_bot.domains.auf_wallet import (
+    AufChargedTaskQueueService as MeowChargedTaskQueueService,
+    AufEconomySettings as MeowEconomySettings,
+    AufInsufficientBalance as MeowInsufficientBalance,
+    AufInvoiceError as MeowInvoiceError,
+    AufInvoiceStatus as MeowInvoiceStatus,
+    AufPackageQuote as MeowAufPackageQuote,
+    AufPriceNotConfigured as MeowPriceNotConfigured,
+    AufPriceQuote as MeowPriceQuote,
+    AufPricingRepository as MeowPricingRepository,
+    AufPurchaseInvoice as MeowPurchaseInvoice,
+    AufPurchaseRepository as MeowPurchaseRepository,
+    AufPurchaseService as MeowPurchaseService,
+    AufReconciliationIssue as MeowReconciliationIssue,
+    AufWallet as MeowWallet,
+    AufWalletAccessError as MeowWalletAccessError,
+    AufWalletEntry as MeowWalletEntry,
+    AufWalletError as MeowWalletError,
+    AufWalletFrozen as MeowWalletFrozen,
+    AufWalletOperation as MeowWalletOperation,
+    AufWalletOverview as MeowWalletOverview,
+    AufWalletRepository as MeowWalletRepository,
+    AufWalletService as MeowWalletService,
+    AufWalletStatus as MeowWalletStatus,
+    build_auf_charged_task_queue_service as build_meow_charged_task_queue_service,
+    quote_auf_payload as quote_meow_payload,
 )

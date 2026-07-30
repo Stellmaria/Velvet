@@ -31,8 +31,8 @@ class AufRuntimeForm(StatesGroup):
 
 
 # Compatibility aliases for imports from stacked branches.
-MeowRuntimeCallback = AufRuntimeCallback
-MeowRuntimeForm = AufRuntimeForm
+AufRuntimeCallback = AufRuntimeCallback
+AufRuntimeForm = AufRuntimeForm
 
 
 def _callback(action: str, *, workspace_id: int, value: str = "") -> str:
@@ -467,21 +467,21 @@ async def handle_auf_runtime_limit_input(
 
 
 # Existing router registration imports the historical handler names.
-handle_meow_runtime_action = handle_auf_runtime_action
-handle_meow_runtime_callback = handle_auf_runtime_callback
-handle_meow_runtime_limit_input = handle_auf_runtime_limit_input
+handle_auf_runtime_action = handle_auf_runtime_action
+handle_auf_runtime_callback = handle_auf_runtime_callback
+handle_auf_runtime_limit_input = handle_auf_runtime_limit_input
 
 
 __all__ = (
     "AufRuntimeCallback",
     "AufRuntimeForm",
-    "MeowRuntimeCallback",
-    "MeowRuntimeForm",
+    "AufRuntimeCallback",
+    "AufRuntimeForm",
     "build_task_cancel_keyboard",
     "handle_auf_runtime_action",
     "handle_auf_runtime_callback",
     "handle_auf_runtime_limit_input",
-    "handle_meow_runtime_action",
-    "handle_meow_runtime_callback",
-    "handle_meow_runtime_limit_input",
+    "handle_auf_runtime_action",
+    "handle_auf_runtime_callback",
+    "handle_auf_runtime_limit_input",
 )
