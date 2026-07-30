@@ -1,6 +1,6 @@
 # Telegram navigation inventory
 
-- Python files scanned: **525**
+- Python files scanned: **529**
 - Files with buttons: **91**
 - Buttons: **998**
 - Inline buttons: **998**
