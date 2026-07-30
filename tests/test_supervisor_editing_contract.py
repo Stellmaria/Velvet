@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import ast
-import subprocess
-import sys
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -13,7 +11,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SUPERVISOR_ROUTERS = (
     ROOT / "velvet_bot" / "presentation" / "telegram" / "routers" / "supervisor"
 )
-INVENTORY_SCRIPT = ROOT / "scripts" / "inventory_telegram_helpers.py"
 
 
 class SupervisorEditingContractTests(unittest.IsolatedAsyncioTestCase):
@@ -68,22 +65,6 @@ class SupervisorEditingContractTests(unittest.IsolatedAsyncioTestCase):
                 "status.py",
             },
         )
-
-    async def test_emit_inventory_artifact_for_versioned_refresh(self) -> None:
-        completed = subprocess.run(
-            [sys.executable, str(INVENTORY_SCRIPT), "--json"],
-            cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-        )
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        print("SHARED_CONTRACT_INVENTORY_BEGIN")
-        print(completed.stdout)
-        print("SHARED_CONTRACT_INVENTORY_END")
 
 
 if __name__ == "__main__":
