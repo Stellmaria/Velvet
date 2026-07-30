@@ -35,6 +35,9 @@ def __getattr__(name: str) -> Any:
         )
         from velvet_bot.app.auf_photo_ui_install import install_auf_photo_ui
         from velvet_bot.app.auf_reconciliation_install import install_auf_reconciliation
+        from velvet_bot.app.auf_reference_privacy_install import (
+            install_auf_reference_privacy,
+        )
         from velvet_bot.app.auf_result_delivery_recovery import (
             install_auf_result_delivery_recovery,
         )
@@ -72,6 +75,7 @@ def __getattr__(name: str) -> Any:
         install_auf_workspace_ui()
         install_auf_wallet_ui()
         install_auf_photo_ui()
+        install_auf_reference_privacy()
         install_auf_photo_ratio_callback_fix()
         install_auf_user_portal()
         install_original_image_delivery_hotfix()
