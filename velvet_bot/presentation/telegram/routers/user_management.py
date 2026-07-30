@@ -20,6 +20,7 @@ from velvet_bot.domains.user_registry import (
 )
 
 router = Router(name="velvet_bot.presentation.telegram.routers.user_management")
+_AMOUNT_QUANT = Decimal("0.0001")
 
 
 def _is_owner(message: Message, wallet_service: AufWalletService) -> bool:
@@ -50,15 +51,14 @@ def _display_user(row: Any, *, fallback_id: int | None = None) -> str:
 def _positive_amount(raw: str) -> Decimal | None:
     try:
         amount = Decimal(raw.replace(",", "."))
+        normalized = amount.quantize(_AMOUNT_QUANT)
     except InvalidOperation:
         return None
-    if amount <= 0 or amount > Decimal("1000000"):
+    if amount != normalized:
         return None
-    try:
-        units = auf_to_units(amount)
-    except (InvalidOperation, ValueError):
+    if normalized <= 0 or normalized > Decimal("1000000"):
         return None
-    return amount if units > 0 else None
+    return normalized if auf_to_units(normalized) > 0 else None
 
 
 @router.message(Command("velvet_grant"))
