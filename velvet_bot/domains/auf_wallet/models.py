@@ -32,6 +32,8 @@ class AufEconomySettings:
     provider_auf_usd: Decimal
     retail_auf_usd: Decimal
     billing_usd_to_rub: Decimal
+    billing_usd_to_byn: Decimal
+    retail_markup_percent: Decimal
     updated_by_user_id: int | None
     updated_at: datetime
 
