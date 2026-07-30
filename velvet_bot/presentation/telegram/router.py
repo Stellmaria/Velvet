@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 
 from aiogram import Router
-from aiogram.types import ErrorEvent
+from aiogram.types import ErrorEvent, Message
 
+from velvet_bot.domains.auf_wallet import AufPriceNotConfigured, AufWalletError
 from velvet_bot.infrastructure.transient_connections import (
     is_transient_connection_error,
 )
@@ -29,11 +30,22 @@ def _is_transient_telegram_error(error: BaseException) -> bool:
     )
 
 
+async def _show_auf_charging_error(event: ErrorEvent) -> bool:
+    message = str(event.exception).strip() or "Не удалось рассчитать стоимость в Ауф."
+    callback = event.update.callback_query
+    if callback is not None:
+        await callback.answer(message, show_alert=True)
+        return True
+    update_message = event.update.message
+    if isinstance(update_message, Message):
+        await update_message.answer(message)
+        return True
+    return False
+
+
 def _build_root_router() -> Router:
     install_pre_router_compatibility()
 
-    # Import domain bundles only after pre-import compatibility has adapted legacy
-    # bindings. The root composition boundary no longer knows individual handlers.
     from velvet_bot.presentation.telegram.routers.analytics import (
         router as analytics_router,
     )
@@ -53,14 +65,15 @@ def _build_root_router() -> Router:
 
     @root.error()
     async def handle_unhandled_error(event: ErrorEvent) -> bool:
+        if isinstance(event.exception, (AufWalletError, AufPriceNotConfigured)):
+            if await _show_auf_charging_error(event):
+                return True
         if _is_transient_telegram_error(event.exception):
             logger.info(
                 "Transient Telegram connection error recovered: %s",
                 event.exception,
             )
             return True
-        # The root logging handler forwards this record, traceback included, to the
-        # persistent incident center. Do not send a second audit message here.
         logger.critical(
             "Unhandled bot error: %s",
             event.exception,
@@ -72,9 +85,6 @@ def _build_root_router() -> Router:
         )
         return True
 
-    # Bundle order preserves the historical handler priority. Individual routers
-    # remain ordered inside each bundle, including publication before archive's
-    # catch-all topic handler.
     root.include_router(core_operations_router)
     root.include_router(analytics_router)
     root.include_router(quality_operations_router)
