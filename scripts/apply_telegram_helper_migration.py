@@ -110,9 +110,12 @@ IMAGE_SHARED_DOWNLOAD = '''async def download_image(bot: Bot, file_id: str) -> b
 _download_image = download_image'''
 
 REFERENCE_DOWNLOAD = IMAGE_DOWNLOAD.replace("_download_image", "_download_file")
-REFERENCE_SHARED_DOWNLOAD = IMAGE_SHARED_DOWNLOAD.replace(
-    "download_image", "download_reference_file"
-).replace("_download_image", "_download_file")
+REFERENCE_SHARED_DOWNLOAD = (
+    IMAGE_SHARED_DOWNLOAD.replace("_download_image", "_download_file")
+    .replace("download_image", "download_reference_file")
+)
+BROKEN_REFERENCE_ALIAS = "_download_reference_file = download_reference_file"
+REFERENCE_ALIAS = "_download_file = download_reference_file"
 
 
 def _path(value: str) -> Path:
@@ -232,6 +235,18 @@ def _migrate_public_controller_contracts() -> list[str]:
 
 def _migrate_downloads() -> list[str]:
     changed: list[str] = []
+    reference_path_value = (
+        "velvet_bot/presentation/telegram/routers/references/comparison.py"
+    )
+    reference_path = _path(reference_path_value)
+    reference_source = reference_path.read_text(encoding="utf-8")
+    if BROKEN_REFERENCE_ALIAS in reference_source:
+        reference_path.write_text(
+            reference_source.replace(BROKEN_REFERENCE_ALIAS, REFERENCE_ALIAS),
+            encoding="utf-8",
+        )
+        changed.append(reference_path_value)
+
     targets = (
         (
             "velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_image_prompt.py",
@@ -239,7 +254,7 @@ def _migrate_downloads() -> list[str]:
             IMAGE_SHARED_DOWNLOAD,
         ),
         (
-            "velvet_bot/presentation/telegram/routers/references/comparison.py",
+            reference_path_value,
             REFERENCE_DOWNLOAD,
             REFERENCE_SHARED_DOWNLOAD,
         ),
