@@ -1,9 +1,13 @@
-name: shared Telegram helper contract
+name: shared contract inventory
 
 on:
   pull_request:
     paths:
+      - 'velvet_bot/app/**'
+      - 'velvet_bot/application/**'
+      - 'velvet_bot/domains/media_generation/**'
       - 'velvet_bot/presentation/telegram/**'
+      - 'scripts/shared_contract_inventory.py'
       - 'scripts/inventory_telegram_helpers.py'
       - 'tests/test_telegram_shared_helpers.py'
       - '.github/workflows/apply-shared-helper-migration.yml'
@@ -19,5 +23,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Validate helper boundaries
+      - name: Validate package shared contracts
         run: python scripts/inventory_telegram_helpers.py --check
