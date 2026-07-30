@@ -101,7 +101,7 @@ ALTER TABLE auf_price_versions
     CHECK (extra_reference_retail_units >= 0);
 
 UPDATE auf_price_versions
-SET effective_to = NOW()
+SET effective_to = GREATEST(NOW(), effective_from + INTERVAL '1 microsecond')
 WHERE effective_to IS NULL
   AND version_key NOT LIKE '2026-07-30:retail:%'
   AND model_alias IN (
