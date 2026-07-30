@@ -46,8 +46,6 @@ def build_auf_root_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-# Compatibility boundary for the pre-Auf router module. New code should import
-# build_auf_root_keyboard from this module.
 build_meow_root_keyboard = build_auf_root_keyboard
 workspace_meow_router.build_meow_root_keyboard = build_auf_root_keyboard
 
@@ -64,6 +62,17 @@ def _build_root_keyboard(
     rows = list(base.inline_keyboard)
     back_row = rows.pop() if rows else []
     if enabled:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="💳 Ауф · баланс",
+                    callback_data=MeowCallback(
+                        action="wallet",
+                        workspace_id=workspace_id,
+                    ).pack(),
+                )
+            ]
+        )
         rows.append(
             [
                 InlineKeyboardButton(
@@ -172,6 +181,7 @@ async def handle_auf_root_entry(
             "Grok Imagine v1, Grok Imagine Video 1.5, Seedance 1.5 Pro или Wan 2.7.\n\n"
             f"Параллельность: {concurrency}.\n"
             f"Автоповторов на задачу: <b>{kie_settings.generation_max_attempts}</b>.\n\n"
+            "Баланс Ауф, пакеты покупки и история операций доступны отдельной кнопкой. "
             "Настройки применяются из PostgreSQL без перезапуска бота."
         )
     else:
@@ -199,8 +209,6 @@ async def handle_auf_root_entry(
     await callback.answer()
 
 
-# Existing router registration imports the historical name. Keep it as an alias
-# until the callback/router stack is migrated in one coordinated change.
 handle_meow_root_entry = handle_auf_root_entry
 
 
