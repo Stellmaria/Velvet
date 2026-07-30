@@ -99,7 +99,7 @@ async def download_reference_file(bot: Bot, file_id: str) -> bytes:
     )
 
 
-_download_reference_file = download_reference_file
+_download_file = download_reference_file
 
 
 def _list_block(title: str, values: object, emoji: str) -> list[str]:
