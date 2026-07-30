@@ -29,7 +29,7 @@ def test_retired_wallet_files_are_only_compatibility_shims() -> None:
         "velvet_bot/domains/meow_wallet/pricing.py": 20,
         "velvet_bot/domains/meow_wallet/purchase.py": 25,
         "velvet_bot/domains/meow_wallet/charged_queue.py": 16,
-        "velvet_bot/presentation/telegram/routers/workspace_auf_wallet.py": 10,
+        "velvet_bot/presentation/telegram/routers/workspace_meow_wallet.py": 10,
         "velvet_bot/app/meow_wallet_ui_install.py": 8,
     }
     for path, maximum in limits.items():

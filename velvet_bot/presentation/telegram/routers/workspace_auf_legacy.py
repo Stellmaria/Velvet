@@ -40,6 +40,16 @@ class MeowVideoForm(StatesGroup):
     reviewing = State()
 
 
+class MeowPhotoForm(StatesGroup):
+    """Exact state names used by photo flows before the Auf migration."""
+
+    collecting_input = State()
+    reviewing_input = State()
+    choosing_model = State()
+    choosing_resolution = State()
+    choosing_aspect_ratio = State()
+    confirming_generation = State()
+
 class MeowRuntimeForm(StatesGroup):
     """Exact state name used by runtime-limit input before the Auf migration."""
 
@@ -50,6 +60,7 @@ __all__ = (
     "LegacyMeowCallback",
     "LegacyMeowVideoCallback",
     "MeowForm",
+    "MeowPhotoForm",
     "MeowRuntimeForm",
     "MeowVideoForm",
 )

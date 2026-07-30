@@ -36,12 +36,17 @@ def install_auf_workspace_ui() -> None:
             callback_prefixes.append(prefix)
     policy.WORKSPACE_MEMBER_CALLBACK_PREFIXES = tuple(callback_prefixes)
 
+
     state_prefixes = list(policy.WORKSPACE_MEMBER_FSM_STATE_PREFIXES)
     for prefix in (
         "AufRuntimeForm:",
         "AufForm:",
         "AufVideoForm:",
-        "AufRuntimeForm:",
+        "AufPhotoForm:",
+        "MeowRuntimeForm:",
+        "MeowForm:",
+        "MeowVideoForm:",
+        "MeowPhotoForm:",
     ):
         if prefix not in state_prefixes:
             state_prefixes.append(prefix)

@@ -36,12 +36,12 @@ from velvet_bot.presentation.telegram.routers.workspace_auf import (
     build_auf_root_keyboard,
 )
 from velvet_bot.presentation.telegram.routers.workspace_auf_grs import (
-    handle_auf_action as handle_legacy_meow_action,
+    handle_auf_action,
 )
 from velvet_bot.reference_media import validate_reference_document
 
 
-class MeowPhotoForm(StatesGroup):
+class AufPhotoForm(StatesGroup):
     collecting_input = State()
     reviewing_input = State()
     choosing_model = State()
@@ -302,14 +302,20 @@ def _references(value: object) -> tuple[KieReferenceImage, ...]:
     )
 
 
+def _state_value(data: Mapping[str, object], key: str) -> object:
+    if key in data:
+        return data[key]
+    legacy_key = key.replace("auf_", "meow_", 1)
+    return data.get(legacy_key)
+
 async def _session(
     state: FSMContext,
 ) -> tuple[int, str, tuple[KieReferenceImage, ...]]:
     data = await state.get_data()
     return (
-        _optional_int(data.get("auf_workspace_id")) or 0,
-        str(data.get("meow_prompt") or "").strip(),
-        _references(data.get("meow_references")),
+        _optional_int(_state_value(data, "auf_workspace_id")) or 0,
+        str(_state_value(data, "auf_prompt") or "").strip(),
+        _references(_state_value(data, "auf_references")),
     )
 
 
@@ -318,7 +324,7 @@ async def _save_references(
     references: tuple[KieReferenceImage, ...],
 ) -> None:
     await state.update_data(
-        meow_references=[reference.to_payload() for reference in references]
+        auf_references=[reference.to_payload() for reference in references]
     )
 
 
@@ -346,7 +352,7 @@ def _input_text(
             "Отправьте дополнительные изображения или вернитесь к проверке."
         )
     return (
-        "<b>Мяу · фото + текст</b>\n\n"
+        "<b>Ауф · фото + текст</b>\n\n"
         f"{instruction}\n\n"
         f"До выбора модели можно собрать до <b>{MAX_KIE_REFERENCES}</b> фото. "
         "После выбора применяется лимит конкретной модели.\n"
@@ -378,7 +384,7 @@ async def _show_input(
     state: FSMContext,
 ) -> None:
     workspace_id, prompt, references = await _session(state)
-    await state.set_state(MeowPhotoForm.collecting_input)
+    await state.set_state(AufPhotoForm.collecting_input)
     text = _input_text(prompt, references)
     keyboard = _input_keyboard(workspace_id)
     if isinstance(event, CallbackQuery):
@@ -403,7 +409,7 @@ async def _show_review(
         else:
             await event.answer(message)
         return
-    await state.set_state(MeowPhotoForm.reviewing_input)
+    await state.set_state(AufPhotoForm.reviewing_input)
     text = _review_text(prompt, references)
     keyboard = _review_keyboard(workspace_id)
     if isinstance(event, CallbackQuery):
@@ -601,21 +607,21 @@ def _infer_ratio(prompt: str, model: KieModelAlias) -> str:
 
 
 def _request(data: Mapping[str, object]) -> KieGenerationRequest:
-    model = _model(data.get("meow_model"))
+    model = _model(_state_value(data, "auf_model"))
     if model is None:
         raise ValueError("Сначала выберите модель.")
-    prompt = str(data.get("meow_prompt") or "").strip()
-    resolution = str(data.get("meow_resolution") or "").strip().upper()
+    prompt = str(_state_value(data, "auf_prompt") or "").strip()
+    resolution = str(_state_value(data, "auf_resolution") or "").strip().upper()
     if not resolution:
         resolution = model.supported_photo_resolutions[0]
-    ratio = str(data.get("meow_aspect_ratio") or "").strip()
+    ratio = str(_state_value(data, "auf_aspect_ratio") or "").strip()
     if not ratio:
         ratio = _infer_ratio(prompt, model)
     return KieGenerationRequest(
         model=model,
         input_mode=KieInputMode.PHOTO_TEXT,
         prompt=prompt,
-        references=_references(data.get("meow_references")),
+        references=_references(_state_value(data, "auf_references")),
         content_mode=KieContentMode.MATURE,
         aspect_ratio=ratio,
         resolution=resolution,
@@ -632,7 +638,7 @@ async def _show_models(
     if not prompt or not references:
         await callback.answer("Сначала подтвердите фото и текст.", show_alert=True)
         return
-    await state.set_state(MeowPhotoForm.choosing_model)
+    await state.set_state(AufPhotoForm.choosing_model)
     await _edit_or_answer(
         callback,
         text=(
@@ -653,7 +659,7 @@ async def _show_resolution(
     model: KieModelAlias,
 ) -> None:
     workspace_id, _, _ = await _session(state)
-    await state.set_state(MeowPhotoForm.choosing_resolution)
+    await state.set_state(AufPhotoForm.choosing_resolution)
     await _edit_or_answer(
         callback,
         text=(
@@ -671,7 +677,7 @@ async def _show_ratios(
     model: KieModelAlias,
 ) -> None:
     workspace_id, _, _ = await _session(state)
-    await state.set_state(MeowPhotoForm.choosing_aspect_ratio)
+    await state.set_state(AufPhotoForm.choosing_aspect_ratio)
     await _edit_or_answer(
         callback,
         text=f"<b>{escape(model.display_name)} · соотношение сторон</b>",
@@ -695,7 +701,7 @@ async def _show_final(
     except ValueError as error:
         await callback.answer(str(error), show_alert=True)
         return
-    await state.set_state(MeowPhotoForm.confirming_generation)
+    await state.set_state(AufPhotoForm.confirming_generation)
     ratio = "как у исходника" if request.aspect_ratio == "auto" else request.aspect_ratio
     await _edit_or_answer(
         callback,
@@ -715,7 +721,7 @@ async def _show_final(
             "фактическое списание определяет провайдер.</i>"
         ),
         reply_markup=_final_keyboard(
-            int(data.get("auf_workspace_id") or 0),
+            int(_state_value(data, "auf_workspace_id") or 0),
             request.model,
         ),
     )
@@ -729,7 +735,7 @@ async def _enqueue(
     ai_task_queue_service: AITaskQueueService,
 ) -> None:
     data = await state.get_data()
-    workspace_id = _optional_int(data.get("auf_workspace_id")) or 0
+    workspace_id = _optional_int(_state_value(data, "auf_workspace_id")) or 0
     try:
         request = _request(data)
         usd = kie_settings.pricing.estimate_usd(request)
@@ -768,7 +774,7 @@ async def _enqueue(
     await _edit_or_answer(
         callback,
         text=(
-            f"<b>Мяу · {escape(request.model.display_name)}</b>\n\n"
+            f"<b>Ауф · {escape(request.model.display_name)}</b>\n\n"
             "Фото и текст зафиксированы, задача поставлена в асинхронную очередь.\n\n"
             f"Фото: <b>{len(request.references)}</b>\n"
             f"Качество: <b>{escape(request.resolution)}</b>\n"
@@ -795,7 +801,7 @@ async def handle_auf_photo_action(
     ai_task_queue_service: AITaskQueueService,
 ) -> None:
     if not access_policy.allows_user(callback.from_user):
-        await callback.answer("Мяу доступен только владельцу бота.", show_alert=True)
+        await callback.answer("Ауф доступен только владельцу бота.", show_alert=True)
         return
     action = callback_data.action
     workspace_id = callback_data.workspace_id
@@ -803,7 +809,7 @@ async def handle_auf_photo_action(
         await state.clear()
         await _edit_or_answer(
             callback,
-            text="<b>Мяу</b>\n\nГенерация отменена.",
+            text="<b>Ауф</b>\n\nГенерация отменена.",
             reply_markup=build_auf_root_keyboard(
                 workspace_id=workspace_id,
                 enabled=kie_settings.enabled,
@@ -817,14 +823,14 @@ async def handle_auf_photo_action(
         await state.clear()
         await state.update_data(
             auf_workspace_id=workspace_id,
-            meow_input_mode=KieInputMode.PHOTO_TEXT.value,
-            meow_prompt="",
-            meow_references=[],
-            meow_model="",
-            meow_resolution="",
-            meow_aspect_ratio="",
+            auf_input_mode=KieInputMode.PHOTO_TEXT.value,
+            auf_prompt="",
+            auf_references=[],
+            auf_model="",
+            auf_resolution="",
+            auf_aspect_ratio="",
         )
-        await state.set_state(MeowPhotoForm.collecting_input)
+        await state.set_state(AufPhotoForm.collecting_input)
         await _edit_or_answer(
             callback,
             text=_input_text("", ()),
@@ -838,12 +844,12 @@ async def handle_auf_photo_action(
         await _show_review(callback, state)
         return
     if action == "photo_edit_prompt":
-        await state.update_data(meow_prompt="")
+        await state.update_data(auf_prompt="")
         await _show_input(callback, state)
         return
     if action == "photo_edit_refs":
         _, _, references = await _session(state)
-        await state.set_state(MeowPhotoForm.collecting_input)
+        await state.set_state(AufPhotoForm.collecting_input)
         await _edit_or_answer(
             callback,
             text=(
@@ -966,20 +972,20 @@ async def handle_auf_photo_action(
             )
             return
         await state.update_data(
-            meow_model=model.value,
-            meow_resolution="",
-            meow_aspect_ratio="",
+            auf_model=model.value,
+            auf_resolution="",
+            auf_aspect_ratio="",
         )
         if len(model.supported_photo_resolutions) > 1:
             await _show_resolution(callback, state, model)
         else:
             await state.update_data(
-                meow_resolution=model.supported_photo_resolutions[0]
+                auf_resolution=model.supported_photo_resolutions[0]
             )
             await _show_ratios(callback, state, model)
         return
     if action in {"photo_choose_resolution", "photo_back_settings"}:
-        model = _model((await state.get_data()).get("meow_model"))
+        model = _model((await state.get_data()).get("auf_model"))
         if model is None:
             await callback.answer("Сначала выберите модель.", show_alert=True)
             return
@@ -989,28 +995,28 @@ async def handle_auf_photo_action(
             await _show_models(callback, state, kie_settings)
         return
     if action == "photo_resolution":
-        model = _model((await state.get_data()).get("meow_model"))
+        model = _model((await state.get_data()).get("auf_model"))
         resolution = callback_data.value.upper()
         if model is None or resolution not in model.supported_photo_resolutions:
             await callback.answer("Недоступное качество.", show_alert=True)
             return
-        await state.update_data(meow_resolution=resolution)
+        await state.update_data(auf_resolution=resolution)
         await _show_ratios(callback, state, model)
         return
     if action == "photo_choose_ratio":
-        model = _model((await state.get_data()).get("meow_model"))
+        model = _model((await state.get_data()).get("auf_model"))
         if model is None:
             await callback.answer("Сначала выберите модель.", show_alert=True)
             return
         await _show_ratios(callback, state, model)
         return
     if action == "photo_ratio":
-        model = _model((await state.get_data()).get("meow_model"))
+        model = _model((await state.get_data()).get("auf_model"))
         ratio = callback_data.value
         if model is None or ratio not in model.supported_aspect_ratios:
             await callback.answer("Недоступное соотношение сторон.", show_alert=True)
             return
-        await state.update_data(meow_aspect_ratio=ratio)
+        await state.update_data(auf_aspect_ratio=ratio)
         await _show_final(callback, state, kie_settings)
         return
     if action == "photo_generate":
@@ -1022,7 +1028,7 @@ async def handle_auf_photo_action(
             ai_task_queue_service,
         )
         return
-    await handle_legacy_meow_action(
+    await handle_auf_action(
         callback,
         callback_data,
         state,
@@ -1050,7 +1056,7 @@ async def handle_auf_photo_input(
     workspace_id, prompt, references = await _session(state)
     if not workspace_id:
         await state.clear()
-        await message.answer("Сессия Мяу устарела. Откройте создание заново.")
+        await message.answer("Сессия Ауф устарела. Откройте создание заново.")
         return
     if message.text:
         prompt = message.text.strip()
@@ -1060,7 +1066,7 @@ async def handle_auf_photo_input(
         if len(prompt) > 8000:
             await message.answer("Промт слишком длинный. Максимум 8000 символов.")
             return
-        await state.update_data(meow_prompt=prompt)
+        await state.update_data(auf_prompt=prompt)
         await _advance(message, state)
         return
     if len(references) >= MAX_KIE_REFERENCES:
@@ -1116,7 +1122,7 @@ async def handle_auf_photo_input(
         if len(caption) > 8000:
             await message.answer("Подпись слишком длинная. Максимум 8000 символов.")
             return
-        await state.update_data(meow_prompt=caption)
+        await state.update_data(auf_prompt=caption)
     if duplicate:
         await message.answer("Это фото уже выбрано.")
     await _advance(message, state)
@@ -1136,7 +1142,7 @@ async def handle_auf_photo_command(
         return
     workspace_id, _, _ = await _session(state)
     if not workspace_id:
-        await message.answer("Сначала откройте «Мяу → Создать».")
+        await message.answer("Сначала откройте «Ауф → Создать».")
         return
     raw = (message.text or "").strip().split(maxsplit=1)
     character_name = raw[1].strip() if len(raw) > 1 else ""
@@ -1218,7 +1224,7 @@ def _optional_int(value: object) -> int | None:
 
 
 __all__ = (
-    "MeowPhotoForm",
+    "AufPhotoForm",
     "handle_auf_photo_action",
     "handle_auf_photo_command",
     "handle_auf_photo_input",

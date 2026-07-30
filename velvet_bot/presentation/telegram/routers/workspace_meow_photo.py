@@ -2,6 +2,8 @@
 
 from velvet_bot.presentation.telegram.routers import workspace_auf_photo as _canonical
 from velvet_bot.presentation.telegram.routers.workspace_auf_photo import *  # noqa: F403
+from velvet_bot.presentation.telegram.routers.workspace_auf_legacy import MeowPhotoForm
+
 
 def __getattr__(name: str):
     direct = getattr(_canonical, name, None)

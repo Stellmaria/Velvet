@@ -119,7 +119,7 @@ class AufRuntimeRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
-                INSERT INTO workspace_auf_settings (workspace_id, concurrency_limit)
+                INSERT INTO workspace_meow_settings (workspace_id, concurrency_limit)
                 SELECT $1::BIGINT, runtime.workspace_default_limit
                 FROM meow_runtime_settings AS runtime
                 WHERE runtime.singleton_id = 1
@@ -146,7 +146,7 @@ class AufRuntimeRepository:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
                 """
-                INSERT INTO workspace_auf_settings (
+                INSERT INTO workspace_meow_settings (
                     workspace_id, concurrency_limit, updated_by_user_id
                 )
                 VALUES ($1::BIGINT, $2::INTEGER, $3::BIGINT)

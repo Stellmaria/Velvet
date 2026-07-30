@@ -19,7 +19,7 @@ def install_auf_wallet_ui() -> None:
     controller = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_controller"
     )
-    original = controller.handle_scoped_meow_action
+    original = controller.handle_scoped_auf_action
 
     async def handle_scoped_auf_action_with_wallet(
         callback,
@@ -55,7 +55,7 @@ def install_auf_wallet_ui() -> None:
             auf_runtime_service,
         )
 
-    controller.handle_scoped_meow_action = handle_scoped_auf_action_with_wallet
+    controller.handle_scoped_auf_action = handle_scoped_auf_action_with_wallet
     _INSTALLED = True
 
 

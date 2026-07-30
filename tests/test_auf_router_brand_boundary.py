@@ -48,3 +48,24 @@ def test_new_workspace_buttons_use_auf_action() -> None:
     source = _read(ROOT / "velvet_bot/domains/auf_runtime/__init__.py")
     assert 'AUF_WORKSPACE_ACTION = "auf"' in source
     assert 'LEGACY_AUF_WORKSPACE_ACTION = "meow"' in source
+
+
+def test_photo_flow_writes_auf_state_and_dual_reads_legacy_data() -> None:
+    photo = _read(ROUTERS / "workspace_auf_photo.py")
+    installer = _read(ROOT / "velvet_bot/app/auf_photo_ui_install.py")
+    legacy = _read(ROUTERS / "workspace_auf_legacy.py")
+    assert "class AufPhotoForm(StatesGroup)" in photo
+    assert "class MeowPhotoForm(StatesGroup)" in legacy
+    assert 'key.replace("auf_", "meow_", 1)' in photo
+    assert "meow_prompt=" not in photo
+    assert "controller._require_meow" not in installer
+    assert "controller.handle_scoped_meow_action" not in installer
+
+
+def test_runtime_keeps_deployed_storage_identifiers() -> None:
+    store = _read(ROOT / "velvet_bot/domains/auf_runtime/store.py")
+    queue = _read(ROOT / "velvet_bot/domains/auf_runtime/queue.py")
+    assert "workspace_meow_settings" in store
+    assert "workspace_meow_settings" in queue
+    assert "workspace_auf_settings" not in store
+    assert "workspace_auf_settings" not in queue

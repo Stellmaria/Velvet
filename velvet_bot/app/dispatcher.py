@@ -115,7 +115,7 @@ def build_dispatcher(
         "workspace_product_service": workspace_product_service,
         "workspace_characters": workspace_character_service,
         "auf_runtime_service": auf_runtime_service,
-        "auf_runtime_service": auf_runtime_service,
+        "meow_runtime_service": auf_runtime_service,
         "auf_wallet_service": auf_wallet_service,
         "meow_wallet_service": auf_wallet_service,
         "auf_purchase_service": auf_purchase_service,

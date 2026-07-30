@@ -5,7 +5,7 @@ from html import escape
 from typing import Any
 
 from aiogram import F
-from aiogram.filters import Command
+from aiogram.filters import Command, or_f
 from aiogram.types import InlineKeyboardMarkup, Message
 
 from velvet_bot.core.ai_budget import AIBudgetScope
@@ -16,12 +16,19 @@ from velvet_bot.domains.auf_wallet import (
 )
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
 from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router
+
+from velvet_bot.presentation.telegram.routers.workspace_auf_legacy import MeowPhotoForm
 from velvet_bot.presentation.telegram.routers.workspace_auf_photo_adjustments import (
     handle_photo_remove_last,
 )
 
 _INSTALLED = False
 
+
+def _state_value(data, key: str):
+    if key in data:
+        return data[key]
+    return data.get(key.replace("auf_", "meow_", 1))
 
 def _copy_button(button, *, text: str):
     copy_method = getattr(button, "model_copy", None)
@@ -50,7 +57,7 @@ async def _show_auf_final(
 ) -> None:
     data = await state.get_data()
     request = photo_router._request(data)
-    workspace_id = int(data.get("auf_workspace_id") or 0)
+    workspace_id = int(_state_value(data, "auf_workspace_id") or 0)
     quote = await AufPricingRepository(database).quote(
         {
             "workspace_id": workspace_id,
@@ -91,7 +98,7 @@ async def _show_auf_final(
             f"Не хватает: <b>{format_auf_units(missing)}</b>"
         )
 
-    await state.set_state(photo_router.MeowPhotoForm.confirming_generation)
+    await state.set_state(photo_router.AufPhotoForm.confirming_generation)
     await photo_router._edit_or_answer(
         callback,
         text=(
@@ -126,7 +133,7 @@ async def _enqueue_auf_photo(
     database,
 ) -> None:
     data = await state.get_data()
-    workspace_id = int(data.get("auf_workspace_id") or 0)
+    workspace_id = int(_state_value(data, "auf_workspace_id") or 0)
     request = photo_router._request(data)
     expected_version = str(data.get("auf_expected_price_version") or "").strip()
     expected_units = int(data.get("auf_expected_quoted_units") or 0)
@@ -196,7 +203,7 @@ def install_auf_photo_ui() -> None:
     controller = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_controller"
     )
-    original_action = controller.handle_scoped_meow_action
+    original_action = controller.handle_scoped_auf_action
     original_register = controller.register_workspace_home
 
     async def handle_scoped_auf_photo_action(
@@ -209,8 +216,8 @@ def install_auf_photo_ui() -> None:
         ai_usage_service,
         ai_task_queue_service,
         auf_runtime_service,
-        meow_wallet_service,
-        meow_purchase_service,
+        auf_wallet_service,
+        auf_purchase_service,
     ) -> None:
         action = callback_data.action
         if action != "create" and not action.startswith("photo"):
@@ -224,11 +231,11 @@ def install_auf_photo_ui() -> None:
                 ai_usage_service,
                 ai_task_queue_service,
                 auf_runtime_service,
-                meow_wallet_service,
-                meow_purchase_service,
+                auf_wallet_service,
+                auf_purchase_service,
             )
             return
-        if not await controller._require_meow_callback(
+        if not await controller._require_auf_callback(
             callback,
             workspace_id=callback_data.workspace_id,
             service=auf_runtime_service,
@@ -243,12 +250,12 @@ def install_auf_photo_ui() -> None:
             if model is None or ratio not in model.supported_aspect_ratios:
                 await callback.answer("Недоступное соотношение сторон.", show_alert=True)
                 return
-            await state.update_data(meow_aspect_ratio=ratio)
+            await state.update_data(auf_aspect_ratio=ratio)
             await _show_auf_final(
                 callback,
                 state,
                 database=database,
-                wallet_service=meow_wallet_service,
+                wallet_service=auf_wallet_service,
             )
             return
         if action == "photo_generate":
@@ -279,7 +286,7 @@ def install_auf_photo_ui() -> None:
         kie_settings,
         auf_runtime_service,
     ) -> None:
-        if not await controller._require_meow_message(
+        if not await controller._require_auf_message(
             message,
             state,
             workspace_key="auf_workspace_id",
@@ -301,7 +308,7 @@ def install_auf_photo_ui() -> None:
         database,
         auf_runtime_service,
     ) -> None:
-        if not await controller._require_meow_message(
+        if not await controller._require_auf_message(
             message,
             state,
             workspace_key="auf_workspace_id",
@@ -319,8 +326,14 @@ def install_auf_photo_ui() -> None:
     def register_workspace_home_with_photo(router) -> None:
         original_register(router)
         for photo_state in (
-            photo_router.MeowPhotoForm.collecting_input,
-            photo_router.MeowPhotoForm.reviewing_input,
+            or_f(
+                photo_router.AufPhotoForm.collecting_input,
+                MeowPhotoForm.collecting_input,
+            ),
+            or_f(
+                photo_router.AufPhotoForm.reviewing_input,
+                MeowPhotoForm.reviewing_input,
+            ),
         ):
             router.message.register(
                 handle_scoped_auf_photo_command,
@@ -333,7 +346,7 @@ def install_auf_photo_ui() -> None:
                 F.photo | F.document | F.text,
             )
 
-    controller.handle_scoped_meow_action = handle_scoped_auf_photo_action
+    controller.handle_scoped_auf_action = handle_scoped_auf_photo_action
     controller.register_workspace_home = register_workspace_home_with_photo
     _INSTALLED = True
 
