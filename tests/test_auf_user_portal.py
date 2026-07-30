@@ -7,10 +7,10 @@ from pathlib import Path
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.app.auf_user_portal_install import (
-    _task_line,
     _user_settings_text,
     _video_review_keyboard,
     _wallet_keyboard_with_tasks,
+    format_user_task_line,
 )
 
 
@@ -92,7 +92,7 @@ class AufUserPortalPresentationTests(unittest.TestCase):
         self.assertNotIn("$", text)
 
     def test_task_line_contains_only_user_facing_charge(self) -> None:
-        line = _task_line(
+        line = format_user_task_line(
             {
                 "id": "12345678-aaaa-bbbb-cccc-123456789012",
                 "status": "success",
@@ -115,23 +115,30 @@ class AufUserPortalPresentationTests(unittest.TestCase):
         self.assertNotIn("$", line)
 
     def test_task_query_is_scoped_by_user_and_workspace(self) -> None:
-        source = Path(
+        source = Path("velvet_bot/application/workspace_tasks.py").read_text(
+            encoding="utf-8"
+        )
+        portal_source = Path(
             "velvet_bot/app/auf_user_portal_install.py"
         ).read_text(encoding="utf-8")
         self.assertIn("task.created_by = $2::BIGINT", source)
         self.assertIn("task.payload ->> 'workspace_id' = $3::TEXT", source)
-        self.assertIn("Системные задачи, другие участники", source)
+        self.assertIn("Системные задачи, другие участники", portal_source)
 
 
-def test_portal_uses_only_canonical_auf_runtime_api(self) -> None:
+def test_portal_uses_only_canonical_auf_runtime_api() -> None:
     source = Path(
         "velvet_bot/app/auf_user_portal_install.py"
     ).read_text(encoding="utf-8")
+    compatibility = Path(
+        "velvet_bot/presentation/telegram/state_compatibility.py"
+    ).read_text(encoding="utf-8")
+    self = unittest.TestCase()
     self.assertIn("workspace_auf_video_simple", source)
     self.assertIn("AufCallback", source)
     self.assertIn("handle_scoped_auf_action", source)
     self.assertIn("handle_scoped_auf_video_action", source)
-    self.assertIn('key.replace("auf_", "meow_", 1)', source)
+    self.assertIn('key.replace("auf_", legacy_prefix, 1)', compatibility)
     self.assertNotIn("workspace_meow", source)
     self.assertNotIn("MeowCallback", source)
     self.assertNotIn("handle_scoped_meow", source)
