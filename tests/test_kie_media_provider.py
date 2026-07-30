@@ -281,10 +281,23 @@ class KieMediaProviderTests(unittest.TestCase):
         with self.assertRaises(KieTaskFailed):
             asyncio.run(client.wait_for_task("task-bad"))
 
+    def test_settings_require_grs_key_when_enabled(self) -> None:
+        values = {
+            "KIE_ENABLED": "true",
+            "KIE_API_KEY": "secret",
+            "KIE_USD_TO_RUB": "100",
+        }
+        with patch.dict(os.environ, values, clear=True), patch(
+            "velvet_bot.core.config.kie.load_dotenv"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "GRS_API_KEY"):
+                load_kie_settings()
+
     def test_settings_require_budget_rate_when_enabled(self) -> None:
         values = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
+            "GRS_API_KEY": "grs-secret",
         }
         with patch.dict(os.environ, values, clear=True), patch(
             "velvet_bot.core.config.kie.load_dotenv"
@@ -296,6 +309,7 @@ class KieMediaProviderTests(unittest.TestCase):
         base = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
+            "GRS_API_KEY": "grs-secret",
             "KIE_USD_TO_RUB": "100",
             "KIE_SEEDREAM_5_PRO_TEXT_MODEL": "",
             "KIE_SEEDREAM_5_PRO_IMAGE_MODEL": "",
@@ -303,19 +317,21 @@ class KieMediaProviderTests(unittest.TestCase):
         with patch.dict(os.environ, base, clear=True), patch(
             "velvet_bot.core.config.kie.load_dotenv"
         ):
-            with self.assertRaisesRegex(RuntimeError, "обоих режимов Seedream"):
+            with self.assertRaisesRegex(RuntimeError, "Seedream 5 Pro"):
                 load_kie_settings()
 
     def test_settings_load_seedream_routes_and_upload_defaults(self) -> None:
         values = {
             "KIE_ENABLED": "true",
             "KIE_API_KEY": "secret",
+            "GRS_API_KEY": "grs-secret",
             "KIE_USD_TO_RUB": "100",
         }
         with patch.dict(os.environ, values, clear=True), patch(
             "velvet_bot.core.config.kie.load_dotenv"
         ):
             settings = load_kie_settings()
+        self.assertEqual("grs-secret", settings.grs_api_key)
         self.assertEqual("nano-banana-pro", settings.models.nano_banana_pro)
         self.assertEqual(
             "seedream/5-pro-text-to-image",
