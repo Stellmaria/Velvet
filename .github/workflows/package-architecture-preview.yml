@@ -1,0 +1,38 @@
+name: package architecture preview
+
+on:
+  pull_request:
+    paths:
+      - scripts/inventory_package_architecture.py
+      - .github/workflows/package-architecture-preview.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build package architecture baseline
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --output-dir package-architecture-preview \
+            --label p1-package-architecture-baseline
+
+      - name: Upload baseline preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-architecture-preview
+          path: package-architecture-preview
+          if-no-files-found: error
+          retention-days: 7
