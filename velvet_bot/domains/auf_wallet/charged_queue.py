@@ -13,6 +13,7 @@ from velvet_bot.domains.ai_usage import (
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 
+from .charged_queue_expected_quote import validate_expected_auf_quote
 from .models import AufInsufficientBalance, AufWalletFrozen
 from .pricing import AufPriceQuote, quote_auf_payload
 
@@ -34,6 +35,7 @@ class AufChargedTaskQueueService(AITaskQueueService):
         async with self._database.acquire() as connection:
             async with connection.transaction():
                 quote = await quote_auf_payload(connection, request.payload)
+                validate_expected_auf_quote(request.payload, quote)
                 result = await self._tasks._enqueue_on_connection(connection, request)
                 if not result.created:
                     return result
@@ -109,7 +111,6 @@ async def _reserve_charge(
         raise AufWalletFrozen("Кошелёк Ауф этого пространства заморожен.")
 
     available = int(wallet["available_units"])
-    reserved = int(wallet["reserved_units"])
     if available < quote.quoted_units:
         raise AufInsufficientBalance(
             required_units=quote.quoted_units,

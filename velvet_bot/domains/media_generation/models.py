@@ -7,7 +7,9 @@ from enum import StrEnum
 from typing import Any, Mapping
 
 KIE_GENERATION_TASK_TYPE = "media.generate.kie"
-MAX_KIE_REFERENCES = 5
+# Collection happens before the user chooses a model. This is the highest
+# documented input limit among the currently exposed photo editors.
+MAX_KIE_REFERENCES = 10
 MAX_KIE_REFERENCE_BYTES = 10 * 1024 * 1024
 _MONEY_QUANTUM = Decimal("0.01")
 _PHOTO_ONLY_PROMPT = (
@@ -40,10 +42,37 @@ class KieContentMode(StrEnum):
         return "Mature" if self is self.MATURE else "Стандартный"
 
 
+@dataclass(frozen=True, slots=True)
+class KiePhotoModelCapabilities:
+    """Provider-backed constraints used by Telegram UI and request validation."""
+
+    max_references: int
+    prompt_limit: int
+    resolutions: tuple[str, ...]
+    aspect_ratios: tuple[str, ...]
+    default_aspect_ratio: str
+    supports_provider_mature_override: bool = False
+
+    def __post_init__(self) -> None:
+        if self.max_references <= 0:
+            raise ValueError("Лимит референсов должен быть положительным.")
+        if self.prompt_limit <= 0:
+            raise ValueError("Лимит промта должен быть положительным.")
+        if not self.resolutions:
+            raise ValueError("Фото-модель должна поддерживать хотя бы одно качество.")
+        if not self.aspect_ratios:
+            raise ValueError("Фото-модель должна поддерживать хотя бы одно соотношение.")
+        if self.default_aspect_ratio not in self.aspect_ratios:
+            raise ValueError("Соотношение по умолчанию должно быть в списке доступных.")
+
+
 class KieModelAlias(StrEnum):
     SEEDREAM_5_PRO = "seedream_5_pro"
     NANO_BANANA_2 = "nano_banana_2"
     NANO_BANANA_PRO = "nano_banana_pro"
+    QWEN2_IMAGE_EDIT = "qwen2_image_edit"
+    WAN_27_IMAGE = "wan_27_image"
+    FLUX_2_PRO_IMAGE = "flux_2_pro_image"
     GROK_IMAGINE_VIDEO = "grok_imagine_video"
     GROK_IMAGINE_VIDEO_15 = "grok_imagine_video_15"
     SEEDANCE_15_PRO_VIDEO = "seedance_15_pro_video"
@@ -55,6 +84,9 @@ class KieModelAlias(StrEnum):
             self.SEEDREAM_5_PRO: "Seedream 5 Pro",
             self.NANO_BANANA_2: "Nano Banana 2",
             self.NANO_BANANA_PRO: "Nano Banana Pro",
+            self.QWEN2_IMAGE_EDIT: "Qwen Image 2.0",
+            self.WAN_27_IMAGE: "Wan 2.7 Image",
+            self.FLUX_2_PRO_IMAGE: "FLUX.2 Pro",
             self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",
             self.GROK_IMAGINE_VIDEO_15: "Grok Imagine Video 1.5",
             self.SEEDANCE_15_PRO_VIDEO: "Seedance 1.5 Pro",
@@ -79,16 +111,98 @@ class KieModelAlias(StrEnum):
         return "grs" if self.is_grs else "kie"
 
     @property
+    def photo_capabilities(self) -> KiePhotoModelCapabilities | None:
+        return _PHOTO_MODEL_CAPABILITIES.get(self)
+
+    @property
+    def is_photo_model(self) -> bool:
+        return self.photo_capabilities is not None
+
+    @property
     def supported_photo_resolutions(self) -> tuple[str, ...]:
-        if self in {self.NANO_BANANA_2, self.NANO_BANANA_PRO}:
-            return ("1K", "2K", "4K")
-        if self is self.SEEDREAM_5_PRO:
-            return ("1K", "2K")
-        return ()
+        capabilities = self.photo_capabilities
+        return capabilities.resolutions if capabilities is not None else ()
+
+    @property
+    def supported_aspect_ratios(self) -> tuple[str, ...]:
+        capabilities = self.photo_capabilities
+        return capabilities.aspect_ratios if capabilities is not None else ()
+
+    @property
+    def max_photo_references(self) -> int:
+        capabilities = self.photo_capabilities
+        return capabilities.max_references if capabilities is not None else 0
+
+    @property
+    def photo_prompt_limit(self) -> int:
+        capabilities = self.photo_capabilities
+        return capabilities.prompt_limit if capabilities is not None else 0
+
+    @property
+    def default_photo_aspect_ratio(self) -> str:
+        capabilities = self.photo_capabilities
+        return capabilities.default_aspect_ratio if capabilities is not None else "9:16"
 
     @property
     def supports_provider_mature_override(self) -> bool:
-        return self is self.SEEDREAM_5_PRO
+        capabilities = self.photo_capabilities
+        return bool(
+            capabilities is not None
+            and capabilities.supports_provider_mature_override
+        )
+
+
+_COMMON_RATIOS = ("1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9")
+_PHOTO_MODEL_CAPABILITIES: dict[KieModelAlias, KiePhotoModelCapabilities] = {
+    KieModelAlias.SEEDREAM_5_PRO: KiePhotoModelCapabilities(
+        max_references=10,
+        prompt_limit=8000,
+        resolutions=("1K", "2K"),
+        aspect_ratios=("1:1", "4:3", "3:4", "16:9", "9:16", "2:3", "3:2", "21:9"),
+        default_aspect_ratio="9:16",
+        supports_provider_mature_override=True,
+    ),
+    # GRS exposes an images array but does not publish a hard maximum. Keep the
+    # previous production contract of five until the provider documents more.
+    KieModelAlias.NANO_BANANA_2: KiePhotoModelCapabilities(
+        max_references=5,
+        prompt_limit=8000,
+        resolutions=("1K", "2K", "4K"),
+        aspect_ratios=_COMMON_RATIOS,
+        default_aspect_ratio="9:16",
+    ),
+    KieModelAlias.NANO_BANANA_PRO: KiePhotoModelCapabilities(
+        max_references=5,
+        prompt_limit=8000,
+        resolutions=("1K", "2K", "4K"),
+        aspect_ratios=_COMMON_RATIOS,
+        default_aspect_ratio="9:16",
+    ),
+    KieModelAlias.QWEN2_IMAGE_EDIT: KiePhotoModelCapabilities(
+        max_references=3,
+        prompt_limit=8000,
+        resolutions=("2K",),
+        aspect_ratios=("1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"),
+        default_aspect_ratio="9:16",
+        supports_provider_mature_override=True,
+    ),
+    KieModelAlias.WAN_27_IMAGE: KiePhotoModelCapabilities(
+        max_references=9,
+        prompt_limit=5000,
+        resolutions=("1K", "2K"),
+        aspect_ratios=("1:1", "3:4", "4:3", "1:8", "8:1", "9:16", "16:9", "21:9"),
+        default_aspect_ratio="9:16",
+        supports_provider_mature_override=True,
+    ),
+    KieModelAlias.FLUX_2_PRO_IMAGE: KiePhotoModelCapabilities(
+        max_references=8,
+        prompt_limit=5000,
+        resolutions=("1K", "2K"),
+        aspect_ratios=("auto", "1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3"),
+        default_aspect_ratio="auto",
+        supports_provider_mature_override=True,
+    ),
+}
 
 
 class KieTaskState(StrEnum):
@@ -112,10 +226,12 @@ class KieModelCatalog:
     seedream_5_pro_image: str = ""
     nano_banana_2: str = "nano-banana-2"
     nano_banana_pro: str = "nano-banana-pro"
+    qwen2_image_edit: str = "qwen2/image-edit"
+    wan_27_image: str = "wan/2-7-image"
+    flux_2_pro_image: str = "flux-2/pro-image-to-image"
     grok_imagine_video: str = "grok-imagine/image-to-video"
     grok_imagine_video_15: str = "grok-imagine-video-1-5-preview"
     seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"
-    # Field name stays stable so queued Wan tasks remain readable.
     wan_26_image_to_video: str = "wan/2-7-image-to-video"
 
     def provider_model(
@@ -138,14 +254,22 @@ class KieModelCatalog:
             model = self.nano_banana_2
         elif alias is KieModelAlias.NANO_BANANA_PRO:
             model = self.nano_banana_pro
+        elif alias is KieModelAlias.QWEN2_IMAGE_EDIT:
+            model = self.qwen2_image_edit
+        elif alias is KieModelAlias.WAN_27_IMAGE:
+            model = self.wan_27_image
+        elif alias is KieModelAlias.FLUX_2_PRO_IMAGE:
+            model = self.flux_2_pro_image
         elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:
             model = self.grok_imagine_video
         elif alias is KieModelAlias.GROK_IMAGINE_VIDEO_15:
             model = self.grok_imagine_video_15
         elif alias is KieModelAlias.SEEDANCE_15_PRO_VIDEO:
             model = self.seedance_15_pro_video
-        else:
+        elif alias is KieModelAlias.WAN_26_IMAGE_TO_VIDEO:
             model = self.wan_26_image_to_video
+        else:
+            raise ValueError(f"Неизвестная модель: {alias}")
         normalized = model.strip()
         if not normalized:
             mode_suffix = f" для режима {input_mode.value}" if input_mode else ""
@@ -172,6 +296,12 @@ class KiePricing:
     # Conservative USD-equivalent budget estimates for GRS billing.
     nano_banana_2_usd: Decimal = Decimal("0.02")
     nano_banana_pro_usd: Decimal | None = None
+    # Configurable preflight estimates. Provider billing remains the source of truth.
+    qwen2_image_edit_usd: Decimal = Decimal("0.02")
+    wan_27_1k_usd: Decimal = Decimal("0.05")
+    wan_27_2k_usd: Decimal = Decimal("0.08")
+    flux_2_pro_1k_usd: Decimal = Decimal("0.045")
+    flux_2_pro_2k_usd: Decimal = Decimal("0.075")
     grok_480p_usd_per_second: Decimal = Decimal("0.008")
     grok_720p_usd_per_second: Decimal = Decimal("0.015")
     grok_15_480p_usd_per_second: Decimal = Decimal("0.0725")
@@ -201,6 +331,20 @@ class KiePricing:
                 self.nano_4k_usd
                 if request.resolution.casefold() == "4k"
                 else self.nano_1k_2k_usd
+            )
+        if request.model is KieModelAlias.QWEN2_IMAGE_EDIT:
+            return self.qwen2_image_edit_usd
+        if request.model is KieModelAlias.WAN_27_IMAGE:
+            return (
+                self.wan_27_2k_usd
+                if request.resolution.casefold() == "2k"
+                else self.wan_27_1k_usd
+            )
+        if request.model is KieModelAlias.FLUX_2_PRO_IMAGE:
+            return (
+                self.flux_2_pro_2k_usd
+                if request.resolution.casefold() == "2k"
+                else self.flux_2_pro_1k_usd
             )
         if request.model is KieModelAlias.GROK_IMAGINE_VIDEO:
             rate = (
@@ -265,12 +409,15 @@ class KieReferenceImage:
     file_size: int | None = None
     character_id: int | None = None
     reference_id: int | None = None
+    workspace_id: int | None = None
 
     def __post_init__(self) -> None:
         if not self.telegram_file_id.strip():
             raise ValueError("Telegram file_id референса не может быть пустым.")
-        if self.source not in {"library", "upload"}:
-            raise ValueError("Источник референса должен быть library или upload.")
+        if self.source not in {"library", "upload", "system", "personal"}:
+            raise ValueError(
+                "Источник референса должен быть library, upload, system или personal."
+            )
         normalized_mime = self.mime_type.strip().casefold()
         if normalized_mime not in {
             "image/jpeg",
@@ -292,6 +439,7 @@ class KieReferenceImage:
             "file_size": self.file_size,
             "character_id": self.character_id,
             "reference_id": self.reference_id,
+            "workspace_id": self.workspace_id,
         }
 
     @classmethod
@@ -307,6 +455,7 @@ class KieReferenceImage:
             file_size=_optional_int(payload.get("file_size")),
             character_id=_optional_int(payload.get("character_id")),
             reference_id=_optional_int(payload.get("reference_id")),
+            workspace_id=_optional_int(payload.get("workspace_id")),
         )
 
 
@@ -332,7 +481,9 @@ class KieGenerationRequest:
         if self.duration_seconds <= 0:
             raise ValueError("Длительность видео должна быть положительной.")
         if len(self.references) > MAX_KIE_REFERENCES:
-            raise ValueError("Можно использовать не больше пяти референсов.")
+            raise ValueError(
+                f"Можно использовать не больше {MAX_KIE_REFERENCES} референсов."
+            )
         if any(not url.strip() for url in self.image_urls):
             raise ValueError("URL референсов не могут быть пустыми.")
         if self.input_mode is KieInputMode.TEXT:
@@ -346,12 +497,28 @@ class KieGenerationRequest:
         elif self.input_mode is KieInputMode.PHOTO_TEXT:
             if not self.references or not prompt:
                 raise ValueError("Для режима Фото + текст нужны фото и промт.")
-        if not self.model.is_video:
-            supported = self.model.supported_photo_resolutions
-            if self.resolution.upper() not in supported:
+        if self.model.is_photo_model:
+            capabilities = self.model.photo_capabilities
+            assert capabilities is not None
+            if len(self.references) > capabilities.max_references:
+                raise ValueError(
+                    f"{self.model.display_name} принимает не больше "
+                    f"{capabilities.max_references} референсов."
+                )
+            if len(prompt) > capabilities.prompt_limit:
+                raise ValueError(
+                    f"{self.model.display_name} принимает промт не длиннее "
+                    f"{capabilities.prompt_limit} символов."
+                )
+            if self.resolution.upper() not in capabilities.resolutions:
                 raise ValueError(
                     f"{self.model.display_name} не поддерживает качество "
                     f"{self.resolution}."
+                )
+            if self.aspect_ratio not in capabilities.aspect_ratios:
+                raise ValueError(
+                    f"{self.model.display_name} не поддерживает соотношение "
+                    f"{self.aspect_ratio}."
                 )
 
     @property
@@ -381,12 +548,13 @@ class KieGenerationRequest:
 
     def to_input(self) -> dict[str, object]:
         payload: dict[str, object] = {"prompt": self.provider_prompt}
+        mature_override = self.content_mode is not KieContentMode.MATURE
         if self.model is KieModelAlias.SEEDREAM_5_PRO:
             payload.update(
                 {
                     "aspect_ratio": self.aspect_ratio.strip(),
                     "quality": self.provider_quality,
-                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                    "nsfw_checker": mature_override,
                 }
             )
             if self.input_mode is not KieInputMode.TEXT:
@@ -404,6 +572,47 @@ class KieGenerationRequest:
                     "image_input": list(self.image_urls),
                 }
             )
+        elif self.model is KieModelAlias.QWEN2_IMAGE_EDIT:
+            qwen_images: str | list[str]
+            if len(self.image_urls) == 1:
+                qwen_images = self.image_urls[0]
+            else:
+                # The marketplace schema exposes an array while the API example
+                # still shows a scalar. Preserve both contracts.
+                qwen_images = list(self.image_urls)
+            payload.update(
+                {
+                    "image_url": qwen_images,
+                    "image_size": self.aspect_ratio.strip(),
+                    "output_format": self.output_format.strip() or "png",
+                    "seed": 0,
+                    "nsfw_checker": mature_override,
+                }
+            )
+        elif self.model is KieModelAlias.WAN_27_IMAGE:
+            payload.update(
+                {
+                    "input_urls": list(self.image_urls),
+                    "bbox_list": [[] for _ in self.image_urls],
+                    "enable_sequential": False,
+                    "thinking_mode": False,
+                    "n": 1,
+                    "resolution": self.resolution.upper(),
+                    "aspect_ratio": self.aspect_ratio.strip(),
+                    "watermark": False,
+                    "seed": 0,
+                    "nsfw_checker": mature_override,
+                }
+            )
+        elif self.model is KieModelAlias.FLUX_2_PRO_IMAGE:
+            payload.update(
+                {
+                    "input_urls": list(self.image_urls),
+                    "aspect_ratio": self.aspect_ratio.strip(),
+                    "resolution": self.resolution.upper(),
+                    "nsfw_checker": mature_override,
+                }
+            )
         elif self.model is KieModelAlias.GROK_IMAGINE_VIDEO:
             payload.update(
                 {
@@ -412,7 +621,7 @@ class KieGenerationRequest:
                     "duration": self.duration_seconds,
                     "mode": self.mode.strip() or "normal",
                     "image_urls": list(self.image_urls),
-                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                    "nsfw_checker": mature_override,
                 }
             )
         elif self.model is KieModelAlias.GROK_IMAGINE_VIDEO_15:
@@ -422,7 +631,7 @@ class KieGenerationRequest:
                     "resolution": self.resolution.strip() or "480p",
                     "duration": self.duration_seconds,
                     "image_urls": list(self.image_urls),
-                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                    "nsfw_checker": mature_override,
                 }
             )
         elif self.model is KieModelAlias.SEEDANCE_15_PRO_VIDEO:
@@ -434,7 +643,7 @@ class KieGenerationRequest:
                     "duration": self.duration_seconds,
                     "fixed_lens": False,
                     "generate_audio": False,
-                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                    "nsfw_checker": mature_override,
                 }
             )
         elif self.model is KieModelAlias.WAN_26_IMAGE_TO_VIDEO:
@@ -443,7 +652,7 @@ class KieGenerationRequest:
                     "image_urls": list(self.image_urls),
                     "duration": str(self.duration_seconds),
                     "resolution": self.resolution.strip() or "720p",
-                    "nsfw_checker": self.content_mode is not KieContentMode.MATURE,
+                    "nsfw_checker": mature_override,
                 }
             )
         payload.update(dict(self.extra_input))
