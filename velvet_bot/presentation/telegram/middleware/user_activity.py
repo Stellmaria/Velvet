@@ -7,6 +7,7 @@ from typing import Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, InlineQuery, Message, TelegramObject, User
+from asyncpg import PostgresError
 
 from velvet_bot.domains.user_registry import (
     TelegramUserIdentity,
@@ -35,7 +36,15 @@ class UserActivityMiddleware(BaseMiddleware):
                 await self._repository.observe(identity, **fields)
         except asyncio.CancelledError:
             raise
-        except Exception:  # p2-approved-boundary: user-observability-must-not-block-bot
+        except (
+            PostgresError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            KeyError,
+            AttributeError,
+            OSError,
+        ):
             logger.exception("Could not persist Telegram user activity")
         return await handler(event, data)
 
