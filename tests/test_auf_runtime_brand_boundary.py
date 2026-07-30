@@ -17,9 +17,14 @@ class AufRuntimeBrandBoundaryTests(unittest.TestCase):
         self.assertIn("install_auf_cancel_ui", source)
         self.assertIn("install_auf_runtime_dispatcher", source)
         self.assertIn("install_auf_workspace_ui", source)
+        self.assertIn("install_auf_grs_brand", source)
         self.assertNotIn("install_meow_cancel_ui", source)
         self.assertNotIn("install_meow_runtime_dispatcher", source)
         self.assertNotIn("install_meow_workspace_ui", source)
+        self.assertLess(
+            source.index("install_grs_speedups()"),
+            source.index("install_auf_grs_brand()"),
+        )
 
     def test_legacy_installers_are_thin_compatibility_shims(self) -> None:
         expected = {
@@ -84,6 +89,17 @@ class AufRuntimeBrandBoundaryTests(unittest.TestCase):
                 source = _read(path)
                 self.assertNotIn("Мяу", source)
                 self.assertNotIn("мяу", source)
+
+    def test_active_startup_and_grs_delivery_use_auf_brand(self) -> None:
+        bootstrap = _read("velvet_bot/app/bootstrap.py")
+        delivery = _read("velvet_bot/app/auf_grs_brand_install.py")
+        self.assertIn("Auf/Kie enabled", bootstrap)
+        self.assertIn('auf_kie="enabled"', bootstrap)
+        self.assertNotIn("Meow/Kie", bootstrap)
+        self.assertNotIn("meow_kie=", bootstrap)
+        self.assertIn("<b>Ауф ·", delivery)
+        self.assertIn("install_auf_grs_brand", delivery)
+        self.assertNotIn("<b>Мяу", delivery)
 
     def test_legacy_transport_keys_are_centralized(self) -> None:
         canonical = _read("velvet_bot/domains/auf_runtime/__init__.py")
