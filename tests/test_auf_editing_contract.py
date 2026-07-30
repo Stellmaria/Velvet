@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import ast
 import unittest
 from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest
@@ -13,6 +15,30 @@ from aiogram.types import Chat, Message, PhotoSize
 import velvet_bot.presentation.telegram.auf_editing as auf_editing
 from velvet_bot.presentation.telegram.shared.editing import (
     edit_or_answer_callback_text,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+AUF_EDITING_CONSUMERS = (
+    ROOT / "velvet_bot" / "app" / "auf_photo_ui_install.py",
+    ROOT / "velvet_bot" / "app" / "grs_resilience.py",
+    ROOT
+    / "velvet_bot"
+    / "presentation"
+    / "telegram"
+    / "routers"
+    / "workspace_auf_grs.py",
+    ROOT
+    / "velvet_bot"
+    / "presentation"
+    / "telegram"
+    / "routers"
+    / "workspace_auf_photo.py",
+    ROOT
+    / "velvet_bot"
+    / "presentation"
+    / "telegram"
+    / "routers"
+    / "workspace_auf_photo_adjustments.py",
 )
 
 
@@ -130,10 +156,25 @@ class AufEditingHookTests(unittest.IsolatedAsyncioTestCase):
             auf_editing.install_auf_text_transformer(previous)
 
         render.assert_awaited_once_with(
-            unittest.mock.ANY,
+            ANY,
             text="public card",
-            reply_markup=unittest.mock.ANY,
+            reply_markup=ANY,
         )
+
+    async def test_target_consumers_do_not_access_private_edit_or_answer(self) -> None:
+        violations: list[str] = []
+
+        for path in AUF_EDITING_CONSUMERS:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    for alias in node.names:
+                        if alias.name == "_edit_or_answer":
+                            violations.append(f"{path.name}:{node.lineno}:import")
+                if isinstance(node, ast.Attribute) and node.attr == "_edit_or_answer":
+                    violations.append(f"{path.name}:{node.lineno}:attribute")
+
+        self.assertEqual(violations, [])
 
 
 if __name__ == "__main__":
