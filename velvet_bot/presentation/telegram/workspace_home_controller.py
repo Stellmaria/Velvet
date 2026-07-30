@@ -28,6 +28,9 @@ from velvet_bot.presentation.telegram.routers.workspace_meow_photo import (
     handle_meow_photo_command,
     handle_meow_photo_input,
 )
+from velvet_bot.presentation.telegram.routers.workspace_meow_photo_adjustments import (
+    handle_photo_remove_last,
+)
 from velvet_bot.presentation.telegram.routers.workspace_meow_video_simple import (
     MeowVideoCallback,
     MeowVideoForm,
@@ -144,6 +147,10 @@ def register_workspace_home(router: Router) -> None:
     router.callback_query.register(
         handle_meow_video_action,
         MeowVideoCallback.filter(),
+    )
+    router.callback_query.register(
+        handle_photo_remove_last,
+        MeowCallback.filter(F.action == "photo_remove_last"),
     )
     router.callback_query.register(
         handle_meow_photo_action,
