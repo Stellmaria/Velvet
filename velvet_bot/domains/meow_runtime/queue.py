@@ -113,20 +113,66 @@ class ProviderMeowTaskQueueService(KieTaskQueueService):
             )
         return int(value or 0)
 
-    async def queued_count(self) -> int:
+    async def eligible_count(self) -> int:
+        """Count queued jobs that can start now after workspace quotas."""
+
         aliases = list(self.provider.model_aliases)
         async with self._database.acquire() as connection:
             value = await connection.fetchval(
                 """
+                WITH running_by_workspace AS (
+                    SELECT
+                        NULLIF(payload->>'workspace_id', '')::BIGINT AS workspace_id,
+                        COUNT(*) AS running_count
+                    FROM ai_tasks
+                    WHERE status = 'running'
+                      AND task_type = $1::VARCHAR
+                      AND created_by <> $3::BIGINT
+                    GROUP BY NULLIF(payload->>'workspace_id', '')::BIGINT
+                ),
+                ranked AS (
+                    SELECT
+                        task.created_by,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY NULLIF(
+                                task.payload->>'workspace_id',
+                                ''
+                            )::BIGINT
+                            ORDER BY task.priority ASC,
+                                     task.not_before ASC,
+                                     task.created_at ASC,
+                                     task.id ASC
+                        ) AS workspace_position,
+                        COALESCE(
+                            workspace_limit.concurrency_limit,
+                            runtime.workspace_default_limit
+                        ) AS concurrency_limit,
+                        COALESCE(running.running_count, 0) AS running_count
+                    FROM ai_tasks AS task
+                    CROSS JOIN meow_runtime_settings AS runtime
+                    LEFT JOIN workspace_meow_settings AS workspace_limit
+                      ON workspace_limit.workspace_id =
+                         NULLIF(task.payload->>'workspace_id', '')::BIGINT
+                    LEFT JOIN running_by_workspace AS running
+                      ON running.workspace_id =
+                         NULLIF(task.payload->>'workspace_id', '')::BIGINT
+                    WHERE runtime.singleton_id = 1
+                      AND task.status = 'queued'
+                      AND task.not_before <= NOW()
+                      AND task.task_type = $1::VARCHAR
+                      AND task.payload->'request'->>'model' = ANY($2::VARCHAR[])
+                )
                 SELECT COUNT(*)
-                FROM ai_tasks
-                WHERE status = 'queued'
-                  AND not_before <= NOW()
-                  AND task_type = $1::VARCHAR
-                  AND payload->'request'->>'model' = ANY($2::VARCHAR[])
+                FROM ranked
+                WHERE created_by = $3::BIGINT
+                   OR workspace_position <= GREATEST(
+                       concurrency_limit - running_count,
+                       0
+                   )
                 """,
                 KIE_GENERATION_TASK_TYPE,
                 aliases,
+                GLOBAL_WORKSPACE_CREATOR_ID,
             )
         return int(value or 0)
 
