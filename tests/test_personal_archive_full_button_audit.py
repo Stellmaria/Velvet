@@ -153,7 +153,7 @@ class PersonalArchiveHomeAuditTests(unittest.TestCase):
             "🧬 Референсы",
             "🤖 Qwen",
             "📊 Аналитика",
-            "🗂 Другие пространства",
+            "↩️ Другие пространства",
             "✖ Закрыть",
         ):
             self.assertIn(expected, labels)
