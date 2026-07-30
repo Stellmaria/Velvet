@@ -51,6 +51,8 @@ def _display_user(row: Any, *, fallback_id: int | None = None) -> str:
 def _positive_amount(raw: str) -> Decimal | None:
     try:
         amount = Decimal(raw.replace(",", "."))
+        if not amount.is_finite():
+            return None
         normalized = amount.quantize(_AMOUNT_QUANT)
     except InvalidOperation:
         return None
