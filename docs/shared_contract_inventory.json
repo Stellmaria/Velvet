@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "production_python_files": 594,
-  "function_count": 3304,
+  "production_python_files": 595,
+  "function_count": 3305,
   "contracts": [
     {
       "family": "safe edit/send fallback",
@@ -15,7 +15,7 @@
         "safe_edit_callback_text"
       ],
       "notes": "Suppress only Telegram's unchanged-message response.",
-      "consumer_count": 14,
+      "consumer_count": 15,
       "consumers": [
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_actions",
         "velvet_bot.presentation.telegram.routers.publication.center",
@@ -29,6 +29,7 @@
         "velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_sets",
         "velvet_bot.presentation.telegram.routers.stories.multi_story_kr",
         "velvet_bot.presentation.telegram.routers.system",
+        "velvet_bot.presentation.telegram.supervisor.editing",
         "velvet_bot.presentation.telegram.supervisor.views",
         "velvet_bot.safe_analytics_edit"
       ]
@@ -259,7 +260,7 @@
       ]
     }
   ],
-  "private_contract_access_count": 152,
+  "private_contract_access_count": 144,
   "private_contract_accesses": [
     {
       "path": "velvet_bot/app/auf_cancel_ui_install.py",
@@ -994,7 +995,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "line": 19,
+      "line": 20,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_codex_keyboard",
       "access_kind": "direct-import",
@@ -1004,7 +1005,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "line": 19,
+      "line": 20,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_confirm_keyboard",
       "access_kind": "direct-import",
@@ -1014,7 +1015,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "line": 19,
+      "line": 20,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_main_keyboard",
       "access_kind": "direct-import",
@@ -1024,17 +1025,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "line": 19,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "line": 19,
+      "line": 20,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_task_keyboard",
       "access_kind": "direct-import",
@@ -1044,7 +1035,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "line": 19,
+      "line": 20,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_task_text",
       "access_kind": "direct-import",
@@ -1054,7 +1045,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/codex.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.codex",
-      "line": 19,
+      "line": 20,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_tasks_text",
       "access_kind": "direct-import",
@@ -1064,22 +1055,12 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/console.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.console",
-      "line": 29,
+      "line": 30,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_main_keyboard",
       "access_kind": "direct-import",
       "expression": "from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard",
       "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/console.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.console",
-      "line": 29,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/control.py",
@@ -1156,16 +1137,6 @@
       "module": "velvet_bot.presentation.telegram.routers.supervisor.control",
       "line": 34,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/control.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.control",
-      "line": 34,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_task_keyboard",
       "access_kind": "direct-import",
       "expression": "from velvet_bot.presentation.telegram.supervisor.views import _task_keyboard",
@@ -1204,7 +1175,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/git.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.git",
-      "line": 9,
+      "line": 10,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_confirm_keyboard",
       "access_kind": "direct-import",
@@ -1214,7 +1185,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/git.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.git",
-      "line": 9,
+      "line": 10,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_git_keyboard",
       "access_kind": "direct-import",
@@ -1222,19 +1193,9 @@
       "family": "other repeated implementation"
     },
     {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/git.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.git",
-      "line": 9,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
-    },
-    {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/logs.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.logs",
-      "line": 11,
+      "line": 12,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_logs_keyboard",
       "access_kind": "direct-import",
@@ -1242,39 +1203,9 @@
       "family": "other repeated implementation"
     },
     {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/logs.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.logs",
-      "line": 11,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
-    },
-    {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/process.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.process",
-      "line": 8,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_confirm_keyboard",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard",
-      "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/process.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.process",
-      "line": 8,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/self_control.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.self_control",
-      "line": 13,
+      "line": 9,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_confirm_keyboard",
       "access_kind": "direct-import",
@@ -1284,17 +1215,17 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/self_control.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.self_control",
-      "line": 13,
+      "line": 14,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
+      "private_name": "_confirm_keyboard",
       "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
+      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard",
+      "family": "other repeated implementation"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/status.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.status",
-      "line": 12,
+      "line": 13,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_bot_keyboard",
       "access_kind": "direct-import",
@@ -1304,22 +1235,12 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/status.py",
       "module": "velvet_bot.presentation.telegram.routers.supervisor.status",
-      "line": 12,
+      "line": 13,
       "source_module": "velvet_bot.presentation.telegram.supervisor.views",
       "private_name": "_main_keyboard",
       "access_kind": "direct-import",
       "expression": "from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard",
       "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/presentation/telegram/routers/supervisor/status.py",
-      "module": "velvet_bot.presentation.telegram.routers.supervisor.status",
-      "line": 12,
-      "source_module": "velvet_bot.presentation.telegram.supervisor.views",
-      "private_name": "_safe_edit",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.presentation.telegram.supervisor.views import _safe_edit",
-      "family": "safe edit/send fallback"
     },
     {
       "path": "velvet_bot/presentation/telegram/routers/workspace_analytics_characters.py",
@@ -2075,6 +1996,13 @@
           "name": "_safe_edit_text",
           "line": 52,
           "end_line": 61
+        },
+        {
+          "path": "velvet_bot/presentation/telegram/supervisor/editing.py",
+          "module": "velvet_bot.presentation.telegram.supervisor.editing",
+          "name": "edit_supervisor_message",
+          "line": 8,
+          "end_line": 19
         },
         {
           "path": "velvet_bot/presentation/telegram/supervisor/views.py",
@@ -4763,6 +4691,13 @@
           "name": "_safe_edit_text",
           "line": 52,
           "end_line": 61
+        },
+        {
+          "path": "velvet_bot/presentation/telegram/supervisor/editing.py",
+          "module": "velvet_bot.presentation.telegram.supervisor.editing",
+          "name": "edit_supervisor_message",
+          "line": 8,
+          "end_line": 19
         },
         {
           "path": "velvet_bot/presentation/telegram/supervisor/views.py",
