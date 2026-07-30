@@ -76,7 +76,9 @@ class AufWalletService:
             actor_user_id=actor_user_id,
         )
         settings = await self._repository.economy_settings()
-        fixed_prices = await active_package_prices(self._repository._database)
+        fixed_prices = await active_package_prices(
+            getattr(self._repository, "_database", None)
+        )
         quotes: list[AufPackageQuote] = []
         for amount in AUF_PACKAGES:
             fixed_rub = fixed_prices.get(amount)
