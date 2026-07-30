@@ -1,0 +1,77 @@
+name: Finalize Auf result delivery recovery
+
+on:
+  pull_request:
+    branches:
+      - agent/auf-router-cleanup-runner
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-success-result-delivery
+          fetch-depth: 0
+
+      - name: Fix delivery boundaries and regenerate inventories
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/app/auf_result_delivery_recovery.py")
+          source = path.read_text(encoding="utf-8")
+          source = source.replace(
+              "_TELEGRAM_RETRY_ATTEMPTS = 4\n",
+              "_TELEGRAM_RETRY_ATTEMPTS = 4\n"
+              "_DELIVERY_ERRORS = (\n"
+              "    TelegramAPIError,\n"
+              "    RuntimeError,\n"
+              "    ValueError,\n"
+              "    OSError,\n"
+              "    TypeError,\n"
+              "    AttributeError,\n"
+              ")\n",
+              1,
+          )
+          source = source.replace(
+              'return tuple(str(item).strip() for item in urls if str(item).strip())',
+              'return tuple(\n'
+              '        str(item).strip()\n'
+              '        for item in urls\n'
+              '        if item is not None and str(item).strip()\n'
+              '    )',
+              1,
+          )
+          source = source.replace("except Exception as error:", "except _DELIVERY_ERRORS as error:")
+          source = source.replace("except Exception:", "except _DELIVERY_ERRORS:")
+          if "except Exception" in source:
+              raise SystemExit("broad delivery exception remains")
+          if "if item is not None" not in source:
+              raise SystemExit("result URL parser was not repaired")
+          path.write_text(source, encoding="utf-8")
+          PY
+
+          python scripts/update_p2_stability_inventory.py \
+            --label p2-auf-result-delivery-recovery \
+            --schema-version 71
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python -m compileall -q velvet_bot tests
+
+      - name: Commit final delivery recovery
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/app/auf_result_delivery_recovery.py \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/generated/telegram_navigation_inventory.md
+          git commit -m "Завершить восстановление доставки результатов Ауф"
+          git push origin HEAD:agent/fix-success-result-delivery
