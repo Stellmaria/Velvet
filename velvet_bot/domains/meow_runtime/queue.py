@@ -130,9 +130,8 @@ class ProviderMeowTaskQueueService(KieTaskQueueService):
                       AND created_by <> $3::BIGINT
                     GROUP BY NULLIF(payload->>'workspace_id', '')::BIGINT
                 ),
-                ranked AS (
+                ranked_workspace AS (
                     SELECT
-                        task.created_by,
                         ROW_NUMBER() OVER (
                             PARTITION BY NULLIF(
                                 task.payload->>'workspace_id',
@@ -160,15 +159,28 @@ class ProviderMeowTaskQueueService(KieTaskQueueService):
                       AND task.status = 'queued'
                       AND task.not_before <= NOW()
                       AND task.task_type = $1::VARCHAR
+                      AND task.created_by <> $3::BIGINT
                       AND task.payload->'request'->>'model' = ANY($2::VARCHAR[])
+                ),
+                workspace_eligible AS (
+                    SELECT COUNT(*) AS total
+                    FROM ranked_workspace
+                    WHERE workspace_position <= GREATEST(
+                        concurrency_limit - running_count,
+                        0
+                    )
+                ),
+                stell_eligible AS (
+                    SELECT COUNT(*) AS total
+                    FROM ai_tasks
+                    WHERE status = 'queued'
+                      AND not_before <= NOW()
+                      AND task_type = $1::VARCHAR
+                      AND created_by = $3::BIGINT
+                      AND payload->'request'->>'model' = ANY($2::VARCHAR[])
                 )
-                SELECT COUNT(*)
-                FROM ranked
-                WHERE created_by = $3::BIGINT
-                   OR workspace_position <= GREATEST(
-                       concurrency_limit - running_count,
-                       0
-                   )
+                SELECT workspace_eligible.total + stell_eligible.total
+                FROM workspace_eligible, stell_eligible
                 """,
                 KIE_GENERATION_TASK_TYPE,
                 aliases,
