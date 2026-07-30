@@ -1,9 +1,10 @@
 # 2026-07-30 — shared Telegram helpers
 
 - Дата: 2026-07-30
+- ID: `telegram-shared-helpers`
 - Issue: #419
 - Линия/фаза: P3 architecture / duplicate helper cleanup
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `agent/shared-telegram-helpers`
 - Базовый commit: `39868c73e6a0b24f524d5801df715dde5dd87a7e`
 
@@ -45,10 +46,44 @@ keyboards, deletion, chunking и progress updates. Часть повторов �
 provider routing. `message is not modified` остаётся единственной молча игнорируемой
 ошибкой safe edit; остальные ошибки должны продолжать подниматься.
 
-## Текущее выполнение
+## После завершения
+
+### Фактически сделано
 
 - создан пакет `presentation.telegram.shared`;
 - добавлены editing, navigation, deletion и text contracts;
 - `safe_analytics_edit` переведён на shared editing contract;
 - добавлены AST inventory, machine checks и regression tests;
-- следующий шаг определяется точным CI inventory, а не ручным поиском по именам.
+- draft PR #462 открыт для полного CI и поэтапной миграции остальных семейств.
+
+### Миграции и совместимость
+
+Миграций базы данных нет. Callback payloads, пользовательские тексты, права доступа,
+provider routing и worker lifecycle не изменены. Корневой `safe_analytics_edit` сохранён
+как совместимый facade, но его реализация теперь делегирует публичному shared contract.
+
+### Проверки
+
+- type check: успешно на первом прогоне PR #462;
+- Docker build: успешно на первом прогоне PR #462;
+- project notes contract: исправляется этим commit;
+- полный tests workflow: выполняется, затем его inventory используется для следующего
+  миграционного среза.
+
+### PR и commit
+
+- PR: #462;
+- текущая ветка: `agent/shared-telegram-helpers`;
+- итоговый merge commit будет зафиксирован после полного завершения issue #419.
+
+### Незавершённое
+
+- разобрать результат полного AST inventory;
+- перенести оставшиеся реальные helper duplicates по одному семейству;
+- получить зелёный полный CI;
+- обновить umbrella #213 и закрыть #419.
+
+### Следующий шаг
+
+Исправить выявленные CI inventory failures, затем последовательно мигрировать safe-edit,
+navigation/deletion, text и progress families без изменения Telegram UX.
