@@ -6,6 +6,7 @@ from .editing import (
     safe_edit_callback_text,
     safe_edit_message_text,
 )
+from .media import download_telegram_file
 from .navigation import (
     NavigationButton,
     build_back_refresh_keyboard,
@@ -27,6 +28,7 @@ __all__ = (
     "build_pagination_keyboard",
     "chunk_telegram_text",
     "delete_message_safely",
+    "download_telegram_file",
     "is_message_not_modified",
     "safe_edit_callback_text",
     "safe_edit_message_text",
