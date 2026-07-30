@@ -35,6 +35,7 @@ _SECRET_NAMES = {
     "AI_VISION_PRO_API_KEY",
     "AI_VISION_SENSITIVE_API_KEY",
     "KIE_API_KEY",
+    "GRS_API_KEY",
     "HERMES_API_KEY",
     "OPENAI_API_KEY",
     "TELEGRAM_BOT_TOKEN",
@@ -236,6 +237,11 @@ def _validate_text_ai(values: dict[str, str], report: ValidationReport) -> None:
         ("AI_TEXT_PROVIDER", "AI_TEXT_BASE_URL", "AI_TEXT_MODEL"),
         context="включённого RP-контура",
     )
+    provider = values.get("AI_TEXT_PROVIDER", "").strip().casefold()
+    if provider == "ollama":
+        report.error(
+            "AI_TEXT_PROVIDER=ollama запрещён на production VPS: Ollama legacy/deprecated."
+        )
     if not _api_key(values, "AI_TEXT_API_KEY"):
         report.error("AI_TEXT_ENABLED требует AI_TEXT_API_KEY или BYESU_API_KEY.")
     if not _has_positive_pricing(values, "AI_TEXT"):
@@ -247,6 +253,11 @@ def _validate_text_ai(values: dict[str, str], report: ValidationReport) -> None:
             ("AI_TEXT_FALLBACK_PROVIDER", "AI_TEXT_FALLBACK_BASE_URL"),
             context="RP fallback",
         )
+        fallback_provider = values.get("AI_TEXT_FALLBACK_PROVIDER", "").strip().casefold()
+        if fallback_provider == "ollama":
+            report.error(
+                "AI_TEXT_FALLBACK_PROVIDER=ollama запрещён: Ollama legacy/deprecated."
+            )
         if not _api_key(values, "AI_TEXT_FALLBACK_API_KEY"):
             report.error("RP fallback требует отдельный API key или BYESU_API_KEY.")
         if not _has_positive_pricing(values, "AI_TEXT_FALLBACK"):
@@ -263,7 +274,11 @@ def _validate_vision_ai(values: dict[str, str], report: ValidationReport) -> Non
         context="включённого VL-контура",
     )
     base_provider = values.get("AI_VISION_PROVIDER", "").strip().casefold()
-    if base_provider != "ollama" and not _api_key(values, "AI_VISION_API_KEY"):
+    if base_provider == "ollama":
+        report.error(
+            "AI_VISION_PROVIDER=ollama запрещён на production VPS: Ollama legacy/deprecated."
+        )
+    if not _api_key(values, "AI_VISION_API_KEY"):
         report.error("AI_VISION_ENABLED требует AI_VISION_API_KEY или BYESU_API_KEY.")
 
     flash_model = values.get("AI_VISION_FLASH_MODEL", "").strip() or values.get(
@@ -298,11 +313,13 @@ def _validate_vision_route(
 ) -> None:
     prefix = f"AI_VISION_{route}"
     provider = values.get(f"{prefix}_PROVIDER", "").strip().casefold() or inherited_provider
-    if provider != "ollama":
-        if not _api_key(values, f"{prefix}_API_KEY"):
-            report.error(f"{route} VL route требует API key или BYESU_API_KEY.")
-        if not _has_positive_pricing(values, prefix):
-            report.error(f"{route} VL route требует положительную input/output цену.")
+    if provider == "ollama":
+        report.error(f"{route} VL route не может использовать legacy/deprecated Ollama.")
+        return
+    if not _api_key(values, f"{prefix}_API_KEY"):
+        report.error(f"{route} VL route требует API key или BYESU_API_KEY.")
+    if not _has_positive_pricing(values, prefix):
+        report.error(f"{route} VL route требует положительную input/output цену.")
 
 
 def _validate_kie(values: dict[str, str], report: ValidationReport) -> None:
@@ -315,10 +332,21 @@ def _validate_kie(values: dict[str, str], report: ValidationReport) -> None:
             "KIE_API_KEY",
             "KIE_BASE_URL",
             "KIE_FILE_UPLOAD_BASE_URL",
-            "KIE_SEEDREAM_5_PRO_MODEL",
-            "KIE_NANO_BANANA_PRO_MODEL",
+            "GRS_API_KEY",
+            "GRS_BASE_URL",
+            "KIE_SEEDREAM_5_PRO_TEXT_MODEL",
+            "KIE_SEEDREAM_5_PRO_IMAGE_MODEL",
+            "KIE_QWEN2_IMAGE_EDIT_MODEL",
+            "KIE_WAN_27_IMAGE_MODEL",
+            "KIE_FLUX_2_PRO_IMAGE_MODEL",
+            "GRS_NANO_BANANA_2_MODEL",
+            "GRS_NANO_BANANA_PRO_MODEL",
+            "KIE_GROK_IMAGINE_IMAGE_TO_VIDEO_MODEL",
+            "KIE_GROK_IMAGINE_VIDEO_15_MODEL",
+            "KIE_SEEDANCE_15_PRO_MODEL",
+            "KIE_WAN_27_IMAGE_TO_VIDEO_MODEL",
         ),
-        context="включённого Kie-контура",
+        context="включённого Kie + GRS media-контура",
     )
     rate = _decimal(values.get("KIE_USD_TO_RUB", ""))
     if rate is None or rate <= 0:
