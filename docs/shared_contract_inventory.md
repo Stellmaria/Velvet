@@ -1,10 +1,10 @@
 # Shared contract inventory
 
 - Production Python files: **594**
-- Functions inventoried: **3300**
+- Functions inventoried: **3304**
 - Registered private cross-module debt: **152**
 - Blocking known private contracts: **0**
-- Exact duplicate groups: **55**
+- Exact duplicate groups: **56**
 - Normalized near-duplicate groups: **92**
 - Semantic near-duplicate groups: **9**
 
@@ -195,7 +195,7 @@
 ## Semantic near-duplicate families
 
 - **media download/preview/original delivery**: 24 functions; shared transport/domain signals despite different names and literals.
-- **pagination keyboards**: 74 functions; shared transport/domain signals despite different names and literals.
+- **pagination keyboards**: 75 functions; shared transport/domain signals despite different names and literals.
 - **provider/model labels**: 42 functions; shared transport/domain signals despite different names and literals.
 - **repeated progress-card updates**: 6 functions; shared transport/domain signals despite different names and literals.
 - **retry/backoff policies**: 6 functions; shared transport/domain signals despite different names and literals.

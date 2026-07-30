@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "production_python_files": 594,
-  "function_count": 3300,
+  "function_count": 3304,
   "contracts": [
     {
       "family": "safe edit/send fallback",
@@ -1849,20 +1849,20 @@
       "current_occurrences": []
     }
   ],
-  "exact_duplicate_group_count": 55,
+  "exact_duplicate_group_count": 56,
   "normalized_duplicate_group_count": 92,
   "semantic_near_duplicate_group_count": 9,
   "duplicate_kind_counts": {
     "allowed-template": 33,
     "generated/compat": 1,
     "normalized-near-duplicate": 91,
-    "real-duplicate": 22,
+    "real-duplicate": 23,
     "semantic-near-duplicate": 9
   },
   "duplicate_family_counts": {
     "callback navigation and back buttons": 16,
     "deletion helpers": 4,
-    "media download/preview/original delivery": 11,
+    "media download/preview/original delivery": 12,
     "message chunking/HTML fallback": 1,
     "other repeated implementation": 83,
     "owner/editor/member guards": 6,
@@ -3026,6 +3026,28 @@
           "name": "_score",
           "line": 125,
           "end_line": 130
+        }
+      ]
+    },
+    {
+      "digest": "b7a447ca9bd4c6e1fb366cf3d362cba581f53c3a78b5e695e580e73dd06a7099",
+      "kind": "real-duplicate",
+      "family": "media download/preview/original delivery",
+      "reason": "exact normalized AST body",
+      "occurrences": [
+        {
+          "path": "velvet_bot/app/auf_active_delivery_fix.py",
+          "module": "velvet_bot.app.auf_active_delivery_fix",
+          "name": "_task_history_callback",
+          "line": 202,
+          "end_line": 207
+        },
+        {
+          "path": "velvet_bot/app/auf_user_portal_install.py",
+          "module": "velvet_bot.app.auf_user_portal_install",
+          "name": "_wallet_tasks_callback",
+          "line": 95,
+          "end_line": 100
         }
       ]
     },
@@ -6103,7 +6125,7 @@
       ]
     },
     {
-      "digest": "26b73efe7fd5afbc44b51cf262c9a0bb07ab5ec49acc51e25f016e787c1b09c5",
+      "digest": "0bf6fee2f035cddae7c07f6fc5ebd2845c2e685ab650d63b1739bc359cb7e832",
       "kind": "semantic-near-duplicate",
       "family": "pagination keyboards",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -6114,6 +6136,13 @@
           "name": "build_job_list",
           "line": 142,
           "end_line": 198
+        },
+        {
+          "path": "velvet_bot/app/auf_active_delivery_fix.py",
+          "module": "velvet_bot.app.auf_active_delivery_fix",
+          "name": "task_card_keyboard",
+          "line": 210,
+          "end_line": 278
         },
         {
           "path": "velvet_bot/app/auf_user_portal_install.py",
@@ -6629,7 +6658,7 @@
       ]
     },
     {
-      "digest": "251905fc227bcfcad5ba53eb2ddb3b180b025083761b93822018100454f491eb",
+      "digest": "ab0b20ec9d62b1eb0ffccfbee2e465bbc7635149f460f9cf1ceef6ca278ea3da",
       "kind": "semantic-near-duplicate",
       "family": "provider/model labels",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -6637,9 +6666,9 @@
         {
           "path": "velvet_bot/app/auf_active_delivery_fix.py",
           "module": "velvet_bot.app.auf_active_delivery_fix",
-          "name": "delivery_buttons_for_all_success",
-          "line": 100,
-          "end_line": 129
+          "name": "task_card_text",
+          "line": 128,
+          "end_line": 199
         },
         {
           "path": "velvet_bot/app/auf_grs_brand_install.py",
@@ -7495,7 +7524,7 @@
       ]
     },
     {
-      "digest": "21b3d1cc265f080b84e5482f2413e8f25384e4dd0271288c4c6673e25df85abe",
+      "digest": "fc1e77ae8c830fb3864e05c1affb0df1619061e62060da7e846adc8ec5b2f8d3",
       "kind": "semantic-near-duplicate",
       "family": "task payload/result mapping/formatting",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -7504,15 +7533,15 @@
           "path": "velvet_bot/app/auf_active_delivery_fix.py",
           "module": "velvet_bot.app.auf_active_delivery_fix",
           "name": "_load_provider_urls",
-          "line": 51,
-          "end_line": 72
+          "line": 72,
+          "end_line": 93
         },
         {
           "path": "velvet_bot/app/auf_active_delivery_fix.py",
           "module": "velvet_bot.app.auf_active_delivery_fix",
           "name": "_redeliver_with_provider_recovery",
-          "line": 139,
-          "end_line": 217
+          "line": 324,
+          "end_line": 399
         },
         {
           "path": "velvet_bot/app/auf_grs_brand_install.py",
