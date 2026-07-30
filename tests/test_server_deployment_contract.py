@@ -74,18 +74,42 @@ class ServerDeploymentContractTests(unittest.TestCase):
         bash = shutil.which("bash")
         if bash is None:
             self.skipTest("bash is unavailable")
+
+        probe = subprocess.run(
+            [bash, "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if probe.returncode != 0:
+            details = (probe.stderr or probe.stdout).strip()
+            self.skipTest(
+                f"bash is unusable: {details or f'exit code {probe.returncode}'}"
+            )
+
         for path in (
             "deploy/server/deploy.sh",
             "deploy/server/verify-dump.sh",
         ):
             with self.subTest(path=path):
+                source = Path(path).read_text(encoding="utf-8")
                 result = subprocess.run(
-                    [bash, "-n", path],
+                    [bash, "-n"],
+                    input=source,
                     check=False,
                     capture_output=True,
                     text=True,
                 )
-                self.assertEqual(0, result.returncode, result.stderr)
+                details = "\n".join(
+                    part.strip()
+                    for part in (result.stderr, result.stdout)
+                    if part.strip()
+                )
+                self.assertEqual(
+                    0,
+                    result.returncode,
+                    details or f"bash -n exited with {result.returncode}",
+                )
 
 
 if __name__ == "__main__":
