@@ -1,0 +1,59 @@
+name: temporary integrate auf portal
+
+on:
+  push:
+    branches:
+      - agent/final-auf-router-layer
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/final-auf-router-layer
+          fetch-depth: 0
+
+      - name: Align portal with canonical Auf state and controller
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/app/auf_user_portal_install.py")
+          text = path.read_text(encoding="utf-8")
+          replacements = {
+              'data.get("meow_video_reference")': '(data.get("auf_video_reference") or data.get("meow_video_reference"))',
+              'data.get("meow_video_last_reference")': '(data.get("auf_video_last_reference") or data.get("meow_video_last_reference"))',
+              'data.get("meow_video_prompt")': '(data.get("auf_video_prompt") or data.get("meow_video_prompt"))',
+              'data.get("meow_video_session_id")': '(data.get("auf_video_session_id") or data.get("meow_video_session_id"))',
+              'video_router.MeowVideoForm': 'video_router.AufVideoForm',
+              'video_router.build_meow_root_keyboard': 'video_router.build_auf_root_keyboard',
+              'controller.handle_scoped_meow_action': 'controller.handle_scoped_auf_action',
+              'controller.handle_scoped_meow_video_action': 'controller.handle_scoped_auf_video_action',
+              'controller._require_meow_callback': 'controller._require_auf_callback',
+              'meow_runtime_service': 'auf_runtime_service',
+          }
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+          text = text.replace('        meow_wallet_service,\n', '')
+          text = text.replace('        meow_purchase_service,\n', '')
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit integration
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/app/auf_user_portal_install.py
+          git commit -m "Совместить портал Ауф с canonical controller и FSM"
+          git push origin HEAD:agent/final-auf-router-layer
