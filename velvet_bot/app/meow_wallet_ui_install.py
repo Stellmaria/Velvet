@@ -32,6 +32,7 @@ def install_meow_wallet_ui() -> None:
         ai_task_queue_service,
         meow_runtime_service,
         meow_wallet_service,
+        meow_purchase_service,
     ) -> None:
         if callback_data.action.startswith("wallet"):
             await handle_meow_wallet_action(
@@ -39,6 +40,7 @@ def install_meow_wallet_ui() -> None:
                 callback_data,
                 state,
                 meow_wallet_service,
+                meow_purchase_service,
             )
             return
         await original(
