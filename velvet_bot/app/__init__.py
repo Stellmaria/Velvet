@@ -24,9 +24,6 @@ def __getattr__(name: str) -> Any:
         from velvet_bot.app.grs_campaign_retry import install_grs_campaign_retry
         from velvet_bot.app.grs_resilience import install_grs_resilience
         from velvet_bot.app.grs_speedups import install_grs_speedups
-        from velvet_bot.app.media_generation_receipts import (
-            install_media_generation_receipts,
-        )
         from velvet_bot.app.telegram_progress_resilience import (
             install_telegram_progress_resilience,
         )
@@ -42,6 +39,13 @@ def __getattr__(name: str) -> Any:
         install_grs_speedups()
         install_telegram_progress_resilience()
         install_auf_branding()
+
+        # Import after the other runtime installers so the receipt layer wraps the
+        # final worker methods instead of bypassing GRS resilience and branding.
+        from velvet_bot.app.media_generation_receipts import (
+            install_media_generation_receipts,
+        )
+
         install_media_generation_receipts()
         await application()
 
