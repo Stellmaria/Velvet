@@ -27,13 +27,11 @@ def build_editor_commands() -> tuple[BotCommand, ...]:
 
 
 def build_admin_commands() -> tuple[BotCommand, ...]:
+    # Редкие служебные команды остаются в /help, а не засоряют BotFather-меню.
     return (
         BotCommand(command="start", description="Открыть центр управления"),
         BotCommand(command="menu", description="Центр управления"),
         BotCommand(command="archive", description="Архив персонажей"),
-        BotCommand(command="velvet_grant", description="Начислить вельветы пользователю"),
-        BotCommand(command="velvet_user", description="Карточка пользователя"),
-        BotCommand(command="velvet_users", description="Последние пользователи"),
     )
 
 
@@ -60,7 +58,7 @@ async def _set_scoped_commands(
 
 
 async def install_command_menus(bot: Bot, settings: Settings) -> None:
-    """Install role-scoped command menus."""
+    """Install compact command menus; full owner reference lives in /help."""
     await bot.set_my_commands(list(build_public_commands()))
     await _set_scoped_commands(
         bot,
