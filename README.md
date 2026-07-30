@@ -1,4 +1,3 @@
-<<<<<<< ours
 # Velvet Archive Bot
 
 Velvet — Telegram-бот для архива персонажей, публикаций и аналитики канала Velvet Anatomy. Проект работает на Python 3.13, aiogram 3 и PostgreSQL 16.
@@ -194,56 +193,3 @@ python -m unittest discover -s tests -v
 - `velvet_bot/presentation/telegram/compat.py` — единый реестр временных pre/post-import adapters.
 
 Private PostgreSQL boundary и P2 stability закрыты. Текущий физический долг измеряется в `docs/architecture_layout_inventory.*`, актуальный статус — в `docs/development_status.md` и `docs/ARCHITECTURE_AUDIT.md`.
-=======
-# Card Hunter Auction Bot
-
-Card Hunter is a Telegram bot for running card auctions and managing related users and data.
-
-## Setup
-
-1. Create a Python virtual environment and install dependencies:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-2. Copy `.env` or set the following variables in your environment:
-
-- `BOT_TOKEN` – Telegram bot token
-- `ADMINS` – comma‑separated admin user IDs
-- `AUCTION_CHANNEL_ID` – ID of the channel where auctions are posted
-- `AUCTION_CHANNEL_USERNAME` – channel username without `@`
-- `DISCUSSION_CHAT_ID` – ID of the linked discussion chat
-- `DATABASE_URL` – PostgreSQL connection string
-- `ADMIN_SECRET` – password for admin commands
-- `ADMIN_LOG_CHATS` – comma‑separated chat IDs for admin logs
-- `LOG_CHAT_ID` – additional log chat (optional)
-- `LUXURY_CHAT_ID` – ID of the VIP chat
-- `ADMINS_OWNERS` – comma‑separated owner IDs
-- `TELETHON_API_ID` – API ID for the Telethon userbot (optional)
-- `TELETHON_API_HASH` – API hash for the Telethon userbot (optional)
-
-Environment loading is handled in `config.py`.
-
-## Database
-
-Run the SQL scripts in a PostgreSQL database:
-
-```bash
-psql -f init_db.sql
-psql -f db.sql   # optional demo data
-```
-
-## Running the Bot
-
-Start the bot with:
-
-```bash
-python main.py
-```
-
-When launched, the bot initializes the database pool and begins polling Telegram updates.
-
->>>>>>> theirs

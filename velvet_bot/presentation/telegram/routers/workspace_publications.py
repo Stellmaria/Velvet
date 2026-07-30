@@ -36,12 +36,9 @@ from velvet_bot.presentation.telegram.routers.publication.center import (
 )
 from velvet_bot.publication_drafts import capture_publication_inbox
 from velvet_bot.services.telegram_publications import create_publication_draft
-<<<<<<< Updated upstream
 from velvet_bot.presentation.telegram.routers.workspace_guided_ui import (
     guided_workspace_callback,
 )
-=======
->>>>>>> Stashed changes
 from velvet_bot.workspace_ui import WorkspaceCallback
 
 entry_router = Router(name=f"{__name__}.entry")
@@ -214,7 +211,6 @@ async def handle_workspace_publication_center(
 )
 async def handle_workspace_publication_entry(
     callback: CallbackQuery,
-<<<<<<< Updated upstream
     callback_data: WorkspaceCallback,
     personal_publication_context: PublicationWorkspaceContext,
 ) -> None:
@@ -257,16 +253,6 @@ async def handle_workspace_publication_entry(
         )
         await callback.answer()
         return
-=======
-    personal_publication_context: PublicationWorkspaceContext,
-) -> None:
-    """Open the tenant-aware publication center from the workspace home."""
-    if await _reject_access(callback, personal_publication_context):
-        return
-    if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
-        return
->>>>>>> Stashed changes
     await _safe_edit(callback.message, _center_text(), _center_keyboard())
     await callback.answer()
 

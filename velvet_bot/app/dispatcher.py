@@ -18,6 +18,7 @@ from velvet_bot.domains.ai_usage import (
     AIUsageService,
     build_ai_task_queue_service,
 )
+from velvet_bot.domains.auf_runtime import AufRuntimeRepository, AufRuntimeService
 from velvet_bot.domains.roleplay import build_roleplay_service
 from velvet_bot.domains.workspaces.character_management import WorkspaceCharacterService
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
@@ -75,6 +76,7 @@ def build_dispatcher(
         workspace_repository=workspace_repository,
     )
     workspace_character_service = WorkspaceCharacterService(database)
+    auf_runtime_service = AufRuntimeService(AufRuntimeRepository(database))
 
     active_ai_usage_service = ai_usage_service or build_audited_ai_usage_service(
         database=database,
@@ -100,6 +102,10 @@ def build_dispatcher(
         "workspace_service": workspace_service,
         "workspace_product_service": workspace_product_service,
         "workspace_characters": workspace_character_service,
+        # Aiogram resolves handler dependencies by parameter name. Keep the old key
+        # as a protocol alias while exposing the canonical key to new handlers.
+        "auf_runtime_service": auf_runtime_service,
+        "meow_runtime_service": auf_runtime_service,
         "roleplay_service": roleplay_service,
         "ai_usage_service": active_ai_usage_service,
         "ai_task_queue_service": active_task_queue_service,

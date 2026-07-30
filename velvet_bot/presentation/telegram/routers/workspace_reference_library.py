@@ -207,22 +207,15 @@ async def _reject_access(
 )
 async def handle_workspace_qwen_entry(
     callback: CallbackQuery,
-<<<<<<< Updated upstream
     callback_data: WorkspaceCallback,
     personal_reference_context: PersonalReferenceContext,
 ) -> None:
     """Expose only the tenant-safe Qwen reference workflow, never system jobs."""
-=======
-    personal_reference_context: PersonalReferenceContext,
-) -> None:
-    """Expose the tenant-safe Qwen capability without opening system Quality Center."""
->>>>>>> Stashed changes
     if await _reject_access(callback, personal_reference_context):
         return
     if not isinstance(callback.message, Message):
         await callback.answer("Меню больше недоступно.", show_alert=True)
         return
-<<<<<<< Updated upstream
     if callback_data.workspace_id != personal_reference_context.workspace_id:
         await callback.answer(
             "Кнопка относится к другому пространству. Откройте меню заново.",
@@ -256,40 +249,6 @@ async def handle_workspace_qwen_entry(
     except TelegramBadRequest as error:
         if "message is not modified" not in str(error).casefold():
             await callback.message.answer(text, reply_markup=keyboard)
-=======
-    await callback.message.answer(
-        "<b>🤖 Qwen · личное пространство</b>\n\n"
-        "Здесь Qwen сравнивает готовый результат с референсом выбранного персонажа. "
-        "Откройте библиотеку, выберите референс и нажмите «Сравнить результат» — "
-        "после этого останется только отправить изображение.\n\n"
-        "Общий Quality Center, медиасеты и очередь обработки Velvet Anatomy "
-        "не показываются в личном пространстве.",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="🧬 Открыть референсы",
-                        callback_data=WorkspaceCallback(
-                            action="module",
-                            workspace_id=personal_reference_context.workspace_id,
-                            module_key="references",
-                        ).pack(),
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        text="↩️ Моё пространство",
-                        callback_data=WorkspaceCallback(
-                            action="home",
-                            workspace_id=personal_reference_context.workspace_id,
-                            module_key="",
-                        ).pack(),
-                    )
-                ],
-            ]
-        ),
-    )
->>>>>>> Stashed changes
     await callback.answer()
 
 

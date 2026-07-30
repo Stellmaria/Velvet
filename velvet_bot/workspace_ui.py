@@ -77,12 +77,9 @@ def build_start_keyboard(
     *,
     can_create: bool,
     has_workspace: bool,
-<<<<<<< Updated upstream
     workspace_count: int = 0,
     has_owned_workspace: bool = True,
-=======
     has_member_workspace: bool = False,
->>>>>>> Stashed changes
 ) -> InlineKeyboardMarkup:
     rows = [
         [
@@ -183,51 +180,6 @@ def format_workspace_member_home(
         "Здесь показаны только действия, доступные вашей роли. Настройки "
         "пространства, публичность, модули и удаление остаются у владельца."
     )
-
-
-def build_workspace_member_home_keyboard(
-    workspace_id: int,
-    *,
-    role: str,
-    modules: tuple[WorkspaceModuleSetting, ...],
-) -> InlineKeyboardMarkup:
-    enabled = {item.module_key for item in modules if item.is_allowed and item.is_enabled}
-    allowed_for_role = _MEMBER_MODULE_ROLES
-    rows: list[list[InlineKeyboardButton]] = []
-    for module_key in (
-        "characters",
-        "archive",
-        "references",
-        "watermark",
-        "qwen",
-        "publications",
-        "analytics",
-        "team",
-    ):
-        if module_key not in enabled or role not in allowed_for_role[module_key]:
-            continue
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MODULE_LABELS[module_key],
-                    callback_data=workspace_callback(
-                        "module", workspace_id=workspace_id, module_key=module_key
-                    ),
-                )
-            ]
-        )
-    rows.extend(
-        [
-            [
-                InlineKeyboardButton(
-                    text="↩️ Другие пространства",
-                    callback_data=workspace_callback("memberhome"),
-                )
-            ],
-            [InlineKeyboardButton(text="✖ Закрыть", callback_data=workspace_callback("close"))],
-        ]
-    )
-    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def build_workspace_selector_keyboard(
@@ -459,12 +411,13 @@ def build_workspace_home_keyboard(
 
 
 def build_workspace_member_home_keyboard(
-    workspace: Workspace,
+    workspace: Workspace | int,
     *,
     role: str,
     modules: tuple[WorkspaceModuleSetting, ...],
 ) -> InlineKeyboardMarkup:
     """Show only entries whose handlers accept the member's role."""
+    workspace_id = int(workspace.id if isinstance(workspace, Workspace) else workspace)
     enabled = {item.module_key for item in modules if item.is_allowed and item.is_enabled}
     role_rank = {"viewer": 10, "reviewer": 20, "editor": 30, "admin": 40}.get(
         role,
@@ -481,7 +434,7 @@ def build_workspace_member_home_keyboard(
                     text=MODULE_LABELS[module_key],
                     callback_data=workspace_callback(
                         "module",
-                        workspace_id=workspace.id,
+                        workspace_id=workspace_id,
                         module_key=module_key,
                     ),
                 )
@@ -504,8 +457,8 @@ def build_workspace_member_home_keyboard(
         [
             [
                 InlineKeyboardButton(
-                    text="🗂 Выбрать пространство",
-                    callback_data=workspace_callback("spaces"),
+                    text="↩️ Другие пространства",
+                    callback_data=workspace_callback("memberhome"),
                 )
             ],
             [
@@ -683,11 +636,7 @@ __all__ = (
     "build_taxonomy_list_keyboard",
     "build_workspace_member_home_keyboard",
     "build_workspace_home_keyboard",
-<<<<<<< Updated upstream
     "build_workspace_selector_keyboard",
-=======
-    "build_workspace_member_home_keyboard",
->>>>>>> Stashed changes
     "format_taxonomy",
     "format_workspace_member_home",
     "format_workspace_home",

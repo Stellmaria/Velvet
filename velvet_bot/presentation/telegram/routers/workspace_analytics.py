@@ -189,18 +189,11 @@ async def handle_workspace_analytics_menu(
 
 
 @router.callback_query(
-<<<<<<< Updated upstream
     WorkspaceCallback.filter((F.action == "module") & (F.module_key == "analytics")),
-=======
-    WorkspaceCallback.filter(
-        (F.action == "module") & (F.module_key == "analytics")
-    ),
->>>>>>> Stashed changes
     PersonalAnalyticsWorkspaceFilter(),
 )
 async def handle_workspace_analytics_entry(
     callback: CallbackQuery,
-<<<<<<< Updated upstream
     callback_data: WorkspaceCallback,
     personal_analytics_context: AnalyticsWorkspaceContext,
 ) -> None:
@@ -239,16 +232,6 @@ async def handle_workspace_analytics_entry(
         )
         await callback.answer()
         return
-=======
-    personal_analytics_context: AnalyticsWorkspaceContext,
-) -> None:
-    """Open the scoped dashboard without making the user remember /analytics."""
-    if await _reject_access(callback, personal_analytics_context):
-        return
-    if not isinstance(callback.message, Message):
-        await callback.answer("Меню больше недоступно.", show_alert=True)
-        return
->>>>>>> Stashed changes
     await handle_analytics_menu(callback.message)
     await callback.answer()
 

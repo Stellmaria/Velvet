@@ -8,15 +8,38 @@ from aiogram import Bot
 _INSTALLED = False
 _ORIGINAL_BOT_CALL = Bot.__call__
 
+# These fields contain protocol identifiers rather than user-facing copy. Branding
+# them would invalidate callback routing, Telegram file references, URLs, or chat ids.
+_IDENTIFIER_FIELDS = frozenset(
+    {
+        "callback_data",
+        "url",
+        "file_id",
+        "chat_id",
+        "message_id",
+        "inline_message_id",
+        "business_connection_id",
+        "parse_mode",
+        "switch_inline_query",
+        "switch_inline_query_current_chat",
+        "switch_inline_query_chosen_chat",
+        "copy_text",
+    }
+)
+
 
 def _brand_auf_text(value: str) -> str:
-    """Replace the former owner-facing Meow brand without touching internal ids."""
+    """Replace every user-facing spelling of the retired Meow brand."""
 
     return (
         value.replace("🐈 <b>Мяу</b>", "🐕 <b>Ауф</b>")
         .replace("🐈 Мяу", "🐕 Ауф")
         .replace("МЯУ", "АУФ")
         .replace("Мяу", "Ауф")
+        .replace("мяу", "ауф")
+        .replace("MEOW", "AUF")
+        .replace("Meow", "Auf")
+        .replace("meow", "auf")
     )
 
 
@@ -30,20 +53,45 @@ def _copy_model(value: Any, updates: Mapping[str, object]) -> Any:
     return value
 
 
-def _brand_telegram_value(value: Any, *, depth: int = 0) -> Any:
-    """Brand strings recursively inside aiogram Telegram method payloads."""
+def _brand_telegram_value(
+    value: Any,
+    *,
+    depth: int = 0,
+    field_name: str | None = None,
+) -> Any:
+    """Brand visible strings recursively without mutating Telegram identifiers."""
 
     if depth > 10:
         return value
     if isinstance(value, str):
+        if field_name in _IDENTIFIER_FIELDS:
+            return value
         return _brand_auf_text(value)
     if isinstance(value, list):
-        return [_brand_telegram_value(item, depth=depth + 1) for item in value]
+        return [
+            _brand_telegram_value(
+                item,
+                depth=depth + 1,
+                field_name=field_name,
+            )
+            for item in value
+        ]
     if isinstance(value, tuple):
-        return tuple(_brand_telegram_value(item, depth=depth + 1) for item in value)
+        return tuple(
+            _brand_telegram_value(
+                item,
+                depth=depth + 1,
+                field_name=field_name,
+            )
+            for item in value
+        )
     if isinstance(value, Mapping):
         return {
-            key: _brand_telegram_value(item, depth=depth + 1)
+            key: _brand_telegram_value(
+                item,
+                depth=depth + 1,
+                field_name=str(key),
+            )
             for key, item in value.items()
         }
 
@@ -54,14 +102,18 @@ def _brand_telegram_value(value: Any, *, depth: int = 0) -> Any:
         return value
 
     updates: dict[str, object] = {}
-    for field_name in fields:
+    for model_field_name in fields:
         try:
-            current = getattr(value, field_name)
+            current = getattr(value, model_field_name)
         except (AttributeError, TypeError):
             continue
-        branded = _brand_telegram_value(current, depth=depth + 1)
+        branded = _brand_telegram_value(
+            current,
+            depth=depth + 1,
+            field_name=str(model_field_name),
+        )
         if branded != current:
-            updates[str(field_name)] = branded
+            updates[str(model_field_name)] = branded
     return _copy_model(value, updates) if updates else value
 
 
@@ -79,7 +131,7 @@ async def _call_with_auf_branding(
 
 
 def install_auf_branding() -> None:
-    """Apply Auf branding to all owner-facing Telegram output."""
+    """Apply Auf branding as a final guard for Telegram output."""
 
     global _INSTALLED
     if _INSTALLED:
