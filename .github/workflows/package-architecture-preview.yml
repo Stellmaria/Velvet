@@ -1,0 +1,92 @@
+name: package architecture preview
+
+on:
+  pull_request:
+    paths:
+      - velvet_bot/app/__init__.py
+      - velvet_bot/app/composition.py
+      - tests/test_application_composition.py
+      - scripts/inventory_package_architecture.py
+      - .github/workflows/package-architecture-preview.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: package-architecture-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build reviewed package architecture baseline
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline
+
+      - name: Validate exact branch head and commit generated baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_head="$(git ls-remote --heads origin "refs/heads/${HEAD_BRANCH}" | awk '{print $1}')"
+          if [[ "$remote_head" != "$EXPECTED_HEAD_SHA" ]]; then
+            echo "PR head moved: expected $EXPECTED_HEAD_SHA, actual $remote_head"
+            exit 1
+          fi
+
+          rm .github/workflows/package-architecture-preview.yml
+          git add \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/package_architecture_exemptions.json \
+            .github/workflows/package-architecture-preview.yml
+          git diff --cached --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit \
+            -m "Generate package architecture baseline" \
+            -m "Source head: ${EXPECTED_HEAD_SHA}" \
+            -m "Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          result="$(git rev-parse HEAD)"
+          git push origin "HEAD:refs/heads/${HEAD_BRANCH}"
+
+          {
+            echo "## Generated package architecture baseline"
+            echo
+            echo "- Source head: \`$EXPECTED_HEAD_SHA\`"
+            echo "- Result commit: \`$result\`"
+            echo "- Push: regular fast-forward push, no force"
+            echo "- Temporary workflow: removed in result commit"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload generated evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-architecture-baseline-${{ github.run_id }}
+          path: |
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+            docs/package_architecture_exemptions.json
+          if-no-files-found: warn
+          retention-days: 7
