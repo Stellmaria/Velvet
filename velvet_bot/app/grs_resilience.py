@@ -23,6 +23,7 @@ from velvet_bot.domains.media_generation.models import (
 )
 from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 from velvet_bot.domains.media_generation.worker import _ProgressMessage, _optional_int
+from velvet_bot.presentation.telegram.auf_editing import install_auf_text_transformer
 from velvet_bot.infrastructure.ai import (
     KieClient,
     KieError,
@@ -577,33 +578,15 @@ def _install_auf_text_cleanup() -> None:
     workspace_auf = importlib.import_module(
         "velvet_bot.presentation.telegram.routers.workspace_auf"
     )
-    original_edit_or_answer = workspace_auf._edit_or_answer
     original_format_request_review = workspace_auf.format_request_review
-
-    async def edit_or_answer_without_internal_content_mode(
-        callback,
-        *,
-        text: str,
-        reply_markup,
-    ) -> None:
-        await original_edit_or_answer(
-            callback,
-            text=_sanitize_meow_text(text),
-            reply_markup=reply_markup,
-        )
 
     def format_request_review_without_internal_content_mode(**kwargs: Any) -> str:
         return _sanitize_meow_text(original_format_request_review(**kwargs))
 
-    workspace_auf._edit_or_answer = edit_or_answer_without_internal_content_mode
     workspace_auf.format_request_review = (
         format_request_review_without_internal_content_mode
     )
-
-    workspace_auf_grs = importlib.import_module(
-        "velvet_bot.presentation.telegram.routers.workspace_auf_grs"
-    )
-    workspace_auf_grs._edit_or_answer = edit_or_answer_without_internal_content_mode
+    install_auf_text_transformer(_sanitize_meow_text)
 
 
 def install_grs_resilience() -> None:

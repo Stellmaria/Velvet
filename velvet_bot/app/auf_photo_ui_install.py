@@ -15,6 +15,7 @@ from velvet_bot.domains.auf_wallet import (
     format_auf_units,
 )
 from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
+from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback
 from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router
 
 from velvet_bot.presentation.telegram.routers.workspace_auf_legacy import MeowPhotoForm
@@ -99,7 +100,7 @@ async def _show_auf_final(
         )
 
     await state.set_state(photo_router.AufPhotoForm.confirming_generation)
-    await photo_router._edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=(
             "<b>Проверьте перед созданием</b>\n\n"
@@ -176,7 +177,7 @@ async def _enqueue_auf_photo(
         )
     )
     await state.clear()
-    await photo_router._edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=(
             f"<b>Ауф · {escape(request.model.display_name)}</b>\n\n"
