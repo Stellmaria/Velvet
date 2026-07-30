@@ -34,7 +34,7 @@ def install_meow_reconciliation() -> None:
             expired = await repository.expire_invoices()
             issues = await repository.reconciliation_issues(limit=50)
             if not issues:
-                await repository.mark_reconciliation_checked(clear_fingerprint=True)
+                await repository.mark_reconciliation_checked()
                 return
             if not await repository.claim_reconciliation_notice(issues):
                 return
