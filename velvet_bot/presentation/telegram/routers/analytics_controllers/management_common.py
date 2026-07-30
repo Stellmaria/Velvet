@@ -85,6 +85,9 @@ build_management_pager = _pager
 build_management_pager = _pager
 
 
+build_management_pager = _pager
+
+
 def _character_detail(item: CharacterPickerItem) -> str:
     details = [category_label(item.category), universe_label(item.universe)]
     if item.story_short_label:

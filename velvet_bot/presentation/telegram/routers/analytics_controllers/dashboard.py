@@ -184,6 +184,9 @@ build_analytics_page_keyboard = _page_keyboard
 build_analytics_page_keyboard = _page_keyboard
 
 
+build_analytics_page_keyboard = _page_keyboard
+
+
 def _main_text(period: str) -> str:
     return (
         "<b>Аналитический центр Velvet</b>\n\n"

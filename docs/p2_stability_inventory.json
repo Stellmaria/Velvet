@@ -448,7 +448,7 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/publication/center.py",
       "function": "handle_publication_callback",
-      "line": 582,
+      "line": 585,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-publication-failure"
@@ -738,8 +738,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/analytics_controllers/dashboard.py",
       "function": "handle_analytics_callback",
-      "line": 217,
-      "ack_line": 228,
+      "line": 220,
+      "ack_line": 231,
       "pre_ack_awaits": 0,
       "total_awaits": 24,
       "risk": "early_ack"
@@ -1035,8 +1035,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/publication/center.py",
       "function": "handle_publication_callback",
-      "line": 447,
-      "ack_line": 456,
+      "line": 450,
+      "ack_line": 459,
       "pre_ack_awaits": 0,
       "total_awaits": 35,
       "risk": "early_ack"
