@@ -30,7 +30,6 @@ _ORIGINAL_REDELIVER: _Redeliver | None = None
 _DELIVERY_ERRORS = (RuntimeError, ValueError, OSError, TypeError, AttributeError)
 
 
-
 def provider_task_id(
     result: Mapping[str, object],
     payload: Mapping[str, object],
@@ -92,7 +91,7 @@ async def _persist_provider_urls(
             WHERE id = $1::UUID
             """,
             task_id,
-            resolved_provider_task_id,
+            provider_task_id,
             list(urls),
         )
 
@@ -143,9 +142,6 @@ async def _redeliver_with_provider_recovery(
     workspace_id: int,
     task_id_text: str,
 ) -> None:
-    recovery = importlib.import_module(
-        "velvet_bot.app.auf_result_delivery_recovery"
-    )
     try:
         task_id = UUID(task_id_text)
     except (TypeError, ValueError):
