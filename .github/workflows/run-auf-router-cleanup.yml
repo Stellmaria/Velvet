@@ -20,11 +20,27 @@ jobs:
       - name: Audit retired brand in canonical code
         shell: bash
         run: |
-          set +e
-          rg -n --glob 'workspace_auf*.py' --glob 'auf_*.py' --glob '*.py' \
-            '(Meow|meow_|Мяу|мяу)' \
-            velvet_bot/presentation/telegram/routers \
-            velvet_bot/app \
-            velvet_bot/domains/auf_runtime \
-            velvet_bot/domains/auf_wallet
-          exit 1
+          python - <<'PY'
+          from pathlib import Path
+
+          roots = (
+              Path('velvet_bot/presentation/telegram/routers'),
+              Path('velvet_bot/app'),
+              Path('velvet_bot/domains/auf_runtime'),
+              Path('velvet_bot/domains/auf_wallet'),
+          )
+          needles = ('Meow', 'meow_', 'Мяу', 'мяу')
+          found = 0
+          for root in roots:
+              for path in sorted(root.glob('*.py')):
+                  if root.name == 'routers' and not path.name.startswith('workspace_auf'):
+                      continue
+                  if root.name == 'app' and not path.name.startswith('auf_'):
+                      continue
+                  for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                      if any(needle in line for needle in needles):
+                          print(f'{path}:{number}:{line}')
+                          found += 1
+          print(f'AUDIT_TOTAL={found}')
+          raise SystemExit(1)
+          PY
