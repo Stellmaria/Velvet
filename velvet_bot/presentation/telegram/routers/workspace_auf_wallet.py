@@ -147,7 +147,7 @@ async def _notify_owner_purchase_intent(
     *,
     workspace_id: int,
     invoice,
-) -> None:
+) -> bool:
     username = callback.from_user.username
     user_label = f"@{escape(username)}" if username else escape(callback.from_user.full_name)
     markup = InlineKeyboardMarkup(
@@ -183,6 +183,8 @@ async def _notify_owner_purchase_intent(
             "Could not notify owner about Auf purchase intent invoice=%s",
             invoice.public_code,
         )
+        return False
+    return True
 
 
 async def _render_wallet(
@@ -291,15 +293,21 @@ async def handle_auf_wallet_action(
                 actor_user_id=callback.from_user.id,
                 idempotency_key=f"telegram-wallet-invoice:{callback.id}",
             )
-            await _notify_owner_purchase_intent(
+            owner_notified = await _notify_owner_purchase_intent(
                 callback,
                 workspace_id=workspace_id,
                 invoice=invoice,
             )
-            alert = (
-                f"Заявка {invoice.public_code}: {invoice.package_auf} вельветов за "
-                f"{invoice.final_local_amount:.0f} ₽. Стэл получила уведомление."
-            )
+            if owner_notified:
+                alert = (
+                    f"Заявка {invoice.public_code}: {invoice.package_auf} вельветов за "
+                    f"{invoice.final_local_amount:.0f} ₽. Стэл получила уведомление."
+                )
+            else:
+                alert = (
+                    f"Заявка {invoice.public_code} создана, но уведомление Стэл не "
+                    "доставлено. Передайте ей код счёта вручную."
+                )
         elif action == "wallet_invoice_confirm":
             invoice, _ = await auf_purchase_service.confirm_paid(
                 public_code=callback_data.value,
