@@ -48,6 +48,8 @@ jobs:
           python scripts/inventory_package_architecture.py \
             --check \
             --label p1-package-architecture-baseline
+          rm .github/workflows/package-architecture-preview.yml
+          rm scripts/_patch_explicit_composition_inventory.py
           python -m unittest \
             tests.test_application_composition \
             tests.test_package_architecture_inventory -v
@@ -62,8 +64,6 @@ jobs:
             exit 1
           fi
 
-          rm .github/workflows/package-architecture-preview.yml
-          rm scripts/_patch_explicit_composition_inventory.py
           git add \
             scripts/inventory_package_architecture.py \
             tests/test_package_architecture_inventory.py \
