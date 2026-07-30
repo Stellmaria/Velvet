@@ -11,9 +11,9 @@ from typing import Any
 
 from aiohttp import web
 
+from velvet_bot.domains.watermark import WatermarkRepository
 from velvet_bot.domains.watermark.models import WatermarkWorkItem
 from velvet_bot.domains.watermark.remote_worker import KritaRemoteRepository
-from velvet_bot.domains.watermark.repository import WatermarkRepository
 from velvet_bot.domains.watermark.service import WatermarkService
 from velvet_bot.infrastructure.krita_bridge import KritaBridge
 
@@ -423,6 +423,7 @@ class KritaRemoteWorkerServer:
         return web.FileResponse(logo, headers={"X-Velvet-Filename": logo.name})
 
     async def _job_heartbeat(self, request: web.Request) -> web.Response:
+        self._require_auth(request)
         worker_id, lease = self._lease_headers(request)
         return web.json_response(
             await self._coordinator.heartbeat_job(
@@ -434,6 +435,7 @@ class KritaRemoteWorkerServer:
         )
 
     async def _result(self, request: web.Request) -> web.Response:
+        self._require_auth(request)
         worker_id, lease = self._lease_headers(request)
         body = await request.read()
         return web.json_response(
@@ -447,6 +449,7 @@ class KritaRemoteWorkerServer:
         )
 
     async def _fail(self, request: web.Request) -> web.Response:
+        self._require_auth(request)
         worker_id, lease = self._lease_headers(request)
         payload = await request.json()
         return web.json_response(
