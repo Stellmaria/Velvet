@@ -17,59 +17,178 @@ jobs:
           ref: agent/final-auf-router-layer
           fetch-depth: 0
 
-      - name: Fix final Auf contract failures
+      - name: Integrate the user portal without restoring Meow runtime APIs
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
+          import subprocess
 
-          video_path = Path(
-              'velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py'
-          )
-          video = video_path.read_text(encoding='utf-8')
-          video = video.replace(
-              '    _callback as video_callback,\n',
-              '    _callback as video_callback,\n'
-              '    _format_rub,\n'
-              '    _format_usd,\n',
-          )
-          video = video.replace('legacy._format_usd', '_format_usd')
-          video = video.replace('legacy._format_rub', '_format_rub')
-          if 'legacy._format_' in video:
-              raise SystemExit('legacy money formatter reference remains')
-          video_path.write_text(video, encoding='utf-8')
+          def from_main(path: str) -> str:
+              return subprocess.check_output(
+                  ["git", "show", f"origin/main:{path}"],
+                  text=True,
+                  encoding="utf-8",
+              )
 
-          migration_test = Path('tests/test_meow_video_generation.py')
-          source = migration_test.read_text(encoding='utf-8').replace(
-              'migrations/917_auf_video_templates.sql',
-              'migrations/917_meow_video_templates.sql',
+          portal_path = Path("velvet_bot/app/auf_user_portal_install.py")
+          portal = from_main(str(portal_path))
+          portal = portal.replace(
+              "from velvet_bot.presentation.telegram.routers import workspace_meow_video_simple as video_router",
+              "from velvet_bot.presentation.telegram.routers import workspace_auf_video as video_core\n"
+              "from velvet_bot.presentation.telegram.routers import workspace_auf_video_simple as video_router",
           )
-          migration_test.write_text(source, encoding='utf-8')
+          portal = portal.replace(
+              "from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback",
+              "from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback",
+          )
+          portal = portal.replace("video_router.legacy._callback", "video_router.video_callback")
+          portal = portal.replace("MeowCallback", "AufCallback")
+          portal = portal.replace("video_router.legacy._reference_from_data", "video_core._reference_from_data")
+          portal = portal.replace("video_router.legacy._truncate", "video_core._truncate")
+          portal = portal.replace("video_router.MeowVideoForm", "video_router.AufVideoForm")
+          portal = portal.replace("video_router.legacy._edit_or_answer", "video_core._edit_or_answer")
+          portal = portal.replace("video_router.legacy._budget_block_reason", "video_core._budget_block_reason")
+          portal = portal.replace("video_router.build_meow_root_keyboard", "video_router.build_auf_root_keyboard")
+          portal = portal.replace("controller.handle_scoped_meow_action", "controller.handle_scoped_auf_action")
+          portal = portal.replace("controller.handle_scoped_meow_video_action", "controller.handle_scoped_auf_video_action")
+          portal = portal.replace("controller._require_meow_callback", "controller._require_auf_callback")
+          portal = portal.replace("meow_runtime_service", "auf_runtime_service")
+          portal = portal.replace("meow_wallet_service", "auf_wallet_service")
+          portal = portal.replace("meow_purchase_service", "auf_purchase_service")
 
-          ratio_test = Path('tests/test_photo_ratio_callback.py')
-          source = ratio_test.read_text(encoding='utf-8')
-          source = source.replace(
-              'from velvet_bot.presentation.telegram.routers.workspace_meow import MeowCallback',
-              'from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback',
-          )
-          source = source.replace('MeowCallback.unpack', 'AufCallback.unpack')
-          ratio_test.write_text(source, encoding='utf-8')
+          helper = dedent('''
 
-          balance_test = Path('tests/test_kie_runtime_balance.py')
-          source = balance_test.read_text(encoding='utf-8').replace(
-              '["Обновить баланс", "↩️ Мяу"]',
-              '["Обновить баланс", "↩️ Ауф"]',
+              def _state_value(data: Mapping[str, object], key: str) -> object:
+                  if key in data:
+                      return data[key]
+                  return data.get(key.replace("auf_", "meow_", 1))
+          ''').rstrip()
+          portal = portal.replace(
+              "\n\ndef _video_review_keyboard(",
+              helper + "\n\ndef _video_review_keyboard(",
           )
-          balance_test.write_text(source, encoding='utf-8')
+          for key in (
+              "auf_video_reference",
+              "auf_video_last_reference",
+              "auf_video_prompt",
+              "auf_video_session_id",
+          ):
+              portal = portal.replace(
+                  f'data.get("{key.replace("auf_", "meow_", 1)}")',
+                  f'_state_value(data, "{key}")',
+              )
+          portal = portal.replace(
+              "video_router.legacy",
+              "video_core",
+          )
+
+          forbidden = (
+              "workspace_meow",
+              "MeowCallback",
+              "handle_scoped_meow",
+              "_require_meow_callback",
+              "video_router.legacy",
+              "video_router.MeowVideoForm",
+          )
+          for token in forbidden:
+              if token in portal:
+                  raise SystemExit(f"portal still contains retired runtime token: {token}")
+          allowed_meow = {
+              'return data.get(key.replace("auf_", "meow_", 1))',
+              'LEFT JOIN meow_task_charges AS charge ON charge.task_id = task.id',
+          }
+          for line in portal.splitlines():
+              if "meow_" in line and line.strip() not in allowed_meow:
+                  raise SystemExit(f"unexpected persistent Meow token in portal: {line}")
+          portal_path.write_text(portal, encoding="utf-8")
+
+          test_path = Path("tests/test_auf_user_portal.py")
+          test = from_main(str(test_path))
+          if "test_portal_uses_only_canonical_auf_runtime_api" not in test:
+              test = test.replace(
+                  "\n\nif __name__ == \"__main__\":",
+                  dedent('''
+
+                      def test_portal_uses_only_canonical_auf_runtime_api(self) -> None:
+                          source = Path(
+                              "velvet_bot/app/auf_user_portal_install.py"
+                          ).read_text(encoding="utf-8")
+                          self.assertIn("workspace_auf_video_simple", source)
+                          self.assertIn("AufCallback", source)
+                          self.assertIn("handle_scoped_auf_action", source)
+                          self.assertIn("handle_scoped_auf_video_action", source)
+                          self.assertIn('key.replace("auf_", "meow_", 1)', source)
+                          self.assertNotIn("workspace_meow", source)
+                          self.assertNotIn("MeowCallback", source)
+                          self.assertNotIn("handle_scoped_meow", source)
+                          self.assertNotIn("video_router.legacy", source)
+                  ''') + "\n\nif __name__ == \"__main__\":",
+              )
+          test_path.write_text(test, encoding="utf-8")
+
+          worklog_path = Path("docs/worklog/2026-07-30-auf-user-portal.md")
+          worklog = from_main(str(worklog_path))
+          worklog = worklog.replace(
+              "Новых миграций нет. Текущие callback-префиксы и FSM-ключи не меняются.",
+              "Новых SQL-миграций нет. Портал использует canonical `auf:`/`aufv|` callback-префиксы и `auf_video_*` FSM-ключи с fallback-чтением прежних значений.",
+          )
+          worklog = worklog.replace(
+              "- добавлены unit- и контрактные регрессии.",
+              "- добавлены unit- и контрактные регрессии;\n"
+              "- portal installer переведён с `workspace_meow*`, `MeowCallback` и старых controller hooks на canonical Ауф API.",
+          )
+          worklog_path.write_text(worklog, encoding="utf-8")
+
+          app_path = Path("velvet_bot/app/__init__.py")
+          app = app_path.read_text(encoding="utf-8")
+          if "install_auf_user_portal" not in app:
+              app = app.replace(
+                  "        from velvet_bot.app.auf_runtime_install import install_auf_runtime_dispatcher\n",
+                  "        from velvet_bot.app.auf_runtime_install import install_auf_runtime_dispatcher\n"
+                  "        from velvet_bot.app.auf_user_portal_install import install_auf_user_portal\n",
+              )
+              app = app.replace(
+                  "        install_auf_photo_ratio_callback_fix()\n",
+                  "        install_auf_photo_ratio_callback_fix()\n"
+                  "        install_auf_user_portal()\n",
+              )
+          app = app.replace(
+              "        from velvet_bot.app.auf_branding import install_auf_branding\n",
+              "",
+          ).replace("        install_auf_branding()\n", "")
+          app_path.write_text(app, encoding="utf-8")
+
+          migration_log = Path("docs/worklog/2026-07-30-auf-router-protocol-migration.md")
+          text = migration_log.read_text(encoding="utf-8")
+          marker = "- пользовательский портал Ауф интегрирован поверх canonical callbacks, FSM и controller hooks;"
+          if marker not in text:
+              text = text.replace(
+                  "- SQL migration test снова проверяет существующий persistent-файл `917_meow_video_templates.sql`.\n",
+                  "- SQL migration test снова проверяет существующий persistent-файл `917_meow_video_templates.sql`;\n"
+                  f"{marker}\n"
+                  "- portal SQL join к `meow_task_charges` сохранён как deployed storage contract.\n",
+              )
+          migration_log.write_text(text, encoding="utf-8")
           PY
 
+          python scripts/inventory_architecture_layout.py \
+            --write \
+            --label p3d-analytics-alias-retirement
+          python scripts/update_p2_stability_inventory.py \
+            --label p2-auf-router-protocol-migration \
+            --schema-version 71
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
           python -m compileall -q velvet_bot tests
 
-      - name: Commit final contract repairs
+      - name: Commit canonical user portal integration
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Исправить финальные контракты Ауф"
+          git commit -m "Интегрировать пользовательский портал в canonical Ауф"
           git push origin HEAD:agent/final-auf-router-layer
