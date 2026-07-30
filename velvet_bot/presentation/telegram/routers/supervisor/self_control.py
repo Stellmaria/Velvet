@@ -6,6 +6,7 @@ from aiogram.types import CallbackQuery, Message
 
 from velvet_bot.application.supervisor import load_supervisor_status
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.remote_views import (
     self_control_keyboard,
     self_control_text,
@@ -14,7 +15,6 @@ from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _confirm_keyboard,
     _operation_accepted,
-    _safe_edit,
     _unavailable_text,
 )
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
@@ -25,7 +25,7 @@ router = Router(name=__name__)
 async def _show(message: Message, client: SupervisorClient, *, edit: bool) -> None:
     payload = await load_supervisor_status(client)
     if edit:
-        await _safe_edit(message, self_control_text(payload), self_control_keyboard())
+        await edit_supervisor_message(message, self_control_text(payload), self_control_keyboard())
     else:
         await message.answer(self_control_text(payload), reply_markup=self_control_keyboard())
 
@@ -63,7 +63,7 @@ async def handle_self_callback(
             await callback.answer()
             return
         if action == "self.restart.ask":
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 "<b>Перезапустить сам Velvet Supervisor?</b>\n\n"
                 "Операция будет передана независимой задаче Windows. "
@@ -77,7 +77,7 @@ async def handle_self_callback(
             await callback.answer()
             return
         if action == "self.update.ask":
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 "<b>Обновить main и перезапустить сам Supervisor?</b>\n\n"
                 "Helper проверит чистоту Git, выполнит только fast-forward, "

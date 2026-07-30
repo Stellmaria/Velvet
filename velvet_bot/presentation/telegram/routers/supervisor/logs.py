@@ -8,11 +8,11 @@ from aiogram.filters import Command
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
+from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _logs_keyboard,
     _logs_text,
-    _safe_edit,
     _unavailable_text,
 )
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
@@ -91,7 +91,7 @@ async def handle_supervisor_logs_callback(
         raw_lines = action.partition(".")[2]
         lines = int(raw_lines) if raw_lines.isdigit() else 150
         content = await _load_log_content(supervisor_client, lines=lines)
-        await _safe_edit(
+        await edit_supervisor_message(
             callback.message,
             _logs_text(lines, content),
             _logs_keyboard(lines),

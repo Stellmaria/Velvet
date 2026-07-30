@@ -1,8 +1,8 @@
 # Shared contract inventory
 
-- Production Python files: **594**
-- Functions inventoried: **3304**
-- Registered private cross-module debt: **152**
+- Production Python files: **595**
+- Functions inventoried: **3305**
+- Registered private cross-module debt: **144**
 - Blocking known private contracts: **0**
 - Exact duplicate groups: **56**
 - Normalized near-duplicate groups: **92**
@@ -12,7 +12,7 @@
 
 | Family | Current owner | Target | Retirement | Status | Consumers |
 | --- | --- | --- | --- | --- | ---: |
-| safe edit/send fallback | `velvet_bot.presentation.telegram.shared.editing` | `velvet_bot.presentation.telegram.shared.editing` | #419 | canonical | 14 |
+| safe edit/send fallback | `velvet_bot.presentation.telegram.shared.editing` | `velvet_bot.presentation.telegram.shared.editing` | #419 | canonical | 15 |
 | pagination keyboards | `controller-local keyboard builders` | `velvet_bot.presentation.telegram.shared.navigation` | #419 | transitional | 0 |
 | deletion helpers | `velvet_bot.presentation.telegram.message_deletion` | `velvet_bot.presentation.telegram.shared.deletion` | #419 | transitional | 0 |
 | media download/preview/original delivery | `velvet_bot.domains.media_generation.file_delivery_worker` | `velvet_bot.domains.media_generation.delivery_pipeline` | #457 | transitional | 0 |
@@ -112,15 +112,13 @@
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/quality_set_ai.py:25` `from velvet_bot.domains.media_sets.ai_repository import _load_set` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_pose.py:21` `from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_image_prompt import _comparison_models` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/quality_operations_controllers/velvet_ai_pose.py:21` `from velvet_bot.presentation.telegram.routers.quality_operations_controllers.velvet_ai_image_prompt import _split_preformatted` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:19` `from velvet_bot.presentation.telegram.supervisor.views import _codex_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:19` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:19` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:19` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:19` `from velvet_bot.presentation.telegram.supervisor.views import _task_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:19` `from velvet_bot.presentation.telegram.supervisor.views import _task_text` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:19` `from velvet_bot.presentation.telegram.supervisor.views import _tasks_text` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/console.py:29` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/console.py:29` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
+- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:20` `from velvet_bot.presentation.telegram.supervisor.views import _codex_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:20` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:20` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:20` `from velvet_bot.presentation.telegram.supervisor.views import _task_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:20` `from velvet_bot.presentation.telegram.supervisor.views import _task_text` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/codex.py:20` `from velvet_bot.presentation.telegram.supervisor.views import _tasks_text` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/console.py:30` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _accepted_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _bot_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _codex_keyboard` (direct-import, other repeated implementation).
@@ -128,23 +126,17 @@
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _git_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _logs_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _task_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _task_status_label` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _task_text` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/control.py:34` `from velvet_bot.presentation.telegram.supervisor.views import _tasks_text` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/git.py:9` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/git.py:9` `from velvet_bot.presentation.telegram.supervisor.views import _git_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/git.py:9` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/supervisor/logs.py:11` `from velvet_bot.presentation.telegram.supervisor.views import _logs_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/logs.py:11` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/supervisor/process.py:8` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/process.py:8` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/supervisor/self_control.py:13` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/self_control.py:13` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/supervisor/status.py:12` `from velvet_bot.presentation.telegram.supervisor.views import _bot_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/status.py:12` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/status.py:12` `from velvet_bot.presentation.telegram.supervisor.views import _safe_edit` (direct-import, safe edit/send fallback).
+- `velvet_bot/presentation/telegram/routers/supervisor/git.py:10` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/git.py:10` `from velvet_bot.presentation.telegram.supervisor.views import _git_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/logs.py:12` `from velvet_bot.presentation.telegram.supervisor.views import _logs_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/process.py:9` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/self_control.py:14` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/status.py:13` `from velvet_bot.presentation.telegram.supervisor.views import _bot_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/status.py:13` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/workspace_analytics_characters.py:16` `from velvet_bot.presentation.telegram.routers.analytics_controllers.channel import _character_lines` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/workspace_analytics_characters.py:19` `from velvet_bot.presentation.telegram.routers.analytics_controllers.dashboard import _rank_lines` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_grs.py:11` `from velvet_bot.presentation.telegram.routers.workspace_auf import _callback` (direct-import, callback navigation and back buttons).

@@ -58,7 +58,7 @@ class SupervisorConsoleResultDeliveryTests(unittest.IsolatedAsyncioTestCase):
 class SupervisorConsoleWatcherBoundaryTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.original_operation = module._operation
-        self.original_safe_edit = module._safe_edit
+        self.original_edit_supervisor_message = module.edit_supervisor_message
         self.original_operation_text = module.console_operation_text
         self.original_operation_keyboard = module.console_operation_keyboard
         self.original_operation_finished = module.console_operation_finished
@@ -69,7 +69,7 @@ class SupervisorConsoleWatcherBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
     def tearDown(self) -> None:
         module._operation = self.original_operation
-        module._safe_edit = self.original_safe_edit
+        module.edit_supervisor_message = self.original_edit_supervisor_message
         module.console_operation_text = self.original_operation_text
         module.console_operation_keyboard = self.original_operation_keyboard
         module.console_operation_finished = self.original_operation_finished
@@ -84,7 +84,7 @@ class SupervisorConsoleWatcherBoundaryTests(unittest.IsolatedAsyncioTestCase):
             raise error
 
         module._operation = operation
-        module._safe_edit = fail_edit
+        module.edit_supervisor_message = fail_edit
 
         with self.assertLogs(module.logger, level="ERROR") as captured:
             await module._watch_console_operation(

@@ -16,13 +16,13 @@ from velvet_bot.presentation.telegram.supervisor.contract import (
     SupervisorCallback,
     SupervisorReplyMarkerFilter,
 )
+from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.views import (
     _answer_error,
     _codex_keyboard,
     _confirm_keyboard,
     _main_keyboard,
     _operation_accepted,
-    _safe_edit,
     _task_keyboard,
     _task_text,
     _tasks_text,
@@ -164,7 +164,7 @@ async def handle_supervisor_codex_callback(
         if action == "codex.menu":
             result = await load_supervisor_tasks(supervisor_client)
             tasks = list(result.tasks)
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 _tasks_text(tasks, enabled=result.enabled),
                 _codex_keyboard(tasks),
@@ -199,7 +199,7 @@ async def handle_supervisor_codex_callback(
 
         if action in {"codex.open", "codex.status"}:
             task = await load_supervisor_task(supervisor_client, task_id)
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 _task_text(task),
                 _task_keyboard(task),
@@ -226,7 +226,7 @@ async def handle_supervisor_codex_callback(
         }
         if action in confirmations:
             title, confirmed_action, label = confirmations[action]
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 f"<b>{title}</b>",
                 _confirm_keyboard(
@@ -248,7 +248,7 @@ async def handle_supervisor_codex_callback(
         if action == "codex.reject.do":
             payload = await supervisor_client.reject_codex_task(task_id)
             task = payload.get("task", {})
-            await _safe_edit(
+            await edit_supervisor_message(
                 callback.message,
                 _task_text(task),
                 _task_keyboard(task),

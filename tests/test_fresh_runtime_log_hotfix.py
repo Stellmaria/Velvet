@@ -72,7 +72,7 @@ class SupervisorStatusCallbackTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch.object(status_module, "load_supervisor_status", side_effect=load),
-            patch.object(status_module, "_safe_edit", side_effect=edit),
+            patch.object(status_module, "edit_supervisor_message", side_effect=edit),
             patch.object(status_module, "_status_text", return_value="status"),
             patch.object(status_module, "_main_keyboard", return_value=None),
         ):
