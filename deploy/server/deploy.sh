@@ -9,25 +9,43 @@ if ! flock -n 9; then
 fi
 
 APP_DIR="${VELVET_APP_DIR:-/srv/velvet}"
+ENV_FILE="${VELVET_ENV_FILE:-.env.server}"
+COMPOSE_FILE="${VELVET_COMPOSE_FILE:-docker-compose.server.yml}"
 REMOTE="${VELVET_DEPLOY_REMOTE:-origin}"
 BRANCH="${VELVET_DEPLOY_BRANCH:-main}"
 HEALTH_ATTEMPTS="${VELVET_HEALTH_ATTEMPTS:-60}"
 HEALTH_INTERVAL="${VELVET_HEALTH_INTERVAL:-5}"
+START_HERMES="${VELVET_START_HERMES:-0}"
 
 cd "$APP_DIR"
 
-if [[ ! -f .env ]]; then
-  echo "Missing $APP_DIR/.env" >&2
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Missing $APP_DIR/$ENV_FILE" >&2
+  exit 2
+fi
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  echo "Missing $APP_DIR/$COMPOSE_FILE" >&2
   exit 2
 fi
 
-# shellcheck disable=SC1091
-set -a
-source .env
-set +a
+python3 scripts/server_preflight.py \
+  --env-file "$ENV_FILE" \
+  --hermes-env .env.hermes \
+  --skip-host-tools
 
-: "${POSTGRES_USER:?POSTGRES_USER must be set in .env}"
-: "${POSTGRES_DB:?POSTGRES_DB must be set in .env}"
+data_dir="$(python3 - "$ENV_FILE" <<'PY'
+from pathlib import Path
+import sys
+from scripts.server_preflight import parse_env_file
+
+value = parse_env_file(Path(sys.argv[1])).get("VELVET_DATA_DIR", "").strip()
+if not value:
+    raise SystemExit("VELVET_DATA_DIR is missing")
+print(value)
+PY
+)"
+
+compose=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   echo "Tracked working tree changes detected; deployment aborted." >&2
@@ -35,9 +53,9 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   exit 3
 fi
 
-mkdir -p backups logs runtime
+mkdir -p "$data_dir/backups" "$data_dir/logs" "$data_dir/runtime"
 previous_sha="$(git rev-parse HEAD)"
-backup_path="backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
+backup_path="$data_dir/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
 deployment_started=0
 
 rollback_code() {
@@ -45,9 +63,10 @@ rollback_code() {
   if [[ "$deployment_started" == "1" ]]; then
     echo "Deployment failed; rolling application code back to $previous_sha" >&2
     git reset --hard "$previous_sha" >&2 || true
-    docker compose build bot >&2 || true
-    docker compose up -d postgres bot >&2 || true
-    echo "Database was not automatically restored. Verified pre-deploy dump: $backup_path" >&2
+    "${compose[@]}" build bot >&2 || true
+    "${compose[@]}" up -d postgres bot >&2 || true
+    echo "Database was not automatically restored." >&2
+    echo "Verified pre-deploy dump: $backup_path" >&2
   fi
   exit "$exit_code"
 }
@@ -63,26 +82,35 @@ if [[ "$target_sha" == "$previous_sha" ]]; then
 fi
 
 echo "Creating pre-deploy PostgreSQL dump..."
-docker compose up -d postgres
-docker compose exec -T postgres \
-  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc > "$backup_path"
+"${compose[@]}" up -d postgres
+"${compose[@]}" exec -T postgres sh -ceu '
+  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc
+' > "$backup_path"
 test -s "$backup_path"
 chmod 600 "$backup_path"
+
+VELVET_APP_DIR="$APP_DIR" \
+VELVET_ENV_FILE="$ENV_FILE" \
+VELVET_COMPOSE_FILE="$COMPOSE_FILE" \
+  bash deploy/server/verify-dump.sh "$backup_path"
 
 echo "Deploying $target_sha..."
 deployment_started=1
 git reset --hard "$target_sha"
-docker compose pull postgres
-if [[ -f .env.hermes ]]; then
-  docker compose --profile agent pull hermes
-fi
-docker compose build --pull bot
-docker compose up -d --remove-orphans postgres bot
-if [[ -f .env.hermes ]]; then
-  docker compose --profile agent up -d hermes
+"${compose[@]}" pull postgres
+"${compose[@]}" build --pull bot
+"${compose[@]}" up -d --remove-orphans postgres bot
+
+if [[ "$START_HERMES" == "1" ]]; then
+  if [[ ! -f .env.hermes ]]; then
+    echo "VELVET_START_HERMES=1 but .env.hermes is missing." >&2
+    false
+  fi
+  "${compose[@]}" --profile agent pull hermes
+  "${compose[@]}" --profile agent up -d hermes
 fi
 
-container_id="$(docker compose ps -q bot)"
+container_id="$("${compose[@]}" ps -q bot)"
 if [[ -z "$container_id" ]]; then
   echo "Velvet bot container was not created." >&2
   false
@@ -92,6 +120,7 @@ for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
   health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id")"
   case "$health" in
     healthy|running)
+      "${compose[@]}" exec -T bot python scripts/server_smoke.py --skip-telegram
       deployed_sha="$(git rev-parse HEAD)"
       if [[ "$deployed_sha" != "$target_sha" ]]; then
         echo "Deployed SHA mismatch: expected $target_sha, got $deployed_sha" >&2
@@ -100,13 +129,13 @@ for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
       deployment_started=0
       trap - ERR INT TERM
       echo "Velvet deployment succeeded: $deployed_sha"
-      echo "Pre-deploy backup: $backup_path"
-      docker compose ps
+      echo "Verified pre-deploy backup: $backup_path"
+      "${compose[@]}" ps
       exit 0
       ;;
     unhealthy|exited|dead)
       echo "Velvet health check failed with state: $health" >&2
-      docker compose logs --tail 200 bot >&2 || true
+      "${compose[@]}" logs --tail 200 bot >&2 || true
       false
       ;;
   esac
@@ -114,5 +143,5 @@ for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
 done
 
 echo "Velvet did not become healthy in time." >&2
-docker compose logs --tail 200 bot >&2 || true
+"${compose[@]}" logs --tail 200 bot >&2 || true
 false

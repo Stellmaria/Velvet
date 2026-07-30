@@ -1,0 +1,25 @@
+[Unit]
+Description=Velvet Telegram Bot Docker Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet
+Environment=VELVET_APP_DIR=/srv/velvet
+Environment=VELVET_ENV_FILE=.env.server
+Environment=VELVET_COMPOSE_FILE=docker-compose.server.yml
+ExecStartPre=/usr/bin/python3 /srv/velvet/scripts/server_preflight.py --env-file .env.server --hermes-env .env.hermes
+ExecStartPre=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml config --quiet
+ExecStart=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml up -d --remove-orphans postgres bot
+ExecStop=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml stop --timeout 45 bot postgres
+ExecReload=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml up -d --remove-orphans postgres bot
+TimeoutStartSec=0
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
