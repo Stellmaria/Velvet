@@ -6,7 +6,7 @@
 - Линия/фаза: P2 branch automation hardening
 - Статус: `завершено`
 - Ветка: `fix/safe-branch-maintenance`
-- Базовый commit: `a14baa7ecc34be04f2ce067b3f2d0a634fec35b9`
+- Базовый commit: `520f67bfebb80755aa3633bbd026267775008bb1`
 
 ## Перед началом
 
@@ -52,7 +52,7 @@ Workflow намеренно не выполняет rebase, merge диапазо
 - обязательны два полных immutable SHA;
 - target SHA проверяется до dry-run и повторно непосредственно перед push;
 - merge commits отклоняются, conflicts не разрешаются автоматически;
-- dry-run выполняется через `git cherry-pick --no-commit` и `git diff --check`;
+- dry-run выполняется через `git cherry-pick --no-commit` и staged `git diff --cached` checks;
 - полный unit test suite запускается с PostgreSQL 16 до создания commit;
 - push выполняется обычным fast-forward push без force;
 - ancestor/equivalent-patch retries завершаются auditable no-op;
@@ -66,7 +66,7 @@ Workflow намеренно не выполняет rebase, merge диапазо
 
 ### Проверки
 
-В PR должны пройти полный unit test suite, type check, Docker build и project notes contract. Отдельный regression проверяет immutable SHA contract, allowlist веток, dry-run, idempotency, отсутствие force-push и inventory всех `contents: write` workflows.
+В PR должны пройти полный unit test suite, type check, Docker build и project notes contract. Отдельный regression проверяет immutable SHA contract, allowlist веток, staged dry-run, idempotency, отсутствие force-push и inventory всех `contents: write` workflows.
 
 ### PR и commit
 
