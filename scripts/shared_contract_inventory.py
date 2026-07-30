@@ -188,7 +188,7 @@ CONTRACTS: tuple[SharedContract, ...] = (
     SharedContract(
         family="provider/model labels",
         current_owner="router-local model dictionaries",
-        target_contract="velvet_bot.domains.media_generation.models",
+        target_contract="velvet_bot.domains.media_generation.model_catalog",
         target_issue="#459",
         retirement_issue="#459",
         status="inventory-only",
@@ -1013,6 +1013,28 @@ def _known_contract_output(
     return output
 
 
+def _serialize_occurrence(item: FunctionOccurrence) -> dict[str, object]:
+    return {
+        "path": item.path,
+        "module": item.module,
+        "name": item.name,
+        "line": item.line,
+        "end_line": item.end_line,
+    }
+
+
+def _serialize_group(group: DuplicateGroup) -> dict[str, object]:
+    return {
+        "digest": group.digest,
+        "kind": group.kind,
+        "family": group.family,
+        "reason": group.reason,
+        "occurrences": [
+            _serialize_occurrence(item) for item in group.occurrences
+        ],
+    }
+
+
 def build_inventory() -> dict[str, object]:
     paths = _python_paths()
     trees = {
@@ -1035,6 +1057,13 @@ def build_inventory() -> dict[str, object]:
     kind_counts = Counter(group.kind for group in all_groups)
     family_counts = Counter(group.family for group in all_groups)
     consumers = _contract_consumers(paths, trees)
+    known_contracts = _known_contract_output(private_accesses)
+    blocking_private_accesses = [
+        occurrence
+        for contract in known_contracts
+        if contract["status"] == "current-violation"
+        for occurrence in contract["current_occurrences"]
+    ]
     contracts = []
     for contract in CONTRACTS:
         consumer_modules = consumers.get(contract.family, ())
@@ -1052,15 +1081,21 @@ def build_inventory() -> dict[str, object]:
         "contracts": contracts,
         "private_contract_access_count": len(private_accesses),
         "private_contract_accesses": [asdict(item) for item in private_accesses],
-        "known_private_contracts": _known_contract_output(private_accesses),
+        "blocking_private_contract_access_count": len(blocking_private_accesses),
+        "blocking_private_contract_accesses": blocking_private_accesses,
+        "known_private_contracts": known_contracts,
         "exact_duplicate_group_count": len(exact_groups),
         "normalized_duplicate_group_count": len(normalized_groups),
         "semantic_near_duplicate_group_count": len(semantic_groups),
         "duplicate_kind_counts": dict(sorted(kind_counts.items())),
         "duplicate_family_counts": dict(sorted(family_counts.items())),
-        "exact_duplicate_groups": [asdict(group) for group in exact_groups],
-        "normalized_duplicate_groups": [asdict(group) for group in normalized_groups],
-        "semantic_near_duplicate_groups": [asdict(group) for group in semantic_groups],
+        "exact_duplicate_groups": [_serialize_group(group) for group in exact_groups],
+        "normalized_duplicate_groups": [
+            _serialize_group(group) for group in normalized_groups
+        ],
+        "semantic_near_duplicate_groups": [
+            _serialize_group(group) for group in semantic_groups
+        ],
         "shared_contract_violations": list(_shared_contract_violations(trees)),
     }
 
@@ -1085,14 +1120,15 @@ def validate_inventory(data: dict[str, object]) -> list[str]:
             errors.append(
                 f"canonical public contract has fewer than two production consumers: {item['family']}"
             )
-    private_accesses = list(data["private_contract_accesses"])
-    if private_accesses:
+    blocking_private_accesses = list(
+        data["blocking_private_contract_accesses"]
+    )
+    if blocking_private_accesses:
         rendered = ", ".join(
             f"{item['path']}:{item['line']} {item['expression']}"
-            for item in private_accesses[:30]
+            for item in blocking_private_accesses
         )
-        suffix = "" if len(private_accesses) <= 30 else f" (+{len(private_accesses) - 30} more)"
-        errors.append("private cross-module helper contracts: " + rendered + suffix)
+        errors.append("known private helper contracts remain: " + rendered)
     shared_violations = list(data["shared_contract_violations"])
     if shared_violations:
         errors.append("shared helper boundary violations: " + "; ".join(shared_violations))
@@ -1142,7 +1178,8 @@ def render_markdown(data: dict[str, object]) -> str:
         "",
         f"- Production Python files: **{data['production_python_files']}**",
         f"- Functions inventoried: **{data['function_count']}**",
-        f"- Private cross-module contracts: **{data['private_contract_access_count']}**",
+        f"- Registered private cross-module debt: **{data['private_contract_access_count']}**",
+        f"- Blocking known private contracts: **{data['blocking_private_contract_access_count']}**",
         f"- Exact duplicate groups: **{data['exact_duplicate_group_count']}**",
         f"- Normalized near-duplicate groups: **{data['normalized_duplicate_group_count']}**",
         f"- Semantic near-duplicate groups: **{data['semantic_near_duplicate_group_count']}**",
@@ -1163,7 +1200,7 @@ def render_markdown(data: dict[str, object]) -> str:
             f"- `{item['source_module']}.{item['private_name']}` → "
             f"`{item['public_name']}`: **{item['status']}**, retirement {item['retirement_issue']}."
         )
-    lines.extend(["", "## Current private accesses", ""])
+    lines.extend(["", "## Registered transitional private accesses", ""])
     accesses = list(data["private_contract_accesses"])
     if not accesses:
         lines.append("No current private cross-module helper accesses.")

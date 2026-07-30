@@ -441,7 +441,7 @@ async def load_user_tasks(
     )
 
 
-def format_userformat_user_task_line(row) -> str:
+def format_user_task_line(row) -> str:
     request = task_payload_mapping(task_payload_mapping(row["payload"]).get("request"))
     model_alias = str(request.get("model") or "").strip()
     model = media_model_display_name(model_alias)
@@ -472,7 +472,7 @@ def format_userformat_user_task_line(row) -> str:
     )
 
 
-def build_userbuild_user_task_list_keyboard(
+def build_user_task_list_keyboard(
     *, workspace_id: int, offset: int, has_next: bool
 ) -> InlineKeyboardMarkup:
     navigation: list[InlineKeyboardButton] = []
@@ -531,7 +531,7 @@ async def render_user_tasks(
     offset: int,
 ) -> None:
     await state.clear()
-    rows = await _load_user_tasks(
+    rows = await load_user_tasks(
         database,
         workspace_id=workspace_id,
         actor_user_id=callback.from_user.id,

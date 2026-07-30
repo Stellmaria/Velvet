@@ -1097,3 +1097,6 @@ reference_from_data = _reference_from_data
 truncate_text = _truncate
 budget_block_reason = _budget_block_reason
 edit_or_answer = _edit_or_answer
+callback_data = _callback
+format_rub = _format_rub
+format_usd = _format_usd

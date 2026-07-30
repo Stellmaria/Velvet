@@ -92,7 +92,7 @@ async def _persist_provider_urls(
             WHERE id = $1::UUID
             """,
             task_id,
-            provider_task_id,
+            resolved_provider_task_id,
             list(urls),
         )
 
@@ -176,8 +176,8 @@ async def _redeliver_with_provider_recovery(
         return
 
     payload = task_payload_mapping(row["payload"])
-    provider_task_id = provider_task_id(result, payload)
-    if provider_task_id is None:
+    resolved_provider_task_id = provider_task_id(result, payload)
+    if resolved_provider_task_id is None:
         await callback.answer(
             "У задачи не сохранился ID провайдера. Повторная генерация не запускалась.",
             show_alert=True,
@@ -185,13 +185,13 @@ async def _redeliver_with_provider_recovery(
         return
 
     try:
-        urls = await _load_provider_urls(provider_task_id)
+        urls = await _load_provider_urls(resolved_provider_task_id)
         if not urls:
             raise RuntimeError("Провайдер вернул готовую задачу без URL результата.")
         await _persist_provider_urls(
             database,
             task_id=task_id,
-            provider_task_id=provider_task_id,
+            provider_task_id=resolved_provider_task_id,
             urls=urls,
         )
     except asyncio.CancelledError:
@@ -200,7 +200,7 @@ async def _redeliver_with_provider_recovery(
         logger.exception(
             "Could not recover completed provider result task=%s provider_task=%s",
             task_id,
-            provider_task_id,
+            resolved_provider_task_id,
         )
         await callback.answer(
             "Не удалось получить сохранённый результат у провайдера: "
@@ -227,12 +227,12 @@ def install_auf_active_delivery_fix() -> None:
     )
     workers = importlib.import_module("velvet_bot.app.workers")
 
-    _ORIGINAL_REDELIVER = recovery._redeliver_user_task
-    recovery._redeliver_user_task = _redeliver_with_provider_recovery
-    recovery._task_delivery_buttons = _delivery_buttons_for_all_success
+    _ORIGINAL_REDELIVER = recovery.get_redelivery_handler()
+    recovery.install_redelivery_handler(_redeliver_with_provider_recovery)
+    recovery.install_task_delivery_buttons(delivery_buttons_for_all_success)
 
     active_worker = workers.KieGenerationWorker
-    active_worker._deliver_best_effort = recovery._deliver_record_with_recovery
+    active_worker.install_delivery_handler(recovery.deliver_record_with_recovery)
     logger.info(
         "Installed Auf delivery fix on active worker class=%s",
         active_worker.__name__,

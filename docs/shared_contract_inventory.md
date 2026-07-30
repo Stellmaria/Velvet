@@ -2,7 +2,8 @@
 
 - Production Python files: **594**
 - Functions inventoried: **3300**
-- Private cross-module contracts: **177**
+- Registered private cross-module debt: **152**
+- Blocking known private contracts: **0**
 - Exact duplicate groups: **55**
 - Normalized near-duplicate groups: **92**
 - Semantic near-duplicate groups: **9**
@@ -21,7 +22,7 @@
 | message chunking/HTML fallback | `controller-local long-message senders` | `velvet_bot.presentation.telegram.shared.text` | #419 | transitional | 0 |
 | repeated progress-card updates | `velvet_bot.app.telegram_progress_resilience` | `velvet_bot.presentation.telegram.progress` | #455 | transitional | 0 |
 | task payload/result mapping/formatting | `Auf portal and delivery recovery installers` | `velvet_bot.application.media_tasks.contracts` | #458 | inventory-only | 3 |
-| provider/model labels | `router-local model dictionaries` | `velvet_bot.domains.media_generation.models` | #459 | inventory-only | 7 |
+| provider/model labels | `router-local model dictionaries` | `velvet_bot.domains.media_generation.model_catalog` | #459 | inventory-only | 6 |
 | state compatibility accessors | `Auf portal compatibility reads` | `velvet_bot.presentation.telegram.state_compatibility` | #438 | transitional | 1 |
 | retry/backoff policies | `media workers and Auf delivery recovery` | `velvet_bot.presentation.telegram.shared.retry` | #457 | transitional | 2 |
 | workspace task history/ownership queries | `velvet_bot.app.auf_user_portal_install` | `velvet_bot.application.workspace_tasks` | #458 | inventory-only | 3 |
@@ -32,16 +33,12 @@
 - `velvet_bot.app.auf_user_portal_install._load_user_tasks` → `load_user_tasks`: **migrated**, retirement #458.
 - `velvet_bot.app.auf_user_portal_install._task_list_keyboard` → `build_user_task_list_keyboard`: **migrated**, retirement #458.
 - `velvet_bot.app.auf_user_portal_install._MODEL_NAMES` → `MODEL_NAMES`: **migrated**, retirement #459.
-- `velvet_bot.presentation.telegram.routers.workspace_auf_video._edit_or_answer` → `edit_or_answer`: **current-violation**, retirement #419.
+- `velvet_bot.presentation.telegram.routers.workspace_auf_video._edit_or_answer` → `edit_or_answer`: **migrated**, retirement #419.
 - `velvet_bot.presentation.telegram.routers.workspace_auf_video_simple._validated_model` → `validated_model`: **migrated**, retirement #458.
-- `velvet_bot.presentation.telegram.routers.workspace_auf_video._reference_from_data` → `reference_from_data`: **current-violation**, retirement #458.
+- `velvet_bot.presentation.telegram.routers.workspace_auf_video._reference_from_data` → `reference_from_data`: **migrated**, retirement #458.
 
-## Current private accesses
+## Registered transitional private accesses
 
-- `velvet_bot/app/auf_active_delivery_fix.py:230` `recovery._redeliver_user_task` (module-attribute, media download/preview/original delivery).
-- `velvet_bot/app/auf_active_delivery_fix.py:231` `recovery._redeliver_user_task` (assignment, media download/preview/original delivery).
-- `velvet_bot/app/auf_active_delivery_fix.py:232` `recovery._task_delivery_buttons` (assignment, media download/preview/original delivery).
-- `velvet_bot/app/auf_active_delivery_fix.py:235` `recovery._deliver_record_with_recovery` (module-attribute, media download/preview/original delivery).
 - `velvet_bot/app/auf_cancel_ui_install.py:91` `FriendlyKieGenerationWorker._start_progress` (module-attribute, repeated progress-card updates).
 - `velvet_bot/app/auf_cancel_ui_install.py:92` `FriendlyKieGenerationWorker._publish_progress` (module-attribute, repeated progress-card updates).
 - `velvet_bot/app/auf_cancel_ui_install.py:151` `FriendlyKieGenerationWorker._start_progress` (assignment, repeated progress-card updates).
@@ -164,30 +161,9 @@
 - `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:53` `photo_router._references` (module-attribute, state compatibility accessors).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:53` `photo_router._state_value` (module-attribute, state compatibility accessors).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_photo_adjustments.py:58` `photo_router._save_references` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:25` `from velvet_bot.presentation.telegram.routers.workspace_auf_video import _callback` (direct-import, callback navigation and back buttons).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:25` `from velvet_bot.presentation.telegram.routers.workspace_auf_video import _format_rub` (direct-import, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:25` `from velvet_bot.presentation.telegram.routers.workspace_auf_video import _format_usd` (direct-import, state compatibility accessors).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:269` `legacy._truncate` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:303` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:329` `legacy._reference_from_message` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:394` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:491` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:516` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:528` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:582` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:595` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:599` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:626` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:667` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:678` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:679` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:700` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:717` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:718` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:746` `legacy._budget_block_reason` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:782` `legacy._edit_or_answer` (module-attribute, safe edit/send fallback).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:850` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
-- `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:856` `legacy._reference_from_data` (module-attribute, state compatibility accessors).
 - `velvet_bot/presentation/telegram/routers/workspace_guided_actions.py:50` `from velvet_bot.presentation.telegram.routers.workspace_onboarding import _intro_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/workspace_publications.py:22` `from velvet_bot.presentation.telegram.routers.publication.center import _center_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/workspace_publications.py:22` `from velvet_bot.presentation.telegram.routers.publication.center import _draft_keyboard` (direct-import, other repeated implementation).
