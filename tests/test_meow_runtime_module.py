@@ -65,8 +65,7 @@ class _FakeRepository:
     async def runtime_settings(self):
         return self.runtime
 
-    async def can_use_meow(self, *, workspace_id, user_id, global_owner):
-        # Repository protocol name is retained until the storage migration.
+    async def can_use_auf(self, *, workspace_id, user_id, global_owner):
         return global_owner or (workspace_id == 7 and user_id == 77)
 
     async def workspace_settings(self, workspace_id):
