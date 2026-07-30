@@ -8,6 +8,7 @@ from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import (
     GLOBAL_WORKSPACE_CREATOR_ID,
+    WORKSPACE_MODULE_KEYS,
 )
 from velvet_bot.domains.workspaces.product_repository import WorkspaceProductRepository
 from velvet_bot.domains.workspaces.product_service import (
@@ -62,7 +63,7 @@ class WorkspaceProductContractTests(unittest.TestCase):
         )
 
     def test_every_module_has_help_text(self) -> None:
-        self.assertEqual(10, len(MODULE_HELP))
+        self.assertEqual(set(WORKSPACE_MODULE_KEYS), set(MODULE_HELP))
         self.assertTrue(all(value.strip() for value in MODULE_HELP.values()))
 
 
@@ -160,9 +161,7 @@ class PostgreSQLWorkspaceProductTests(unittest.IsolatedAsyncioTestCase):
         assert settings is not None
         self.assertFalse(settings.public_archive_enabled)
         self.assertTrue(modules)
-        self.assertTrue(
-            all(item.is_enabled for item in modules if item.is_allowed)
-        )
+        self.assertTrue(all(item.is_enabled for item in modules if item.is_allowed))
         self.assertFalse(await self.service.can_create_workspace(101))
 
     async def test_system_velvet_is_public_by_default(self) -> None:
