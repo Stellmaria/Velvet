@@ -4,7 +4,8 @@ import asyncio
 import importlib
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
+from typing import Any
 from uuid import UUID
 
 from aiogram.types import InlineKeyboardButton
@@ -15,7 +16,8 @@ from velvet_bot.infrastructure.ai import KieClient
 
 logger = logging.getLogger(__name__)
 _INSTALLED = False
-_ORIGINAL_REDELIVER = None
+_Redeliver = Callable[..., Awaitable[None]]
+_ORIGINAL_REDELIVER: _Redeliver | None = None
 _DELIVERY_ERRORS = (RuntimeError, ValueError, OSError, TypeError, AttributeError)
 
 
@@ -74,7 +76,7 @@ async def _load_provider_urls(provider_task_id: str) -> tuple[str, ...]:
 
 
 async def _persist_provider_urls(
-    database,
+    database: Any,
     *,
     task_id: UUID,
     provider_task_id: str,
@@ -100,9 +102,9 @@ async def _persist_provider_urls(
 
 def _delivery_buttons_for_all_success(
     *,
-    portal,
-    page,
-    results,
+    portal: Any,
+    page: Any,
+    results: Any,
     workspace_id: int,
 ) -> list[list[InlineKeyboardButton]]:
     del results
@@ -130,10 +132,17 @@ def _delivery_buttons_for_all_success(
     return rows
 
 
+def _original_redeliver() -> _Redeliver:
+    original = _ORIGINAL_REDELIVER
+    if original is None:
+        raise RuntimeError("Повторная доставка Ауф не была установлена.")
+    return original
+
+
 async def _redeliver_with_provider_recovery(
-    callback,
+    callback: Any,
     *,
-    database,
+    database: Any,
     workspace_id: int,
     task_id_text: str,
 ) -> None:
@@ -161,7 +170,7 @@ async def _redeliver_with_provider_recovery(
 
     result = _mapping(row["result"])
     if recovery._result_urls(result):
-        await _ORIGINAL_REDELIVER(
+        await _original_redeliver()(
             callback,
             database=database,
             workspace_id=workspace_id,
@@ -203,7 +212,7 @@ async def _redeliver_with_provider_recovery(
         )
         return
 
-    await _ORIGINAL_REDELIVER(
+    await _original_redeliver()(
         callback,
         database=database,
         workspace_id=workspace_id,
