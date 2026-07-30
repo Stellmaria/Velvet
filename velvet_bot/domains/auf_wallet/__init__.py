@@ -21,6 +21,7 @@ from velvet_bot.domains.auf_wallet.pricing import (
     AufPriceNotConfigured,
     AufPriceQuote,
     AufPricingRepository,
+    format_owner_price_details,
 )
 from velvet_bot.domains.auf_wallet.purchase import (
     AufInvoiceError,
@@ -67,5 +68,6 @@ __all__ = (
     "auf_to_units",
     "build_auf_charged_task_queue_service",
     "format_auf_units",
+    "format_owner_price_details",
     "units_to_auf",
 )
