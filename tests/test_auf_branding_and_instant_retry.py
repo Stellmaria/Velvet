@@ -27,6 +27,11 @@ class AufBrandingTests(unittest.TestCase):
             _brand_auf_text("<b>Мяу создаёт</b>"),
         )
 
+    def test_all_brand_spellings_are_replaced(self) -> None:
+        branded = _brand_auf_text("МЯУ Мяу мяу MEOW Meow meow")
+
+        self.assertEqual("АУФ Ауф ауф AUF Auf auf", branded)
+
     def test_telegram_method_and_nested_button_are_branded(self) -> None:
         method = SendMessage(
             chat_id=1,
@@ -50,6 +55,21 @@ class AufBrandingTests(unittest.TestCase):
             "workspace:meow",
             branded.reply_markup.inline_keyboard[0][0].callback_data,
         )
+
+    def test_identifier_fields_are_never_rebranded(self) -> None:
+        payload = {
+            "text": "Meow и мяу",
+            "callback_data": "meow:runtime:Мяу",
+            "url": "https://example.test/meow/Мяу",
+            "file_id": "meow-Мяу-file",
+        }
+
+        branded = _brand_telegram_value(payload)
+
+        self.assertEqual("Auf и ауф", branded["text"])
+        self.assertEqual(payload["callback_data"], branded["callback_data"])
+        self.assertEqual(payload["url"], branded["url"])
+        self.assertEqual(payload["file_id"], branded["file_id"])
 
 
 class InstantGrsViolationRetryTests(unittest.TestCase):
