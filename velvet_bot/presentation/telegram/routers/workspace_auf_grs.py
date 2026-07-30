@@ -15,7 +15,7 @@ from velvet_bot.presentation.telegram.routers.workspace_auf import (
     _edit_or_answer,
     _quality_selection_text,
     build_quality_keyboard,
-    handle_auf_action as handle_legacy_meow_action,
+    handle_auf_action,
 )
 
 
@@ -107,7 +107,7 @@ async def handle_auf_action(
     workspace_id = callback_data.workspace_id
     if action == "request_confirm":
         if not access_policy.allows_user(callback.from_user):
-            await callback.answer("Мяу доступен только владельцу бота.", show_alert=True)
+            await callback.answer("Ауф доступен только владельцу бота.", show_alert=True)
             return
         if not kie_settings.enabled:
             await callback.answer("AI-генерация выключена на сервере.", show_alert=True)
@@ -128,7 +128,7 @@ async def handle_auf_action(
         KieModelAlias.NANO_BANANA_PRO.value,
     }:
         if not access_policy.allows_user(callback.from_user):
-            await callback.answer("Мяу доступен только владельцу бота.", show_alert=True)
+            await callback.answer("Ауф доступен только владельцу бота.", show_alert=True)
             return
         if not kie_settings.enabled:
             await callback.answer("AI-генерация выключена на сервере.", show_alert=True)
@@ -145,7 +145,7 @@ async def handle_auf_action(
         except ValueError as error:
             await callback.answer(str(error), show_alert=True)
             return
-        await state.update_data(meow_model=model.value)
+        await state.update_data(auf_model=model.value)
         await state.set_state(AufForm.choosing_quality)
         await _edit_or_answer(
             callback,
@@ -156,7 +156,7 @@ async def handle_auf_action(
             ),
         )
         return
-    await handle_legacy_meow_action(
+    await handle_auf_action(
         callback,
         callback_data,
         state,

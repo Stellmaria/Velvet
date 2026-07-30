@@ -35,7 +35,7 @@ def build_grs_balance_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ Мяу",
+                    text="↩️ Ауф",
                     callback_data=workspace_callback("meow", workspace_id=workspace_id),
                 )
             ],
@@ -115,7 +115,7 @@ def _render_grs_balance(
     nano_banana_pro_usd: Decimal,
     usd_to_rub: Decimal,
 ) -> str:
-    lines = ["<b>Мяу · баланс GRS AI</b>", ""]
+    lines = ["<b>Ауф · баланс GRS AI</b>", ""]
     per_credit_usd = _grs_credit_usd(
         nano_banana_2_usd=nano_banana_2_usd,
         nano_banana_pro_usd=nano_banana_pro_usd,

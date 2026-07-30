@@ -339,7 +339,7 @@ def _reference_collection_text(
     if input_mode is KieInputMode.PHOTO:
         prompt_line = ""
     return (
-        "<b>Мяу · референсы</b>\n\n"
+        "<b>Ауф · референсы</b>\n\n"
         f"Выбрано: <b>{selected_count}/{MAX_KIE_REFERENCES}</b>.\n"
         "Можно смешивать сохранённые референсы из базы и новые Telegram-фото."
         f"{prompt_line}\n\n"
@@ -461,9 +461,9 @@ async def _session_data(
     data = await state.get_data()
     return (
         _optional_int(data.get("auf_workspace_id")) or 0,
-        _parse_mode(data.get("meow_input_mode")),
-        str(data.get("meow_prompt") or "").strip(),
-        _references_from_data(data.get("meow_references")),
+        _parse_mode(_state_value(data, "auf_input_mode")),
+        str(_state_value(data, "auf_prompt") or "").strip(),
+        _references_from_data(_state_value(data, "auf_references")),
     )
 
 
@@ -472,7 +472,7 @@ async def _save_references(
     references: tuple[KieReferenceImage, ...],
 ) -> None:
     await state.update_data(
-        meow_references=[item.to_payload() for item in references]
+        auf_references=[item.to_payload() for item in references]
     )
 
 
@@ -661,7 +661,7 @@ async def _show_reference_page(
     caption = (
         f"<b>{escape(page.character.name)}</b>\n"
         f"Референс: <b>{page.offset + 1}/{page.total}</b>\n"
-        f"Выбрано для Мяу: <b>{len(references)}/{MAX_KIE_REFERENCES}</b>"
+        f"Выбрано для Ауф: <b>{len(references)}/{MAX_KIE_REFERENCES}</b>"
     )
     keyboard = _reference_keyboard(
         workspace_id=workspace_id,
@@ -710,9 +710,9 @@ async def _show_review(
     if input_mode is None:
         await state.clear()
         if isinstance(event, CallbackQuery):
-            await event.answer("Сессия Мяу устарела.", show_alert=True)
+            await event.answer("Сессия Ауф устарела.", show_alert=True)
         else:
-            await event.answer("Сессия Мяу устарела. Откройте кнопку заново.")
+            await event.answer("Сессия Ауф устарела. Откройте кнопку заново.")
         return
     if input_mode is KieInputMode.TEXT and not prompt:
         message = "Для режима Текст нужен промт."
@@ -749,19 +749,19 @@ async def handle_auf_entry(
     kie_settings: KieSettings,
 ) -> None:
     if not _is_owner(callback, access_policy):
-        await callback.answer("Мяу доступен только владельцу бота.", show_alert=True)
+        await callback.answer("Ауф доступен только владельцу бота.", show_alert=True)
         return
     await state.clear()
     if kie_settings.enabled:
         text = (
-            "<b>Мяу</b>\n\n"
+            "<b>Ауф</b>\n\n"
             "Создание фото через Kie.ai. Можно использовать текст, до пяти фото "
             "из базы или новые Telegram-фото.\n\n"
             "Оживление появится отдельным видеосрезом после завершения фото-ветки."
         )
     else:
         text = (
-            "<b>Мяу</b>\n\n"
+            "<b>Ауф</b>\n\n"
             "Интерфейс установлен, но Kie.ai пока выключен на сервере. "
             "Нужно заполнить KIE_API_KEY, KIE_USD_TO_RUB и model id Seedream 5 Pro."
         )
@@ -786,7 +786,7 @@ async def handle_auf_action(
     ai_task_queue_service: AITaskQueueService,
 ) -> None:
     if not _is_owner(callback, access_policy):
-        await callback.answer("Мяу доступен только владельцу бота.", show_alert=True)
+        await callback.answer("Ауф доступен только владельцу бота.", show_alert=True)
         return
     action = callback_data.action
     workspace_id = callback_data.workspace_id
@@ -794,7 +794,7 @@ async def handle_auf_action(
         await state.clear()
         await _edit_or_answer(
             callback,
-            text="<b>Мяу</b>\n\nГенерация отменена.",
+            text="<b>Ауф</b>\n\nГенерация отменена.",
             reply_markup=build_auf_root_keyboard(
                 workspace_id=workspace_id,
                 enabled=kie_settings.enabled,
@@ -810,7 +810,7 @@ async def handle_auf_action(
         await _edit_or_answer(
             callback,
             text=(
-                "<b>Мяу · Создать</b>\n\n"
+                "<b>Ауф · Создать</b>\n\n"
                 "Выберите, что отправить модели: только текст, только фото или фото с текстом."
             ),
             reply_markup=build_auf_mode_keyboard(workspace_id=workspace_id),
@@ -830,16 +830,16 @@ async def handle_auf_action(
         await state.clear()
         await state.update_data(
             auf_workspace_id=workspace_id,
-            meow_input_mode=input_mode.value,
-            meow_prompt="",
-            meow_references=[],
+            auf_input_mode=input_mode.value,
+            auf_prompt="",
+            auf_references=[],
         )
         if input_mode is KieInputMode.TEXT:
             await state.set_state(AufForm.waiting_prompt)
             await _edit_or_answer(
                 callback,
                 text=(
-                    "<b>Мяу · Текст</b>\n\n"
+                    "<b>Ауф · Текст</b>\n\n"
                     "Отправьте промт одним текстовым сообщением."
                 ),
                 reply_markup=InlineKeyboardMarkup(
@@ -874,7 +874,7 @@ async def handle_auf_action(
     if action == "references":
         _, input_mode, prompt, references = await _session_data(state)
         if input_mode is None:
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         await state.set_state(AufForm.collecting_references)
         await _edit_or_answer(
@@ -893,7 +893,7 @@ async def handle_auf_action(
     if action == "upload":
         _, input_mode, prompt, references = await _session_data(state)
         if input_mode is None:
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         await state.set_state(AufForm.collecting_references)
         await _edit_or_answer(
@@ -918,7 +918,7 @@ async def handle_auf_action(
     if action == "database":
         _, input_mode, _, references = await _session_data(state)
         if input_mode is None:
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         rows = await _load_reference_characters(
             database,
@@ -966,7 +966,7 @@ async def handle_auf_action(
             return
         _, input_mode, _, references = await _session_data(state)
         if input_mode is None:
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         current = list(references)
         existing_index = next(
@@ -1010,7 +1010,7 @@ async def handle_auf_action(
     if action == "references_done":
         _, input_mode, prompt, references = await _session_data(state)
         if input_mode is None:
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         if not references:
             await callback.answer("Добавьте хотя бы одно фото.", show_alert=True)
@@ -1023,7 +1023,7 @@ async def handle_auf_action(
             await _edit_or_answer(
                 callback,
                 text=(
-                    "<b>Мяу · Фото + текст</b>\n\n"
+                    "<b>Ауф · Фото + текст</b>\n\n"
                     f"Фото выбрано: <b>{len(references)}</b>. Теперь отправьте текстовый промт."
                 ),
                 reply_markup=InlineKeyboardMarkup(
@@ -1056,7 +1056,7 @@ async def handle_auf_action(
     if action == "edit":
         _, input_mode, _, _ = await _session_data(state)
         if input_mode is None:
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         await _edit_or_answer(
             callback,
@@ -1098,7 +1098,7 @@ async def handle_auf_action(
         await state.set_state(AufForm.collecting_references)
         _, input_mode, prompt, references = await _session_data(state)
         if input_mode is None:
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         await _edit_or_answer(
             callback,
@@ -1134,7 +1134,7 @@ async def handle_auf_action(
         except ValueError as error:
             await callback.answer(str(error), show_alert=True)
             return
-        await state.update_data(meow_model=model.value)
+        await state.update_data(auf_model=model.value)
         await state.set_state(AufForm.choosing_quality)
         await _edit_or_answer(
             callback,
@@ -1147,14 +1147,14 @@ async def handle_auf_action(
         return
     if action == "quality":
         data = await state.get_data()
-        model = _parse_model(data.get("meow_model"))
-        input_mode = _parse_mode(data.get("meow_input_mode"))
-        prompt = str(data.get("meow_prompt") or "").strip()
-        references = _references_from_data(data.get("meow_references"))
+        model = _parse_model(_state_value(data, "auf_model"))
+        input_mode = _parse_mode(_state_value(data, "auf_input_mode"))
+        prompt = str(_state_value(data, "auf_prompt") or "").strip()
+        references = _references_from_data(_state_value(data, "auf_references"))
         resolution = callback_data.value.upper()
         if model is None or input_mode is None:
             await state.clear()
-            await callback.answer("Сессия Мяу устарела.", show_alert=True)
+            await callback.answer("Сессия Ауф устарела.", show_alert=True)
             return
         try:
             request = KieGenerationRequest(
@@ -1208,7 +1208,7 @@ async def handle_auf_action(
         await _edit_or_answer(
             callback,
             text=(
-                f"<b>Мяу · {escape(model.display_name)}</b>\n\n"
+                f"<b>Ауф · {escape(model.display_name)}</b>\n\n"
                 "Задача поставлена в очередь. Worker скачает выбранные Telegram-фото, "
                 "временно загрузит их в Kie и только затем вызовет модель.\n\n"
                 f"Режим: <b>{escape(input_mode.display_name)}</b>\n"
@@ -1225,7 +1225,7 @@ async def handle_auf_action(
             ),
         )
         return
-    await callback.answer("Неизвестное действие Мяу.", show_alert=True)
+    await callback.answer("Неизвестное действие Ауф.", show_alert=True)
 
 
 async def handle_auf_prompt(
@@ -1251,9 +1251,9 @@ async def handle_auf_prompt(
     workspace_id, input_mode, _, references = await _session_data(state)
     if input_mode is None:
         await state.clear()
-        await message.answer("Сессия Мяу устарела. Откройте кнопку заново.")
+        await message.answer("Сессия Ауф устарела. Откройте кнопку заново.")
         return
-    await state.update_data(meow_prompt=prompt)
+    await state.update_data(auf_prompt=prompt)
     if input_mode is KieInputMode.PHOTO_TEXT and not references:
         await state.set_state(AufForm.collecting_references)
         await message.answer(
@@ -1344,7 +1344,7 @@ async def handle_auf_reference_message(
     ):
         prompt = (message.caption or "").strip()
         if len(prompt) <= 8000:
-            await state.update_data(meow_prompt=prompt)
+            await state.update_data(auf_prompt=prompt)
     await message.answer(
         (
             "Это фото уже выбрано."
@@ -1376,7 +1376,7 @@ async def handle_auf_reference_text(
         if len(text) > 8000:
             await message.answer("Промт слишком длинный. Максимум 8000 символов.")
             return
-        await state.update_data(meow_prompt=text)
+        await state.update_data(auf_prompt=text)
         await message.answer(
             "Текст сохранён. Теперь добавьте фото или нажмите «Готово», если они уже выбраны.",
             reply_markup=build_reference_source_keyboard(

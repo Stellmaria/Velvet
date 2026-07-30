@@ -171,7 +171,7 @@ def build_video_template_keyboard(*, workspace_id: int, has_template: bool) -> I
 
 def _model_text(*, model: str) -> str:
     return (
-        "<b>Мяу · Оживить · модель</b>\n\n"
+        "<b>Ауф · Оживить · модель</b>\n\n"
         "Выберите движок видео. После выбора бот применит сохранённый стандартный "
         "шаблон этой модели, если он уже есть.\n\n"
         "• <b>Grok v1</b> — самый дешёвый вариант.\n"
@@ -223,7 +223,7 @@ def _settings_text(
     cost_change: Mapping[str, object] | None = None,
 ) -> str:
     lines = [
-        "<b>Мяу · Оживить · параметры</b>",
+        "<b>Ауф · Оживить · параметры</b>",
         "",
         f"Модель: <b>{escape(_MODEL_NAMES[model])}</b>",
         f"Разрешение: <b>{escape(resolution)}</b>",
@@ -300,7 +300,7 @@ async def handle_auf_video_entry(
     await legacy._edit_or_answer(
         callback,
         text=(
-            "<b>Мяу · Оживить</b>\n\n"
+            "<b>Ауф · Оживить</b>\n\n"
             "Выберите первый кадр видео из базы или отправьте JPG, PNG либо WEBP до 10 МБ. "
             "Для Wan 2.7 последний кадр можно добавить позже в настройках."
         ),
@@ -762,7 +762,7 @@ async def _submit_video(
     await state.clear()
     created_line = "Задача поставлена в очередь." if result.created else "Эта задача уже была поставлена в очередь."
     details = [
-        f"<b>Мяу · {escape(_MODEL_NAMES[model])}</b>", "", created_line,
+        f"<b>Ауф · {escape(_MODEL_NAMES[model])}</b>", "", created_line,
         "Watermark и NSFW checker Kie выключены.", "",
         f"Разрешение: <b>{escape(resolution)}</b>",
     ]

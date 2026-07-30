@@ -50,7 +50,7 @@ async def handle_photo_remove_last(
     state: FSMContext,
 ) -> None:
     data = await state.get_data()
-    references = photo_router._references(data.get("meow_references"))
+    references = photo_router._references(photo_router._state_value(data, "auf_references"))
     if not references:
         await callback.answer("Фото уже отсутствуют.", show_alert=True)
         return

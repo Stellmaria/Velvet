@@ -292,7 +292,7 @@ def build_kie_balance_keyboard(*, workspace_id: int) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="↩️ Мяу",
+                    text="↩️ Ауф",
                     callback_data=workspace_callback("meow", workspace_id=workspace_id),
                 )
             ],
@@ -434,7 +434,7 @@ def _render_balance(
             f"<b>{_format_credit_money(live_credits, credit_usd=credit_usd, credit_byn=credit_byn, usd_to_rub=usd_to_rub)}</b>",
         ]
     lines = [
-        "<b>Мяу · баланс Kie</b>",
+        "<b>Ауф · баланс Kie</b>",
         "",
         *live_lines,
         f"Списано по сохранённым задачам: <b>{_format_credits(consumed_credits)} кредитов</b>",

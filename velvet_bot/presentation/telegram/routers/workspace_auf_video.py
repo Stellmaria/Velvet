@@ -240,7 +240,7 @@ def _settings_text(
 ) -> str:
     mode_name = "Обычный" if mode == "normal" else "Весёлый"
     return (
-        "<b>Мяу · Оживить · параметры</b>\n\n"
+        "<b>Ауф · Оживить · параметры</b>\n\n"
         "Модель: <b>Grok Imagine v1</b>\n"
         f"Качество: <b>{escape(resolution)}</b>\n"
         f"Длительность: <b>{duration} сек</b>\n"
@@ -319,7 +319,7 @@ async def handle_auf_video_entry(
     await _edit_or_answer(
         callback,
         text=(
-            "<b>Мяу · Оживить</b>\n\n"
+            "<b>Ауф · Оживить</b>\n\n"
             "Grok Imagine v1 превратит одно фото в видео по вашему текстовому "
             "описанию движения. Можно выбрать сохранённый референс или отправить "
             "JPG, PNG либо WEBP до 10 МБ.\n\n"
@@ -348,7 +348,7 @@ async def handle_auf_video_action(
         await state.clear()
         await _edit_or_answer(
             callback,
-            text="<b>Мяу</b>\n\nСоздание видео отменено.",
+            text="<b>Ауф</b>\n\nСоздание видео отменено.",
             reply_markup=build_auf_root_keyboard(
                 workspace_id=workspace_id,
                 enabled=kie_settings.enabled,
@@ -732,7 +732,7 @@ async def _submit_video(
     await _edit_or_answer(
         callback,
         text=(
-            "<b>Мяу · Grok Imagine v1</b>\n\n"
+            "<b>Ауф · Grok Imagine v1</b>\n\n"
             f"{created_line}\n"
             "Worker скачает Telegram-фото, временно загрузит его в Kie, создаст "
             "видео и сам скачает готовый MP4 перед отправкой в Telegram.\n\n"

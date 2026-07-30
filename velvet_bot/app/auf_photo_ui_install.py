@@ -194,7 +194,7 @@ async def _enqueue_auf_photo(
 
 
 def install_auf_photo_ui() -> None:
-    """Install the capability-aware photo flow over the historical callback protocol."""
+    """Install the capability-aware photo flow with legacy payload dual-read."""
 
     global _INSTALLED
     if _INSTALLED:
@@ -245,7 +245,7 @@ def install_auf_photo_ui() -> None:
             await handle_photo_remove_last(callback, callback_data, state)
             return
         if action == "photo_ratio":
-            model = photo_router._model((await state.get_data()).get("meow_model"))
+            model = photo_router._model(_state_value(await state.get_data(), "auf_model"))
             ratio = callback_data.value
             if model is None or ratio not in model.supported_aspect_ratios:
                 await callback.answer("Недоступное соотношение сторон.", show_alert=True)

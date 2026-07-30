@@ -69,3 +69,33 @@ def test_runtime_keeps_deployed_storage_identifiers() -> None:
     assert "workspace_meow_settings" in queue
     assert "workspace_auf_settings" not in store
     assert "workspace_auf_settings" not in queue
+
+
+def test_active_routers_write_only_auf_fsm_keys_and_labels() -> None:
+    paths = (
+        ROUTERS / "workspace_auf.py",
+        ROUTERS / "workspace_auf_grs.py",
+        ROUTERS / "workspace_auf_balance.py",
+        ROUTERS / "workspace_auf_grs_balance.py",
+        ROUTERS / "workspace_auf_video.py",
+        ROUTERS / "workspace_auf_video_simple.py",
+    )
+    for path in paths:
+        source = _read(path)
+        assert "Мяу" not in source, path
+        assert "мяу" not in source, path
+    core = _read(ROUTERS / "workspace_auf.py")
+    for key in (
+        "meow_input_mode=",
+        "meow_prompt=",
+        "meow_references=",
+        "meow_model=",
+        'data.get("meow_',
+    ):
+        assert key not in core
+    assert 'key.replace("auf_", "meow_", 1)' in core
+
+
+def test_runtime_branding_monkey_patch_is_not_installed() -> None:
+    app = _read(ROOT / "velvet_bot/app/__init__.py")
+    assert "install_auf_branding" not in app

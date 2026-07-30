@@ -42,6 +42,8 @@ Runtime и wallet уже находились в canonical `auf_*` domains, но
 - legacy parsers принимают `meow:` и `meowv|`;
 - новое workspace action: `auf`, legacy action `meow` продолжает приниматься;
 - access-policy allowlist содержит новые и старые prefixes;
+- active photo/video routers пишут только `auf_*` FSM-ключи и используют прямые строки «Ауф»;
+- runtime branding monkey-patch больше не устанавливается;
 - retired router files сведены к compatibility delegation;
 - добавлен архитектурный contract для router boundary.
 
