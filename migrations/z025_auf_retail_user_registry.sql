@@ -103,6 +103,7 @@ ALTER TABLE auf_price_versions
 UPDATE auf_price_versions
 SET effective_to = NOW()
 WHERE effective_to IS NULL
+  AND version_key NOT LIKE '2026-07-30:retail:%'
   AND model_alias IN (
       'nano_banana_2', 'nano_banana_pro', 'seedream_5_pro',
       'qwen2_image_edit', 'wan_27_image', 'flux_2_pro_image',
@@ -166,4 +167,10 @@ VALUES
      'per_second', 0.08000000, 0, 50000, 0, 'Retail price per second'),
     ('2026-07-30:retail:wan-2-7-video:1080p', 'kie', 'wan_26_image_to_video', '1080p', NULL,
      'per_second', 0.12000000, 0, 75000, 0, 'Retail price per second')
-ON CONFLICT (version_key) DO NOTHING;
+ON CONFLICT (version_key) DO UPDATE
+SET effective_to = NULL,
+    retail_units = EXCLUDED.retail_units,
+    extra_reference_retail_units = EXCLUDED.extra_reference_retail_units,
+    unit_cost_usd = EXCLUDED.unit_cost_usd,
+    extra_reference_cost_usd = EXCLUDED.extra_reference_cost_usd,
+    source = EXCLUDED.source;
