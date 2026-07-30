@@ -29,7 +29,9 @@ CREATE INDEX IF NOT EXISTS meow_price_versions_lookup_idx
     );
 
 CREATE TABLE IF NOT EXISTS meow_task_charges (
-    task_id UUID PRIMARY KEY REFERENCES ai_tasks(id) ON DELETE CASCADE,
+    -- Keep the financial record even if an operational ai_task is pruned.
+    -- The UUID remains the immutable logical link without a destructive FK.
+    task_id UUID PRIMARY KEY,
     workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     price_version_id BIGINT NOT NULL REFERENCES meow_price_versions(id),
     quoted_units BIGINT NOT NULL CHECK (quoted_units > 0),
