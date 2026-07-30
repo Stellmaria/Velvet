@@ -21,6 +21,7 @@ from velvet_bot.domains.media_generation import (
     KieModelAlias,
     KieReferenceImage,
 )
+from velvet_bot.presentation.telegram.routers import workspace_auf_video as legacy
 from velvet_bot.presentation.telegram.routers.workspace_auf_video import (
     AufVideoCallback,
     AufVideoForm,
