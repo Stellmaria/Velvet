@@ -1,19 +1,19 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **604**
-- Production LOC: **128870**
+- Production modules: **605**
+- Production LOC: **129015**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **35**
-- Startup installer stages: **27**
-- Registered package violations: **518**
-- Registered exemptions: **518**
+- Startup installer stages: **0**
+- Registered package violations: **516**
+- Registered exemptions: **516**
 
 ## Layers
 
 - `application`: **14** modules
-- `composition`: **52** modules
+- `composition`: **53** modules
 - `core`: **7** modules
 - `domain`: **175** modules
 - `infrastructure`: **17** modules
@@ -32,33 +32,6 @@
 
 ## Installer graph
 
-1. `install_runtime_stability` from `velvet_bot.runtime_stability.install_runtime_stability`; patched symbols: `error_center.ErrorIncidentCenter.start`, `error_center._is_recoverable_aiogram_polling_record`, `workers_module.build_worker_manager`.
-2. `install_channel_analytics_datetime_compat` from `velvet_bot.app.channel_analytics_datetime_compat.install_channel_analytics_datetime_compat`; patched symbols: `channel_analytics.parse_channel_post`.
-3. `install_ai_model_routing` from `velvet_bot.infrastructure.ai_model_routing.install_ai_model_routing`; patched symbols: `VisionClient.__init__`, `VisionClient._read_json`.
-4. `install_friendly_media_worker` from `velvet_bot.domains.media_generation.friendly_worker.install_friendly_media_worker`; patched symbols: none detected.
-5. `install_grs_resilience` from `velvet_bot.app.grs_resilience.install_grs_resilience`; patched symbols: `KieClient.get_grs_credits`, `KieTaskQueueService.fail`, `KieTaskRecord.from_grs_api`.
-6. `install_grs_campaign_retry` from `velvet_bot.app.grs_campaign_retry.install_grs_campaign_retry`; patched symbols: `KieClient._create_grs_task`, `KieTaskQueueService.fail`, `grs_resilience._provider_reason_text`.
-7. `install_grs_speedups` from `velvet_bot.app.grs_speedups.install_grs_speedups`; patched symbols: `BaseKieGenerationWorker._upload_references`, `CampaignGrsGenerationWorker._notify_terminal_failure_best_effort`, `EconomyKieGenerationWorker._record_provider_result`, `FriendlyKieGenerationWorker._friendly_progress_text`, `FriendlyKieGenerationWorker._start_progress`, `KieClient.__init__`, `PeriodicWorkerSpec.__init__`.
-8. `install_telegram_progress_resilience` from `velvet_bot.app.telegram_progress_resilience.install_telegram_progress_resilience`; patched symbols: `FriendlyKieGenerationWorker._publish_progress`, `grs_resilience._provider_reason_text`.
-9. `install_auf_cancel_ui` from `velvet_bot.app.auf_cancel_ui_install.install_auf_cancel_ui`; patched symbols: `AITaskQueueService.enqueue`, `FriendlyKieGenerationWorker._publish_progress`, `FriendlyKieGenerationWorker._start_progress`.
-10. `install_auf_runtime_dispatcher` from `velvet_bot.app.auf_runtime_install.install_auf_runtime_dispatcher`; patched symbols: none detected.
-11. `install_auf_reconciliation` from `velvet_bot.app.auf_reconciliation_install.install_auf_reconciliation`; patched symbols: none detected.
-12. `install_auf_workspace_ui` from `velvet_bot.app.auf_workspace_ui_install.install_auf_workspace_ui`; patched symbols: `workspace_ui.build_modules_keyboard`.
-13. `install_auf_wallet_ui` from `velvet_bot.app.auf_wallet_ui_install.install_auf_wallet_ui`; patched symbols: none detected.
-14. `install_auf_photo_ui` from `velvet_bot.app.auf_photo_ui_install.install_auf_photo_ui`; patched symbols: none detected.
-15. `install_auf_reference_privacy` from `velvet_bot.app.auf_reference_privacy_install.install_auf_reference_privacy`; patched symbols: `photo_router._can_access_source`, `photo_router._input_text`, `photo_router._load_sources`, `photo_router._review_text`, `photo_router._source_keyboard`.
-16. `install_auf_photo_ratio_callback_fix` from `velvet_bot.app.auf_photo_ratio_callback_fix.install_auf_photo_ratio_callback_fix`; patched symbols: `photo_router._ratio_keyboard`.
-17. `install_auf_user_portal` from `velvet_bot.app.auf_user_portal_install.install_auf_user_portal`; patched symbols: `video_router.settings_text`, `wallet_router.wallet_keyboard`.
-18. `install_auf_owner_pricing_ui` from `velvet_bot.app.auf_owner_pricing_ui_install.install_auf_owner_pricing_ui`; patched symbols: none detected.
-19. `install_original_image_delivery_hotfix` from `velvet_bot.app.original_image_delivery_hotfix.install_original_image_delivery_hotfix`; patched symbols: `FileDeliveryKieGenerationWorker._send_image_and_document`, `FriendlyKieGenerationWorker._send_image_and_document`.
-20. `install_original_video_delivery_hotfix` from `velvet_bot.app.original_video_delivery_hotfix.install_original_video_delivery_hotfix`; patched symbols: `FileDeliveryKieGenerationWorker._send_video_and_document`, `FriendlyKieGenerationWorker._send_video_and_document`.
-21. `install_auf_result_delivery_recovery` from `velvet_bot.app.auf_result_delivery_recovery.install_auf_result_delivery_recovery`; patched symbols: none detected.
-22. `install_auf_active_delivery_fix` from `velvet_bot.app.auf_active_delivery_fix.install_auf_active_delivery_fix`; patched symbols: none detected.
-23. `install_auf_charged_queue` from `velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue`; patched symbols: none detected.
-24. `install_auf_generation_receipts` from `velvet_bot.app.auf_generation_receipt_install.install_auf_generation_receipts`; patched symbols: none detected.
-25. `install_krita_remote_worker` from `velvet_bot.app.krita_remote_install.install_krita_remote_worker`; patched symbols: `bootstrap._close_application_resources`, `bootstrap.build_worker_manager`, `workers_module.build_worker_manager`.
-26. `install_auf_grs_brand` from `velvet_bot.app.auf_grs_brand_install.install_auf_grs_brand`; patched symbols: `grs_resilience._sanitize_auf_text`, `grs_resilience._sanitize_meow_text`.
-27. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
 
 ## Violation baseline
 
@@ -72,10 +45,10 @@
 - `method-assign-ignore`: **7**
 - `monolithic-function`: **24**
 - `monolithic-module-loc`: **16**
-- `package-getattr-side-effect`: **20**
+- `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **107**
 - `type-ignore-usage`: **15**
-- `typing-any-usage`: **106**
+- `typing-any-usage`: **105**
 
 ## Largest modules
 

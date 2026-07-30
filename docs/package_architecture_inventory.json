@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 604,
-  "production_loc": 128870,
+  "production_module_count": 605,
+  "production_loc": 129015,
   "layer_counts": {
     "application": 14,
-    "composition": 52,
+    "composition": 53,
     "core": 7,
     "domain": 175,
     "infrastructure": 17,
@@ -89,285 +89,8 @@
     "semantic_near_duplicate_group_count": 9,
     "private_access_sha256": "73739e68a7a463d23be24137bac72837de2a2e60f18633ba1ce3bb9a89a73376"
   },
-  "installer_graph": [
-    {
-      "order": 1,
-      "line": 14,
-      "call": "install_runtime_stability",
-      "origin": "velvet_bot.runtime_stability.install_runtime_stability",
-      "owner_module": "velvet_bot.runtime_stability",
-      "patched_symbols": [
-        "error_center.ErrorIncidentCenter.start",
-        "error_center._is_recoverable_aiogram_polling_record",
-        "workers_module.build_worker_manager"
-      ]
-    },
-    {
-      "order": 2,
-      "line": 19,
-      "call": "install_channel_analytics_datetime_compat",
-      "origin": "velvet_bot.app.channel_analytics_datetime_compat.install_channel_analytics_datetime_compat",
-      "owner_module": "velvet_bot.app.channel_analytics_datetime_compat",
-      "patched_symbols": [
-        "channel_analytics.parse_channel_post"
-      ]
-    },
-    {
-      "order": 3,
-      "line": 69,
-      "call": "install_ai_model_routing",
-      "origin": "velvet_bot.infrastructure.ai_model_routing.install_ai_model_routing",
-      "owner_module": "velvet_bot.infrastructure.ai_model_routing",
-      "patched_symbols": [
-        "VisionClient.__init__",
-        "VisionClient._read_json"
-      ]
-    },
-    {
-      "order": 4,
-      "line": 70,
-      "call": "install_friendly_media_worker",
-      "origin": "velvet_bot.domains.media_generation.friendly_worker.install_friendly_media_worker",
-      "owner_module": "velvet_bot.domains.media_generation.friendly_worker",
-      "patched_symbols": []
-    },
-    {
-      "order": 5,
-      "line": 71,
-      "call": "install_grs_resilience",
-      "origin": "velvet_bot.app.grs_resilience.install_grs_resilience",
-      "owner_module": "velvet_bot.app.grs_resilience",
-      "patched_symbols": [
-        "KieClient.get_grs_credits",
-        "KieTaskQueueService.fail",
-        "KieTaskRecord.from_grs_api"
-      ]
-    },
-    {
-      "order": 6,
-      "line": 72,
-      "call": "install_grs_campaign_retry",
-      "origin": "velvet_bot.app.grs_campaign_retry.install_grs_campaign_retry",
-      "owner_module": "velvet_bot.app.grs_campaign_retry",
-      "patched_symbols": [
-        "KieClient._create_grs_task",
-        "KieTaskQueueService.fail",
-        "grs_resilience._provider_reason_text"
-      ]
-    },
-    {
-      "order": 7,
-      "line": 73,
-      "call": "install_grs_speedups",
-      "origin": "velvet_bot.app.grs_speedups.install_grs_speedups",
-      "owner_module": "velvet_bot.app.grs_speedups",
-      "patched_symbols": [
-        "BaseKieGenerationWorker._upload_references",
-        "CampaignGrsGenerationWorker._notify_terminal_failure_best_effort",
-        "EconomyKieGenerationWorker._record_provider_result",
-        "FriendlyKieGenerationWorker._friendly_progress_text",
-        "FriendlyKieGenerationWorker._start_progress",
-        "KieClient.__init__",
-        "PeriodicWorkerSpec.__init__"
-      ]
-    },
-    {
-      "order": 8,
-      "line": 74,
-      "call": "install_telegram_progress_resilience",
-      "origin": "velvet_bot.app.telegram_progress_resilience.install_telegram_progress_resilience",
-      "owner_module": "velvet_bot.app.telegram_progress_resilience",
-      "patched_symbols": [
-        "FriendlyKieGenerationWorker._publish_progress",
-        "grs_resilience._provider_reason_text"
-      ]
-    },
-    {
-      "order": 9,
-      "line": 75,
-      "call": "install_auf_cancel_ui",
-      "origin": "velvet_bot.app.auf_cancel_ui_install.install_auf_cancel_ui",
-      "owner_module": "velvet_bot.app.auf_cancel_ui_install",
-      "patched_symbols": [
-        "AITaskQueueService.enqueue",
-        "FriendlyKieGenerationWorker._publish_progress",
-        "FriendlyKieGenerationWorker._start_progress"
-      ]
-    },
-    {
-      "order": 10,
-      "line": 76,
-      "call": "install_auf_runtime_dispatcher",
-      "origin": "velvet_bot.app.auf_runtime_install.install_auf_runtime_dispatcher",
-      "owner_module": "velvet_bot.app.auf_runtime_install",
-      "patched_symbols": []
-    },
-    {
-      "order": 11,
-      "line": 77,
-      "call": "install_auf_reconciliation",
-      "origin": "velvet_bot.app.auf_reconciliation_install.install_auf_reconciliation",
-      "owner_module": "velvet_bot.app.auf_reconciliation_install",
-      "patched_symbols": []
-    },
-    {
-      "order": 12,
-      "line": 78,
-      "call": "install_auf_workspace_ui",
-      "origin": "velvet_bot.app.auf_workspace_ui_install.install_auf_workspace_ui",
-      "owner_module": "velvet_bot.app.auf_workspace_ui_install",
-      "patched_symbols": [
-        "workspace_ui.build_modules_keyboard"
-      ]
-    },
-    {
-      "order": 13,
-      "line": 79,
-      "call": "install_auf_wallet_ui",
-      "origin": "velvet_bot.app.auf_wallet_ui_install.install_auf_wallet_ui",
-      "owner_module": "velvet_bot.app.auf_wallet_ui_install",
-      "patched_symbols": []
-    },
-    {
-      "order": 14,
-      "line": 80,
-      "call": "install_auf_photo_ui",
-      "origin": "velvet_bot.app.auf_photo_ui_install.install_auf_photo_ui",
-      "owner_module": "velvet_bot.app.auf_photo_ui_install",
-      "patched_symbols": []
-    },
-    {
-      "order": 15,
-      "line": 81,
-      "call": "install_auf_reference_privacy",
-      "origin": "velvet_bot.app.auf_reference_privacy_install.install_auf_reference_privacy",
-      "owner_module": "velvet_bot.app.auf_reference_privacy_install",
-      "patched_symbols": [
-        "photo_router._can_access_source",
-        "photo_router._input_text",
-        "photo_router._load_sources",
-        "photo_router._review_text",
-        "photo_router._source_keyboard"
-      ]
-    },
-    {
-      "order": 16,
-      "line": 82,
-      "call": "install_auf_photo_ratio_callback_fix",
-      "origin": "velvet_bot.app.auf_photo_ratio_callback_fix.install_auf_photo_ratio_callback_fix",
-      "owner_module": "velvet_bot.app.auf_photo_ratio_callback_fix",
-      "patched_symbols": [
-        "photo_router._ratio_keyboard"
-      ]
-    },
-    {
-      "order": 17,
-      "line": 83,
-      "call": "install_auf_user_portal",
-      "origin": "velvet_bot.app.auf_user_portal_install.install_auf_user_portal",
-      "owner_module": "velvet_bot.app.auf_user_portal_install",
-      "patched_symbols": [
-        "video_router.settings_text",
-        "wallet_router.wallet_keyboard"
-      ]
-    },
-    {
-      "order": 18,
-      "line": 84,
-      "call": "install_auf_owner_pricing_ui",
-      "origin": "velvet_bot.app.auf_owner_pricing_ui_install.install_auf_owner_pricing_ui",
-      "owner_module": "velvet_bot.app.auf_owner_pricing_ui_install",
-      "patched_symbols": []
-    },
-    {
-      "order": 19,
-      "line": 85,
-      "call": "install_original_image_delivery_hotfix",
-      "origin": "velvet_bot.app.original_image_delivery_hotfix.install_original_image_delivery_hotfix",
-      "owner_module": "velvet_bot.app.original_image_delivery_hotfix",
-      "patched_symbols": [
-        "FileDeliveryKieGenerationWorker._send_image_and_document",
-        "FriendlyKieGenerationWorker._send_image_and_document"
-      ]
-    },
-    {
-      "order": 20,
-      "line": 86,
-      "call": "install_original_video_delivery_hotfix",
-      "origin": "velvet_bot.app.original_video_delivery_hotfix.install_original_video_delivery_hotfix",
-      "owner_module": "velvet_bot.app.original_video_delivery_hotfix",
-      "patched_symbols": [
-        "FileDeliveryKieGenerationWorker._send_video_and_document",
-        "FriendlyKieGenerationWorker._send_video_and_document"
-      ]
-    },
-    {
-      "order": 21,
-      "line": 87,
-      "call": "install_auf_result_delivery_recovery",
-      "origin": "velvet_bot.app.auf_result_delivery_recovery.install_auf_result_delivery_recovery",
-      "owner_module": "velvet_bot.app.auf_result_delivery_recovery",
-      "patched_symbols": []
-    },
-    {
-      "order": 22,
-      "line": 88,
-      "call": "install_auf_active_delivery_fix",
-      "origin": "velvet_bot.app.auf_active_delivery_fix.install_auf_active_delivery_fix",
-      "owner_module": "velvet_bot.app.auf_active_delivery_fix",
-      "patched_symbols": []
-    },
-    {
-      "order": 23,
-      "line": 89,
-      "call": "install_auf_charged_queue",
-      "origin": "velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue",
-      "owner_module": "velvet_bot.app.auf_charged_queue_install",
-      "patched_symbols": []
-    },
-    {
-      "order": 24,
-      "line": 90,
-      "call": "install_auf_generation_receipts",
-      "origin": "velvet_bot.app.auf_generation_receipt_install.install_auf_generation_receipts",
-      "owner_module": "velvet_bot.app.auf_generation_receipt_install",
-      "patched_symbols": []
-    },
-    {
-      "order": 25,
-      "line": 91,
-      "call": "install_krita_remote_worker",
-      "origin": "velvet_bot.app.krita_remote_install.install_krita_remote_worker",
-      "owner_module": "velvet_bot.app.krita_remote_install",
-      "patched_symbols": [
-        "bootstrap._close_application_resources",
-        "bootstrap.build_worker_manager",
-        "workers_module.build_worker_manager"
-      ]
-    },
-    {
-      "order": 26,
-      "line": 94,
-      "call": "install_auf_grs_brand",
-      "origin": "velvet_bot.app.auf_grs_brand_install.install_auf_grs_brand",
-      "owner_module": "velvet_bot.app.auf_grs_brand_install",
-      "patched_symbols": [
-        "grs_resilience._sanitize_auf_text",
-        "grs_resilience._sanitize_meow_text"
-      ]
-    },
-    {
-      "order": 27,
-      "line": 95,
-      "call": "install_auf_branding",
-      "origin": "velvet_bot.app.auf_branding.install_auf_branding",
-      "owner_module": "velvet_bot.app.auf_branding",
-      "patched_symbols": [
-        "Bot.__call__"
-      ]
-    }
-  ],
-  "violation_count": 518,
+  "installer_graph": [],
+  "violation_count": 516,
   "violation_counts": {
     "database-acquire-outside-persistence": 88,
     "domain-aiogram-import": 19,
@@ -379,10 +102,10 @@
     "method-assign-ignore": 7,
     "monolithic-function": 24,
     "monolithic-module-loc": 16,
-    "package-getattr-side-effect": 20,
+    "package-getattr-side-effect": 19,
     "sql-outside-persistence": 107,
     "type-ignore-usage": 15,
-    "typing-any-usage": 106
+    "typing-any-usage": 105
   },
   "violations": [
     {
@@ -3665,13 +3388,13 @@
       }
     },
     {
-      "id": "monolithic-function:velvet_bot/core/config/kie.py:5cf310b80137826e",
+      "id": "monolithic-function:velvet_bot/core/config/kie.py:c6a1d2f8806dd648",
       "category": "monolithic-function",
       "path": "velvet_bot/core/config/kie.py",
-      "fingerprint": "5cf310b80137826e4e808e56183839f8a0e9e8d0384c24aaafa8a359b61abe7b",
-      "summary": "max function 228 lines exceeds 180",
+      "fingerprint": "c6a1d2f8806dd64841857e023e748eb330c6a3cc80c59329f0437039c85f3207",
+      "summary": "max function 229 lines exceeds 180",
       "details": {
-        "max_function_length": 228,
+        "max_function_length": 229,
         "limit": 180
       }
     },
@@ -4081,14 +3804,6 @@
         "loc": 1236,
         "limit": 800
       }
-    },
-    {
-      "id": "package-getattr-side-effect:velvet_bot/app/__init__.py:81d1c939a5a05e28",
-      "category": "package-getattr-side-effect",
-      "path": "velvet_bot/app/__init__.py",
-      "fingerprint": "81d1c939a5a05e28c9ef3085efe264636b3e75d9533e3d9faf33507a9d6fe892",
-      "summary": "package __getattr__ may trigger runtime composition",
-      "details": {}
     },
     {
       "id": "package-getattr-side-effect:velvet_bot/domains/archive/__init__.py:81d1c939a5a05e28",
@@ -6450,16 +6165,6 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/__init__.py:fc0ce05c34c12991",
-      "category": "typing-any-usage",
-      "path": "velvet_bot/app/__init__.py",
-      "fingerprint": "fc0ce05c34c12991371aebe865e9d6d0bc96e03836d23a6151d36c5fe2e404a4",
-      "summary": "1 Any references",
-      "details": {
-        "count": 1
-      }
-    },
-    {
       "id": "typing-any-usage:velvet_bot/app/auf_active_delivery_fix.py:f203665a6707ad1a",
       "category": "typing-any-usage",
       "path": "velvet_bot/app/auf_active_delivery_fix.py",
@@ -8346,199 +8051,33 @@
       "module": "velvet_bot.app",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 99,
-      "function_count": 2,
+      "loc": 13,
+      "function_count": 0,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 90,
-      "branch_count": 1,
+      "max_function_length": 0,
+      "branch_count": 0,
       "internal_imports": [
-        "velvet_bot.app.auf_active_delivery_fix",
-        "velvet_bot.app.auf_branding",
-        "velvet_bot.app.auf_cancel_ui_install",
-        "velvet_bot.app.auf_charged_queue_install",
-        "velvet_bot.app.auf_generation_receipt_install",
-        "velvet_bot.app.auf_grs_brand_install",
-        "velvet_bot.app.auf_owner_pricing_ui_install",
-        "velvet_bot.app.auf_photo_ratio_callback_fix",
-        "velvet_bot.app.auf_photo_ui_install",
-        "velvet_bot.app.auf_reconciliation_install",
-        "velvet_bot.app.auf_reference_privacy_install",
-        "velvet_bot.app.auf_result_delivery_recovery",
-        "velvet_bot.app.auf_runtime_install",
-        "velvet_bot.app.auf_user_portal_install",
-        "velvet_bot.app.auf_wallet_ui_install",
-        "velvet_bot.app.auf_workspace_ui_install",
-        "velvet_bot.app.bootstrap",
-        "velvet_bot.app.channel_analytics_datetime_compat",
-        "velvet_bot.app.grs_campaign_retry",
-        "velvet_bot.app.grs_resilience",
-        "velvet_bot.app.grs_speedups",
-        "velvet_bot.app.krita_remote_install",
-        "velvet_bot.app.original_image_delivery_hotfix",
-        "velvet_bot.app.original_video_delivery_hotfix",
-        "velvet_bot.app.telegram_progress_resilience",
-        "velvet_bot.domains.media_generation.friendly_worker",
-        "velvet_bot.infrastructure.ai_model_routing",
-        "velvet_bot.runtime_stability"
+        "velvet_bot.app.composition"
       ],
-      "external_import_count": 2,
+      "external_import_count": 0,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 1,
+      "any_count": 0,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
       "install_definitions": [],
-      "install_calls": [
-        {
-          "line": 14,
-          "call": "install_runtime_stability"
-        },
-        {
-          "line": 19,
-          "call": "install_channel_analytics_datetime_compat"
-        },
-        {
-          "line": 69,
-          "call": "install_ai_model_routing"
-        },
-        {
-          "line": 70,
-          "call": "install_friendly_media_worker"
-        },
-        {
-          "line": 71,
-          "call": "install_grs_resilience"
-        },
-        {
-          "line": 72,
-          "call": "install_grs_campaign_retry"
-        },
-        {
-          "line": 73,
-          "call": "install_grs_speedups"
-        },
-        {
-          "line": 74,
-          "call": "install_telegram_progress_resilience"
-        },
-        {
-          "line": 75,
-          "call": "install_auf_cancel_ui"
-        },
-        {
-          "line": 76,
-          "call": "install_auf_runtime_dispatcher"
-        },
-        {
-          "line": 77,
-          "call": "install_auf_reconciliation"
-        },
-        {
-          "line": 78,
-          "call": "install_auf_workspace_ui"
-        },
-        {
-          "line": 79,
-          "call": "install_auf_wallet_ui"
-        },
-        {
-          "line": 80,
-          "call": "install_auf_photo_ui"
-        },
-        {
-          "line": 81,
-          "call": "install_auf_reference_privacy"
-        },
-        {
-          "line": 82,
-          "call": "install_auf_photo_ratio_callback_fix"
-        },
-        {
-          "line": 83,
-          "call": "install_auf_user_portal"
-        },
-        {
-          "line": 84,
-          "call": "install_auf_owner_pricing_ui"
-        },
-        {
-          "line": 85,
-          "call": "install_original_image_delivery_hotfix"
-        },
-        {
-          "line": 86,
-          "call": "install_original_video_delivery_hotfix"
-        },
-        {
-          "line": 87,
-          "call": "install_auf_result_delivery_recovery"
-        },
-        {
-          "line": 88,
-          "call": "install_auf_active_delivery_fix"
-        },
-        {
-          "line": 89,
-          "call": "install_auf_charged_queue"
-        },
-        {
-          "line": 90,
-          "call": "install_auf_generation_receipts"
-        },
-        {
-          "line": 91,
-          "call": "install_krita_remote_worker"
-        },
-        {
-          "line": 94,
-          "call": "install_auf_grs_brand"
-        },
-        {
-          "line": 95,
-          "call": "install_auf_branding"
-        }
-      ],
+      "install_calls": [],
       "installed_sentinel_count": 0,
-      "package_getattr": true,
+      "package_getattr": false,
       "env_reads": [],
       "polling_values": [],
-      "worker_registrations": [
-        {
-          "line": 70,
-          "owner": "configured_run_application",
-          "call": "install_friendly_media_worker"
-        },
-        {
-          "line": 91,
-          "owner": "configured_run_application",
-          "call": "install_krita_remote_worker"
-        }
-      ],
-      "violations": [
-        {
-          "id": "typing-any-usage:velvet_bot/app/__init__.py:fc0ce05c34c12991",
-          "category": "typing-any-usage",
-          "path": "velvet_bot/app/__init__.py",
-          "fingerprint": "fc0ce05c34c12991371aebe865e9d6d0bc96e03836d23a6151d36c5fe2e404a4",
-          "summary": "1 Any references",
-          "details": {
-            "count": 1
-          }
-        },
-        {
-          "id": "package-getattr-side-effect:velvet_bot/app/__init__.py:81d1c939a5a05e28",
-          "category": "package-getattr-side-effect",
-          "path": "velvet_bot/app/__init__.py",
-          "fingerprint": "81d1c939a5a05e28c9ef3085efe264636b3e75d9533e3d9faf33507a9d6fe892",
-          "summary": "package __getattr__ may trigger runtime composition",
-          "details": {}
-        }
-      ]
+      "worker_registrations": [],
+      "violations": []
     },
     {
       "path": "velvet_bot/app/ai_usage.py",
@@ -10453,6 +9992,75 @@
         "install_command_menus"
       ],
       "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/app/composition.py",
+      "module": "velvet_bot.app.composition",
+      "layer": "composition",
+      "target_package": "composition",
+      "loc": 232,
+      "function_count": 8,
+      "class_count": 2,
+      "handler_count": 0,
+      "max_function_length": 102,
+      "branch_count": 3,
+      "internal_imports": [
+        "velvet_bot.app.auf_active_delivery_fix",
+        "velvet_bot.app.auf_branding",
+        "velvet_bot.app.auf_cancel_ui_install",
+        "velvet_bot.app.auf_charged_queue_install",
+        "velvet_bot.app.auf_generation_receipt_install",
+        "velvet_bot.app.auf_grs_brand_install",
+        "velvet_bot.app.auf_owner_pricing_ui_install",
+        "velvet_bot.app.auf_photo_ratio_callback_fix",
+        "velvet_bot.app.auf_photo_ui_install",
+        "velvet_bot.app.auf_reconciliation_install",
+        "velvet_bot.app.auf_reference_privacy_install",
+        "velvet_bot.app.auf_result_delivery_recovery",
+        "velvet_bot.app.auf_runtime_install",
+        "velvet_bot.app.auf_user_portal_install",
+        "velvet_bot.app.auf_wallet_ui_install",
+        "velvet_bot.app.auf_workspace_ui_install",
+        "velvet_bot.app.bootstrap",
+        "velvet_bot.app.channel_analytics_datetime_compat",
+        "velvet_bot.app.grs_campaign_retry",
+        "velvet_bot.app.grs_resilience",
+        "velvet_bot.app.grs_speedups",
+        "velvet_bot.app.krita_remote_install",
+        "velvet_bot.app.original_image_delivery_hotfix",
+        "velvet_bot.app.original_video_delivery_hotfix",
+        "velvet_bot.app.telegram_progress_resilience",
+        "velvet_bot.domains.media_generation.friendly_worker",
+        "velvet_bot.infrastructure.ai_model_routing",
+        "velvet_bot.runtime_stability"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [
+        {
+          "line": 58,
+          "call": "install_runtime_stability"
+        },
+        {
+          "line": 66,
+          "call": "install_channel_analytics_datetime_compat"
+        }
+      ],
       "installed_sentinel_count": 0,
       "package_getattr": false,
       "env_reads": [],
@@ -13853,12 +13461,12 @@
       "module": "velvet_bot.core.config.kie",
       "layer": "core",
       "target_package": "core",
-      "loc": 296,
+      "loc": 297,
       "function_count": 4,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 228,
-      "branch_count": 12,
+      "max_function_length": 229,
+      "branch_count": 13,
       "internal_imports": [
         "velvet_bot.core.config.settings",
         "velvet_bot.domains.media_generation"
@@ -13884,22 +13492,22 @@
           "call": "os.getenv"
         },
         {
-          "line": 122,
+          "line": 121,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 126,
+          "line": 125,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 130,
+          "line": 129,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 270,
+          "line": 271,
           "owner": "_env_decimal",
           "call": "os.getenv"
         },
@@ -13949,37 +13557,37 @@
           "call": "os.getenv"
         },
         {
-          "line": 226,
+          "line": 227,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 233,
+          "line": 234,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 240,
+          "line": 241,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 252,
+          "line": 253,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 259,
+          "line": 260,
           "owner": "load_kie_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 279,
-          "owner": "_env_decimal_with_legacy",
           "call": "os.getenv"
         },
         {
           "line": 280,
+          "owner": "_env_decimal_with_legacy",
+          "call": "os.getenv"
+        },
+        {
+          "line": 281,
           "owner": "_env_decimal_with_legacy",
           "call": "os.getenv"
         },
@@ -14014,27 +13622,22 @@
           "call": "os.getenv"
         },
         {
-          "line": 103,
+          "line": 98,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 107,
+          "line": 102,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 111,
+          "line": 106,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 99,
-          "owner": "load_kie_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 100,
+          "line": 110,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         }
@@ -14043,13 +13646,13 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "monolithic-function:velvet_bot/core/config/kie.py:5cf310b80137826e",
+          "id": "monolithic-function:velvet_bot/core/config/kie.py:c6a1d2f8806dd648",
           "category": "monolithic-function",
           "path": "velvet_bot/core/config/kie.py",
-          "fingerprint": "5cf310b80137826e4e808e56183839f8a0e9e8d0384c24aaafa8a359b61abe7b",
-          "summary": "max function 228 lines exceeds 180",
+          "fingerprint": "c6a1d2f8806dd64841857e023e748eb330c6a3cc80c59329f0437039c85f3207",
+          "summary": "max function 229 lines exceeds 180",
           "details": {
-            "max_function_length": 228,
+            "max_function_length": 229,
             "limit": 180
           }
         }
@@ -23275,7 +22878,7 @@
       "module": "velvet_bot.infrastructure.ai.kie",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 408,
+      "loc": 406,
       "function_count": 14,
       "class_count": 5,
       "handler_count": 0,
@@ -23312,7 +22915,7 @@
       ],
       "polling_values": [
         {
-          "line": 273,
+          "line": 271,
           "owner": "wait_for_task",
           "call": "asyncio.sleep",
           "values": [

@@ -167,7 +167,7 @@
       "owner": "media-delivery",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -179,7 +179,7 @@
       "owner": "application-composition",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -191,7 +191,7 @@
       "owner": "application-composition",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -203,8 +203,8 @@
       "owner": "provider-adapters",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -1244,7 +1244,7 @@
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
       "removal_condition": "Remove this exemption when #463 retires the fingerprinted debt without behavior regression.",
@@ -1311,10 +1311,10 @@
       "owner": "media-delivery",
       "reason": "Existing domain-aiogram-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_grs_brand_install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_resilience.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -1570,7 +1570,7 @@
       "owner": "media-delivery",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -1582,7 +1582,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_cancel_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1595,7 +1595,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1607,7 +1607,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1619,7 +1619,7 @@
       "owner": "provider-adapters",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -1631,7 +1631,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1643,7 +1643,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1655,7 +1655,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1667,7 +1667,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_reconciliation_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1680,7 +1680,7 @@
       "owner": "media-delivery",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -1692,7 +1692,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_runtime_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1705,7 +1705,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1717,7 +1717,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_wallet_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1730,7 +1730,7 @@
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_workspace_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1743,8 +1743,8 @@
       "owner": "provider-adapters",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
       ],
@@ -1758,8 +1758,8 @@
       "owner": "provider-adapters",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -1774,10 +1774,10 @@
       "owner": "media-delivery",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_grs_brand_install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_resilience.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -1806,7 +1806,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1818,7 +1818,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_cancel_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1831,7 +1831,7 @@
       "owner": "provider-adapters",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -1843,7 +1843,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1855,7 +1855,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1867,7 +1867,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1879,7 +1879,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_workspace_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1892,7 +1892,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1904,8 +1904,8 @@
       "owner": "provider-adapters",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
       ],
@@ -1919,8 +1919,8 @@
       "owner": "provider-adapters",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -1935,7 +1935,7 @@
       "owner": "provider-adapters",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -1947,7 +1947,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -1959,7 +1959,7 @@
       "owner": "media-delivery",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -1971,7 +1971,7 @@
       "owner": "media-delivery",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -1983,7 +1983,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2009,7 +2009,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2243,7 +2243,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2267,7 +2267,7 @@
       "owner": "media-delivery",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -2279,7 +2279,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2291,7 +2291,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_cancel_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2304,7 +2304,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2316,7 +2316,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2328,7 +2328,7 @@
       "owner": "provider-adapters",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -2340,7 +2340,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2352,7 +2352,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2364,7 +2364,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2376,7 +2376,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_reconciliation_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2389,7 +2389,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2401,7 +2401,7 @@
       "owner": "media-delivery",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -2413,7 +2413,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_runtime_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2426,7 +2426,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2438,7 +2438,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_wallet_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2451,7 +2451,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_workspace_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2464,7 +2464,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2476,8 +2476,8 @@
       "owner": "provider-adapters",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
       ],
@@ -2491,8 +2491,8 @@
       "owner": "provider-adapters",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -2507,7 +2507,7 @@
       "owner": "provider-adapters",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -2519,7 +2519,7 @@
       "owner": "media-delivery",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -2531,7 +2531,7 @@
       "owner": "media-delivery",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -2543,7 +2543,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2555,10 +2555,10 @@
       "owner": "media-delivery",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_grs_brand_install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_resilience.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -2575,7 +2575,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2734,7 +2734,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2746,7 +2746,7 @@
       "owner": "media-delivery",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -2758,7 +2758,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_cancel_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2771,7 +2771,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2783,7 +2783,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2795,7 +2795,7 @@
       "owner": "provider-adapters",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -2807,7 +2807,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2819,7 +2819,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2831,7 +2831,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2843,7 +2843,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_reconciliation_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2856,7 +2856,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2868,7 +2868,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_runtime_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2881,7 +2881,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2893,7 +2893,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_wallet_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2906,7 +2906,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_workspace_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2919,7 +2919,7 @@
       "owner": "application-composition",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2991,7 +2991,7 @@
       "owner": "media-delivery",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -3003,7 +3003,7 @@
       "owner": "media-delivery",
       "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -3015,7 +3015,7 @@
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -3027,7 +3027,7 @@
       "owner": "provider-adapters",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -3039,8 +3039,8 @@
       "owner": "provider-adapters",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
       ],
@@ -3054,8 +3054,8 @@
       "owner": "provider-adapters",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -3070,7 +3070,7 @@
       "owner": "provider-adapters",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -3082,7 +3082,7 @@
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -3094,7 +3094,7 @@
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -3106,7 +3106,7 @@
       "owner": "application-composition",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -3127,7 +3127,7 @@
       "issue": "#455"
     },
     {
-      "id": "monolithic-function:velvet_bot/core/config/kie.py:5cf310b80137826e",
+      "id": "monolithic-function:velvet_bot/core/config/kie.py:c6a1d2f8806dd648",
       "owner": "architecture-governance",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
@@ -3697,18 +3697,6 @@
       "issue": "#460"
     },
     {
-      "id": "package-getattr-side-effect:velvet_bot/app/__init__.py:81d1c939a5a05e28",
-      "owner": "application-composition",
-      "reason": "Existing package-getattr-side-effect debt captured by the reviewed baseline.",
-      "consumers": [
-        "velvet_bot/app/krita_remote_install.py"
-      ],
-      "replacement": "Canonical boundary tracked by #455.",
-      "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
-      "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#455"
-    },
-    {
       "id": "package-getattr-side-effect:velvet_bot/domains/archive/__init__.py:81d1c939a5a05e28",
       "owner": "application-composition",
       "reason": "Existing package-getattr-side-effect debt captured by the reviewed baseline.",
@@ -4113,7 +4101,7 @@
       "owner": "media-delivery",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -4125,7 +4113,7 @@
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #458.",
       "removal_condition": "Remove this exemption when #458 retires the fingerprinted debt without behavior regression.",
@@ -4137,7 +4125,7 @@
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #458.",
       "removal_condition": "Remove this exemption when #458 retires the fingerprinted debt without behavior regression.",
@@ -4149,7 +4137,7 @@
       "owner": "application-composition",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -4161,8 +4149,8 @@
       "owner": "provider-adapters",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -4190,7 +4178,7 @@
       "owner": "application-composition",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -4452,10 +4440,10 @@
       "owner": "media-delivery",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_grs_brand_install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_resilience.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -5442,7 +5430,7 @@
       "owner": "root-module-migration",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
       "removal_condition": "Remove this exemption when #463 retires the fingerprinted debt without behavior regression.",
@@ -5527,7 +5515,7 @@
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5539,7 +5527,7 @@
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5551,7 +5539,7 @@
       "owner": "provider-adapters",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -5563,8 +5551,8 @@
       "owner": "provider-adapters",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
       ],
@@ -5578,8 +5566,8 @@
       "owner": "provider-adapters",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -5594,7 +5582,7 @@
       "owner": "provider-adapters",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -5606,7 +5594,7 @@
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5618,7 +5606,7 @@
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5656,7 +5644,7 @@
       "owner": "architecture-governance",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #460.",
       "removal_condition": "Remove this exemption when #460 retires the fingerprinted debt without behavior regression.",
@@ -5805,23 +5793,11 @@
       "issue": "#463"
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/__init__.py:fc0ce05c34c12991",
-      "owner": "application-composition",
-      "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
-      "consumers": [
-        "velvet_bot/app/krita_remote_install.py"
-      ],
-      "replacement": "Canonical boundary tracked by #455.",
-      "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
-      "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#455"
-    },
-    {
       "id": "typing-any-usage:velvet_bot/app/auf_active_delivery_fix.py:f203665a6707ad1a",
       "owner": "media-delivery",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #457.",
       "removal_condition": "Remove this exemption when #457 retires the fingerprinted debt without behavior regression.",
@@ -5833,7 +5809,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5845,7 +5821,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_cancel_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -5858,7 +5834,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5870,7 +5846,7 @@
       "owner": "provider-adapters",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -5882,7 +5858,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_reconciliation_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -5895,7 +5871,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_runtime_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -5908,7 +5884,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/meow_workspace_ui_install.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -5921,7 +5897,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5933,8 +5909,8 @@
       "owner": "provider-adapters",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_grs_brand_install.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_campaign_retry.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/telegram_progress_resilience.py"
@@ -5949,7 +5925,7 @@
       "owner": "provider-adapters",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #459.",
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
@@ -5961,7 +5937,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -6222,10 +6198,10 @@
       "owner": "media-delivery",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py",
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_grs_brand_install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
+        "velvet_bot/app/composition.py",
         "velvet_bot/app/grs_resilience.py",
         "velvet_bot/app/grs_speedups.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -6585,7 +6561,7 @@
       "owner": "architecture-governance",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #460.",
       "removal_condition": "Remove this exemption when #460 retires the fingerprinted debt without behavior regression.",
@@ -7100,7 +7076,7 @@
       "owner": "root-module-migration",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/__init__.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
       "removal_condition": "Remove this exemption when #463 retires the fingerprinted debt without behavior regression.",
