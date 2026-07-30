@@ -27,7 +27,7 @@
   "handler_compatibility_facade_count": 0,
   "handler_compatibility_facades": [],
   "root_level_module_count": 113,
-  "compatibility_file_count": 7,
+  "compatibility_file_count": 6,
   "pre_import_compatibility_components": [
     "ai-quality-schema",
     "set-consistency-dashboard",
