@@ -21,6 +21,7 @@ def __getattr__(name: str) -> Any:
 
     async def configured_run_application() -> None:
         from velvet_bot.app.auf_cancel_ui_install import install_auf_cancel_ui
+        from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
         from velvet_bot.app.auf_photo_ratio_callback_fix import (
             install_auf_photo_ratio_callback_fix,
         )
@@ -53,6 +54,7 @@ def __getattr__(name: str) -> Any:
         install_grs_resilience()
         install_grs_campaign_retry()
         install_grs_speedups()
+        install_auf_grs_brand()
         install_telegram_progress_resilience()
         install_auf_cancel_ui()
         install_auf_runtime_dispatcher()
