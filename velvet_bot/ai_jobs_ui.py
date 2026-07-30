@@ -33,7 +33,7 @@ STAGE_LABELS = {
     "queued": "запрос зарегистрирован",
     "downloading": "скачивание файлов",
     "preparing": "подготовка данных",
-    "analyzing": "анализ Qwen",
+    "analyzing": "анализ изображения",
     "saving": "сохранение результата",
     "completed": "результат сохранён",
     "failed": "задача завершилась ошибкой",
@@ -66,27 +66,19 @@ def build_job_progress_text(job: AIJob) -> str:
         f"Этап: <b>{escape(stage)}</b>",
         f"Создано: <b>{escape(_timestamp(job))}</b>",
     ]
-    if job.provider or job.model:
-        lines.extend(
-            [
-                "",
-                f"Провайдер: <code>{escape(job.provider or '—')}</code>",
-                f"Модель: <code>{escape(job.model or '—')}</code>",
-            ]
-        )
     if job.status in {"pending", "processing"}:
         lines.extend(
             [
                 "",
-                "Задание сохранено в базе. Экран можно закрыть и позже открыть его из истории.",
+                "Задание сохранено. Экран можно закрыть и позже открыть его из истории.",
             ]
         )
     elif job.status == "error":
         lines.extend(
             [
                 "",
-                "<b>Причина:</b>",
-                f"<code>{escape(job.error_message or 'Причина не сохранена.')[:1800]}</code>",
+                "Обработка завершилась внутренней ошибкой. Технические подробности "
+                "сохранены в служебном журнале.",
             ]
         )
     return "\n".join(lines)[:4090]
@@ -131,7 +123,7 @@ def build_job_keyboard(job: AIJob, *, page: int = 0) -> InlineKeyboardMarkup:
                 callback_data=quality_callback("aijobs", page=page),
             ),
             InlineKeyboardButton(
-                text="↩️ Qwen",
+                text="↩️ AI-анализ",
                 callback_data=quality_callback("ai_menu"),
             ),
         ]
@@ -146,7 +138,8 @@ def build_job_list(page: AIJobPage) -> tuple[str, InlineKeyboardMarkup]:
         f"Всего: <b>{page.total_items}</b>",
         f"Страница: <b>{page.page + 1}</b> из <b>{page.total_pages}</b>",
         "",
-        "Здесь видно, был ли запрос принят, выполняется ли он, завершён ли результатом или ошибкой.",
+        "Здесь видно, был ли запрос принят, выполняется ли он, завершён ли "
+        "результатом или ошибкой.",
     ]
     rows: list[list[InlineKeyboardButton]] = []
     for job in page.items:
@@ -158,7 +151,11 @@ def build_job_list(page: AIJobPage) -> tuple[str, InlineKeyboardMarkup]:
                         f"{STATUS_ICONS.get(job.status, 'ℹ️')} #{job.id} · "
                         f"{label[:35]}"
                     )[:64],
-                    callback_data=quality_callback("aijob", page=page.page, item_id=job.id),
+                    callback_data=quality_callback(
+                        "aijob",
+                        page=page.page,
+                        item_id=job.id,
+                    ),
                 )
             ]
         )
@@ -168,7 +165,8 @@ def build_job_list(page: AIJobPage) -> tuple[str, InlineKeyboardMarkup]:
                 InlineKeyboardButton(
                     text="◀️",
                     callback_data=quality_callback(
-                        "aijobs", page=(page.page - 1) % page.total_pages
+                        "aijobs",
+                        page=(page.page - 1) % page.total_pages,
                     ),
                 ),
                 InlineKeyboardButton(
@@ -178,7 +176,8 @@ def build_job_list(page: AIJobPage) -> tuple[str, InlineKeyboardMarkup]:
                 InlineKeyboardButton(
                     text="▶️",
                     callback_data=quality_callback(
-                        "aijobs", page=(page.page + 1) % page.total_pages
+                        "aijobs",
+                        page=(page.page + 1) % page.total_pages,
                     ),
                 ),
             ]
@@ -190,7 +189,7 @@ def build_job_list(page: AIJobPage) -> tuple[str, InlineKeyboardMarkup]:
                 callback_data=quality_callback("aijobs", page=page.page),
             ),
             InlineKeyboardButton(
-                text="↩️ Qwen",
+                text="↩️ AI-анализ",
                 callback_data=quality_callback("ai_menu"),
             ),
         ]
