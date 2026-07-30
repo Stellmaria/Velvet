@@ -34,7 +34,10 @@ class BranchMaintenanceWorkflowTests(unittest.TestCase):
         source = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn('git cherry-pick --no-commit "$source"', source)
-        self.assertIn("git diff --check", source)
+        self.assertIn("git diff --cached --check", source)
+        self.assertIn("git diff --cached --quiet", source)
+        self.assertIn("git diff --cached --name-status", source)
+        self.assertIn("git diff --cached --stat", source)
         self.assertIn("maintenance-changed-files.txt", source)
         self.assertIn("maintenance-diff-stat.txt", source)
         self.assertIn("python -m unittest discover -s tests -v", source)
