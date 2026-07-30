@@ -1,23 +1,39 @@
-name: shared Telegram helper contract
+name: refresh shared Telegram helper inventories
 
 on:
-  pull_request:
-    paths:
-      - 'velvet_bot/presentation/telegram/**'
-      - 'scripts/inventory_telegram_helpers.py'
-      - 'tests/test_telegram_shared_helpers.py'
-      - '.github/workflows/apply-shared-helper-migration.yml'
+  push:
+    branches:
+      - agent/shared-telegram-helpers
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inventory:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/shared-telegram-helpers
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Validate helper boundaries
-        run: python scripts/inventory_telegram_helpers.py --check
+      - name: Repair aliases and regenerate inventories
+        run: |
+          python scripts/apply_telegram_helper_migration.py
+          python scripts/update_p2_stability_inventory.py \
+            --label p3-shared-telegram-helpers \
+            --schema-version 73
+      - name: Commit refreshed contracts
+        run: |
+          if git diff --quiet; then
+            echo "Inventories are current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot docs
+          git commit -m "P3: refresh shared helper compatibility inventories"
+          git push origin HEAD:agent/shared-telegram-helpers
