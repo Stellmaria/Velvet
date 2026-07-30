@@ -7,6 +7,7 @@ from pathlib import Path
 
 from velvet_bot.app import auf_reference_privacy_install as privacy
 from velvet_bot.domains.auf_wallet.pricing import quote_auf_payload
+from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.presentation.telegram.middleware.user_activity import (
     _callback_metadata,
     _command_name,
@@ -139,7 +140,7 @@ class AufReferencePrivacyTests(unittest.IsolatedAsyncioTestCase):
         owner = _Database()
         await privacy._load_private_sources(
             owner,
-            user_id=1,
+            user_id=GLOBAL_WORKSPACE_CREATOR_ID,
             active_workspace_id=55,
         )
         self.assertTrue(owner.connection.include_system)
@@ -171,9 +172,10 @@ class UserObservabilityContractTests(unittest.TestCase):
         self.assertIn("if global_owner", source)
         self.assertNotIn("1 Ауф покрывает", source)
         self.assertNotIn("Дополнительная наценка", source)
-        self.assertIn("Стэл получила уведомление", inspect.getsource(
-            workspace_auf_wallet.handle_auf_wallet_action
-        ))
+        self.assertIn(
+            "Стэл получила уведомление",
+            inspect.getsource(workspace_auf_wallet.handle_auf_wallet_action),
+        )
 
     def test_registry_contract_does_not_store_message_content(self) -> None:
         migration = Path("migrations/z025_auf_retail_user_registry.sql").read_text(
