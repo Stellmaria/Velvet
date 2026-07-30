@@ -5,6 +5,7 @@
 - Линия/фаза: AI media generation / result delivery
 - Статус: `завершено`
 - Ветка: `agent/fix-active-delivery-worker-v2`
+- Базовый commit: `39868c73e6a0b24f524d5801df715dde5dd87a7e`
 
 ## Перед началом
 
@@ -61,6 +62,11 @@ SQL-миграций нет. Формат `ai_tasks.result` не меняетс�
 - Docker build;
 - project notes contract;
 - generated inventories.
+
+### PR и commit
+
+- PR: `#456`;
+- итоговый commit фиксируется после зелёного CI и merge.
 
 ### Незавершённое
 
