@@ -14,6 +14,7 @@ from velvet_bot.app.auf_generation_receipt_install import (
     format_generation_elapsed,
     receipt_from_task_row,
 )
+from velvet_bot.app.composition import build_application_composition
 from velvet_bot.domains.auf_wallet import (
     auf_to_units,
     build_auf_charged_task_queue_service,
@@ -45,17 +46,12 @@ class AufGenerationReceiptTests(unittest.TestCase):
             installer._INSTALLED = original_installed
 
     def test_runtime_composition_installs_charging_before_receipts(self) -> None:
-        source = (ROOT / "velvet_bot/app/__init__.py").read_text(encoding="utf-8")
-        self.assertIn("install_auf_charged_queue()", source)
-        self.assertIn("install_auf_generation_receipts()", source)
-        self.assertLess(
-            source.index("install_auf_charged_queue()"),
-            source.index("install_auf_generation_receipts()"),
-        )
-        self.assertLess(
-            source.index("install_auf_generation_receipts()"),
-            source.index("install_auf_grs_brand()"),
-        )
+        stage_names = build_application_composition().stage_names
+        charged_queue = stage_names.index("install_auf_charged_queue")
+        receipts = stage_names.index("install_auf_generation_receipts")
+        grs_brand = stage_names.index("install_auf_grs_brand")
+        self.assertLess(charged_queue, receipts)
+        self.assertLess(receipts, grs_brand)
 
     def test_receipt_uses_total_elapsed_provider_attempt_and_capture(self) -> None:
         created = datetime(2026, 7, 30, 16, 0, tzinfo=timezone.utc)

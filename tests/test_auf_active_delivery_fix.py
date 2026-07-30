@@ -10,6 +10,7 @@ from velvet_bot.app.auf_active_delivery_fix import (
     task_card_keyboard,
     task_card_text,
 )
+from velvet_bot.app.composition import build_application_composition
 from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 
 
@@ -95,9 +96,9 @@ class AufActiveDeliveryFixTests(unittest.TestCase):
         self.assertIn("🔄 Обновить карточку", labels)
 
     def test_fix_is_installed_after_delivery_recovery(self) -> None:
-        app_source = Path("velvet_bot/app/__init__.py").read_text(encoding="utf-8")
-        recovery_install = app_source.index("install_auf_result_delivery_recovery()")
-        active = app_source.index("install_auf_active_delivery_fix()")
+        stage_names = build_application_composition().stage_names
+        recovery_install = stage_names.index("install_auf_result_delivery_recovery")
+        active = stage_names.index("install_auf_active_delivery_fix")
         self.assertLess(recovery_install, active)
 
         fix_source = Path("velvet_bot/app/auf_active_delivery_fix.py").read_text(

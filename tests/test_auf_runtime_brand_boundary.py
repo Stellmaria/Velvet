@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from velvet_bot.app.composition import build_application_composition
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -13,17 +15,17 @@ def _read(relative: str) -> str:
 
 class AufRuntimeBrandBoundaryTests(unittest.TestCase):
     def test_application_installs_only_canonical_auf_entrypoints(self) -> None:
-        source = _read("velvet_bot/app/__init__.py")
-        self.assertIn("install_auf_cancel_ui", source)
-        self.assertIn("install_auf_runtime_dispatcher", source)
-        self.assertIn("install_auf_workspace_ui", source)
-        self.assertIn("install_auf_grs_brand", source)
-        self.assertNotIn("install_meow_cancel_ui", source)
-        self.assertNotIn("install_meow_runtime_dispatcher", source)
-        self.assertNotIn("install_meow_workspace_ui", source)
+        stage_names = build_application_composition().stage_names
+        self.assertIn("install_auf_cancel_ui", stage_names)
+        self.assertIn("install_auf_runtime_dispatcher", stage_names)
+        self.assertIn("install_auf_workspace_ui", stage_names)
+        self.assertIn("install_auf_grs_brand", stage_names)
+        self.assertNotIn("install_meow_cancel_ui", stage_names)
+        self.assertNotIn("install_meow_runtime_dispatcher", stage_names)
+        self.assertNotIn("install_meow_workspace_ui", stage_names)
         self.assertLess(
-            source.index("install_grs_speedups()"),
-            source.index("install_auf_grs_brand()"),
+            stage_names.index("install_grs_speedups"),
+            stage_names.index("install_auf_grs_brand"),
         )
 
     def test_legacy_installers_are_thin_compatibility_shims(self) -> None:
