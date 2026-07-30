@@ -20,8 +20,20 @@ async def download_telegram_file(
     timeout_seconds: int = 90,
     retry_delays: Sequence[float] = (1.0, 3.0),
     failure_label: str = "изображение",
+    bad_request_type: type[BaseException] = TelegramBadRequest,
+    network_error_types: tuple[type[BaseException], ...] = (
+        TelegramNetworkError,
+        TimeoutError,
+        ConnectionError,
+        OSError,
+    ),
+    api_error_type: type[BaseException] = TelegramAPIError,
 ) -> bytes:
-    """Download a Telegram file with bounded retries and cancellation safety."""
+    """Download a Telegram file with bounded retries and cancellation safety.
+
+    Exception classes are injectable so compatibility facades and their regression tests
+    keep the same observable behavior while the retry implementation becomes shared.
+    """
 
     if attempts < 1:
         raise ValueError("attempts must be at least 1")
@@ -41,20 +53,23 @@ async def download_telegram_file(
             errors.append(RuntimeError("Telegram вернул пустой файл."))
         except asyncio.CancelledError:
             raise
-        except TelegramBadRequest as error:
-            errors.append(error)
-            break
-        except (TelegramNetworkError, TimeoutError, ConnectionError, OSError) as error:
-            errors.append(error)
-            if attempt >= attempts:
+        except Exception as error:
+            if isinstance(error, bad_request_type):
+                errors.append(error)
                 break
-            delay_index = min(attempt - 1, max(0, len(retry_delays) - 1))
-            delay = retry_delays[delay_index] if retry_delays else 0.0
-            if delay > 0:
-                await asyncio.sleep(delay)
-        except TelegramAPIError as error:
-            errors.append(error)
-            break
+            if isinstance(error, network_error_types):
+                errors.append(error)
+                if attempt >= attempts:
+                    break
+                delay_index = min(attempt - 1, max(0, len(retry_delays) - 1))
+                delay = retry_delays[delay_index] if retry_delays else 0.0
+                if delay > 0:
+                    await asyncio.sleep(delay)
+                continue
+            if isinstance(error, api_error_type):
+                errors.append(error)
+                break
+            raise
     if errors:
         raise RuntimeError(f"Не удалось скачать {failure_label}: {errors[-1]}")
     raise RuntimeError("Telegram вернул пустой файл.")
