@@ -151,8 +151,8 @@ jobs:
           trap cleanup EXIT
 
           git cherry-pick --no-commit "$source"
-          git diff --check
-          if git diff --quiet; then
+          git diff --cached --check
+          if git diff --cached --quiet; then
             echo "noop=true" >> "$GITHUB_OUTPUT"
             {
               echo
@@ -164,8 +164,8 @@ jobs:
           fi
 
           echo "noop=false" >> "$GITHUB_OUTPUT"
-          git diff --name-status > maintenance-changed-files.txt
-          git diff --stat > maintenance-diff-stat.txt
+          git diff --cached --name-status > maintenance-changed-files.txt
+          git diff --cached --stat > maintenance-diff-stat.txt
           {
             echo
             echo "### Dry-run plan"
