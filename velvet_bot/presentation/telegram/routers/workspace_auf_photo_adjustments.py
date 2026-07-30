@@ -4,10 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
 from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router
+from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback
 from velvet_bot.presentation.telegram.routers.workspace_auf import (
     AufCallback,
     _callback,
-    _edit_or_answer,
 )
 
 
@@ -56,7 +56,7 @@ async def handle_photo_remove_last(
         return
     remaining = references[:-1]
     await photo_router._save_references(state, remaining)
-    await _edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=(
             "<b>Фото и референсы</b>\n\n"

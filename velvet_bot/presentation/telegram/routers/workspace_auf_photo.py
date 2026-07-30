@@ -26,11 +26,11 @@ from velvet_bot.domains.media_generation import (
     KieModelAlias,
     KieReferenceImage,
 )
+from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback
 from velvet_bot.presentation.telegram.routers.workspace_auf import (
     AufCallback,
     _budget_block_reason,
     _callback,
-    _edit_or_answer,
     _format_rub,
     _format_usd,
     build_auf_root_keyboard,
@@ -388,7 +388,7 @@ async def _show_input(
     text = _input_text(prompt, references)
     keyboard = _input_keyboard(workspace_id)
     if isinstance(event, CallbackQuery):
-        await _edit_or_answer(event, text=text, reply_markup=keyboard)
+        await edit_or_answer_auf_callback(event, text=text, reply_markup=keyboard)
     else:
         await event.answer(text, reply_markup=keyboard)
 
@@ -413,7 +413,7 @@ async def _show_review(
     text = _review_text(prompt, references)
     keyboard = _review_keyboard(workspace_id)
     if isinstance(event, CallbackQuery):
-        await _edit_or_answer(event, text=text, reply_markup=keyboard)
+        await edit_or_answer_auf_callback(event, text=text, reply_markup=keyboard)
     else:
         await event.answer(text, reply_markup=keyboard)
 
@@ -639,7 +639,7 @@ async def _show_models(
         await callback.answer("Сначала подтвердите фото и текст.", show_alert=True)
         return
     await state.set_state(AufPhotoForm.choosing_model)
-    await _edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=(
             "<b>Выберите модель</b>\n\n"
@@ -660,7 +660,7 @@ async def _show_resolution(
 ) -> None:
     workspace_id, _, _ = await _session(state)
     await state.set_state(AufPhotoForm.choosing_resolution)
-    await _edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=(
             f"<b>{escape(model.display_name)}</b>\n\n"
@@ -678,7 +678,7 @@ async def _show_ratios(
 ) -> None:
     workspace_id, _, _ = await _session(state)
     await state.set_state(AufPhotoForm.choosing_aspect_ratio)
-    await _edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=f"<b>{escape(model.display_name)} · соотношение сторон</b>",
         reply_markup=_ratio_keyboard(workspace_id, model),
@@ -703,7 +703,7 @@ async def _show_final(
         return
     await state.set_state(AufPhotoForm.confirming_generation)
     ratio = "как у исходника" if request.aspect_ratio == "auto" else request.aspect_ratio
-    await _edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=(
             "<b>Проверьте перед созданием</b>\n\n"
@@ -771,7 +771,7 @@ async def _enqueue(
         )
     )
     await state.clear()
-    await _edit_or_answer(
+    await edit_or_answer_auf_callback(
         callback,
         text=(
             f"<b>Ауф · {escape(request.model.display_name)}</b>\n\n"
@@ -807,7 +807,7 @@ async def handle_auf_photo_action(
     workspace_id = callback_data.workspace_id
     if action == "cancel":
         await state.clear()
-        await _edit_or_answer(
+        await edit_or_answer_auf_callback(
             callback,
             text="<b>Ауф</b>\n\nГенерация отменена.",
             reply_markup=build_auf_root_keyboard(
@@ -831,7 +831,7 @@ async def handle_auf_photo_action(
             auf_aspect_ratio="",
         )
         await state.set_state(AufPhotoForm.collecting_input)
-        await _edit_or_answer(
+        await edit_or_answer_auf_callback(
             callback,
             text=_input_text("", ()),
             reply_markup=_input_keyboard(workspace_id),
@@ -850,7 +850,7 @@ async def handle_auf_photo_action(
     if action == "photo_edit_refs":
         _, _, references = await _session(state)
         await state.set_state(AufPhotoForm.collecting_input)
-        await _edit_or_answer(
+        await edit_or_answer_auf_callback(
             callback,
             text=(
                 "<b>Фото и референсы</b>\n\n"
@@ -875,7 +875,7 @@ async def handle_auf_photo_action(
         if not sources:
             await callback.answer("Доступные архивы не найдены.", show_alert=True)
             return
-        await _edit_or_answer(
+        await edit_or_answer_auf_callback(
             callback,
             text=(
                 "<b>Откуда взять референсы?</b>\n\n"
@@ -902,7 +902,7 @@ async def handle_auf_photo_action(
                 show_alert=True,
             )
             return
-        await _edit_or_answer(
+        await edit_or_answer_auf_callback(
             callback,
             text=(
                 "<b>Выберите персонажа</b>\n\n"
