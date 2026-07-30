@@ -6,40 +6,7 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-
 jobs:
-  finalize-shared-contracts:
-    if: github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout helper branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/shared-telegram-helpers
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Finalize shared contracts
-        run: python scripts/finalize_shared_contract_migration.py
-
-      - name: Commit finalized contracts
-        run: |
-          if git diff --quiet; then
-            echo "Shared contracts are current."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add velvet_bot docs scripts/shared_contract_inventory.py
-          git commit -m "P3: finalize package shared contracts"
-          git push origin HEAD:agent/shared-telegram-helpers
-
   unit-tests:
     runs-on: ubuntu-latest
     services:
