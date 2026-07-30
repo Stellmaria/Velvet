@@ -31,11 +31,10 @@ ALLOWED_CATEGORIES = {
     "public facade",
 }
 
-# Any root-module addition/removal must deliberately update this baseline. The hash
-# is calculated from sorted file names, so renames cannot quietly masquerade as an
-# unchanged module count.
 ROOT_MODULE_BASELINE_COUNT = 113
-ROOT_MODULE_BASELINE_SHA256 = "pending-ci-baseline"
+ROOT_MODULE_BASELINE_SHA256 = (
+    "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40"
+)
 
 PUBLIC_FACADE_CONTRACTS: dict[str, str] = {
     "access.py": "Stable access-policy import surface backed by velvet_bot.core.access.",
@@ -43,51 +42,45 @@ PUBLIC_FACADE_CONTRACTS: dict[str, str] = {
     "version.py": "Stable package version surface used by runtime and diagnostics.",
 }
 
-WORKER_EXACT = {
-    "ai_job_runtime",
-    "backup_runtime",
-    "discussion_summary_runtime",
-    "krita_supervisor",
-    "local_ai_runtime",
-    "publication_worker",
+CATEGORY_OVERRIDES: dict[str, RootModuleCategory] = {
+    # Application orchestration and operational use cases.
+    "audit": "application",
+    "backup_restore_drill": "application",
+    "backup_service": "application",
+    "error_center": "application",
+    "owner_menu": "application",
+    "topics": "application",
+    # Infrastructure and external/runtime boundaries.
+    "database": "infrastructure",
+    "image_preview": "infrastructure",
+    "media_preview_persistence": "infrastructure",
+    "ollama_vision": "infrastructure",
+    "protected_bot": "infrastructure",
+    "runtime_log_hotfixes": "infrastructure",
+    "runtime_stability": "infrastructure",
+    "supervisor_client": "infrastructure",
+    # Explicit presentation compatibility and safe-edit helpers.
+    "owner_menu_compat": "presentation",
+    "safe_analytics_edit": "presentation",
+    # Domain modules whose historical names do not use the standard prefixes.
+    "channel_analytics": "domain",
+    "palette_composition_analysis": "domain",
+    "palette_composition_reports": "domain",
+    "post_classification": "domain",
+    "prompt_result_comparison": "domain",
+    "prompt_result_reports": "domain",
+    # Periodic/background runtime entry points.
+    "ai_job_runtime": "worker",
+    "backup_runtime": "worker",
+    "discussion_summary_runtime": "worker",
+    "krita_supervisor": "worker",
+    "local_ai_runtime": "worker",
+    "publication_worker": "worker",
 }
 
-INFRASTRUCTURE_EXACT = {
-    "database",
-    "image_preview",
-    "media_preview_persistence",
-    "ollama_vision",
-    "protected_bot",
-    "runtime_log_hotfixes",
-    "runtime_stability",
-    "supervisor_client",
-}
-
-APPLICATION_EXACT = {
-    "audit",
-    "error_center",
-    "owner_menu",
-    "topics",
-}
-
-PRESENTATION_SUFFIXES = (
-    "_callbacks",
-    "_dashboard",
-    "_preview",
-    "_ui",
-)
-
-WORKER_SUFFIXES = (
-    "_runtime",
-    "_supervisor",
-    "_worker",
-)
-
-INFRASTRUCTURE_SUFFIXES = (
-    "_client",
-    "_persistence",
-)
-
+WORKER_SUFFIXES = ("_runtime", "_supervisor", "_worker")
+PRESENTATION_SUFFIXES = ("_callbacks", "_dashboard", "_preview", "_ui")
+INFRASTRUCTURE_SUFFIXES = ("_client", "_persistence")
 APPLICATION_SUFFIXES = (
     "_actions",
     "_catalog",
@@ -101,7 +94,6 @@ APPLICATION_SUFFIXES = (
     "_validation",
     "_workflow",
 )
-
 DOMAIN_PREFIXES = (
     "ai_",
     "alias_",
@@ -149,22 +141,24 @@ def _root_paths() -> tuple[Path, ...]:
 
 
 def _baseline_hash(paths: tuple[Path, ...]) -> str:
-    payload = "\n".join(path.name for path in paths).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+    names = "\n".join(path.name for path in paths)
+    return hashlib.sha256(names.encode("utf-8")).hexdigest()
 
 
 def _classify(path: Path) -> tuple[str, str]:
-    name = path.name
-    stem = path.stem
-    if name in PUBLIC_FACADE_CONTRACTS:
+    if path.name in PUBLIC_FACADE_CONTRACTS:
         return "public facade", "explicit-public-contract"
-    if stem in WORKER_EXACT or stem.endswith(WORKER_SUFFIXES):
+    stem = path.stem
+    override = CATEGORY_OVERRIDES.get(stem)
+    if override is not None:
+        return override, "explicit-root-module-decision"
+    if stem.endswith(WORKER_SUFFIXES):
         return "worker", "worker-runtime-name"
     if stem.endswith(PRESENTATION_SUFFIXES):
         return "presentation", "presentation-name"
-    if stem in INFRASTRUCTURE_EXACT or stem.endswith(INFRASTRUCTURE_SUFFIXES):
+    if stem.endswith(INFRASTRUCTURE_SUFFIXES):
         return "infrastructure", "infrastructure-name"
-    if stem in APPLICATION_EXACT or stem.endswith(APPLICATION_SUFFIXES):
+    if stem.endswith(APPLICATION_SUFFIXES):
         return "application", "application-name"
     if stem.startswith(DOMAIN_PREFIXES):
         return "domain", "approved-domain-prefix"
@@ -194,10 +188,6 @@ def _is_main_guard(node: ast.If) -> bool:
     )
 
 
-def _is_type_checking_guard(node: ast.If) -> bool:
-    return isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
-
-
 def _side_effects(tree: ast.Module) -> tuple[str, ...]:
     effects: set[str] = set()
     for node in tree.body:
@@ -212,7 +202,8 @@ def _side_effects(tree: ast.Module) -> tuple[str, ...]:
                 if isinstance(target, ast.Attribute):
                     effects.add(f"attribute-assignment:{_dotted_name(target)}")
         elif isinstance(node, ast.If):
-            if not _is_main_guard(node) and not _is_type_checking_guard(node):
+            is_type_checking = isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
+            if not _is_main_guard(node) and not is_type_checking:
                 effects.add("top-level-control-flow:if")
         elif isinstance(node, ast.Try):
             effects.add("top-level-control-flow:try")
@@ -237,8 +228,7 @@ def _imported_root_modules(tree: ast.Module) -> set[str]:
             if len(parts) == 2 and parts[0] == "velvet_bot":
                 imported.add(module)
             elif module == "velvet_bot":
-                for alias in node.names:
-                    imported.add(f"velvet_bot.{alias.name}")
+                imported.update(f"velvet_bot.{alias.name}" for alias in node.names)
     return imported
 
 
