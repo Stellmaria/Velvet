@@ -67,5 +67,5 @@ SQL-миграций нет. Callback data, FSM states и публичный и�
 
 ### PR и commit
 
-- PR: будет создан после публикации ветки.
+- PR: `#470`.
 - Commit: `3aac5182687f50fb270725eee5584ebb45e55651` и последующие commits ветки.
