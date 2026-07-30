@@ -1,33 +1,55 @@
 from __future__ import annotations
 
-from velvet_bot.application.media_tasks import task_result_urls
-
-from velvet_bot.application.workspace_tasks import get_owned_success_task
-
-from velvet_bot.application.media_tasks import task_payload_mapping
-from velvet_bot.domains.media_generation.model_catalog import (
-    media_model_display_name,
-)
-
 import asyncio
 import importlib
-import json
 import logging
 from collections.abc import Awaitable, Callable, Mapping
+from html import escape
 from typing import Any
 from uuid import UUID
 
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from velvet_bot.application.media_tasks import task_payload_mapping, task_result_urls
+from velvet_bot.application.workspace_tasks import get_owned_success_task
 from velvet_bot.core.config.kie import load_kie_settings
+from velvet_bot.domains.auf_wallet import format_auf_units
+from velvet_bot.domains.media_generation.model_catalog import media_model_display_name
 from velvet_bot.domains.media_generation.models import KieTaskState
 from velvet_bot.infrastructure.ai import KieClient
+from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
+from velvet_bot.presentation.telegram.routers.workspace_auf_video import edit_or_answer
 
 logger = logging.getLogger(__name__)
 _INSTALLED = False
 _Redeliver = Callable[..., Awaitable[None]]
 _ORIGINAL_REDELIVER: _Redeliver | None = None
 _DELIVERY_ERRORS = (RuntimeError, ValueError, OSError, TypeError, AttributeError)
+_VIDEO_MODELS = frozenset(
+    {
+        "grok_imagine_video",
+        "grok_imagine_video_15",
+        "seedance_15_pro_video",
+        "wan_26_image_to_video",
+    }
+)
+_INPUT_MODE_NAMES = {
+    "text": "Только текст",
+    "photo_text": "Фото + текст",
+}
+_TASK_STATUS = {
+    "queued": "⏳ в очереди",
+    "running": "⚙️ выполняется",
+    "success": "✅ готово",
+    "error": "❌ ошибка",
+    "cancelled": "🚫 отменено",
+}
+_CHARGE_STATUS = {
+    "reserved": "зарезервировано",
+    "captured": "списано",
+    "refunded": "возвращено после ошибки",
+    "released": "возвращено после отмены",
+}
 
 
 def provider_task_id(
@@ -47,7 +69,7 @@ def provider_task_id(
     return None
 
 
-async def _load_provider_urls(provider_task_id: str) -> tuple[str, ...]:
+async def _load_provider_urls(provider_task_id_value: str) -> tuple[str, ...]:
     settings = load_kie_settings()
     if not settings.enabled or settings.api_key is None:
         raise RuntimeError("Провайдер генерации выключен на сервере.")
@@ -62,7 +84,7 @@ async def _load_provider_urls(provider_task_id: str) -> tuple[str, ...]:
         poll_interval_seconds=settings.poll_interval_seconds,
         task_timeout_seconds=settings.task_timeout_seconds,
     )
-    record = await client.get_task(provider_task_id)
+    record = await client.get_task(provider_task_id_value)
     if record.state is not KieTaskState.SUCCESS:
         raise RuntimeError(
             "Провайдер пока не подтверждает готовый результат: "
@@ -75,7 +97,7 @@ async def _persist_provider_urls(
     database: Any,
     *,
     task_id: UUID,
-    provider_task_id: str,
+    provider_task_id_value: str,
     urls: tuple[str, ...],
 ) -> None:
     async with database.acquire() as connection:
@@ -91,33 +113,114 @@ async def _persist_provider_urls(
             WHERE id = $1::UUID
             """,
             task_id,
-            provider_task_id,
+            provider_task_id_value,
             list(urls),
         )
 
 
-def delivery_buttons_for_all_success(
-    *,
-    portal: Any,
-    page: Any,
-    results: Any,
-    workspace_id: int,
-) -> list[list[InlineKeyboardButton]]:
-    del results
-    recovery = importlib.import_module(
-        "velvet_bot.app.auf_result_delivery_recovery"
+def _integer(value: object) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def task_card_text(*, row: Any, offset: int) -> str:
+    payload = task_payload_mapping(row["payload"])
+    request = task_payload_mapping(payload.get("request"))
+    model_alias = str(request.get("model") or "").strip()
+    model = media_model_display_name(model_alias)
+    status_raw = str(row["status"])
+    status = _TASK_STATUS.get(status_raw, status_raw)
+    media_type = "Видео" if model_alias in _VIDEO_MODELS else "Изображение"
+    mode_raw = str(request.get("input_mode") or "").strip()
+    mode = _INPUT_MODE_NAMES.get(mode_raw, mode_raw.replace("_", " ").title())
+    resolution = str(request.get("resolution") or "").strip()
+    created_at = row["created_at"].strftime("%d.%m %H:%M")
+    task_id = str(row["id"])
+    quoted_units = _integer(row["quoted_units"])
+    charge_status_raw = str(row["charge_status"] or "")
+    charge_status = _CHARGE_STATUS.get(
+        charge_status_raw,
+        charge_status_raw or "учтено",
     )
+
+    lines = [
+        "<b>🧾 Мои задачи Ауф</b>",
+        (
+            "<i>Последняя задача</i>"
+            if offset == 0
+            else f"<i>Задача {offset + 1} в истории</i>"
+        ),
+        "",
+        f"<b>{escape(model)}</b>",
+        f"Статус: {escape(status)}",
+        f"Тип: <b>{media_type}</b>",
+    ]
+    if mode:
+        lines.append(f"Режим: <b>{escape(mode)}</b>")
+    if resolution:
+        lines.append(f"Качество: <b>{escape(resolution)}</b>")
+    lines.extend(
+        [
+            f"Создана: <b>{created_at}</b>",
+            f"ID: <code>{escape(task_id[:8])}</code>",
+            "",
+        ]
+    )
+    if quoted_units > 0:
+        lines.extend(
+            [
+                f"Стоимость: <b>{format_auf_units(quoted_units)}</b>",
+                f"Расчёт: <b>{escape(charge_status)}</b>",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "Тип учёта: <b>личная задача</b>",
+                "Списаний Ауф: <b>нет</b>",
+            ]
+        )
+
+    lines.append("")
+    if status_raw == "success":
+        lines.extend(
+            [
+                "Нажмите <b>«Получить результат»</b>, чтобы бот повторно "
+                "отправил уже готовый файл.",
+                "<i>Новая генерация и новое списание не запускаются.</i>",
+            ]
+        )
+    elif status_raw in {"queued", "running"}:
+        lines.append("Задача ещё выполняется. Нажмите «Обновить карточку» позже.")
+    else:
+        lines.append("Для этой задачи готового результата нет.")
+    return "\n".join(lines)
+
+
+def _task_history_callback(*, workspace_id: int, offset: int) -> str:
+    return AufCallback(
+        action="wallet_tasks",
+        workspace_id=int(workspace_id),
+        offset=max(0, int(offset)),
+    ).pack()
+
+
+def task_card_keyboard(
+    *,
+    row: Any | None,
+    workspace_id: int,
+    offset: int,
+    has_older: bool,
+) -> InlineKeyboardMarkup:
+    recovery = importlib.import_module("velvet_bot.app.auf_result_delivery_recovery")
     rows: list[list[InlineKeyboardButton]] = []
-    for row in page:
-        if str(row["status"]) != "success":
-            continue
-        request = task_payload_mapping(task_payload_mapping(row["payload"]).get("request"))
-        model_alias = str(request.get("model") or "").strip()
-        model = media_model_display_name(model_alias, fallback="Результат")
+    if row is not None and str(row["status"]) == "success":
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"📤 Доставить · {model}"[:60],
+                    text="📥 Получить результат",
                     callback_data=recovery.delivery_callback(
                         workspace_id=workspace_id,
                         task_id=row["id"],
@@ -125,7 +228,90 @@ def delivery_buttons_for_all_success(
                 )
             ]
         )
-    return rows
+
+    navigation: list[InlineKeyboardButton] = []
+    if offset > 0:
+        navigation.append(
+            InlineKeyboardButton(
+                text="← Новее",
+                callback_data=_task_history_callback(
+                    workspace_id=workspace_id,
+                    offset=offset - 1,
+                ),
+            )
+        )
+    if has_older:
+        navigation.append(
+            InlineKeyboardButton(
+                text="Старее →",
+                callback_data=_task_history_callback(
+                    workspace_id=workspace_id,
+                    offset=offset + 1,
+                ),
+            )
+        )
+    if navigation:
+        rows.append(navigation)
+
+    rows.extend(
+        [
+            [
+                InlineKeyboardButton(
+                    text="🔄 Обновить карточку",
+                    callback_data=_task_history_callback(
+                        workspace_id=workspace_id,
+                        offset=offset,
+                    ),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="↩️ Кошелёк",
+                    callback_data=AufCallback(
+                        action="wallet",
+                        workspace_id=workspace_id,
+                    ).pack(),
+                )
+            ],
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def render_user_task_card(
+    callback: Any,
+    *,
+    state: Any,
+    database: Any,
+    workspace_id: int,
+    offset: int,
+) -> None:
+    portal = importlib.import_module("velvet_bot.app.auf_user_portal_install")
+    await state.clear()
+    normalized_offset = max(0, int(offset))
+    history = await portal.load_user_tasks(
+        database,
+        workspace_id=workspace_id,
+        actor_user_id=callback.from_user.id,
+        offset=normalized_offset,
+    )
+    row = history[0] if history else None
+    has_older = len(history) > 1
+    text = (
+        task_card_text(row=row, offset=normalized_offset)
+        if row is not None
+        else "<b>🧾 Мои задачи Ауф</b>\n\nЗадач пока нет."
+    )
+    await edit_or_answer(
+        callback,
+        text=text,
+        reply_markup=task_card_keyboard(
+            row=row,
+            workspace_id=workspace_id,
+            offset=normalized_offset,
+            has_older=has_older,
+        ),
+    )
 
 
 def _original_redeliver() -> _Redeliver:
@@ -187,7 +373,7 @@ async def _redeliver_with_provider_recovery(
         await _persist_provider_urls(
             database,
             task_id=task_id,
-            provider_task_id=resolved_provider_task_id,
+            provider_task_id_value=resolved_provider_task_id,
             urls=urls,
         )
     except asyncio.CancelledError:
@@ -218,14 +404,13 @@ def install_auf_active_delivery_fix() -> None:
     if _INSTALLED:
         return
 
-    recovery = importlib.import_module(
-        "velvet_bot.app.auf_result_delivery_recovery"
-    )
+    recovery = importlib.import_module("velvet_bot.app.auf_result_delivery_recovery")
+    portal = importlib.import_module("velvet_bot.app.auf_user_portal_install")
     workers = importlib.import_module("velvet_bot.app.workers")
 
     _ORIGINAL_REDELIVER = recovery.get_redelivery_handler()
     recovery.install_redelivery_handler(_redeliver_with_provider_recovery)
-    recovery.install_task_delivery_buttons(delivery_buttons_for_all_success)
+    portal.install_user_tasks_renderer(render_user_task_card)
 
     active_worker = workers.KieGenerationWorker
     active_worker.install_delivery_handler(recovery.deliver_record_with_recovery)
@@ -237,7 +422,9 @@ def install_auf_active_delivery_fix() -> None:
 
 
 __all__ = (
-    "delivery_buttons_for_all_success",
     "install_auf_active_delivery_fix",
     "provider_task_id",
+    "render_user_task_card",
+    "task_card_keyboard",
+    "task_card_text",
 )
