@@ -1,19 +1,19 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **621**
-- Production LOC: **133305**
+- Production modules: **628**
+- Production LOC: **134031**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **41**
 - Startup installer stages: **28**
-- Registered package violations: **539**
-- Registered exemptions: **539**
+- Registered package violations: **546**
+- Registered exemptions: **546**
 
 ## Layers
 
 - `application`: **19** modules
-- `composition`: **56** modules
+- `composition`: **63** modules
 - `core`: **7** modules
 - `domain`: **175** modules
 - `infrastructure`: **25** modules
@@ -56,7 +56,7 @@
 22. `install_auf_result_delivery_recovery` from `velvet_bot.app.auf_result_delivery_recovery.install_auf_result_delivery_recovery`; patched symbols: none detected.
 23. `install_auf_active_delivery_fix` from `velvet_bot.app.auf_active_delivery_fix.install_auf_active_delivery_fix`; patched symbols: none detected.
 24. `install_auf_charged_queue` from `velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue`; patched symbols: none detected.
-25. `install_auf_generation_receipts` from `velvet_bot.app.auf_generation_receipt_install.install_auf_generation_receipts`; patched symbols: none detected.
+25. `install_auf_generation_receipts` from `install_generation_receipts_with_owner_cost_privacy`; patched symbols: none detected.
 26. `install_krita_remote_worker` from `velvet_bot.app.krita_remote_install.install_krita_remote_worker`; patched symbols: `bootstrap._close_application_resources`, `bootstrap.build_worker_manager`, `workers_module.build_worker_manager`.
 27. `install_auf_grs_brand` from `velvet_bot.app.auf_grs_brand_install.install_auf_grs_brand`; patched symbols: `grs_resilience._sanitize_auf_text`, `grs_resilience._sanitize_meow_text`.
 28. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
@@ -66,17 +66,17 @@
 - `database-acquire-outside-persistence`: **89**
 - `domain-aiogram-import`: **19**
 - `domain-layer-import`: **3**
-- `dynamic-import`: **19**
+- `dynamic-import`: **20**
 - `foreign-assignment`: **39**
-- `installed-sentinel`: **42**
+- `installed-sentinel`: **43**
 - `installer-like-module`: **24**
-- `method-assign-ignore`: **9**
-- `monolithic-function`: **25**
+- `method-assign-ignore`: **10**
+- `monolithic-function`: **24**
 - `monolithic-module-loc`: **17**
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **108**
-- `type-ignore-usage`: **17**
-- `typing-any-usage`: **109**
+- `type-ignore-usage`: **18**
+- `typing-any-usage`: **113**
 
 ## Largest modules
 
