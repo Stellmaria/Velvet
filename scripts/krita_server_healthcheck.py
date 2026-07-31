@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import os
 import sys
-import time
 from pathlib import Path
 
 
@@ -12,36 +10,51 @@ def _fail(message: str) -> int:
     return 1
 
 
+def _krita_is_running() -> bool:
+    proc = Path("/proc")
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            command = (entry / "cmdline").read_bytes().replace(b"\0", b" ")
+        except (FileNotFoundError, PermissionError, ProcessLookupError, OSError):
+            continue
+        if b"/usr/bin/krita" in command or command.strip().startswith(b"krita "):
+            return True
+    return False
+
+
 def main() -> int:
+    if not _krita_is_running():
+        return _fail("Krita process is not running")
+
+    home = Path(os.getenv("HOME", "/home/velvet"))
+    config = home / ".config" / "kritarc"
+    desktop = home / ".local" / "share" / "krita" / "pykrita" / "velvet_logo.desktop"
+    module = home / ".local" / "share" / "krita" / "pykrita" / "velvet_logo" / "__init__.py"
+
+    try:
+        config_text = config.read_text(encoding="utf-8")
+    except OSError as error:
+        return _fail(f"Krita config is unavailable: {error}")
+    if "enable_velvet_logo=true" not in config_text.replace(" ", "").casefold():
+        return _fail("Velvet Krita plugin is not enabled")
+    if not desktop.is_file() or not module.is_file():
+        return _fail("Velvet Krita plugin files are missing")
+
     bridge_dir = Path(os.getenv("KRITA_BRIDGE_DIR", "/app/runtime/krita"))
-    heartbeat_path = bridge_dir / "krita-heartbeat.json"
-    try:
-        max_age = max(
-            5.0,
-            float(os.getenv("KRITA_SERVER_HEARTBEAT_MAX_AGE_SECONDS", "20")),
-        )
-    except ValueError:
-        return _fail("KRITA_SERVER_HEARTBEAT_MAX_AGE_SECONDS is invalid")
+    required = ("requests", "responses", "outputs", "sources", "previews", "assets")
+    for name in required:
+        path = bridge_dir / name
+        if not path.is_dir():
+            return _fail(f"Krita bridge directory is missing: {path}")
 
+    probe = bridge_dir / ".krita-healthcheck"
     try:
-        payload = json.loads(heartbeat_path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return _fail(f"Krita heartbeat is missing: {heartbeat_path}")
-    except (OSError, json.JSONDecodeError) as error:
-        return _fail(f"Krita heartbeat is unreadable: {error}")
-
-    if payload.get("plugin") != "velvet_logo":
-        return _fail("Unexpected Krita heartbeat plugin")
-    try:
-        updated_epoch = float(payload["updated_epoch"])
-    except (KeyError, TypeError, ValueError):
-        return _fail("Krita heartbeat has no valid updated_epoch")
-
-    age = time.time() - updated_epoch
-    if age < -5:
-        return _fail(f"Krita heartbeat is from the future: {age:.1f}s")
-    if age > max_age:
-        return _fail(f"Krita heartbeat is stale: {age:.1f}s > {max_age:.1f}s")
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+    except OSError as error:
+        return _fail(f"Krita bridge is not writable: {error}")
     return 0
 
 
