@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import sys
 import unittest
 from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from tests import test_package_architecture_inventory
 from tests import test_telegram_navigation_inventory
 
 
-ROOT = Path(__file__).resolve().parents[1]
 FAST_PACKAGE_INVENTORY = ROOT / "scripts" / "inventory_package_architecture_fast.py"
 
 
