@@ -1,151 +1,259 @@
 name: branch maintenance
 
 on:
-  push:
-    branches:
-      - agent/workspace-owner-media-instant-retry-photo-routing
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Deterministic maintenance action
+        required: true
+        type: choice
+        options:
+          - cherry-pick
+      target_branch:
+        description: Existing non-protected target branch
+        required: true
+        type: string
+      expected_target_sha:
+        description: Exact 40-character SHA currently expected at target_branch
+        required: true
+        type: string
+      source_commit_sha:
+        description: Exact reviewed single-parent commit to apply
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: pr492-inventory-refresh
+  group: branch-maintenance-${{ inputs.action }}-${{ inputs.target_branch }}
   cancel-in-progress: false
 
 jobs:
-  refresh-pr492:
+  maintain:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: velvet_test
+          POSTGRES_USER: velvet
+          POSTGRES_PASSWORD: velvet_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U velvet -d velvet_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://velvet:velvet_test_password@localhost:5432/velvet_test
+      MAINTENANCE_ACTION: ${{ inputs.action }}
+      TARGET_BRANCH: ${{ inputs.target_branch }}
+      EXPECTED_TARGET_SHA: ${{ inputs.expected_target_sha }}
+      SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
     steps:
-      - name: Checkout PR branch
+      - name: Checkout audit base
         uses: actions/checkout@v4
         with:
-          ref: agent/workspace-owner-media-instant-retry-photo-routing
           fetch-depth: 0
 
+      - name: Validate immutable request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          action="$MAINTENANCE_ACTION"
+          target="$TARGET_BRANCH"
+          expected="${EXPECTED_TARGET_SHA,,}"
+          source="${SOURCE_COMMIT_SHA,,}"
+
+          case "$action" in
+            cherry-pick) ;;
+            *)
+              echo "Unsupported maintenance action: $action"
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "$target" =~ ^(agent|feature|fix|chore|maintenance)/[A-Za-z0-9._/-]+$ ]]; then
+            echo "Target branch is outside the maintenance allowlist: $target"
+            exit 1
+          fi
+          if [[ "$target" == "main" || "$target" == "master" || "$target" == *".."* || "$target" == *"//"* || "$target" == */ ]]; then
+            echo "Unsafe target branch: $target"
+            exit 1
+          fi
+          if [[ ! "$expected" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "expected_target_sha must be an exact 40-character commit SHA"
+            exit 1
+          fi
+          if [[ ! "$source" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "source_commit_sha must be an exact 40-character commit SHA"
+            exit 1
+          fi
+
+          git fetch --no-tags origin "refs/heads/${target}:refs/remotes/origin/${target}"
+          git fetch --no-tags origin "$source"
+          target_ref="refs/remotes/origin/${target}"
+          actual="$(git rev-parse "$target_ref")"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "Target moved: expected $expected, actual $actual"
+            exit 1
+          fi
+          git cat-file -e "${source}^{commit}"
+          parent_count="$(git rev-list --parents -n 1 "$source" | awk '{print NF - 1}')"
+          if [[ "$parent_count" -ne 1 ]]; then
+            echo "Maintenance accepts one reviewed single-parent commit, got $parent_count parents"
+            exit 1
+          fi
+
+          echo "target_ref=$target_ref" >> "$GITHUB_OUTPUT"
+          echo "target_sha=$actual" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$source" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Branch maintenance request"
+            echo
+            echo "- Action: \`$action\`"
+            echo "- Target branch: \`$target\`"
+            echo "- Expected target SHA: \`$actual\`"
+            echo "- Source commit: \`$source\`"
+            echo "- Source subject: $(git log -1 --format=%s "$source")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build dry-run plan
+        id: plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_ref="${{ steps.request.outputs.target_ref }}"
+          source="${{ steps.request.outputs.source_sha }}"
+
+          if git merge-base --is-ancestor "$source" "$target_ref"; then
+            echo "noop=true" >> "$GITHUB_OUTPUT"
+            {
+              echo
+              echo "### Plan"
+              echo
+              echo "No write is required: source commit is already an ancestor of the target."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git checkout --detach "$target_ref"
+          cleanup() {
+            if [[ -f .git/CHERRY_PICK_HEAD ]]; then
+              git cherry-pick --abort || true
+            fi
+          }
+          trap cleanup EXIT
+
+          git cherry-pick --no-commit "$source"
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "noop=true" >> "$GITHUB_OUTPUT"
+            {
+              echo
+              echo "### Plan"
+              echo
+              echo "No write is required: the reviewed change is already present as an equivalent patch."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "noop=false" >> "$GITHUB_OUTPUT"
+          git diff --cached --name-status > maintenance-changed-files.txt
+          git diff --cached --stat > maintenance-diff-stat.txt
+          {
+            echo
+            echo "### Dry-run plan"
+            echo
+            echo "Changed files:"
+            echo '```text'
+            cat maintenance-changed-files.txt
+            echo '```'
+            echo
+            echo "Diff summary:"
+            echo '```text'
+            cat maintenance-diff-stat.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          trap - EXIT
+
       - name: Set up Python
+        if: steps.plan.outputs.noop != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
-        with:
-          version: "0.11.16"
-          enable-cache: true
-          cache-dependency-glob: requirements.txt
+          cache: pip
 
       - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+        if: steps.plan.outputs.noop != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
-      - name: Merge current main and restore workflow set
+      - name: Run complete test suite
+        if: steps.plan.outputs.noop != 'true'
+        shell: bash
+        run: |
+          set +e
+          python -m unittest discover -s tests -v > maintenance-test-output.txt 2>&1
+          status=$?
+          cat maintenance-test-output.txt
+          {
+            echo
+            echo "### Tests"
+            echo
+            if [[ "$status" -eq 0 ]]; then
+              echo "Complete unit test suite passed."
+            else
+              echo "Complete unit test suite failed; target branch was not written."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Commit and push exact result
+        if: steps.plan.outputs.noop != 'true'
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch --no-tags origin main
-          git merge --no-ff --no-commit origin/main
-          git checkout origin/main -- .github/workflows/branch-maintenance.yml
-          rm -f .github/workflows/pr492-refresh.yml
-
-      - name: Refresh generated inventories
-        shell: bash
-        run: |
-          set -euo pipefail
-          python scripts/update_p2_stability_inventory.py \
-            --label p3-package-shared-contracts \
-            --schema-version 74
-          python scripts/inventory_repository_layout.py \
-            --write \
-            --label p3e-repository-layout-complete
-          python scripts/telegram_navigation_inventory.py \
-            --root velvet_bot \
-            --markdown docs/generated/telegram_navigation_inventory.md
-          python scripts/inventory_package_architecture.py \
-            --write \
-            --bootstrap-exemptions \
-            --label p1-package-architecture-baseline
-
-      - name: Refresh package architecture expectations
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json
-          import re
-          from pathlib import Path
-
-          inventory = json.loads(
-              Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8")
-          )
-          path = Path("tests/test_package_architecture_inventory.py")
-          text = path.read_text(encoding="utf-8")
-          module_count = int(inventory["production_module_count"])
-          production_loc = int(inventory["production_loc"])
-          violation_count = int(inventory["violation_count"])
-
-          replacements = (
-              (
-                  r'self\.assertEqual\(\d+, self\.inventory\["production_module_count"\]\)',
-                  f'self.assertEqual({module_count}, self.inventory["production_module_count"])',
-              ),
-              (
-                  r'self\.assertEqual\([\d_]+, self\.inventory\["production_loc"\]\)',
-                  f'self.assertEqual({production_loc:_}, self.inventory["production_loc"])',
-              ),
-              (
-                  r'self\.assertEqual\(\d+, self\.inventory\["violation_count"\]\)',
-                  f'self.assertEqual({violation_count}, self.inventory["violation_count"])',
-              ),
-              (
-                  r'Production modules: \*\*\d+\*\*',
-                  f'Production modules: **{module_count}**',
-              ),
-              (
-                  r'Production LOC: \*\*\d+\*\*',
-                  f'Production LOC: **{production_loc}**',
-              ),
-              (
-                  r'Registered package violations: \*\*\d+\*\*',
-                  f'Registered package violations: **{violation_count}**',
-              ),
-              (
-                  r'Registered exemptions: \*\*\d+\*\*',
-                  f'Registered exemptions: **{violation_count}**',
-              ),
-          )
-          for pattern, replacement in replacements:
-              text, count = re.subn(pattern, replacement, text, count=1)
-              if count != 1:
-                  raise SystemExit(
-                      f"expected exactly one replacement for {pattern!r}, got {count}"
-                  )
-          path.write_text(text, encoding="utf-8")
-          PY
-
-      - name: Verify preflight and targeted regressions
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m compileall -q main.py velvet_bot scripts tests
-          python scripts/ci_preflight.py
-          python -m unittest -v \
-            tests.test_p2_stability_inventory \
-            tests.test_p2l_discussion_middleware_boundary \
-            tests.test_p3e_repository_layout_inventory \
-            tests.test_telegram_navigation_inventory \
-            tests.test_package_architecture_inventory \
-            tests.test_workspace_owner_generation_hotfix
-
-      - name: Commit and push refreshed PR
-        shell: bash
-        run: |
-          set -euo pipefail
-          git add -A
-          git diff --cached --check
-          if git diff --cached --quiet; then
-            echo "No changes were generated"
+          target="$TARGET_BRANCH"
+          expected="${{ steps.request.outputs.target_sha }}"
+          source="${{ steps.request.outputs.source_sha }}"
+          latest="$(git ls-remote --heads origin "refs/heads/${target}" | awk '{print $1}')"
+          if [[ "$latest" != "$expected" ]]; then
+            echo "Target moved during validation: expected $expected, actual $latest"
             exit 1
           fi
-          git commit -m "Merge main and refresh generated inventories for PR 492"
-          git push origin HEAD:refs/heads/agent/workspace-owner-media-instant-retry-photo-routing
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          subject="$(git log -1 --format=%s "$source")"
+          git commit \
+            -m "maintenance(${target}): ${subject}" \
+            -m "Source commit: ${source}" \
+            -m "Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          result="$(git rev-parse HEAD)"
+          git push origin "HEAD:refs/heads/${target}"
+          {
+            echo
+            echo "### Result"
+            echo
+            echo "- Resulting commit: \`$result\`"
+            echo "- Push: regular fast-forward push, no force"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload maintenance evidence
+        if: always() && steps.plan.outputs.noop != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch-maintenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            maintenance-changed-files.txt
+            maintenance-diff-stat.txt
+            maintenance-test-output.txt
+          if-no-files-found: warn
+          retention-days: 7
