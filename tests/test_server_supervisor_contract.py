@@ -107,8 +107,14 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("secrets.token_urlsafe(48)", self.installer)
         self.assertIn("systemctl enable --now velvet-server-supervisor.service", self.installer)
         self.assertIn("systemctl reload velvet-compose.service", self.installer)
-        self.assertNotIn('install -d -m 0755 -o velvet -g velvet \\\n  "$data_dir/runtime"', self.installer)
-        self.assertNotIn('install -d -m 0750 -o velvet -g velvet "$data_dir/logs"', self.installer)
+        self.assertNotIn(
+            "install -d -m 0755 -o velvet -g velvet",
+            self.installer,
+        )
+        self.assertNotIn(
+            "install -d -m 0750 -o velvet -g velvet",
+            self.installer,
+        )
 
     def test_proxy_forwards_to_unix_socket_without_auth_secrets(self) -> None:
         self.assertIn("asyncio.open_unix_connection", self.proxy)
