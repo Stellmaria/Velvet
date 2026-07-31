@@ -96,8 +96,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+    # s6-overlay starts as root only long enough to remap the hermes UID/GID,
+    # chown /opt/data and drop privileges. Keep every other capability removed.
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     security_opt:
       - no-new-privileges:true
     networks:
