@@ -5,15 +5,20 @@ on:
   pull_request:
     paths:
       - "Dockerfile"
+      - "Dockerfile.krita-server"
       - ".dockerignore"
       - "docker-compose.yml"
+      - "docker-compose.server.yml"
       - ".env.example"
+      - ".env.server.example"
       - ".env.hermes.example"
       - "deploy/**"
+      - "tools/krita/**"
       - "requirements.txt"
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
+      - "scripts/krita_server_healthcheck.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
   push:
@@ -21,22 +26,27 @@ on:
       - main
     paths:
       - "Dockerfile"
+      - "Dockerfile.krita-server"
       - ".dockerignore"
       - "docker-compose.yml"
+      - "docker-compose.server.yml"
       - ".env.example"
+      - ".env.server.example"
       - ".env.hermes.example"
       - "deploy/**"
+      - "tools/krita/**"
       - "requirements.txt"
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
+      - "scripts/krita_server_healthcheck.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,15 +65,39 @@ jobs:
           AI_VISION_ENABLED=false
           AI_TEXT_ENABLED=false
           EOF
+          cat > .env.server <<'EOF'
+          VELVET_DATA_DIR=/tmp/velvet-data
+          VELVET_IMAGE=velvet-bot:ci
+          POSTGRES_IMAGE=postgres:16-alpine
+          POSTGRES_DB=velvet
+          POSTGRES_USER=velvet
+          POSTGRES_PASSWORD=test_password
+          DATABASE_URL=postgresql://velvet:test_password@postgres:5432/velvet
+          BOT_TOKEN=test_token
+          ALLOWED_USER_IDS=1
+          KRITA_WATERMARK_ENABLED=true
+          KRITA_REMOTE_WORKER_ENABLED=false
+          KRITA_BRIDGE_DIR=/app/runtime/krita
+          EOF
           cp .env.hermes.example .env.hermes
 
       - name: Validate deployment shell
-        run: bash -n deploy/server/deploy.sh
+        run: |
+          bash -n deploy/server/deploy.sh
+          bash -n deploy/server/install-krita-server.sh
+          bash -n deploy/server/krita-smoke.sh
+          bash -n deploy/server/wait-compose-health.sh
+          bash -n deploy/krita-server/entrypoint.sh
 
       - name: Validate Docker Compose
         run: |
           docker compose config --quiet
           docker compose --profile agent config --quiet
+          docker compose --env-file .env.server -f docker-compose.server.yml config --quiet
+          docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark config --quiet
 
       - name: Build Velvet image
         run: docker build --tag velvet-bot:ci .
+
+      - name: Build Krita server image
+        run: docker build --file Dockerfile.krita-server --tag velvet-krita-server:ci .
