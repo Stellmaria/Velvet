@@ -116,8 +116,10 @@ Fine-grained GitHub token для Velvet ограничивается репоз�
 
 ## Preflight и запуск
 
+Hermes может атомарно переписать runtime `config.yaml` под UID контейнера во время миграции схемы. Поэтому ручной preflight и systemd `ExecStartPre` читают runtime metadata с root-доступом, а сами Compose-команды и gateway продолжают выполняться от пользователя `velvet`.
+
 ```bash
-sudo -u velvet \
+sudo env \
   HERMES_CODERS_ROOT=/srv/hermes-coders \
   python3 /srv/velvet/deploy/hermes-coders/preflight.py
 
