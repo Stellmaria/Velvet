@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - fix/owner-cost-and-public-attempt-privacy
+      - ci/pr493-run-base
 
 jobs:
   unit-tests:
