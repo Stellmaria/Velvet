@@ -90,12 +90,20 @@ class DeletionPolicy:
                 raise ValueError(f"Protected path cannot be an allowlist root: {root}")
             if any(_is_within(root, tree) for tree in protected_trees):
                 raise ValueError(f"Protected tree cannot be an allowlist root: {root}")
+            issue = _existing_chain_issue(root)
+            if issue is not None:
+                raise ValueError(
+                    f"Deletion allowlist root is unsafe: {issue.path} "
+                    f"({issue.code})."
+                )
             try:
                 value = root.lstat()
             except FileNotFoundError:
                 continue
-            if stat.S_ISLNK(value.st_mode):
-                raise ValueError(f"Deletion allowlist root cannot be a symlink: {root}")
+            if not stat.S_ISDIR(value.st_mode):
+                raise ValueError(
+                    f"Deletion allowlist root must be a real directory: {root}"
+                )
         object.__setattr__(self, "allowed_roots", roots)
         object.__setattr__(self, "protected_exact", protected_exact)
         object.__setattr__(self, "protected_trees", protected_trees)
@@ -200,7 +208,9 @@ def delete_paths(
         elif item is not None:
             planned.append(item)
 
-    if not dry_run:
+    # A policy refusal makes the whole batch fail closed. Runtime filesystem
+    # failures can still produce a partial result and are reported explicitly.
+    if not dry_run and not issues:
         for item in planned:
             current, issue = _plan_one(item.path, policy)
             if issue is not None:
@@ -235,7 +245,12 @@ def delete_paths(
                 if item.kind in {"file", "symlink"}:
                     item.path.unlink()
                 else:
-                    _delete_directory(item.path, policy, item.root)
+                    _delete_directory(
+                        item.path,
+                        policy,
+                        item.root,
+                        item.fingerprint,
+                    )
             except OSError as error:
                 issues.append(
                     DeletionIssue(
@@ -248,13 +263,14 @@ def delete_paths(
                 continue
             deleted.append(item.path)
 
+    deleted_set = set(deleted)
     result = DeletionResult(
         policy_name=policy.name,
         planned=tuple(planned),
         deleted_paths=tuple(deleted),
         issues=tuple(issues),
         freed_bytes=sum(
-            item.size_bytes for item in planned if item.path in set(deleted)
+            item.size_bytes for item in planned if item.path in deleted_set
         ),
         dry_run=dry_run,
     )
@@ -310,7 +326,10 @@ def _plan_one(
         return None, DeletionIssue(
             path=path,
             code="unsupported_type",
-            message="Only regular files, symlinks and explicitly allowed directories may be deleted.",
+            message=(
+                "Only regular files, symlinks and explicitly allowed "
+                "directories may be deleted."
+            ),
         )
     return (
         DeletionPlanItem(
@@ -318,7 +337,7 @@ def _plan_one(
             root=root,
             kind=kind,
             size_bytes=size,
-            fingerprint=(int(value.st_dev), int(value.st_ino), int(mode)),
+            fingerprint=_fingerprint(value),
         ),
         None,
     )
@@ -336,6 +355,9 @@ def _validate_common(
             message="Path is outside configured deletion roots.",
         )
     root = max(matching, key=lambda value: len(value.parts))
+    root_issue = _existing_chain_issue(root)
+    if root_issue is not None:
+        return None, root_issue
     if path == root:
         return None, DeletionIssue(
             path=path,
@@ -346,7 +368,10 @@ def _validate_common(
         return None, DeletionIssue(
             path=path,
             code="protected_path",
-            message="Protected filesystem, home, application or data path cannot be deleted.",
+            message=(
+                "Protected filesystem, home, application or data path "
+                "cannot be deleted."
+            ),
         )
     if any(_is_within(path, protected) for protected in policy.protected_trees):
         return None, DeletionIssue(
@@ -387,7 +412,10 @@ def _validate_common(
             return None, DeletionIssue(
                 path=current,
                 code="symlink_parent",
-                message="A parent directory is a symlink; target confinement is not provable.",
+                message=(
+                    "A parent directory is a symlink; target confinement "
+                    "is not provable."
+                ),
             )
         if not stat.S_ISDIR(value.st_mode):
             return None, DeletionIssue(
@@ -396,6 +424,38 @@ def _validate_common(
                 message="A parent path component is not a directory.",
             )
     return root, None
+
+
+def _existing_chain_issue(path: Path) -> DeletionIssue | None:
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current = current / part
+        try:
+            value = current.lstat()
+        except FileNotFoundError:
+            return None
+        except OSError as error:
+            return DeletionIssue(
+                path=current,
+                code="inspection_failed",
+                message=f"{type(error).__name__}: {error}",
+            )
+        if stat.S_ISLNK(value.st_mode):
+            return DeletionIssue(
+                path=current,
+                code="symlink_parent",
+                message=(
+                    "Deletion allowlist roots and their parents must not "
+                    "be symlinks."
+                ),
+            )
+        if current != path and not stat.S_ISDIR(value.st_mode):
+            return DeletionIssue(
+                path=current,
+                code="invalid_parent",
+                message="A deletion root parent is not a directory.",
+            )
+    return None
 
 
 def _validate_directory_tree(path: Path, policy: DeletionPolicy, root: Path) -> int:
@@ -410,7 +470,10 @@ def _validate_directory_tree(path: Path, policy: DeletionPolicy, root: Path) -> 
                     or DeletionIssue(
                         path=child,
                         code="outside_allowlist",
-                        message="Directory child escaped its configured deletion root.",
+                        message=(
+                            "Directory child escaped its configured "
+                            "deletion root."
+                        ),
                     )
                 )
             value = child.lstat()
@@ -423,19 +486,31 @@ def _validate_directory_tree(path: Path, policy: DeletionPolicy, root: Path) -> 
                     DeletionIssue(
                         path=child,
                         code="unsupported_type",
-                        message="Directory contains an unsupported filesystem object.",
+                        message=(
+                            "Directory contains an unsupported filesystem "
+                            "object."
+                        ),
                     )
                 )
     return total
 
 
-def _delete_directory(path: Path, policy: DeletionPolicy, root: Path) -> None:
+def _delete_directory(
+    path: Path,
+    policy: DeletionPolicy,
+    root: Path,
+    expected_fingerprint: tuple[int, int, int],
+) -> None:
     current_root, issue = _validate_common(path, policy)
     if issue is not None or current_root != root:
         raise OSError("Directory failed policy revalidation before deletion.")
     value = path.lstat()
-    if not stat.S_ISDIR(value.st_mode) or stat.S_ISLNK(value.st_mode):
-        raise OSError("Directory changed type before deletion.")
+    if (
+        not stat.S_ISDIR(value.st_mode)
+        or stat.S_ISLNK(value.st_mode)
+        or _fingerprint(value) != expected_fingerprint
+    ):
+        raise OSError("Directory changed identity or type before deletion.")
     with os.scandir(path) as entries:
         children = [Path(entry.path) for entry in entries]
     for child in children:
@@ -447,9 +522,17 @@ def _delete_directory(path: Path, policy: DeletionPolicy, root: Path) -> None:
         if stat.S_ISLNK(child_value.st_mode) or stat.S_ISREG(child_value.st_mode):
             child.unlink()
         elif stat.S_ISDIR(child_value.st_mode):
-            _delete_directory(child, policy, root)
+            _delete_directory(
+                child,
+                policy,
+                root,
+                _fingerprint(child_value),
+            )
         else:
             raise OSError("Directory contains an unsupported filesystem object.")
+    final_value = path.lstat()
+    if _fingerprint(final_value) != expected_fingerprint:
+        raise OSError("Directory changed identity before final removal.")
     path.rmdir()
 
 
@@ -473,7 +556,7 @@ def _canonical_config_path(path: str | os.PathLike[str]) -> Path:
     candidate = Path(expanded)
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate
-    return candidate.resolve(strict=False)
+    return _lexical_absolute(candidate)
 
 
 def _configured_path(
@@ -485,7 +568,7 @@ def _configured_path(
     value = Path(raw).expanduser() if raw.strip() else default
     if not value.is_absolute():
         value = base / value
-    return value.resolve(strict=False)
+    return _canonical_config_path(value)
 
 
 def _lexical_absolute(path: str | os.PathLike[str]) -> Path:
@@ -501,6 +584,10 @@ def _lexical_absolute(path: str | os.PathLike[str]) -> Path:
     if not candidate.is_absolute():
         raise ValueError("Deletion path must be absolute.")
     return Path(os.path.abspath(os.path.normpath(expanded)))
+
+
+def _fingerprint(value: os.stat_result) -> tuple[int, int, int]:
+    return int(value.st_dev), int(value.st_ino), int(value.st_mode)
 
 
 def _is_within(path: Path, root: Path) -> bool:
@@ -523,14 +610,16 @@ def _delete_stage(issue: DeletionIssue) -> DeletionIssue:
 def _audit_result(result: DeletionResult) -> None:
     for issue in result.issues:
         logger.warning(
-            "telegram_storage_deletion_issue policy=%s stage=%s code=%s path=%s",
+            "telegram_storage_deletion_issue "
+            "policy=%s stage=%s code=%s path=%s",
             result.policy_name,
             issue.stage,
             issue.code,
             issue.path,
         )
     logger.info(
-        "telegram_storage_deletion_result policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",
+        "telegram_storage_deletion_result "
+        "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",
         result.policy_name,
         result.dry_run,
         len(result.planned),
