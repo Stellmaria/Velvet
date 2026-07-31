@@ -180,7 +180,7 @@ class VisionGatewayPayloadTests(unittest.TestCase):
 class VisionGatewayConfigurationTests(unittest.TestCase):
     def test_runtime_endpoint_must_use_internal_compose_host(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "Compose host vision-runtime"):
-            create_app(_settings(runtime_base_url="https://example.com"))
+            create_app(_settings(runtime_base_url="http://example.com"))
 
 
 if __name__ == "__main__":
