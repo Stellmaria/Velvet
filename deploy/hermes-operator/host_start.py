@@ -4,7 +4,6 @@ import hmac
 import json
 import logging
 import os
-import socket
 import socketserver
 import stat
 import subprocess
@@ -153,6 +152,28 @@ class StartRuntime:
             "health": health.get("Status") if isinstance(health, dict) else None,
         }
 
+    def _wait_ready(
+        self,
+        target: ServiceTarget,
+        service: str,
+    ) -> dict[str, Any]:
+        latest: dict[str, Any] = {}
+        for _ in range(self.health_attempts):
+            latest = self._container_state(target, service)
+            if latest.get("running") is True and latest.get("health") in {
+                None,
+                "healthy",
+            }:
+                return latest
+            if latest.get("status") in {"dead", "exited"} or latest.get(
+                "health"
+            ) == "unhealthy":
+                break
+            time.sleep(self.health_interval)
+        raise RuntimeError(
+            f"Service did not become healthy: {service}; state={latest}"
+        )
+
     def start(self, project: str, service: str) -> dict[str, Any]:
         target = self.targets.get(project)
         if target is None or service not in target.services:
@@ -164,7 +185,9 @@ class StartRuntime:
 
         with self._lock:
             before = self._container_state(target, service)
-            if before.get("running") is True and before.get("health") != "unhealthy":
+            was_running = before.get("running") is True
+            health = before.get("health")
+            if was_running and health in {None, "healthy"}:
                 return {
                     "ok": True,
                     "project": project,
@@ -173,35 +196,26 @@ class StartRuntime:
                     "message": "Service is already running",
                     "state": before,
                 }
-
-            self._run(
-                target,
-                self._compose(target, "up", "-d", service),
-                timeout=self.command_timeout,
-            )
-            latest: dict[str, Any] = {}
-            for _ in range(self.health_attempts):
-                latest = self._container_state(target, service)
-                if latest.get("running") is True and latest.get("health") in {
-                    None,
-                    "healthy",
-                }:
-                    return {
-                        "ok": True,
-                        "project": project,
-                        "service": service,
-                        "changed": True,
-                        "message": "Service started and passed runtime check",
-                        "state": latest,
-                    }
-                if latest.get("status") in {"dead", "exited"} or latest.get(
-                    "health"
-                ) == "unhealthy":
-                    break
-                time.sleep(self.health_interval)
-            raise RuntimeError(
-                f"Service did not become healthy: {project}/{service}; state={latest}"
-            )
+            if was_running and health == "unhealthy":
+                raise RuntimeError(
+                    f"Service is running but unhealthy: {project}/{service}; "
+                    "use explicit restart"
+                )
+            if not was_running:
+                self._run(
+                    target,
+                    self._compose(target, "up", "-d", service),
+                    timeout=self.command_timeout,
+                )
+            latest = self._wait_ready(target, service)
+            return {
+                "ok": True,
+                "project": project,
+                "service": service,
+                "changed": not was_running,
+                "message": "Service started and passed runtime check",
+                "state": latest,
+            }
 
 
 class StartRequestHandler(socketserver.StreamRequestHandler):
@@ -272,14 +286,32 @@ class StartUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer
 
 
 def _prepare_socket(path: Path, socket_gid: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    os.chmod(path.parent, 0o750)
+    try:
+        parent = path.parent.lstat()
+    except FileNotFoundError as error:
+        raise RuntimeError("Hermes operator runtime directory is missing") from error
+    parent_mode = stat.S_IMODE(parent.st_mode)
+    if (
+        not stat.S_ISDIR(parent.st_mode)
+        or parent.st_uid != os.getuid()
+        or parent.st_gid != socket_gid
+        or parent_mode != 0o750
+    ):
+        raise RuntimeError(
+            "Hermes operator runtime directory has unsafe type, owner, group or mode"
+        )
     try:
         existing = path.lstat()
     except FileNotFoundError:
         return
-    if not stat.S_ISSOCK(existing.st_mode):
-        raise RuntimeError("Refusing to replace non-socket Hermes operator path")
+    existing_mode = stat.S_IMODE(existing.st_mode)
+    if (
+        not stat.S_ISSOCK(existing.st_mode)
+        or existing.st_uid != os.getuid()
+        or existing.st_gid != socket_gid
+        or existing_mode != 0o660
+    ):
+        raise RuntimeError("Refusing to replace unsafe Hermes operator socket")
     path.unlink()
 
 
