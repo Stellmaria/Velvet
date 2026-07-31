@@ -32,19 +32,16 @@ done
 
 installed_id="$(ollama list | awk -v target="$model" 'NR > 1 && $1 == target {print $2; exit}')"
 if [ -z "$installed_id" ]; then
-  echo "Installing pinned vision model: $model"
-  ollama pull "$model"
-  installed_id="$(ollama list | awk -v target="$model" 'NR > 1 && $1 == target {print $2; exit}')"
-fi
-
-if [ -z "$installed_id" ]; then
-  echo "Vision model is still missing after pull: $model" >&2
+  echo "Vision model is not installed: $model" >&2
+  echo "Run the vision-bootstrap profile before starting production inference." >&2
   exit 1
 fi
 
 if [ -n "$expected_digest" ]; then
-  case "$(printf '%s' "$installed_id" | tr '[:upper:]' '[:lower:]')" in
-    "$(printf '%s' "$expected_digest" | tr '[:upper:]' '[:lower:]')"*) ;;
+  actual_lower="$(printf '%s' "$installed_id" | tr '[:upper:]' '[:lower:]')"
+  expected_lower="$(printf '%s' "$expected_digest" | tr '[:upper:]' '[:lower:]')"
+  case "$actual_lower" in
+    "$expected_lower"*) ;;
     *)
       echo "Vision model digest mismatch: expected prefix $expected_digest, got $installed_id" >&2
       exit 1
