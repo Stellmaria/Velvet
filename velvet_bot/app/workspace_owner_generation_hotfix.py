@@ -255,8 +255,33 @@ def _install_canonical_photo_route() -> None:
         return
     fallback = controller.handle_scoped_auf_action
 
-    async def handle_scoped_auf_photo_action(*args: Any, **kwargs: Any) -> None:
-        await _canonical_photo_action(*args, **kwargs, fallback=fallback)
+    async def handle_scoped_auf_photo_action(
+        callback: Any,
+        callback_data: Any,
+        state: Any,
+        access_policy: Any,
+        kie_settings: Any,
+        database: Any,
+        ai_usage_service: Any,
+        ai_task_queue_service: Any,
+        auf_runtime_service: Any,
+        auf_wallet_service: Any,
+        auf_purchase_service: Any,
+    ) -> None:
+        await _canonical_photo_action(
+            callback,
+            callback_data,
+            state,
+            access_policy,
+            kie_settings,
+            database,
+            ai_usage_service,
+            ai_task_queue_service,
+            auf_runtime_service,
+            auf_wallet_service,
+            auf_purchase_service,
+            fallback=fallback,
+        )
 
     controller.install_scoped_auf_handlers(
         action_handler=handle_scoped_auf_photo_action,

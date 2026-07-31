@@ -57,13 +57,25 @@ def _build_root_keyboard(
     global_owner: bool,
     module_visible: bool,
 ) -> InlineKeyboardMarkup:
-    # Provider-specific balance callbacks remain registered for compatibility with
-    # already-sent owner keyboards, but are deliberately absent from the product UI.
-    del grs_enabled, global_owner
+    # Provider keys are never shown to users. The owner-only service balance
+    # dashboard is rendered separately and performs its own access check.
+    del grs_enabled
     base = build_auf_root_keyboard(workspace_id=workspace_id, enabled=enabled)
     rows = list(base.inline_keyboard)
     back_row = rows.pop() if rows else []
     if enabled:
+        if global_owner:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text="📊 Балансы API · Стэл",
+                        callback_data=AufCallback(
+                            action="provider_balances",
+                            workspace_id=workspace_id,
+                        ).pack(),
+                    )
+                ]
+            )
         rows.append(
             [
                 InlineKeyboardButton(
