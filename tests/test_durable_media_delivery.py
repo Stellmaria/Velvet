@@ -12,9 +12,13 @@ from velvet_bot.application.media_delivery import (
     DownloadedMedia,
     MediaDeliveryItem,
     MediaDeliveryJob,
+    MediaDeliveryRepositoryError,
     MediaDeliveryStatus,
     MediaDeliveryStepStatus,
+    MediaDeliveryTransportError,
     MediaUrlExpired,
+    ProviderResultPending,
+    ProviderResultTerminal,
     RedeliverMediaResult,
     ResolveProviderResult,
 )
@@ -24,13 +28,32 @@ from velvet_bot.domains.media_generation.friendly_worker import FriendlyKieGener
 from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 
 
+def _transport_error(
+    message: str,
+    *,
+    retryable: bool = True,
+) -> MediaDeliveryTransportError:
+    return MediaDeliveryTransportError(
+        message,
+        code="transport_test_failure",
+        retryable=retryable,
+    )
+
+
 class _Repository:
-    def __init__(self, job: MediaDeliveryJob) -> None:
+    def __init__(
+        self,
+        job: MediaDeliveryJob,
+        *,
+        fail_channel_success: str | None = None,
+    ) -> None:
         self.job = job
         self.claimed = False
         self.events: list[tuple[str, object]] = []
         self.backfilled = False
         self.reset = False
+        self.fail_channel_success = fail_channel_success
+        self._channel_success_failed = False
 
     async def claim(self, **kwargs):
         if self.claimed:
@@ -55,6 +78,16 @@ class _Repository:
 
     async def mark_channel(self, **kwargs) -> None:
         self.events.append(("channel", kwargs))
+        if (
+            not self._channel_success_failed
+            and kwargs.get("channel") == self.fail_channel_success
+            and kwargs.get("status") is MediaDeliveryStepStatus.SUCCESS
+        ):
+            self._channel_success_failed = True
+            raise MediaDeliveryRepositoryError(
+                "test_mark_channel_success",
+                RuntimeError("database unavailable after Telegram accepted media"),
+            )
 
     async def mark_notification(self, **kwargs) -> None:
         self.events.append(("notification", kwargs))
@@ -79,16 +112,29 @@ class _Transport:
         original_error: BaseException | None = None,
         preview_error: BaseException | None = None,
         download_error: BaseException | None = None,
+        notify_error: BaseException | None = None,
+        preserve_raw_errors: bool = False,
     ) -> None:
         self.original_error = original_error
         self.preview_error = preview_error
         self.download_error = download_error
+        self.notify_error = notify_error
+        self.preserve_raw_errors = preserve_raw_errors
         self.calls: list[str] = []
+
+    def _raise(self, error: BaseException | None) -> None:
+        if error is None:
+            return
+        if self.preserve_raw_errors or isinstance(
+            error,
+            (MediaDeliveryTransportError, MediaUrlExpired),
+        ):
+            raise error
+        raise _transport_error(str(error)) from error
 
     async def download(self, **kwargs) -> DownloadedMedia:
         self.calls.append("download")
-        if self.download_error is not None:
-            raise self.download_error
+        self._raise(self.download_error)
         return DownloadedMedia(
             payload=b"payload",
             file_name="result.png",
@@ -97,28 +143,41 @@ class _Transport:
 
     async def send_original(self, **kwargs) -> None:
         self.calls.append("original")
-        if self.original_error is not None:
-            raise self.original_error
+        self._raise(self.original_error)
 
     async def send_preview(self, **kwargs) -> None:
         self.calls.append("preview")
-        if self.preview_error is not None:
-            raise self.preview_error
+        self._raise(self.preview_error)
 
     async def send_direct_preview(self, **kwargs) -> None:
         self.calls.append("direct-preview")
+        self._raise(self.preview_error)
 
     async def notify(self, **kwargs) -> None:
         self.calls.append("notify")
+        self._raise(self.notify_error)
 
 
 class _ProviderResolver:
-    def __init__(self, urls: tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        urls: tuple[str, ...] = (),
+        *,
+        error: BaseException | None = None,
+    ) -> None:
         self.urls = urls
+        self.error = error
         self.calls: list[tuple[str, str]] = []
 
-    async def resolve(self, *, provider: str, provider_task_id: str) -> tuple[str, ...]:
+    async def resolve(
+        self,
+        *,
+        provider: str,
+        provider_task_id: str,
+    ) -> tuple[str, ...]:
         self.calls.append((provider, provider_task_id))
+        if self.error is not None:
+            raise self.error
         return self.urls
 
 
@@ -127,6 +186,9 @@ def _job(
     attempt_count: int = 1,
     status: MediaDeliveryStatus = MediaDeliveryStatus.RESULT_RESOLVED,
     items: bool = True,
+    original_status: MediaDeliveryStepStatus = MediaDeliveryStepStatus.PENDING,
+    preview_status: MediaDeliveryStepStatus = MediaDeliveryStepStatus.PENDING,
+    notification_status: MediaDeliveryStepStatus = MediaDeliveryStepStatus.PENDING,
 ) -> MediaDeliveryJob:
     return MediaDeliveryJob(
         task_id=uuid4(),
@@ -137,17 +199,19 @@ def _job(
         request={"model": "nano_banana_pro"},
         status=status,
         attempt_count=attempt_count,
-        notification_status=MediaDeliveryStepStatus.PENDING,
+        notification_status=notification_status,
         items=(
             MediaDeliveryItem(
                 result_index=1,
                 result_url="https://cdn.example/result.png",
                 url_status="available",
                 download_status=MediaDeliveryStepStatus.PENDING,
-                original_status=MediaDeliveryStepStatus.PENDING,
-                preview_status=MediaDeliveryStepStatus.PENDING,
+                original_status=original_status,
+                preview_status=preview_status,
             ),
-        ) if items else (),
+        )
+        if items
+        else (),
     )
 
 
@@ -169,6 +233,15 @@ class DurableMediaDeliveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, summary.original_sent)
         self.assertEqual(1, summary.preview_sent)
         self.assertEqual(["download", "original", "preview"], transport.calls)
+        original_states = [
+            payload["status"]
+            for name, payload in repository.events
+            if name == "channel" and payload["channel"] == "original"
+        ]
+        self.assertEqual(
+            [MediaDeliveryStepStatus.SENDING, MediaDeliveryStepStatus.FAILED],
+            original_states,
+        )
 
     async def test_preview_failure_does_not_erase_successful_original(self) -> None:
         job = _job(attempt_count=12)
@@ -202,6 +275,70 @@ class DurableMediaDeliveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(summary.retry_scheduled)
         self.assertEqual(["download", "notify"], transport.calls)
 
+    async def test_post_send_repository_failure_becomes_uncertain_without_retry(self) -> None:
+        job = _job()
+        repository = _Repository(job, fail_channel_success="original")
+        transport = _Transport()
+
+        summary = await DeliverMediaResult(
+            repository=repository,
+            transport=transport,
+        ).execute(task_id=job.task_id)
+
+        assert summary is not None
+        self.assertEqual(MediaDeliveryStatus.PARTIAL, summary.status)
+        self.assertEqual(0, summary.original_sent)
+        self.assertEqual(1, summary.preview_sent)
+        self.assertEqual(1, summary.uncertain_channels)
+        self.assertFalse(summary.retry_scheduled)
+        states = [
+            payload["status"]
+            for name, payload in repository.events
+            if name == "channel" and payload["channel"] == "original"
+        ]
+        self.assertEqual(
+            [
+                MediaDeliveryStepStatus.SENDING,
+                MediaDeliveryStepStatus.SUCCESS,
+                MediaDeliveryStepStatus.UNCERTAIN,
+            ],
+            states,
+        )
+
+    async def test_reclaimed_sending_channel_is_not_sent_again(self) -> None:
+        job = _job(
+            original_status=MediaDeliveryStepStatus.SENDING,
+            preview_status=MediaDeliveryStepStatus.SUCCESS,
+            notification_status=MediaDeliveryStepStatus.SUCCESS,
+        )
+        repository = _Repository(job)
+        transport = _Transport()
+
+        summary = await DeliverMediaResult(
+            repository=repository,
+            transport=transport,
+        ).execute(task_id=job.task_id)
+
+        assert summary is not None
+        self.assertEqual(MediaDeliveryStatus.PARTIAL, summary.status)
+        self.assertEqual(1, summary.uncertain_channels)
+        self.assertEqual([], transport.calls)
+        self.assertFalse(summary.retry_scheduled)
+
+    async def test_unexpected_programming_error_is_not_masked_as_delivery_failure(self) -> None:
+        job = _job()
+        repository = _Repository(job)
+        transport = _Transport(
+            original_error=TypeError("broken adapter contract"),
+            preserve_raw_errors=True,
+        )
+
+        with self.assertRaisesRegex(TypeError, "broken adapter contract"):
+            await DeliverMediaResult(
+                repository=repository,
+                transport=transport,
+            ).execute(task_id=job.task_id)
+
     async def test_provider_success_without_url_is_resolved_without_submit(self) -> None:
         job = _job(status=MediaDeliveryStatus.PROVIDER_SUCCESS, items=False)
         repository = _Repository(job)
@@ -214,8 +351,48 @@ class DurableMediaDeliveryTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(resolved)
         self.assertEqual([("grs", "grs:task")], provider.calls)
-        saved = [payload for name, payload in repository.events if name == "provider-success"]
+        saved = [
+            payload
+            for name, payload in repository.events
+            if name == "provider-success"
+        ]
         self.assertEqual(("https://cdn.example/later.png",), saved[0]["result_urls"])
+
+    async def test_provider_pending_schedules_resolution_retry(self) -> None:
+        job = _job(status=MediaDeliveryStatus.PROVIDER_SUCCESS, items=False)
+        repository = _Repository(job)
+        provider = _ProviderResolver(error=ProviderResultPending("still processing"))
+
+        resolved = await ResolveProviderResult(repository, provider).execute(
+            task_id=job.task_id
+        )
+
+        self.assertFalse(resolved)
+        payload = [
+            value
+            for name, value in repository.events
+            if name == "finish-resolution"
+        ][0]
+        self.assertFalse(payload["terminal"])
+        self.assertIsNotNone(payload["retry_delay_seconds"])
+
+    async def test_provider_terminal_failure_does_not_retry_resolution(self) -> None:
+        job = _job(status=MediaDeliveryStatus.PROVIDER_SUCCESS, items=False)
+        repository = _Repository(job)
+        provider = _ProviderResolver(error=ProviderResultTerminal("provider failed"))
+
+        resolved = await ResolveProviderResult(repository, provider).execute(
+            task_id=job.task_id
+        )
+
+        self.assertFalse(resolved)
+        payload = [
+            value
+            for name, value in repository.events
+            if name == "finish-resolution"
+        ][0]
+        self.assertTrue(payload["terminal"])
+        self.assertIsNone(payload["retry_delay_seconds"])
 
     async def test_redelivery_resets_state_without_generation_api(self) -> None:
         job = _job()
@@ -313,10 +490,13 @@ class DurableMediaQueueContractTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn(module_name, source)
         self.assertIn("module._INSTALLED = True", source)
 
-    def test_migration_models_independent_delivery_channels_and_resolution(self) -> None:
-        migration = Path("migrations/z029_durable_media_delivery.sql").read_text(
+    def test_migrations_model_ambiguous_delivery_without_auto_retry(self) -> None:
+        base = Path("migrations/z029_durable_media_delivery.sql").read_text(
             encoding="utf-8"
         )
+        uncertain = Path(
+            "migrations/z030_media_delivery_uncertain_states.sql"
+        ).read_text(encoding="utf-8")
         for token in (
             "media_delivery_jobs",
             "media_delivery_items",
@@ -328,7 +508,20 @@ class DurableMediaQueueContractTests(unittest.IsolatedAsyncioTestCase):
             "notification_status",
             "expired",
         ):
-            self.assertIn(token, migration)
+            self.assertIn(token, base)
+        self.assertIn("'sending'", uncertain)
+        self.assertIn("'uncertain'", uncertain)
+
+    def test_target_media_delivery_files_have_no_unresolved_broad_catches(self) -> None:
+        for relative in (
+            "velvet_bot/application/media_delivery_deliver.py",
+            "velvet_bot/application/media_delivery_resolve.py",
+            "velvet_bot/domains/media_generation/task_queue.py",
+            "velvet_bot/domains/media_generation/friendly_worker.py",
+            "velvet_bot/infrastructure/media_delivery_runtime.py",
+        ):
+            source = Path(relative).read_text(encoding="utf-8")
+            self.assertNotIn("except Exception", source, relative)
 
 
 if __name__ == "__main__":
