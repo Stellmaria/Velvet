@@ -72,6 +72,15 @@
 
 - PR: `#488`
 - основной commit реализации: `03762369d7c377f58c9b0ef254c4a7ca64eec2e8`
+- commit ремонта CI и architecture baseline: `dadd9905482ddbbad5075a12460b69634f4f06be`
+
+### Ремонт CI
+
+- PostgreSQL integration fixtures очищают `media_delivery_jobs` до `ai_tasks`;
+- устаревший тест прямой GRS-доставки заменён проверкой durable delivery ownership;
+- пересобраны P2 stability, repository layout, Telegram navigation и package architecture inventories;
+- обновлены reviewed numeric baselines и канонические inventory labels;
+- временные repair-workflows удалены, штатная `.github/workflows/tests.yml` восстановлена.
 
 ### Незавершённое
 
@@ -79,4 +88,4 @@
 
 ### Следующий шаг
 
-Завершить регенерацию architecture baseline, исправить оставшиеся CI-ошибки и перевести PR из draft в ready после зелёных проверок.
+Подтвердить чистую CI-матрицу финального head и после этого перевести PR из draft в ready.
