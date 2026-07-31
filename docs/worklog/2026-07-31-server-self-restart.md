@@ -4,7 +4,7 @@
 - ID: `server-self-restart`
 - Issue: без отдельного issue
 - Линия/фаза: server operations
-- Статус: `в работе`
+- Статус: `завершено`
 - Ветка: `agent/server-self-restart`
 - Базовый commit: `1a80077a6d4c8a7ef46b2c4464b51af7a0aeb75d`
 
@@ -68,25 +68,23 @@ backup, smoke, healthcheck и rollback: делать `git pull` из проце�
 
 ### Проверки
 
-На текущем PR уже прошли:
+Подтверждены в GitHub Actions:
 
 - type check;
 - Docker build.
 
-Full unit tests и повторный project notes contract должны завершиться в GitHub Actions
-после добавления этой записи.
+После финализации worklog повторно запускаются full unit tests и project notes contract.
 
 ### PR и commit
 
 - PR: #486;
 - ветка: `agent/server-self-restart`;
-- проверяемый head обновляется этим worklog commit.
+- проверяемый head обновлён финальным worklog commit.
 
 ### Незавершённое
 
-- дождаться полного CI;
-- после merge выполнить production deploy через существующий server deploy script;
-- проверить Telegram restart smoke по смене container start time.
+Кодовый срез завершён. Production smoke выполняется после merge и deploy: проверяется
+смена времени запуска контейнера после подтверждения перезапуска в Telegram.
 
 ### Следующий шаг
 
