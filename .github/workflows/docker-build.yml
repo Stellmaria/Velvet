@@ -7,21 +7,29 @@ on:
       - "Dockerfile"
       - "Dockerfile.krita-server"
       - "Dockerfile.server-supervisor-proxy"
+      - "Dockerfile.vision-gateway"
+      - "Dockerfile.vision-runtime"
       - ".dockerignore"
       - "docker-compose.yml"
       - "docker-compose.server.yml"
       - ".env.example"
       - ".env.server.example"
       - ".env.hermes.example"
+      - ".env.vision-local.example"
       - "deploy/**"
       - "tools/krita/**"
+      - "vision_gateway/**"
       - "requirements.txt"
+      - "requirements.vision-gateway.txt"
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
       - "scripts/krita_server_healthcheck.py"
       - "scripts/server_supervisor.py"
       - "scripts/server_supervisor_proxy.py"
+      - "scripts/vision_runtime_entrypoint.sh"
+      - "scripts/vision_model_loader.sh"
+      - "scripts/benchmark_vision_gateway.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
   push:
@@ -31,21 +39,29 @@ on:
       - "Dockerfile"
       - "Dockerfile.krita-server"
       - "Dockerfile.server-supervisor-proxy"
+      - "Dockerfile.vision-gateway"
+      - "Dockerfile.vision-runtime"
       - ".dockerignore"
       - "docker-compose.yml"
       - "docker-compose.server.yml"
       - ".env.example"
       - ".env.server.example"
       - ".env.hermes.example"
+      - ".env.vision-local.example"
       - "deploy/**"
       - "tools/krita/**"
+      - "vision_gateway/**"
       - "requirements.txt"
+      - "requirements.vision-gateway.txt"
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
       - "scripts/krita_server_healthcheck.py"
       - "scripts/server_supervisor.py"
       - "scripts/server_supervisor_proxy.py"
+      - "scripts/vision_runtime_entrypoint.sh"
+      - "scripts/vision_model_loader.sh"
+      - "scripts/benchmark_vision_gateway.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
 
@@ -76,6 +92,11 @@ jobs:
           VELVET_IMAGE=velvet-bot:ci
           KRITA_SERVER_IMAGE=velvet-krita-server:ci
           SUPERVISOR_PROXY_IMAGE=velvet-server-supervisor-proxy:ci
+          VISION_RUNTIME_IMAGE=velvet-vision-runtime:ci
+          VISION_GATEWAY_IMAGE=velvet-vision-gateway:ci
+          VISION_RUNTIME_BASE_IMAGE=alpine:3.21
+          VISION_MODEL=qwen3-vl:8b-instruct-q4_K_M
+          VISION_MODEL_EXPECTED_DIGEST=
           POSTGRES_IMAGE=postgres:16-alpine
           POSTGRES_DB=velvet
           POSTGRES_USER=velvet
@@ -136,9 +157,13 @@ jobs:
           bash -n deploy/server/wait-compose-health.sh
           bash -n deploy/krita-server/entrypoint.sh
           bash -n deploy/hermes-coders/install.sh
+          bash -n scripts/vision_runtime_entrypoint.sh
+          bash -n scripts/vision_model_loader.sh
           python -m py_compile \
             scripts/server_supervisor.py \
             scripts/server_supervisor_proxy.py \
+            scripts/benchmark_vision_gateway.py \
+            vision_gateway/app.py \
             deploy/hermes-coders/db_proxy.py \
             deploy/hermes-coders/preflight.py
 
@@ -148,6 +173,8 @@ jobs:
           docker compose --profile agent config --quiet
           docker compose --env-file .env.server -f docker-compose.server.yml config --quiet
           docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark config --quiet
+          docker compose --env-file .env.server -f docker-compose.server.yml --profile vision config --quiet
+          docker compose --env-file .env.server -f docker-compose.server.yml --profile vision-bootstrap config --quiet
           HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
             docker compose \
               --profile velvet \
@@ -163,6 +190,16 @@ jobs:
           docker build \
             --file Dockerfile.server-supervisor-proxy \
             --tag velvet-server-supervisor-proxy:ci .
+
+      - name: Build local VL images
+        run: |
+          docker build \
+            --file Dockerfile.vision-gateway \
+            --tag velvet-vision-gateway:ci .
+          docker build \
+            --file Dockerfile.vision-runtime \
+            --build-arg VISION_RUNTIME_BASE_IMAGE=alpine:3.21 \
+            --tag velvet-vision-runtime:ci .
 
       - name: Build Krita server image
         run: docker build --file Dockerfile.krita-server --tag velvet-krita-server:ci .
