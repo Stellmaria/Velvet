@@ -110,7 +110,9 @@ jobs:
           python scripts/shared_contract_inventory.py \
             --write-json docs/shared_contract_inventory.json \
             --write-markdown docs/shared_contract_inventory.md
-          python scripts/update_p2_stability_inventory.py
+          python scripts/update_p2_stability_inventory.py \
+            --label p3-package-shared-contracts \
+            --schema-version 75
           python scripts/inventory_package_architecture.py \
             --write \
             --label p1-package-architecture-baseline
