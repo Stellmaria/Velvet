@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
@@ -9,7 +10,11 @@ from dotenv import load_dotenv
 from velvet_bot.core.access import normalize_username
 
 DEFAULT_ADULT_CHANNEL_ID = -1003951213065
-_VISION_PROVIDERS = frozenset({"ollama", "openai_compatible"})
+LOCAL_OPENAI_COMPATIBLE_PROVIDER = "local_openai_compatible"
+_LOCAL_VISION_HOSTS = frozenset({"vision-gateway"})
+_VISION_PROVIDERS = frozenset(
+    {"ollama", "openai_compatible", LOCAL_OPENAI_COMPATIBLE_PROVIDER}
+)
 _TEXT_PROVIDERS = frozenset({"ollama", "openai", "openai_compatible"})
 
 
@@ -174,6 +179,37 @@ def _parse_ai_base_url(value: str, *, variable_name: str) -> str:
     return result
 
 
+def validate_local_vision_base_url(
+    provider: str,
+    base_url: str,
+    *,
+    variable_name: str,
+) -> None:
+    """Reject SSRF-prone endpoints for the trusted internal VL provider."""
+
+    if provider != LOCAL_OPENAI_COMPATIBLE_PROVIDER:
+        return
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"}:
+        raise RuntimeError(
+            f"{variable_name} для локального VL должен использовать http:// или https://."
+        )
+    if parsed.username or parsed.password:
+        raise RuntimeError(
+            f"{variable_name} для локального VL не может содержать credentials."
+        )
+    if parsed.hostname not in _LOCAL_VISION_HOSTS:
+        allowed = ", ".join(sorted(_LOCAL_VISION_HOSTS))
+        raise RuntimeError(
+            f"{variable_name} для локального VL должен использовать внутренний "
+            f"Compose host: {allowed}."
+        )
+    if parsed.query or parsed.fragment:
+        raise RuntimeError(
+            f"{variable_name} для локального VL не может содержать query или fragment."
+        )
+
+
 def _shared_cloud_api_key() -> str:
     return (
         os.getenv("BYESU_API_KEY", "").strip()
@@ -221,6 +257,11 @@ def load_settings() -> Settings:
     assert vision_provider is not None
     vision_base_url = _parse_ai_base_url(
         os.getenv("AI_VISION_BASE_URL", "https://byesu.com/v1"),
+        variable_name="AI_VISION_BASE_URL",
+    )
+    validate_local_vision_base_url(
+        vision_provider,
+        vision_base_url,
         variable_name="AI_VISION_BASE_URL",
     )
     vision_model = os.getenv("AI_VISION_MODEL", "").strip()
@@ -393,8 +434,9 @@ def load_settings() -> Settings:
 
 
 __all__ = (
-    "DEFAULT_ADULT_CHANNEL_ID", "Settings", "load_settings",
-    "parse_allowed_user_ids", "parse_allowed_usernames", "parse_boolean",
-    "parse_bounded_integer", "parse_chat_id", "parse_integer_list",
-    "parse_optional_chat_id", "parse_required_path", "parse_timezone",
+    "DEFAULT_ADULT_CHANNEL_ID", "LOCAL_OPENAI_COMPATIBLE_PROVIDER", "Settings",
+    "load_settings", "parse_allowed_user_ids", "parse_allowed_usernames",
+    "parse_boolean", "parse_bounded_integer", "parse_chat_id",
+    "parse_integer_list", "parse_optional_chat_id", "parse_required_path",
+    "parse_timezone", "validate_local_vision_base_url",
 )
