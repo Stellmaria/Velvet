@@ -1,0 +1,46 @@
+name: regenerate PR 516 Telegram navigation inventory
+
+on:
+  push:
+    branches:
+      - hotfix/auf-menu-provider-balances-sigterm
+    paths:
+      - .github/workflows/regenerate-pr-516-navigation-temporary.yml
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@v4
+        with:
+          ref: hotfix/auf-menu-provider-balances-sigterm
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Refresh Telegram navigation inventory
+        run: |
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --check
+
+      - name: Commit generated inventory and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/regenerate-pr-516-navigation-temporary.yml
+          git add docs/generated/telegram_navigation_inventory.md
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh Telegram navigation inventory for PR 516"
+          git push origin HEAD:hotfix/auf-menu-provider-balances-sigterm
