@@ -2474,7 +2474,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:3b370fc518181005",
+      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:dfb043809bab284c",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
@@ -3233,7 +3233,7 @@
       "issue": "#455"
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:b3becb39e4bfd119",
+      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:d214a85dc08c0e7f",
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
@@ -3673,7 +3673,7 @@
       "issue": "#463"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:82c11a801dc6bf35",
+      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:6bc0b735c7b3806d",
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
@@ -3820,7 +3820,7 @@
       "issue": "#458"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:863da0dbb203ea82",
+      "id": "monolithic-module-loc:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:0d4e0b78f01643e3",
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
@@ -5819,7 +5819,7 @@
       "issue": "#455"
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:6ffd5288c5b962c6",
+      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:59a7836648a20932",
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [

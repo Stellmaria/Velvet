@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_from": "p1-package-architecture-baseline",
+  "generated_from": "hotfix-remove-qwen-flux-generation",
   "production_module_count": 631,
-  "production_loc": 136683,
+  "production_loc": 136679,
   "layer_counts": {
     "application": 20,
     "composition": 63,
@@ -3257,10 +3257,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:3b370fc518181005",
+      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:dfb043809bab284c",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "3b370fc518181005052307d54556d5739c9f671b7fe3e11170d0414bcadb90a1",
+      "fingerprint": "dfb043809bab284c4749f03b5e59cacdc4d72971425135104a67891ac283cd9c",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
@@ -3819,10 +3819,10 @@
       }
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:b3becb39e4bfd119",
+      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:d214a85dc08c0e7f",
       "category": "method-assign-ignore",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "b3becb39e4bfd11940b86b88699b4fd6fed513ad26771d6ff478c92306b6aa7b",
+      "fingerprint": "d214a85dc08c0e7fa905cb30da6064994638c1fe8bae94e9836bb432c2af2c53",
       "summary": "5 method-assign ignores",
       "details": {
         "count": 5
@@ -4153,13 +4153,13 @@
       }
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:82c11a801dc6bf35",
+      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:6bc0b735c7b3806d",
       "category": "monolithic-module-loc",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "82c11a801dc6bf35f38b78338c5bb01041a87805c2d09f589f6e1c0b77f0df41",
-      "summary": "1782 LOC exceeds 800",
+      "fingerprint": "6bc0b735c7b3806dde64d725bc51ad64cd892d4c6e99d8879a0d9bcea26f3535",
+      "summary": "1780 LOC exceeds 800",
       "details": {
-        "loc": 1782,
+        "loc": 1780,
         "limit": 800
       }
     },
@@ -4241,13 +4241,13 @@
       }
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:863da0dbb203ea82",
+      "id": "monolithic-module-loc:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:0d4e0b78f01643e3",
       "category": "monolithic-module-loc",
       "path": "velvet_bot/presentation/telegram/routers/workspace_auf_photo.py",
-      "fingerprint": "863da0dbb203ea826e4540594dfb7650fe8f7742a8845176ba91e71d8c680891",
-      "summary": "1231 LOC exceeds 800",
+      "fingerprint": "0d4e0b78f01643e323780e0925b967b2fbb6da7f818b6986f8272c39ce010e8f",
+      "summary": "1229 LOC exceeds 800",
       "details": {
-        "loc": 1231,
+        "loc": 1229,
         "limit": 800
       }
     },
@@ -6574,10 +6574,10 @@
       }
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:6ffd5288c5b962c6",
+      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:59a7836648a20932",
       "category": "type-ignore-usage",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "6ffd5288c5b962c6b94c0049df1476ec5ac8583a2ec53a6c34a9c2fc827ce7b1",
+      "fingerprint": "59a7836648a20932473a8881af76d2e838a1109f73e560023defcecff06b0e0a",
       "summary": "17 type-ignore comments",
       "details": {
         "count": 17
@@ -9986,7 +9986,7 @@
       "module": "velvet_bot.app.auf_photo_model_modes",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 1782,
+      "loc": 1780,
       "function_count": 52,
       "class_count": 1,
       "handler_count": 0,
@@ -10044,17 +10044,17 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 1470,
+          "line": 1468,
           "owner": "_provider_model",
           "call": "os.getenv"
         },
         {
-          "line": 1638,
+          "line": 1636,
           "owner": "_create_grs_with_vt_fallback",
           "call": "os.getenv"
         },
         {
-          "line": 1468,
+          "line": 1466,
           "owner": "_provider_model",
           "call": "os.getenv"
         }
@@ -10138,20 +10138,20 @@
           }
         },
         {
-          "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:b3becb39e4bfd119",
+          "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:d214a85dc08c0e7f",
           "category": "method-assign-ignore",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "b3becb39e4bfd11940b86b88699b4fd6fed513ad26771d6ff478c92306b6aa7b",
+          "fingerprint": "d214a85dc08c0e7fa905cb30da6064994638c1fe8bae94e9836bb432c2af2c53",
           "summary": "5 method-assign ignores",
           "details": {
             "count": 5
           }
         },
         {
-          "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:6ffd5288c5b962c6",
+          "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:59a7836648a20932",
           "category": "type-ignore-usage",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "6ffd5288c5b962c6b94c0049df1476ec5ac8583a2ec53a6c34a9c2fc827ce7b1",
+          "fingerprint": "59a7836648a20932473a8881af76d2e838a1109f73e560023defcecff06b0e0a",
           "summary": "17 type-ignore comments",
           "details": {
             "count": 17
@@ -10168,23 +10168,23 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:3b370fc518181005",
+          "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:dfb043809bab284c",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "3b370fc518181005052307d54556d5739c9f671b7fe3e11170d0414bcadb90a1",
+          "fingerprint": "dfb043809bab284c4749f03b5e59cacdc4d72971425135104a67891ac283cd9c",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
           }
         },
         {
-          "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:82c11a801dc6bf35",
+          "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:6bc0b735c7b3806d",
           "category": "monolithic-module-loc",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "82c11a801dc6bf35f38b78338c5bb01041a87805c2d09f589f6e1c0b77f0df41",
-          "summary": "1782 LOC exceeds 800",
+          "fingerprint": "6bc0b735c7b3806dde64d725bc51ad64cd892d4c6e99d8879a0d9bcea26f3535",
+          "summary": "1780 LOC exceeds 800",
           "details": {
-            "loc": 1782,
+            "loc": 1780,
             "limit": 800
           }
         },
@@ -33391,7 +33391,7 @@
       "module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 1231,
+      "loc": 1229,
       "function_count": 38,
       "class_count": 1,
       "handler_count": 0,
@@ -33472,13 +33472,13 @@
           }
         },
         {
-          "id": "monolithic-module-loc:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:863da0dbb203ea82",
+          "id": "monolithic-module-loc:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:0d4e0b78f01643e3",
           "category": "monolithic-module-loc",
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_photo.py",
-          "fingerprint": "863da0dbb203ea826e4540594dfb7650fe8f7742a8845176ba91e71d8c680891",
-          "summary": "1231 LOC exceeds 800",
+          "fingerprint": "0d4e0b78f01643e323780e0925b967b2fbb6da7f818b6986f8272c39ce010e8f",
+          "summary": "1229 LOC exceeds 800",
           "details": {
-            "loc": 1231,
+            "loc": 1229,
             "limit": 800
           }
         },

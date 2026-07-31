@@ -88,14 +88,14 @@ def build_auf_root_keyboard(
             [
                 [
                     InlineKeyboardButton(
-                        text="Создать",
+                        text="Фото",
                         callback_data=_callback(
                             "create",
                             workspace_id=workspace_id,
                         ),
                     ),
                     InlineKeyboardButton(
-                        text="Оживить",
+                        text="Видео",
                         callback_data=_callback(
                             "animate",
                             workspace_id=workspace_id,

@@ -50,9 +50,7 @@ _PHOTO_MODELS = (
     KieModelAlias.NANO_BANANA_2,
     KieModelAlias.NANO_BANANA_PRO,
     KieModelAlias.SEEDREAM_5_PRO,
-    KieModelAlias.QWEN2_IMAGE_EDIT,
     KieModelAlias.WAN_27_IMAGE,
-    KieModelAlias.FLUX_2_PRO_IMAGE,
 )
 _ORIGINAL_PROVIDER_MODEL = KieModelCatalog.provider_model
 _ORIGINAL_TO_INPUT = KieGenerationRequest.to_input

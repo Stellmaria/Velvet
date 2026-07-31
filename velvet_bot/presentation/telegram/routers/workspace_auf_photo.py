@@ -54,9 +54,7 @@ _PHOTO_MODELS = (
     KieModelAlias.NANO_BANANA_2,
     KieModelAlias.NANO_BANANA_PRO,
     KieModelAlias.SEEDREAM_5_PRO,
-    KieModelAlias.QWEN2_IMAGE_EDIT,
     KieModelAlias.WAN_27_IMAGE,
-    KieModelAlias.FLUX_2_PRO_IMAGE,
 )
 
 
@@ -644,7 +642,7 @@ async def _show_models(
         text=(
             "<b>Выберите модель</b>\n\n"
             f"Фото: <b>{len(references)}</b>.\n"
-            "Лимиты: Banana — 5, Qwen — 3, FLUX — 8, Wan — 9, Seedream — 10."
+            "Лимиты референсов: Banana — 5, Wan — 9, Seedream — 10."
         ),
         reply_markup=_model_keyboard(
             workspace_id,
