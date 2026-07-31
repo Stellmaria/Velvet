@@ -1,0 +1,107 @@
+name: Temporary pricing policy sync
+
+on:
+  push:
+    branches:
+      - agent/individual-markup-vl-pricing
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: ${{ !contains(github.event.head_commit.message, '[pricing-sync]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Update pricing contracts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}: {old!r}")
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          pricing_test = "tests/test_auf_retail_user_registry.py"
+          replace_once(
+              pricing_test,
+              '"retail_markup_percent": Decimal("20"),',
+              '"retail_markup_percent": Decimal("30"),',
+          )
+          replace_once(
+              pricing_test,
+              "test_provider_cost_plus_twenty_percent_rounds_to_whole_velvet",
+              "test_provider_cost_plus_thirty_percent_and_quality_rounds_to_whole_velvet",
+          )
+          replace_once(
+              pricing_test,
+              'self.assertEqual(Decimal("0.024"), quote.target_retail_usd)\n        self.assertEqual(10_000, quote.quoted_units)\n        self.assertEqual(Decimal("1.0000"), quote.quoted_auf)\n        self.assertEqual(Decimal("0.025"), quote.minimum_revenue_usd)',
+              'self.assertEqual(Decimal("0.026"), quote.target_retail_usd)\n        self.assertEqual(20_000, quote.quoted_units)\n        self.assertEqual(Decimal("2.0000"), quote.quoted_auf)\n        self.assertEqual(Decimal("0.05"), quote.minimum_revenue_usd)',
+          )
+          replace_once(
+              pricing_test,
+              'self.assertEqual(Decimal("0.222"), quote.target_retail_usd)\n        self.assertEqual(90_000, quote.quoted_units)',
+              'self.assertEqual(Decimal("0.2405"), quote.target_retail_usd)\n        self.assertEqual(100_000, quote.quoted_units)',
+          )
+          replace_once(
+              pricing_test,
+              'self.assertIn("1 вельвет", text)',
+              'self.assertIn("2 вельвет", text)',
+          )
+
+          replace_once(
+              "velvet_bot/presentation/telegram/routers/core_operations_controllers/owner_help.py",
+              '("velvet_grant", "начислить вельветы по Telegram ID или @username"),\n            ("velvet_user", "показать карточку и активность пользователя"),',
+              '("velvet_grant", "начислить вельветы по Telegram ID или @username"),\n            ("velvet_markup", "установить, проверить или сбросить персональную наценку"),\n            ("velvet_user", "показать карточку и активность пользователя"),',
+          )
+          replace_once(
+              "tests/test_project_integrity.py",
+              '    "velvet_grant",\n    "velvet_user",',
+              '    "velvet_grant",\n    "velvet_markup",\n    "velvet_user",',
+          )
+          replace_once(
+              "tests/test_canonical_docs_sync.py",
+              'self.assertIn("Buttons: **1024**", self.navigation)',
+              'self.assertIn("Buttons: **1034**", self.navigation)',
+          )
+          PY
+
+      - name: Regenerate inventories
+        shell: bash
+        run: |
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/inventory_package_architecture.py --write
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          git rm .github/workflows/tmp-pricing-policy-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            tests/test_auf_retail_user_registry.py \
+            tests/test_project_integrity.py \
+            tests/test_canonical_docs_sync.py \
+            velvet_bot/presentation/telegram/routers/core_operations_controllers/owner_help.py \
+            docs/generated/telegram_navigation_inventory.md \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md
+          git commit -m "Исправить контракты политики цен [pricing-sync]"
+          git push origin HEAD:agent/individual-markup-vl-pricing
