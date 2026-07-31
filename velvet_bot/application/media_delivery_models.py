@@ -29,7 +29,7 @@ class MediaDeliveryStepStatus(StrEnum):
 
 
 class MediaDeliveryError(RuntimeError):
-    """Expected durable-delivery failure with a stable machine code."""
+    """Expected durable-delivery failure carrying a stable machine code."""
 
     def __init__(
         self,
