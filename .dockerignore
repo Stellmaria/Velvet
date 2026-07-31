@@ -20,12 +20,7 @@ htmlcov
 backups
 logs
 runtime
-data/postgres
-data/postgres.*
-data/backups
-data/logs
-data/runtime
-data/hermes
+data
 server-data
 *.dump
 *.zip
