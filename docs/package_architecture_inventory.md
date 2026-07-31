@@ -1,19 +1,19 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **620**
-- Production LOC: **132996**
+- Production modules: **621**
+- Production LOC: **133305**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **41**
 - Startup installer stages: **28**
-- Registered package violations: **533**
-- Registered exemptions: **533**
+- Registered package violations: **539**
+- Registered exemptions: **539**
 
 ## Layers
 
 - `application`: **19** modules
-- `composition`: **55** modules
+- `composition`: **56** modules
 - `core`: **7** modules
 - `domain`: **175** modules
 - `infrastructure`: **25** modules
@@ -67,16 +67,16 @@
 - `domain-aiogram-import`: **19**
 - `domain-layer-import`: **3**
 - `dynamic-import`: **19**
-- `foreign-assignment`: **38**
-- `installed-sentinel`: **41**
-- `installer-like-module`: **23**
-- `method-assign-ignore`: **8**
+- `foreign-assignment`: **39**
+- `installed-sentinel`: **42**
+- `installer-like-module`: **24**
+- `method-assign-ignore`: **9**
 - `monolithic-function`: **25**
 - `monolithic-module-loc`: **17**
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **108**
-- `type-ignore-usage`: **16**
-- `typing-any-usage`: **108**
+- `type-ignore-usage`: **17**
+- `typing-any-usage`: **109**
 
 ## Largest modules
 
