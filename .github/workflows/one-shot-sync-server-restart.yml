@@ -7,6 +7,12 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: one-shot-sync-server-restart
+  cancel-in-progress: true
 
 jobs:
   sync-test-push:
@@ -31,6 +37,7 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
+          ref: agent/server-self-restart
           fetch-depth: 0
 
       - name: Merge current main and resolve generated inventory
@@ -94,3 +101,17 @@ jobs:
           git add -A
           git commit -m "Merge main and refresh server restart inventory"
           git push origin HEAD:agent/server-self-restart
+
+      - name: Report successful gate
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment 486 --repo Stellmaria/Velvet --body "✅ One-shot branch gate passed: current main merged, architecture inventory regenerated, mypy, full unit suite and Docker build completed. The tested branch head was pushed."
+
+      - name: Report failed gate
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment 486 --repo Stellmaria/Velvet --body "❌ One-shot branch gate failed. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
