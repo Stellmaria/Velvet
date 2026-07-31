@@ -80,7 +80,7 @@ Existing pending/failed/success/expired/skipped rows остаются валид
 - отсутствия `except Exception` в пяти целевых файлах;
 - сохранения legacy worker delivery guard.
 
-Generated P2 stability и package architecture inventories пересобираются в полном GitHub Actions checkout.
+Generated P2 stability, shared-contract и package architecture inventories пересобраны в полном GitHub Actions checkout и зафиксированы в ветке.
 
 ### PR и commit
 
@@ -91,11 +91,11 @@ Generated P2 stability и package architecture inventories пересобира�
 
 ### Незавершённое
 
-До merge требуется получить generated inventory metrics и зелёные tests/type-check/docker-build/project-notes checks. После merge нужен VPS smoke на одном тестовом result: normal success, simulated Telegram rejection и controlled database failure до фактической production нагрузки.
+До merge требуется получить зелёные tests/type-check/docker-build/project-notes/backup-drill checks. После merge нужен VPS smoke на одном тестовом result: normal success, simulated Telegram rejection и controlled database failure до фактической production нагрузки.
 
 ### Следующий шаг
 
-Открыть draft PR, устранить CI замечания, слить после зелёного matrix и выполнить live acceptance без повторного запуска provider generation.
+Получить чистый финальный matrix, слить PR и выполнить live acceptance без повторного запуска provider generation.
 
 ### Итоговые generated metrics
 
