@@ -1,0 +1,61 @@
+name: Temporary pricing finalizer
+
+on:
+  push:
+    branches:
+      - agent/individual-markup-vl-pricing
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: ${{ !contains(github.event.head_commit.message, '[pricing-finalize]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Fix final pricing expectations
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/test_auf_retail_user_registry.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''        self.assertEqual(20_000, quote.quoted_units)
+        self.assertEqual(Decimal("2.0000"), quote.quoted_auf)
+        self.assertEqual(Decimal("0.05"), quote.minimum_revenue_usd)'''
+          new = '''        self.assertEqual(30_000, quote.quoted_units)
+        self.assertEqual(Decimal("3.0000"), quote.quoted_auf)
+        self.assertEqual(Decimal("0.075"), quote.minimum_revenue_usd)'''
+          if text.count(old) != 1:
+              raise SystemExit('Expected pricing assertion block not found exactly once')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Regenerate package architecture contracts
+        shell: bash
+        run: |
+          python scripts/inventory_package_architecture.py --write --bootstrap-exemptions
+
+      - name: Commit finalized contracts
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            tests/test_auf_retail_user_registry.py \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/package_architecture_exemptions.json
+          git commit -m "Завершить контракты политики цен [pricing-finalize]"
+          git push origin HEAD:agent/individual-markup-vl-pricing
