@@ -5,7 +5,7 @@
 - Линия/фаза: hotfix/эксплуатация вне фаз — Linux VPS production migration
 - Статус: завершено
 - Ветка: `agent/fix-server-deployment-portability`
-- Актуальная база `main`: `1a80077a6d4c8a7ef46b2c4464b51af7a0aeb75d`
+- Базовый commit: `1a80077a6d4c8a7ef46b2c4464b51af7a0aeb75d`
 - PR: #485
 
 ## Перед началом
