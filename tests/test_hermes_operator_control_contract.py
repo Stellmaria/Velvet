@@ -61,7 +61,7 @@ class HermesOperatorControlContractTests(unittest.TestCase):
         self.assertIn("secrets.token_urlsafe(48)", self.installer)
         self.assertIn("--internal --attachable", self.installer)
         self.assertIn("chmod 0600", self.installer)
-        self.assertIn("managed SOUL", self.installer.replace("managed", "managed"))
+        self.assertIn("BEGIN MANAGED HERMES OPERATOR CONTROL", self.installer)
         self.assertNotIn("TELEGRAM_BOT_TOKEN", self.installer)
         self.assertNotIn("OPENAI_API_KEY", self.installer)
         self.assertNotIn("POSTGRES_PASSWORD", self.installer)
