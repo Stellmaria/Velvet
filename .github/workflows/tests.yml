@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - fix/owner-cost-and-public-attempt-privacy
 
 jobs:
   unit-tests:
