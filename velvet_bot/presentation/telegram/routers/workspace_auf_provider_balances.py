@@ -197,6 +197,8 @@ def build_provider_balances_keyboard(*, workspace_id: int) -> InlineKeyboardMark
             [
                 InlineKeyboardButton(text="Kie.ai", url="https://kie.ai/"),
                 InlineKeyboardButton(text="GRS AI", url="https://grsai.com/"),
+            ],
+            [
                 InlineKeyboardButton(
                     text="Byesu",
                     url="https://byesu.com/media/query.html",
