@@ -56,6 +56,10 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 "DELETE FROM ai_tasks WHERE dedupe_key LIKE 'test:auf-charge:%'"
             )
             await connection.execute(
+                "DELETE FROM auf_user_markup_overrides WHERE user_id = $1::BIGINT",
+                self._OWNER_ID,
+            )
+            await connection.execute(
                 "DELETE FROM auf_wallet_entries WHERE workspace_id = $1::BIGINT",
                 DEFAULT_WORKSPACE_ID,
             )
@@ -127,7 +131,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             idempotency_key=f"test:auf-charge:grant:{amount}",
         )
 
-    async def test_price_catalog_uses_provider_plus_twenty_whole_values(self) -> None:
+    async def test_price_catalog_uses_provider_plus_thirty_whole_values(self) -> None:
         cases = (
             (self._request(key="quote-nb2").payload, Decimal("1")),
             (
@@ -136,7 +140,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     model="nano_banana_pro",
                     resolution="4K",
                 ).payload,
-                Decimal("2"),
+                Decimal("4"),
             ),
             (
                 self._request(
@@ -155,7 +159,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     duration=5,
                     audio=True,
                 ).payload,
-                Decimal("8"),
+                Decimal("9"),
             ),
             (
                 self._request(
@@ -164,7 +168,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1080p",
                     duration=5,
                 ).payload,
-                Decimal("27"),
+                Decimal("29"),
             ),
         )
         for payload, expected in cases:
@@ -176,6 +180,42 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     quote.minimum_revenue_usd,
                     quote.target_retail_usd,
                 )
+
+    async def test_individual_markup_reprices_only_target_user(self) -> None:
+        async with self.database.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO telegram_users (user_id, first_name)
+                VALUES ($1::BIGINT, 'Pricing test')
+                ON CONFLICT (user_id) DO NOTHING
+                """,
+                self._OWNER_ID,
+            )
+        baseline = await self.pricing.quote(
+            self._request(
+                key="markup-base",
+                model="seedream_5_pro",
+                resolution="2K",
+                references=1,
+            ).payload
+        )
+        policy = await self.pricing.set_user_markup(
+            user_id=self._OWNER_ID,
+            markup_percent=Decimal("80"),
+            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+        )
+        repriced = await self.pricing.quote(
+            self._request(
+                key="markup-custom",
+                model="seedream_5_pro",
+                resolution="2K",
+                references=1,
+            ).payload
+        )
+        self.assertEqual(Decimal("80.00"), policy.effective_markup_percent)
+        self.assertGreater(repriced.quoted_units, baseline.quoted_units)
+        self.assertEqual(Decimal("80.00"), repriced.markup_percent)
+        await self.pricing.clear_user_markup(user_id=self._OWNER_ID)
 
     async def test_enqueue_reserves_once_and_success_captures(self) -> None:
         await self._grant(10)

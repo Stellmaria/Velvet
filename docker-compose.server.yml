@@ -71,7 +71,8 @@ services:
     image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
     profiles: ["agent"]
     restart: unless-stopped
-    init: true
+    # Official Hermes uses s6-overlay /init as PID 1. Docker init/tini must not
+    # be inserted in front of it, otherwise the container exits before Hermes.
     command: ["gateway", "run"]
     env_file:
       - .env.hermes
@@ -95,8 +96,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+    # s6-overlay starts as root only long enough to remap the hermes UID/GID,
+    # chown /opt/data and drop privileges. Keep every other capability removed.
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     security_opt:
       - no-new-privileges:true
     networks:

@@ -20,5 +20,7 @@ htmlcov
 backups
 logs
 runtime
+data
+server-data
 *.dump
 *.zip

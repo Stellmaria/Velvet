@@ -34,7 +34,9 @@ class AufChargedTaskQueueService(AITaskQueueService):
         workspace_id = _workspace_id(request)
         async with self._database.acquire() as connection:
             async with connection.transaction():
-                quote = await quote_auf_payload(connection, request.payload)
+                pricing_payload = dict(request.payload)
+                pricing_payload["user_id"] = int(request.created_by or 0)
+                quote = await quote_auf_payload(connection, pricing_payload)
                 validate_expected_auf_quote(request.payload, quote)
                 result = await self._tasks._enqueue_on_connection(connection, request)
                 if not result.created:
@@ -89,7 +91,7 @@ async def _reserve_charge(
     quote: AufPriceQuote,
 ) -> None:
     if quote.quoted_units <= 0 or quote.quoted_units % AUF_SCALE != 0:
-        raise RuntimeError("Списание генерации должно быть целым числом вельветов.")
+        raise RuntimeError("Списание генерации должно быть целым числом VL.")
 
     await connection.execute(
         """
@@ -182,7 +184,14 @@ async def _reserve_charge(
                 "duration_seconds": quote.duration_seconds,
                 "reference_count": quote.reference_count,
                 "provider_cost_usd": str(quote.provider_cost_usd),
+                "global_markup_percent": str(quote.global_markup_percent),
+                "user_markup_override_percent": (
+                    str(quote.user_markup_override_percent)
+                    if quote.user_markup_override_percent is not None
+                    else None
+                ),
                 "markup_percent": str(quote.markup_percent),
+                "quality_surcharge_velvets": quote.quality_surcharge_velvets,
                 "target_retail_usd": str(quote.target_retail_usd),
                 "minimum_revenue_usd": str(quote.minimum_revenue_usd),
                 "billing_usd_to_rub": str(quote.billing_usd_to_rub),

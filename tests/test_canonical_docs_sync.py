@@ -106,7 +106,7 @@ class CanonicalDocsSyncTests(unittest.TestCase):
 
     def test_navigation_and_branch_maintenance_status_are_current(self) -> None:
         self.assertIn("Python files scanned: **606**", self.navigation)
-        self.assertIn("Buttons: **1024**", self.navigation)
+        self.assertIn("Buttons: **1034**", self.navigation)
         self.assertIn("Violations: **0**", self.navigation)
 
         for document in (self.status, self.memory, self.audit, self.changelog):

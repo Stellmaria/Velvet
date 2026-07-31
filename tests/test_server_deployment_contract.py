@@ -25,6 +25,33 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertNotIn("/var/lib/postgresql", hermes)
         self.assertIn('"127.0.0.1:${HERMES_LOOPBACK_PORT:-8642}:8642"', hermes)
 
+    def test_hermes_preserves_s6_overlay_as_pid_one(self) -> None:
+        source = Path("docker-compose.server.yml").read_text(encoding="utf-8")
+        bot = source.split("  bot:", 1)[1].split("\n  # Запускается", 1)[0]
+        hermes = source.split("  hermes:", 1)[1]
+        self.assertIn("init: true", bot)
+        self.assertNotIn("init: true", hermes)
+        self.assertIn("s6-overlay", hermes)
+        self.assertIn('command: ["gateway", "run"]', hermes)
+
+    def test_hermes_has_only_required_s6_init_capabilities(self) -> None:
+        source = Path("docker-compose.server.yml").read_text(encoding="utf-8")
+        hermes = source.split("  hermes:", 1)[1]
+        self.assertIn("cap_drop:\n      - ALL", hermes)
+        self.assertIn(
+            "cap_add:\n"
+            "      - CHOWN\n"
+            "      - DAC_OVERRIDE\n"
+            "      - FOWNER\n"
+            "      - SETGID\n"
+            "      - SETUID",
+            hermes,
+        )
+        self.assertNotIn("privileged:", hermes)
+        self.assertNotIn("SYS_ADMIN", hermes)
+        self.assertNotIn("NET_ADMIN", hermes)
+        self.assertIn("no-new-privileges:true", hermes)
+
     def test_server_env_starts_with_expensive_features_disabled(self) -> None:
         source = Path(".env.server.example").read_text(encoding="utf-8")
         for line in (
@@ -40,6 +67,15 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertIn("@postgres:5432/velvet", source)
         self.assertIn("HERMES_BASE_URL=http://hermes:8642", source)
 
+    def test_runtime_data_is_excluded_from_docker_build_context(self) -> None:
+        ignored = {
+            line.strip()
+            for line in Path(".dockerignore").read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+        self.assertIn("data", ignored)
+        self.assertIn("server-data", ignored)
+
     def test_deploy_verifies_dump_before_resetting_code(self) -> None:
         source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
         self.assertLess(
@@ -49,6 +85,11 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertIn("scripts/server_preflight.py", source)
         self.assertIn("scripts/server_smoke.py", source)
         self.assertIn("Database was not automatically restored", source)
+
+    def test_predeploy_dump_is_readable_by_bot_container(self) -> None:
+        source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
+        self.assertIn('chmod 0644 "$backup_path"', source)
+        self.assertNotIn('chmod 600 "$backup_path"', source)
 
     def test_dump_verifier_uses_disposable_database_and_forced_cleanup(self) -> None:
         source = Path("deploy/server/verify-dump.sh").read_text(encoding="utf-8")

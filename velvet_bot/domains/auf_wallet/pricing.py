@@ -8,7 +8,7 @@ from typing import Any
 
 from velvet_bot.database import Database
 
-from .models import AUF_SCALE, format_auf_units, units_to_auf
+from .models import AUF_SCALE, format_auf_units, format_vl_units, units_to_auf
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +22,10 @@ class AufPriceQuote:
     duration_seconds: int
     reference_count: int
     provider_cost_usd: Decimal
+    global_markup_percent: Decimal
+    user_markup_override_percent: Decimal | None
     markup_percent: Decimal
+    quality_surcharge_velvets: int
     target_retail_usd: Decimal
     minimum_revenue_usd: Decimal
     billing_usd_to_rub: Decimal
@@ -68,6 +71,21 @@ class AufPriceQuote:
         return self.minimum_profit_usd / self.provider_cost_usd * Decimal("100")
 
 
+@dataclass(frozen=True, slots=True)
+class AufUserMarkupPolicy:
+    user_id: int
+    global_markup_percent: Decimal
+    override_markup_percent: Decimal | None
+
+    @property
+    def effective_markup_percent(self) -> Decimal:
+        return (
+            self.override_markup_percent
+            if self.override_markup_percent is not None
+            else self.global_markup_percent
+        )
+
+
 class AufPriceNotConfigured(ValueError):
     pass
 
@@ -79,6 +97,48 @@ class AufPricingRepository:
     async def quote(self, payload: Mapping[str, object]) -> AufPriceQuote:
         async with self._database.acquire() as connection:
             return await quote_auf_payload(connection, payload)
+
+    async def user_markup_policy(self, user_id: int) -> AufUserMarkupPolicy:
+        async with self._database.acquire() as connection:
+            return await _load_user_markup_policy(connection, int(user_id))
+
+    async def set_user_markup(
+        self,
+        *,
+        user_id: int,
+        markup_percent: Decimal,
+        actor_user_id: int,
+    ) -> AufUserMarkupPolicy:
+        normalized = _validate_markup_percent(markup_percent)
+        async with self._database.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO auf_user_markup_overrides (
+                    user_id, markup_percent, updated_by_user_id
+                )
+                VALUES ($1::BIGINT, $2::NUMERIC, $3::BIGINT)
+                ON CONFLICT (user_id) DO UPDATE
+                SET markup_percent = EXCLUDED.markup_percent,
+                    updated_by_user_id = EXCLUDED.updated_by_user_id,
+                    updated_at = NOW()
+                """,
+                int(user_id),
+                normalized,
+                int(actor_user_id),
+            )
+            return await _load_user_markup_policy(connection, int(user_id))
+
+    async def clear_user_markup(
+        self,
+        *,
+        user_id: int,
+    ) -> AufUserMarkupPolicy:
+        async with self._database.acquire() as connection:
+            await connection.execute(
+                "DELETE FROM auf_user_markup_overrides WHERE user_id = $1::BIGINT",
+                int(user_id),
+            )
+            return await _load_user_markup_policy(connection, int(user_id))
 
 
 async def quote_auf_payload(
@@ -104,11 +164,13 @@ async def quote_auf_payload(
     duration_seconds = _positive_int(request_value.get("duration_seconds"), default=6)
     references = request_value.get("references")
     reference_count = len(references) if isinstance(references, (list, tuple)) else 0
+    user_id = _positive_int(payload.get("user_id"), default=0)
 
     row = await connection.fetchrow(
         """
         SELECT id, version_key, provider, model_alias, resolution, audio,
-               pricing_basis, unit_cost_usd, extra_reference_cost_usd
+               pricing_basis, unit_cost_usd, extra_reference_cost_usd,
+               quality_surcharge_velvets
         FROM auf_price_versions
         WHERE model_alias = $1::VARCHAR
           AND operation = 'media.generate'
@@ -143,6 +205,15 @@ async def quote_auf_payload(
     extra_reference_cost = Decimal(row["extra_reference_cost_usd"])
     if extra_reference_cost > 0 and reference_count > 1:
         provider_cost += extra_reference_cost * Decimal(reference_count - 1)
+    quality_surcharge_raw = (
+        row.get("quality_surcharge_velvets", 0)
+        if hasattr(row, "get")
+        else 0
+    )
+    quality_surcharge_velvets = max(
+        max(0, int(quality_surcharge_raw or 0)),
+        _banana_quality_surcharge(model_alias, resolution),
+    )
 
     settings = await connection.fetchrow(
         """
@@ -157,11 +228,28 @@ async def quote_auf_payload(
     retail_auf_usd = Decimal(settings["retail_auf_usd"])
     usd_to_rub = Decimal(settings["billing_usd_to_rub"])
     usd_to_byn = Decimal(settings["billing_usd_to_byn"])
-    markup_percent = Decimal(settings["retail_markup_percent"])
+    global_markup_percent = Decimal(settings["retail_markup_percent"])
     if retail_auf_usd <= 0 or usd_to_rub <= 0 or usd_to_byn <= 0:
         raise RuntimeError("Курсы и стоимость вельвета должны быть больше нуля.")
-    if markup_percent < 0:
-        raise RuntimeError("Наценка Ауф не может быть отрицательной.")
+    _validate_markup_percent(global_markup_percent)
+
+    user_markup_override: Decimal | None = None
+    if user_id > 0:
+        override_value = await connection.fetchval(
+            """
+            SELECT markup_percent
+            FROM auf_user_markup_overrides
+            WHERE user_id = $1::BIGINT
+            """,
+            user_id,
+        )
+        if override_value is not None:
+            user_markup_override = _validate_markup_percent(Decimal(override_value))
+    markup_percent = (
+        user_markup_override
+        if user_markup_override is not None
+        else global_markup_percent
+    )
 
     package_floor_rub = await connection.fetchval(
         """
@@ -183,7 +271,7 @@ async def quote_auf_payload(
     markup_multiplier = Decimal("1") + markup_percent / Decimal("100")
     target_retail_usd = provider_cost * markup_multiplier
     target_retail_rub = target_retail_usd * usd_to_rub
-    whole_auf = max(
+    base_whole_velvets = max(
         1,
         int(
             (target_retail_rub / minimum_rub_per_auf).to_integral_value(
@@ -191,8 +279,9 @@ async def quote_auf_payload(
             )
         ),
     )
-    quoted_units = whole_auf * AUF_SCALE
-    minimum_revenue_rub = minimum_rub_per_auf * Decimal(whole_auf)
+    whole_velvets = base_whole_velvets + quality_surcharge_velvets
+    quoted_units = whole_velvets * AUF_SCALE
+    minimum_revenue_rub = minimum_rub_per_auf * Decimal(whole_velvets)
     minimum_revenue_usd = minimum_revenue_rub / usd_to_rub
 
     return AufPriceQuote(
@@ -205,7 +294,10 @@ async def quote_auf_payload(
         duration_seconds=duration_seconds,
         reference_count=reference_count,
         provider_cost_usd=provider_cost,
+        global_markup_percent=global_markup_percent,
+        user_markup_override_percent=user_markup_override,
         markup_percent=markup_percent,
+        quality_surcharge_velvets=quality_surcharge_velvets,
         target_retail_usd=target_retail_usd,
         minimum_revenue_usd=minimum_revenue_usd,
         billing_usd_to_rub=usd_to_rub,
@@ -214,16 +306,66 @@ async def quote_auf_payload(
     )
 
 
+async def _load_user_markup_policy(
+    connection: Any,
+    user_id: int,
+) -> AufUserMarkupPolicy:
+    global_markup = await connection.fetchval(
+        """
+        SELECT retail_markup_percent
+        FROM auf_economy_settings
+        WHERE singleton_id = 1
+        """
+    )
+    if global_markup is None:
+        raise RuntimeError("Настройки экономики Ауф не инициализированы.")
+    override = await connection.fetchval(
+        """
+        SELECT markup_percent
+        FROM auf_user_markup_overrides
+        WHERE user_id = $1::BIGINT
+        """,
+        int(user_id),
+    )
+    return AufUserMarkupPolicy(
+        user_id=int(user_id),
+        global_markup_percent=_validate_markup_percent(Decimal(global_markup)),
+        override_markup_percent=(
+            _validate_markup_percent(Decimal(override))
+            if override is not None
+            else None
+        ),
+    )
+
+
 def format_owner_price_details(quote: AufPriceQuote) -> str:
     """Render provider economics only for an already-authorized creator view."""
 
+    if quote.user_markup_override_percent is None:
+        markup_line = f"Наценка: <b>{_compact_decimal(quote.markup_percent)}%</b>"
+    else:
+        markup_line = (
+            "Наценка: "
+            f"<b>{_compact_decimal(quote.markup_percent)}%</b> индивидуальная · "
+            f"глобальная {_compact_decimal(quote.global_markup_percent)}%"
+        )
+    surcharge_line = (
+        ""
+        if quote.quality_surcharge_velvets <= 0
+        else (
+            "\nНадбавка качества: "
+            f"<b>+{quote.quality_surcharge_velvets} VL</b>"
+        )
+    )
     return (
         "<b>Служебная экономика · только Стэл</b>\n"
         f"Провайдер: <code>{escape(quote.provider.upper())}</code>\n"
+        f"{markup_line}\n"
         f"Себестоимость: {_money_triplet(quote.provider_cost_usd, quote)}\n"
-        f"Цена +{_compact_decimal(quote.markup_percent)}%: "
-        f"{_money_triplet(quote.target_retail_usd, quote)}\n"
-        f"Списание: <b>{format_auf_units(quote.quoted_units, max_places=0)}</b>\n"
+        f"Цена по проценту: {_money_triplet(quote.target_retail_usd, quote)}"
+        f"{surcharge_line}\n"
+        f"Списание: <b>{format_vl_units(quote.quoted_units)}</b> · "
+        f"{format_auf_units(quote.quoted_units, max_places=0)}\n"
         "Минимальная выручка по самому выгодному пакету: "
         f"{_money_triplet(quote.minimum_revenue_usd, quote)}\n"
         "Минимальная прибыль: "
@@ -243,6 +385,19 @@ def _compact_decimal(value: Decimal) -> str:
     return rendered or "0"
 
 
+def _banana_quality_surcharge(model_alias: str, resolution: str) -> int:
+    if model_alias not in {"nano_banana_2", "nano_banana_pro"}:
+        return 0
+    return {"2K": 1, "4K": 2}.get(resolution.strip().upper(), 0)
+
+
+def _validate_markup_percent(value: Decimal) -> Decimal:
+    normalized = Decimal(value).quantize(Decimal("0.01"))
+    if not normalized.is_finite() or normalized < 0 or normalized > Decimal("1000"):
+        raise ValueError("Наценка должна быть от 0 до 1000 процентов.")
+    return normalized
+
+
 def _positive_int(value: object, *, default: int) -> int:
     try:
         parsed = int(str(value or "").strip())
@@ -255,6 +410,7 @@ __all__ = (
     "AufPriceNotConfigured",
     "AufPriceQuote",
     "AufPricingRepository",
+    "AufUserMarkupPolicy",
     "format_owner_price_details",
     "quote_auf_payload",
 )
