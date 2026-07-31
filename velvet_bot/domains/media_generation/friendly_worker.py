@@ -9,6 +9,7 @@ from typing import Any
 
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 
+from velvet_bot.application.media_delivery import MediaDeliveryError
 from velvet_bot.domains.ai_usage import AITask
 from velvet_bot.infrastructure.ai import KieError
 from velvet_bot.infrastructure.media_delivery_runtime import (
@@ -61,8 +62,11 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
     async def process_once(self) -> bool:
         try:
             await self._media_delivery_runtime.recover_once()
-        except Exception:
-            logger.exception("Durable media recovery iteration failed")
+        except MediaDeliveryError as error:
+            logger.exception(
+                "Durable media recovery iteration failed code=%s",
+                error.code,
+            )
         return await super().process_once()
 
     async def _start_progress(
@@ -242,7 +246,6 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         """Generation workers never deliver; the durable use case owns that phase."""
 
         del chat_id, request, record
-
 
 
 def friendly_stage(request: KieGenerationRequest, stage: str) -> str:
