@@ -5,7 +5,7 @@
 - Линия/фаза: `production hotfix`
 - Статус: `завершено`
 - Ветка: `agent/fix-media-result-auto-delivery`
-- Базовый commit: `a7d3976a729d27af976c479d5e34d2ade8d433e7`
+- Базовый commit: `ffa6f5272d321fdcc9864f9172819c357a674f48`
 
 ## Перед началом
 
