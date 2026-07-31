@@ -9,6 +9,8 @@ Before=velvet-compose.service
 Type=simple
 User=velvet
 Group=velvet
+SupplementaryGroups=velvet-supervisor-client
+UMask=0007
 WorkingDirectory=/srv/velvet
 EnvironmentFile=/srv/velvet/.env.server
 Environment=VELVET_APP_DIR=/srv/velvet

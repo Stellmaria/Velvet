@@ -9,6 +9,8 @@ fi
 APP_DIR="${VELVET_APP_DIR:-/srv/velvet}"
 ENV_FILE="${VELVET_ENV_FILE:-.env.server}"
 COMPOSE_FILE="${VELVET_COMPOSE_FILE:-docker-compose.server.yml}"
+CLIENT_GROUP="${SERVER_SUPERVISOR_CLIENT_GROUP:-velvet-supervisor-client}"
+CLIENT_UID="${SERVER_SUPERVISOR_CLIENT_UID:-10001}"
 SERVER_UNIT_SOURCE="$APP_DIR/deploy/systemd/velvet-server-supervisor.service"
 SERVER_UNIT_TARGET="/etc/systemd/system/velvet-server-supervisor.service"
 COMPOSE_UNIT_SOURCE="$APP_DIR/deploy/systemd/velvet-compose.service"
@@ -22,7 +24,17 @@ for path in "$ENV_FILE" "$COMPOSE_FILE" "$SERVER_UNIT_SOURCE" "$COMPOSE_UNIT_SOU
   fi
 done
 
-python3 - "$ENV_FILE" <<'PY'
+if ! getent group "$CLIENT_GROUP" >/dev/null; then
+  groupadd --system "$CLIENT_GROUP"
+fi
+usermod -a -G "$CLIENT_GROUP" velvet
+client_gid="$(getent group "$CLIENT_GROUP" | cut -d: -f3)"
+if [[ ! "$client_gid" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Could not resolve numeric GID for $CLIENT_GROUP." >&2
+  exit 2
+fi
+
+python3 - "$ENV_FILE" "$client_gid" "$CLIENT_UID" <<'PY'
 from __future__ import annotations
 
 import secrets
@@ -30,6 +42,8 @@ import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
+client_gid = sys.argv[2]
+client_uid = sys.argv[3]
 lines = path.read_text(encoding="utf-8").splitlines()
 values: dict[str, str] = {}
 for line in lines:
@@ -51,11 +65,17 @@ updates = {
     "SUPERVISOR_CLIENT_TIMEOUT_SECONDS": "20",
     "SUPERVISOR_COMMAND_TIMEOUT_SECONDS": "1800",
     "SERVER_SUPERVISOR_SOCKET_HOST": (
-        f"{data_dir}/runtime/supervisor/velvet-server-supervisor.sock"
+        f"{data_dir}/control/supervisor/velvet-server-supervisor.sock"
     ),
     "SERVER_SUPERVISOR_SOCKET": (
-        "/runtime/supervisor/velvet-server-supervisor.sock"
+        "/run/velvet-supervisor/velvet-server-supervisor.sock"
     ),
+    "SERVER_SUPERVISOR_CLIENT_UID": client_uid,
+    "SERVER_SUPERVISOR_CLIENT_GID": client_gid,
+    "SERVER_SUPERVISOR_SOCKET_MODE": "0660",
+    "SERVER_SUPERVISOR_AUTH_FAILURE_LIMIT": "5",
+    "SERVER_SUPERVISOR_AUTH_FAILURE_WINDOW_SECONDS": "60",
+    "SERVER_SUPERVISOR_AUTH_FAILURE_COOLDOWN_SECONDS": "120",
 }
 seen: set[str] = set()
 result: list[str] = []
@@ -97,17 +117,50 @@ print(value)
 PY
 )"
 
-mkdir -p \
-  "$data_dir/runtime/supervisor" \
-  "$data_dir/runtime/docker-config"
-chown velvet:velvet \
-  "$data_dir/runtime/supervisor" \
-  "$data_dir/runtime/docker-config"
-chmod 0755 "$data_dir/runtime/supervisor"
-chmod 0700 "$data_dir/runtime/docker-config"
+control_dir="$data_dir/control/supervisor"
+runtime_dir="$data_dir/runtime/supervisor"
+docker_config="$data_dir/runtime/docker-config"
+legacy_socket="$runtime_dir/velvet-server-supervisor.sock"
+new_socket="$control_dir/velvet-server-supervisor.sock"
+
+mkdir -p "$control_dir" "$runtime_dir" "$docker_config"
+chown velvet:"$CLIENT_GROUP" "$control_dir"
+chmod 0750 "$control_dir"
+chown velvet:velvet "$runtime_dir" "$docker_config"
+chmod 0755 "$runtime_dir"
+chmod 0700 "$docker_config"
+
+python3 scripts/server_preflight.py \
+  --env-file "$ENV_FILE" \
+  --hermes-env .env.hermes \
+  --skip-host-tools
+
 install -m 0644 "$SERVER_UNIT_SOURCE" "$SERVER_UNIT_TARGET"
 install -m 0644 "$COMPOSE_UNIT_SOURCE" "$COMPOSE_UNIT_TARGET"
 systemctl daemon-reload
+systemctl stop velvet-server-supervisor.service >/dev/null 2>&1 || true
+if [[ -S "$legacy_socket" ]]; then
+  rm -f "$legacy_socket"
+elif [[ -e "$legacy_socket" || -L "$legacy_socket" ]]; then
+  echo "Refusing to delete unexpected legacy Supervisor path: $legacy_socket" >&2
+  exit 3
+fi
+if [[ -e "$new_socket" || -L "$new_socket" ]]; then
+  if [[ -S "$new_socket" ]]; then
+    owner_uid="$(stat -c '%u' "$new_socket")"
+    owner_gid="$(stat -c '%g' "$new_socket")"
+    mode="$(stat -c '%a' "$new_socket")"
+    velvet_uid="$(id -u velvet)"
+    if [[ "$owner_uid" != "$velvet_uid" || "$owner_gid" != "$client_gid" || "$mode" != "660" ]]; then
+      echo "Refusing unexpected stale Supervisor socket ownership/mode." >&2
+      exit 3
+    fi
+    rm -f "$new_socket"
+  else
+    echo "Refusing to replace non-socket Supervisor control path: $new_socket" >&2
+    exit 3
+  fi
+fi
 systemctl enable velvet-server-supervisor.service
 systemctl restart velvet-server-supervisor.service
 
@@ -119,18 +172,26 @@ else
   systemctl enable --now velvet-compose.service
 fi
 
-python3 - "$data_dir/runtime/supervisor/velvet-server-supervisor.sock" <<'PY'
+python3 - "$new_socket" "$client_gid" <<'PY'
 from __future__ import annotations
 
 import socket
+import stat
 import sys
 import time
 from pathlib import Path
 
 path = Path(sys.argv[1])
+expected_gid = int(sys.argv[2])
 deadline = time.monotonic() + 30
 while time.monotonic() < deadline:
     if path.is_socket():
+        value = path.lstat()
+        mode = stat.S_IMODE(value.st_mode)
+        if value.st_gid != expected_gid or mode != 0o660 or mode & 0o007:
+            raise SystemExit(
+                f"Unsafe Server Supervisor socket metadata: gid={value.st_gid} mode={mode:04o}"
+            )
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
             client.settimeout(3)
             client.connect(str(path))
@@ -139,7 +200,7 @@ while time.monotonic() < deadline:
             )
             response = client.recv(4096)
         if b"200 OK" in response and b'"ok": true' in response:
-            print("Server Supervisor Unix API is healthy.")
+            print("Server Supervisor Unix API is healthy and permission-confined.")
             break
     time.sleep(1)
 else:

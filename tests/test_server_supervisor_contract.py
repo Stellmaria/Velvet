@@ -55,28 +55,45 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertNotIn("shell=True", self.runtime)
         self.assertNotIn("docker.sock", self.runtime)
 
-    def test_proxy_has_only_runtime_socket_and_private_network_access(self) -> None:
+    def test_proxy_has_only_dedicated_control_socket_and_private_network(self) -> None:
         service = self.compose.split("  supervisor-proxy:", 1)[1].split(
             "\n  bot:", 1
         )[0]
         self.assertIn("Dockerfile.server-supervisor-proxy", service)
-        self.assertIn("/runtime", service)
+        self.assertIn("/control/supervisor:/run/velvet-supervisor:ro", service)
+        self.assertNotIn("/runtime:/runtime", service)
         self.assertIn("read_only: true", service)
-        self.assertIn('user: "10001:10001"', service)
+        self.assertIn("SERVER_SUPERVISOR_CLIENT_GID", service)
+        self.assertIn("SERVER_SUPERVISOR_CLIENT_UID", service)
         self.assertIn("cap_drop:\n      - ALL", service)
         self.assertIn("no-new-privileges:true", service)
         self.assertNotIn("docker.sock", service)
         self.assertNotIn("/srv/velvet", service)
         self.assertNotIn("ports:", service)
 
-    def test_bot_uses_proxy_without_host_privileges(self) -> None:
+    def test_bot_uses_proxy_without_host_control_socket(self) -> None:
         bot = self.compose.split("  bot:", 1)[1].split(
             "\n  # Серверная Krita", 1
         )[0]
         self.assertIn("supervisor-proxy:", bot)
         self.assertIn("condition: service_started", bot)
+        self.assertNotIn("control/supervisor", bot)
+        self.assertNotIn("run/velvet-supervisor", bot)
         self.assertNotIn("docker.sock", bot)
         self.assertNotIn("privileged:", bot)
+
+    def test_runtime_enforces_socket_mode_peer_credentials_and_rate_limit(self) -> None:
+        self.assertIn('SERVER_SUPERVISOR_SOCKET_MODE", 0o660', self.runtime)
+        self.assertIn("socket.SO_PEERCRED", self.runtime)
+        self.assertIn("peer_allowed", self.runtime)
+        self.assertIn("auth_blocked", self.runtime)
+        self.assertIn("record_auth_failure", self.runtime)
+        self.assertIn("os.chown(runtime.socket_path", self.runtime)
+        self.assertIn("os.chmod(runtime.socket_path, runtime.socket_mode)", self.runtime)
+        self.assertNotIn("os.chmod(runtime.socket_path, 0o666)", self.runtime)
+        self.assertIn("Refusing to replace stale Server Supervisor path", self.runtime)
+        self.assertIn("Internal Supervisor error.", self.runtime)
+        self.assertNotIn('{"ok": False, "error": str(error)}', self.runtime)
 
     def test_deploy_preserves_backup_gate_and_supports_verified_rollback(self) -> None:
         self.assertIn('TARGET_OVERRIDE="${VELVET_DEPLOY_TARGET_SHA:-}"', self.deploy)
@@ -94,9 +111,11 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn('export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"', self.deploy)
         self.assertIn('chmod 0700 "$docker_config"', self.deploy)
 
-    def test_systemd_runtime_is_unprivileged_and_restartable(self) -> None:
+    def test_systemd_runtime_has_dedicated_client_group_and_umask(self) -> None:
         self.assertIn("User=velvet", self.unit)
         self.assertIn("Group=velvet", self.unit)
+        self.assertIn("SupplementaryGroups=velvet-supervisor-client", self.unit)
+        self.assertIn("UMask=0007", self.unit)
         self.assertIn("NoNewPrivileges=true", self.unit)
         self.assertIn("ProtectSystem=strict", self.unit)
         self.assertIn("ProtectHome=read-only", self.unit)
@@ -114,26 +133,29 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertNotIn("User=root", self.unit)
         self.assertNotIn("PrivateTmp=true", self.unit)
 
-    def test_installer_generates_token_and_enables_server_endpoint(self) -> None:
+    def test_installer_creates_group_and_confined_control_directory(self) -> None:
+        self.assertIn(
+            'CLIENT_GROUP="${SERVER_SUPERVISOR_CLIENT_GROUP:-velvet-supervisor-client}"',
+            self.installer,
+        )
+        self.assertIn("groupadd --system", self.installer)
+        self.assertIn('usermod -a -G "$CLIENT_GROUP" velvet', self.installer)
         self.assertIn('"SUPERVISOR_ENABLED": "true"', self.installer)
         self.assertIn(
             '"SUPERVISOR_BASE_URL": "http://supervisor-proxy:8765"',
             self.installer,
         )
         self.assertIn("secrets.token_urlsafe(48)", self.installer)
+        self.assertIn("SERVER_SUPERVISOR_CLIENT_GID", self.installer)
+        self.assertIn("SERVER_SUPERVISOR_SOCKET_MODE", self.installer)
+        self.assertIn('control_dir="$data_dir/control/supervisor"', self.installer)
+        self.assertIn('chown velvet:"$CLIENT_GROUP" "$control_dir"', self.installer)
+        self.assertIn('chmod 0750 "$control_dir"', self.installer)
         self.assertIn("systemctl enable velvet-server-supervisor.service", self.installer)
         self.assertIn("systemctl restart velvet-server-supervisor.service", self.installer)
         self.assertIn("systemctl reload velvet-compose.service", self.installer)
-        self.assertIn('"$data_dir/runtime/docker-config"', self.installer)
-        self.assertIn('chmod 0700 "$data_dir/runtime/docker-config"', self.installer)
-        self.assertNotIn(
-            "install -d -m 0755 -o velvet -g velvet",
-            self.installer,
-        )
-        self.assertNotIn(
-            "install -d -m 0750 -o velvet -g velvet",
-            self.installer,
-        )
+        self.assertIn('chmod 0700 "$docker_config"', self.installer)
+        self.assertIn("permission-confined", self.installer)
 
     def test_proxy_forwards_to_unix_socket_without_auth_secrets(self) -> None:
         self.assertIn("asyncio.open_unix_connection", self.proxy)
