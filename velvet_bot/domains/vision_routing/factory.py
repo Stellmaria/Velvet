@@ -4,6 +4,10 @@ import os
 from decimal import Decimal
 
 from velvet_bot.core.config import Settings
+from velvet_bot.core.config.settings import (
+    LOCAL_OPENAI_COMPATIBLE_PROVIDER,
+    validate_local_vision_base_url,
+)
 from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import (
     AIRequestExecutor,
@@ -103,6 +107,11 @@ def _route_config(
         os.getenv(f"{prefix}_BASE_URL", "").strip().rstrip("/")
         or settings.ai_vision_base_url
     )
+    validate_local_vision_base_url(
+        provider,
+        base_url,
+        variable_name=f"{prefix}_BASE_URL",
+    )
     model = os.getenv(f"{prefix}_MODEL", "").strip() or default_model.strip()
     api_key = (
         os.getenv(f"{prefix}_API_KEY", "").strip()
@@ -114,7 +123,7 @@ def _route_config(
             input_rub_per_million=Decimal("0"),
             output_rub_per_million=Decimal("0"),
         )
-        if provider == "ollama"
+        if provider in {"ollama", LOCAL_OPENAI_COMPATIBLE_PROVIDER}
         else load_token_pricing(prefix)
     )
     return VisionRouteConfig(
