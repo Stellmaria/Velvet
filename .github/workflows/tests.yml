@@ -37,6 +37,21 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q main.py velvet_bot scripts tests
 
+      - name: Regenerate package architecture preview
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
+
+      - name: Upload package architecture preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-architecture-preview-pr-516
+          path: |
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+          retention-days: 1
+
       - name: Run fast architecture contracts
         shell: bash
         run: |
