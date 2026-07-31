@@ -21,17 +21,7 @@ class ServerArtifactContractTests(unittest.TestCase):
         ignored = set(
             (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
         )
-        self.assertTrue(
-            {
-                "data/postgres",
-                "data/postgres.*",
-                "data/backups",
-                "data/logs",
-                "data/runtime",
-                "data/hermes",
-                "server-data",
-            }.issubset(ignored)
-        )
+        self.assertTrue({"data", "server-data"}.issubset(ignored))
 
     def test_server_example_uses_postgres_17_and_numeric_disabled_rate(self) -> None:
         example = (ROOT / ".env.server.example").read_text(encoding="utf-8")

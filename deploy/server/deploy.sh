@@ -87,7 +87,10 @@ echo "Creating pre-deploy PostgreSQL dump..."
   pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc
 ' > "$backup_path"
 test -s "$backup_path"
-chmod 600 "$backup_path"
+# The bot container mounts this protected directory and uploads verified dumps
+# to Telegram storage. Keep the parent directory private, but make the dump
+# readable when the host deploy user and the fixed container UID differ.
+chmod 0644 "$backup_path"
 
 VELVET_APP_DIR="$APP_DIR" \
 VELVET_ENV_FILE="$ENV_FILE" \
