@@ -18,6 +18,11 @@ logger = logging.getLogger("velvet.hermes_operator_gateway")
 _MAX_REQUEST_BYTES = 8 * 1024
 _MAX_UPSTREAM_BYTES = 256 * 1024
 _SENSITIVE_KEY = re.compile(r"(?:token|password|secret|authorization|api[_-]?key)", re.I)
+_SENSITIVE_VALUE = re.compile(
+    r"(?i)\b(token|password|secret|authorization|api[_-]?key)\b"
+    r"(\s*[:=]\s*|\s+)([^\s,;]{6,})"
+)
+_BEARER_VALUE = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]{12,}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +70,14 @@ def _project_config() -> dict[str, Project]:
     }
 
 
+def _scrub_string(value: str) -> str:
+    value = _BEARER_VALUE.sub("Bearer [redacted]", value)
+    return _SENSITIVE_VALUE.sub(
+        lambda match: f"{match.group(1)}{match.group(2)}[redacted]",
+        value,
+    )
+
+
 def _redact(value: Any) -> Any:
     if isinstance(value, dict):
         return {
@@ -73,6 +86,8 @@ def _redact(value: Any) -> Any:
         }
     if isinstance(value, list):
         return [_redact(item) for item in value]
+    if isinstance(value, str):
+        return _scrub_string(value)
     return value
 
 
@@ -130,7 +145,7 @@ class HostStartClient:
     def __init__(self) -> None:
         self.socket_path = os.getenv(
             "HERMES_OPS_HOST_SOCKET",
-            "/runtime/hermes-operator/start.sock",
+            "/srv/hermes-operator-control/runtime/start.sock",
         ).strip()
         if not self.socket_path.startswith("/"):
             raise ConfigurationError("HERMES_OPS_HOST_SOCKET must be absolute")
@@ -139,9 +154,21 @@ class HostStartClient:
             raise ConfigurationError(
                 "HERMES_OPS_HOST_TOKEN must contain at least 24 characters"
             )
-        self.timeout = max(
-            10,
+        command_timeout = max(
+            30,
             min(int(os.getenv("HERMES_OPS_START_TIMEOUT_SECONDS", "300")), 1800),
+        )
+        health_attempts = max(
+            1,
+            min(int(os.getenv("HERMES_OPS_START_HEALTH_ATTEMPTS", "60")), 180),
+        )
+        health_interval = max(
+            1,
+            min(int(os.getenv("HERMES_OPS_START_HEALTH_INTERVAL", "2")), 30),
+        )
+        self.timeout = min(
+            command_timeout + health_attempts * health_interval + 30,
+            2400,
         )
 
     def start(self, project: str, service: str) -> tuple[int, dict[str, Any]]:
@@ -182,7 +209,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
         logger.info("Hermes operator gateway - %s", format % args)
 
     def _send(self, status: int, payload: dict[str, Any]) -> None:
-        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        data = json.dumps(_redact(payload), ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
