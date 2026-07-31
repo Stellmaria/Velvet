@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import socket
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -79,9 +80,9 @@ def _decode_json(raw: bytes) -> dict[str, Any]:
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise RuntimeError("Supervisor returned an invalid JSON response") from error
+        raise RuntimeError("Operator upstream returned invalid JSON") from error
     if not isinstance(value, dict):
-        raise RuntimeError("Supervisor response must be a JSON object")
+        raise RuntimeError("Operator upstream response must be a JSON object")
     return _redact(value)
 
 
@@ -124,48 +125,54 @@ class UpstreamClient:
             raise RuntimeError("Supervisor response is too large")
         return status, _decode_json(raw)
 
-    def start(self, project_name: str, service: str) -> tuple[int, dict[str, Any]]:
-        status_code, status_payload = self.request(
-            project_name,
-            "GET",
-            "/v1/status",
-        )
-        if status_code >= 400:
-            return status_code, status_payload
 
-        if project_name == "velvet":
-            service_state = (
-                status_payload.get("status", {}).get("bot", {})
-                if isinstance(status_payload.get("status"), dict)
-                else {}
+class HostStartClient:
+    def __init__(self) -> None:
+        self.socket_path = os.getenv(
+            "HERMES_OPS_HOST_SOCKET",
+            "/runtime/hermes-operator/start.sock",
+        ).strip()
+        if not self.socket_path.startswith("/"):
+            raise ConfigurationError("HERMES_OPS_HOST_SOCKET must be absolute")
+        self.token = _required("HERMES_OPS_HOST_TOKEN")
+        if len(self.token) < 24:
+            raise ConfigurationError(
+                "HERMES_OPS_HOST_TOKEN must contain at least 24 characters"
             )
-        else:
-            service_state = status_payload.get(service, {})
-        if not isinstance(service_state, dict):
-            service_state = {}
+        self.timeout = max(
+            10,
+            min(int(os.getenv("HERMES_OPS_START_TIMEOUT_SECONDS", "300")), 1800),
+        )
 
-        if service_state.get("error"):
-            return HTTPStatus.BAD_GATEWAY, {
-                "ok": False,
-                "error": f"Cannot determine {project_name}/{service} state",
-                "error_code": "status_probe_failed",
-            }
-
-        if service_state.get("running") is True:
-            return HTTPStatus.OK, {
-                "ok": True,
-                "message": f"{project_name}/{service} is already running",
-                "status": status_payload,
-            }
-
-        status_name = service_state.get("status")
-        if status_name == "missing" or (
-            status_name is None and service_state.get("pid") is None
-        ):
-            return self.request(project_name, "POST", "/v1/update")
-
-        route = self.projects[project_name].restart_routes[service]
-        return self.request(project_name, "POST", route)
+    def start(self, project: str, service: str) -> tuple[int, dict[str, Any]]:
+        request = json.dumps(
+            {"token": self.token, "project": project, "service": service},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8") + b"\n"
+        chunks: list[bytes] = []
+        received = 0
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+                connection.settimeout(self.timeout)
+                connection.connect(self.socket_path)
+                connection.sendall(request)
+                while True:
+                    chunk = connection.recv(4096)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    received += len(chunk)
+                    if received > _MAX_UPSTREAM_BYTES:
+                        raise RuntimeError("Host start response is too large")
+                    if b"\n" in chunk:
+                        break
+        except (OSError, TimeoutError) as error:
+            raise RuntimeError("Host start bridge is unavailable") from error
+        raw = b"".join(chunks).split(b"\n", 1)[0]
+        payload = _decode_json(raw)
+        status = HTTPStatus.OK if payload.get("ok") is True else HTTPStatus.BAD_GATEWAY
+        return status, payload
 
 
 class GatewayHandler(BaseHTTPRequestHandler):
@@ -254,7 +261,11 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     lines = max(1, min(int(raw_lines), 500))
                 except ValueError:
                     lines = 200
-                route = f"/v1/logs?lines={lines}" if project_name == "velvet" else "/v1/logs"
+                route = (
+                    f"/v1/logs?lines={lines}"
+                    if project_name == "velvet"
+                    else "/v1/logs"
+                )
                 upstream_status, result = self.server.client.request(
                     project_name,
                     "GET",
@@ -264,7 +275,10 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 service = parts[3]
                 if service not in project.services:
                     raise KeyError(service)
-                upstream_status, result = self.server.client.start(project_name, service)
+                upstream_status, result = self.server.host_start.start(
+                    project_name,
+                    service,
+                )
             elif method == "POST" and action == "restart" and len(parts) == 4:
                 service = parts[3]
                 if service not in project.services:
@@ -274,7 +288,11 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     "POST",
                     project.restart_routes[service],
                 )
-            elif method == "POST" and action in {"update", "rollback"} and len(parts) == 3:
+            elif (
+                method == "POST"
+                and action in {"update", "rollback"}
+                and len(parts) == 3
+            ):
                 upstream_status, result = self.server.client.request(
                     project_name,
                     "POST",
@@ -300,7 +318,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 HTTPStatus.BAD_GATEWAY,
                 {
                     "ok": False,
-                    "error": "Supervisor request failed",
+                    "error": "Operator upstream request failed",
                     "error_code": "upstream_unavailable",
                 },
             )
@@ -330,8 +348,11 @@ class GatewayServer(ThreadingHTTPServer):
     def __init__(self, address: tuple[str, int]) -> None:
         self.client_token = _required("HERMES_OPS_CLIENT_TOKEN")
         if len(self.client_token) < 24:
-            raise ConfigurationError("HERMES_OPS_CLIENT_TOKEN must contain at least 24 characters")
+            raise ConfigurationError(
+                "HERMES_OPS_CLIENT_TOKEN must contain at least 24 characters"
+            )
         self.client = UpstreamClient(_project_config())
+        self.host_start = HostStartClient()
         super().__init__(address, GatewayHandler)
 
 
