@@ -55,3 +55,5 @@ jobs:
           git add -A
           git commit -m "Убрать Qwen и FLUX из активной генерации Ауф"
           git push origin HEAD:hotfix/remove-qwen-flux-generation-root-buttons
+
+# Triggered after the workflow became present on the branch.
