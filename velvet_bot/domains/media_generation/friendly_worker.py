@@ -11,9 +11,12 @@ from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 
 from velvet_bot.domains.ai_usage import AITask
 from velvet_bot.infrastructure.ai import KieError
+from velvet_bot.infrastructure.media_delivery_runtime import (
+    MediaDeliveryRuntime,
+    ensure_media_delivery_runtime,
+)
 
 from .economy_worker import KieGenerationWorker as EconomyKieGenerationWorker
-from .file_delivery_worker import result_filename
 from .models import KieGenerationRequest, KieModelAlias, KieTaskRecord
 from .worker import ProgressMessage, optional_int, render_progress_bar
 
@@ -27,11 +30,40 @@ _GRS_CREDITS = {
 
 
 class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
-    """Render provider-aware progress while retaining the durable economy queue."""
+    """Provider-aware generation worker with canonical durable delivery."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        media_delivery_runtime: MediaDeliveryRuntime | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
+        runtime = media_delivery_runtime or ensure_media_delivery_runtime(
+            bot=self._bot,
+            database=self._queue.database,
+            provider_client=self._client,
+        )
+        self._media_delivery_runtime = runtime
+        self._queue.configure_durable_delivery(
+            resolver=runtime.resolver,
+            delivery=runtime.delivery,
+        )
         self._provider_balances: dict[str, Decimal | None] = {}
+
+    def __getattribute__(self, name: str) -> Any:
+        if name == "_deliver_best_effort":
+            # Compatibility installers may still assign this method to subclasses.
+            # Delivery ownership is deliberately non-overridable during migration.
+            return object.__getattribute__(self, "_durable_delivery_guard")
+        return super().__getattribute__(name)
+
+    async def process_once(self) -> bool:
+        try:
+            await self._media_delivery_runtime.recover_once()
+        except Exception:
+            logger.exception("Durable media recovery iteration failed")
+        return await super().process_once()
 
     async def _start_progress(
         self,
@@ -200,75 +232,17 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         finally:
             self._provider_balances.pop(str(task.id), None)
 
-    async def _deliver_best_effort(
+    async def _durable_delivery_guard(
         self,
         *,
         chat_id: int | None,
         request: KieGenerationRequest,
         record: KieTaskRecord,
     ) -> None:
-        """Download provider results and send both preview and original file."""
-        if chat_id is None:
-            return
-        provider = "GRS AI" if request.model.is_grs else "Kie.ai"
-        media_name = "Видео" if request.model.is_video else "Изображение"
-        caption = (
-            f"<b>Мяу · {escape(request.model.display_name)}</b>\n"
-            f"Провайдер: <b>{provider}</b>\n"
-            f"{media_name}: <b>готово</b>\n"
-            f"Качество: <b>{escape(request.resolution)}</b>\n"
-            f"Референсов: <b>{len(request.references)}</b>\n"
-            f"Контент: <b>{escape(request.content_mode.display_name)}</b>\n"
-            f"Задача провайдера: <code>{escape(record.task_id)}</code>\n\n"
-            f"Результат скачан ботом напрямую с {provider}. Ниже отправлены "
-            "предпросмотр и оригинальный файл."
-        )
-        try:
-            if not record.result_urls:
-                await self._send_telegram_with_retry(
-                    "empty result notice",
-                    lambda: self._bot.send_message(
-                        chat_id,
-                        caption + f"\n\n{provider} завершил задачу без URL результата.",
-                    ),
-                )
-                return
-            for index, url in enumerate(record.result_urls, start=1):
-                item_caption = caption if index == 1 else None
-                result = await self._download_result(url)
-                filename = result_filename(
-                    url=url,
-                    provider_task_id=record.task_id,
-                    index=index,
-                    mime_type=result.mime_type,
-                    video=request.model.is_video,
-                )
-                if request.model.is_video:
-                    await self._send_video_and_document(
-                        chat_id=chat_id,
-                        payload=result.payload,
-                        filename=filename,
-                        caption=item_caption,
-                    )
-                else:
-                    await self._send_image_and_document(
-                        chat_id=chat_id,
-                        payload=result.payload,
-                        filename=filename,
-                        caption=item_caption,
-                    )
-        except TelegramAPIError:
-            logger.exception(
-                "%s task %s succeeded but Telegram file delivery failed",
-                provider,
-                record.task_id,
-            )
-        except (RuntimeError, ValueError, OSError):
-            logger.exception(
-                "%s task %s succeeded but original result download failed",
-                provider,
-                record.task_id,
-            )
+        """Generation workers never deliver; the durable use case owns that phase."""
+
+        del chat_id, request, record
+
 
 
 def friendly_stage(request: KieGenerationRequest, stage: str) -> str:
@@ -321,7 +295,25 @@ def install_friendly_media_worker() -> None:
         return
     workers = importlib.import_module("velvet_bot.app.workers")
     workers.KieGenerationWorker = FriendlyKieGenerationWorker
+    from velvet_bot.app.media_delivery_ui_install import install_media_delivery_ui
+
+    install_media_delivery_ui()
+    _disable_legacy_delivery_installers()
     _INSTALLED = True
+
+
+def _disable_legacy_delivery_installers() -> None:
+    """Keep old composition stages inert while deployments migrate safely."""
+
+    for module_name in (
+        "velvet_bot.app.original_image_delivery_hotfix",
+        "velvet_bot.app.original_video_delivery_hotfix",
+        "velvet_bot.app.auf_result_delivery_recovery",
+        "velvet_bot.app.auf_active_delivery_fix",
+    ):
+        module = importlib.import_module(module_name)
+        if hasattr(module, "_INSTALLED"):
+            module._INSTALLED = True
 
 
 def _request_from_payload(payload: Mapping[str, object]) -> KieGenerationRequest | None:
