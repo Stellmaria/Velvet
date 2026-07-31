@@ -9,7 +9,8 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Mapping, MutableMapping
+from typing import Any, Mapping
+from urllib.parse import urlsplit
 
 from aiohttp import ClientError, ClientSession, ClientTimeout, web
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -19,6 +20,22 @@ Image.MAX_IMAGE_PIXELS = 40_000_000
 
 _DATA_PREFIX = "data:"
 _ALLOWED_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+_ALLOWED_REQUEST_FIELDS = frozenset(
+    {
+        "model",
+        "messages",
+        "stream",
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "response_format",
+        "seed",
+        "stop",
+        "frequency_penalty",
+        "presence_penalty",
+    }
+)
+_ALLOWED_RUNTIME_HOSTS = frozenset({"vision-runtime"})
 
 
 class GatewayRequestError(ValueError):
@@ -45,14 +62,16 @@ class GatewaySettings:
         model = os.getenv("VISION_MODEL", "").strip()
         if not model:
             raise RuntimeError("VISION_MODEL must be configured.")
+        runtime_base_url = (
+            os.getenv("VISION_RUNTIME_BASE_URL", "http://vision-runtime:11434")
+            .strip()
+            .rstrip("/")
+        )
+        _validate_runtime_base_url(runtime_base_url)
         return cls(
             host=os.getenv("VISION_GATEWAY_HOST", "0.0.0.0").strip() or "0.0.0.0",
             port=_bounded_int("VISION_GATEWAY_PORT", 8080, 1, 65535),
-            runtime_base_url=(
-                os.getenv("VISION_RUNTIME_BASE_URL", "http://vision-runtime:11434")
-                .strip()
-                .rstrip("/")
-            ),
+            runtime_base_url=runtime_base_url,
             model=model,
             expected_digest=os.getenv("VISION_MODEL_EXPECTED_DIGEST", "").strip() or None,
             max_concurrency=_bounded_int("VISION_MAX_CONCURRENCY", 1, 1, 4),
@@ -88,6 +107,18 @@ def _bounded_int(name: str, default: int, minimum: int, maximum: int) -> int:
     if not minimum <= value <= maximum:
         raise RuntimeError(f"{name} must be between {minimum} and {maximum}.")
     return value
+
+
+def _validate_runtime_base_url(value: str) -> None:
+    parsed = urlsplit(value)
+    if parsed.scheme != "http":
+        raise RuntimeError("VISION_RUNTIME_BASE_URL must use internal http://.")
+    if parsed.hostname not in _ALLOWED_RUNTIME_HOSTS:
+        raise RuntimeError("VISION_RUNTIME_BASE_URL must use Compose host vision-runtime.")
+    if parsed.username or parsed.password:
+        raise RuntimeError("VISION_RUNTIME_BASE_URL cannot contain credentials.")
+    if parsed.query or parsed.fragment:
+        raise RuntimeError("VISION_RUNTIME_BASE_URL cannot contain query or fragment.")
 
 
 def _parse_data_uri(value: str) -> tuple[str, bytes]:
@@ -147,11 +178,53 @@ def normalize_image_data_uri(
     return f"data:{normalized_mime};base64,{encoded}"
 
 
+def _sanitize_content_part(
+    raw_part: Mapping[str, Any],
+    *,
+    role: str,
+    settings: GatewaySettings,
+) -> tuple[dict[str, Any], bool]:
+    part_type = str(raw_part.get("type") or "").strip()
+    if part_type == "text":
+        text = raw_part.get("text")
+        if not isinstance(text, str):
+            raise GatewayRequestError("Text content part must contain a string.")
+        return {"type": "text", "text": text}, False
+    if part_type != "image_url":
+        raise GatewayRequestError("Only text and image_url content parts are supported.")
+    if role != "user":
+        raise GatewayRequestError("Images are accepted only in user messages.")
+    image_url = raw_part.get("image_url")
+    if not isinstance(image_url, Mapping):
+        raise GatewayRequestError("image_url must be an object.")
+    raw_url = image_url.get("url")
+    if not isinstance(raw_url, str):
+        raise GatewayRequestError("image_url.url must be a string.")
+    return (
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": normalize_image_data_uri(
+                    raw_url,
+                    max_side=settings.max_image_side,
+                    max_decoded_bytes=settings.max_decoded_image_bytes,
+                )
+            },
+        },
+        True,
+    )
+
+
 def sanitize_chat_payload(
     payload: Mapping[str, Any],
     *,
     settings: GatewaySettings,
 ) -> dict[str, Any]:
+    unknown_fields = sorted(set(payload) - _ALLOWED_REQUEST_FIELDS)
+    if unknown_fields:
+        raise GatewayRequestError(
+            "Unsupported request fields: " + ", ".join(unknown_fields)
+        )
     if payload.get("stream") not in {None, False}:
         raise GatewayRequestError("Streaming is disabled for the local VL gateway.")
     requested_model = str(payload.get("model") or settings.model).strip()
@@ -177,31 +250,22 @@ def sanitize_chat_payload(
             for raw_part in raw_content:
                 if not isinstance(raw_part, Mapping):
                     raise GatewayRequestError("Message content parts must be objects.")
-                part = dict(raw_part)
-                if part.get("type") == "image_url":
-                    image_url = part.get("image_url")
-                    if not isinstance(image_url, Mapping):
-                        raise GatewayRequestError("image_url must be an object.")
-                    raw_url = image_url.get("url")
-                    if not isinstance(raw_url, str):
-                        raise GatewayRequestError("image_url.url must be a string.")
+                part, is_image = _sanitize_content_part(
+                    raw_part,
+                    role=role,
+                    settings=settings,
+                )
+                if is_image:
                     image_count += 1
                     if image_count > settings.max_images:
                         raise GatewayRequestError("Too many images in one request.")
-                    part["image_url"] = {
-                        "url": normalize_image_data_uri(
-                            raw_url,
-                            max_side=settings.max_image_side,
-                            max_decoded_bytes=settings.max_decoded_image_bytes,
-                        )
-                    }
                 normalized_parts.append(part)
             content = normalized_parts
         else:
             raise GatewayRequestError("Message content must be text or a parts list.")
         sanitized_messages.append({"role": role, "content": content})
 
-    result = dict(payload)
+    result = {key: value for key, value in payload.items() if key != "messages"}
     result["model"] = settings.model
     result["messages"] = sanitized_messages
     result["stream"] = False
@@ -298,7 +362,7 @@ async def chat_completions(request: web.Request) -> web.Response:
         if not isinstance(payload, Mapping):
             raise GatewayRequestError("Request body must be a JSON object.")
         sanitized = sanitize_chat_payload(payload, settings=settings)
-    except (json.JSONDecodeError, web.HTTPRequestEntityTooLarge, GatewayRequestError) as error:
+    except (ValueError, TypeError, UnicodeDecodeError, web.HTTPRequestEntityTooLarge) as error:
         return web.json_response({"error": {"message": str(error)}}, status=400)
 
     started = time.monotonic()
@@ -332,7 +396,11 @@ async def chat_completions(request: web.Request) -> web.Response:
             int((time.monotonic() - started) * 1000),
         )
 
-    return web.Response(body=body, status=status, content_type=content_type.split(";", 1)[0])
+    return web.Response(
+        body=body,
+        status=status,
+        content_type=content_type.split(";", 1)[0],
+    )
 
 
 async def _session_context(app: web.Application):
@@ -347,6 +415,7 @@ async def _session_context(app: web.Application):
 
 def create_app(settings: GatewaySettings | None = None) -> web.Application:
     resolved = settings or GatewaySettings.from_env()
+    _validate_runtime_base_url(resolved.runtime_base_url)
     app = web.Application(client_max_size=resolved.client_max_size)
     app["settings"] = resolved
     app["semaphore"] = asyncio.Semaphore(resolved.max_concurrency)
