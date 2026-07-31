@@ -1,0 +1,19 @@
+FROM python:3.13-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    SERVER_SUPERVISOR_SOCKET=/runtime/supervisor/velvet-server-supervisor.sock \
+    SERVER_SUPERVISOR_PROXY_HOST=0.0.0.0 \
+    SERVER_SUPERVISOR_PROXY_PORT=8765
+
+RUN adduser -D -u 10001 velvet
+
+COPY --chown=10001:10001 scripts/server_supervisor_proxy.py /app/server_supervisor_proxy.py
+
+USER velvet
+WORKDIR /app
+
+HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
+    CMD ["python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',8765),2); s.close()"]
+
+CMD ["python", "/app/server_supervisor_proxy.py"]
