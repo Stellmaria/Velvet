@@ -3,7 +3,7 @@
 - Дата: `2026-08-01`
 - ID: `hermes-operator-control`
 - Линия/фаза: `server operations`
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `agent/hermes-operator-control`
 - Базовый commit: `ffa6f5272d321fdcc9864f9172819c357a674f48`
 
@@ -50,10 +50,11 @@ Gateway доверяет только отдельному client token, сох�
 - добавлены `gateway.py`, `opsctl.py` и отдельный hardened Compose;
 - gateway принимает только пустой JSON и фиксированные project/action/service;
 - ответы upstream рекурсивно очищаются от полей token, password, secret, authorization и API key;
-- добавлен installer, создающий internal control network и отдельные credentials;
+- добавлен installer, создающий отдельные credentials и проверяющий internal control network;
 - добавлен unprivileged systemd unit;
 - runtime SOUL обновляется managed-блоком без удаления существующих инструкций;
-- coder compose проверяется контрактом на отсутствие production и control networks.
+- coder compose проверяется контрактом на отсутствие operator control network;
+- открыты связанные draft PR `Stellmaria/Velvet#529` и `Stellmaria/romatic_club_bot_max#15`.
 
 ### Миграции и совместимость
 
@@ -61,17 +62,22 @@ SQL-миграций нет. Production compose Velvet не меняется. Д
 
 ### Проверки
 
-Добавлен `tests/test_hermes_operator_control_contract.py`. Полные unit, type, architecture и Docker checks должны выполниться в GitHub Actions pull request.
+Добавлен `tests/test_hermes_operator_control_contract.py`. Python compile preflight и type check прошли. Первый CI-запуск выявил и позволил исправить слишком широкий contract-тест coder-сети и статус worklog. Полный повторный CI, Docker build и server smoke ещё не завершены.
 
 ### PR и commit
 
-- Ветка: `agent/hermes-operator-control`;
-- PR создаётся после добавления совместимой сетевой границы в `Stellmaria/romatic_club_bot_max`.
+- Velvet PR: `#529`;
+- Max PR: `Stellmaria/romatic_club_bot_max#15`;
+- ветка: `agent/hermes-operator-control`.
 
 ### Незавершённое
 
-Нужно завершить Max-side compose change, открыть оба PR, дождаться зелёного CI, слить их и запустить `sudo bash deploy/hermes-operator/install.sh` на VPS.
+- дождаться повторного зелёного CI обоих PR;
+- провести review gateway и installer;
+- слить сначала Max PR, затем Velvet PR;
+- выполнить `sudo bash deploy/hermes-operator/install.sh` на VPS;
+- проверить read-only status Velvet bot, Max bot и Max userbot через основной Hermes.
 
 ### Следующий шаг
 
-Добавить Max supervisor-proxy в `hermes-supervisor-control`, проверить оба PR и после merge выполнить server installer с read-only smoke для Velvet и Max status.
+Проверить новый CI после исправлений. После зелёных обязательных checks выполнить server deployment и smoke без перезапуска production-ботов, пока владелец явно не запросит изменяющее действие.
