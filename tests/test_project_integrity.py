@@ -171,6 +171,7 @@ DIRECT_COMMANDS = {
     "rp_status",
     "rp_reset",
     "velvet_grant",
+    "velvet_markup",
     "velvet_user",
     "velvet_users",
 }
