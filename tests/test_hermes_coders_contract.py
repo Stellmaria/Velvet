@@ -73,6 +73,24 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("hermes_max_ro", source)
         self.assertIn("Velvet и Max должны использовать разные", source)
 
+    def test_installer_prepares_without_optional_operator_model_key(self) -> None:
+        source = (ROOT / "install.sh").read_text(encoding="utf-8")
+        self.assertIn('if line.startswith("export ")', source)
+        self.assertIn(
+            'existing.get("BYESU_HERMES_GPT_PRO_API_KEY", "")',
+            source,
+        )
+        self.assertIn("поле оставлено пустым", source)
+        self.assertIn("Preflight не позволит запустить gateway", source)
+        self.assertNotIn(
+            'raise SystemExit("В operator env не найден ключ маршрута gpt-5.6-luna")',
+            source,
+        )
+        self.assertNotIn(
+            'raise SystemExit("В operator env отсутствует BYESU_HERMES_CODEX_API_KEY")',
+            source,
+        )
+
     def test_systemd_runs_preflight_before_start(self) -> None:
         source = Path("deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"

@@ -76,6 +76,8 @@ def parse_env(path: Path) -> dict[str, str]:
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
         key, value = line.split("=", 1)
         result[key.strip()] = value.strip().strip('"').strip("'")
     return result
@@ -84,8 +86,14 @@ def parse_env(path: Path) -> dict[str, str]:
 def write_env(path: Path, model_values: dict[str, str]) -> None:
     existing = parse_env(path) if path.exists() else {}
     values = {
-        "BYESU_HERMES_CODEX_API_KEY": model_values["BYESU_HERMES_CODEX_API_KEY"],
-        "BYESU_HERMES_GPT_PRO_API_KEY": model_values["BYESU_HERMES_GPT_PRO_API_KEY"],
+        "BYESU_HERMES_CODEX_API_KEY": (
+            existing.get("BYESU_HERMES_CODEX_API_KEY", "")
+            or model_values["BYESU_HERMES_CODEX_API_KEY"]
+        ),
+        "BYESU_HERMES_GPT_PRO_API_KEY": (
+            existing.get("BYESU_HERMES_GPT_PRO_API_KEY", "")
+            or model_values["BYESU_HERMES_GPT_PRO_API_KEY"]
+        ),
         "TELEGRAM_BOT_TOKEN": existing.get("TELEGRAM_BOT_TOKEN", ""),
         "TELEGRAM_ALLOWED_USERS": existing.get("TELEGRAM_ALLOWED_USERS", ""),
         "GH_TOKEN": existing.get("GH_TOKEN", ""),
@@ -102,10 +110,6 @@ pro_key = (
     or source.get("BYESU_HERMES_API_KEY", "")
     or source.get("OPENAI_API_KEY", "")
 )
-if not coder_key:
-    raise SystemExit("В operator env отсутствует BYESU_HERMES_CODEX_API_KEY")
-if not pro_key:
-    raise SystemExit("В operator env не найден ключ маршрута gpt-5.6-luna")
 
 model_values = {
     "BYESU_HERMES_CODEX_API_KEY": coder_key,
@@ -113,6 +117,23 @@ model_values = {
 }
 for target in map(Path, sys.argv[2:]):
     write_env(target, model_values)
+
+if coder_key:
+    print("Ключ маршрута mini/terra найден и перенесён без вывода значения.")
+else:
+    print(
+        "ПРЕДУПРЕЖДЕНИЕ: ключ маршрута mini/terra не найден; поле оставлено пустым.",
+        file=sys.stderr,
+    )
+
+if pro_key:
+    print("Ключ маршрута luna найден и перенесён без вывода значения.")
+else:
+    print(
+        "ПРЕДУПРЕЖДЕНИЕ: ключ маршрута luna не найден; поле оставлено пустым. "
+        "Preflight не позволит запустить gateway до заполнения ключа.",
+        file=sys.stderr,
+    )
 PY
 
 for project in velvet max; do
@@ -186,8 +207,8 @@ cat <<EOF
 
 Hermes Coder infrastructure prepared.
 
-Не запущено намеренно: сначала заполните два разных Telegram bot token
-и два разных fine-grained GitHub token в:
+Не запущено намеренно: preflight требует заполнить все пустые модельные поля,
+два разных Telegram bot token и два разных fine-grained GitHub token в:
   $ROOT/secrets/velvet.env
   $ROOT/secrets/max.env
 
