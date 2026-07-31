@@ -5,7 +5,7 @@
 - Линия/фаза: `server operations`
 - Статус: `завершено`
 - Ветка: `fix/hermes-runtime-gh-token-passthrough`
-- Базовый commit: `8827cce21e3448155e2af0b128b46f5e15affe5f`
+- Базовый commit: `31a8a0b496a3b3e95fb6b03f23867907884554d3`
 
 ## Перед началом
 
@@ -107,6 +107,12 @@ runtime patch -> preflight -> compose config -> compose up
 ```
 
 Также проверяются отсутствие неподдерживаемого env override и отсутствие model/Telegram secrets в patcher.
+
+### PR и commit
+
+- PR: `#524`
+- Ветка: `fix/hermes-runtime-gh-token-passthrough`
+- Основные commits: `810a813e8c4d2c1b736397cb8532890287ce8a70`, `fc834f33bfaed980f5a3fc2df98159c2b0cacb4e`, `9501176c7a45ddb148474cfaa0b53f965faeeffc`
 
 ### Незавершённое
 
