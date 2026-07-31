@@ -49,7 +49,6 @@ def update_status() -> None:
         ("exact / normalized / semantic duplicate groups: **55 / 92 / 9**", "exact / normalized / semantic duplicate groups: **62 / 97 / 9**"),
         ("Telegram navigation scan: **604 Python files**, **1024 inline buttons**, **0 violations**", "Telegram navigation scan: **631 Python files**, **1049 inline buttons**, **0 violations**"),
         ("518 package fingerprints", "546 package fingerprints"),
-        ("startup graph из 27 side-effect installers", "startup graph из 28 side-effect installers"),
     )
     for old, new in pairs:
         text = replace(text, old, new, label=old)
@@ -95,12 +94,14 @@ def update_audit() -> None:
 
     path = ROOT / "docs/ARCHITECTURE_AUDIT.md"
     text = path.read_text(encoding="utf-8")
-    text = re.sub(
+    text, count = re.subn(
         r"- layer counts: [^\n]+;",
         layer_line,
         text,
         count=1,
     )
+    if count != 1:
+        raise RuntimeError(f"architecture layer line count={count}")
     pairs = (
         ("все 604 production Python modules", "все 631 production Python modules"),
         ("production modules: **604**", "production modules: **631**"),
@@ -122,10 +123,10 @@ def update_audit() -> None:
         ("approved boundaries: 76", "approved boundaries: 102"),
         ("callback handlers: 98", "callback handlers: 132"),
         ("bootstrap и 52 composition modules/installers", "bootstrap и 63 composition modules/installers"),
-        ("14 transport-neutral use-case modules", "19 transport-neutral use-case modules"),
-        ("175 domain modules и 34 repositories", "183 domain modules и 34 repositories"),
-        ("17 PostgreSQL/provider/Telegram/filesystem adapters", "21 PostgreSQL/provider/Telegram/filesystem adapters"),
-        ("213 Telegram presentation modules", "216 Telegram presentation modules"),
+        ("14 transport-neutral use-case modules", "20 transport-neutral use-case modules"),
+        ("175 domain modules и 34 repositories", "176 domain modules и 34 repositories"),
+        ("17 PostgreSQL/provider/Telegram/filesystem adapters", "25 PostgreSQL/provider/Telegram/filesystem adapters"),
+        ("213 Telegram presentation modules", "214 Telegram presentation modules"),
         ("всего **27 side-effect installation stages**", "всего **28 side-effect installation stages**"),
         ("существующие 518 fingerprints", "существующие 546 fingerprints"),
     )
