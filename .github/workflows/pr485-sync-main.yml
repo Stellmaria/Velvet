@@ -1,9 +1,9 @@
 name: PR 485 sync main
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - agent/fix-server-deployment-portability
 
 permissions:
   contents: write
