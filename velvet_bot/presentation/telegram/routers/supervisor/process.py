@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -9,15 +12,58 @@ from aiogram.types import CallbackQuery, Message
 from velvet_bot.presentation.telegram.supervisor.contract import SupervisorCallback
 from velvet_bot.presentation.telegram.supervisor.editing import edit_supervisor_message
 from velvet_bot.presentation.telegram.supervisor.views import (
-    _answer_error,
     _confirm_keyboard,
     _operation_accepted,
 )
-from velvet_bot.process_restart import process_restart_coordinator
 from velvet_bot.supervisor_client import SupervisorClient, SupervisorClientError
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
+
+ProcessTerminator = Callable[[], None]
+
+
+def terminate_current_process() -> None:
+    """Finish the bot so its external runtime can start a fresh copy."""
+
+    logger.warning("Process self-restart requested")
+    raise SystemExit(75)
+
+
+@dataclass(slots=True)
+class ProcessRestartCoordinator:
+    terminator: ProcessTerminator = terminate_current_process
+    _task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
+    _lock: asyncio.Lock | None = field(default=None, init=False, repr=False)
+
+    def _active_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    async def request(self, *, delay_seconds: float = 1.5) -> bool:
+        """Schedule one restart and reject duplicate taps while it is pending."""
+
+        delay = max(0.1, min(float(delay_seconds), 30.0))
+        async with self._active_lock():
+            if self._task is not None and not self._task.done():
+                return False
+            self._task = asyncio.create_task(
+                self._terminate_after_delay(delay),
+                name="velvet-process-self-restart",
+            )
+            return True
+
+    async def _terminate_after_delay(self, delay_seconds: float) -> None:
+        await asyncio.sleep(delay_seconds)
+        self.terminator()
+
+    @property
+    def pending(self) -> bool:
+        return self._task is not None and not self._task.done()
+
+
+process_restart_coordinator = ProcessRestartCoordinator()
 
 _RESTART_TEXT = (
     "<b>Перезапустить Velvet Bot?</b>\n\n"
@@ -90,14 +136,13 @@ async def handle_supervisor_process_callback(
     try:
         await _operation_accepted(callback, await supervisor_client.restart())
     except SupervisorClientError as error:
-        # Restart is also a recovery action. If the optional desktop Supervisor
-        # is stale or unavailable, fall back to the container-safe process exit
-        # instead of leaving the owner with a dead control button.
         logger.warning("Supervisor restart failed; using process fallback: %s", error)
-        try:
-            await _accept_direct_process_restart(callback)
-        except Exception as fallback_error:
-            await _answer_error(callback, fallback_error)
+        await _accept_direct_process_restart(callback)
 
 
-__all__ = ("router",)
+__all__ = (
+    "ProcessRestartCoordinator",
+    "process_restart_coordinator",
+    "router",
+    "terminate_current_process",
+)
