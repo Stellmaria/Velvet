@@ -22,8 +22,9 @@ gateway, persistent model storage или воспроизводимый benchmar
 
 ### Планируемый объём
 
-- два profile-gated сервиса `vision-runtime` и `vision-gateway`;
+- profile-gated `vision-model-loader`, `vision-runtime` и `vision-gateway`;
 - отдельные front/back internal networks, чтобы bot не видел vendor runtime;
+- one-shot egress только для установки модели;
 - version-pinned runtime base image и model digest guard;
 - persistent model volume без повторного pull на каждом restart;
 - preprocessing изображений в памяти до 1280 px;
@@ -35,6 +36,7 @@ gateway, persistent model storage или воспроизводимый benchmar
 
 - ни один VL-порт не публикуется на host;
 - bot подключён только к gateway-side сети;
+- production runtime не имеет internet egress;
 - gateway не принимает remote image URLs и чужую model ID;
 - raw image/prompt не попадают в обычные логи;
 - модель сохраняется в `${VELVET_DATA_DIR}/vision`;
@@ -51,22 +53,43 @@ Q4/Q8 на VPS. NSFW classifier и sensitive schema относятся к сле
 
 ### Фактически сделано
 
-Заполняется после CI.
+- добавлен one-shot `vision-model-loader`, единственный VL-сервис с egress;
+- добавлен `vision-runtime` без public port и без internet-facing сети;
+- добавлен unprivileged `vision-gateway` как единственный endpoint для bot;
+- bot и runtime разделены internal front/back networks;
+- model volume сохраняется в `${VELVET_DATA_DIR}/vision`;
+- runtime не скачивает модель при старте и проверяет optional digest;
+- gateway ограничивает model ID, payload fields, message parts и concurrency;
+- remote image URLs запрещены, принимаются только JPEG/PNG/WebP data URI;
+- изображения исправляются по EXIF, уменьшаются и перекодируются без EXIF/ICC;
+- raw image, base64 и prompt не пишутся в обычные логи;
+- добавлены health/models endpoints и воспроизводимый benchmark script;
+- обновлены `.env.server.example`, `.env.vision-local.example`, canonical docs и
+  production runbook;
+- Docker workflow проверяет оба vision profiles и собирает gateway/runtime images;
+- branch синхронизирована с актуальным `main` после PR #518/#520.
 
 ### Миграции и совместимость
 
-PostgreSQL migration отсутствует. Vision profile выключен по умолчанию.
+PostgreSQL migration отсутствует. Vision profile и все bot AI-флаги выключены по
+умолчанию. Существующий bot продолжает использовать fallback heuristics, пока
+runtime не пройдёт живой benchmark и отдельную sensitive calibration.
 
 ### Проверки
 
-Ожидаются.
+- первый test run выявил слишком узкое ожидание текста ошибки runtime URL;
+- contract test исправлен на проверку public HTTP host;
+- после синхронизации с `main` запущен повторный полный CI;
+- финальные результаты CI фиксируются перед переводом PR из draft.
 
 ### PR и commit
 
-PR создаётся после первого полного CI.
+- PR: #519;
+- актуальный head перед повторным CI фиксируется следующим успешным run.
 
 ### Незавершённое
 
+- подтвердить зелёные test shards, type check, notes и Docker build;
 - live Q4/Q8 benchmark;
 - model digest pin на production;
 - NSFW routing;
@@ -75,5 +98,5 @@ PR создаётся после первого полного CI.
 
 ### Следующий шаг
 
-Довести PR B до merge и выполнить контролируемый Q4 benchmark на VPS с
+Довести PR #519 до merge и выполнить контролируемый Q4 benchmark на VPS с
 `AI_VISION_ENABLED=false`.
