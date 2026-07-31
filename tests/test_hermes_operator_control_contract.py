@@ -96,6 +96,10 @@ class HermesOperatorControlContractTests(unittest.TestCase):
         self.assertIn("NoNewPrivileges=true", self.host_unit)
         self.assertIn("ProtectSystem=strict", self.host_unit)
         self.assertIn("ReadWritePaths=/srv/hermes-operator-control/runtime", self.host_unit)
+        self.assertIn(
+            "EnvironmentFile=/srv/hermes-operator-control/operator.env",
+            self.gateway_unit,
+        )
         self.assertIn("docker compose -f compose.yaml", self.gateway_unit)
         self.assertIn("hermes-operator-host.service", self.installer)
         self.assertIn("hermes-operator-control.service", self.installer)
