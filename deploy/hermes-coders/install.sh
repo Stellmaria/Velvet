@@ -35,7 +35,7 @@ done
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$ROOT"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0700 "$ROOT/secrets"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$ROOT/workspaces"
-install -d -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0750 \
+install -d -o "$HERMES_UID_VALUE" -g "$APP_GROUP" -m 0750 \
   "$ROOT/data" \
   "$ROOT/data/velvet" \
   "$ROOT/data/max"
@@ -139,14 +139,21 @@ PY
 for project in velvet max; do
   data_dir="$ROOT/data/$project"
   if [[ ! -f "$data_dir/config.yaml" ]]; then
-    install -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0600 \
+    install -o "$HERMES_UID_VALUE" -g "$APP_GROUP" -m 0640 \
       "$SOURCE_DIR/config.yaml" "$data_dir/config.yaml"
   fi
 
   if [[ ! -f "$data_dir/SOUL.md" ]]; then
-    install -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0600 \
+    install -o "$HERMES_UID_VALUE" -g "$APP_GROUP" -m 0640 \
       "$SOURCE_DIR/SOUL.$project.md" "$data_dir/SOUL.md"
   fi
+
+  chown "$HERMES_UID_VALUE:$APP_GROUP" \
+    "$data_dir/config.yaml" \
+    "$data_dir/SOUL.md"
+  chmod 0640 \
+    "$data_dir/config.yaml" \
+    "$data_dir/SOUL.md"
 done
 
 cat > "$ROOT/data/velvet/.gitconfig" <<'EOF'
@@ -169,10 +176,10 @@ cat > "$ROOT/data/max/.gitconfig" <<'EOF'
     directory = /workspace
 EOF
 
-chown "$HERMES_UID_VALUE:$HERMES_GID_VALUE" \
+chown "$HERMES_UID_VALUE:$APP_GROUP" \
   "$ROOT/data/velvet/.gitconfig" \
   "$ROOT/data/max/.gitconfig"
-chmod 0600 \
+chmod 0640 \
   "$ROOT/data/velvet/.gitconfig" \
   "$ROOT/data/max/.gitconfig"
 chmod 0600 "$ROOT/secrets/velvet.env" "$ROOT/secrets/max.env"
