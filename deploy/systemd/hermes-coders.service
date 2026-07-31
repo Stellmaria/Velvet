@@ -1,0 +1,23 @@
+[Unit]
+Description=Isolated Hermes Coder gateways for Velvet and Romatic Club Max
+Requires=docker.service
+After=docker.service network-online.target velvet-compose.service romaticclub-compose.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet/deploy/hermes-coders
+Environment=HERMES_CODERS_ROOT=/srv/hermes-coders
+ExecStartPre=/usr/bin/python3 /srv/velvet/deploy/hermes-coders/preflight.py
+ExecStartPre=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml config --quiet
+ExecStart=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml up -d --build --remove-orphans
+ExecStop=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml stop --timeout 45
+ExecReload=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml up -d --build --remove-orphans
+TimeoutStartSec=0
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

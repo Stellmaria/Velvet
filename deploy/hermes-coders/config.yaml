@@ -1,0 +1,46 @@
+model:
+  provider: custom:byesu-coder
+  default: gpt-5.4-mini
+  api_mode: chat_completions
+
+custom_providers:
+  - name: byesu-coder
+    base_url: https://byesu.com/v1
+    key_env: BYESU_HERMES_CODEX_API_KEY
+    api_mode: chat_completions
+  - name: byesu-gpt-pro
+    base_url: https://byesu.com/v1
+    key_env: BYESU_HERMES_GPT_PRO_API_KEY
+    api_mode: chat_completions
+
+fallback_providers:
+  - provider: custom
+    model: gpt-5.6-terra
+    base_url: https://byesu.com/v1
+    key_env: BYESU_HERMES_CODEX_API_KEY
+    api_mode: chat_completions
+  - provider: custom
+    model: gpt-5.6-luna
+    base_url: https://byesu.com/v1
+    key_env: BYESU_HERMES_GPT_PRO_API_KEY
+    api_mode: chat_completions
+
+model_aliases:
+  mini:
+    provider: custom:byesu-coder
+    model: gpt-5.4-mini
+  terra:
+    provider: custom:byesu-coder
+    model: gpt-5.6-terra
+  luna:
+    provider: custom:byesu-gpt-pro
+    model: gpt-5.6-luna
+
+terminal:
+  cwd: /workspace
+
+display:
+  tool_progress_command: true
+  platforms:
+    telegram:
+      tool_progress: false

@@ -64,6 +64,9 @@ PY
 
 data_dir="${deployment_settings[0]}"
 krita_server_enabled="${deployment_settings[1]}"
+docker_config="${DOCKER_CONFIG:-$data_dir/runtime/docker-config}"
+export DOCKER_CONFIG="$docker_config"
+export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"
 compose=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
@@ -76,8 +79,10 @@ mkdir -p \
   "$data_dir/backups" \
   "$data_dir/logs" \
   "$data_dir/runtime" \
-  "$data_dir/runtime/supervisor"
+  "$data_dir/runtime/supervisor" \
+  "$docker_config"
 chmod 0755 "$data_dir/runtime/supervisor"
+chmod 0700 "$docker_config"
 if [[ "$krita_server_enabled" == "1" ]]; then
   mkdir -p "$data_dir/runtime/krita"/{sources,requests,responses,outputs,previews,assets}
 fi

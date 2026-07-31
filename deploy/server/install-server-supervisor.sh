@@ -97,9 +97,14 @@ print(value)
 PY
 )"
 
-mkdir -p "$data_dir/runtime/supervisor"
-chown velvet:velvet "$data_dir/runtime/supervisor"
+mkdir -p \
+  "$data_dir/runtime/supervisor" \
+  "$data_dir/runtime/docker-config"
+chown velvet:velvet \
+  "$data_dir/runtime/supervisor" \
+  "$data_dir/runtime/docker-config"
 chmod 0755 "$data_dir/runtime/supervisor"
+chmod 0700 "$data_dir/runtime/docker-config"
 install -m 0644 "$SERVER_UNIT_SOURCE" "$SERVER_UNIT_TARGET"
 install -m 0644 "$COMPOSE_UNIT_SOURCE" "$COMPOSE_UNIT_TARGET"
 systemctl daemon-reload

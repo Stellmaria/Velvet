@@ -65,7 +65,7 @@
 - `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 2, exports 1, refs 8.
 - `velvet_bot.domains.workspaces.product_repository` · domain `workspaces`: production 3, tests 2, exports 0, refs 5.
 - `velvet_bot.domains.workspaces.qwen_repository` · domain `workspaces`: production 3, tests 0, exports 0, refs 3.
-- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 5, tests 6, exports 1, refs 12.
+- `velvet_bot.domains.workspaces.repository` · domain `workspaces`: production 6, tests 6, exports 1, refs 13.
 - `velvet_bot.domains.workspaces.team_repository` · domain `workspaces`: production 2, tests 1, exports 0, refs 3.
 
 ### infrastructure
