@@ -1,13 +1,15 @@
 name: tests
 
 on:
-  pull_request:
+  push:
+    branches:
+      - feat/505-hybrid-ai-contracts
 
 permissions:
   contents: write
 
 concurrency:
-  group: main-sync-${{ github.event.pull_request.number || github.ref }}
+  group: main-sync-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
