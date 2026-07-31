@@ -5,6 +5,7 @@
 - Линия/фаза: `server operations`
 - Статус: `завершено`
 - Ветка: `fix/hermes-preflight-data-permissions`
+- Базовый commit: `d955a6e8e71609b83b4324c9ba5dc04e73debeed`
 
 ## Перед началом
 
@@ -40,6 +41,10 @@ Installer создавал каталоги `data`, `data/velvet`, `data/max` с
 - systemd preflight проходит без запуска gateway;
 - ошибки прав выводятся одной диагностической строкой без traceback.
 
+### Риски и ограничения
+
+Группа `velvet` получает read-only доступ к `config.yaml`, `SOUL.md` и `.gitconfig`, но не к secret env. Runtime-файлы, которые Hermes создаст позже внутри `/opt/data`, могут оставаться `10000:10000`; preflight их не читает. Изменение не делает data-каталоги доступными другим пользователям и не меняет UID контейнерного процесса.
+
 ## После завершения
 
 ### Фактически сделано
@@ -55,6 +60,10 @@ Preflight получил helper `require_readable_file`, который пере
 - каталоги остаются закрыты для остальных пользователей;
 - контейнерный Hermes сохраняет полный доступ как владелец UID `10000`.
 
+### Миграции и совместимость
+
+SQL-миграций нет. Production Velvet, Max, PostgreSQL и Hermes Operator не изменяются. Повторный installer идемпотентно исправляет только владельцев, группы и режимы файлов изолированных coder data. Существующие workspaces, secrets, Docker images и systemd unit сохраняются.
+
 ### Проверки
 
 Regression-контракт проверяет:
@@ -65,6 +74,16 @@ Regression-контракт проверяет:
 - обработку `PermissionError` без traceback;
 - существующие Bash, Python, Compose и изоляционные контракты.
 
+### PR и commit
+
+- PR: `#517`
+- Ветка: `fix/hermes-preflight-data-permissions`
+- Основные commits: `a47ca966ec56d2d2af188dd08311f93d9daf29c7`, `ceb374d93c52dd06b95eff626f425fc1e99dc949`, `60ef6d1be94cc8de795298bcd41028c78565b0cc`
+
 ### Незавершённое
 
 После merge требуется обновить `/srv/velvet`, повторно выполнить installer для исправления прав, затем повторить preflight. Только после результата `Hermes Coder preflight: OK` разрешается включить `hermes-coders.service`.
+
+### Следующий шаг
+
+Дождаться зелёных CI checks, слить PR `#517`, обновить server checkout, повторно запустить installer и проверить preflight до включения systemd service.
