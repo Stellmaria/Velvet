@@ -123,6 +123,7 @@ services:
       VISION_RUNTIME_STARTUP_TIMEOUT_SECONDS: ${VISION_RUNTIME_STARTUP_TIMEOUT_SECONDS:-1800}
       VISION_KEEP_ALIVE: ${VISION_KEEP_ALIVE:-5m}
       VISION_MAX_CONCURRENCY: ${VISION_MAX_CONCURRENCY:-1}
+      OLLAMA_CONTEXT_LENGTH: ${VISION_CONTEXT_TOKENS:-8192}
       OLLAMA_HOST: http://127.0.0.1:11434
       OLLAMA_MODELS: /root/.ollama/models
     volumes:
@@ -133,7 +134,9 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - ollama list | awk -v target="$${VISION_MODEL}" 'NR > 1 && $$1 == target {found=1} END {exit found ? 0 : 1}'
+        - >-
+          ollama list | awk -v target="$${VISION_MODEL}"
+          'NR > 1 && $$1 == target {found=1} END {exit found ? 0 : 1}'
       interval: 30s
       timeout: 10s
       retries: 5
