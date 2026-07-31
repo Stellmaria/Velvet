@@ -1,0 +1,35 @@
+name: pr528 package architecture refresh
+
+on:
+  push:
+    branches:
+      - agent/fix-media-result-auto-delivery
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Generate package architecture baseline
+        run: >-
+          python scripts/inventory_package_architecture.py
+          --write
+          --bootstrap-exemptions
+          --label p1-package-architecture-baseline
+      - name: Upload generated baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr528-package-architecture
+          path: |
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+            docs/package_architecture_exemptions.json
+          retention-days: 1
