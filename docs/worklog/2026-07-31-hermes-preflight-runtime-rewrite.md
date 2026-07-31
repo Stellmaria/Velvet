@@ -71,8 +71,11 @@ SQL-миграций нет. Production Velvet, Max, PostgreSQL, Hermes Operator
 - обновлённые команды installer и README;
 - существующие network, mount, token и model boundaries.
 
+Первый CI run подтвердил новый Hermes contract, project notes и type check. Единственное падение снова произошло в постороннем flaky-тесте `test_socket_is_0660_and_health_requires_allowed_peer`: клиент успел прочитать HTTP headers, закрыл socket до body, а тестовый server получил `BrokenPipeError`. Изменения этого PR не касаются Server Supervisor. Обязательный CI перезапущен новым документационным commit без обхода проверки.
+
 ### PR и commit
 
+- PR: `#522`
 - Ветка: `fix/hermes-preflight-root-read`
 - Основные commits: `db0b11c86f3d608197ab0e5479793e2c4bf1f071`, `bf24915c28e02517e5a01cdeb108c3d59878f625`, `16f31b1871db44eb5fe5d7f11302f6b66632ac37`, `474bed4537a5589c2097e54249bb559f59fdd4a8`
 
@@ -82,4 +85,4 @@ SQL-миграций нет. Production Velvet, Max, PostgreSQL, Hermes Operator
 
 ### Следующий шаг
 
-Дождаться зелёного CI, слить PR и восстановить coder-сервис на VPS обновлённым unit-файлом.
+Дождаться зелёного повторного CI, слить PR и восстановить coder-сервис на VPS обновлённым unit-файлом.
