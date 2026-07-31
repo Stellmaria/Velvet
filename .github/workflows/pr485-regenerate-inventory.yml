@@ -1,0 +1,40 @@
+name: PR 485 regenerate architecture inventory
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-server-deployment-portability
+
+      - name: Regenerate and validate architecture inventory
+        shell: bash
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label p1-package-architecture-baseline
+
+      - name: Commit inventory and remove helper workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/pr485-regenerate-inventory.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            .github/workflows/pr485-regenerate-inventory.yml
+          git commit -m "Refresh architecture inventory for deployment fix"
+          git push origin HEAD:agent/fix-server-deployment-portability
