@@ -117,9 +117,18 @@ def load_kie_settings() -> KieSettings:
         # Field name stays stable so already queued tasks remain readable.
         wan_26_image_to_video=wan_image_to_video,
     )
-    usd_to_rub = _env_decimal("KIE_USD_TO_RUB", "0")
-    credit_usd = _env_decimal("KIE_CREDIT_USD", "0.005")
-    credit_byn = _env_decimal("KIE_CREDIT_BYN", "0.019")
+    usd_to_rub = _parse_non_negative_decimal(
+        os.getenv("KIE_USD_TO_RUB", "").strip() or "0",
+        variable_name="KIE_USD_TO_RUB",
+    )
+    credit_usd = _parse_non_negative_decimal(
+        os.getenv("KIE_CREDIT_USD", "").strip() or "0.005",
+        variable_name="KIE_CREDIT_USD",
+    )
+    credit_byn = _parse_non_negative_decimal(
+        os.getenv("KIE_CREDIT_BYN", "").strip() or "0.019",
+        variable_name="KIE_CREDIT_BYN",
+    )
     if credit_usd <= 0:
         raise RuntimeError("KIE_CREDIT_USD должен быть больше нуля.")
     if credit_byn <= 0:
@@ -258,8 +267,10 @@ def load_kie_settings() -> KieSettings:
 
 
 def _env_decimal(variable_name: str, default: str) -> Decimal:
-    value = os.getenv(variable_name, "").strip() or default
-    return _parse_non_negative_decimal(value, variable_name=variable_name)
+    return _parse_non_negative_decimal(
+        os.getenv(variable_name, "").strip() or default,
+        variable_name=variable_name,
+    )
 
 
 def _env_decimal_with_legacy(
