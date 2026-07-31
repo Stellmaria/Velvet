@@ -106,6 +106,23 @@ class HermesCodersContractTests(unittest.TestCase):
             source,
         )
 
+    def test_service_user_can_read_preflight_metadata(self) -> None:
+        installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+        preflight = (ROOT / "preflight.py").read_text(encoding="utf-8")
+
+        self.assertIn(
+            'install -d -o "$HERMES_UID_VALUE" -g "$APP_GROUP" -m 0750',
+            installer,
+        )
+        self.assertIn(
+            'chown "$HERMES_UID_VALUE:$APP_GROUP"',
+            installer,
+        )
+        self.assertIn("chmod 0640", installer)
+        self.assertIn("def require_readable_file", preflight)
+        self.assertIn("except PermissionError as exc", preflight)
+        self.assertIn("Нет доступа к Hermes-файлу", preflight)
+
     def test_systemd_runs_preflight_before_start(self) -> None:
         source = Path("deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
