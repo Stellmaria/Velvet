@@ -41,10 +41,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m unittest -v -f --durations 20 \
-            tests/test_package_architecture_inventory.py \
-            tests/test_telegram_navigation_inventory.py \
-            2>&1 | tee preflight-output.txt
+          python scripts/ci_preflight.py 2>&1 | tee preflight-output.txt
 
       - name: Upload preflight output
         if: failure()
