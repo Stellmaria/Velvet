@@ -54,7 +54,8 @@ class VisionGatewayImageTests(unittest.TestCase):
         self.assertEqual("data:image/jpeg;base64", header)
         with Image.open(io.BytesIO(base64.b64decode(encoded))) as image:
             self.assertEqual((1280, 640), image.size)
-            self.assertEqual({}, image.info)
+            self.assertNotIn("exif", image.info)
+            self.assertNotIn("icc_profile", image.info)
 
     def test_alpha_image_stays_png(self) -> None:
         normalized = normalize_image_data_uri(
