@@ -115,11 +115,18 @@ class P3FTypingBaselineTests(unittest.TestCase):
         workflow = Path(".github/workflows/type-check.yml").read_text(encoding="utf-8")
         requirements = Path("requirements-dev.txt").read_text(encoding="utf-8")
 
-        self.assertIn("python -m pip install -r requirements-dev.txt", workflow)
+        self.assertIn(
+            "astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b",
+            workflow,
+        )
+        self.assertIn('version: "0.11.16"', workflow)
+        self.assertIn("uv pip install --system -r requirements-dev.txt", workflow)
+        self.assertNotIn("pip install --upgrade pip", workflow)
         self.assertIn("python -m mypy", workflow)
         self.assertIn("mypy==2.3.0", requirements)
         self.assertIn("-r requirements.txt", requirements)
         self.assertIn("mypy-output.txt", workflow)
+        self.assertIn("if: failure()", workflow)
 
 
 if __name__ == "__main__":
