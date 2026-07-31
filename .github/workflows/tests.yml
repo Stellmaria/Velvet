@@ -37,6 +37,24 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q main.py velvet_bot scripts tests
 
+      - name: Generate package architecture preview
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline
+
+      - name: Upload package architecture preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-architecture-preview
+          path: |
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+            docs/package_architecture_exemptions.json
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Run fast architecture contracts
         shell: bash
         run: |
