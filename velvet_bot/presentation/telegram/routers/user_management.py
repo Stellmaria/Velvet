@@ -9,7 +9,9 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from velvet_bot.database import Database
 from velvet_bot.domains.auf_wallet import (
+    AufPricingRepository,
     AufWalletService,
     auf_to_units,
     format_auf_units,
@@ -21,6 +23,8 @@ from velvet_bot.domains.user_registry import (
 
 router = Router(name="velvet_bot.presentation.telegram.routers.user_management")
 _AMOUNT_QUANT = Decimal("0.0001")
+_MARKUP_QUANT = Decimal("0.01")
+_MARKUP_RESET_WORDS = frozenset({"reset", "default", "сброс", "общая", "global"})
 
 
 def _is_owner(message: Message, wallet_service: AufWalletService) -> bool:
@@ -61,6 +65,23 @@ def _positive_amount(raw: str) -> Decimal | None:
     if normalized <= 0 or normalized > Decimal("1000000"):
         return None
     return normalized if auf_to_units(normalized) > 0 else None
+
+
+def _markup_percent(raw: str) -> Decimal | None:
+    try:
+        value = Decimal(raw.replace(",", "."))
+        if not value.is_finite():
+            return None
+        normalized = value.quantize(_MARKUP_QUANT)
+    except InvalidOperation:
+        return None
+    if value != normalized or normalized < 0 or normalized > Decimal("1000"):
+        return None
+    return normalized
+
+
+def _compact_decimal(value: Decimal) -> str:
+    return f"{value:.2f}".rstrip("0").rstrip(".") or "0"
 
 
 @router.message(Command("velvet_grant"))
@@ -133,6 +154,67 @@ async def grant_velvets(
         await message.answer(
             "Начисление выполнено, но личное уведомление пользователю не доставлено."
         )
+
+
+@router.message(Command("velvet_markup"))
+async def set_user_markup(
+    message: Message,
+    user_registry: TelegramUserRepository,
+    auf_wallet_service: AufWalletService,
+    database: Database,
+) -> None:
+    if not _is_owner(message, auf_wallet_service):
+        return
+    args = _args(message)
+    if not args:
+        await message.answer(
+            "<b>Индивидуальная наценка</b>\n\n"
+            "Установить: <code>/velvet_markup @username 45</code>\n"
+            "Проверить: <code>/velvet_markup @username</code>\n"
+            "Вернуть общую: <code>/velvet_markup @username reset</code>"
+        )
+        return
+    try:
+        user = await user_registry.resolve_user(args[0])
+    except TelegramUserNotFound as error:
+        await message.answer(str(error))
+        return
+
+    user_id = int(user["user_id"])
+    pricing = AufPricingRepository(database)
+    if len(args) == 1:
+        policy = await pricing.user_markup_policy(user_id)
+    elif args[1].strip().casefold() in _MARKUP_RESET_WORDS:
+        policy = await pricing.clear_user_markup(user_id=user_id)
+    else:
+        percent = _markup_percent(args[1])
+        if percent is None:
+            await message.answer("Процент должен быть числом от 0 до 1000, максимум два знака после запятой.")
+            return
+        policy = await pricing.set_user_markup(
+            user_id=user_id,
+            markup_percent=percent,
+            actor_user_id=int(message.from_user.id),
+        )
+
+    if policy.override_markup_percent is None:
+        mode = "общая"
+        detail = "Индивидуальная настройка удалена."
+    else:
+        mode = "индивидуальная"
+        detail = (
+            "Общая наценка остаётся "
+            f"{_compact_decimal(policy.global_markup_percent)}%."
+        )
+    await message.answer(
+        "<b>Наценка пользователя обновлена</b>\n\n"
+        f"Пользователь: {_display_user(user)}\n"
+        f"Режим: <b>{mode}</b>\n"
+        "Эффективная наценка: "
+        f"<b>{_compact_decimal(policy.effective_markup_percent)}%</b>\n"
+        f"{detail}\n\n"
+        "Новые расчёты цены будут использовать этот процент; уже подтверждённые задачи не меняются."
+    )
 
 
 @router.message(Command("velvet_user"))

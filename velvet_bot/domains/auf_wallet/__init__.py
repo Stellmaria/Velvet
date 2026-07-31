@@ -15,12 +15,14 @@ from velvet_bot.domains.auf_wallet.models import (
     AufWalletStatus,
     auf_to_units,
     format_auf_units,
+    format_vl_units,
     units_to_auf,
 )
 from velvet_bot.domains.auf_wallet.pricing import (
     AufPriceNotConfigured,
     AufPriceQuote,
     AufPricingRepository,
+    AufUserMarkupPolicy,
     format_owner_price_details,
 )
 from velvet_bot.domains.auf_wallet.purchase import (
@@ -55,6 +57,7 @@ __all__ = (
     "AufPurchaseRepository",
     "AufPurchaseService",
     "AufReconciliationIssue",
+    "AufUserMarkupPolicy",
     "AufWallet",
     "AufWalletAccessError",
     "AufWalletEntry",
@@ -69,5 +72,6 @@ __all__ = (
     "build_auf_charged_task_queue_service",
     "format_auf_units",
     "format_owner_price_details",
+    "format_vl_units",
     "units_to_auf",
 )
