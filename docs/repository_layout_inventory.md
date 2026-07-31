@@ -4,13 +4,13 @@
 
 ## Сводка
 
-- repository-модулей: **35**;
+- repository-модулей: **41**;
 - внутри доменов: **34**;
 - в `velvet_bot/repositories`: **0**;
 - корневых `*_repository.py`: **0**;
-- infrastructure repositories: **1**;
+- infrastructure repositories: **7**;
 - прочих repository paths: **0**;
-- repository-модулей с production consumers: **32**;
+- repository-модулей с production consumers: **38**;
 - repository-модулей с package exports: **28**;
 - repository-модулей без runtime consumers: **3**;
 - repository-модулей без любых references: **0**;
@@ -70,6 +70,12 @@
 
 ### infrastructure
 
+- `velvet_bot.infrastructure.media_delivery_repository`: production 1, tests 0, exports 0, refs 1.
+- `velvet_bot.infrastructure.media_delivery_repository_backfill`: production 1, tests 0, exports 0, refs 1.
+- `velvet_bot.infrastructure.media_delivery_repository_claim`: production 1, tests 0, exports 0, refs 1.
+- `velvet_bot.infrastructure.media_delivery_repository_finish`: production 1, tests 0, exports 0, refs 1.
+- `velvet_bot.infrastructure.media_delivery_repository_helpers`: production 5, tests 0, exports 0, refs 5.
+- `velvet_bot.infrastructure.media_delivery_repository_record`: production 1, tests 0, exports 0, refs 1.
 - `velvet_bot.infrastructure.postgres.system_repository`: production 2, tests 3, exports 1, refs 6.
 
 ## Следующий срез

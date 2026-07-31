@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-complete",
-  "repository_module_count": 35,
+  "repository_module_count": 41,
   "layout_counts": {
     "domain": 34,
-    "infrastructure": 1
+    "infrastructure": 7
   },
   "root_module_count": 113,
   "root_module_categories": {
@@ -14,7 +14,7 @@
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 32,
+  "repository_modules_with_production_consumers": 38,
   "repository_modules_with_package_exports": 28,
   "repository_modules_without_runtime_consumers": 3,
   "repository_modules_without_references": 0,
@@ -668,6 +668,100 @@
       "test_consumers": [
         "tests/test_workspace_team_watermark.py"
       ],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.infrastructure.media_delivery_repository",
+      "path": "velvet_bot/infrastructure/media_delivery_repository.py",
+      "layout": "infrastructure",
+      "domain": null,
+      "production_consumer_count": 1,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 1,
+      "production_consumers": [
+        "velvet_bot/infrastructure/media_delivery_runtime.py"
+      ],
+      "test_consumers": [],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.infrastructure.media_delivery_repository_backfill",
+      "path": "velvet_bot/infrastructure/media_delivery_repository_backfill.py",
+      "layout": "infrastructure",
+      "domain": null,
+      "production_consumer_count": 1,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 1,
+      "production_consumers": [
+        "velvet_bot/infrastructure/media_delivery_repository.py"
+      ],
+      "test_consumers": [],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.infrastructure.media_delivery_repository_claim",
+      "path": "velvet_bot/infrastructure/media_delivery_repository_claim.py",
+      "layout": "infrastructure",
+      "domain": null,
+      "production_consumer_count": 1,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 1,
+      "production_consumers": [
+        "velvet_bot/infrastructure/media_delivery_repository.py"
+      ],
+      "test_consumers": [],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.infrastructure.media_delivery_repository_finish",
+      "path": "velvet_bot/infrastructure/media_delivery_repository_finish.py",
+      "layout": "infrastructure",
+      "domain": null,
+      "production_consumer_count": 1,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 1,
+      "production_consumers": [
+        "velvet_bot/infrastructure/media_delivery_repository.py"
+      ],
+      "test_consumers": [],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.infrastructure.media_delivery_repository_helpers",
+      "path": "velvet_bot/infrastructure/media_delivery_repository_helpers.py",
+      "layout": "infrastructure",
+      "domain": null,
+      "production_consumer_count": 5,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 5,
+      "production_consumers": [
+        "velvet_bot/infrastructure/media_delivery_repository.py",
+        "velvet_bot/infrastructure/media_delivery_repository_backfill.py",
+        "velvet_bot/infrastructure/media_delivery_repository_claim.py",
+        "velvet_bot/infrastructure/media_delivery_repository_finish.py",
+        "velvet_bot/infrastructure/media_delivery_repository_record.py"
+      ],
+      "test_consumers": [],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.infrastructure.media_delivery_repository_record",
+      "path": "velvet_bot/infrastructure/media_delivery_repository_record.py",
+      "layout": "infrastructure",
+      "domain": null,
+      "production_consumer_count": 1,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 1,
+      "production_consumers": [
+        "velvet_bot/infrastructure/media_delivery_repository.py"
+      ],
+      "test_consumers": [],
       "package_exports": []
     },
     {

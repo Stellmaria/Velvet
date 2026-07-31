@@ -1,22 +1,22 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **606**
-- Production LOC: **131434**
+- Production modules: **620**
+- Production LOC: **132996**
 - Root modules: **113**
 - Active Router imports: **84**
-- Repository modules: **35**
+- Repository modules: **41**
 - Startup installer stages: **28**
-- Registered package violations: **526**
-- Registered exemptions: **526**
+- Registered package violations: **533**
+- Registered exemptions: **533**
 
 ## Layers
 
-- `application`: **14** modules
-- `composition`: **54** modules
+- `application`: **19** modules
+- `composition`: **55** modules
 - `core`: **7** modules
 - `domain`: **175** modules
-- `infrastructure`: **17** modules
+- `infrastructure`: **25** modules
 - `other`: **1** modules
 - `presentation`: **213** modules
 - `root`: **114** modules
@@ -65,18 +65,18 @@
 
 - `database-acquire-outside-persistence`: **89**
 - `domain-aiogram-import`: **19**
-- `domain-layer-import`: **1**
-- `dynamic-import`: **18**
+- `domain-layer-import`: **3**
+- `dynamic-import`: **19**
 - `foreign-assignment`: **38**
-- `installed-sentinel`: **40**
-- `installer-like-module`: **22**
+- `installed-sentinel`: **41**
+- `installer-like-module`: **23**
 - `method-assign-ignore`: **8**
 - `monolithic-function`: **25**
 - `monolithic-module-loc`: **17**
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **108**
 - `type-ignore-usage`: **16**
-- `typing-any-usage`: **106**
+- `typing-any-usage`: **108**
 
 ## Largest modules
 
