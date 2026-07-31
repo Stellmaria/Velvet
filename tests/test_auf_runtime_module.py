@@ -19,7 +19,10 @@ from velvet_bot.domains.auf_runtime import (
     ProviderAufTaskQueueService,
     WorkspaceAufSettings,
 )
-from velvet_bot.domains.media_generation import KIE_GENERATION_TASK_TYPE
+from velvet_bot.domains.media_generation import (
+    KIE_GENERATION_TASK_TYPE,
+    KieModelAlias,
+)
 from velvet_bot.domains.workspaces.models import DEFAULT_WORKSPACE_ID
 from velvet_bot.domains.workspaces.product_models import (
     DEFAULT_PERSONAL_MODULE_KEYS,
@@ -157,6 +160,24 @@ class AufModuleContractTests(unittest.TestCase):
                 AufProvider.GRS.model_aliases
             )
         )
+
+    def test_qwen_wan_and_flux_are_routed_to_kie_dispatcher(self) -> None:
+        kie_aliases = set(AufProvider.KIE.model_aliases)
+        self.assertTrue(
+            {
+                KieModelAlias.QWEN2_IMAGE_EDIT.value,
+                KieModelAlias.WAN_27_IMAGE.value,
+                KieModelAlias.FLUX_2_PRO_IMAGE.value,
+            }.issubset(kie_aliases)
+        )
+
+    def test_every_media_catalog_model_has_exactly_one_provider_route(self) -> None:
+        kie_aliases = set(AufProvider.KIE.model_aliases)
+        grs_aliases = set(AufProvider.GRS.model_aliases)
+        catalog_aliases = {model.value for model in KieModelAlias}
+
+        self.assertTrue(kie_aliases.isdisjoint(grs_aliases))
+        self.assertEqual(catalog_aliases, kie_aliases | grs_aliases)
 
 
 @unittest.skipUnless(
