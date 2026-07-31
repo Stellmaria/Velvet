@@ -1,0 +1,6 @@
+ARG VISION_RUNTIME_BASE_IMAGE=ollama/ollama:0.32.3
+FROM ${VISION_RUNTIME_BASE_IMAGE}
+
+COPY --chmod=0755 scripts/vision_runtime_entrypoint.sh /usr/local/bin/vision-runtime-entrypoint
+
+ENTRYPOINT ["/usr/local/bin/vision-runtime-entrypoint"]
