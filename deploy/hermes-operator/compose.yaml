@@ -11,7 +11,7 @@ services:
     env_file:
       - ${HERMES_OPS_ENV_FILE:-/srv/hermes-operator-control/operator.env}
     volumes:
-      - ${HERMES_OPS_HOST_RUNTIME_DIR:-/srv/hermes-operator-control/runtime}:/runtime/hermes-operator
+      - ${HERMES_OPS_HOST_RUNTIME_DIR:-/srv/hermes-operator-control/runtime}:${HERMES_OPS_HOST_RUNTIME_DIR:-/srv/hermes-operator-control/runtime}
     read_only: true
     tmpfs:
       - /tmp:size=32m,mode=1777
