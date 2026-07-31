@@ -1,0 +1,108 @@
+install_media_delivery_ui\",' not in text:
+        text = text.replace(
+            '    \"install_auf_photo_model_modes\",\n',
+            '    \"install_auf_photo_model_modes\",\n    \"install_media_delivery_ui\",\n',
+            1,
+        )
+    for pattern in (
+        r\"    from velvet_bot\\.app\\.auf_active_delivery_fix import .*?\\n\",
+        r\"    from velvet_bot\\.app\\.auf_result_delivery_recovery import \\(.*?\\n    \\)\\n\",
+        r\"    from velvet_bot\\.app\\.original_image_delivery_hotfix import \\(.*?\\n    \\)\\n\",
+        r\"    from velvet_bot\\.app\\.original_video_delivery_hotfix import \\(.*?\\n    \\)\\n\",
+        r\"    from velvet_bot\\.domains\\.media_generation\\.friendly_worker import \\(.*?\\n    \\)\\n\",
+    ):
+        text = re.sub(pattern, \"\", text, flags=re.S)
+    if \"from velvet_bot.app.media_delivery_ui_install import install_media_delivery_ui\" not in text:
+        marker = \"    from velvet_bot.app.krita_remote_install import install_krita_remote_worker\\n\"
+        text = text.replace(
+            marker,
+            marker
+            + \"    from velvet_bot.app.media_delivery_ui_install import install_media_delivery_ui\\n\",
+            1,
+        )
+
+    # Remove complete CompositionStage calls for legacy stages.
+    lines = text.splitlines(keepends=True)
+    output: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if \"CompositionStage(\" not in line:
+            output.append(line)
+            index += 1
+            continue
+        block = [line]
+        balance = line.count(\"(\") - line.count(\")\")
+        index += 1
+        while index < len(lines) and balance > 0:
+            block.append(lines[index])
+            balance += lines[index].count(\"(\") - lines[index].count(\")\")
+            index += 1
+        joined = \"\".join(block)
+        if any(f'\"{name}\"' in joined for name in legacy):
+            continue
+        output.extend(block)
+    text = \"\".join(output)
+    if 'CompositionStage(\"install_media_delivery_ui\"' not in text:
+        marker = '''        CompositionStage(\n            \"install_auf_photo_model_modes\",\n            install_auf_photo_model_modes,\n        ),\n'''
+        text = text.replace(
+            marker,
+            marker + '''        CompositionStage(\n            \"install_media_delivery_ui\",\n            install_media_delivery_ui,\n        ),\n''',
+            1,
+        )
+    path.write_text(text, encoding=\"utf-8\")
+
+
+def update_tests() -> None:
+    path = ROOT / \"tests/test_application_composition.py\"
+    text = path.read_text(encoding=\"utf-8\")
+    legacy = {
+        \"install_friendly_media_worker\",
+        \"install_original_image_delivery_hotfix\",
+        \"install_original_video_delivery_hotfix\",
+        \"install_auf_result_delivery_recovery\",
+        \"install_auf_active_delivery_fix\",
+    }
+    lines = [
+        line
+        for line in text.splitlines(keepends=True)
+        if not any(f'\"{name}\",' in line for name in legacy)
+    ]
+    text = \"\".join(lines)
+    if '\"install_media_delivery_ui\",' not in text:
+        text = text.replace(
+            '    \"install_auf_photo_model_modes\",\\n',
+            '    \"install_auf_photo_model_modes\",\\n    \"install_media_delivery_ui\",\\n',
+            1,
+        )
+    text = text.replace(\"self.assertEqual(26, len(composition.feature_stage_names))\", \"self.assertEqual(22, len(composition.feature_stage_names))\")
+    path.write_text(text, encoding=\"utf-8\")
+
+    path = ROOT / \"tests/test_auf_result_delivery_recovery.py\"
+    text = path.read_text(encoding=\"utf-8\")
+    text = re.sub(
+        r\"    def test_recovery_installs_after_existing_delivery_hotfixes\\(self\\) -> None:.*?(?=\\n\\nif __name__)\",
+        '''    def test_legacy_recovery_is_not_in_active_composition(self) -> None:\n        stage_names = build_application_composition().stage_names\n        self.assertNotIn(\"install_auf_result_delivery_recovery\", stage_names)\n        self.assertIn(\"install_media_delivery_ui\", stage_names)\n''',
+        text,
+        flags=re.S,
+    )
+    path.write_text(text, encoding=\"utf-8\")
+
+    path = ROOT / \"tests/test_auf_active_delivery_fix.py\"
+    text = path.read_text(encoding=\"utf-8\")
+    text = re.sub(
+        r\"    def test_fix_is_installed_after_delivery_recovery\\(self\\) -> None:.*?(?=\\n\\nif __name__)\",
+        '''    def test_legacy_active_fix_is_not_in_composition(self) -> None:\n        stage_names = build_application_composition().stage_names\n        self.assertNotIn(\"install_auf_active_delivery_fix\", stage_names)\n        self.assertIn(\"install_media_delivery_ui\", stage_names)\n''',
+        text,
+        flags=re.S,
+    )
+    path.write_text(text, encoding=\"utf-8\")
+
+
+
+def harden_new_delivery_files() -> None:
+    repository = ROOT / \"velvet_bot/infrastructure/media_delivery_repository.py\"
+    text = repository.read_text(encoding=\"utf-8\")
+    text = text.replace(
+        \"\"\"                SET result_resolution_attempts=job.result_resolution_attempts+1,
+                    attempt_count=job.result_resolution_atte
