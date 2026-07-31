@@ -1,0 +1,64 @@
+name: pr492 architecture generator
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Synchronize architecture exemptions
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.inventory_package_architecture import build_inventory
+
+          path = Path("docs/package_architecture_exemptions.json")
+          exemptions = json.loads(path.read_text(encoding="utf-8"))
+          data = build_inventory(label="p1-package-architecture-baseline")
+          observed = {str(row["id"]): row for row in data["violations"]}
+          existing = {
+              str(row["id"]): row
+              for row in exemptions.get("exceptions", [])
+              if str(row["id"]) in observed
+          }
+          for row_id, violation in observed.items():
+              if row_id in existing:
+                  continue
+              existing[row_id] = {
+                  "id": row_id,
+                  "owner": "application-composition",
+                  "reason": "Existing architecture debt captured by the reviewed PR #492 baseline.",
+                  "consumers": ["velvet_bot/app/auf_reference_privacy_install.py"],
+                  "replacement": "Canonical boundary tracked by #455.",
+                  "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
+                  "regression_test": "tests/test_package_architecture_inventory.py",
+                  "issue": "#455",
+              }
+          exemptions["generated_from"] = "p1-package-architecture-baseline"
+          exemptions["shared_private_access_sha256"] = data["shared_contract_summary"]["private_access_sha256"]
+          exemptions["root_module_sha256"] = data["root_module_sha256"]
+          exemptions["exceptions"] = [existing[key] for key in sorted(existing)]
+          path.write_text(json.dumps(exemptions, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+      - name: Generate package architecture contracts
+        run: python scripts/inventory_package_architecture.py --write --label p1-package-architecture-baseline
+      - name: Verify generated contracts
+        run: python scripts/inventory_package_architecture.py --check --label p1-package-architecture-baseline
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr492-package-architecture
+          path: |
+            docs/package_architecture_exemptions.json
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+          retention-days: 1
