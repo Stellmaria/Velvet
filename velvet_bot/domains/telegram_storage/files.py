@@ -4,11 +4,17 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import zipfile
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
+
+from velvet_bot.domains.telegram_storage.deletion import (
+    DeletionPolicy,
+    DeletionResult,
+    delete_paths,
+    temporary_deletion_policy,
+)
 
 _MAGIC = b"VELVET-AESGCM1\n"
 _SALT_BYTES = 16
@@ -167,25 +173,14 @@ def split_file(source: Path, directory: Path, max_part_bytes: int) -> tuple[Path
     return tuple(parts)
 
 
-def remove_paths(paths: Iterable[Path]) -> tuple[int, int]:
-    deleted = 0
-    freed = 0
-    unique = sorted({path.resolve() for path in paths}, key=lambda value: len(value.parts), reverse=True)
-    for path in unique:
-        try:
-            if path.is_file() or path.is_symlink():
-                size = path.stat().st_size if path.exists() else 0
-                path.unlink(missing_ok=True)
-                deleted += 1
-                freed += size
-            elif path.is_dir():
-                size = sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
-                shutil.rmtree(path)
-                deleted += 1
-                freed += size
-        except OSError:
-            continue
-    return deleted, freed
+def remove_paths(
+    paths: Iterable[Path],
+    *,
+    policy: DeletionPolicy | None = None,
+    dry_run: bool = False,
+) -> DeletionResult:
+    selected_policy = policy or temporary_deletion_policy()
+    return delete_paths(paths, policy=selected_policy, dry_run=dry_run)
 
 
 def write_json(path: Path, payload: object) -> Path:
@@ -195,6 +190,8 @@ def write_json(path: Path, payload: object) -> Path:
 
 
 __all__ = (
+    "DeletionPolicy",
+    "DeletionResult",
     "StorageEncryptionUnavailable",
     "build_zip",
     "decrypt_file",

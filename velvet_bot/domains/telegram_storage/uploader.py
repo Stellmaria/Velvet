@@ -15,6 +15,7 @@ from aiogram.exceptions import (
 from aiogram.types import FSInputFile
 
 from velvet_bot.domains.telegram_storage.files import (
+    DeletionResult,
     remove_paths,
     safe_token,
     sha256_file,
@@ -128,6 +129,19 @@ class TelegramStorageUploader:
                 return message
         raise RuntimeError("Telegram storage send retry loop exhausted unexpectedly.")
 
+    def _delete_candidate_paths(self, candidate: StorageCandidate) -> DeletionResult:
+        policy = self._settings.deletion_policy_for(candidate.kind)
+        result = remove_paths(candidate.delete_paths, policy=policy)
+        if result.issues:
+            logger.warning(
+                "Telegram storage retained local paths kind=%s key=%s policy=%s issues=%s",
+                candidate.kind,
+                candidate.logical_key,
+                result.policy_name,
+                ",".join(sorted({issue.code for issue in result.issues})),
+            )
+        return result
+
     async def upload(
         self,
         candidate: StorageCandidate,
@@ -148,8 +162,10 @@ class TelegramStorageUploader:
         if existing is not None:
             deleted = freed = 0
             if self._settings.delete_after_upload and candidate.delete_paths:
-                deleted, freed = remove_paths(candidate.delete_paths)
-                if deleted:
+                result = self._delete_candidate_paths(candidate)
+                deleted = result.deleted_count
+                freed = result.freed_bytes
+                if result.complete and deleted:
                     await self._repository.mark_local_deleted(existing.object_id)
             return existing, deleted, freed, True
 
@@ -231,8 +247,10 @@ class TelegramStorageUploader:
 
         deleted = freed = 0
         if self._settings.delete_after_upload and candidate.delete_paths:
-            deleted, freed = remove_paths(candidate.delete_paths)
-            if deleted:
+            result = self._delete_candidate_paths(candidate)
+            deleted = result.deleted_count
+            freed = result.freed_bytes
+            if result.complete and deleted:
                 await self._repository.mark_local_deleted(stored.object_id)
         return stored, deleted, freed, False
 

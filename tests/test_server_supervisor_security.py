@@ -35,6 +35,16 @@ def _runtime_environment(directory: str) -> dict[str, str]:
     }
 
 
+def _read_http_response(client: socket.socket) -> bytes:
+    chunks: list[bytes] = []
+    while True:
+        chunk = client.recv(4096)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 class ServerSupervisorSecurityTests(unittest.TestCase):
     def test_peer_allowlist_requires_exact_uid_gid_or_root(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.dict(
@@ -95,7 +105,7 @@ class ServerSupervisorSecurityTests(unittest.TestCase):
                     client.sendall(
                         b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
                     )
-                    response = client.recv(4096)
+                    response = _read_http_response(client)
                 self.assertIn(b"200 OK", response)
                 self.assertIn(b'"ok": true', response)
             finally:
@@ -126,7 +136,7 @@ class ServerSupervisorSecurityTests(unittest.TestCase):
                     client.sendall(
                         b"GET /v1/console HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
                     )
-                    response = client.recv(4096)
+                    response = _read_http_response(client)
                 self.assertIn(b"401 Unauthorized", response)
                 self.assertIn(b"invalid_token", response)
             finally:
