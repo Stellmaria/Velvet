@@ -6,17 +6,22 @@ from typing import Any
 from uuid import UUID
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
 
 from velvet_bot.application.media_delivery import (
     DeliverMediaResult,
+    MediaDeliveryError,
+    MediaDeliveryRuntimeUnavailable,
+    ProviderResultPending,
     ProviderResultResolver,
+    ProviderResultTerminal,
     RedeliverMediaResult,
     ResolveProviderResult,
 )
 from velvet_bot.application.workspace_tasks import get_owned_success_task
 from velvet_bot.database import Database
 from velvet_bot.domains.media_generation.models import KieTaskState
-from velvet_bot.infrastructure.ai import KieClient
+from velvet_bot.infrastructure.ai import KieClient, KieError
 from velvet_bot.infrastructure.media_delivery_repository import (
     PostgresMediaDeliveryRepository,
 )
@@ -41,18 +46,30 @@ class KieProviderResultResolver(ProviderResultResolver):
         provider_task_id: str,
     ) -> tuple[str, ...]:
         del provider
-        record = await self._client.get_task(provider_task_id)
+        try:
+            record = await self._client.get_task(provider_task_id)
+        except KieError as error:
+            raise ProviderResultPending(
+                f"Provider status request failed ({type(error).__name__})."
+            ) from error
         if record.state is KieTaskState.FAIL:
-            raise RuntimeError(
-                "Провайдер завершил сохранённую задачу ошибкой: "
-                f"{record.failure_code or record.failure_message or 'unknown'}."
+            raise ProviderResultTerminal(
+                "Provider finished the stored task with a terminal failure."
             )
         if record.state is not KieTaskState.SUCCESS:
-            raise RuntimeError(
-                "Провайдер ещё не подтвердил готовый результат: "
-                f"{record.state.value}."
+            raise ProviderResultPending(
+                f"Provider result is not ready: {record.state.value}."
             )
-        return tuple(url for value in record.result_urls if (url := str(value).strip()))
+        urls = tuple(
+            url
+            for value in record.result_urls
+            if (url := str(value).strip())
+        )
+        if not urls:
+            raise ProviderResultPending(
+                "Provider success response does not contain stable result URLs."
+            )
+        return urls
 
 
 class MediaDeliveryRuntime:
@@ -132,7 +149,7 @@ def configure_media_delivery_runtime(runtime: MediaDeliveryRuntime) -> None:
 def active_media_delivery_runtime() -> MediaDeliveryRuntime:
     runtime = _ACTIVE_RUNTIME
     if runtime is None:
-        raise RuntimeError("Durable media delivery runtime is not configured.")
+        raise MediaDeliveryRuntimeUnavailable()
     return runtime
 
 
@@ -173,12 +190,18 @@ async def redeliver_owned_task(
         )
     except asyncio.CancelledError:
         raise
-    except Exception as error:
-        logger.exception("Could not redeliver durable media task=%s", task_id)
-        await callback.answer(
-            "Не удалось восстановить сохранённый результат: "
-            f"{str(error)[:250]}",
-            show_alert=True,
+    except MediaDeliveryError as error:
+        logger.exception(
+            "Could not redeliver durable media task=%s code=%s",
+            task_id,
+            error.code,
+        )
+        await callback.answer(error.public_message, show_alert=True)
+        return
+    except TelegramAPIError:
+        logger.exception(
+            "Could not answer Telegram redelivery callback task=%s",
+            task_id,
         )
         return
 
