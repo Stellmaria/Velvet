@@ -34,6 +34,24 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertIn("s6-overlay", hermes)
         self.assertIn('command: ["gateway", "run"]', hermes)
 
+    def test_hermes_has_only_required_s6_init_capabilities(self) -> None:
+        source = Path("docker-compose.server.yml").read_text(encoding="utf-8")
+        hermes = source.split("  hermes:", 1)[1]
+        self.assertIn("cap_drop:\n      - ALL", hermes)
+        self.assertIn(
+            "cap_add:\n"
+            "      - CHOWN\n"
+            "      - DAC_OVERRIDE\n"
+            "      - FOWNER\n"
+            "      - SETGID\n"
+            "      - SETUID",
+            hermes,
+        )
+        self.assertNotIn("privileged:", hermes)
+        self.assertNotIn("SYS_ADMIN", hermes)
+        self.assertNotIn("NET_ADMIN", hermes)
+        self.assertIn("no-new-privileges:true", hermes)
+
     def test_server_env_starts_with_expensive_features_disabled(self) -> None:
         source = Path(".env.server.example").read_text(encoding="utf-8")
         for line in (
