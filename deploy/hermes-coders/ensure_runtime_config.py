@@ -22,10 +22,14 @@ def _meaningful(line: str) -> bool:
     return bool(stripped and not stripped.startswith("#"))
 
 
+def _yaml_code(line: str) -> str:
+    return line.split("#", 1)[0].rstrip()
+
+
 def _find_top_level_section(lines: list[str], name: str) -> tuple[int, int] | None:
     marker = f"{name}:"
     for start, line in enumerate(lines):
-        if line == marker:
+        if _indent_width(line) == 0 and _yaml_code(line) == marker:
             for end in range(start + 1, len(lines)):
                 candidate = lines[end]
                 if _meaningful(candidate) and _indent_width(candidate) == 0:
@@ -41,12 +45,12 @@ def _find_mapping_key(
     end: int,
     name: str,
 ) -> int | None:
-    marker = f"{name}:"
     for index in range(start + 1, end):
         line = lines[index]
         if _indent_width(line) != 2:
             continue
-        if line.strip().startswith(marker):
+        key, separator, _value = _yaml_code(line).strip().partition(":")
+        if separator and key == name:
             return index
     return None
 
@@ -81,7 +85,7 @@ def config_has_env_passthrough(text: str, variable: str) -> bool:
     if key_index is None:
         return False
 
-    suffix = lines[key_index].split(":", 1)[1].strip()
+    suffix = _yaml_code(lines[key_index]).split(":", 1)[1].strip()
     inline = _inline_values(suffix)
     if inline is not None:
         return variable in inline
@@ -90,13 +94,14 @@ def config_has_env_passthrough(text: str, variable: str) -> bool:
 
     for index in range(key_index + 1, end):
         line = lines[index]
-        if _meaningful(line) and _indent_width(line) <= 2:
-            break
-        stripped = line.strip()
+        stripped = _yaml_code(line).strip()
         if stripped.startswith("-"):
             value = _normalize_scalar(stripped[1:])
             if value == variable:
                 return True
+            continue
+        if _meaningful(line) and _indent_width(line) <= 2:
+            break
     return False
 
 
@@ -136,7 +141,7 @@ def ensure_env_passthrough(path: Path, variable: str = PASSTHROUGH_VARIABLE) -> 
                 f"    - {variable}",
             ]
         else:
-            suffix = lines[key_index].split(":", 1)[1].strip()
+            suffix = _yaml_code(lines[key_index]).split(":", 1)[1].strip()
             inline = _inline_values(suffix)
 
             if inline is not None:
@@ -148,6 +153,9 @@ def ensure_env_passthrough(path: Path, variable: str = PASSTHROUGH_VARIABLE) -> 
                 block_end = end
                 for index in range(key_index + 1, end):
                     line = lines[index]
+                    stripped = _yaml_code(line).strip()
+                    if stripped.startswith("-"):
+                        continue
                     if _meaningful(line) and _indent_width(line) <= 2:
                         block_end = index
                         break
