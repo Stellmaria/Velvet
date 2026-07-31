@@ -26,22 +26,23 @@
 - поддержать Velvet `bot`, Max `bot` и Max `userbot`;
 - разрешить только status, logs, start, restart, update и rollback;
 - запретить произвольные URL, payload, shell и target SHA;
-- сохранить coder-контейнеры вне control-сетей;
-- добавить installer, systemd unit, managed SOUL block и contract tests.
+- сохранить coder-контейнеры вне control-сетей и runtime socket;
+- добавить installer, systemd units, managed SOUL block и tests.
 
 ### Критерии готовности
 
 - основной Hermes вызывает операции через `/opt/data/tools/opsctl.py`;
-- gateway не имеет host ports, Docker socket, systemd и production mounts;
+- gateway не имеет host ports, Docker socket, systemd, production checkout или `.env` mounts;
 - upstream supervisor tokens находятся только в отдельном env gateway;
+- `start` выполняется отдельным host-side allowlisted bridge и не подменяется update;
 - Max supervisor-proxy доступен gateway через internal shared network;
 - кодеры не получают новый runtime-доступ;
-- после изменяющей операции Hermes повторно проверяет status;
+- после изменяющей операции Hermes проверяет терминальный operation status и running/health сервиса;
 - обязательные CI checks проходят.
 
 ### Риски и ограничения
 
-Gateway доверяет только отдельному client token, сохранённому в data главного Hermes. Этот token не даёт прямого доступа к Docker или supervisor и принимается только fixed-action gateway. Изменяющие операции дополнительно ограничены правилами SOUL и требуют явного запроса владельца.
+Gateway доверяет отдельному client token, сохранённому в data главного Hermes. Этот token не даёт прямого доступа к Docker, host bridge или supervisor и принимается только fixed-action gateway. Host bridge имеет собственный token, доступный только gateway, и принимает только три разрешённых target: Velvet bot, Max bot и Max userbot.
 
 ## После завершения
 
@@ -50,19 +51,21 @@ Gateway доверяет только отдельному client token, сох�
 - добавлены `gateway.py`, `opsctl.py` и отдельный hardened Compose;
 - gateway принимает только пустой JSON и фиксированные project/action/service;
 - ответы upstream рекурсивно очищаются от полей token, password, secret, authorization и API key;
-- добавлен installer, создающий отдельные credentials и проверяющий internal control network;
-- добавлен unprivileged systemd unit;
+- добавлен `host_start.py`, который выполняет только `docker compose up -d` разрешённого service и проверяет running/health;
+- gateway получает только dedicated Unix socket host bridge, но не Docker socket;
+- добавлены отдельные client, host-start и upstream supervisor credentials;
+- добавлены unprivileged `hermes-operator-host.service` и `hermes-operator-control.service`;
 - runtime SOUL обновляется managed-блоком без удаления существующих инструкций;
-- coder compose проверяется контрактом на отсутствие operator control network;
+- coder compose проверяется контрактом на отсутствие operator network и runtime mount;
 - открыты связанные draft PR `Stellmaria/Velvet#529` и `Stellmaria/romatic_club_bot_max#15`.
 
 ### Миграции и совместимость
 
-SQL-миграций нет. Production compose Velvet не меняется. Для Max требуется совместимое изменение `compose.yaml`, подключающее только `supervisor-proxy` к общей internal control network.
+SQL-миграций нет. Production compose Velvet не меняется. Для Max требуется совместимое изменение `compose.yaml`, подключающее только `supervisor-proxy` к общей internal control network. `start` не требует изменения существующих Supervisor API.
 
 ### Проверки
 
-Добавлен `tests/test_hermes_operator_control_contract.py`. Python compile preflight и type check прошли. Первый CI-запуск выявил и позволил исправить слишком широкий contract-тест coder-сети и статус worklog. Полный повторный CI, Docker build и server smoke ещё не завершены.
+Добавлены статические security contracts и поведенческие тесты host bridge/Unix protocol без реального Docker. Первый CI-запуск выявил и позволил исправить слишком широкий contract-тест coder-сети и статус worklog. Max PR уже прошёл свой CI. Повторный Velvet CI и server smoke ещё не завершены.
 
 ### PR и commit
 
@@ -72,12 +75,13 @@ SQL-миграций нет. Production compose Velvet не меняется. Д
 
 ### Незавершённое
 
-- дождаться повторного зелёного CI обоих PR;
-- провести review gateway и installer;
+- дождаться зелёного CI Velvet PR после добавления fixed start bridge;
+- провести финальный review gateway, host bridge и installer;
 - слить сначала Max PR, затем Velvet PR;
 - выполнить `sudo bash deploy/hermes-operator/install.sh` на VPS;
-- проверить read-only status Velvet bot, Max bot и Max userbot через основной Hermes.
+- проверить read-only status Velvet bot, Max bot и Max userbot через основной Hermes;
+- отдельно smoke-проверить start только на остановленном тестовом/фактически требующем запуска сервисе после явного запроса владельца.
 
 ### Следующий шаг
 
-Проверить новый CI после исправлений. После зелёных обязательных checks выполнить server deployment и smoke без перезапуска production-ботов, пока владелец явно не запросит изменяющее действие.
+Проверить новый CI. После зелёных обязательных checks выполнить server deployment, затем read-only status smoke. Production start/restart выполнять только по явному запросу владельца.
