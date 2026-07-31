@@ -1742,7 +1742,7 @@ def install_auf_photo_model_modes() -> None:
                 await callback.answer("Недоступный формат.", show_alert=True)
                 return
             await state.update_data(auf_output_format=callback_data.value)
-            await _show_wallet_final(
+            await photo_ui._show_auf_final(
                 callback,
                 state,
                 database=database,
@@ -1751,7 +1751,7 @@ def install_auf_photo_model_modes() -> None:
             return
         if callback_data.action == "photo_wan_done":
             await state.update_data(auf_wan_configured=True)
-            await _show_wallet_final(
+            await photo_ui._show_auf_final(
                 callback,
                 state,
                 database=database,

@@ -133,6 +133,13 @@ def format_auf_units(value: int, *, max_places: int = 2) -> str:
     return f"{rendered} {_velvet_currency_word(amount)}"
 
 
+def format_vl_units(value: int) -> str:
+    units = int(value)
+    if units % AUF_SCALE != 0:
+        raise ValueError("Сумма VL должна быть целым числом вельветов.")
+    return f"{units // AUF_SCALE} VL"
+
+
 __all__ = (
     "AUF_SCALE",
     "AufEconomySettings",
@@ -146,5 +153,6 @@ __all__ = (
     "AufWalletStatus",
     "auf_to_units",
     "format_auf_units",
+    "format_vl_units",
     "units_to_auf",
 )
