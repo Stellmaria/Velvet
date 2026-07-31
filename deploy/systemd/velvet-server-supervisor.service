@@ -1,0 +1,29 @@
+[Unit]
+Description=Velvet Server Supervisor
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+Before=velvet-compose.service
+
+[Service]
+Type=simple
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet
+EnvironmentFile=/srv/velvet/.env.server
+Environment=VELVET_APP_DIR=/srv/velvet
+Environment=VELVET_ENV_FILE=.env.server
+Environment=VELVET_COMPOSE_FILE=docker-compose.server.yml
+ExecStart=/usr/bin/python3 /srv/velvet/scripts/server_supervisor.py
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/velvet /srv/velvet/data
+
+[Install]
+WantedBy=multi-user.target
