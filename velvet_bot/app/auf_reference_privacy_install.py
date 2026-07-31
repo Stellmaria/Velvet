@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from html import escape
 
+from velvet_bot.app.workspace_owner_generation_hotfix import (
+    install_workspace_owner_generation_hotfix,
+)
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 from velvet_bot.presentation.telegram.routers import workspace_auf_photo as photo_router
 
@@ -128,6 +131,7 @@ def install_auf_reference_privacy() -> None:
     photo_router._source_keyboard = _private_source_keyboard
     photo_router._input_text = _private_input_text
     photo_router._review_text = _private_review_text
+    install_workspace_owner_generation_hotfix()
     _INSTALLED = True
 
 
