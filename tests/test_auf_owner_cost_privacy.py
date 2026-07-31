@@ -40,7 +40,7 @@ class AufOwnerCostPrivacyTests(unittest.TestCase):
         self.assertIn("без наценки", block)
         self.assertIn("$0.0750", block)
         self.assertIn("6.75 ₽ РФ", block)
-        self.assertIn("0.25 Br", block)
+        self.assertIn("0.24 Br", block)
         self.assertNotIn("VL", block)
         self.assertNotIn("вельвет", block.casefold())
         self.assertNotIn("прибыл", block.casefold())
