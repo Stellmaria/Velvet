@@ -13,6 +13,7 @@ from velvet_bot.application.media_delivery import (
     DownloadedMedia,
     MediaDeliveryItem,
     MediaDeliveryJob,
+    MediaDeliveryTerminalError,
     MediaUrlExpired,
 )
 from velvet_bot.domains.media_generation.file_delivery_worker import (
@@ -178,7 +179,7 @@ class TelegramMediaDeliveryTransport:
                 operation_name,
                 next_attempt,
                 self._retry_attempts,
-                error,
+                type(error).__name__,
             )
 
         return await retry_telegram_operation(
@@ -190,7 +191,10 @@ class TelegramMediaDeliveryTransport:
     @staticmethod
     def _require_chat(job: MediaDeliveryJob) -> None:
         if job.chat_id is None:
-            raise RuntimeError("Для доставки результата не сохранён chat_id.")
+            raise MediaDeliveryTerminalError(
+                "missing_chat_id",
+                "Для сохранённого результата не указан чат доставки.",
+            )
 
     @staticmethod
     def _model_name(job: MediaDeliveryJob) -> str:
@@ -199,7 +203,11 @@ class TelegramMediaDeliveryTransport:
             fallback="Генерация",
         )
 
-    def _original_caption(self, job: MediaDeliveryJob, item: MediaDeliveryItem) -> str:
+    def _original_caption(
+        self,
+        job: MediaDeliveryJob,
+        item: MediaDeliveryItem,
+    ) -> str:
         return (
             f"<b>Ауф · {escape(self._model_name(job))}</b>\n"
             "Оригинальный файл без сжатия Telegram.\n"
@@ -207,13 +215,15 @@ class TelegramMediaDeliveryTransport:
             f"Задача провайдера: <code>{escape(job.provider_task_id)}</code>"
         )
 
-    def _preview_caption(self, job: MediaDeliveryJob, item: MediaDeliveryItem) -> str:
+    def _preview_caption(
+        self,
+        job: MediaDeliveryJob,
+        item: MediaDeliveryItem,
+    ) -> str:
         return (
             f"Предпросмотр · <b>{escape(self._model_name(job))}</b>\n"
             f"Результат: <b>{item.result_index}/{len(job.items)}</b>"
         )
-
-
 
 
 __all__ = ("TelegramMediaDeliveryTransport",)
