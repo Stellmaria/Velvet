@@ -1,0 +1,89 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def replace_once(path: Path, old: str, new: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    if new in text:
+        return
+    if old not in text:
+        raise RuntimeError(f"Expected fragment not found in {path}: {old[:100]!r}")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def update_workers() -> None:
+    path = ROOT / "velvet_bot/app/workers.py"
+    replace_once(
+        path,
+        "from velvet_bot.domains.media_generation.economy_worker import KieGenerationWorker\n",
+        "from velvet_bot.app.grs_campaign_retry import CampaignGrsGenerationWorker\n",
+    )
+    replace_once(
+        path,
+        "from velvet_bot.infrastructure.ai import KieClient\n",
+        "from velvet_bot.infrastructure.ai import KieClient\n"
+        "from velvet_bot.infrastructure.media_delivery_runtime import (\n"
+        "    build_media_delivery_runtime,\n"
+        "    configure_media_delivery_runtime,\n"
+        ")\n",
+    )
+    replace_once(
+        path,
+        """        kie_client = KieClient(\n            api_key=active_kie_settings.api_key,\n            models=active_kie_settings.models,\n            base_url=active_kie_settings.base_url,\n            file_upload_base_url=active_kie_settings.file_upload_base_url,\n            timeout_seconds=active_kie_settings.timeout_seconds,\n            poll_interval_seconds=active_kie_settings.poll_interval_seconds,\n            task_timeout_seconds=active_kie_settings.task_timeout_seconds,\n        )\n        kie_queue = KieTaskQueueService(\n            database=database,\n            max_attempts=active_kie_settings.generation_max_attempts,\n        )\n""",
+        """        kie_client = KieClient(\n            api_key=active_kie_settings.api_key,\n            grs_api_key=active_kie_settings.grs_api_key,\n            models=active_kie_settings.models,\n            base_url=active_kie_settings.base_url,\n            file_upload_base_url=active_kie_settings.file_upload_base_url,\n            grs_base_url=active_kie_settings.grs_base_url,\n            timeout_seconds=active_kie_settings.timeout_seconds,\n            poll_interval_seconds=active_kie_settings.poll_interval_seconds,\n            task_timeout_seconds=active_kie_settings.task_timeout_seconds,\n        )\n        media_delivery_runtime = build_media_delivery_runtime(\n            bot=bot,\n            database=database,\n            provider_client=kie_client,\n        )\n        configure_media_delivery_runtime(media_delivery_runtime)\n        kie_queue = KieTaskQueueService(\n            database=database,\n            max_attempts=active_kie_settings.generation_max_attempts,\n            delivery_resolver=media_delivery_runtime.resolver,\n            delivery=media_delivery_runtime.delivery,\n        )\n        manager.register(\n            PeriodicWorkerSpec(\n                name=\"media-result-delivery\",\n                description=\"Durable recovery and delivery of generated media\",\n                interval_seconds=3,\n                runner=media_delivery_runtime.recover_once,\n            )\n        )\n""",
+    )
+    replace_once(
+        path,
+        """            kie_worker = KieGenerationWorker(\n                bot=bot,\n""",
+        """            kie_worker = CampaignGrsGenerationWorker(\n                bot=bot,\n                media_delivery_runtime=media_delivery_runtime,\n""",
+    )
+
+
+def remove_worker_assignments() -> None:
+    path = ROOT / "velvet_bot/app/grs_resilience.py"
+    text = path.read_text(encoding="utf-8")
+    text = re.sub(
+        r"\n    async def _deliver_best_effort\(.*?\n\n\ndef _format_credits",
+        "\n\ndef _format_credits",
+        text,
+        flags=re.S,
+    )
+    text = text.replace(
+        "    workers = importlib.import_module(\"velvet_bot.app.workers\")\n"
+        "    workers.KieGenerationWorker = ResilientFriendlyKieGenerationWorker\n",
+        "",
+    )
+    path.write_text(text, encoding="utf-8")
+
+    path = ROOT / "velvet_bot/app/grs_campaign_retry.py"
+    text = path.read_text(encoding="utf-8")
+    text = text.replace(
+        "    workers = importlib.import_module(\"velvet_bot.app.workers\")\n"
+        "    workers.KieGenerationWorker = CampaignGrsGenerationWorker\n",
+        "",
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def update_composition() -> None:
+    path = ROOT / "velvet_bot/app/composition.py"
+    text = path.read_text(encoding="utf-8")
+    legacy = {
+        "install_friendly_media_worker",
+        "install_original_image_delivery_hotfix",
+        "install_original_video_delivery_hotfix",
+        "install_auf_result_delivery_recovery",
+        "install_auf_active_delivery_fix",
+    }
+    lines = text.splitlines(keepends=True)
+    lines = [
+        line
+        for line in lines
+        if not any(f'\"{name}\",' in line for name in legacy)
+    ]
+    text = "".join(lines)
+    if '"
