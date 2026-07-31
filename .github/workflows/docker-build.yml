@@ -92,6 +92,41 @@ jobs:
           EOF
           cp .env.hermes.example .env.hermes
 
+      - name: Prepare Hermes Coder compose environment
+        run: |
+          set -Eeuo pipefail
+          root="$PWD/.ci/hermes-coders"
+          mkdir -p \
+            "$root/secrets" \
+            "$root/data/velvet" \
+            "$root/data/max" \
+            "$root/workspaces/velvet" \
+            "$root/workspaces/max"
+          cat > "$root/secrets/velvet.env" <<'EOF'
+          BYESU_HERMES_CODEX_API_KEY=test_coder_key
+          BYESU_HERMES_GPT_PRO_API_KEY=test_pro_key
+          TELEGRAM_BOT_TOKEN=test_velvet_telegram_token
+          TELEGRAM_ALLOWED_USERS=1
+          GH_TOKEN=test_velvet_github_token
+          EOF
+          cat > "$root/secrets/max.env" <<'EOF'
+          BYESU_HERMES_CODEX_API_KEY=test_coder_key
+          BYESU_HERMES_GPT_PRO_API_KEY=test_pro_key
+          TELEGRAM_BOT_TOKEN=test_max_telegram_token
+          TELEGRAM_ALLOWED_USERS=1
+          GH_TOKEN=test_max_github_token
+          EOF
+          cat > "$root/secrets/velvet-db.env" <<'EOF'
+          DATABASE_URL=postgresql://hermes_velvet_ro:test@postgres:5432/velvet
+          EOF
+          cat > "$root/secrets/max-db.env" <<'EOF'
+          DATABASE_URL=postgresql://hermes_max_ro:test@postgres:5432/card_hunter
+          EOF
+          cp deploy/hermes-coders/config.yaml "$root/data/velvet/config.yaml"
+          cp deploy/hermes-coders/config.yaml "$root/data/max/config.yaml"
+          cp deploy/hermes-coders/SOUL.velvet.md "$root/data/velvet/SOUL.md"
+          cp deploy/hermes-coders/SOUL.max.md "$root/data/max/SOUL.md"
+
       - name: Validate deployment shell and Python
         run: |
           bash -n deploy/server/deploy.sh
@@ -100,9 +135,12 @@ jobs:
           bash -n deploy/server/krita-smoke.sh
           bash -n deploy/server/wait-compose-health.sh
           bash -n deploy/krita-server/entrypoint.sh
+          bash -n deploy/hermes-coders/install.sh
           python -m py_compile \
             scripts/server_supervisor.py \
-            scripts/server_supervisor_proxy.py
+            scripts/server_supervisor_proxy.py \
+            deploy/hermes-coders/db_proxy.py \
+            deploy/hermes-coders/preflight.py
 
       - name: Validate Docker Compose
         run: |
@@ -110,6 +148,12 @@ jobs:
           docker compose --profile agent config --quiet
           docker compose --env-file .env.server -f docker-compose.server.yml config --quiet
           docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark config --quiet
+          HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
+            docker compose \
+              --profile velvet \
+              --profile max \
+              -f deploy/hermes-coders/compose.yaml \
+              config --quiet
 
       - name: Build Velvet image
         run: docker build --tag velvet-bot:ci .
@@ -122,6 +166,15 @@ jobs:
 
       - name: Build Krita server image
         run: docker build --file Dockerfile.krita-server --tag velvet-krita-server:ci .
+
+      - name: Build Hermes Coder images
+        run: |
+          HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
+            docker compose \
+              --profile velvet \
+              --profile max \
+              -f deploy/hermes-coders/compose.yaml \
+              build
 
       - name: Run Krita plugin smoke
         run: |
