@@ -33,18 +33,36 @@ python3 scripts/server_preflight.py \
   --hermes-env .env.hermes \
   --skip-host-tools
 
-data_dir="$(python3 - "$ENV_FILE" <<'PY'
+readarray -t deployment_settings < <(python3 - "$ENV_FILE" <<'PY'
 from pathlib import Path
 import sys
 from scripts.server_preflight import parse_env_file
 
-value = parse_env_file(Path(sys.argv[1])).get("VELVET_DATA_DIR", "").strip()
-if not value:
-    raise SystemExit("VELVET_DATA_DIR is missing")
-print(value)
-PY
-)"
 
+def enabled(value: str) -> bool:
+    return value.strip().casefold() in {"1", "true", "yes", "on", "да"}
+
+
+env = parse_env_file(Path(sys.argv[1]))
+data_dir = env.get("VELVET_DATA_DIR", "").strip()
+if not data_dir:
+    raise SystemExit("VELVET_DATA_DIR is missing")
+watermark_enabled = enabled(env.get("KRITA_WATERMARK_ENABLED", "false"))
+remote_enabled = enabled(env.get("KRITA_REMOTE_WORKER_ENABLED", "false"))
+bridge_dir = env.get("KRITA_BRIDGE_DIR", "/app/runtime/krita").strip()
+if watermark_enabled and not remote_enabled:
+    if bridge_dir != "/app/runtime/krita" and not bridge_dir.startswith("/app/runtime/krita/"):
+        raise SystemExit("Server Krita requires KRITA_BRIDGE_DIR inside /app/runtime/krita")
+    server_krita = "1"
+else:
+    server_krita = "0"
+print(data_dir)
+print(server_krita)
+PY
+)
+
+data_dir="${deployment_settings[0]}"
+krita_server_enabled="${deployment_settings[1]}"
 compose=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
@@ -54,6 +72,9 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
 fi
 
 mkdir -p "$data_dir/backups" "$data_dir/logs" "$data_dir/runtime"
+if [[ "$krita_server_enabled" == "1" ]]; then
+  mkdir -p "$data_dir/runtime/krita"/{sources,requests,responses,outputs,previews,assets}
+fi
 previous_sha="$(git rev-parse HEAD)"
 backup_path="$data_dir/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
 deployment_started=0
@@ -65,6 +86,10 @@ rollback_code() {
     git reset --hard "$previous_sha" >&2 || true
     "${compose[@]}" build bot >&2 || true
     "${compose[@]}" up -d postgres bot >&2 || true
+    if [[ "$krita_server_enabled" == "1" ]]; then
+      "${compose[@]}" --profile watermark build krita >&2 || true
+      "${compose[@]}" --profile watermark up -d krita >&2 || true
+    fi
     echo "Database was not automatically restored." >&2
     echo "Verified pre-deploy dump: $backup_path" >&2
   fi
@@ -102,7 +127,14 @@ deployment_started=1
 git reset --hard "$target_sha"
 "${compose[@]}" pull postgres
 "${compose[@]}" build --pull bot
-"${compose[@]}" up -d --remove-orphans postgres bot
+
+if [[ "$krita_server_enabled" == "1" ]]; then
+  "${compose[@]}" --profile watermark build --pull krita
+  "${compose[@]}" --profile watermark up -d --remove-orphans postgres bot krita
+else
+  "${compose[@]}" up -d --remove-orphans postgres bot
+  "${compose[@]}" --profile watermark stop --timeout 45 krita >/dev/null 2>&1 || true
+fi
 
 if [[ "$START_HERMES" == "1" ]]; then
   if [[ ! -f .env.hermes ]]; then
@@ -124,6 +156,15 @@ for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
   case "$health" in
     healthy|running)
       "${compose[@]}" exec -T bot python scripts/server_smoke.py --skip-telegram
+      if [[ "$krita_server_enabled" == "1" ]]; then
+        VELVET_APP_DIR="$APP_DIR" \
+        VELVET_ENV_FILE="$ENV_FILE" \
+        VELVET_COMPOSE_FILE="$COMPOSE_FILE" \
+          bash deploy/server/wait-compose-health.sh krita "$HEALTH_ATTEMPTS" "$HEALTH_INTERVAL"
+        VELVET_APP_DIR="$APP_DIR" \
+        VELVET_ENV_FILE="$ENV_FILE" \
+          bash deploy/server/krita-smoke.sh "$ENV_FILE"
+      fi
       deployed_sha="$(git rev-parse HEAD)"
       if [[ "$deployed_sha" != "$target_sha" ]]; then
         echo "Deployed SHA mismatch: expected $target_sha, got $deployed_sha" >&2

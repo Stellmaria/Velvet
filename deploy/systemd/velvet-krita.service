@@ -1,0 +1,25 @@
+[Unit]
+Description=Velvet headless Krita watermark worker
+Requires=docker.service velvet-compose.service
+After=docker.service velvet-compose.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet
+Environment=VELVET_APP_DIR=/srv/velvet
+Environment=VELVET_ENV_FILE=.env.server
+ExecStartPre=/usr/bin/python3 /srv/velvet/scripts/server_preflight.py --env-file .env.server --hermes-env .env.hermes
+ExecStartPre=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark config --quiet
+ExecStart=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark up -d --build krita
+ExecStartPost=/bin/bash /srv/velvet/deploy/server/wait-compose-health.sh krita 90 5
+ExecStartPost=/bin/bash /srv/velvet/deploy/server/krita-smoke.sh .env.server
+ExecStop=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark stop --timeout 45 krita
+ExecReload=/usr/bin/docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark up -d --build krita
+TimeoutStartSec=900
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

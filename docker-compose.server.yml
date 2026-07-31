@@ -62,6 +62,41 @@ services:
     networks:
       - backend
 
+  # Серверная Krita запускается отдельным профилем и не имеет сети. Бот и
+  # Krita обмениваются только файлами внутри общего runtime/krita bridge.
+  krita:
+    image: ${KRITA_SERVER_IMAGE:-velvet-krita-server:local}
+    profiles: ["watermark"]
+    build:
+      context: .
+      dockerfile: Dockerfile.krita-server
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    environment:
+      KRITA_BRIDGE_DIR: ${KRITA_BRIDGE_DIR:-/app/runtime/krita}
+      KRITA_XVFB_SCREEN: ${KRITA_XVFB_SCREEN:-1920x1080x24}
+    volumes:
+      - ${VELVET_DATA_DIR:-./server-data}/runtime:/app/runtime
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    healthcheck:
+      test: ["CMD", "python3", "/usr/local/bin/krita_server_healthcheck.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    stop_grace_period: 45s
+    mem_limit: ${KRITA_SERVER_MEMORY_LIMIT:-3g}
+    cpus: ${KRITA_SERVER_CPU_LIMIT:-1.5}
+    pids_limit: 512
+    shm_size: 512m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: none
+
   # Запускается только после отдельного smoke-test:
   # docker compose --env-file .env.server -f docker-compose.server.yml \
   #   --profile agent up -d hermes
