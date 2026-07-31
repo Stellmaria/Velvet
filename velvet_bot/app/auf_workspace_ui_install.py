@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
+from aiogram import F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -17,6 +18,10 @@ from velvet_bot.domains.auf_runtime import (
     AufRuntimeService,
 )
 from velvet_bot.domains.workspaces.service import WorkspaceAccessError, WorkspaceService
+from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
+from velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances import (
+    handle_auf_provider_balances,
+)
 from velvet_bot.presentation.telegram.routers.workspace_auf_root import build_auf_root_view
 
 _INSTALLED = False
@@ -107,6 +112,11 @@ def install_auf_workspace_ui() -> None:
         # interrupted generation form. The handler still checks active workspace,
         # ownership and module policy through AufRuntimeService.
         router.message.register(handle_auf_workspace_command, Command("auf"))
+        # This owner-only route must precede the generic Auf callback handler.
+        router.callback_query.register(
+            handle_auf_provider_balances,
+            AufCallback.filter(F.action == "provider_balances"),
+        )
         original_register(router)
 
     presentation.build_workspace_home_presentation = build_home_with_auf_visibility
