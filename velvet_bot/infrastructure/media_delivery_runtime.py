@@ -54,7 +54,7 @@ class KieProviderResultResolver(ProviderResultResolver):
             ) from error
         if record.state is KieTaskState.FAIL:
             raise ProviderResultTerminal(
-                "Provider finished the stored task with a terminal failure."
+                "Provider finished the stored task in a terminal failure state."
             )
         if record.state is not KieTaskState.SUCCESS:
             raise ProviderResultPending(
