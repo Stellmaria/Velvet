@@ -50,9 +50,6 @@ if ! docker network inspect "$VELVET_BACKEND_NETWORK" >/dev/null 2>&1; then
   echo "Не найдена production-сеть Velvet: $VELVET_BACKEND_NETWORK" >&2
   exit 3
 fi
-if ! docker network inspect "$CONTROL_NETWORK" >/dev/null 2>&1; then
-  docker network create --driver bridge --internal --attachable "$CONTROL_NETWORK" >/dev/null
-fi
 
 install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$CONTROL_ROOT"
 
@@ -215,6 +212,15 @@ runuser -u "$SERVICE_USER" -- env \
     --env-file "$ROMATIC_ENV_FILE" \
     -f "$ROMATIC_COMPOSE_FILE" \
     up -d --force-recreate supervisor-proxy
+
+if ! docker network inspect "$CONTROL_NETWORK" >/dev/null 2>&1; then
+  echo "Romatic Compose не создал control network: $CONTROL_NETWORK" >&2
+  exit 4
+fi
+if [[ "$(docker network inspect -f '{{.Internal}}' "$CONTROL_NETWORK")" != "true" ]]; then
+  echo "Control network должна быть internal: $CONTROL_NETWORK" >&2
+  exit 4
+fi
 
 install -m 0644 "$UNIT_SOURCE" "$UNIT_TARGET"
 systemctl daemon-reload
