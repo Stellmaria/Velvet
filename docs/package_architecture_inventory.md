@@ -1,8 +1,8 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **630**
-- Production LOC: **135100**
+- Production modules: **631**
+- Production LOC: **136683**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **41**
@@ -12,7 +12,7 @@
 
 ## Layers
 
-- `application`: **19** modules
+- `application`: **20** modules
 - `composition`: **63** modules
 - `core`: **7** modules
 - `domain`: **176** modules
@@ -25,10 +25,10 @@
 
 ## Shared/private baseline
 
-- private cross-module accesses: **136**
+- private cross-module accesses: **182**
 - blocking known private contracts: **0**
-- exact / normalized / semantic duplicate groups: **55 / 92 / 9**
-- private access fingerprint: `73739e68a7a463d23be24137bac72837de2a2e60f18633ba1ce3bb9a89a73376`
+- exact / normalized / semantic duplicate groups: **62 / 97 / 9**
+- private access fingerprint: `aee06530d77caa88ba4a9227385ef41960b08e7bf5aa22fb22ecf6d51b58517b`
 
 ## Installer graph
 

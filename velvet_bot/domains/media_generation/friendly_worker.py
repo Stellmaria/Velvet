@@ -72,10 +72,25 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
     async def _recover_durable_delivery(self, *, phase: str) -> None:
         try:
             await self._media_delivery_runtime.recover_once()
-        except Exception:
-            logger.exception(
-                "Durable media recovery iteration failed phase=%s",
+        except Exception as error:  # p2-approved-boundary: isolate-durable-recovery-tick
+            from velvet_bot.application.media_delivery import (
+                classify_media_delivery_error,
+                raise_if_programming_error,
+            )
+
+            failure = classify_media_delivery_error(
+                error,
+                phase=f"durable_recovery_{phase}",
+            )
+            logger.error(
+                "durable_media_recovery_failed phase=%s code=%s fingerprint=%s",
                 phase,
+                failure.code,
+                failure.fingerprint,
+            )
+            raise_if_programming_error(
+                error,
+                phase=f"durable_recovery_{phase}",
             )
 
     async def _start_progress(

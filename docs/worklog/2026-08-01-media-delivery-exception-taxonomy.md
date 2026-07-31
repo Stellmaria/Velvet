@@ -4,9 +4,9 @@
 - ID: `media-delivery-exception-taxonomy`
 - Issue: `#511`
 - Линия/фаза: `P0 correctness hardening`
-- Статус: `в работе`
+- Статус: `завершено`
 - Ветка: `agent/harden-media-delivery-exceptions`
-- Базовый commit: `ef8650b44c47112123f67c9adb01931a7f63746c`
+- Базовый commit: `07a935425abf72c38f0b0f2e25f3fed982fa05a5`
 
 ## Перед началом
 

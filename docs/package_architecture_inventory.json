@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 630,
-  "production_loc": 135100,
+  "production_module_count": 631,
+  "production_loc": 136683,
   "layer_counts": {
-    "application": 19,
+    "application": 20,
     "composition": 63,
     "core": 7,
     "domain": 176,
@@ -80,14 +80,14 @@
     }
   ],
   "shared_contract_summary": {
-    "production_python_files": 596,
-    "function_count": 3306,
-    "private_contract_access_count": 136,
+    "production_python_files": 631,
+    "function_count": 3597,
+    "private_contract_access_count": 182,
     "blocking_private_contract_access_count": 0,
-    "exact_duplicate_group_count": 55,
-    "normalized_duplicate_group_count": 92,
+    "exact_duplicate_group_count": 62,
+    "normalized_duplicate_group_count": 97,
     "semantic_near_duplicate_group_count": 9,
-    "private_access_sha256": "73739e68a7a463d23be24137bac72837de2a2e60f18633ba1ce3bb9a89a73376"
+    "private_access_sha256": "aee06530d77caa88ba4a9227385ef41960b08e7bf5aa22fb22ecf6d51b58517b"
   },
   "installer_graph": [
     {
@@ -2307,14 +2307,15 @@
       }
     },
     {
-      "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:3db72077981a5adf",
+      "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:31cde3bbc5b5b628",
       "category": "domain-layer-import",
       "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-      "fingerprint": "3db72077981a5adf123fc90e60181dfd5eacdd4b8592f84b51fe9e747bbdb62d",
-      "summary": "1 domain imports from app/presentation",
+      "fingerprint": "31cde3bbc5b5b6286261f3a604db75a7cf8d5ce1c6c0f8eba94c9c42ec2c322a",
+      "summary": "2 domain imports from app/presentation",
       "details": {
         "imports": [
-          "velvet_bot.app.media_delivery_ui_install"
+          "velvet_bot.app.media_delivery_ui_install",
+          "velvet_bot.application.media_delivery"
         ]
       }
     },
@@ -3446,10 +3447,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:945b4a9a7c420c7e",
+      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:487ea3751aa3d4a2",
       "category": "installed-sentinel",
       "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-      "fingerprint": "945b4a9a7c420c7e1a518b8de1d7160e413ba535245db93d89bc329d964ffe8a",
+      "fingerprint": "487ea3751aa3d4a2927d45cf94294d26565f4f918e5f4faf3983508371b4abaf",
       "summary": "6 _INSTALLED references",
       "details": {
         "count": 6
@@ -13288,7 +13289,7 @@
       "module": "velvet_bot.application.media_delivery",
       "layer": "application",
       "target_package": "application",
-      "loc": 24,
+      "loc": 57,
       "function_count": 0,
       "class_count": 0,
       "handler_count": 0,
@@ -13296,6 +13297,7 @@
       "branch_count": 0,
       "internal_imports": [
         "velvet_bot.application.media_delivery_deliver",
+        "velvet_bot.application.media_delivery_errors",
         "velvet_bot.application.media_delivery_models",
         "velvet_bot.application.media_delivery_redeliver",
         "velvet_bot.application.media_delivery_resolve"
@@ -13324,13 +13326,14 @@
       "module": "velvet_bot.application.media_delivery_deliver",
       "layer": "application",
       "target_package": "application",
-      "loc": 141,
-      "function_count": 4,
+      "loc": 605,
+      "function_count": 16,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 108,
-      "branch_count": 25,
+      "max_function_length": 120,
+      "branch_count": 30,
       "internal_imports": [
+        "velvet_bot.application.media_delivery_errors",
         "velvet_bot.application.media_delivery_models"
       ],
       "external_import_count": 4,
@@ -13351,7 +13354,7 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 15,
+          "line": 46,
           "owner": "__init__",
           "call": "worker_id.strip"
         }
@@ -13359,15 +13362,48 @@
       "violations": []
     },
     {
+      "path": "velvet_bot/application/media_delivery_errors.py",
+      "module": "velvet_bot.application.media_delivery_errors",
+      "layer": "application",
+      "target_package": "application",
+      "loc": 211,
+      "function_count": 11,
+      "class_count": 6,
+      "handler_count": 0,
+      "max_function_length": 59,
+      "branch_count": 13,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery_models"
+      ],
+      "external_import_count": 6,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/application/media_delivery_models.py",
       "module": "velvet_bot.application.media_delivery_models",
       "layer": "application",
       "target_package": "application",
-      "loc": 129,
+      "loc": 244,
       "function_count": 18,
       "class_count": 10,
       "handler_count": 0,
-      "max_function_length": 2,
+      "max_function_length": 12,
       "branch_count": 0,
       "internal_imports": [],
       "external_import_count": 5,
@@ -13428,13 +13464,14 @@
       "module": "velvet_bot.application.media_delivery_resolve",
       "layer": "application",
       "target_package": "application",
-      "loc": 51,
-      "function_count": 5,
+      "loc": 194,
+      "function_count": 6,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 21,
-      "branch_count": 4,
+      "max_function_length": 70,
+      "branch_count": 5,
       "internal_imports": [
+        "velvet_bot.application.media_delivery_errors",
         "velvet_bot.application.media_delivery_models"
       ],
       "external_import_count": 5,
@@ -13455,7 +13492,7 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 16,
+          "line": 36,
           "owner": "__init__",
           "call": "worker_id.strip"
         }
@@ -18611,7 +18648,7 @@
       "module": "velvet_bot.domains.media_generation.friendly_worker",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 358,
+      "loc": 373,
       "function_count": 16,
       "class_count": 1,
       "handler_count": 0,
@@ -18619,6 +18656,7 @@
       "branch_count": 25,
       "internal_imports": [
         "velvet_bot.app.media_delivery_ui_install",
+        "velvet_bot.application.media_delivery",
         "velvet_bot.domains.ai_usage",
         "velvet_bot.domains.media_generation.economy_worker",
         "velvet_bot.domains.media_generation.models",
@@ -18643,7 +18681,7 @@
       ],
       "install_calls": [
         {
-          "line": 313,
+          "line": 328,
           "call": "install_media_delivery_ui"
         }
       ],
@@ -18666,14 +18704,15 @@
           }
         },
         {
-          "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:3db72077981a5adf",
+          "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:31cde3bbc5b5b628",
           "category": "domain-layer-import",
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-          "fingerprint": "3db72077981a5adf123fc90e60181dfd5eacdd4b8592f84b51fe9e747bbdb62d",
-          "summary": "1 domain imports from app/presentation",
+          "fingerprint": "31cde3bbc5b5b6286261f3a604db75a7cf8d5ce1c6c0f8eba94c9c42ec2c322a",
+          "summary": "2 domain imports from app/presentation",
           "details": {
             "imports": [
-              "velvet_bot.app.media_delivery_ui_install"
+              "velvet_bot.app.media_delivery_ui_install",
+              "velvet_bot.application.media_delivery"
             ]
           }
         },
@@ -18717,10 +18756,10 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:945b4a9a7c420c7e",
+          "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:487ea3751aa3d4a2",
           "category": "installed-sentinel",
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-          "fingerprint": "945b4a9a7c420c7e1a518b8de1d7160e413ba535245db93d89bc329d964ffe8a",
+          "fingerprint": "487ea3751aa3d4a2927d45cf94294d26565f4f918e5f4faf3983508371b4abaf",
           "summary": "6 _INSTALLED references",
           "details": {
             "count": 6
@@ -18817,11 +18856,11 @@
       "module": "velvet_bot.domains.media_generation.task_queue",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 335,
-      "function_count": 14,
+      "loc": 370,
+      "function_count": 15,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 39,
+      "max_function_length": 41,
       "branch_count": 23,
       "internal_imports": [
         "velvet_bot.application.media_delivery",
@@ -18848,22 +18887,22 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 208,
+          "line": 220,
           "owner": "fail_terminal",
           "call": "worker_id.strip"
         },
         {
-          "line": 98,
+          "line": 105,
           "owner": "claim_next",
           "call": "worker_id.strip"
         },
         {
-          "line": 132,
+          "line": 140,
           "owner": "_restore_successful_provider_task",
           "call": "worker_id.strip"
         },
         {
-          "line": 161,
+          "line": 172,
           "owner": "patch_payload",
           "call": "worker_id.strip"
         }
@@ -25127,19 +25166,17 @@
       "module": "velvet_bot.infrastructure.media_delivery_repository_claim",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 35,
-      "function_count": 3,
+      "loc": 212,
+      "function_count": 4,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 8,
-      "branch_count": 2,
+      "max_function_length": 79,
+      "branch_count": 3,
       "internal_imports": [
         "velvet_bot.application.media_delivery",
-        "velvet_bot.application.media_tasks",
-        "velvet_bot.database",
         "velvet_bot.infrastructure.media_delivery_repository_helpers"
       ],
-      "external_import_count": 3,
+      "external_import_count": 2,
       "aiogram_imports": [],
       "sql_literal_count": 5,
       "database_acquire_count": 3,
@@ -25163,19 +25200,17 @@
       "module": "velvet_bot.infrastructure.media_delivery_repository_finish",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 46,
-      "function_count": 5,
+      "loc": 325,
+      "function_count": 6,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 9,
-      "branch_count": 2,
+      "max_function_length": 70,
+      "branch_count": 3,
       "internal_imports": [
         "velvet_bot.application.media_delivery",
-        "velvet_bot.application.media_tasks",
-        "velvet_bot.database",
         "velvet_bot.infrastructure.media_delivery_repository_helpers"
       ],
-      "external_import_count": 3,
+      "external_import_count": 2,
       "aiogram_imports": [],
       "sql_literal_count": 6,
       "database_acquire_count": 5,
@@ -25199,12 +25234,12 @@
       "module": "velvet_bot.infrastructure.media_delivery_repository_helpers",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 52,
-      "function_count": 8,
+      "loc": 134,
+      "function_count": 9,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 7,
-      "branch_count": 5,
+      "max_function_length": 31,
+      "branch_count": 4,
       "internal_imports": [
         "velvet_bot.application.media_delivery",
         "velvet_bot.application.media_tasks"
@@ -25269,12 +25304,12 @@
       "module": "velvet_bot.infrastructure.media_delivery_runtime",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 209,
+      "loc": 228,
       "function_count": 10,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 52,
-      "branch_count": 9,
+      "max_function_length": 59,
+      "branch_count": 10,
       "internal_imports": [
         "velvet_bot.application.media_delivery",
         "velvet_bot.application.workspace_tasks",
@@ -25321,7 +25356,7 @@
       "module": "velvet_bot.infrastructure.media_delivery_telegram",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 219,
+      "loc": 229,
       "function_count": 12,
       "class_count": 1,
       "handler_count": 0,

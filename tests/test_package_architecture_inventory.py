@@ -77,9 +77,9 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_inventory_covers_the_complete_current_package(self) -> None:
         modules = self.inventory["modules"]
-        self.assertEqual(630, self.inventory["production_module_count"])
+        self.assertEqual(631, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(135_100, self.inventory["production_loc"])
+        self.assertEqual(136_683, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
@@ -148,12 +148,12 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_shared_private_and_duplicate_fingerprints_are_linked(self) -> None:
         shared = self.inventory["shared_contract_summary"]
-        self.assertEqual(596, shared["production_python_files"])
-        self.assertEqual(3_306, shared["function_count"])
-        self.assertEqual(136, shared["private_contract_access_count"])
+        self.assertEqual(631, shared["production_python_files"])
+        self.assertEqual(3_597, shared["function_count"])
+        self.assertEqual(182, shared["private_contract_access_count"])
         self.assertEqual(0, shared["blocking_private_contract_access_count"])
-        self.assertEqual(55, shared["exact_duplicate_group_count"])
-        self.assertEqual(92, shared["normalized_duplicate_group_count"])
+        self.assertEqual(62, shared["exact_duplicate_group_count"])
+        self.assertEqual(97, shared["normalized_duplicate_group_count"])
         self.assertEqual(9, shared["semantic_near_duplicate_group_count"])
         self.assertEqual(
             shared["private_access_sha256"],
@@ -180,8 +180,8 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         )
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
-        self.assertIn("Production modules: **630**", self.markdown)
-        self.assertIn("Production LOC: **135100**", self.markdown)
+        self.assertIn("Production modules: **631**", self.markdown)
+        self.assertIn("Production LOC: **136683**", self.markdown)
         self.assertIn("Startup installer stages: **28**", self.markdown)
         self.assertIn("Registered package violations: **546**", self.markdown)
         self.assertIn("Registered exemptions: **546**", self.markdown)

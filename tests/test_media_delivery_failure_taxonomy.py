@@ -248,8 +248,8 @@ class MediaDeliveryFailureTaxonomyTests(unittest.IsolatedAsyncioTestCase):
             "preview_error_fingerprint",
         ):
             self.assertIn(token, migration)
-        self.assertIn("WHEN original_status='success' THEN 'success'", finish)
-        self.assertIn("WHEN preview_status='success' THEN 'success'", finish)
+        self.assertIn("WHEN {status_column}='success' THEN 'success'", finish)
+        self.assertIn("{attempts_column}={attempts_column}+CASE", finish)
         self.assertIn("finish_delivery_claim", finish)
 
 

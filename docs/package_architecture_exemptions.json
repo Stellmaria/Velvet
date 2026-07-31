@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "baseline_issue": "#460",
-  "shared_private_access_sha256": "73739e68a7a463d23be24137bac72837de2a2e60f18633ba1ce3bb9a89a73376",
+  "shared_private_access_sha256": "aee06530d77caa88ba4a9227385ef41960b08e7bf5aa22fb22ecf6d51b58517b",
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",
   "exceptions": [
     {
@@ -1584,7 +1584,7 @@
       "issue": "#457"
     },
     {
-      "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:3db72077981a5adf",
+      "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:31cde3bbc5b5b628",
       "owner": "media-delivery",
       "reason": "Existing domain-layer-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -2713,7 +2713,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:945b4a9a7c420c7e",
+      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:487ea3751aa3d4a2",
       "owner": "media-delivery",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
