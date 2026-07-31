@@ -3,7 +3,7 @@
 - Дата: 2026-07-31
 - ID: #505
 - Линия/фаза: Hybrid AI / PR A
-- Статус: частично
+- Статус: завершено
 - Ветка: `feat/505-hybrid-ai-contracts`
 - Базовый commit: `d955a6e8e71609b83b4324c9ba5dc04e73debeed`
 
@@ -67,22 +67,21 @@ runtime типах и продолжает блокироваться server pre
 
 ### Проверки
 
-- type check первого CI-запуска: success;
-- первый test run выявил отсутствующий provider в `VisionRouteConfig`, исправлено;
-- первый architecture run выявил рост `load_settings`, исправлено декомпозицией;
-- первый project notes run выявил старый формат и статус worklog, исправлено;
-- branch синхронизирована с актуальным `main`, generated inventory обновлён;
-- повторный полный CI запущен после синхронизации.
+- test shards и fast architecture preflight: success;
+- type check: success;
+- project notes contract: success;
+- Docker/Compose, Velvet, Supervisor proxy, Krita и Hermes Coder builds: success;
+- branch синхронизирована с актуальным `main`;
+- generated package architecture inventory и exemptions синхронизированы.
 
 ### PR и commit
 
 - PR: #506;
 - рабочая ветка: `feat/505-hybrid-ai-contracts`;
-- финальный commit фиксируется после зелёного CI.
+- проверенный head до финальной записи worklog: `87b9889280c009233c2a9a2e50e275167e887a91`.
 
 ### Незавершённое
 
-- подтверждение полного CI после синхронизации с main;
 - контейнеры `vision-gateway` и `vision-runtime`;
 - Q8/Q4 benchmark на production VPS;
 - локальный NSFW classifier и sensitive schema/prompt;
@@ -92,5 +91,5 @@ runtime типах и продолжает блокироваться server pre
 
 ### Следующий шаг
 
-Довести PR #506 до зелёного состояния, затем открыть PR B с internal-only
-`vision-gateway`, `vision-runtime`, pinned images/models и benchmark tooling.
+После слияния PR #506 открыть PR B с internal-only `vision-gateway`,
+`vision-runtime`, pinned images/models и benchmark tooling.
