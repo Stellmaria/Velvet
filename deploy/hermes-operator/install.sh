@@ -13,6 +13,8 @@ ROMATIC_APP_DIR="${ROMATIC_APP_DIR:-/srv/romatic-club-max}"
 ROMATIC_ENV_FILE="${ROMATIC_ENV_FILE:-$ROMATIC_APP_DIR/.env}"
 ROMATIC_COMPOSE_FILE="${ROMATIC_COMPOSE_FILE:-$ROMATIC_APP_DIR/compose.yaml}"
 SERVICE_USER="${HERMES_OPERATOR_SERVICE_USER:-velvet}"
+SOCKET_GROUP="${HERMES_OPERATOR_SOCKET_GROUP:-hermes-operator-client}"
+SOCKET_GID="${HERMES_OPERATOR_SOCKET_GID:-10001}"
 CONTROL_ROOT="${HERMES_OPERATOR_CONTROL_ROOT:-/srv/hermes-operator-control}"
 CONTROL_RUNTIME="$CONTROL_ROOT/runtime"
 CONTROL_ENV="$CONTROL_ROOT/operator.env"
@@ -46,10 +48,25 @@ if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   echo "Не найден service user: $SERVICE_USER" >&2
   exit 2
 fi
-if ! getent group 10001 >/dev/null 2>&1; then
-  echo "Не найдена socket group с GID 10001." >&2
+if ! [[ "$SOCKET_GID" =~ ^[1-9][0-9]*$ ]]; then
+  echo "HERMES_OPERATOR_SOCKET_GID должен быть положительным числом." >&2
   exit 2
 fi
+existing_group="$(getent group "$SOCKET_GID" | cut -d: -f1 || true)"
+if [[ -n "$existing_group" && "$existing_group" != "$SOCKET_GROUP" ]]; then
+  echo "GID $SOCKET_GID уже принадлежит группе $existing_group." >&2
+  exit 2
+fi
+if ! getent group "$SOCKET_GROUP" >/dev/null 2>&1; then
+  groupadd --gid "$SOCKET_GID" "$SOCKET_GROUP"
+fi
+resolved_gid="$(getent group "$SOCKET_GROUP" | cut -d: -f3)"
+if [[ "$resolved_gid" != "$SOCKET_GID" ]]; then
+  echo "Группа $SOCKET_GROUP имеет неожиданный GID $resolved_gid." >&2
+  exit 2
+fi
+usermod -a -G "$SOCKET_GROUP" "$SERVICE_USER"
+
 if ! grep -q "hermes-supervisor-control" "$ROMATIC_COMPOSE_FILE"; then
   echo "Romatic compose ещё не содержит безопасную control network." >&2
   echo "Сначала обновите Stellmaria/romatic_club_bot_max до совместимого commit." >&2
@@ -61,7 +78,7 @@ if ! docker network inspect "$VELVET_BACKEND_NETWORK" >/dev/null 2>&1; then
 fi
 
 install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$CONTROL_ROOT"
-install -d -m 0750 -o "$SERVICE_USER" -g 10001 "$CONTROL_RUNTIME"
+install -d -m 0750 -o "$SERVICE_USER" -g "$SOCKET_GROUP" "$CONTROL_RUNTIME"
 
 python3 - \
   "$VELVET_ENV_FILE" \
@@ -73,7 +90,8 @@ python3 - \
   "$ROMATIC_APP_DIR" \
   "$ROMATIC_ENV_FILE" \
   "$ROMATIC_COMPOSE_FILE" \
-  "$CONTROL_RUNTIME" <<'PY'
+  "$CONTROL_RUNTIME" \
+  "$SOCKET_GID" <<'PY'
 from __future__ import annotations
 
 import os
@@ -130,7 +148,7 @@ values = {
     "HERMES_OPS_START_TIMEOUT_SECONDS": "300",
     "HERMES_OPS_HOST_RUNTIME_DIR": str(runtime_dir),
     "HERMES_OPS_HOST_SOCKET": str(runtime_dir / "start.sock"),
-    "HERMES_OPS_SOCKET_GID": "10001",
+    "HERMES_OPS_SOCKET_GID": sys.argv[11],
     "VELVET_APP_DIR": str(Path(sys.argv[4]).resolve()),
     "VELVET_ENV_FILE": str(Path(sys.argv[5]).resolve()),
     "VELVET_COMPOSE_FILE": str(Path(sys.argv[6]).resolve()),
