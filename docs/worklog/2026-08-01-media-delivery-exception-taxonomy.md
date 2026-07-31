@@ -71,11 +71,19 @@ Legacy delivery installers нельзя удалить в этом срезе б
 
 ### Проверки
 
-Финальные результаты GitHub Actions будут зафиксированы в PR после синхронизации с актуальным `main` и регенерации inventories.
+- P2 inventory schema `75` пересобран от актуального `main`;
+- `broad_exception_total = 102`;
+- `broad_exception_approved = 102`;
+- `broad_exception_unresolved = 0`;
+- shared-contract и package-architecture inventories пересобраны;
+- временная automation удалена из ветки;
+- финальная GitHub Actions матрица запускается на владельческом commit.
 
 ### PR и commit
 
-PR создаётся из `agent/harden-media-delivery-exceptions` в `main` и закрывает кодовую часть #511. Финальный squash SHA будет добавлен в issue после merge.
+- PR: `#531 Закрыть broad exceptions и duplicate window media delivery`;
+- prerequisite/current base: `07a935425abf72c38f0b0f2e25f3fed982fa05a5`;
+- финальный squash SHA будет добавлен в issue после merge.
 
 ### Незавершённое
 
@@ -83,4 +91,4 @@ Live acceptance остаётся в #410/#412: Telegram outage, provider sandbox
 
 ### Следующий шаг
 
-Синхронизировать ветку с текущим `main`, обновить generated inventories, пройти полный CI, выполнить review и слить squash-коммит.
+Пройти финальный CI, проверить review threads и слить PR squash-коммитом в `main`.
