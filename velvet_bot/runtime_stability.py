@@ -30,6 +30,11 @@ _BACKOFF_MARKERS = (
     " seconds and try again",
 )
 
+_EXPECTED_SHUTDOWN_MARKERS = (
+    "received sigterm signal",
+    "received sigint signal",
+)
+
 _ASYNCIO_CLOSE_NETWORK_MARKERS = (
     "connectionabortederror",
     "connectionreseterror",
@@ -69,6 +74,9 @@ def is_recoverable_aiogram_polling_record(record: logging.LogRecord) -> bool:
         )
     if record.name != "aiogram.dispatcher":
         return False
+
+    if any(message.startswith(marker) for marker in _EXPECTED_SHUTDOWN_MARKERS):
+        return True
 
     if all(marker in message for marker in _BACKOFF_MARKERS):
         return True
@@ -157,6 +165,8 @@ async def acknowledge_legacy_polling_noise(repository: Any) -> int:
                                   )
                               )
                               OR LOWER(summary) LIKE 'sleep for % seconds and try again%'
+                              OR LOWER(summary) LIKE 'received sigterm signal%'
+                              OR LOWER(summary) LIKE 'received sigint signal%'
                         )
                     )
                     OR (
