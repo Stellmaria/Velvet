@@ -17,6 +17,11 @@ jobs:
         with:
           ref: agent/fix-server-deployment-portability
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Regenerate and validate architecture inventory
         shell: bash
         run: |
