@@ -4,8 +4,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **99** в **58** файлах;
-- approved boundaries: **88**;
+- raw broad exceptions: **100** в **59** файлах;
+- approved boundaries: **89**;
 - unresolved broad exceptions: **11** в **5** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
@@ -24,6 +24,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/app/bootstrap.py:118` `_close_application_resources`: isolate-database-shutdown.
 - `velvet_bot/app/bootstrap.py:135` `_report_fatal_application_error`: preserve-original-fatal-error.
 - `velvet_bot/app/bootstrap.py:308` `run_application`: report-fatal-application-error.
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:81` `_owner_aware_bot_call`: default-to-protected-media.
 - `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/backup_runtime.py:163` `_create_dump_file`: cleanup-invalid-backup-artifacts.
 - `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
