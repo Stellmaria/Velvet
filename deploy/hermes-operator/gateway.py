@@ -144,6 +144,13 @@ class UpstreamClient:
         if not isinstance(service_state, dict):
             service_state = {}
 
+        if service_state.get("error"):
+            return HTTPStatus.BAD_GATEWAY, {
+                "ok": False,
+                "error": f"Cannot determine {project_name}/{service} state",
+                "error_code": "status_probe_failed",
+            }
+
         if service_state.get("running") is True:
             return HTTPStatus.OK, {
                 "ok": True,
@@ -151,7 +158,10 @@ class UpstreamClient:
                 "status": status_payload,
             }
 
-        if service_state.get("status") == "missing":
+        status_name = service_state.get("status")
+        if status_name == "missing" or (
+            status_name is None and service_state.get("pid") is None
+        ):
             return self.request(project_name, "POST", "/v1/update")
 
         route = self.projects[project_name].restart_routes[service]
