@@ -76,6 +76,7 @@ backup, smoke, healthcheck и rollback: делать `git pull` из проце�
 После финализации worklog повторно запускаются full unit tests и project notes contract.
 Финальный CI повторно запущен на актуальном head после обновления generated inventory.
 Branch-sync gate повторно инициирован обычным commit при уже установленном workflow.
+Диагностический branch gate запущен с явным отчётом результата в PR #486.
 
 ### PR и commit
 
