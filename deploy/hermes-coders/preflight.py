@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from ensure_runtime_config import config_has_env_passthrough
+
 
 ROOT = Path(os.environ.get("HERMES_CODERS_ROOT", "/srv/hermes-coders"))
 PRODUCTION_WORKSPACES = {
@@ -110,6 +112,10 @@ def validate_data(path: Path) -> None:
             raise PreflightError(f"В {config} отсутствует модель {model}")
     if "/workspace" not in config_text:
         raise PreflightError(f"В {config} не зафиксирован terminal.cwd=/workspace")
+    if not config_has_env_passthrough(config_text, "GH_TOKEN"):
+        raise PreflightError(
+            f"В {config} не разрешён terminal.env_passthrough для GH_TOKEN"
+        )
 
 
 def main() -> int:
@@ -155,6 +161,7 @@ def main() -> int:
     print("- GitHub tokens: distinct")
     print("- PostgreSQL identities: read-only")
     print("- model routing: mini -> terra -> luna")
+    print("- terminal passthrough: GH_TOKEN")
     return 0
 
 

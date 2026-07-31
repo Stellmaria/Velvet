@@ -23,6 +23,7 @@ for required in \
   "$SOURCE_DIR/config.yaml" \
   "$SOURCE_DIR/SOUL.velvet.md" \
   "$SOURCE_DIR/SOUL.max.md" \
+  "$SOURCE_DIR/ensure_runtime_config.py" \
   "$SOURCE_DIR/preflight.py" \
   "$OPERATOR_ENV" \
   "$UNIT_SOURCE"; do
@@ -155,6 +156,10 @@ for project in velvet max; do
     "$data_dir/config.yaml" \
     "$data_dir/SOUL.md"
 done
+
+python3 "$SOURCE_DIR/ensure_runtime_config.py" \
+  "$ROOT/data/velvet/config.yaml" \
+  "$ROOT/data/max/config.yaml"
 
 cat > "$ROOT/data/velvet/.gitconfig" <<'EOF'
 [user]

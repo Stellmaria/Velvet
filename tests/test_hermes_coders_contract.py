@@ -80,16 +80,22 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertNotIn("api_key:", source)
         self.assertIn("cwd: /workspace", source)
 
-    def test_github_token_passthrough_is_explicit_and_narrow(self) -> None:
+    def test_github_token_passthrough_is_explicit_and_runtime_migrated(self) -> None:
         config = (ROOT / "config.yaml").read_text(encoding="utf-8")
         compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+        patcher = (ROOT / "ensure_runtime_config.py").read_text(encoding="utf-8")
+        installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+        preflight = (ROOT / "preflight.py").read_text(encoding="utf-8")
 
         self.assertIn("env_passthrough:", config)
         self.assertIn("- GH_TOKEN", config)
-        self.assertIn("TERMINAL_ENV_PASSTHROUGH: '[\"GH_TOKEN\"]'", compose)
-        self.assertNotIn("BYESU_HERMES_CODEX_API_KEY\"]", compose)
-        self.assertNotIn("BYESU_HERMES_GPT_PRO_API_KEY\"]", compose)
-        self.assertNotIn("TELEGRAM_BOT_TOKEN\"]", compose)
+        self.assertNotIn("TERMINAL_ENV_PASSTHROUGH", compose)
+        self.assertIn('PASSTHROUGH_VARIABLE = "GH_TOKEN"', patcher)
+        self.assertIn("ensure_runtime_config.py", installer)
+        self.assertIn("config_has_env_passthrough", preflight)
+        self.assertIn("terminal.env_passthrough для GH_TOKEN", preflight)
+        self.assertNotIn("BYESU_HERMES_CODEX_API_KEY", patcher)
+        self.assertNotIn("TELEGRAM_BOT_TOKEN", patcher)
 
     def test_preflight_requires_distinct_tokens_and_read_only_roles(self) -> None:
         source = (ROOT / "preflight.py").read_text(encoding="utf-8")
@@ -134,9 +140,13 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("except PermissionError as exc", preflight)
         self.assertIn("Нет доступа к Hermes-файлу", preflight)
 
-    def test_systemd_runs_only_preflight_with_elevated_read_access(self) -> None:
+    def test_systemd_runs_runtime_patch_then_preflight_with_elevated_access(self) -> None:
         source = Path("deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
+        )
+        patch = (
+            "ExecStartPre=+/usr/bin/python3 "
+            "/srv/velvet/deploy/hermes-coders/ensure_runtime_config.py"
         )
         preflight = (
             "ExecStartPre=+/usr/bin/python3 "
@@ -151,9 +161,11 @@ class HermesCodersContractTests(unittest.TestCase):
             "--profile max -f compose.yaml up -d --build --remove-orphans"
         )
 
+        self.assertIn(patch, source)
         self.assertIn(preflight, source)
         self.assertIn(compose_config, source)
         self.assertIn(compose_start, source)
+        self.assertLess(source.index(patch), source.index(preflight))
         self.assertLess(source.index(preflight), source.index(compose_config))
         self.assertLess(source.index(compose_config), source.index(compose_start))
         self.assertNotIn("ExecStartPre=+/usr/bin/docker", source)
@@ -173,7 +185,11 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertNotIn("sudo -u velvet", readme)
 
     def test_python_sources_parse(self) -> None:
-        for path in (ROOT / "db_proxy.py", ROOT / "preflight.py"):
+        for path in (
+            ROOT / "db_proxy.py",
+            ROOT / "ensure_runtime_config.py",
+            ROOT / "preflight.py",
+        ):
             with self.subTest(path=path):
                 ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 

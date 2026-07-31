@@ -89,8 +89,9 @@ Installer:
 3. копирует только модельные ключи из `/srv/velvet/.env.hermes`;
 4. не копирует Telegram token и GitHub token оператора;
 5. устанавливает model routing, `SOUL.md` и Git credential helper;
-6. собирает coder и DB-proxy images;
-7. устанавливает, но не запускает `hermes-coders.service`.
+6. добавляет `GH_TOKEN` в `terminal.env_passthrough` обоих runtime config;
+7. собирает coder и DB-proxy images;
+8. устанавливает, но не запускает `hermes-coders.service`.
 
 ## Заполнение отдельных токенов
 
@@ -116,9 +117,16 @@ Fine-grained GitHub token для Velvet ограничивается репоз�
 
 ## Preflight и запуск
 
-Hermes может атомарно переписать runtime `config.yaml` под UID контейнера во время миграции схемы. Поэтому ручной preflight и systemd `ExecStartPre` читают runtime metadata с root-доступом, а сами Compose-команды и gateway продолжают выполняться от пользователя `velvet`.
+Hermes может атомарно переписать runtime `config.yaml` под UID контейнера во время миграции схемы. Поэтому systemd перед каждым запуском идемпотентно восстанавливает только `terminal.env_passthrough: [GH_TOKEN]`, а затем читает runtime metadata с root-доступом. Compose-команды и gateway продолжают выполняться от пользователя `velvet`.
+
+Ручная проверка выполняется в том же порядке:
 
 ```bash
+sudo python3 \
+  /srv/velvet/deploy/hermes-coders/ensure_runtime_config.py \
+  /srv/hermes-coders/data/velvet/config.yaml \
+  /srv/hermes-coders/data/max/config.yaml
+
 sudo env \
   HERMES_CODERS_ROOT=/srv/hermes-coders \
   python3 /srv/velvet/deploy/hermes-coders/preflight.py
@@ -193,6 +201,12 @@ HERMES_CODERS_ROOT=/srv/hermes-coders \
 ```
 
 Velvet-coder обязан назвать `Stellmaria/Velvet`, Max-coder обязан назвать `Stellmaria/romatic_club_bot_max`.
+
+GitHub CLI проверяется без вывода токена:
+
+```text
+Выполни gh auth status и gh repo view для текущего репозитория. Ничего не изменяй и не показывай секреты.
+```
 
 ## Остановка
 

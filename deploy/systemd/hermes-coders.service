@@ -11,6 +11,7 @@ User=velvet
 Group=velvet
 WorkingDirectory=/srv/velvet/deploy/hermes-coders
 Environment=HERMES_CODERS_ROOT=/srv/hermes-coders
+ExecStartPre=+/usr/bin/python3 /srv/velvet/deploy/hermes-coders/ensure_runtime_config.py /srv/hermes-coders/data/velvet/config.yaml /srv/hermes-coders/data/max/config.yaml
 ExecStartPre=+/usr/bin/python3 /srv/velvet/deploy/hermes-coders/preflight.py
 ExecStartPre=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml config --quiet
 ExecStart=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml up -d --build --remove-orphans
