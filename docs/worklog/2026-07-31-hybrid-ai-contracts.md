@@ -3,7 +3,7 @@
 - Дата: 2026-07-31
 - ID: #505
 - Линия/фаза: Hybrid AI / PR A
-- Статус: in_progress
+- Статус: частично
 - Ветка: `feat/505-hybrid-ai-contracts`
 - Базовый commit: `d955a6e8e71609b83b4324c9ba5dc04e73debeed`
 
@@ -69,9 +69,9 @@ runtime типах и продолжает блокироваться server pre
 
 - type check первого CI-запуска: success;
 - первый test run выявил отсутствующий provider в `VisionRouteConfig`, исправлено;
-- первый architecture run выявил рост `load_settings`, выполняется декомпозиция;
-- первый project notes run выявил старый формат worklog, исправлено этим commit;
-- повторный полный CI ожидается после исправлений.
+- первый architecture run выявил рост `load_settings`, исправлено декомпозицией;
+- первый project notes run выявил старый формат и статус worklog, исправлено;
+- повторный полный CI ожидается после синхронизации generated inventory.
 
 ### PR и commit
 
@@ -81,6 +81,7 @@ runtime типах и продолжает блокироваться server pre
 
 ### Незавершённое
 
+- синхронизация package-wide architecture inventory после удаления старого exemption;
 - контейнеры `vision-gateway` и `vision-runtime`;
 - Q8/Q4 benchmark на production VPS;
 - локальный NSFW classifier и sensitive schema/prompt;
