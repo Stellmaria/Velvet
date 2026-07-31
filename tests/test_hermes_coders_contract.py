@@ -134,14 +134,43 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("except PermissionError as exc", preflight)
         self.assertIn("Нет доступа к Hermes-файлу", preflight)
 
-    def test_systemd_runs_preflight_before_start(self) -> None:
+    def test_systemd_runs_only_preflight_with_elevated_read_access(self) -> None:
         source = Path("deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
-        self.assertLess(source.index("preflight.py"), source.index("config --quiet"))
-        self.assertLess(source.index("config --quiet"), source.index("up -d --build"))
+        preflight = (
+            "ExecStartPre=+/usr/bin/python3 "
+            "/srv/velvet/deploy/hermes-coders/preflight.py"
+        )
+        compose_config = (
+            "ExecStartPre=/usr/bin/docker compose --profile velvet "
+            "--profile max -f compose.yaml config --quiet"
+        )
+        compose_start = (
+            "ExecStart=/usr/bin/docker compose --profile velvet "
+            "--profile max -f compose.yaml up -d --build --remove-orphans"
+        )
+
+        self.assertIn(preflight, source)
+        self.assertIn(compose_config, source)
+        self.assertIn(compose_start, source)
+        self.assertLess(source.index(preflight), source.index(compose_config))
+        self.assertLess(source.index(compose_config), source.index(compose_start))
+        self.assertNotIn("ExecStartPre=+/usr/bin/docker", source)
+        self.assertNotIn("ExecStart=+/usr/bin/docker", source)
         self.assertIn("User=velvet", source)
         self.assertIn("After=docker.service", source)
+
+    def test_manual_preflight_documentation_uses_root_read(self) -> None:
+        installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "sudo env HERMES_CODERS_ROOT=$ROOT python3 $SOURCE_DIR/preflight.py",
+            installer,
+        )
+        self.assertIn("sudo env \\", readme)
+        self.assertNotIn("sudo -u velvet", readme)
 
     def test_python_sources_parse(self) -> None:
         for path in (ROOT / "db_proxy.py", ROOT / "preflight.py"):
