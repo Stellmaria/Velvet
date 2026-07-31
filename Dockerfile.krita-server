@@ -9,7 +9,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     NO_AT_BRIDGE=1 \
     QT_OPENGL=software \
     QT_QUICK_BACKEND=software \
-    QT_XCB_GL_INTEGRATION=none \
     LIBGL_ALWAYS_SOFTWARE=1
 
 RUN apt-get update \
