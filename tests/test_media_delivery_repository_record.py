@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import runpy
 import unittest
+from pathlib import Path
 from uuid import uuid4
 
-from velvet_bot.infrastructure.media_delivery_repository_record import (
-    MediaDeliveryRepositoryRecordMixin,
+
+ROOT = Path(__file__).resolve().parents[1]
+RECORD_MODULE = runpy.run_path(
+    str(ROOT / "velvet_bot/infrastructure/media_delivery_repository_record.py")
 )
+MediaDeliveryRepositoryRecordMixin = RECORD_MODULE[
+    "MediaDeliveryRepositoryRecordMixin"
+]
 
 
 class _AsyncContext:
@@ -71,7 +78,10 @@ class MediaDeliveryRepositoryRecordTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual("image", database.connection.calls[0][1][4])
-        self.assertEqual("https://example.invalid/result.png", database.connection.calls[1][1][2])
+        self.assertEqual(
+            "https://example.invalid/result.png",
+            database.connection.calls[1][1][2],
+        )
 
 
 if __name__ == "__main__":
