@@ -14,12 +14,15 @@ ROMATIC_ENV_FILE="${ROMATIC_ENV_FILE:-$ROMATIC_APP_DIR/.env}"
 ROMATIC_COMPOSE_FILE="${ROMATIC_COMPOSE_FILE:-$ROMATIC_APP_DIR/compose.yaml}"
 SERVICE_USER="${HERMES_OPERATOR_SERVICE_USER:-velvet}"
 CONTROL_ROOT="${HERMES_OPERATOR_CONTROL_ROOT:-/srv/hermes-operator-control}"
+CONTROL_RUNTIME="$CONTROL_ROOT/runtime"
 CONTROL_ENV="$CONTROL_ROOT/operator.env"
 CONTROL_NETWORK="${HERMES_SUPERVISOR_NETWORK:-hermes-supervisor-control}"
 VELVET_BACKEND_NETWORK="${VELVET_BACKEND_NETWORK:-velvet_backend}"
 SOURCE_DIR="$VELVET_APP_DIR/deploy/hermes-operator"
-UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/hermes-operator-control.service"
-UNIT_TARGET="/etc/systemd/system/hermes-operator-control.service"
+GATEWAY_UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/hermes-operator-control.service"
+GATEWAY_UNIT_TARGET="/etc/systemd/system/hermes-operator-control.service"
+HOST_UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/hermes-operator-host.service"
+HOST_UNIT_TARGET="/etc/systemd/system/hermes-operator-host.service"
 
 for path in \
   "$VELVET_ENV_FILE" \
@@ -28,9 +31,11 @@ for path in \
   "$ROMATIC_COMPOSE_FILE" \
   "$SOURCE_DIR/compose.yaml" \
   "$SOURCE_DIR/gateway.py" \
+  "$SOURCE_DIR/host_start.py" \
   "$SOURCE_DIR/opsctl.py" \
   "$SOURCE_DIR/SOUL.operator.md" \
-  "$UNIT_SOURCE"; do
+  "$GATEWAY_UNIT_SOURCE" \
+  "$HOST_UNIT_SOURCE"; do
   if [[ ! -f "$path" ]]; then
     echo "Отсутствует обязательный файл: $path" >&2
     exit 2
@@ -39,6 +44,10 @@ done
 
 if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   echo "Не найден service user: $SERVICE_USER" >&2
+  exit 2
+fi
+if ! getent group 10001 >/dev/null 2>&1; then
+  echo "Не найдена socket group с GID 10001." >&2
   exit 2
 fi
 if ! grep -q "hermes-supervisor-control" "$ROMATIC_COMPOSE_FILE"; then
@@ -52,11 +61,19 @@ if ! docker network inspect "$VELVET_BACKEND_NETWORK" >/dev/null 2>&1; then
 fi
 
 install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$CONTROL_ROOT"
+install -d -m 0750 -o "$SERVICE_USER" -g 10001 "$CONTROL_RUNTIME"
 
 python3 - \
   "$VELVET_ENV_FILE" \
   "$ROMATIC_ENV_FILE" \
-  "$CONTROL_ENV" <<'PY'
+  "$CONTROL_ENV" \
+  "$VELVET_APP_DIR" \
+  "$VELVET_ENV_FILE" \
+  "$VELVET_COMPOSE_FILE" \
+  "$ROMATIC_APP_DIR" \
+  "$ROMATIC_ENV_FILE" \
+  "$ROMATIC_COMPOSE_FILE" \
+  "$CONTROL_RUNTIME" <<'PY'
 from __future__ import annotations
 
 import os
@@ -95,9 +112,14 @@ for name, value in (
 client_token = existing.get("HERMES_OPS_CLIENT_TOKEN", "")
 if len(client_token) < 24:
     client_token = secrets.token_urlsafe(48)
+host_token = existing.get("HERMES_OPS_HOST_TOKEN", "")
+if len(host_token) < 24:
+    host_token = secrets.token_urlsafe(48)
 
+runtime_dir = Path(sys.argv[10]).resolve()
 values = {
     "HERMES_OPS_CLIENT_TOKEN": client_token,
+    "HERMES_OPS_HOST_TOKEN": host_token,
     "VELVET_SUPERVISOR_TOKEN": velvet_token,
     "ROMATIC_SUPERVISOR_TOKEN": romatic_token,
     "VELVET_SUPERVISOR_BASE_URL": "http://supervisor-proxy:8765",
@@ -105,6 +127,17 @@ values = {
     "HERMES_OPS_GATEWAY_HOST": "0.0.0.0",
     "HERMES_OPS_GATEWAY_PORT": "8877",
     "HERMES_OPS_UPSTREAM_TIMEOUT_SECONDS": "30",
+    "HERMES_OPS_START_TIMEOUT_SECONDS": "300",
+    "HERMES_OPS_HOST_RUNTIME_DIR": str(runtime_dir),
+    "HERMES_OPS_HOST_SOCKET": str(runtime_dir / "start.sock"),
+    "HERMES_OPS_SOCKET_GID": "10001",
+    "VELVET_APP_DIR": str(Path(sys.argv[4]).resolve()),
+    "VELVET_ENV_FILE": str(Path(sys.argv[5]).resolve()),
+    "VELVET_COMPOSE_FILE": str(Path(sys.argv[6]).resolve()),
+    "ROMATIC_APP_DIR": str(Path(sys.argv[7]).resolve()),
+    "ROMATIC_ENV_FILE": str(Path(sys.argv[8]).resolve()),
+    "ROMATIC_COMPOSE_FILE": str(Path(sys.argv[9]).resolve()),
+    "COMPOSE_BAKE": "false",
 }
 target.write_text(
     "\n".join(f"{key}={value}" for key, value in values.items()) + "\n",
@@ -222,9 +255,20 @@ if [[ "$(docker network inspect -f '{{.Internal}}' "$CONTROL_NETWORK")" != "true
   exit 4
 fi
 
-install -m 0644 "$UNIT_SOURCE" "$UNIT_TARGET"
+install -m 0644 "$HOST_UNIT_SOURCE" "$HOST_UNIT_TARGET"
+install -m 0644 "$GATEWAY_UNIT_SOURCE" "$GATEWAY_UNIT_TARGET"
 systemctl daemon-reload
-systemctl enable hermes-operator-control.service
+systemctl enable hermes-operator-host.service hermes-operator-control.service
+systemctl restart hermes-operator-host.service
+for _ in $(seq 1 30); do
+  [[ -S "$CONTROL_RUNTIME/start.sock" ]] && break
+  sleep 1
+done
+if [[ ! -S "$CONTROL_RUNTIME/start.sock" ]]; then
+  systemctl status hermes-operator-host.service --no-pager >&2 || true
+  echo "Host start bridge did not create its socket." >&2
+  exit 5
+fi
 systemctl restart hermes-operator-control.service
 
 if [[ -f "$VELVET_APP_DIR/.env.hermes" ]]; then
@@ -242,14 +286,16 @@ if [[ -f "$VELVET_APP_DIR/.env.hermes" ]]; then
       restart hermes
   "
 else
-  echo "ПРЕДУПРЕЖДЕНИЕ: .env.hermes отсутствует; gateway установлен, основной Hermes не запущен." >&2
+  echo "ПРЕДУПРЕЖДЕНИЕ: .env.hermes отсутствует; operator установлен, основной Hermes не запущен." >&2
 fi
 
 runuser -u "$SERVICE_USER" -- env \
   HERMES_OPS_ENV_FILE="$CONTROL_ENV" \
+  HERMES_OPS_HOST_RUNTIME_DIR="$CONTROL_RUNTIME" \
   HERMES_SUPERVISOR_NETWORK="$CONTROL_NETWORK" \
   VELVET_BACKEND_NETWORK="$VELVET_BACKEND_NETWORK" \
   docker compose -f "$SOURCE_DIR/compose.yaml" ps
+systemctl --no-pager --full status hermes-operator-host.service
 systemctl --no-pager --full status hermes-operator-control.service
 
 echo
