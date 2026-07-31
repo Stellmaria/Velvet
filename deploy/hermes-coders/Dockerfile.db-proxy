@@ -1,0 +1,16 @@
+FROM python:3.13-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN adduser -D -u 10002 proxy
+
+COPY --chown=10002:10002 db_proxy.py /app/db_proxy.py
+
+USER proxy
+WORKDIR /app
+
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["python", "-c", "import os,socket; s=socket.create_connection((os.getenv('DB_PROXY_UPSTREAM_HOST','postgres'),int(os.getenv('DB_PROXY_UPSTREAM_PORT','5432'))),2); s.close()"]
+
+CMD ["python", "/app/db_proxy.py"]
