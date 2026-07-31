@@ -31,7 +31,7 @@ class ServerSmokeTests(unittest.TestCase):
     def test_critical_tables_cover_ai_batches_and_roleplay(self) -> None:
         self.assertIn("ai_task_batches", CRITICAL_TABLES)
         self.assertIn("ai_tasks", CRITICAL_TABLES)
-        self.assertIn("rp_sessions", CRITICAL_TABLES)
+        self.assertIn("roleplay_sessions", CRITICAL_TABLES)
         self.assertIn("schema_migrations", CRITICAL_TABLES)
 
     def test_backup_directory_write_probe_leaves_no_file(self) -> None:
