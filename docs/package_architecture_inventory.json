@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 606,
-  "production_loc": 130805,
+  "production_loc": 130832,
   "layer_counts": {
     "application": 14,
     "composition": 54,
@@ -14153,26 +14153,6 @@
           "call": "os.getenv"
         },
         {
-          "line": 121,
-          "owner": "load_kie_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 125,
-          "owner": "load_kie_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 129,
-          "owner": "load_kie_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 271,
-          "owner": "_env_decimal",
-          "call": "os.getenv"
-        },
-        {
           "line": 60,
           "owner": "load_kie_settings",
           "call": "os.getenv"
@@ -14300,6 +14280,26 @@
         {
           "line": 110,
           "owner": "load_kie_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 121,
+          "owner": "load_kie_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 125,
+          "owner": "load_kie_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 129,
+          "owner": "load_kie_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 271,
+          "owner": "_env_decimal",
           "call": "os.getenv"
         }
       ],
@@ -14550,19 +14550,19 @@
       "module": "velvet_bot.database",
       "layer": "root",
       "target_package": "infrastructure/<adapter>",
-      "loc": 605,
-      "function_count": 22,
+      "loc": 632,
+      "function_count": 24,
       "class_count": 3,
       "handler_count": 0,
       "max_function_length": 115,
-      "branch_count": 30,
+      "branch_count": 31,
       "internal_imports": [
         "velvet_bot.domains.workspaces.models",
         "velvet_bot.media"
       ],
       "external_import_count": 11,
       "aiogram_imports": [],
-      "sql_literal_count": 16,
+      "sql_literal_count": 17,
       "database_acquire_count": 10,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,

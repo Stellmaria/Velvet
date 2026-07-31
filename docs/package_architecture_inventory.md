@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **606**
-- Production LOC: **130805**
+- Production LOC: **130832**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **35**

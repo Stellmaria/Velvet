@@ -22,7 +22,7 @@ CRITICAL_TABLES = (
     "ai_usage_events",
     "ai_tasks",
     "ai_task_batches",
-    "rp_sessions",
+    "roleplay_sessions",
 )
 
 

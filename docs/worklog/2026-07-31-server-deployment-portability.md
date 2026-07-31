@@ -1,0 +1,94 @@
+# 2026-07-31 — Server deployment portability
+
+- Дата: 2026-07-31
+- ID: server-deployment-portability
+- Линия/фаза: hotfix/эксплуатация вне фаз — Linux VPS production migration
+- Статус: завершено
+- Ветка: `agent/fix-server-deployment-portability`
+- Базовый commit: `1a80077a6d4c8a7ef46b2c4464b51af7a0aeb75d`
+- PR: #485
+
+## Перед началом
+
+### Цель
+
+Устранить deployment-blockers, обнаруженные при реальном переносе Velvet с Windows на Ubuntu VPS, не ослабляя защиту миграций и не включая платные AI-функции.
+
+### Исходный контекст
+
+Production dump был создан PostgreSQL 17.6, серверный пример продолжал указывать PostgreSQL 16, Docker build context включал защищённый runtime-каталог `data/postgres`, server smoke ожидал устаревшую таблицу `rp_sessions`, пустой `KIE_USD_TO_RUB` валил bootstrap даже при выключенном Kie, а raw SHA-256 миграций различался между Windows CRLF и Linux LF.
+
+### Планируемый объём
+
+- исключить persistent/runtime data из Docker build context;
+- синхронизировать server smoke с канонической RP-схемой;
+- закрепить PostgreSQL 17 и безопасные disabled defaults в server env example;
+- нормализовать line endings только для checksum SQL-миграций, сохранив блокировку реальных изменений;
+- добавить regression-тесты для всех обнаруженных deployment-contract дефектов.
+
+### Критерии готовности
+
+- обычный Docker build не читает PostgreSQL volume;
+- `scripts/server_smoke.py` проходит без runtime monkeypatch;
+- выключенный Kie принимает пустые числовые env values, а включённый по-прежнему требует положительный курс;
+- CRLF/LF версии одного SQL принимаются как одна миграция, изменённый SQL отклоняется;
+- Docker build, type check, tests, restore drill и project notes contract проходят в CI.
+
+### Риски и ограничения
+
+Платные provider smoke-tests не входят в PR. Kie и GRS остаются выключенными до отдельной проверки цен и минимальных live-генераций. Byesu и Hermes не включаются без доступных моделей и оплаченного provider account.
+
+### Стабилизационное обоснование
+
+Изменение не добавляет предметный функционал и не меняет пользовательский Telegram flow. Оно стабилизирует существующий server deployment, restore и migration verification contracts.
+
+## После завершения
+
+Статус: завершено.
+
+### Фактически сделано
+
+- `.dockerignore` исключает PostgreSQL, backups, logs, runtime, Hermes и legacy `server-data` из build context.
+- `.env.server.example` закреплён на `postgres:17-alpine`; `KIE_USD_TO_RUB=0` безопасен для выключенного провайдера.
+- Server smoke проверяет `roleplay_sessions`.
+- Kie numeric parser применяет документированные defaults к пустым значениям, сохраняя строгую enabled-валидацию.
+- Migration checksum канонизируется по LF, принимает исторические raw LF/CRLF hashes и переписывает legacy hash в canonical без повторного запуска SQL.
+- Добавлен отдельный regression suite `tests/test_server_deployment_portability.py`.
+- Архитектурные inventory JSON/Markdown обновлены штатным генератором под Python 3.13; временные CI-workflow удалены из ветки.
+- Актуальный `main` влит в ветку, новый AUF photo model baseline сохранён, конфликт генерируемых inventory-файлов устранён повторной генерацией.
+
+### Изменённые модули и контракты
+
+- `.dockerignore` — build-context boundary;
+- `.env.server.example` — production image/defaults contract;
+- `scripts/server_smoke.py` — post-deploy schema smoke;
+- `velvet_bot/core/config/kie.py` — disabled numeric configuration parsing;
+- `velvet_bot/database.py` — portable migration checksum verification;
+- `tests/test_server_deployment_portability.py` — regression coverage;
+- `docs/package_architecture_inventory.json` и `.md` — актуальный архитектурный snapshot.
+
+### Миграции и совместимость
+
+SQL-файлы миграций не изменялись. Канонический checksum строится после преобразования CRLF/CR в LF. Исторические LF/CRLF hashes принимаются только при полном совпадении SQL после нормализации line endings; любое иное изменение остаётся фатальной ошибкой.
+
+### Проверки
+
+- GitHub Actions `type check` — успешно на исправленном коде;
+- GitHub Actions `docker build` — успешно на исправленном коде;
+- GitHub Actions `backup restore drill` — успешно на исправленном коде;
+- GitHub Actions `project notes contract` — успешно на исправленном коде;
+- server smoke regression использует каноническую таблицу `roleplay_sessions`;
+- архитектурный inventory проходит штатный `--check` под Python 3.13 после слияния актуального `main`;
+- финальный полный CI запущен на чистой синхронизированной ветке.
+
+### PR и commit
+
+Draft PR #485: `agent/fix-server-deployment-portability` → `main`.
+
+### Незавершённое
+
+После зелёного финального CI необходимо слить PR, обновить VPS, выполнить обычный Docker build без `git archive`, запустить штатный `scripts/server_smoke.py` и только затем провести минимальные платные smoke-tests Kie/GRS.
+
+### Следующий шаг
+
+Дождаться зелёного финального CI, слить PR #485 и обновить `/srv/velvet` с повторной проверкой Compose, logs и server smoke.
