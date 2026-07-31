@@ -67,6 +67,15 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertIn("@postgres:5432/velvet", source)
         self.assertIn("HERMES_BASE_URL=http://hermes:8642", source)
 
+    def test_runtime_data_is_excluded_from_docker_build_context(self) -> None:
+        ignored = {
+            line.strip()
+            for line in Path(".dockerignore").read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+        self.assertIn("data", ignored)
+        self.assertIn("server-data", ignored)
+
     def test_deploy_verifies_dump_before_resetting_code(self) -> None:
         source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
         self.assertLess(
@@ -76,6 +85,11 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertIn("scripts/server_preflight.py", source)
         self.assertIn("scripts/server_smoke.py", source)
         self.assertIn("Database was not automatically restored", source)
+
+    def test_predeploy_dump_is_readable_by_bot_container(self) -> None:
+        source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
+        self.assertIn('chmod 0644 "$backup_path"', source)
+        self.assertNotIn('chmod 600 "$backup_path"', source)
 
     def test_dump_verifier_uses_disposable_database_and_forced_cleanup(self) -> None:
         source = Path("deploy/server/verify-dump.sh").read_text(encoding="utf-8")
