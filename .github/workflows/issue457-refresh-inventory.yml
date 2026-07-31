@@ -1,0 +1,111 @@
+name: Issue 457 refresh inventory
+
+on:
+  push:
+    branches:
+      - agent/issue-457-durable-media-delivery
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.head_commit.message == 'chore: regenerate issue 457 architecture inventory'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Regenerate architecture baseline
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label issue-457-durable-media-delivery
+
+      - name: Refresh reviewed numeric contract
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          inventory = json.loads(Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8'))
+          shared = inventory['shared_contract_summary']
+          path = Path('tests/test_package_architecture_inventory.py')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_assert(expression: str, value: int) -> None:
+              global text
+              pattern = rf'self\.assertEqual\([0-9_]+, {re.escape(expression)}\)'
+              replacement = f'self.assertEqual({value:,}'.replace(',', '_') + f', {expression})'
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f'Could not update assertion for {expression}')
+
+          replace_assert('self.inventory["production_module_count"]', inventory['production_module_count'])
+          replace_assert('self.inventory["production_loc"]', inventory['production_loc'])
+          replace_assert('self.inventory["root_module_count"]', inventory['root_module_count'])
+          replace_assert('self.inventory["root_unclassified_count"]', inventory['root_unclassified_count'])
+          replace_assert('self.inventory["router_count"]', inventory['router_count'])
+          replace_assert('self.inventory["router_duplicate_count"]', inventory['router_duplicate_count'])
+          replace_assert('self.inventory["repository_module_count"]', inventory['repository_module_count'])
+          replace_assert('len(self.inventory["installer_graph"])', len(inventory['installer_graph']))
+          replace_assert('self.inventory["violation_count"]', inventory['violation_count'])
+          replace_assert('shared["production_python_files"]', shared['production_python_files'])
+          replace_assert('shared["function_count"]', shared['function_count'])
+          replace_assert('shared["private_contract_access_count"]', shared['private_contract_access_count'])
+          replace_assert('shared["blocking_private_contract_access_count"]', shared['blocking_private_contract_access_count'])
+          replace_assert('shared["exact_duplicate_group_count"]', shared['exact_duplicate_group_count'])
+          replace_assert('shared["normalized_duplicate_group_count"]', shared['normalized_duplicate_group_count'])
+          replace_assert('shared["semantic_near_duplicate_group_count"]', shared['semantic_near_duplicate_group_count'])
+
+          text, count = re.subn(
+              r'list\(range\(1, [0-9_]+\)\)',
+              f'list(range(1, {len(inventory["installer_graph"]) + 1}))',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise RuntimeError('Could not update installer graph range')
+
+          markdown_values = {
+              'Production modules': inventory['production_module_count'],
+              'Production LOC': inventory['production_loc'],
+              'Startup installer stages': len(inventory['installer_graph']),
+              'Registered package violations': inventory['violation_count'],
+              'Registered exemptions': len(inventory['violations']),
+          }
+          for label, value in markdown_values.items():
+              pattern = rf'{re.escape(label)}: \*\*[0-9_]+\*\*'
+              replacement = f'{label}: **{value}**'
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f'Could not update markdown assertion for {label}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate regenerated contract
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label issue-457-durable-media-delivery
+          python tests/test_package_architecture_inventory.py
+
+      - name: Commit generated baseline
+        run: |
+          git rm .github/workflows/issue457-refresh-inventory.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/package_architecture_inventory.json \
+                  docs/package_architecture_inventory.md \
+                  docs/package_architecture_exemptions.json \
+                  tests/test_package_architecture_inventory.py
+          git commit -m 'chore: refresh package architecture inventory'
+          git push
