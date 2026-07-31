@@ -1,0 +1,55 @@
+name: tmp PR 493 package inventory
+
+on:
+  push:
+    branches:
+      - fix/owner-cost-and-public-attempt-privacy
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Generate inventory
+        run: |
+          mkdir -p generated-package-inventory
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline \
+            --output-dir generated-package-inventory
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('generated-package-inventory/package_architecture_inventory.json').read_text(encoding='utf-8'))
+          summary = {
+              'production_module_count': data['production_module_count'],
+              'production_loc': data['production_loc'],
+              'root_module_count': data['root_module_count'],
+              'root_unclassified_count': data['root_unclassified_count'],
+              'router_count': data['router_count'],
+              'router_duplicate_count': data['router_duplicate_count'],
+              'repository_module_count': data['repository_module_count'],
+              'installer_graph_count': len(data['installer_graph']),
+              'violation_count': data['violation_count'],
+              'shared_contract_summary': data['shared_contract_summary'],
+          }
+          Path('generated-package-inventory/summary.json').write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          PY
+      - name: Upload generated inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr493-package-inventory
+          path: generated-package-inventory/
+          retention-days: 1
