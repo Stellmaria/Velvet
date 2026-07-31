@@ -6,14 +6,16 @@ on:
       - agent/fix-server-deployment-portability
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  prepare-fix:
+  apply-fix:
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
+        with:
+          ref: agent/fix-server-deployment-portability
 
       - name: Apply focused fixes
         shell: bash
@@ -75,27 +77,19 @@ jobs:
       - name: Validate focused fixes
         shell: bash
         run: |
-          set +e
-          {
-            python -m py_compile velvet_bot/core/config/kie.py tests/test_server_smoke.py
-            python -m unittest discover -s tests -p 'test_server_smoke.py' -v
-            python scripts/inventory_package_architecture.py \
-              --check \
-              --label p1-package-architecture-baseline
-          } > pr485-one-shot-output.txt 2>&1
-          status=$?
-          cat pr485-one-shot-output.txt
-          printf '%s\n' "$status" > pr485-one-shot-status.txt
-          exit 0
+          python -m py_compile velvet_bot/core/config/kie.py tests/test_server_smoke.py
+          python -m unittest discover -s tests -p 'test_server_smoke.py' -v
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label p1-package-architecture-baseline
 
-      - name: Upload prepared fix
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr485-one-shot-output
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            velvet_bot/core/config/kie.py
-            tests/test_server_smoke.py
-            pr485-one-shot-output.txt
-            pr485-one-shot-status.txt
+      - name: Commit verified fixes and remove helper workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/pr485-one-shot-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot/core/config/kie.py tests/test_server_smoke.py \
+            .github/workflows/pr485-one-shot-fix.yml
+          git commit -m "Fix deployment portability CI contracts"
+          git push origin HEAD:agent/fix-server-deployment-portability
