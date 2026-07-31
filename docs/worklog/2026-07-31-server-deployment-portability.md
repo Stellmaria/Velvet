@@ -5,7 +5,7 @@
 - Линия/фаза: hotfix/эксплуатация вне фаз — Linux VPS production migration
 - Статус: завершено
 - Ветка: `agent/fix-server-deployment-portability`
-- Базовый commit: `55ef763d5783073b5fc732e87262667dbb23a6e2`
+- Актуальная база `main`: `1a80077a6d4c8a7ef46b2c4464b51af7a0aeb75d`
 - PR: #485
 
 ## Перед началом
@@ -55,6 +55,7 @@ Production dump был создан PostgreSQL 17.6, серверный прим
 - Migration checksum канонизируется по LF, принимает исторические raw LF/CRLF hashes и переписывает legacy hash в canonical без повторного запуска SQL.
 - Добавлен отдельный regression suite `tests/test_server_deployment_portability.py`.
 - Архитектурные inventory JSON/Markdown обновлены штатным генератором под Python 3.13; временные CI-workflow удалены из ветки.
+- Актуальный `main` влит в ветку, новый AUF photo model baseline сохранён, конфликт генерируемых inventory-файлов устранён повторной генерацией.
 
 ### Изменённые модули и контракты
 
@@ -77,7 +78,8 @@ SQL-файлы миграций не изменялись. Каноническ�
 - GitHub Actions `backup restore drill` — успешно на исправленном коде;
 - GitHub Actions `project notes contract` — успешно на исправленном коде;
 - server smoke regression использует каноническую таблицу `roleplay_sessions`;
-- финальный полный CI повторно запущен на чистом head после обновления inventory.
+- архитектурный inventory проходит штатный `--check` под Python 3.13 после слияния актуального `main`;
+- финальный полный CI запущен на чистой синхронизированной ветке.
 
 ### PR и commit
 
