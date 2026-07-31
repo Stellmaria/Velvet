@@ -46,7 +46,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,6 +68,7 @@ jobs:
           cat > .env.server <<'EOF'
           VELVET_DATA_DIR=/tmp/velvet-data
           VELVET_IMAGE=velvet-bot:ci
+          KRITA_SERVER_IMAGE=velvet-krita-server:ci
           POSTGRES_IMAGE=postgres:16-alpine
           POSTGRES_DB=velvet
           POSTGRES_USER=velvet
@@ -101,3 +102,22 @@ jobs:
 
       - name: Build Krita server image
         run: docker build --file Dockerfile.krita-server --tag velvet-krita-server:ci .
+
+      - name: Run Krita plugin smoke
+        run: |
+          set -Eeuo pipefail
+          cleanup() {
+            docker compose --env-file .env.server -f docker-compose.server.yml \
+              --profile watermark logs --tail 200 krita || true
+            docker compose --env-file .env.server -f docker-compose.server.yml \
+              --profile watermark down --remove-orphans || true
+          }
+          trap cleanup EXIT
+          sudo mkdir -p /tmp/velvet-data/runtime/krita/{sources,requests,responses,outputs,previews,assets}
+          sudo chown -R 10001:10001 /tmp/velvet-data/runtime/krita
+          docker compose --env-file .env.server -f docker-compose.server.yml \
+            --profile watermark up -d --no-build krita
+          VELVET_APP_DIR="$PWD" VELVET_ENV_FILE=.env.server \
+            bash deploy/server/wait-compose-health.sh krita 36 5
+          sudo env VELVET_APP_DIR="$PWD" VELVET_ENV_FILE=.env.server \
+            bash deploy/server/krita-smoke.sh .env.server
