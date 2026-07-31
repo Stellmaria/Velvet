@@ -193,3 +193,16 @@ CI блокирует содержательный PR без завершённ�
 - старые applied migrations не редактируются;
 - infrastructure capability не называется production-ready без доступной live-проверки;
 - каждая работа фиксирует checks, PR/commit, остаток и следующий шаг.
+
+<!-- media-delivery-shared-baseline:start -->
+## Актуальный shared-contract baseline после #511
+
+- Production Python files: 629.
+- Functions: 3597.
+- Registered transitional private accesses: 182.
+- Blocking known contracts: 0.
+- Exact duplicate groups: 60.
+- Normalized duplicate groups: 97.
+- Semantic near-duplicate groups: 9.
+- Durable media delivery boundary: #457 и #511.
+<!-- media-delivery-shared-baseline:end -->

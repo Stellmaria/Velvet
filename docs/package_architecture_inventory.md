@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **629**
-- Production LOC: **134748**
+- Production LOC: **136259**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **41**
@@ -25,10 +25,10 @@
 
 ## Shared/private baseline
 
-- private cross-module accesses: **136**
+- private cross-module accesses: **182**
 - blocking known private contracts: **0**
-- exact / normalized / semantic duplicate groups: **55 / 92 / 9**
-- private access fingerprint: `73739e68a7a463d23be24137bac72837de2a2e60f18633ba1ce3bb9a89a73376`
+- exact / normalized / semantic duplicate groups: **60 / 97 / 9**
+- private access fingerprint: `be36dd80346c046172988d28852b2f24693ecadd86dcf3a2c5fefd48f15bfb38`
 
 ## Installer graph
 

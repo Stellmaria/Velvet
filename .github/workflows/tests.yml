@@ -2,202 +2,142 @@ name: tests
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: inventory-commit-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  PYTHONUNBUFFERED: "1"
+  CI_TEST_SHARDS: "4"
+
 jobs:
-  inventory-commit:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+  preflight:
+    name: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
-      - name: Checkout branch
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: agent/issue-511-media-delivery-boundaries
-          fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      - name: Regenerate reviewed baselines
+      - name: Verify test shard plan
+        run: python scripts/ci_test_shard.py --total "$CI_TEST_SHARDS" --verify
+
+      - name: Compile Python sources
+        run: python -m compileall -q main.py velvet_bot scripts tests
+
+      - name: Run fast architecture contracts
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/ci_preflight.py 2>&1 | tee preflight-output.txt
+
+      - name: Upload preflight output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-output
+          path: preflight-output.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+  test-shards:
+    name: test-shard-${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      TEST_DATABASE_URL: postgresql://velvet:velvet_test_password@localhost:5432/velvet_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: requirements.txt
+          save-cache: ${{ matrix.shard == 0 }}
+
+      - name: Start native PostgreSQL
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from __future__ import annotations
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql --set=ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'velvet') THEN
+              CREATE ROLE velvet LOGIN SUPERUSER PASSWORD 'velvet_test_password';
+            ELSE
+              ALTER ROLE velvet WITH LOGIN SUPERUSER PASSWORD 'velvet_test_password';
+            END IF;
+          END
+          $$;
+          SELECT 'CREATE DATABASE velvet_test OWNER velvet'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM pg_database WHERE datname = 'velvet_test'
+          )\gexec
+          ALTER DATABASE velvet_test OWNER TO velvet;
+          SQL
+          pg_isready -h localhost -p 5432 -U velvet -d velvet_test
 
-          import json
-          from pathlib import Path
+      - name: Install dependencies
+        run: uv pip install --system -r requirements.txt
 
-          from scripts.inventory_package_architecture import build_inventory
-
-          path = Path("docs/package_architecture_exemptions.json")
-          exemptions = json.loads(path.read_text(encoding="utf-8"))
-          inventory = build_inventory(label="p1-package-architecture-baseline")
-          target_path = "velvet_bot/domains/media_generation/friendly_worker.py"
-          for category in ("domain-layer-import", "installed-sentinel"):
-              observed = [
-                  row
-                  for row in inventory["violations"]
-                  if row["category"] == category and row["path"] == target_path
-              ]
-              registered = [
-                  row
-                  for row in exemptions["exceptions"]
-                  if str(row["id"]).startswith(f"{category}:{target_path}:")
-              ]
-              if len(observed) != 1 or len(registered) != 1:
-                  raise SystemExit(
-                      f"Expected one {category} fingerprint, got "
-                      f"observed={len(observed)} registered={len(registered)}"
-                  )
-              registered[0]["id"] = observed[0]["id"]
-          exemptions["exceptions"] = sorted(
-              exemptions["exceptions"],
-              key=lambda row: str(row["id"]),
-          )
-          path.write_text(
-              json.dumps(exemptions, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
-          )
-          PY
-
-          python scripts/shared_contract_inventory.py \
-            --write-json docs/shared_contract_inventory.json \
-            --write-markdown docs/shared_contract_inventory.md
-          python scripts/update_p2_stability_inventory.py \
-            --label p3-package-shared-contracts \
-            --schema-version 75
-          python scripts/inventory_package_architecture.py \
-            --write \
-            --label p1-package-architecture-baseline
-
-      - name: Synchronize reviewed contracts
+      - name: Run test shard
         shell: bash
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          from __future__ import annotations
+          set -o pipefail
+          python scripts/ci_test_shard.py \
+            --index "${{ matrix.shard }}" \
+            --total "$CI_TEST_SHARDS" \
+            --failfast \
+            --durations 30 \
+            2>&1 | tee "unit-test-output-${{ matrix.shard }}.txt"
 
-          import json
-          import re
-          from pathlib import Path
+      - name: Upload failed shard output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-output-shard-${{ matrix.shard }}
+          path: unit-test-output-${{ matrix.shard }}.txt
+          if-no-files-found: ignore
+          retention-days: 7
 
-          package = json.loads(
-              Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8")
-          )
-          shared = package["shared_contract_summary"]
-          p2 = json.loads(
-              Path("docs/p2_stability_inventory.json").read_text(encoding="utf-8")
-          )
-
-          test_path = Path("tests/test_package_architecture_inventory.py")
-          test_text = test_path.read_text(encoding="utf-8")
-          replacements = (
-              (
-                  r'self\.assertEqual\(\d+, self\.inventory\["production_module_count"\]\)',
-                  f'self.assertEqual({package["production_module_count"]}, self.inventory["production_module_count"])',
-              ),
-              (
-                  r'self\.assertEqual\([\d_]+, self\.inventory\["production_loc"\]\)',
-                  f'self.assertEqual({package["production_loc"]:_}, self.inventory["production_loc"])',
-              ),
-              (
-                  r'self\.assertEqual\(\d+, shared\["production_python_files"\]\)',
-                  f'self.assertEqual({shared["production_python_files"]}, shared["production_python_files"])',
-              ),
-              (
-                  r'self\.assertEqual\([\d_]+, shared\["function_count"\]\)',
-                  f'self.assertEqual({shared["function_count"]:_}, shared["function_count"])',
-              ),
-              (
-                  r'self\.assertIn\("Production modules: \*\*\d+\*\*", self\.markdown\)',
-                  f'self.assertIn("Production modules: **{package["production_module_count"]}**", self.markdown)',
-              ),
-              (
-                  r'self\.assertIn\("Production LOC: \*\*\d+\*\*", self\.markdown\)',
-                  f'self.assertIn("Production LOC: **{package["production_loc"]}**", self.markdown)',
-              ),
-          )
-          for pattern, replacement in replacements:
-              test_text, count = re.subn(pattern, replacement, test_text, count=1)
-              if count != 1:
-                  raise SystemExit(f"Could not update expected baseline: {pattern}")
-          test_path.write_text(test_text, encoding="utf-8")
-
-          start = "<!-- media-delivery-shared-baseline:start -->"
-          end = "<!-- media-delivery-shared-baseline:end -->"
-          block = f"""{start}
-          ## Актуальный shared-contract baseline после #511
-
-          - Production Python files: {shared['production_python_files']}.
-          - Functions: {shared['function_count']}.
-          - Registered transitional private accesses: {shared['private_contract_access_count']}.
-          - Blocking known contracts: {shared['blocking_private_contract_access_count']}.
-          - Exact duplicate groups: {shared['exact_duplicate_group_count']}.
-          - Normalized duplicate groups: {shared['normalized_duplicate_group_count']}.
-          - Semantic near-duplicate groups: {shared['semantic_near_duplicate_group_count']}.
-          - Durable media delivery boundary: #457 и #511.
-          {end}
-          """
-          for relative in (
-              "docs/development_status.md",
-              "docs/project_memory.md",
-              "docs/ARCHITECTURE_AUDIT.md",
-          ):
-              path = Path(relative)
-              text = path.read_text(encoding="utf-8")
-              if start in text and end in text:
-                  before, remainder = text.split(start, 1)
-                  _, after = remainder.split(end, 1)
-                  text = before.rstrip() + "\n\n" + after.lstrip()
-              path.write_text(text.rstrip() + "\n\n" + block, encoding="utf-8")
-
-          worklog = Path("docs/worklog/2026-07-31-media-delivery-boundaries.md")
-          text = worklog.read_text(encoding="utf-8")
-          text = text.replace("- PR: `pending`", "- PR: `#523`")
-          marker = "### Итоговые generated metrics"
-          if marker not in text:
-              text = text.rstrip() + f"""
-
-          {marker}
-
-          - Broad exceptions: {p2['broad_exception_total']} total, {p2['broad_exception_approved']} approved, {p2['broad_exception_unresolved']} unresolved in {p2['broad_exception_unresolved_files']} files.
-          - Package architecture: {package['production_module_count']} modules, {package['production_loc']} LOC, {package['violation_count']} reviewed violations/exemptions.
-          - Shared contracts: {shared['production_python_files']} files, {shared['function_count']} functions, {shared['private_contract_access_count']} transitional private accesses, {shared['blocking_private_contract_access_count']} blocking contracts.
-          """
-          worklog.write_text(text.rstrip() + "\n", encoding="utf-8")
-          PY
-
-      - name: Restore canonical workflow and commit
-        shell: bash
+  unit-tests:
+    name: unit-tests
+    if: always()
+    needs:
+      - preflight
+      - test-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify required test jobs
+        env:
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          SHARDS_RESULT: ${{ needs.test-shards.result }}
         run: |
-          set -euo pipefail
-          git fetch origin main --depth=1
-          git show origin/main:.github/workflows/tests.yml > .github/workflows/tests.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            .github/workflows/tests.yml \
-            docs/p2_stability_inventory.json \
-            docs/p2_stability_inventory.md \
-            docs/package_architecture_exemptions.json \
-            docs/package_architecture_inventory.json \
-            docs/package_architecture_inventory.md \
-            docs/shared_contract_inventory.json \
-            docs/shared_contract_inventory.md \
-            docs/development_status.md \
-            docs/project_memory.md \
-            docs/ARCHITECTURE_AUDIT.md \
-            docs/worklog/2026-07-31-media-delivery-boundaries.md \
-            tests/test_package_architecture_inventory.py
-          git diff --cached --check
-          git commit -m "Зафиксировать media delivery generated baseline"
-          git push origin HEAD:agent/issue-511-media-delivery-boundaries
+          test "$PREFLIGHT_RESULT" = "success"
+          test "$SHARDS_RESULT" = "success"

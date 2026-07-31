@@ -85,7 +85,7 @@ Generated P2 stability и package architecture inventories пересобира�
 ### PR и commit
 
 - Issue: `#511`
-- PR: `pending`
+- PR: `#523`
 - Ветка: `agent/issue-511-media-delivery-boundaries`
 - Основные commits: connector-backed commits ветки и итоговый squash commit после merge.
 
@@ -96,3 +96,9 @@ Generated P2 stability и package architecture inventories пересобира�
 ### Следующий шаг
 
 Открыть draft PR, устранить CI замечания, слить после зелёного matrix и выполнить live acceptance без повторного запуска provider generation.
+
+### Итоговые generated metrics
+
+- Broad exceptions: 89 total, 89 approved, 0 unresolved in 0 files.
+- Package architecture: 629 modules, 136259 LOC, 546 reviewed violations/exemptions.
+- Shared contracts: 629 files, 3597 functions, 182 transitional private accesses, 0 blocking contracts.

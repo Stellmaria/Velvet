@@ -294,3 +294,16 @@ Canonical helpers уже созданы, но transitional debt закрывае
 Любое изменение registered package debt должно уменьшать/удалять fingerprint либо сопровождаться новым issue-backed exemption. Простое обновление generated baseline ради зелёного CI не считается архитектурной работой.
 
 Живая проверка, которую CI не способен выполнить, не помечается завершённой по факту существования кода.
+
+<!-- media-delivery-shared-baseline:start -->
+## Актуальный shared-contract baseline после #511
+
+- Production Python files: 629.
+- Functions: 3597.
+- Registered transitional private accesses: 182.
+- Blocking known contracts: 0.
+- Exact duplicate groups: 60.
+- Normalized duplicate groups: 97.
+- Semantic near-duplicate groups: 9.
+- Durable media delivery boundary: #457 и #511.
+<!-- media-delivery-shared-baseline:end -->

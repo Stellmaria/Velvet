@@ -4,9 +4,9 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **100** в **59** файлах;
+- raw broad exceptions: **89** в **54** файлах;
 - approved boundaries: **89**;
-- unresolved broad exceptions: **11** в **5** файлах;
+- unresolved broad exceptions: **0** в **0** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **44**;
@@ -39,7 +39,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/domains/telegram_storage/service.py:282` `_migrate_watermarks`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:463` `_migrate_backups`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:610` `_migrate_codex`: isolate-telegram-storage-operation.
-- `velvet_bot/domains/telegram_storage/uploader.py:213` `upload`: isolate-telegram-storage-operation.
+- `velvet_bot/domains/telegram_storage/uploader.py:229` `upload`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/workspaces/character_topics.py:135` `ensure_character_archive_topic`: cleanup-orphan-character-topic.
 - `velvet_bot/domains/workspaces/watermark_assets.py:226` `store`: cleanup-new-logo-after-db-failure.
 - `velvet_bot/error_center.py:99` `capture_log_record`: fallback-log-record-message.
@@ -106,15 +106,10 @@ AST-инвентаризация широких исключений и callback
 
 ## Unresolved broad exceptions by file
 
-- `velvet_bot/application/media_delivery_deliver.py`: 5.
-- `velvet_bot/domains/media_generation/task_queue.py`: 3.
-- `velvet_bot/application/media_delivery_resolve.py`: 1.
-- `velvet_bot/domains/media_generation/friendly_worker.py`: 1.
-- `velvet_bot/infrastructure/media_delivery_runtime.py`: 1.
 
 ## Следующий срез
 
-- `velvet_bot/application/media_delivery_deliver.py`.
+- Нет.
 
 ## Правило обновления
 

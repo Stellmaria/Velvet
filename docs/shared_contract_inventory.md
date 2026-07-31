@@ -1,11 +1,11 @@
 # Shared contract inventory
 
-- Production Python files: **596**
-- Functions inventoried: **3306**
-- Registered private cross-module debt: **136**
+- Production Python files: **629**
+- Functions inventoried: **3597**
+- Registered private cross-module debt: **182**
 - Blocking known private contracts: **0**
-- Exact duplicate groups: **55**
-- Normalized near-duplicate groups: **92**
+- Exact duplicate groups: **60**
+- Normalized near-duplicate groups: **97**
 - Semantic near-duplicate groups: **9**
 
 ## Contract ownership
@@ -21,11 +21,11 @@
 | worker compensation/reporting boilerplate | `velvet_bot.domains.media_generation.worker` | `velvet_bot.domains.media_generation.worker` | #457 | canonical | 4 |
 | message chunking/HTML fallback | `controller-local long-message senders` | `velvet_bot.presentation.telegram.shared.text` | #419 | transitional | 0 |
 | repeated progress-card updates | `velvet_bot.app.telegram_progress_resilience` | `velvet_bot.presentation.telegram.progress` | #455 | transitional | 0 |
-| task payload/result mapping/formatting | `Auf portal and delivery recovery installers` | `velvet_bot.application.media_tasks.contracts` | #458 | inventory-only | 3 |
-| provider/model labels | `router-local model dictionaries` | `velvet_bot.domains.media_generation.model_catalog` | #459 | inventory-only | 6 |
+| task payload/result mapping/formatting | `Auf portal and delivery recovery installers` | `velvet_bot.application.media_tasks.contracts` | #458 | inventory-only | 9 |
+| provider/model labels | `router-local model dictionaries` | `velvet_bot.domains.media_generation.model_catalog` | #459 | inventory-only | 8 |
 | state compatibility accessors | `Auf portal compatibility reads` | `velvet_bot.presentation.telegram.state_compatibility` | #438 | transitional | 1 |
-| retry/backoff policies | `media workers and Auf delivery recovery` | `velvet_bot.presentation.telegram.shared.retry` | #457 | transitional | 2 |
-| workspace task history/ownership queries | `velvet_bot.app.auf_user_portal_install` | `velvet_bot.application.workspace_tasks` | #458 | inventory-only | 3 |
+| retry/backoff policies | `media workers and Auf delivery recovery` | `velvet_bot.presentation.telegram.shared.retry` | #457 | transitional | 3 |
+| workspace task history/ownership queries | `velvet_bot.app.auf_user_portal_install` | `velvet_bot.application.workspace_tasks` | #458 | inventory-only | 5 |
 
 ## Known private contracts
 
@@ -43,11 +43,44 @@
 - `velvet_bot/app/auf_cancel_ui_install.py:92` `FriendlyKieGenerationWorker._publish_progress` (module-attribute, repeated progress-card updates).
 - `velvet_bot/app/auf_cancel_ui_install.py:151` `FriendlyKieGenerationWorker._start_progress` (assignment, repeated progress-card updates).
 - `velvet_bot/app/auf_cancel_ui_install.py:152` `FriendlyKieGenerationWorker._publish_progress` (assignment, repeated progress-card updates).
-- `velvet_bot/app/auf_grs_brand_install.py:68` `FriendlyKieGenerationWorker._friendly_progress_text` (module-attribute, repeated progress-card updates).
-- `velvet_bot/app/auf_grs_brand_install.py:131` `grs_resilience.ResilientFriendlyKieGenerationWorker._friendly_progress_text` (assignment, repeated progress-card updates).
-- `velvet_bot/app/auf_grs_brand_install.py:134` `BaseKieGenerationWorker._deliver_best_effort` (assignment, media download/preview/original delivery).
-- `velvet_bot/app/auf_grs_brand_install.py:135` `grs_resilience.ResilientFriendlyKieGenerationWorker._deliver_best_effort` (assignment, media download/preview/original delivery).
-- `velvet_bot/app/auf_grs_brand_install.py:138` `CampaignGrsGenerationWorker._deliver_best_effort` (assignment, media download/preview/original delivery).
+- `velvet_bot/app/auf_generation_receipt_install.py:412` `active._load_provider_urls` (module-attribute, media download/preview/original delivery).
+- `velvet_bot/app/auf_owner_cost_privacy_install/__init__.py:1` `from velvet_bot.app.auf_owner_cost_privacy import _progress_text_for_user` (direct-import, repeated progress-card updates).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:28` `photo_ui.photo_router._final_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:147` `photo_ui._state_value` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:222` `photo_ui.photo_router._truncate` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:254` `portal._video_request_from_state` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:355` `wallet_router._entry_line` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:367` `wallet_router._invoice_line` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:405` `wallet_router._wallet_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_owner_pricing_ui_install.py:544` `wallet_router._render_wallet` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:34` `from velvet_bot.presentation.telegram.routers.workspace_auf import _budget_block_reason` (direct-import, other repeated implementation).
+- `velvet_bot/app/auf_photo_model_modes.py:114` `photo_router._state_value` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:118` `photo_router._references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:385` `photo_router._truncate` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:631` `photo_router._ratio_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:820` `photo_router._truncate` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:831` `photo_ui._final_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:921` `photo_router._load_character_reference_rows` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:956` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1072` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1081` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1089` `photo_router._load_sources` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1100` `photo_router._source_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1113` `photo_router._load_characters` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1125` `photo_router._character_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1371` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1399` `photo_router._load_sources` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1410` `photo_router._source_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1413` `photo_router._load_sources` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1540` `getattr(pricing, '_original_model_first_quote')` (getattr, media download/preview/original delivery).
+- `velvet_bot/app/auf_photo_model_modes.py:1696` `photo_router._PHOTO_MODELS` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1697` `photo_router._model` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1698` `photo_router._model_keyboard` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1699` `photo_router._input_keyboard` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1700` `photo_router._review_keyboard` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1701` `photo_router._resolution_keyboard` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1702` `photo_router._final_keyboard` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_model_modes.py:1719` `KieClient._create_grs_task` (assignment, other repeated implementation).
 - `velvet_bot/app/auf_photo_ratio_callback_fix.py:111` `photo_router._ratio_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/app/auf_photo_ui_install.py:42` `photo_router._final_keyboard` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_photo_ui_install.py:115` `photo_router._truncate` (module-attribute, state compatibility accessors).
@@ -56,6 +89,9 @@
 - `velvet_bot/app/auf_photo_ui_install.py:249` `photo_router._model` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_photo_ui_install.py:290` `controller._require_auf_message` (module-attribute, owner/editor/member guards).
 - `velvet_bot/app/auf_photo_ui_install.py:312` `controller._require_auf_message` (module-attribute, owner/editor/member guards).
+- `velvet_bot/app/auf_reference_privacy_install.py:120` `photo_router._truncate` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_reference_privacy_install.py:129` `photo_router._load_sources` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_reference_privacy_install.py:131` `photo_router._source_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/app/grs_campaign_retry.py:15` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
 - `velvet_bot/app/grs_campaign_retry.py:45` `KieClient._create_grs_task` (module-attribute, other repeated implementation).
 - `velvet_bot/app/grs_campaign_retry.py:116` `grs_resilience._ORIGINAL_QUEUE_FAIL` (module-attribute, media download/preview/original delivery).
@@ -77,6 +113,14 @@
 - `velvet_bot/app/telegram_progress_resilience.py:20` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
 - `velvet_bot/app/telegram_progress_resilience.py:24` `grs_campaign_retry._provider_reason_without_model_chatter` (module-attribute, retry/backoff policies).
 - `velvet_bot/app/telegram_progress_resilience.py:118` `FriendlyKieGenerationWorker._publish_progress` (assignment, repeated progress-card updates).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:25` `grs_campaign_retry._retry_delays_for_error` (module-attribute, retry/backoff policies).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:27` `grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal` (module-attribute, retry/backoff policies).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:192` `photo_modes._model` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:192` `photo_modes._state_value` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:280` `grs_campaign_retry._retry_delays_for_error` (assignment, retry/backoff policies).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:283` `grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal` (assignment, retry/backoff policies).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:287` `grs_brand._PRIVATE_LINE_PATTERNS` (assignment, state compatibility accessors).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:289` `grs_brand._PRIVATE_LINE_PATTERNS` (module-attribute, state compatibility accessors).
 - `velvet_bot/domains/auf_runtime/cancellable_worker.py:8` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
 - `velvet_bot/domains/auf_runtime/queue.py:7` `from velvet_bot.domains.ai_usage.tasks import _task_from_row` (direct-import, other repeated implementation).
 - `velvet_bot/domains/auf_wallet/purchase.py:18` `from velvet_bot.domains.auf_wallet.store import _ensure_wallet` (direct-import, state compatibility accessors).
@@ -87,6 +131,8 @@
 - `velvet_bot/domains/meow_wallet/store.py:2` `from velvet_bot.domains.auf_wallet.store import _ensure_wallet` (direct-import, state compatibility accessors).
 - `velvet_bot/domains/meow_wallet/store.py:2` `from velvet_bot.domains.auf_wallet.store import _wallet_from_row` (direct-import, state compatibility accessors).
 - `velvet_bot/infrastructure/ai/__init__.py:12` `from velvet_bot.infrastructure.ai.kie import _build_wan_27_input` (direct-import, other repeated implementation).
+- `velvet_bot/infrastructure/media_delivery_repository_backfill.py:8` `from velvet_bot.infrastructure.media_delivery_repository_helpers import _VIDEO_MODELS` (direct-import, media download/preview/original delivery).
+- `velvet_bot/infrastructure/media_delivery_repository_record.py:8` `from velvet_bot.infrastructure.media_delivery_repository_helpers import _VIDEO_MODELS` (direct-import, media download/preview/original delivery).
 - `velvet_bot/presentation/telegram/quality_rework_entry.py:9` `from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_rework import _list_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/management_aliases.py:21` `from velvet_bot.presentation.telegram.routers.analytics_controllers.management_common import _edit` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/management_publications.py:18` `from velvet_bot.presentation.telegram.routers.analytics_controllers.management_common import _edit` (direct-import, other repeated implementation).
@@ -128,7 +174,7 @@
 - `velvet_bot/presentation/telegram/routers/supervisor/git.py:10` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/git.py:10` `from velvet_bot.presentation.telegram.supervisor.views import _git_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/logs.py:12` `from velvet_bot.presentation.telegram.supervisor.views import _logs_keyboard` (direct-import, other repeated implementation).
-- `velvet_bot/presentation/telegram/routers/supervisor/process.py:9` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
+- `velvet_bot/presentation/telegram/routers/supervisor/process.py:14` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/self_control.py:14` `from velvet_bot.presentation.telegram.supervisor.views import _confirm_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/status.py:13` `from velvet_bot.presentation.telegram.supervisor.views import _bot_keyboard` (direct-import, other repeated implementation).
 - `velvet_bot/presentation/telegram/routers/supervisor/status.py:13` `from velvet_bot.presentation.telegram.supervisor.views import _main_keyboard` (direct-import, other repeated implementation).
@@ -178,12 +224,12 @@
 
 ## Semantic near-duplicate families
 
-- **media download/preview/original delivery**: 24 functions; shared transport/domain signals despite different names and literals.
-- **pagination keyboards**: 75 functions; shared transport/domain signals despite different names and literals.
-- **provider/model labels**: 42 functions; shared transport/domain signals despite different names and literals.
+- **media download/preview/original delivery**: 26 functions; shared transport/domain signals despite different names and literals.
+- **pagination keyboards**: 76 functions; shared transport/domain signals despite different names and literals.
+- **provider/model labels**: 60 functions; shared transport/domain signals despite different names and literals.
 - **repeated progress-card updates**: 6 functions; shared transport/domain signals despite different names and literals.
 - **retry/backoff policies**: 6 functions; shared transport/domain signals despite different names and literals.
 - **safe edit/send fallback**: 58 functions; shared transport/domain signals despite different names and literals.
 - **state compatibility accessors**: 5 functions; shared transport/domain signals despite different names and literals.
-- **task payload/result mapping/formatting**: 21 functions; shared transport/domain signals despite different names and literals.
-- **workspace task history/ownership queries**: 14 functions; shared transport/domain signals despite different names and literals.
+- **task payload/result mapping/formatting**: 25 functions; shared transport/domain signals despite different names and literals.
+- **workspace task history/ownership queries**: 16 functions; shared transport/domain signals despite different names and literals.

@@ -292,3 +292,16 @@ Historical migrations, compatibility packages и dual-read `meow_*` FSM/transpor
 - feature branch mutation не создаёт runner-PR;
 - live obligation не закрывается зелёным CI;
 - canonical docs обновляются только по merged state и generated figures.
+
+<!-- media-delivery-shared-baseline:start -->
+## Актуальный shared-contract baseline после #511
+
+- Production Python files: 629.
+- Functions: 3597.
+- Registered transitional private accesses: 182.
+- Blocking known contracts: 0.
+- Exact duplicate groups: 60.
+- Normalized duplicate groups: 97.
+- Semantic near-duplicate groups: 9.
+- Durable media delivery boundary: #457 и #511.
+<!-- media-delivery-shared-baseline:end -->

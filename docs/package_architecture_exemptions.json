@@ -1582,7 +1582,7 @@
       "issue": "#457"
     },
     {
-      "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:3db72077981a5adf",
+      "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:31cde3bbc5b5b628",
       "owner": "media-delivery",
       "reason": "Existing domain-layer-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -2711,7 +2711,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:926e7ac17fb7a7fe",
+      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:6a69b84d0813a9ce",
       "owner": "media-delivery",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
