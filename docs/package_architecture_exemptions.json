@@ -3384,21 +3384,6 @@
       "issue": "#460"
     },
     {
-      "id": "monolithic-function:velvet_bot/core/config/settings.py:dd58aef573189afb",
-      "owner": "architecture-governance",
-      "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
-      "consumers": [
-        "velvet_bot/config.py",
-        "velvet_bot/core/config/__init__.py",
-        "velvet_bot/core/config/kie.py",
-        "velvet_bot/public_adult_access.py"
-      ],
-      "replacement": "Canonical boundary tracked by #460.",
-      "removal_condition": "Remove this exemption when #460 retires the fingerprinted debt without behavior regression.",
-      "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#460"
-    },
-    {
       "id": "monolithic-function:velvet_bot/domains/discussions/ingest_repository.py:747553ed1622a15e",
       "owner": "architecture-governance",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",

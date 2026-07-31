@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 628,
-  "production_loc": 133894,
+  "production_loc": 134031,
   "layer_counts": {
     "application": 19,
     "composition": 63,
@@ -393,7 +393,7 @@
       ]
     }
   ],
-  "violation_count": 547,
+  "violation_count": 546,
   "violation_counts": {
     "database-acquire-outside-persistence": 89,
     "domain-aiogram-import": 19,
@@ -403,7 +403,7 @@
     "installed-sentinel": 43,
     "installer-like-module": 24,
     "method-assign-ignore": 10,
-    "monolithic-function": 25,
+    "monolithic-function": 24,
     "monolithic-module-loc": 17,
     "package-getattr-side-effect": 19,
     "sql-outside-persistence": 108,
@@ -3928,17 +3928,6 @@
       "summary": "max function 229 lines exceeds 180",
       "details": {
         "max_function_length": 229,
-        "limit": 180
-      }
-    },
-    {
-      "id": "monolithic-function:velvet_bot/core/config/settings.py:dd58aef573189afb",
-      "category": "monolithic-function",
-      "path": "velvet_bot/core/config/settings.py",
-      "fingerprint": "dd58aef573189afb8a44d2cfdfa93458699d7660c0e13213acd00f78f25e8dc6",
-      "summary": "max function 205 lines exceeds 180",
-      "details": {
-        "max_function_length": 205,
         "limit": 180
       }
     },
@@ -15326,16 +15315,16 @@
       "module": "velvet_bot.core.config.settings",
       "layer": "core",
       "target_package": "core",
-      "loc": 400,
-      "function_count": 14,
-      "class_count": 1,
+      "loc": 519,
+      "function_count": 17,
+      "class_count": 3,
       "handler_count": 0,
-      "max_function_length": 205,
-      "branch_count": 26,
+      "max_function_length": 101,
+      "branch_count": 31,
       "internal_imports": [
         "velvet_bot.core.access"
       ],
-      "external_import_count": 5,
+      "external_import_count": 6,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -15351,201 +15340,189 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 203,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 204,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 213,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 217,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 223,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 241,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 245,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
           "line": 256,
+          "owner": "_load_vision_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 260,
+          "owner": "_load_vision_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 266,
+          "owner": "_load_vision_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 314,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 318,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 329,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 343,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 360,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 430,
+          "owner": "load_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 431,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
           "line": 274,
+          "owner": "_load_vision_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 418,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 291,
+          "line": 424,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 191,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 197,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 226,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 179,
+          "line": 245,
           "owner": "_shared_cloud_api_key",
           "call": "os.getenv"
         },
         {
-          "line": 180,
+          "line": 246,
           "owner": "_shared_cloud_api_key",
           "call": "os.getenv"
         },
         {
-          "line": 228,
+          "line": 276,
+          "owner": "_load_vision_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 296,
+          "owner": "_load_vision_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 303,
+          "owner": "_load_vision_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 332,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 333,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 348,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 364,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 381,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 388,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 395,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 402,
+          "owner": "_load_text_settings",
+          "call": "os.getenv"
+        },
+        {
+          "line": 447,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 259,
+          "line": 449,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 261,
+          "line": 453,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 279,
+          "line": 456,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 295,
+          "line": 461,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 314,
+          "line": 466,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 316,
+          "line": 493,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 320,
+          "line": 497,
           "owner": "load_settings",
           "call": "os.getenv"
         },
         {
-          "line": 323,
-          "owner": "load_settings",
+          "line": 292,
+          "owner": "_load_vision_settings",
           "call": "os.getenv"
         },
         {
-          "line": 327,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 331,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 346,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 351,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 361,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 366,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 371,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 376,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 385,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 389,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 339,
-          "owner": "load_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 342,
-          "owner": "load_settings",
+          "line": 293,
+          "owner": "_load_vision_settings",
           "call": "os.getenv"
         }
       ],
       "polling_values": [],
       "worker_registrations": [],
-      "violations": [
-        {
-          "id": "monolithic-function:velvet_bot/core/config/settings.py:dd58aef573189afb",
-          "category": "monolithic-function",
-          "path": "velvet_bot/core/config/settings.py",
-          "fingerprint": "dd58aef573189afb8a44d2cfdfa93458699d7660c0e13213acd00f78f25e8dc6",
-          "summary": "max function 205 lines exceeds 180",
-          "details": {
-            "max_function_length": 205,
-            "limit": 180
-          }
-        }
-      ]
+      "violations": []
     },
     {
       "path": "velvet_bot/database.py",
@@ -22343,7 +22320,7 @@
       "module": "velvet_bot.domains.vision_routing.factory",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 156,
+      "loc": 165,
       "function_count": 3,
       "class_count": 0,
       "handler_count": 0,
@@ -22351,6 +22328,7 @@
       "branch_count": 1,
       "internal_imports": [
         "velvet_bot.core.config",
+        "velvet_bot.core.config.settings",
         "velvet_bot.database",
         "velvet_bot.domains.ai_usage",
         "velvet_bot.domains.vision_routing.cache",
@@ -22374,52 +22352,52 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 35,
+          "line": 39,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 53,
+          "line": 57,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 76,
+          "line": 80,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 82,
+          "line": 86,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 106,
+          "line": 115,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
-          "line": 108,
+          "line": 117,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
-          "line": 127,
+          "line": 136,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
-          "line": 133,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 99,
+          "line": 142,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
           "line": 103,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 107,
           "owner": "_route_config",
           "call": "os.getenv"
         }
@@ -22513,13 +22491,14 @@
       "module": "velvet_bot.domains.vision_routing.models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 94,
+      "loc": 103,
       "function_count": 1,
       "class_count": 5,
       "handler_count": 0,
-      "max_function_length": 14,
+      "max_function_length": 22,
       "branch_count": 6,
       "internal_imports": [
+        "velvet_bot.core.config.settings",
         "velvet_bot.domains.ai_usage"
       ],
       "external_import_count": 5,

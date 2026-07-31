@@ -2,13 +2,13 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **628**
-- Production LOC: **133894**
+- Production LOC: **134031**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **41**
 - Startup installer stages: **28**
-- Registered package violations: **547**
-- Registered exemptions: **547**
+- Registered package violations: **546**
+- Registered exemptions: **546**
 
 ## Layers
 
@@ -71,7 +71,7 @@
 - `installed-sentinel`: **43**
 - `installer-like-module`: **24**
 - `method-assign-ignore`: **10**
-- `monolithic-function`: **25**
+- `monolithic-function`: **24**
 - `monolithic-module-loc`: **17**
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **108**

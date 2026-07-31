@@ -42,6 +42,11 @@ _SECRET_NAMES = {
     "GH_TOKEN",
     "API_SERVER_KEY",
 }
+_LOCAL_VISION_PROVIDER = "local_openai_compatible"
+_LOCAL_VISION_HOSTS = frozenset({"vision-gateway"})
+_VISION_PROVIDERS = frozenset(
+    {"openai_compatible", _LOCAL_VISION_PROVIDER, "ollama"}
+)
 
 
 @dataclass(slots=True)
@@ -274,11 +279,23 @@ def _validate_vision_ai(values: dict[str, str], report: ValidationReport) -> Non
         context="включённого VL-контура",
     )
     base_provider = values.get("AI_VISION_PROVIDER", "").strip().casefold()
+    base_url = values.get("AI_VISION_BASE_URL", "").strip()
+    if base_provider not in _VISION_PROVIDERS:
+        report.error(
+            "AI_VISION_PROVIDER должен быть openai_compatible или "
+            "local_openai_compatible."
+        )
     if base_provider == "ollama":
         report.error(
             "AI_VISION_PROVIDER=ollama запрещён на production VPS: Ollama legacy/deprecated."
         )
-    if not _api_key(values, "AI_VISION_API_KEY"):
+    elif base_provider == _LOCAL_VISION_PROVIDER:
+        _validate_local_vision_endpoint(
+            base_url,
+            report,
+            variable_name="AI_VISION_BASE_URL",
+        )
+    elif not _api_key(values, "AI_VISION_API_KEY"):
         report.error("AI_VISION_ENABLED требует AI_VISION_API_KEY или BYESU_API_KEY.")
 
     flash_model = values.get("AI_VISION_FLASH_MODEL", "").strip() or values.get(
@@ -286,7 +303,13 @@ def _validate_vision_ai(values: dict[str, str], report: ValidationReport) -> Non
     ).strip()
     if not flash_model:
         report.error("VL cascade требует Flash model ID.")
-    _validate_vision_route(values, report, route="FLASH", inherited_provider=base_provider)
+    _validate_vision_route(
+        values,
+        report,
+        route="FLASH",
+        inherited_provider=base_provider,
+        inherited_base_url=base_url,
+    )
 
     for route, legacy_name in (
         ("PRO", "AI_VISION_COMPARE_MODEL"),
@@ -301,6 +324,7 @@ def _validate_vision_ai(values: dict[str, str], report: ValidationReport) -> Non
                 report,
                 route=route,
                 inherited_provider=base_provider,
+                inherited_base_url=base_url,
             )
 
 
@@ -310,16 +334,69 @@ def _validate_vision_route(
     *,
     route: str,
     inherited_provider: str,
+    inherited_base_url: str,
 ) -> None:
     prefix = f"AI_VISION_{route}"
-    provider = values.get(f"{prefix}_PROVIDER", "").strip().casefold() or inherited_provider
+    explicit_provider = values.get(f"{prefix}_PROVIDER", "").strip().casefold()
+    explicit_base_url = values.get(f"{prefix}_BASE_URL", "").strip()
+    provider = explicit_provider or inherited_provider
+    base_url = explicit_base_url or inherited_base_url
+
+    if provider not in _VISION_PROVIDERS:
+        report.error(
+            f"{route} VL route использует неподдерживаемый provider: {provider or '<empty>'}."
+        )
+        return
     if provider == "ollama":
         report.error(f"{route} VL route не может использовать legacy/deprecated Ollama.")
         return
+    if explicit_provider and explicit_provider != inherited_provider and not explicit_base_url:
+        report.error(
+            f"{route} VL route при смене provider требует отдельный {prefix}_BASE_URL."
+        )
+
+    if provider == _LOCAL_VISION_PROVIDER:
+        _validate_local_vision_endpoint(
+            base_url,
+            report,
+            variable_name=f"{prefix}_BASE_URL",
+        )
+        if not _has_zero_or_empty_pricing(values, prefix):
+            report.error(
+                f"{route} local VL route должна иметь нулевую monetary pricing."
+            )
+        return
+
     if not _api_key(values, f"{prefix}_API_KEY"):
         report.error(f"{route} VL route требует API key или BYESU_API_KEY.")
     if not _has_positive_pricing(values, prefix):
         report.error(f"{route} VL route требует положительную input/output цену.")
+
+
+def _validate_local_vision_endpoint(
+    base_url: str,
+    report: ValidationReport,
+    *,
+    variable_name: str,
+) -> None:
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"}:
+        report.error(
+            f"{variable_name} для local VL должен использовать http:// или https://."
+        )
+        return
+    if parsed.username or parsed.password:
+        report.error(f"{variable_name} для local VL не может содержать credentials.")
+    if parsed.hostname not in _LOCAL_VISION_HOSTS:
+        allowed = ", ".join(sorted(_LOCAL_VISION_HOSTS))
+        report.error(
+            f"{variable_name} для local VL должен использовать внутренний "
+            f"Compose host: {allowed}."
+        )
+    if parsed.query or parsed.fragment:
+        report.error(
+            f"{variable_name} для local VL не может содержать query или fragment."
+        )
 
 
 def _validate_kie(values: dict[str, str], report: ValidationReport) -> None:
@@ -432,7 +509,7 @@ def _validate_env_permissions(path: Path, report: ValidationReport) -> None:
 def create_data_directories(values: dict[str, str]) -> list[Path]:
     root = Path(values["VELVET_DATA_DIR"]).expanduser()
     created: list[Path] = []
-    for relative in ("postgres", "backups", "logs", "runtime", "hermes"):
+    for relative in ("postgres", "backups", "logs", "runtime", "hermes", "vision"):
         path = root / relative
         path.mkdir(parents=True, exist_ok=True)
         created.append(path)
@@ -486,6 +563,17 @@ def _has_positive_pricing(values: dict[str, str], prefix: str) -> bool:
         (input_price is not None and input_price > 0)
         or (output_price is not None and output_price > 0)
     )
+
+
+def _has_zero_or_empty_pricing(values: dict[str, str], prefix: str) -> bool:
+    for suffix in ("INPUT_RUB_PER_1M", "OUTPUT_RUB_PER_1M"):
+        raw = values.get(f"{prefix}_{suffix}", "").strip()
+        if not raw:
+            continue
+        parsed = _decimal(raw)
+        if parsed is None or parsed != 0:
+            return False
+    return True
 
 
 def _configured(value: str) -> bool:

@@ -5,6 +5,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Mapping
 
+from velvet_bot.core.config.settings import LOCAL_OPENAI_COMPATIBLE_PROVIDER
 from velvet_bot.domains.ai_usage import AITokenPricing
 
 
@@ -27,8 +28,16 @@ class VisionRouteConfig:
 
     def __post_init__(self) -> None:
         provider = self.provider.strip().casefold()
-        if provider not in {"ollama", "openai_compatible"}:
-            raise ValueError("VL provider должен быть ollama или openai_compatible.")
+        supported = {
+            "ollama",
+            "openai_compatible",
+            LOCAL_OPENAI_COMPATIBLE_PROVIDER,
+        }
+        if provider not in supported:
+            raise ValueError(
+                "VL provider должен быть ollama, openai_compatible или "
+                "local_openai_compatible."
+            )
         if not self.base_url.strip():
             raise ValueError("VL base URL не может быть пустым.")
         if not self.model.strip():
