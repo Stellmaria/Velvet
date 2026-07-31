@@ -5,6 +5,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from velvet_bot.domains.telegram_storage.deletion import (
+    DeletionPolicy,
+    build_storage_deletion_policy,
+)
+
 StorageKind = Literal[
     "watermarks",
     "backups",
@@ -14,6 +19,15 @@ StorageKind = Literal[
     "releases",
     "rework",
 ]
+_STORAGE_KINDS: tuple[StorageKind, ...] = (
+    "watermarks",
+    "backups",
+    "diagnostics",
+    "exports",
+    "codex",
+    "releases",
+    "rework",
+)
 
 
 def _bool_env(name: str, default: bool) -> bool:
@@ -75,6 +89,7 @@ class TelegramStorageSettings:
     chat_id: int
     threads: StorageThreadMap
     project_dir: Path
+    data_dir: Path | None
     backup_dir: Path
     logs_dir: Path
     runtime_dir: Path
@@ -82,6 +97,7 @@ class TelegramStorageSettings:
     export_dirs: tuple[Path, ...]
     release_dirs: tuple[Path, ...]
     staging_dir: Path
+    krita_bridge_dir: Path
     migrate_on_start: bool
     delete_after_upload: bool
     active_file_grace_seconds: int
@@ -95,6 +111,8 @@ class TelegramStorageSettings:
             os.getenv("SUPERVISOR_RUNTIME_DIR", "runtime/supervisor"),
             project_dir,
         )
+        data_raw = os.getenv("VELVET_DATA_DIR", "").strip()
+        data_dir = _path(data_raw, project_dir) if data_raw else None
         secret = (
             os.getenv("STORAGE_ENCRYPTION_SECRET", "").strip()
             or os.getenv("SUPERVISOR_TOKEN", "").strip()
@@ -104,7 +122,7 @@ class TelegramStorageSettings:
             raise ValueError(
                 "Для шифрования backup задайте STORAGE_ENCRYPTION_SECRET минимум из 24 символов."
             )
-        return cls(
+        settings = cls(
             chat_id=_int_env(
                 "TELEGRAM_STORAGE_CHAT_ID",
                 -1004459280894,
@@ -121,6 +139,7 @@ class TelegramStorageSettings:
                 rework=_int_env("STORAGE_THREAD_REWORK", 15, minimum=1, maximum=2**31 - 1),
             ),
             project_dir=project_dir,
+            data_dir=data_dir,
             backup_dir=_path(os.getenv("BACKUP_DIR", "backups"), project_dir),
             logs_dir=_path(os.getenv("SUPERVISOR_LOG_DIR", "logs"), project_dir),
             runtime_dir=runtime_dir,
@@ -142,6 +161,13 @@ class TelegramStorageSettings:
                 os.getenv("STORAGE_STAGING_DIR", "runtime/telegram-storage"),
                 project_dir,
             ),
+            krita_bridge_dir=_path(
+                os.getenv(
+                    "KRITA_BRIDGE_DIR",
+                    str(Path.home() / "VelvetKritaBridge"),
+                ),
+                project_dir,
+            ),
             migrate_on_start=_bool_env("STORAGE_MIGRATE_ON_START", True),
             delete_after_upload=_bool_env("STORAGE_DELETE_AFTER_UPLOAD", True),
             active_file_grace_seconds=_int_env(
@@ -157,6 +183,34 @@ class TelegramStorageSettings:
                 maximum=49 * 1024 * 1024,
             ),
             encryption_secret=secret,
+        )
+        if settings.delete_after_upload:
+            # Fail before migration starts if any configured deletion scope is empty
+            # or points at a protected root such as the checkout, home or data root.
+            for kind in _STORAGE_KINDS:
+                settings.deletion_policy_for(kind)
+        return settings
+
+    def deletion_policy_for(self, kind: StorageKind) -> DeletionPolicy:
+        roots_by_kind: dict[StorageKind, tuple[Path, ...]] = {
+            "watermarks": (self.krita_bridge_dir,),
+            "backups": (self.backup_dir, self.staging_dir),
+            "diagnostics": (
+                self.logs_dir,
+                self.project_dir / "diagnostics",
+                self.runtime_dir / "incidents",
+            ),
+            "exports": self.export_dirs,
+            "codex": (self.staging_dir,),
+            "releases": self.release_dirs,
+            "rework": (self.staging_dir,),
+        }
+        return build_storage_deletion_policy(
+            name=f"telegram-storage-{kind}",
+            roots=roots_by_kind[kind],
+            project_dir=self.project_dir,
+            data_dir=self.data_dir,
+            allow_recursive_directories=False,
         )
 
 
