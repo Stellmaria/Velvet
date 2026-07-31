@@ -71,7 +71,8 @@ runtime типах и продолжает блокироваться server pre
 - первый test run выявил отсутствующий provider в `VisionRouteConfig`, исправлено;
 - первый architecture run выявил рост `load_settings`, исправлено декомпозицией;
 - первый project notes run выявил старый формат и статус worklog, исправлено;
-- повторный полный CI ожидается после синхронизации generated inventory.
+- branch синхронизирована с актуальным `main`, generated inventory обновлён;
+- повторный полный CI запущен после синхронизации.
 
 ### PR и commit
 
@@ -81,7 +82,7 @@ runtime типах и продолжает блокироваться server pre
 
 ### Незавершённое
 
-- синхронизация package-wide architecture inventory после удаления старого exemption;
+- подтверждение полного CI после синхронизации с main;
 - контейнеры `vision-gateway` и `vision-runtime`;
 - Q8/Q4 benchmark на production VPS;
 - локальный NSFW classifier и sensitive schema/prompt;
