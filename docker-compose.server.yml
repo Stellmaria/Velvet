@@ -102,6 +102,105 @@ services:
       - no-new-privileges:true
     networks:
       - backend
+      - vision-front
+
+  # Internal-only CPU inference runtime. It has no published port and can be
+  # reached only by vision-gateway through vision-back. vision-egress exists
+  # solely so the runtime can pull the configured model into persistent storage.
+  vision-runtime:
+    image: ${VISION_RUNTIME_IMAGE:-velvet-vision-runtime:local}
+    profiles: ["vision"]
+    build:
+      context: .
+      dockerfile: Dockerfile.vision-runtime
+      args:
+        VISION_RUNTIME_BASE_IMAGE: ${VISION_RUNTIME_BASE_IMAGE:-ollama/ollama:0.32.3}
+    restart: unless-stopped
+    init: true
+    environment:
+      VISION_MODEL: ${VISION_MODEL:-qwen3-vl:8b-instruct-q4_K_M}
+      VISION_MODEL_EXPECTED_DIGEST: ${VISION_MODEL_EXPECTED_DIGEST:-}
+      VISION_RUNTIME_STARTUP_TIMEOUT_SECONDS: ${VISION_RUNTIME_STARTUP_TIMEOUT_SECONDS:-1800}
+      VISION_KEEP_ALIVE: ${VISION_KEEP_ALIVE:-5m}
+      VISION_MAX_CONCURRENCY: ${VISION_MAX_CONCURRENCY:-1}
+      OLLAMA_HOST: http://127.0.0.1:11434
+      OLLAMA_MODELS: /root/.ollama/models
+    volumes:
+      - ${VELVET_DATA_DIR:-./server-data}/vision:/root/.ollama
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ollama list | awk -v target="$${VISION_MODEL}" 'NR > 1 && $$1 == target {found=1} END {exit found ? 0 : 1}'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: ${VISION_RUNTIME_HEALTH_START_PERIOD:-30m}
+    stop_grace_period: 90s
+    mem_limit: ${VISION_RUNTIME_MEMORY_LIMIT:-12g}
+    cpus: ${VISION_RUNTIME_CPU_LIMIT:-6.0}
+    pids_limit: 512
+    shm_size: 1gb
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - vision-back
+      - vision-egress
+
+  # Provider-neutral gateway is the only VL endpoint visible to the bot. It
+  # preprocesses images in memory, enforces the exact model and serializes load.
+  vision-gateway:
+    image: ${VISION_GATEWAY_IMAGE:-velvet-vision-gateway:local}
+    profiles: ["vision"]
+    build:
+      context: .
+      dockerfile: Dockerfile.vision-gateway
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    depends_on:
+      vision-runtime:
+        condition: service_healthy
+    environment:
+      VISION_GATEWAY_HOST: 0.0.0.0
+      VISION_GATEWAY_PORT: 8080
+      VISION_RUNTIME_BASE_URL: http://vision-runtime:11434
+      VISION_MODEL: ${VISION_MODEL:-qwen3-vl:8b-instruct-q4_K_M}
+      VISION_MODEL_EXPECTED_DIGEST: ${VISION_MODEL_EXPECTED_DIGEST:-}
+      VISION_MAX_CONCURRENCY: ${VISION_MAX_CONCURRENCY:-1}
+      VISION_MAX_IMAGE_SIDE: ${VISION_MAX_IMAGE_SIDE:-1280}
+      VISION_MAX_IMAGES: ${VISION_MAX_IMAGES:-8}
+      VISION_MAX_DECODED_IMAGE_BYTES: ${VISION_MAX_DECODED_IMAGE_BYTES:-20971520}
+      VISION_GATEWAY_MAX_REQUEST_BYTES: ${VISION_GATEWAY_MAX_REQUEST_BYTES:-33554432}
+      VISION_REQUEST_TIMEOUT_SECONDS: ${VISION_REQUEST_TIMEOUT_SECONDS:-300}
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4).read()
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    stop_grace_period: 30s
+    mem_limit: ${VISION_GATEWAY_MEMORY_LIMIT:-1g}
+    cpus: ${VISION_GATEWAY_CPU_LIMIT:-1.0}
+    pids_limit: 128
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - vision-front
+      - vision-back
 
   # Серверная Krita запускается отдельным профилем и не имеет сети. Бот и
   # Krita обмениваются только файлами внутри общего runtime/krita bridge.
@@ -189,4 +288,12 @@ services:
 
 networks:
   backend:
+    driver: bridge
+  vision-front:
+    driver: bridge
+    internal: true
+  vision-back:
+    driver: bridge
+    internal: true
+  vision-egress:
     driver: bridge
