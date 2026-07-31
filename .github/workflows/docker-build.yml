@@ -28,6 +28,7 @@ on:
       - "scripts/server_supervisor.py"
       - "scripts/server_supervisor_proxy.py"
       - "scripts/vision_runtime_entrypoint.sh"
+      - "scripts/vision_model_loader.sh"
       - "scripts/benchmark_vision_gateway.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
@@ -59,6 +60,7 @@ on:
       - "scripts/server_supervisor.py"
       - "scripts/server_supervisor_proxy.py"
       - "scripts/vision_runtime_entrypoint.sh"
+      - "scripts/vision_model_loader.sh"
       - "scripts/benchmark_vision_gateway.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
@@ -156,6 +158,7 @@ jobs:
           bash -n deploy/krita-server/entrypoint.sh
           bash -n deploy/hermes-coders/install.sh
           bash -n scripts/vision_runtime_entrypoint.sh
+          bash -n scripts/vision_model_loader.sh
           python -m py_compile \
             scripts/server_supervisor.py \
             scripts/server_supervisor_proxy.py \
@@ -171,6 +174,7 @@ jobs:
           docker compose --env-file .env.server -f docker-compose.server.yml config --quiet
           docker compose --env-file .env.server -f docker-compose.server.yml --profile watermark config --quiet
           docker compose --env-file .env.server -f docker-compose.server.yml --profile vision config --quiet
+          docker compose --env-file .env.server -f docker-compose.server.yml --profile vision-bootstrap config --quiet
           HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
             docker compose \
               --profile velvet \
