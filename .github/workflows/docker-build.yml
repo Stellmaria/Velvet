@@ -6,6 +6,7 @@ on:
     paths:
       - "Dockerfile"
       - "Dockerfile.krita-server"
+      - "Dockerfile.server-supervisor-proxy"
       - ".dockerignore"
       - "docker-compose.yml"
       - "docker-compose.server.yml"
@@ -19,6 +20,8 @@ on:
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
       - "scripts/krita_server_healthcheck.py"
+      - "scripts/server_supervisor.py"
+      - "scripts/server_supervisor_proxy.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
   push:
@@ -27,6 +30,7 @@ on:
     paths:
       - "Dockerfile"
       - "Dockerfile.krita-server"
+      - "Dockerfile.server-supervisor-proxy"
       - ".dockerignore"
       - "docker-compose.yml"
       - "docker-compose.server.yml"
@@ -40,6 +44,8 @@ on:
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
       - "scripts/krita_server_healthcheck.py"
+      - "scripts/server_supervisor.py"
+      - "scripts/server_supervisor_proxy.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
 
@@ -69,6 +75,7 @@ jobs:
           VELVET_DATA_DIR=/tmp/velvet-data
           VELVET_IMAGE=velvet-bot:ci
           KRITA_SERVER_IMAGE=velvet-krita-server:ci
+          SUPERVISOR_PROXY_IMAGE=velvet-server-supervisor-proxy:ci
           POSTGRES_IMAGE=postgres:16-alpine
           POSTGRES_DB=velvet
           POSTGRES_USER=velvet
@@ -76,19 +83,26 @@ jobs:
           DATABASE_URL=postgresql://velvet:test_password@postgres:5432/velvet
           BOT_TOKEN=test_token
           ALLOWED_USER_IDS=1
+          SUPERVISOR_ENABLED=false
+          SUPERVISOR_TOKEN=test_supervisor_token_at_least_32_chars
+          SERVER_SUPERVISOR_SOCKET=/runtime/supervisor/velvet-server-supervisor.sock
           KRITA_WATERMARK_ENABLED=true
           KRITA_REMOTE_WORKER_ENABLED=false
           KRITA_BRIDGE_DIR=/app/runtime/krita
           EOF
           cp .env.hermes.example .env.hermes
 
-      - name: Validate deployment shell
+      - name: Validate deployment shell and Python
         run: |
           bash -n deploy/server/deploy.sh
+          bash -n deploy/server/install-server-supervisor.sh
           bash -n deploy/server/install-krita-server.sh
           bash -n deploy/server/krita-smoke.sh
           bash -n deploy/server/wait-compose-health.sh
           bash -n deploy/krita-server/entrypoint.sh
+          python -m py_compile \
+            scripts/server_supervisor.py \
+            scripts/server_supervisor_proxy.py
 
       - name: Validate Docker Compose
         run: |
@@ -99,6 +113,12 @@ jobs:
 
       - name: Build Velvet image
         run: docker build --tag velvet-bot:ci .
+
+      - name: Build Server Supervisor proxy image
+        run: |
+          docker build \
+            --file Dockerfile.server-supervisor-proxy \
+            --tag velvet-server-supervisor-proxy:ci .
 
       - name: Build Krita server image
         run: docker build --file Dockerfile.krita-server --tag velvet-krita-server:ci .

@@ -13,6 +13,7 @@ ENV_FILE="${VELVET_ENV_FILE:-.env.server}"
 COMPOSE_FILE="${VELVET_COMPOSE_FILE:-docker-compose.server.yml}"
 REMOTE="${VELVET_DEPLOY_REMOTE:-origin}"
 BRANCH="${VELVET_DEPLOY_BRANCH:-main}"
+TARGET_OVERRIDE="${VELVET_DEPLOY_TARGET_SHA:-}"
 HEALTH_ATTEMPTS="${VELVET_HEALTH_ATTEMPTS:-60}"
 HEALTH_INTERVAL="${VELVET_HEALTH_INTERVAL:-5}"
 START_HERMES="${VELVET_START_HERMES:-0}"
@@ -71,7 +72,12 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   exit 3
 fi
 
-mkdir -p "$data_dir/backups" "$data_dir/logs" "$data_dir/runtime"
+mkdir -p \
+  "$data_dir/backups" \
+  "$data_dir/logs" \
+  "$data_dir/runtime" \
+  "$data_dir/runtime/supervisor"
+chmod 0755 "$data_dir/runtime/supervisor"
 if [[ "$krita_server_enabled" == "1" ]]; then
   mkdir -p "$data_dir/runtime/krita"/{sources,requests,responses,outputs,previews,assets}
 fi
@@ -84,8 +90,8 @@ rollback_code() {
   if [[ "$deployment_started" == "1" ]]; then
     echo "Deployment failed; rolling application code back to $previous_sha" >&2
     git reset --hard "$previous_sha" >&2 || true
-    "${compose[@]}" build bot >&2 || true
-    "${compose[@]}" up -d postgres bot >&2 || true
+    "${compose[@]}" build bot supervisor-proxy >&2 || true
+    "${compose[@]}" up -d postgres supervisor-proxy bot >&2 || true
     if [[ "$krita_server_enabled" == "1" ]]; then
       "${compose[@]}" --profile watermark build krita >&2 || true
       "${compose[@]}" --profile watermark up -d krita >&2 || true
@@ -99,7 +105,17 @@ trap rollback_code ERR INT TERM
 
 echo "Fetching $REMOTE/$BRANCH..."
 git fetch --prune "$REMOTE" "$BRANCH"
-target_sha="$(git rev-parse "$REMOTE/$BRANCH")"
+remote_sha="$(git rev-parse "$REMOTE/$BRANCH")"
+if [[ -n "$TARGET_OVERRIDE" ]]; then
+  target_sha="$(git rev-parse --verify "${TARGET_OVERRIDE}^{commit}")"
+  if ! git merge-base --is-ancestor "$target_sha" "$remote_sha"; then
+    echo "Requested deployment target is not an ancestor of $REMOTE/$BRANCH: $target_sha" >&2
+    exit 4
+  fi
+  echo "Using verified rollback target $target_sha"
+else
+  target_sha="$remote_sha"
+fi
 
 if [[ "$target_sha" == "$previous_sha" ]]; then
   echo "Velvet is already at $target_sha"
@@ -126,13 +142,14 @@ echo "Deploying $target_sha..."
 deployment_started=1
 git reset --hard "$target_sha"
 "${compose[@]}" pull postgres
-"${compose[@]}" build --pull bot
+"${compose[@]}" build --pull bot supervisor-proxy
 
 if [[ "$krita_server_enabled" == "1" ]]; then
   "${compose[@]}" --profile watermark build --pull krita
-  "${compose[@]}" --profile watermark up -d --remove-orphans postgres bot krita
+  "${compose[@]}" --profile watermark up -d --remove-orphans \
+    postgres supervisor-proxy bot krita
 else
-  "${compose[@]}" up -d --remove-orphans postgres bot
+  "${compose[@]}" up -d --remove-orphans postgres supervisor-proxy bot
   "${compose[@]}" --profile watermark stop --timeout 45 krita >/dev/null 2>&1 || true
 fi
 
