@@ -65,6 +65,7 @@
 - syntax compilation новых модулей;
 - regression tests: partial original/preview delivery, expired URL, missing result URL, restart recovery, redelivery без generation API и legacy override guard;
 - project notes contract;
+- package architecture inventory regeneration;
 - полная GitHub Actions CI-матрица PR #488.
 
 ### PR и commit
@@ -78,4 +79,4 @@
 
 ### Следующий шаг
 
-Дождаться полной CI-матрицы, исправить найденные контрактные ошибки и перевести PR из draft в ready после зелёных проверок.
+Завершить регенерацию architecture baseline, исправить оставшиеся CI-ошибки и перевести PR из draft в ready после зелёных проверок.
