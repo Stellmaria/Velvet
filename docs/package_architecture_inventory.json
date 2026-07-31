@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 629,
-  "production_loc": 134748,
+  "production_module_count": 630,
+  "production_loc": 135085,
   "layer_counts": {
     "application": 19,
     "composition": 63,
@@ -10,7 +10,7 @@
     "domain": 176,
     "infrastructure": 25,
     "other": 1,
-    "presentation": 213,
+    "presentation": 214,
     "root": 114,
     "service": 8,
     "worker": 3
@@ -3346,10 +3346,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_workspace_ui_install.py:b0f46f097c4e6d88",
+      "id": "installed-sentinel:velvet_bot/app/auf_workspace_ui_install.py:20596da49067463d",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_workspace_ui_install.py",
-      "fingerprint": "b0f46f097c4e6d883e7eeb28c00d1bf977d8d14c739fc090501a225cc1810052",
+      "fingerprint": "20596da49067463dc10fad4f5801a217ed229e0985df5fa5e20d826407d298f3",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
@@ -3436,10 +3436,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:8632308cab117f0f",
+      "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:971f054f071c746f",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "8632308cab117f0fe791f5f91dbcd08279a6444931490686fb69b33e8b75161b",
+      "fingerprint": "971f054f071c746f8fd77235e9873a2688dc19e0efb5137ec44a6ea82be6bf1a",
       "summary": "8 _INSTALLED references",
       "details": {
         "count": 8
@@ -3586,10 +3586,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/runtime_stability.py:09db2a2e8b8d165b",
+      "id": "installed-sentinel:velvet_bot/runtime_stability.py:1bb87eb3947a5a3c",
       "category": "installed-sentinel",
       "path": "velvet_bot/runtime_stability.py",
-      "fingerprint": "09db2a2e8b8d165b7b6c2be7ffdf7dd8c560564c5a9c31ddd7272aefb7aae695",
+      "fingerprint": "1bb87eb3947a5a3c3024e902dfe8dc2029dce37a49b6c08bfa8c0c213a17a4c9",
       "summary": "7 _INSTALLED references",
       "details": {
         "count": 7
@@ -3868,10 +3868,10 @@
       }
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:06ac2082f2c3919e",
+      "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
       "category": "method-assign-ignore",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "06ac2082f2c3919e9ae2ae13943eff1cb36dabce568b2aba331665020b58accb",
+      "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
       "summary": "2 method-assign ignores",
       "details": {
         "count": 2
@@ -6453,10 +6453,10 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/runtime_stability.py:642a70794a381769",
+      "id": "sql-outside-persistence:velvet_bot/runtime_stability.py:1212762a600aafb2",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/runtime_stability.py",
-      "fingerprint": "642a70794a38176929c072a051ba279787b27b78fa3cdbab1e9d4953668ab50b",
+      "fingerprint": "1212762a600aafb25d8f3008457ca4492a4dd2493ee51f2ea65d91b10d82f933",
       "summary": "1 SQL literals outside persistence",
       "details": {
         "count": 1,
@@ -6633,10 +6633,10 @@
       }
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:06ac2082f2c3919e",
+      "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
       "category": "type-ignore-usage",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "06ac2082f2c3919e9ae2ae13943eff1cb36dabce568b2aba331665020b58accb",
+      "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
       "summary": "2 type-ignore comments",
       "details": {
         "count": 2
@@ -6933,13 +6933,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:01a9a4b3aa7cef76",
+      "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:375a31befb74f1a2",
       "category": "typing-any-usage",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "01a9a4b3aa7cef76e3ed38628ca0e73e092474827cfb92a77d9c384fe28f361e",
-      "summary": "23 Any references",
+      "fingerprint": "375a31befb74f1a20f4894b8ee0242a4ba1194545ef0834a8511858dec51d0c4",
+      "summary": "32 Any references",
       "details": {
-        "count": 23
+        "count": 32
       }
     },
     {
@@ -10931,21 +10931,24 @@
       "module": "velvet_bot.app.auf_workspace_ui_install",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 120,
+      "loc": 130,
       "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 64,
+      "max_function_length": 69,
       "branch_count": 4,
       "internal_imports": [
         "velvet_bot",
         "velvet_bot.core.config.kie",
         "velvet_bot.domains.auf_runtime",
         "velvet_bot.domains.workspaces.service",
+        "velvet_bot.presentation.telegram.routers.workspace_auf",
+        "velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances",
         "velvet_bot.presentation.telegram.routers.workspace_auf_root"
       ],
-      "external_import_count": 6,
+      "external_import_count": 7,
       "aiogram_imports": [
+        "aiogram",
         "aiogram.filters",
         "aiogram.fsm.context",
         "aiogram.types"
@@ -11015,10 +11018,10 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/auf_workspace_ui_install.py:b0f46f097c4e6d88",
+          "id": "installed-sentinel:velvet_bot/app/auf_workspace_ui_install.py:20596da49067463d",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/auf_workspace_ui_install.py",
-          "fingerprint": "b0f46f097c4e6d883e7eeb28c00d1bf977d8d14c739fc090501a225cc1810052",
+          "fingerprint": "20596da49067463dc10fad4f5801a217ed229e0985df5fa5e20d826407d298f3",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
@@ -13133,7 +13136,7 @@
       "module": "velvet_bot.app.workspace_owner_generation_hotfix",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 305,
+      "loc": 330,
       "function_count": 12,
       "class_count": 0,
       "handler_count": 0,
@@ -13161,7 +13164,7 @@
         "grs_campaign_retry._retry_delays_for_error"
       ],
       "dynamic_import_count": 0,
-      "any_count": 23,
+      "any_count": 32,
       "cast_count": 0,
       "type_ignore_count": 2,
       "method_assign_ignore_count": 2,
@@ -13170,7 +13173,7 @@
       ],
       "install_calls": [
         {
-          "line": 261,
+          "line": 286,
           "call": "controller.install_scoped_auf_handlers"
         }
       ],
@@ -13208,40 +13211,40 @@
           "details": {}
         },
         {
-          "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:06ac2082f2c3919e",
+          "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
           "category": "method-assign-ignore",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "06ac2082f2c3919e9ae2ae13943eff1cb36dabce568b2aba331665020b58accb",
+          "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
           "summary": "2 method-assign ignores",
           "details": {
             "count": 2
           }
         },
         {
-          "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:06ac2082f2c3919e",
+          "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
           "category": "type-ignore-usage",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "06ac2082f2c3919e9ae2ae13943eff1cb36dabce568b2aba331665020b58accb",
+          "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
           "summary": "2 type-ignore comments",
           "details": {
             "count": 2
           }
         },
         {
-          "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:01a9a4b3aa7cef76",
+          "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:375a31befb74f1a2",
           "category": "typing-any-usage",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "01a9a4b3aa7cef76e3ed38628ca0e73e092474827cfb92a77d9c384fe28f361e",
-          "summary": "23 Any references",
+          "fingerprint": "375a31befb74f1a20f4894b8ee0242a4ba1194545ef0834a8511858dec51d0c4",
+          "summary": "32 Any references",
           "details": {
-            "count": 23
+            "count": 32
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:8632308cab117f0f",
+          "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:971f054f071c746f",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "8632308cab117f0fe791f5f91dbcd08279a6444931490686fb69b33e8b75161b",
+          "fingerprint": "971f054f071c746f8fd77235e9873a2688dc19e0efb5137ec44a6ea82be6bf1a",
           "summary": "8 _INSTALLED references",
           "details": {
             "count": 8
@@ -33512,16 +33515,74 @@
       ]
     },
     {
+      "path": "velvet_bot/presentation/telegram/routers/workspace_auf_provider_balances.py",
+      "module": "velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances",
+      "layer": "presentation",
+      "target_package": "presentation",
+      "loc": 280,
+      "function_count": 11,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 59,
+      "branch_count": 25,
+      "internal_imports": [
+        "velvet_bot.core.config.kie",
+        "velvet_bot.domains.auf_runtime",
+        "velvet_bot.domains.auf_wallet",
+        "velvet_bot.infrastructure.ai",
+        "velvet_bot.presentation.telegram.routers.workspace_auf",
+        "velvet_bot.workspace_ui"
+      ],
+      "external_import_count": 13,
+      "aiogram_imports": [
+        "aiogram.exceptions",
+        "aiogram.fsm.context",
+        "aiogram.types"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [
+        {
+          "line": 48,
+          "owner": "_byesu_api_key",
+          "call": "os.getenv"
+        },
+        {
+          "line": 58,
+          "owner": "_byesu_api_key",
+          "call": "os.getenv"
+        },
+        {
+          "line": 57,
+          "owner": "_byesu_api_key",
+          "call": "os.getenv"
+        }
+      ],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/presentation/telegram/routers/workspace_auf_root.py",
       "module": "velvet_bot.presentation.telegram.routers.workspace_auf_root",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 186,
+      "loc": 198,
       "function_count": 4,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 55,
-      "branch_count": 12,
+      "max_function_length": 67,
+      "branch_count": 13,
       "internal_imports": [
         "velvet_bot.core.config.kie",
         "velvet_bot.domains.auf_runtime",
@@ -39448,12 +39509,12 @@
       "module": "velvet_bot.runtime_stability",
       "layer": "root",
       "target_package": "infrastructure/<adapter>",
-      "loc": 332,
+      "loc": 342,
       "function_count": 13,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 71,
-      "branch_count": 24,
+      "max_function_length": 73,
+      "branch_count": 25,
       "internal_imports": [
         "velvet_bot.app.workers",
         "velvet_bot.domains.media_generation.worker",
@@ -39481,7 +39542,7 @@
       ],
       "install_calls": [
         {
-          "line": 298,
+          "line": 308,
           "call": "install_asyncio_exception_guard"
         }
       ],
@@ -39489,22 +39550,22 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 267,
+          "line": 277,
           "owner": "build_worker_manager_with_nbrb",
           "call": "os.getenv"
         },
         {
-          "line": 212,
+          "line": 222,
           "owner": "_nbrb_timeout_seconds",
           "call": "os.getenv"
         },
         {
-          "line": 201,
+          "line": 211,
           "owner": "_nbrb_rate_enabled",
           "call": "os.getenv"
         },
         {
-          "line": 264,
+          "line": 274,
           "owner": "build_worker_manager_with_nbrb",
           "call": "os.getenv"
         }
@@ -39512,32 +39573,32 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 322,
+          "line": 332,
           "owner": "install_runtime_stability",
           "call": "_install_nbrb_worker_wrapper"
         },
         {
-          "line": 235,
+          "line": 245,
           "owner": "build_worker_manager_with_nbrb",
           "call": "_ORIGINAL_BUILD_WORKER_MANAGER"
         },
         {
-          "line": 271,
+          "line": 281,
           "owner": "build_worker_manager_with_nbrb",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 251,
+          "line": 261,
           "owner": "build_worker_manager_with_nbrb",
           "call": "kie_workers.append"
         }
       ],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/runtime_stability.py:642a70794a381769",
+          "id": "sql-outside-persistence:velvet_bot/runtime_stability.py:1212762a600aafb2",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/runtime_stability.py",
-          "fingerprint": "642a70794a38176929c072a051ba279787b27b78fa3cdbab1e9d4953668ab50b",
+          "fingerprint": "1212762a600aafb25d8f3008457ca4492a4dd2493ee51f2ea65d91b10d82f933",
           "summary": "1 SQL literals outside persistence",
           "details": {
             "count": 1,
@@ -39591,10 +39652,10 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/runtime_stability.py:09db2a2e8b8d165b",
+          "id": "installed-sentinel:velvet_bot/runtime_stability.py:1bb87eb3947a5a3c",
           "category": "installed-sentinel",
           "path": "velvet_bot/runtime_stability.py",
-          "fingerprint": "09db2a2e8b8d165b7b6c2be7ffdf7dd8c560564c5a9c31ddd7272aefb7aae695",
+          "fingerprint": "1bb87eb3947a5a3c3024e902dfe8dc2029dce37a49b6c08bfa8c0c213a17a4c9",
           "summary": "7 _INSTALLED references",
           "details": {
             "count": 7
