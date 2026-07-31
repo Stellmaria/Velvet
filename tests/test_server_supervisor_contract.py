@@ -105,7 +105,8 @@ class ServerSupervisorContractTests(unittest.TestCase):
             self.installer,
         )
         self.assertIn("secrets.token_urlsafe(48)", self.installer)
-        self.assertIn("systemctl enable --now velvet-server-supervisor.service", self.installer)
+        self.assertIn("systemctl enable velvet-server-supervisor.service", self.installer)
+        self.assertIn("systemctl restart velvet-server-supervisor.service", self.installer)
         self.assertIn("systemctl reload velvet-compose.service", self.installer)
         self.assertNotIn(
             "install -d -m 0755 -o velvet -g velvet",
