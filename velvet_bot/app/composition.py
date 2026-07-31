@@ -89,6 +89,7 @@ _FEATURE_STAGE_NAMES = (
     "install_auf_photo_ratio_callback_fix",
     "install_auf_user_portal",
     "install_auf_owner_pricing_ui",
+    "install_auf_photo_model_modes",
     "install_original_image_delivery_hotfix",
     "install_original_video_delivery_hotfix",
     "install_auf_result_delivery_recovery",
@@ -111,6 +112,7 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
     )
     from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
     from velvet_bot.app.auf_owner_pricing_ui_install import install_auf_owner_pricing_ui
+    from velvet_bot.app.auf_photo_model_modes import install_auf_photo_model_modes
     from velvet_bot.app.auf_photo_ratio_callback_fix import (
         install_auf_photo_ratio_callback_fix,
     )
@@ -175,6 +177,12 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         CompositionStage(
             "install_auf_owner_pricing_ui",
             install_auf_owner_pricing_ui,
+        ),
+        # Install after the legacy photo and wallet layers so the model-first flow
+        # becomes the final photo controller before delivery/privacy wrappers.
+        CompositionStage(
+            "install_auf_photo_model_modes",
+            install_auf_photo_model_modes,
         ),
         CompositionStage(
             "install_original_image_delivery_hotfix",
