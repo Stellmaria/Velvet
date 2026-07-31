@@ -1,46 +1,325 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from uuid import UUID
-from velvet_bot.application.media_delivery import MediaDeliveryJob, MediaDeliveryStatus, MediaDeliveryStepStatus
-from velvet_bot.application.media_tasks import task_payload_mapping, task_result_urls
-from velvet_bot.database import Database
-from velvet_bot.infrastructure.media_delivery_repository_helpers import _TERMINAL_STATUSES, _VIDEO_MODELS, _error_text, _job_from_rows, _json, _text, delivery_metadata, first_text, media_kind, optional_int
+
+from velvet_bot.application.media_delivery import (
+    MediaDeliveryInvariantError,
+    MediaDeliveryStatus,
+    MediaDeliveryStepStatus,
+)
+from velvet_bot.infrastructure.media_delivery_repository_helpers import (
+    _TERMINAL_STATUSES,
+    _error_fields,
+    _text,
+)
+
 
 class MediaDeliveryRepositoryFinishMixin:
-
-    async def mark_download(self, *, task_id: UUID, result_index: int, status: MediaDeliveryStepStatus, error: BaseException | None=None, content_type: str | None=None, file_name: str | None=None) -> None:
-        url_status = 'expired' if status is MediaDeliveryStepStatus.EXPIRED else 'unreachable' if status is MediaDeliveryStepStatus.FAILED else 'available'
+    async def mark_download(
+        self,
+        *,
+        task_id: UUID,
+        result_index: int,
+        status: MediaDeliveryStepStatus,
+        error: BaseException | None = None,
+        content_type: str | None = None,
+        file_name: str | None = None,
+    ) -> None:
+        message, code, fingerprint = _error_fields(error, phase="download")
         async with self._database.acquire() as connection:
-            await connection.execute("\n                UPDATE media_delivery_items\n                SET download_status=$3::VARCHAR,\n                    url_status=$4::VARCHAR,\n                    download_attempts=download_attempts+1,\n                    download_error=$5::TEXT,\n                    content_type=COALESCE($6::VARCHAR, content_type),\n                    file_name=COALESCE($7::TEXT, file_name),\n                    downloaded_at=CASE WHEN $3='success' THEN NOW() ELSE downloaded_at END,\n                    updated_at=NOW()\n                WHERE task_id=$1::UUID AND result_index=$2::INTEGER\n                ", task_id, int(result_index), status.value, url_status, _error_text(error), content_type, file_name)
+            result = await connection.execute(
+                """
+                UPDATE media_delivery_items
+                SET download_status=CASE
+                        WHEN download_status='success' THEN 'success'
+                        WHEN download_status='expired' THEN 'expired'
+                        ELSE $3::VARCHAR
+                    END,
+                    url_status=CASE
+                        WHEN download_status='success' THEN url_status
+                        WHEN download_status='expired' THEN 'expired'
+                        WHEN $3='expired' THEN 'expired'
+                        WHEN $3='failed' THEN 'unreachable'
+                        WHEN $3='success' THEN 'available'
+                        ELSE url_status
+                    END,
+                    download_attempts=download_attempts+CASE
+                        WHEN download_status IN ('pending','failed') THEN 1
+                        ELSE 0
+                    END,
+                    download_error=CASE
+                        WHEN download_status IN ('success','expired') THEN download_error
+                        WHEN $3='success' THEN NULL
+                        ELSE $4::TEXT
+                    END,
+                    download_error_code=CASE
+                        WHEN download_status IN ('success','expired') THEN download_error_code
+                        WHEN $3='success' THEN NULL
+                        ELSE $5::VARCHAR
+                    END,
+                    download_error_fingerprint=CASE
+                        WHEN download_status IN ('success','expired')
+                            THEN download_error_fingerprint
+                        WHEN $3='success' THEN NULL
+                        ELSE $6::VARCHAR
+                    END,
+                    content_type=COALESCE($7::VARCHAR, content_type),
+                    file_name=COALESCE($8::TEXT, file_name),
+                    downloaded_at=CASE
+                        WHEN $3='success' THEN COALESCE(downloaded_at, NOW())
+                        ELSE downloaded_at
+                    END,
+                    updated_at=NOW()
+                WHERE task_id=$1::UUID AND result_index=$2::INTEGER
+                """,
+                task_id,
+                int(result_index),
+                status.value,
+                message,
+                code,
+                fingerprint,
+                content_type,
+                file_name,
+            )
+        _require_updated(result, operation="mark_download")
 
-    async def mark_channel(self, *, task_id: UUID, result_index: int, channel: str, status: MediaDeliveryStepStatus, error: BaseException | None=None) -> None:
-        if channel not in {'original', 'preview'}:
-            raise ValueError(f'Unsupported delivery channel: {channel}')
-        status_column = f'{channel}_status'
-        attempts_column = f'{channel}_attempts'
-        error_column = f'{channel}_error'
-        sent_column = f'{channel}_sent_at'
+    async def mark_channel(
+        self,
+        *,
+        task_id: UUID,
+        result_index: int,
+        channel: str,
+        status: MediaDeliveryStepStatus,
+        error: BaseException | None = None,
+    ) -> None:
+        if channel not in {"original", "preview"}:
+            raise MediaDeliveryInvariantError(
+                f"Unsupported delivery channel contract: {channel!r}"
+            )
+        status_column = f"{channel}_status"
+        attempts_column = f"{channel}_attempts"
+        error_column = f"{channel}_error"
+        error_code_column = f"{channel}_error_code"
+        error_fingerprint_column = f"{channel}_error_fingerprint"
+        sent_column = f"{channel}_sent_at"
+        message, code, fingerprint = _error_fields(
+            error,
+            phase=f"{channel}_delivery",
+        )
         async with self._database.acquire() as connection:
-            await connection.execute(f"\n                UPDATE media_delivery_items\n                SET {status_column}=$3::VARCHAR,\n                    {attempts_column}={attempts_column}+1,\n                    {error_column}=$4::TEXT,\n                    {sent_column}=CASE WHEN $3='success' THEN NOW() ELSE {sent_column} END,\n                    updated_at=NOW()\n                WHERE task_id=$1::UUID AND result_index=$2::INTEGER\n                ", task_id, int(result_index), status.value, _error_text(error))
+            result = await connection.execute(
+                f"""
+                UPDATE media_delivery_items
+                SET {status_column}=CASE
+                        WHEN {status_column}='success' THEN 'success'
+                        WHEN {status_column}='expired' THEN 'expired'
+                        ELSE $3::VARCHAR
+                    END,
+                    {attempts_column}={attempts_column}+CASE
+                        WHEN $3='uncertain'
+                         AND {status_column} IN ('pending','failed') THEN 1
+                        ELSE 0
+                    END,
+                    {error_column}=CASE
+                        WHEN {status_column} IN ('success','expired')
+                            THEN {error_column}
+                        WHEN $3='success' THEN NULL
+                        ELSE $4::TEXT
+                    END,
+                    {error_code_column}=CASE
+                        WHEN {status_column} IN ('success','expired')
+                            THEN {error_code_column}
+                        WHEN $3='success' THEN NULL
+                        ELSE $5::VARCHAR
+                    END,
+                    {error_fingerprint_column}=CASE
+                        WHEN {status_column} IN ('success','expired')
+                            THEN {error_fingerprint_column}
+                        WHEN $3='success' THEN NULL
+                        ELSE $6::VARCHAR
+                    END,
+                    {sent_column}=CASE
+                        WHEN $3='success' THEN COALESCE({sent_column}, NOW())
+                        ELSE {sent_column}
+                    END,
+                    updated_at=NOW()
+                WHERE task_id=$1::UUID AND result_index=$2::INTEGER
+                """,
+                task_id,
+                int(result_index),
+                status.value,
+                message,
+                code,
+                fingerprint,
+            )
+        _require_updated(result, operation=f"mark_{channel}")
 
-    async def mark_notification(self, *, task_id: UUID, status: MediaDeliveryStepStatus, error: BaseException | None=None) -> None:
+    async def mark_notification(
+        self,
+        *,
+        task_id: UUID,
+        status: MediaDeliveryStepStatus,
+        error: BaseException | None = None,
+    ) -> None:
+        message, code, fingerprint = _error_fields(error, phase="notification")
         async with self._database.acquire() as connection:
-            await connection.execute('\n                UPDATE media_delivery_jobs\n                SET notification_status=$2::VARCHAR,\n                    notification_error=$3::TEXT,\n                    updated_at=NOW()\n                WHERE task_id=$1::UUID\n                ', task_id, status.value, _error_text(error))
+            result = await connection.execute(
+                """
+                UPDATE media_delivery_jobs
+                SET notification_status=CASE
+                        WHEN notification_status='success' THEN 'success'
+                        WHEN notification_status='expired' THEN 'expired'
+                        ELSE $2::VARCHAR
+                    END,
+                    notification_error=CASE
+                        WHEN notification_status IN ('success','expired')
+                            THEN notification_error
+                        WHEN $2='success' THEN NULL
+                        ELSE $3::TEXT
+                    END,
+                    notification_error_code=CASE
+                        WHEN notification_status IN ('success','expired')
+                            THEN notification_error_code
+                        WHEN $2='success' THEN NULL
+                        ELSE $4::VARCHAR
+                    END,
+                    notification_error_fingerprint=CASE
+                        WHEN notification_status IN ('success','expired')
+                            THEN notification_error_fingerprint
+                        WHEN $2='success' THEN NULL
+                        ELSE $5::VARCHAR
+                    END,
+                    updated_at=NOW()
+                WHERE task_id=$1::UUID
+                """,
+                task_id,
+                status.value,
+                message,
+                code,
+                fingerprint,
+            )
+        _require_updated(result, operation="mark_notification")
 
-    async def finish(self, *, task_id: UUID, worker_id: str, status: MediaDeliveryStatus, last_error: str | None, retry_delay_seconds: int | None) -> None:
+    async def finish(
+        self,
+        *,
+        task_id: UUID,
+        worker_id: str,
+        status: MediaDeliveryStatus,
+        error: BaseException | None,
+        retry_delay_seconds: int | None,
+    ) -> None:
         retry_delay = max(0, int(retry_delay_seconds or 0))
         terminal = status.value in _TERMINAL_STATUSES
+        message, code, fingerprint = _error_fields(error, phase="delivery")
         async with self._database.acquire() as connection:
-            await connection.execute("\n                UPDATE media_delivery_jobs\n                SET status=$3::VARCHAR,\n                    last_error=$4::TEXT,\n                    next_attempt_at=CASE\n                        WHEN $5::INTEGER > 0\n                            THEN NOW()+($5::INTEGER*INTERVAL '1 second')\n                        ELSE NOW()\n                    END,\n                    locked_by=NULL,\n                    locked_at=NULL,\n                    completed_at=CASE WHEN $6::BOOLEAN THEN NOW() ELSE NULL END,\n                    updated_at=NOW()\n                WHERE task_id=$1::UUID AND locked_by=$2::VARCHAR\n                ", task_id, _text(worker_id, 'media-delivery')[:160], status.value, (last_error or '')[-4000:] or None, retry_delay, terminal)
+            result = await connection.execute(
+                """
+                UPDATE media_delivery_jobs
+                SET status=CASE
+                        WHEN status IN ('delivered','partial','expired','failed')
+                            THEN status
+                        ELSE $3::VARCHAR
+                    END,
+                    last_error=CASE
+                        WHEN status IN ('delivered','partial','expired','failed')
+                            THEN last_error
+                        ELSE $4::TEXT
+                    END,
+                    last_error_code=CASE
+                        WHEN status IN ('delivered','partial','expired','failed')
+                            THEN last_error_code
+                        ELSE $5::VARCHAR
+                    END,
+                    last_error_fingerprint=CASE
+                        WHEN status IN ('delivered','partial','expired','failed')
+                            THEN last_error_fingerprint
+                        ELSE $6::VARCHAR
+                    END,
+                    next_attempt_at=CASE
+                        WHEN $7::INTEGER > 0
+                            THEN NOW()+($7::INTEGER*INTERVAL '1 second')
+                        ELSE NOW()
+                    END,
+                    locked_by=NULL,
+                    locked_at=NULL,
+                    completed_at=CASE
+                        WHEN status IN ('delivered','partial','expired','failed')
+                            THEN completed_at
+                        WHEN $8::BOOLEAN THEN COALESCE(completed_at, NOW())
+                        ELSE NULL
+                    END,
+                    updated_at=NOW()
+                WHERE task_id=$1::UUID AND locked_by=$2::VARCHAR
+                """,
+                task_id,
+                _text(worker_id, "media-delivery")[:160],
+                status.value,
+                message,
+                code,
+                fingerprint,
+                retry_delay,
+                terminal,
+            )
+        _require_updated(result, operation="finish_delivery_claim")
 
     async def reset_for_redelivery(self, *, task_id: UUID, chat_id: int) -> bool:
         async with self._database.acquire() as connection:
             async with connection.transaction():
-                result = await connection.execute("\n                    UPDATE media_delivery_jobs\n                    SET chat_id=$2::BIGINT,\n                        status='retry',\n                        attempt_count=0,\n                        notification_status='pending',\n                        notification_error=NULL,\n                        last_error=NULL,\n                        next_attempt_at=NOW(),\n                        locked_by=NULL,\n                        locked_at=NULL,\n                        completed_at=NULL,\n                        updated_at=NOW()\n                    WHERE task_id=$1::UUID\n                    ", task_id, int(chat_id))
-                if not result.endswith(' 1'):
+                result = await connection.execute(
+                    """
+                    UPDATE media_delivery_jobs
+                    SET chat_id=$2::BIGINT,
+                        status='retry',
+                        attempt_count=0,
+                        notification_status='pending',
+                        notification_error=NULL,
+                        notification_error_code=NULL,
+                        notification_error_fingerprint=NULL,
+                        last_error=NULL,
+                        last_error_code=NULL,
+                        last_error_fingerprint=NULL,
+                        next_attempt_at=NOW(),
+                        locked_by=NULL,
+                        locked_at=NULL,
+                        completed_at=NULL,
+                        updated_at=NOW()
+                    WHERE task_id=$1::UUID
+                    """,
+                    task_id,
+                    int(chat_id),
+                )
+                if not result.endswith(" 1"):
                     return False
-                await connection.execute("\n                    UPDATE media_delivery_items\n                    SET url_status='available',\n                        download_status='pending',\n                        original_status='pending',\n                        preview_status='pending',\n                        download_error=NULL,\n                        original_error=NULL,\n                        preview_error=NULL,\n                        updated_at=NOW()\n                    WHERE task_id=$1::UUID\n                    ", task_id)
+                await connection.execute(
+                    """
+                    UPDATE media_delivery_items
+                    SET url_status='available',
+                        download_status='pending',
+                        original_status='pending',
+                        preview_status='pending',
+                        download_error=NULL,
+                        download_error_code=NULL,
+                        download_error_fingerprint=NULL,
+                        original_error=NULL,
+                        original_error_code=NULL,
+                        original_error_fingerprint=NULL,
+                        preview_error=NULL,
+                        preview_error_code=NULL,
+                        preview_error_fingerprint=NULL,
+                        updated_at=NOW()
+                    WHERE task_id=$1::UUID
+                    """,
+                    task_id,
+                )
         return True
+
+
+def _require_updated(result: str, *, operation: str) -> None:
+    if not str(result).endswith(" 1"):
+        raise MediaDeliveryInvariantError(
+            f"Media delivery state transition lost its row: {operation}"
+        )
+
 
 __all__ = ("MediaDeliveryRepositoryFinishMixin",)
