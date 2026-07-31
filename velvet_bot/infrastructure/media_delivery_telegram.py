@@ -3,16 +3,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import urllib.error
+from collections.abc import Awaitable, Callable
 from html import escape
+from typing import TypeVar
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import BufferedInputFile
 
 from velvet_bot.application.media_delivery import (
     DownloadedMedia,
     MediaDeliveryItem,
     MediaDeliveryJob,
+    MediaDeliveryTransportError,
     MediaUrlExpired,
 )
 from velvet_bot.domains.media_generation.file_delivery_worker import (
@@ -29,6 +32,7 @@ from velvet_bot.presentation.telegram.shared.retry import (
 )
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 class TelegramMediaDeliveryTransport:
@@ -60,7 +64,14 @@ class TelegramMediaDeliveryTransport:
                 raise MediaUrlExpired(
                     f"URL результата {item.result_index} истёк (HTTP {error.code})."
                 ) from error
-            raise
+            raise self._error("download_http", error, retryable=500 <= error.code) from error
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            OSError,
+            ValueError,
+        ) as error:
+            raise self._error("download", error, retryable=True) from error
         filename = result_filename(
             url=item.result_url,
             provider_task_id=job.provider_task_id,
@@ -82,7 +93,8 @@ class TelegramMediaDeliveryTransport:
         media: DownloadedMedia,
     ) -> None:
         self._require_chat(job)
-        await self._retry(
+        await self._telegram_call(
+            "send_original",
             "media original",
             lambda: self._bot.send_document(
                 job.chat_id,
@@ -101,7 +113,8 @@ class TelegramMediaDeliveryTransport:
     ) -> None:
         self._require_chat(job)
         if job.media_kind == "video":
-            await self._retry(
+            await self._telegram_call(
+                "send_video_preview",
                 "media video preview",
                 lambda: self._bot.send_video(
                     job.chat_id,
@@ -111,7 +124,8 @@ class TelegramMediaDeliveryTransport:
                 ),
             )
         else:
-            await self._retry(
+            await self._telegram_call(
+                "send_image_preview",
                 "media image preview",
                 lambda: self._bot.send_photo(
                     job.chat_id,
@@ -132,7 +146,8 @@ class TelegramMediaDeliveryTransport:
             "по сохранённому URL провайдера."
         )
         if job.media_kind == "video":
-            await self._retry(
+            await self._telegram_call(
+                "send_direct_video_preview",
                 "direct video preview",
                 lambda: self._bot.send_video(
                     job.chat_id,
@@ -142,7 +157,8 @@ class TelegramMediaDeliveryTransport:
                 ),
             )
         else:
-            await self._retry(
+            await self._telegram_call(
+                "send_direct_image_preview",
                 "direct image preview",
                 lambda: self._bot.send_photo(
                     job.chat_id,
@@ -153,7 +169,8 @@ class TelegramMediaDeliveryTransport:
 
     async def notify(self, *, job: MediaDeliveryJob, text: str) -> None:
         self._require_chat(job)
-        await self._retry(
+        await self._telegram_call(
+            "notify",
             "media delivery notification",
             lambda: self._bot.send_message(
                 job.chat_id,
@@ -163,7 +180,26 @@ class TelegramMediaDeliveryTransport:
             ),
         )
 
-    async def _retry(self, operation_name: str, operation):
+    async def _telegram_call(
+        self,
+        code: str,
+        operation_name: str,
+        operation: Callable[[], Awaitable[T]],
+    ) -> T:
+        try:
+            return await self._retry(operation_name, operation)
+        except asyncio.CancelledError:
+            raise
+        except TelegramBadRequest as error:
+            raise self._error(code, error, retryable=False) from error
+        except (TelegramAPIError, TimeoutError, OSError, RuntimeError) as error:
+            raise self._error(code, error, retryable=True) from error
+
+    async def _retry(
+        self,
+        operation_name: str,
+        operation: Callable[[], Awaitable[T]],
+    ) -> T:
         policy = TelegramRetryPolicy(
             attempts=self._retry_attempts,
             delays=tuple(
@@ -174,11 +210,11 @@ class TelegramMediaDeliveryTransport:
 
         def report_retry(next_attempt: int, error: TelegramAPIError) -> None:
             logger.warning(
-                "Telegram media delivery retry operation=%s attempt=%s/%s: %s",
+                "Telegram media delivery retry operation=%s attempt=%s/%s type=%s",
                 operation_name,
                 next_attempt,
                 self._retry_attempts,
-                error,
+                type(error).__name__,
             )
 
         return await retry_telegram_operation(
@@ -188,9 +224,32 @@ class TelegramMediaDeliveryTransport:
         )
 
     @staticmethod
+    def _error(
+        code: str,
+        error: BaseException,
+        *,
+        retryable: bool,
+    ) -> MediaDeliveryTransportError:
+        return MediaDeliveryTransportError(
+            f"Media transport operation {code} failed ({type(error).__name__}).",
+            code=f"transport_{code}_failed",
+            retryable=retryable,
+            public_message=(
+                "Telegram временно не принял сохранённый результат."
+                if retryable
+                else "Telegram отклонил формат сохранённого результата."
+            ),
+        )
+
+    @staticmethod
     def _require_chat(job: MediaDeliveryJob) -> None:
         if job.chat_id is None:
-            raise RuntimeError("Для доставки результата не сохранён chat_id.")
+            raise MediaDeliveryTransportError(
+                "Media delivery job has no chat_id.",
+                code="transport_chat_missing",
+                retryable=False,
+                public_message="Для сохранённого результата не найден чат доставки.",
+            )
 
     @staticmethod
     def _model_name(job: MediaDeliveryJob) -> str:
@@ -212,8 +271,6 @@ class TelegramMediaDeliveryTransport:
             f"Предпросмотр · <b>{escape(self._model_name(job))}</b>\n"
             f"Результат: <b>{item.result_index}/{len(job.items)}</b>"
         )
-
-
 
 
 __all__ = ("TelegramMediaDeliveryTransport",)
