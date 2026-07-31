@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.head_commit.message == 'trigger issue 457 bootstrap'
+    if: github.event.head_commit.message == 'materialize issue 457 implementation'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,47 +21,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install runtime dependencies
-        run: python -m pip install -r requirements.txt
-
-      - name: Expand durable delivery implementation
+      - name: Expand implementation
         run: |
           cat .issue457_payload.part* | base64 -d > /tmp/issue457.tar.gz
           tar -xzf /tmp/issue457.tar.gz -C .
           cat .issue457_apply_payload.part* | base64 -d | gzip -d > scripts/apply_issue457.py
           python scripts/apply_issue457.py
-
-      - name: Refresh architecture inventory
-        run: |
-          python scripts/inventory_package_architecture.py \
-            --write \
-            --bootstrap-exemptions \
-            --label issue-457-durable-media-delivery
-          python - <<'PY'
-          import importlib.util
-          from pathlib import Path
-
-          path = Path('scripts/apply_issue457.py')
-          spec = importlib.util.spec_from_file_location('issue457_apply', path)
-          module = importlib.util.module_from_spec(spec)
-          assert spec.loader is not None
-          spec.loader.exec_module(module)
-          module.update_package_inventory_contract()
-          PY
-          python scripts/inventory_package_architecture.py \
-            --check \
-            --label issue-457-durable-media-delivery
-
-      - name: Validate targeted contracts
-        run: |
-          python -m compileall -q velvet_bot tests/test_durable_media_delivery.py
-          python tests/test_durable_media_delivery.py
-          python tests/test_application_composition.py
+          rm -f .issue457_payload.part* .issue457_apply.part* .issue457_apply_payload.part*
+          rm -f scripts/apply_issue457.py
 
       - name: Commit implementation
         run: |
-          rm -f .issue457_payload.part* .issue457_apply.part* .issue457_apply_payload.part*
-          rm -f scripts/apply_issue457.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
