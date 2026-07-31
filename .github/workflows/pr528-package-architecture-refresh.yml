@@ -1,6 +1,9 @@
 name: pr528 package architecture refresh
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - agent/fix-media-result-auto-delivery
