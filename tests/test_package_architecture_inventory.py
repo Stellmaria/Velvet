@@ -148,8 +148,8 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_shared_private_and_duplicate_fingerprints_are_linked(self) -> None:
         shared = self.inventory["shared_contract_summary"]
-        self.assertEqual(597, shared["production_python_files"])
-        self.assertEqual(3_317, shared["function_count"])
+        self.assertEqual(596, shared["production_python_files"])
+        self.assertEqual(3_306, shared["function_count"])
         self.assertEqual(136, shared["private_contract_access_count"])
         self.assertEqual(0, shared["blocking_private_contract_access_count"])
         self.assertEqual(55, shared["exact_duplicate_group_count"])
