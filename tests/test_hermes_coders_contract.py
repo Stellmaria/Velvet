@@ -80,6 +80,17 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertNotIn("api_key:", source)
         self.assertIn("cwd: /workspace", source)
 
+    def test_github_token_passthrough_is_explicit_and_narrow(self) -> None:
+        config = (ROOT / "config.yaml").read_text(encoding="utf-8")
+        compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("env_passthrough:", config)
+        self.assertIn("- GH_TOKEN", config)
+        self.assertIn("TERMINAL_ENV_PASSTHROUGH: '[\"GH_TOKEN\"]'", compose)
+        self.assertNotIn("BYESU_HERMES_CODEX_API_KEY\"]", compose)
+        self.assertNotIn("BYESU_HERMES_GPT_PRO_API_KEY\"]", compose)
+        self.assertNotIn("TELEGRAM_BOT_TOKEN\"]", compose)
+
     def test_preflight_requires_distinct_tokens_and_read_only_roles(self) -> None:
         source = (ROOT / "preflight.py").read_text(encoding="utf-8")
         self.assertIn("TELEGRAM_BOT_TOKEN", source)

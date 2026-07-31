@@ -38,6 +38,8 @@ model_aliases:
 
 terminal:
   cwd: /workspace
+  env_passthrough:
+    - GH_TOKEN
 
 display:
   tool_progress_command: true
