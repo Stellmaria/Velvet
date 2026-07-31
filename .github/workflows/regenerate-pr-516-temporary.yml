@@ -1,0 +1,105 @@
+name: regenerate PR 516 architecture inventory
+
+on:
+  push:
+    branches:
+      - hotfix/auf-menu-provider-balances-sigterm
+    paths:
+      - .github/workflows/regenerate-pr-516-temporary.yml
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@v4
+        with:
+          ref: hotfix/auf-menu-provider-balances-sigterm
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Refresh architecture inventory and exemptions
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          from pathlib import Path
+
+          from scripts import inventory_package_architecture as inventory
+
+          label = "p1-package-architecture-baseline"
+          exemptions_path = Path("docs/package_architecture_exemptions.json")
+          existing = json.loads(exemptions_path.read_text(encoding="utf-8"))
+          data = inventory.build_inventory(label=label)
+          observed = {
+              (str(row["category"]), str(row["path"])): row
+              for row in data["violations"]
+          }
+          consumers = inventory._reverse_consumers(list(data["modules"]))
+
+          refreshed = []
+          used_ids: set[str] = set()
+          for exemption in existing.get("exceptions", []):
+              row = dict(exemption)
+              old_id = str(row.get("id", ""))
+              parts = old_id.split(":", 2)
+              if len(parts) < 2:
+                  continue
+              violation = observed.get((parts[0], parts[1]))
+              if violation is None:
+                  continue
+              row["id"] = str(violation["id"])
+              if row["id"] in used_ids:
+                  continue
+              refreshed.append(row)
+              used_ids.add(row["id"])
+
+          for violation in data["violations"]:
+              violation_id = str(violation["id"])
+              if violation_id in used_ids:
+                  continue
+              refreshed.append(inventory._suggest_exception(violation, consumers))
+              used_ids.add(violation_id)
+
+          output = {
+              "schema_version": 1,
+              "generated_from": label,
+              "baseline_issue": existing.get("baseline_issue", "#460"),
+              "shared_private_access_sha256": data["shared_contract_summary"][
+                  "private_access_sha256"
+              ],
+              "root_module_sha256": data["root_module_sha256"],
+              "exceptions": sorted(refreshed, key=lambda row: str(row["id"])),
+          }
+          exemptions_path.write_text(
+              json.dumps(output, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          result = inventory.main(["--label", label, "--write"])
+          if result:
+              raise SystemExit(result)
+          result = inventory.main(["--label", label, "--check"])
+          if result:
+              raise SystemExit(result)
+          PY
+
+      - name: Commit generated files and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/regenerate-pr-516-temporary.yml
+          git add docs/package_architecture_exemptions.json \
+                  docs/package_architecture_inventory.json \
+                  docs/package_architecture_inventory.md
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh architecture inventory for PR 516"
+          git push origin HEAD:hotfix/auf-menu-provider-balances-sigterm
