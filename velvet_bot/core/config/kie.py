@@ -120,6 +120,10 @@ def load_kie_settings() -> KieSettings:
     usd_to_rub = _env_decimal("KIE_USD_TO_RUB", "0")
     credit_usd = _env_decimal("KIE_CREDIT_USD", "0.005")
     credit_byn = _env_decimal("KIE_CREDIT_BYN", "0.019")
+    if credit_usd <= 0:
+        raise RuntimeError("KIE_CREDIT_USD должен быть больше нуля.")
+    if credit_byn <= 0:
+        raise RuntimeError("KIE_CREDIT_BYN должен быть больше нуля.")
     if enabled and not api_key:
         raise RuntimeError("KIE_ENABLED=true требует непустой KIE_API_KEY.")
     if enabled and not grs_api_key:
@@ -128,10 +132,6 @@ def load_kie_settings() -> KieSettings:
         )
     if enabled and usd_to_rub <= 0:
         raise RuntimeError("KIE_ENABLED=true требует KIE_USD_TO_RUB больше нуля.")
-    if enabled and credit_usd <= 0:
-        raise RuntimeError("KIE_ENABLED=true требует KIE_CREDIT_USD больше нуля.")
-    if enabled and credit_byn <= 0:
-        raise RuntimeError("KIE_ENABLED=true требует KIE_CREDIT_BYN больше нуля.")
     if enabled:
         required_routes = (
             (KieModelAlias.NANO_BANANA_2, KieInputMode.PHOTO_TEXT),
