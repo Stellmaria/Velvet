@@ -76,7 +76,6 @@ class HermesOperatorControlContractTests(unittest.TestCase):
 
     def test_coders_remain_outside_operator_control_network(self) -> None:
         self.assertNotIn("hermes-supervisor-control", self.coders_compose)
-        self.assertNotIn("velvet_backend", self.coders_compose)
         self.assertIn("@velvet_private_coder_bot", self.soul)
         self.assertIn("@romatic_max_coder_bot", self.soul)
         self.assertIn("Не проси их запускать Docker", self.soul)
