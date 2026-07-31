@@ -53,7 +53,9 @@ def _path(value: str, project_dir: Path) -> Path:
     candidate = Path(value.strip() or ".").expanduser()
     if not candidate.is_absolute():
         candidate = project_dir / candidate
-    return candidate.resolve()
+    # Keep lexical identity so DeletionPolicy can reject configured symlinks
+    # instead of silently following them to an external target.
+    return Path(os.path.abspath(os.path.normpath(candidate)))
 
 
 def _paths_env(name: str, defaults: tuple[str, ...], project_dir: Path) -> tuple[Path, ...]:
