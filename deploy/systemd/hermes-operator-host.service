@@ -1,0 +1,26 @@
+[Unit]
+Description=Fixed start bridge for the trusted Velvet Hermes operator
+Requires=docker.service
+After=docker.service network-online.target velvet-compose.service romatic-compose.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet
+EnvironmentFile=/srv/hermes-operator-control/operator.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /srv/velvet/deploy/hermes-operator/host_start.py
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/hermes-operator-control/runtime
+
+[Install]
+WantedBy=multi-user.target

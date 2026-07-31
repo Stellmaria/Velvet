@@ -1,0 +1,47 @@
+name: hermes-operator-control
+
+services:
+  hermes-ops-gateway:
+    image: ${HERMES_OPS_GATEWAY_IMAGE:-velvet-hermes-ops-gateway:local}
+    build:
+      context: ../..
+      dockerfile: deploy/hermes-operator/Dockerfile
+    restart: unless-stopped
+    user: "10001:${HERMES_OPS_SOCKET_GID:-10001}"
+    env_file:
+      - ${HERMES_OPS_ENV_FILE:-/srv/hermes-operator-control/operator.env}
+    volumes:
+      - ${HERMES_OPS_HOST_RUNTIME_DIR:-/srv/hermes-operator-control/runtime}:${HERMES_OPS_HOST_RUNTIME_DIR:-/srv/hermes-operator-control/runtime}
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8877/health', timeout=3).read()
+      interval: 15s
+      timeout: 4s
+      retries: 4
+      start_period: 10s
+    mem_limit: ${HERMES_OPS_MEMORY_LIMIT:-128m}
+    cpus: ${HERMES_OPS_CPU_LIMIT:-0.25}
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      velvet-backend:
+        aliases:
+          - hermes-ops-gateway
+      supervisor-control: {}
+
+networks:
+  velvet-backend:
+    external: true
+    name: ${VELVET_BACKEND_NETWORK:-velvet_backend}
+  supervisor-control:
+    external: true
+    name: ${HERMES_SUPERVISOR_NETWORK:-hermes-supervisor-control}
