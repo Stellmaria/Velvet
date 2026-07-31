@@ -2,151 +2,222 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
+import threading
 import unittest
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-GATEWAY_PATH = ROOT / "deploy/hermes-operator/gateway.py"
-SPEC = importlib.util.spec_from_file_location("hermes_operator_gateway_tested", GATEWAY_PATH)
-if SPEC is None or SPEC.loader is None:
-    raise RuntimeError("Cannot load Hermes operator gateway module")
-GATEWAY = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = GATEWAY
-SPEC.loader.exec_module(GATEWAY)
 
 
-class RecordingClient(GATEWAY.UpstreamClient):
-    def __init__(
-        self,
-        status_payload: dict[str, Any],
-        *,
-        status_code: int = HTTPStatus.OK,
-    ) -> None:
-        projects = {
-            "velvet": GATEWAY.Project(
-                base_url="http://velvet.invalid",
-                token="v" * 24,
+def _load(name: str, path: Path) -> Any:
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot load module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+GATEWAY = _load(
+    "hermes_operator_gateway_tested",
+    ROOT / "deploy/hermes-operator/gateway.py",
+)
+HOST = _load(
+    "hermes_operator_host_tested",
+    ROOT / "deploy/hermes-operator/host_start.py",
+)
+
+
+class FakeStartRuntime(HOST.StartRuntime):
+    def __init__(self, states: list[dict[str, Any]]) -> None:
+        self.token = "h" * 24
+        self.targets = {
+            "velvet": HOST.ServiceTarget(
+                app_dir=Path("/srv/velvet"),
+                env_file=".env.server",
+                compose_file="docker-compose.server.yml",
                 services=frozenset({"bot"}),
-                restart_routes={"bot": "/v1/restart"},
             ),
-            "max": GATEWAY.Project(
-                base_url="http://max.invalid",
-                token="m" * 24,
+            "max": HOST.ServiceTarget(
+                app_dir=Path("/srv/romatic-club-max"),
+                env_file=".env",
+                compose_file="compose.yaml",
                 services=frozenset({"bot", "userbot"}),
-                restart_routes={
-                    "bot": "/v1/restart",
-                    "userbot": "/v1/restart-userbot",
-                },
             ),
         }
-        super().__init__(projects)
-        self.status_payload = status_payload
-        self.status_code = status_code
-        self.calls: list[tuple[str, str, str]] = []
+        self.command_timeout = 30
+        self.health_attempts = 4
+        self.health_interval = 0
+        self._lock = threading.Lock()
+        self.states = list(states)
+        self.commands: list[list[str]] = []
 
-    def request(
+    def _container_state(
         self,
-        project_name: str,
-        method: str,
-        route: str,
-    ) -> tuple[int, dict[str, Any]]:
-        self.calls.append((project_name, method, route))
-        if method == "GET" and route == "/v1/status":
-            return self.status_code, self.status_payload
-        return HTTPStatus.ACCEPTED, {"ok": True, "route": route}
+        target: Any,
+        service: str,
+    ) -> dict[str, Any]:
+        del target, service
+        if len(self.states) > 1:
+            return self.states.pop(0)
+        return self.states[0]
+
+    def _run(
+        self,
+        target: Any,
+        command: list[str],
+        *,
+        timeout: int,
+        check: bool = True,
+    ) -> Any:
+        del target, timeout, check
+        self.commands.append(command)
+        return object()
 
 
-class HermesOperatorGatewayStartTests(unittest.TestCase):
-    def test_running_velvet_bot_is_a_noop(self) -> None:
-        client = RecordingClient(
-            {"ok": True, "status": {"bot": {"running": True, "pid": 42}}}
+class HermesOperatorHostStartTests(unittest.TestCase):
+    def test_running_service_is_a_noop(self) -> None:
+        runtime = FakeStartRuntime(
+            [{"running": True, "status": "running", "health": "healthy"}]
         )
 
-        status, payload = client.start("velvet", "bot")
+        result = runtime.start("velvet", "bot")
 
-        self.assertEqual(status, HTTPStatus.OK)
-        self.assertTrue(payload["ok"])
-        self.assertEqual(client.calls, [("velvet", "GET", "/v1/status")])
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["changed"])
+        self.assertEqual(runtime.commands, [])
 
-    def test_missing_velvet_bot_uses_verified_update_gate(self) -> None:
-        client = RecordingClient(
-            {"ok": True, "status": {"bot": {"running": False, "pid": None}}}
-        )
-
-        status, _payload = client.start("velvet", "bot")
-
-        self.assertEqual(status, HTTPStatus.ACCEPTED)
-        self.assertEqual(
-            client.calls,
+    def test_missing_service_uses_fixed_compose_up(self) -> None:
+        runtime = FakeStartRuntime(
             [
-                ("velvet", "GET", "/v1/status"),
-                ("velvet", "POST", "/v1/update"),
+                {"running": False, "status": "missing", "health": None},
+                {"running": True, "status": "running", "health": "healthy"},
+            ]
+        )
+
+        result = runtime.start("max", "userbot")
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["changed"])
+        self.assertEqual(
+            runtime.commands,
+            [
+                [
+                    "docker",
+                    "compose",
+                    "--env-file",
+                    ".env",
+                    "-f",
+                    "compose.yaml",
+                    "up",
+                    "-d",
+                    "userbot",
+                ]
             ],
         )
 
-    def test_exited_velvet_bot_uses_fixed_restart_route(self) -> None:
-        client = RecordingClient(
-            {
-                "ok": True,
-                "status": {
-                    "bot": {"running": False, "pid": 0, "status": "exited"}
-                },
-            }
+    def test_unknown_service_never_runs_a_command(self) -> None:
+        runtime = FakeStartRuntime(
+            [{"running": False, "status": "missing", "health": None}]
         )
 
-        status, _payload = client.start("velvet", "bot")
+        result = runtime.start("velvet", "userbot")
 
-        self.assertEqual(status, HTTPStatus.ACCEPTED)
-        self.assertEqual(client.calls[-1], ("velvet", "POST", "/v1/restart"))
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error_code"], "unknown_target")
+        self.assertEqual(runtime.commands, [])
 
-    def test_missing_max_userbot_uses_verified_update_gate(self) -> None:
-        client = RecordingClient(
-            {
-                "ok": True,
-                "bot": {"running": True, "status": "running"},
-                "userbot": {"running": False, "pid": None, "status": "missing"},
-            }
+    def test_unhealthy_service_fails_after_fixed_start(self) -> None:
+        runtime = FakeStartRuntime(
+            [
+                {"running": False, "status": "exited", "health": None},
+                {"running": True, "status": "running", "health": "unhealthy"},
+            ]
         )
 
-        status, _payload = client.start("max", "userbot")
+        with self.assertRaisesRegex(RuntimeError, "did not become healthy"):
+            runtime.start("velvet", "bot")
 
-        self.assertEqual(status, HTTPStatus.ACCEPTED)
-        self.assertEqual(client.calls[-1], ("max", "POST", "/v1/update"))
+        self.assertEqual(len(runtime.commands), 1)
 
-    def test_status_probe_error_never_mutates_runtime(self) -> None:
-        client = RecordingClient(
-            {
-                "ok": True,
-                "status": {
-                    "bot": {
-                        "running": False,
-                        "pid": None,
-                        "error": "Bot status probe failed.",
-                    }
-                },
-            }
-        )
 
-        status, payload = client.start("velvet", "bot")
+class StubBridgeRuntime:
+    def __init__(self) -> None:
+        self.token = "s" * 24
+        self.calls: list[tuple[str, str]] = []
+
+    def start(self, project: str, service: str) -> dict[str, Any]:
+        self.calls.append((project, service))
+        return {
+            "ok": True,
+            "project": project,
+            "service": service,
+            "changed": True,
+        }
+
+
+class HermesOperatorGatewaySocketTests(unittest.TestCase):
+    def test_gateway_client_can_only_request_fixed_project_and_service(self) -> None:
+        runtime = StubBridgeRuntime()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            socket_path = str(Path(temp_dir) / "start.sock")
+            server = HOST.StartUnixServer(socket_path, runtime)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "HERMES_OPS_HOST_SOCKET": socket_path,
+                        "HERMES_OPS_HOST_TOKEN": runtime.token,
+                        "HERMES_OPS_START_TIMEOUT_SECONDS": "10",
+                    },
+                    clear=False,
+                ):
+                    client = GATEWAY.HostStartClient()
+                    status, payload = client.start("max", "bot")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
+
+        self.assertEqual(status, HTTPStatus.OK)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(runtime.calls, [("max", "bot")])
+
+    def test_wrong_host_token_is_rejected(self) -> None:
+        runtime = StubBridgeRuntime()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            socket_path = str(Path(temp_dir) / "start.sock")
+            server = HOST.StartUnixServer(socket_path, runtime)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "HERMES_OPS_HOST_SOCKET": socket_path,
+                        "HERMES_OPS_HOST_TOKEN": "x" * 24,
+                        "HERMES_OPS_START_TIMEOUT_SECONDS": "10",
+                    },
+                    clear=False,
+                ):
+                    client = GATEWAY.HostStartClient()
+                    status, payload = client.start("max", "bot")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
 
         self.assertEqual(status, HTTPStatus.BAD_GATEWAY)
-        self.assertEqual(payload["error_code"], "status_probe_failed")
-        self.assertEqual(client.calls, [("velvet", "GET", "/v1/status")])
-
-    def test_upstream_status_failure_is_returned_without_mutation(self) -> None:
-        client = RecordingClient(
-            {"ok": False, "error": "unavailable"},
-            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
-        )
-
-        status, payload = client.start("max", "bot")
-
-        self.assertEqual(status, HTTPStatus.SERVICE_UNAVAILABLE)
-        self.assertFalse(payload["ok"])
-        self.assertEqual(client.calls, [("max", "GET", "/v1/status")])
+        self.assertEqual(payload["error_code"], "unauthorized")
+        self.assertEqual(runtime.calls, [])
 
 
 if __name__ == "__main__":
