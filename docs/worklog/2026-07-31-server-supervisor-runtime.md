@@ -70,22 +70,22 @@ SQL-миграций нет. Telegram callback payload и `SupervisorClient` н�
 
 ### Проверки
 
-- новые Python scripts успешно прошли локальную compilation-проверку;
+- новые Python scripts успешно прошли compilation-проверку;
 - Unix HTTP health endpoint проверен через реальный AF_UNIX socket;
 - добавлен `tests/test_server_supervisor_contract.py` для fixed actions, systemd sandbox, proxy isolation, deploy rollback gate и installer behavior;
-- GitHub type check прошёл на PR;
-- Docker build, полный tests workflow и project notes contract повторно запускаются на актуальной голове после финализации worklog.
+- GitHub Actions на функциональной голове полностью зелёные: `project notes contract`, `type check`, `docker build` и полный `tests` workflow;
+- Docker job подтвердил сборку bot, Krita и отдельного Server Supervisor proxy image, Compose validation и синтаксис deployment scripts.
 
 ### PR и commit
 
 - PR: `#496`;
 - ветка: `agent/server-supervisor-runtime`;
-- актуальная голова обновляется последовательными commits через GitHub connector;
-- merge выполняется только после полностью зелёного CI и review deployment contract.
+- функциональная голова с полностью зелёным CI: `85565023e5691d337ccea2bfaf9772420d3a9b6f`;
+- последующий documentation-only commit фиксирует фактический результат CI;
+- merge выполняется только после зелёной повторной проверки документационной головы.
 
 ### Незавершённое
 
-- дождаться полного CI;
 - после merge обновить `/srv/velvet` обычным SSH deploy;
 - установить unit командой `sudo bash deploy/server/install-server-supervisor.sh`;
 - проверить `/supervisor`, restart, update no-op и последующий реальный update;
@@ -93,4 +93,4 @@ SQL-миграций нет. Telegram callback payload и `SupervisorClient` н�
 
 ### Следующий шаг
 
-Дождаться зелёного CI, устранить только подтверждённые contract failures, затем выполнить merge и live smoke server runtime на VPS.
+Дождаться зелёной повторной проверки documentation-only commit, перевести PR в ready и затем отдельно принять решение о merge и live smoke на VPS.
