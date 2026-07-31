@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 628,
-  "production_loc": 134031,
+  "production_module_count": 629,
+  "production_loc": 134657,
   "layer_counts": {
     "application": 19,
     "composition": 63,
     "core": 7,
-    "domain": 175,
+    "domain": 176,
     "infrastructure": 25,
     "other": 1,
     "presentation": 213,
@@ -21468,18 +21468,72 @@
       ]
     },
     {
+      "path": "velvet_bot/domains/telegram_storage/deletion.py",
+      "module": "velvet_bot.domains.telegram_storage.deletion",
+      "layer": "domain",
+      "target_package": "domain",
+      "loc": 557,
+      "function_count": 20,
+      "class_count": 5,
+      "handler_count": 0,
+      "max_function_length": 93,
+      "branch_count": 58,
+      "internal_imports": [],
+      "external_import_count": 7,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [
+        {
+          "line": 141,
+          "owner": "temporary_deletion_policy",
+          "call": "os.getenv"
+        },
+        {
+          "line": 146,
+          "owner": "temporary_deletion_policy",
+          "call": "os.getenv"
+        },
+        {
+          "line": 151,
+          "owner": "temporary_deletion_policy",
+          "call": "os.getenv"
+        },
+        {
+          "line": 155,
+          "owner": "temporary_deletion_policy",
+          "call": "os.getenv"
+        }
+      ],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/domains/telegram_storage/files.py",
       "module": "velvet_bot.domains.telegram_storage.files",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 209,
+      "loc": 206,
       "function_count": 12,
       "class_count": 1,
       "handler_count": 0,
       "max_function_length": 30,
-      "branch_count": 20,
-      "internal_imports": [],
-      "external_import_count": 12,
+      "branch_count": 16,
+      "internal_imports": [
+        "velvet_bot.domains.telegram_storage.deletion"
+      ],
+      "external_import_count": 11,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -21503,13 +21557,15 @@
       "module": "velvet_bot.domains.telegram_storage.models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 235,
-      "function_count": 8,
+      "loc": 289,
+      "function_count": 9,
       "class_count": 6,
       "handler_count": 0,
-      "max_function_length": 69,
-      "branch_count": 10,
-      "internal_imports": [],
+      "max_function_length": 85,
+      "branch_count": 12,
+      "internal_imports": [
+        "velvet_bot.domains.telegram_storage.deletion"
+      ],
       "external_import_count": 5,
       "aiogram_imports": [],
       "sql_literal_count": 0,
@@ -21526,62 +21582,72 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 31,
+          "line": 45,
           "owner": "_int_env",
           "call": "os.getenv"
         },
         {
-          "line": 46,
+          "line": 60,
           "owner": "_paths_env",
           "call": "os.getenv"
         },
         {
-          "line": 93,
+          "line": 109,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 95,
+          "line": 111,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 20,
+          "line": 114,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 34,
           "owner": "_bool_env",
           "call": "os.getenv"
         },
         {
-          "line": 99,
+          "line": 117,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 100,
+          "line": 118,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 101,
+          "line": 119,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 124,
+          "line": 143,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 125,
+          "line": 144,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 128,
+          "line": 147,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 142,
+          "line": 161,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 165,
           "owner": "from_env",
           "call": "os.getenv"
         }
@@ -21739,12 +21805,12 @@
       "module": "velvet_bot.domains.telegram_storage.uploader",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 240,
-      "function_count": 5,
+      "loc": 258,
+      "function_count": 6,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 107,
-      "branch_count": 19,
+      "max_function_length": 111,
+      "branch_count": 20,
       "internal_imports": [
         "velvet_bot.domains.telegram_storage.files",
         "velvet_bot.domains.telegram_storage.models",
