@@ -10,6 +10,7 @@ RemainAfterExit=yes
 User=velvet
 Group=velvet
 WorkingDirectory=/srv/velvet/deploy/hermes-operator
+EnvironmentFile=/srv/hermes-operator-control/operator.env
 Environment=HERMES_OPS_ENV_FILE=/srv/hermes-operator-control/operator.env
 Environment=HERMES_SUPERVISOR_NETWORK=hermes-supervisor-control
 Environment=VELVET_BACKEND_NETWORK=velvet_backend
