@@ -76,17 +76,19 @@ SQL-миграций нет. Формат Telegram Storage objects и HTTP/Teleg
 - fail-fast empty/dangerous roots;
 - preflight inventory без утечки secret.
 
+Первый CI run дополнительно выявил flaky test Server Supervisor: один `recv()` иногда получал только HTTP headers. Тест исправлен чтением ответа до EOF; production-код Supervisor не менялся.
+
 ### PR и commit
 
 - Issue: `#507`
-- PR: `pending`
+- PR: `#521`
 - Ветка: `agent/issue-507-storage-deletion-policy`
-- Основные commits: создаются connector-backed последовательностью в этой ветке.
+- Основные commits: connector-backed commits ветки и итоговый squash commit после merge.
 
 ### Незавершённое
 
-До merge требуется получить зелёные repository CI checks и проверить generated architecture contracts. После merge на production нужно выполнить deletion preflight с `.env.server` до следующего storage migration.
+До merge требуется пересобрать generated package architecture inventory и получить зелёные repository CI checks. После merge на production нужно выполнить deletion preflight с `.env.server` до следующего storage migration.
 
 ### Следующий шаг
 
-Открыть draft PR, устранить возможные CI замечания, затем слить после зелёных tests/type-check/docker-build/project-notes checks.
+Пересобрать generated inventory в полном CI checkout, повторить tests/type-check/docker-build/project-notes checks и слить PR после зелёного результата.
