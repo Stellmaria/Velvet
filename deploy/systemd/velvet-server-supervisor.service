@@ -20,7 +20,6 @@ RestartSec=3
 TimeoutStopSec=30
 KillSignal=SIGTERM
 NoNewPrivileges=true
-PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/srv/velvet /srv/velvet/data
