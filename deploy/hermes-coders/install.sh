@@ -34,11 +34,11 @@ done
 
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$ROOT"
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0700 "$ROOT/secrets"
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$ROOT/workspaces"
 install -d -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0750 \
   "$ROOT/data" \
   "$ROOT/data/velvet" \
-  "$ROOT/data/max" \
-  "$ROOT/workspaces"
+  "$ROOT/data/max"
 
 clone_workspace() {
   local repo_url="$1"
@@ -126,7 +126,6 @@ for project in velvet max; do
     install -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0600 \
       "$SOURCE_DIR/SOUL.$project.md" "$data_dir/SOUL.md"
   fi
-
 done
 
 cat > "$ROOT/data/velvet/.gitconfig" <<'EOF'
