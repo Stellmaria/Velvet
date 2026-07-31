@@ -3,7 +3,7 @@
 - Дата: `2026-07-31`
 - ID: `server-supervisor-runtime`
 - Линия/фаза: `server operations`
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `agent/server-supervisor-runtime`
 - Базовый commit: `4eafd7c14d27822dad4d88d8788d76acce57130a`
 
@@ -51,27 +51,46 @@ Server Supervisor является привилегированным тольк
 
 ### Фактически сделано
 
-Будет заполнено после зелёного CI и live smoke на VPS.
-
-### Проверки
-
-Будет заполнено после CI.
+- добавлен отдельный `scripts/server_supervisor.py`, запускаемый systemd на хосте пользователем `velvet`;
+- сохранён существующий HTTP contract `/v1/status`, `/v1/logs`, `/v1/restart`, `/v1/update`, `/v1/rollback` и self-restart endpoints;
+- restart вызывает только `docker compose restart bot` и ожидает healthcheck;
+- update и rollback запускают единый `deploy/server/deploy.sh` и возвращают operation ID до остановки контейнера;
+- deploy получил проверяемый target override для rollback и разрешает только commit-предок актуального `origin/main`;
+- состояние операций и rollback SHA сохраняются в постоянном runtime-каталоге;
+- добавлен non-root proxy image, который имеет только runtime mount и private Compose network;
+- proxy не получает Docker socket, checkout, systemd, production env или host port;
+- добавлены systemd unit, повторно запускаемый installer и Compose wiring;
+- installer включает server endpoint, создаёт случайный bearer secret при отсутствии пригодного значения и не меняет владельцев общих runtime/logs каталогов;
+- общий deploy lock остаётся общим для SSH и systemd runtime;
+- Windows-пакет `velvet_supervisor` не изменён и отмечен deprecated только в server documentation/status.
 
 ### Миграции и совместимость
 
-SQL-миграций нет. Telegram callback payload и `SupervisorClient` не меняются. Windows runtime остаётся совместимым и получает статус deprecated только в документации server-контура.
+SQL-миграций нет. Telegram callback payload и `SupervisorClient` не меняются. Windows runtime остаётся совместимым и изолирован от нового server runtime.
+
+### Проверки
+
+- новые Python scripts успешно прошли локальную compilation-проверку;
+- Unix HTTP health endpoint проверен через реальный AF_UNIX socket;
+- добавлен `tests/test_server_supervisor_contract.py` для fixed actions, systemd sandbox, proxy isolation, deploy rollback gate и installer behavior;
+- GitHub type check прошёл на PR;
+- Docker build, полный tests workflow и project notes contract повторно запускаются на актуальной голове после финализации worklog.
 
 ### PR и commit
 
-Будет заполнено после открытия PR.
+- PR: `#496`;
+- ветка: `agent/server-supervisor-runtime`;
+- актуальная голова обновляется последовательными commits через GitHub connector;
+- merge выполняется только после полностью зелёного CI и review deployment contract.
 
 ### Незавершённое
 
 - дождаться полного CI;
-- установить unit на VPS;
+- после merge обновить `/srv/velvet` обычным SSH deploy;
+- установить unit командой `sudo bash deploy/server/install-server-supervisor.sh`;
 - проверить `/supervisor`, restart, update no-op и последующий реальный update;
 - подтвердить, что PostgreSQL и Hermes сохраняют прежние StartedAt при restart бота.
 
 ### Следующий шаг
 
-Открыть draft PR, устранить замечания CI, затем установить server runtime командой `sudo bash deploy/server/install-server-supervisor.sh` после merge и обычного SSH deploy.
+Дождаться зелёного CI, устранить только подтверждённые contract failures, затем выполнить merge и live smoke server runtime на VPS.
