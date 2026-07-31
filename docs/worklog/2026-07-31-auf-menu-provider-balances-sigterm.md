@@ -65,6 +65,8 @@
 
 Добавлены тесты на видимость служебной кнопки только глобальному владельцу, callback `provider_balances`, разбор ответа Byesu, явную DI-сигнатуру, порядок регистрации callback и фильтрацию SIGTERM/SIGINT.
 
+Архитектурный inventory и exemption fingerprints пересчитаны после переноса хотфикса на актуальную базу; временный генератор удалён из итогового diff.
+
 ### PR и commit
 
 - PR: `#516 Fix Auf callbacks, owner balances and SIGTERM noise`;
