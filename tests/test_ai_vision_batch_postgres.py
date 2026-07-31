@@ -28,7 +28,9 @@ class VisionBatchPostgresTests(unittest.IsolatedAsyncioTestCase):
         self.database = Database(os.environ["TEST_DATABASE_URL"])
         await self.database.initialize()
         async with self.database.acquire() as connection:
-            await connection.execute("TRUNCATE ai_tasks,ai_task_batches")
+            await connection.execute(
+                "TRUNCATE media_delivery_jobs, ai_tasks, ai_task_batches RESTART IDENTITY"
+            )
             await connection.execute(
                 """
                 UPDATE ai_runtime_state
