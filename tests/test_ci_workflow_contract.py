@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 SHARD_SCRIPT = ROOT / "scripts" / "ci_test_shard.py"
+PREFLIGHT_SCRIPT = ROOT / "scripts" / "ci_preflight.py"
 
 
 class CiWorkflowContractTests(unittest.TestCase):
@@ -32,9 +33,12 @@ class CiWorkflowContractTests(unittest.TestCase):
 
     def test_preflight_and_required_status_are_preserved(self) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
+        preflight = PREFLIGHT_SCRIPT.read_text(encoding="utf-8")
         self.assertIn("name: preflight", source)
-        self.assertIn("tests/test_package_architecture_inventory.py", source)
-        self.assertIn("tests/test_telegram_navigation_inventory.py", source)
+        self.assertIn("python scripts/ci_preflight.py", source)
+        self.assertIn("test_package_architecture_inventory", preflight)
+        self.assertIn("test_telegram_navigation_inventory", preflight)
+        self.assertIn("inventory_package_architecture_fast.py", preflight)
         self.assertIn("name: unit-tests", source)
         self.assertIn("SHARDS_RESULT: ${{ needs.test-shards.result }}", source)
 
