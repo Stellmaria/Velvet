@@ -87,13 +87,22 @@ def validate_workspace(path: Path) -> None:
         raise PreflightError(f"Workspace не является отдельным Git checkout: {path}")
 
 
+def require_readable_file(path: Path) -> str:
+    try:
+        if not path.is_file():
+            raise PreflightError(f"Отсутствует Hermes-файл: {path}")
+        return path.read_text(encoding="utf-8")
+    except PermissionError as exc:
+        raise PreflightError(
+            f"Нет доступа к Hermes-файлу {path}; проверьте владельца, группу и режим"
+        ) from exc
+
+
 def validate_data(path: Path) -> None:
     config = path / "config.yaml"
     soul = path / "SOUL.md"
-    for required in (config, soul):
-        if not required.is_file():
-            raise PreflightError(f"Отсутствует Hermes-файл: {required}")
-    config_text = config.read_text(encoding="utf-8")
+    config_text = require_readable_file(config)
+    require_readable_file(soul)
     if "api_key:" in config_text:
         raise PreflightError(f"В {config} найден встроенный API key")
     for model in ("gpt-5.4-mini", "gpt-5.6-terra", "gpt-5.6-luna"):
