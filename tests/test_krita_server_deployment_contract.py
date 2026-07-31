@@ -11,6 +11,7 @@ def test_krita_server_image_is_headless_and_non_root() -> None:
     assert "krita" in dockerfile
     assert "xvfb" in dockerfile
     assert "dbus-x11" in dockerfile
+    assert "python3-pyqt5" in dockerfile
     assert "useradd --create-home --uid 10001 velvet" in dockerfile
     assert "USER velvet" in dockerfile
     assert "enable_velvet_logo=true" in dockerfile
