@@ -1,6 +1,9 @@
 name: tmp PR 493 package inventory
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - fix/owner-cost-and-public-attempt-privacy
