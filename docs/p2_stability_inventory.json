@@ -1695,8 +1695,8 @@
     {
       "path": "velvet_bot/presentation/telegram/routers/supervisor/process.py",
       "function": "handle_supervisor_process_callback",
-      "line": 39,
-      "ack_line": 45,
+      "line": 110,
+      "ack_line": 116,
       "pre_ack_awaits": 0,
       "total_awaits": 7,
       "risk": "early_ack"
