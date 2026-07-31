@@ -3,9 +3,7 @@ from __future__ import annotations
 import unittest
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
-
-from aiogram.types import BufferedInputFile
+from unittest.mock import AsyncMock, Mock
 
 from velvet_bot.domains.media_generation import (
     KieGenerationRequest,
@@ -21,20 +19,30 @@ from velvet_bot.domains.media_generation.friendly_worker import (
 
 
 class FriendlyGrsFileDeliveryTests(unittest.IsolatedAsyncioTestCase):
-    async def test_grs_result_is_downloaded_then_sent_as_preview_and_document(self) -> None:
+    async def test_generation_worker_never_delivers_provider_result_directly(self) -> None:
         bot = SimpleNamespace(
             send_photo=AsyncMock(),
             send_document=AsyncMock(),
             send_video=AsyncMock(),
             send_message=AsyncMock(),
         )
+        queue = SimpleNamespace(
+            database=object(),
+            configure_durable_delivery=Mock(),
+        )
+        runtime = SimpleNamespace(
+            resolver=object(),
+            delivery=object(),
+            recover_once=AsyncMock(),
+        )
         worker = FriendlyKieGenerationWorker(
             bot=bot,
-            queue=SimpleNamespace(),
+            queue=queue,
             client=SimpleNamespace(user_agent="Velvet-Test/1.0"),
             executor=SimpleNamespace(),
             pricing=KiePricing(),
             usd_to_rub=Decimal("100"),
+            media_delivery_runtime=runtime,
         )
         request = KieGenerationRequest(
             model=KieModelAlias.NANO_BANANA_PRO,
@@ -47,41 +55,21 @@ class FriendlyGrsFileDeliveryTests(unittest.IsolatedAsyncioTestCase):
             state=KieTaskState.SUCCESS,
             result_urls=("https://cdn.example/generated-image",),
         )
-        downloaded = SimpleNamespace(
-            payload=b"original-grs-image",
-            mime_type="image/png",
+
+        await worker._deliver_best_effort(
+            chat_id=100,
+            request=request,
+            record=record,
         )
 
-        with patch.object(
-            worker,
-            "_download_result",
-            AsyncMock(return_value=downloaded),
-        ):
-            await worker._deliver_best_effort(
-                chat_id=100,
-                request=request,
-                record=record,
-            )
-
-        bot.send_photo.assert_awaited_once()
-        bot.send_document.assert_awaited_once()
+        queue.configure_durable_delivery.assert_called_once_with(
+            resolver=runtime.resolver,
+            delivery=runtime.delivery,
+        )
+        bot.send_photo.assert_not_awaited()
+        bot.send_document.assert_not_awaited()
         bot.send_video.assert_not_awaited()
-
-        photo_call = bot.send_photo.await_args
-        preview = photo_call.kwargs["photo"]
-        self.assertIsInstance(preview, BufferedInputFile)
-        self.assertEqual(b"original-grs-image", preview.data)
-        self.assertIn("Провайдер: <b>GRS AI</b>", photo_call.kwargs["caption"])
-        self.assertIn("предпросмотр и оригинальный файл", photo_call.kwargs["caption"])
-
-        document_call = bot.send_document.await_args
-        original = document_call.kwargs["document"]
-        self.assertIsInstance(original, BufferedInputFile)
-        self.assertEqual(b"original-grs-image", original.data)
-        self.assertEqual(
-            "Оригинальный файл изображения.",
-            document_call.kwargs["caption"],
-        )
+        bot.send_message.assert_not_awaited()
 
 
 if __name__ == "__main__":
