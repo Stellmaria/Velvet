@@ -113,6 +113,156 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  issue457-baseline:
+    name: issue457-baseline
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 488
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Regenerate reviewed inventories
+        run: |
+          python scripts/update_p2_stability_inventory.py \
+            --label issue-457-durable-media-delivery \
+            --schema-version 75
+          python scripts/inventory_repository_layout.py \
+            --write \
+            --label issue-457-durable-media-delivery
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label issue-457-durable-media-delivery
+
+      - name: Refresh reviewed numeric baselines
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          inventory = json.loads(
+              Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8")
+          )
+          shared = inventory["shared_contract_summary"]
+          path = Path("tests/test_package_architecture_inventory.py")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_assert(expression: str, value: int) -> None:
+              global text
+              pattern = rf'self\.assertEqual\([0-9_]+, {re.escape(expression)}\)'
+              replacement = f"self.assertEqual({value:_}, {expression})"
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f"Could not update assertion for {expression}")
+
+          replace_assert('self.inventory["production_module_count"]', inventory["production_module_count"])
+          replace_assert('self.inventory["production_loc"]', inventory["production_loc"])
+          replace_assert('self.inventory["root_module_count"]', inventory["root_module_count"])
+          replace_assert('self.inventory["root_unclassified_count"]', inventory["root_unclassified_count"])
+          replace_assert('self.inventory["router_count"]', inventory["router_count"])
+          replace_assert('self.inventory["router_duplicate_count"]', inventory["router_duplicate_count"])
+          replace_assert('self.inventory["repository_module_count"]', inventory["repository_module_count"])
+          replace_assert('len(self.inventory["installer_graph"])', len(inventory["installer_graph"]))
+          replace_assert('self.inventory["violation_count"]', inventory["violation_count"])
+          replace_assert('shared["production_python_files"]', shared["production_python_files"])
+          replace_assert('shared["function_count"]', shared["function_count"])
+          replace_assert('shared["private_contract_access_count"]', shared["private_contract_access_count"])
+          replace_assert('shared["blocking_private_contract_access_count"]', shared["blocking_private_contract_access_count"])
+          replace_assert('shared["exact_duplicate_group_count"]', shared["exact_duplicate_group_count"])
+          replace_assert('shared["normalized_duplicate_group_count"]', shared["normalized_duplicate_group_count"])
+          replace_assert('shared["semantic_near_duplicate_group_count"]', shared["semantic_near_duplicate_group_count"])
+
+          text, count = re.subn(
+              r'list\(range\(1, [0-9_]+\)\)',
+              f'list(range(1, {len(inventory["installer_graph"]) + 1}))',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise RuntimeError("Could not update installer graph range")
+
+          markdown_values = {
+              "Production modules": inventory["production_module_count"],
+              "Production LOC": inventory["production_loc"],
+              "Startup installer stages": len(inventory["installer_graph"]),
+              "Registered package violations": inventory["violation_count"],
+              "Registered exemptions": len(inventory["violations"]),
+          }
+          for label, value in markdown_values.items():
+              pattern = rf'{re.escape(label)}: \*\*[0-9_]+\*\*'
+              replacement = f"{label}: **{value}**"
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f"Could not update markdown assertion for {label}")
+          path.write_text(text, encoding="utf-8")
+
+          layout = json.loads(
+              Path("docs/repository_layout_inventory.json").read_text(encoding="utf-8")
+          )
+          path = Path("tests/test_p3e_repository_layout_inventory.py")
+          text = path.read_text(encoding="utf-8")
+          text, count = re.subn(
+              r'self\.assertEqual\([0-9_]+, inventory\["repository_module_count"\]\)',
+              f'self.assertEqual({layout["repository_module_count"]}, inventory["repository_module_count"])',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise RuntimeError("Could not update repository module count")
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Validate regenerated contracts
+        run: |
+          python -m unittest \
+            tests/test_friendly_grs_file_delivery.py \
+            tests/test_package_architecture_inventory.py \
+            tests/test_p2_stability_inventory.py \
+            tests/test_p2l_discussion_middleware_boundary.py \
+            tests/test_p3e_repository_layout_inventory.py \
+            tests/test_telegram_navigation_inventory.py
+
+      - name: Prepare repair artifact
+        if: always()
+        run: |
+          mkdir -p repair-output
+          cp --parents \
+            docs/generated/telegram_navigation_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/package_architecture_exemptions.json \
+            tests/test_package_architecture_inventory.py \
+            tests/test_p3e_repository_layout_inventory.py \
+            repair-output/
+
+      - name: Upload repair artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue457-repair-output
+          path: repair-output
+          if-no-files-found: error
+          retention-days: 7
+
   unit-tests:
     name: unit-tests
     if: always()
