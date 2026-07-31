@@ -4,9 +4,9 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **88** в **53** файлах;
+- raw broad exceptions: **99** в **58** файлах;
 - approved boundaries: **88**;
-- unresolved broad exceptions: **0** в **0** файлах;
+- unresolved broad exceptions: **11** в **5** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
 - guarded callbacks: **44**;
@@ -105,10 +105,15 @@ AST-инвентаризация широких исключений и callback
 
 ## Unresolved broad exceptions by file
 
+- `velvet_bot/application/media_delivery_deliver.py`: 5.
+- `velvet_bot/domains/media_generation/task_queue.py`: 3.
+- `velvet_bot/application/media_delivery_resolve.py`: 1.
+- `velvet_bot/domains/media_generation/friendly_worker.py`: 1.
+- `velvet_bot/infrastructure/media_delivery_runtime.py`: 1.
 
 ## Следующий срез
 
-- Нет.
+- `velvet_bot/application/media_delivery_deliver.py`.
 
 ## Правило обновления
 

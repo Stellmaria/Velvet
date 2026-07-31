@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 606,
-  "production_loc": 131355,
+  "production_module_count": 620,
+  "production_loc": 132917,
   "layer_counts": {
-    "application": 14,
-    "composition": 54,
+    "application": 19,
+    "composition": 55,
     "core": 7,
     "domain": 175,
-    "infrastructure": 17,
+    "infrastructure": 25,
     "other": 1,
     "presentation": 213,
     "root": 114,
@@ -20,7 +20,7 @@
   "root_unclassified_count": 0,
   "router_count": 84,
   "router_duplicate_count": 0,
-  "repository_module_count": 35,
+  "repository_module_count": 41,
   "runtime_compatibility_components": [
     {
       "component": "ai-quality-schema",
@@ -393,22 +393,22 @@
       ]
     }
   ],
-  "violation_count": 526,
+  "violation_count": 533,
   "violation_counts": {
     "database-acquire-outside-persistence": 89,
     "domain-aiogram-import": 19,
-    "domain-layer-import": 1,
-    "dynamic-import": 18,
+    "domain-layer-import": 3,
+    "dynamic-import": 19,
     "foreign-assignment": 38,
-    "installed-sentinel": 40,
-    "installer-like-module": 22,
+    "installed-sentinel": 41,
+    "installer-like-module": 23,
     "method-assign-ignore": 8,
     "monolithic-function": 25,
     "monolithic-module-loc": 17,
     "package-getattr-side-effect": 19,
     "sql-outside-persistence": 108,
     "type-ignore-usage": 16,
-    "typing-any-usage": 106
+    "typing-any-usage": 108
   },
   "violations": [
     {
@@ -1004,17 +1004,19 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:fa747c978ff4714f",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:6f33519fde8df698",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/domains/media_generation/task_queue.py",
-      "fingerprint": "fa747c978ff4714f93d53155c15999a84cf0553b97b57dc5d180aa85ead36e6f",
-      "summary": "3 acquire calls outside persistence",
+      "fingerprint": "6f33519fde8df6987fab7e2984188d5bbaf668a50389bbed1f57a0b27be3c510",
+      "summary": "5 acquire calls outside persistence",
       "details": {
-        "count": 3,
+        "count": 5,
         "calls": [
           "self._database.acquire"
         ],
         "owners": [
+          "_record_submission_best_effort",
+          "_restore_successful_provider_task",
           "claim_next",
           "fail_terminal",
           "patch_payload"
@@ -2305,6 +2307,31 @@
       }
     },
     {
+      "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:3db72077981a5adf",
+      "category": "domain-layer-import",
+      "path": "velvet_bot/domains/media_generation/friendly_worker.py",
+      "fingerprint": "3db72077981a5adf123fc90e60181dfd5eacdd4b8592f84b51fe9e747bbdb62d",
+      "summary": "1 domain imports from app/presentation",
+      "details": {
+        "imports": [
+          "velvet_bot.app.media_delivery_ui_install"
+        ]
+      }
+    },
+    {
+      "id": "domain-layer-import:velvet_bot/domains/media_generation/task_queue.py:3be27434923b245d",
+      "category": "domain-layer-import",
+      "path": "velvet_bot/domains/media_generation/task_queue.py",
+      "fingerprint": "3be27434923b245d2223ce3edf42d3a2d1ebf83121727dcba5657375c15854f9",
+      "summary": "2 domain imports from app/presentation",
+      "details": {
+        "imports": [
+          "velvet_bot.application.media_delivery",
+          "velvet_bot.application.media_tasks"
+        ]
+      }
+    },
+    {
       "id": "dynamic-import:velvet_bot/app/auf_active_delivery_fix.py:500b24ecd3ec152a",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_active_delivery_fix.py",
@@ -2526,13 +2553,26 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/domains/media_generation/friendly_worker.py:d411e9a04db64ce0",
+      "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:1404f1bad2d1b010",
+      "category": "dynamic-import",
+      "path": "velvet_bot/app/media_delivery_ui_install.py",
+      "fingerprint": "1404f1bad2d1b010b7f39e77072e108d4813d4e999a03a9f7b142e8223299e94",
+      "summary": "3 dynamic imports",
+      "details": {
+        "count": 3,
+        "calls": [
+          "importlib.import_module"
+        ]
+      }
+    },
+    {
+      "id": "dynamic-import:velvet_bot/domains/media_generation/friendly_worker.py:cf558a65a6984356",
       "category": "dynamic-import",
       "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-      "fingerprint": "d411e9a04db64ce01fd548f865af65286a7362dd4b1ed42f2b4d1bf45b83c62e",
-      "summary": "1 dynamic imports",
+      "fingerprint": "cf558a65a6984356dc0375cd2e08960aa71c31815fbfc444718501e3177841c2",
+      "summary": "2 dynamic imports",
       "details": {
-        "count": 1,
+        "count": 2,
         "calls": [
           "importlib.import_module"
         ]
@@ -3314,6 +3354,16 @@
       }
     },
     {
+      "id": "installed-sentinel:velvet_bot/app/media_delivery_ui_install.py:f6cfdefc6fad542d",
+      "category": "installed-sentinel",
+      "path": "velvet_bot/app/media_delivery_ui_install.py",
+      "fingerprint": "f6cfdefc6fad542ddfd4471e28a51a817363f2509633a0b350789588bbf2d342",
+      "summary": "4 _INSTALLED references",
+      "details": {
+        "count": 4
+      }
+    },
+    {
       "id": "installed-sentinel:velvet_bot/app/original_image_delivery_hotfix.py:17fc0f3e781c9b5a",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -3344,13 +3394,13 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:411f783919f2fdb3",
+      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:926e7ac17fb7a7fe",
       "category": "installed-sentinel",
       "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-      "fingerprint": "411f783919f2fdb386b56346c8408d47616874706a73d0f3b2330e4742992267",
-      "summary": "4 _INSTALLED references",
+      "fingerprint": "926e7ac17fb7a7fe4eea77f797da40103922bf8a7d9c0510156eecb8a7107da1",
+      "summary": "6 _INSTALLED references",
       "details": {
-        "count": 4
+        "count": 6
       }
     },
     {
@@ -3610,6 +3660,14 @@
       "category": "installer-like-module",
       "path": "velvet_bot/app/krita_remote_install.py",
       "fingerprint": "a5a925246d9ba1077a84f61a1547241d22910cefacad96a09566efe4e04847a1",
+      "summary": "installer/hotfix/fix module requires explicit retirement",
+      "details": {}
+    },
+    {
+      "id": "installer-like-module:velvet_bot/app/media_delivery_ui_install.py:4458d4906857cf59",
+      "category": "installer-like-module",
+      "path": "velvet_bot/app/media_delivery_ui_install.py",
+      "fingerprint": "4458d4906857cf5924a751fd0b41f9efb40fd651db0f59208de23a1f73c9ec84",
       "summary": "installer/hotfix/fix module requires explicit retirement",
       "details": {}
     },
@@ -5040,17 +5098,20 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:e480f21e3a5e3b08",
+      "id": "sql-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:2f5df3962bbe7430",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/domains/media_generation/task_queue.py",
-      "fingerprint": "e480f21e3a5e3b083f86f4556491473a54d9587999e984b63c549f2fab78577c",
-      "summary": "3 SQL literals outside persistence",
+      "fingerprint": "2f5df3962bbe7430d15b66422cd5b9be0f449742ebb78a780a1666e0b91def43",
+      "summary": "5 SQL literals outside persistence",
       "details": {
-        "count": 3,
+        "count": 5,
         "keywords": [
+          "SELECT",
           "UPDATE"
         ],
         "owners": [
+          "_record_submission_best_effort",
+          "_restore_successful_provider_task",
           "claim_next",
           "fail_terminal",
           "patch_payload"
@@ -6733,6 +6794,16 @@
       }
     },
     {
+      "id": "typing-any-usage:velvet_bot/app/media_delivery_ui_install.py:7b70b55ee50a4d58",
+      "category": "typing-any-usage",
+      "path": "velvet_bot/app/media_delivery_ui_install.py",
+      "fingerprint": "7b70b55ee50a4d58a230e6e9fe5e551e7c9db8f84a686ffb8314e3e55d71ba9c",
+      "summary": "4 Any references",
+      "details": {
+        "count": 4
+      }
+    },
+    {
       "id": "typing-any-usage:velvet_bot/application/supervisor.py:7b70b55ee50a4d58",
       "category": "typing-any-usage",
       "path": "velvet_bot/application/supervisor.py",
@@ -6893,13 +6964,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/domains/media_generation/friendly_worker.py:fc0ce05c34c12991",
+      "id": "typing-any-usage:velvet_bot/domains/media_generation/friendly_worker.py:a90fff492f411429",
       "category": "typing-any-usage",
       "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-      "fingerprint": "fc0ce05c34c12991371aebe865e9d6d0bc96e03836d23a6151d36c5fe2e404a4",
-      "summary": "1 Any references",
+      "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
+      "summary": "2 Any references",
       "details": {
-        "count": 1
+        "count": 2
       }
     },
     {
@@ -7170,6 +7241,16 @@
       "summary": "11 Any references",
       "details": {
         "count": 11
+      }
+    },
+    {
+      "id": "typing-any-usage:velvet_bot/infrastructure/media_delivery_runtime.py:a90fff492f411429",
+      "category": "typing-any-usage",
+      "path": "velvet_bot/infrastructure/media_delivery_runtime.py",
+      "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
+      "summary": "2 Any references",
+      "details": {
+        "count": 2
       }
     },
     {
@@ -11531,6 +11612,99 @@
       ]
     },
     {
+      "path": "velvet_bot/app/media_delivery_ui_install.py",
+      "module": "velvet_bot.app.media_delivery_ui_install",
+      "layer": "composition",
+      "target_package": "composition",
+      "loc": 320,
+      "function_count": 9,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 66,
+      "branch_count": 13,
+      "internal_imports": [
+        "velvet_bot.application.media_tasks",
+        "velvet_bot.domains.auf_wallet",
+        "velvet_bot.domains.media_generation.model_catalog",
+        "velvet_bot.infrastructure.media_delivery_runtime",
+        "velvet_bot.presentation.telegram.routers.workspace_auf",
+        "velvet_bot.presentation.telegram.routers.workspace_auf_video"
+      ],
+      "external_import_count": 8,
+      "aiogram_imports": [
+        "aiogram.types"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 3,
+      "any_count": 4,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [
+        "install_media_delivery_ui"
+      ],
+      "install_calls": [
+        {
+          "line": 293,
+          "call": "portal.install_user_tasks_renderer"
+        },
+        {
+          "line": 294,
+          "call": "controller.install_scoped_auf_handlers"
+        }
+      ],
+      "installed_sentinel_count": 4,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": [
+        {
+          "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:1404f1bad2d1b010",
+          "category": "dynamic-import",
+          "path": "velvet_bot/app/media_delivery_ui_install.py",
+          "fingerprint": "1404f1bad2d1b010b7f39e77072e108d4813d4e999a03a9f7b142e8223299e94",
+          "summary": "3 dynamic imports",
+          "details": {
+            "count": 3,
+            "calls": [
+              "importlib.import_module"
+            ]
+          }
+        },
+        {
+          "id": "installer-like-module:velvet_bot/app/media_delivery_ui_install.py:4458d4906857cf59",
+          "category": "installer-like-module",
+          "path": "velvet_bot/app/media_delivery_ui_install.py",
+          "fingerprint": "4458d4906857cf5924a751fd0b41f9efb40fd651db0f59208de23a1f73c9ec84",
+          "summary": "installer/hotfix/fix module requires explicit retirement",
+          "details": {}
+        },
+        {
+          "id": "typing-any-usage:velvet_bot/app/media_delivery_ui_install.py:7b70b55ee50a4d58",
+          "category": "typing-any-usage",
+          "path": "velvet_bot/app/media_delivery_ui_install.py",
+          "fingerprint": "7b70b55ee50a4d58a230e6e9fe5e551e7c9db8f84a686ffb8314e3e55d71ba9c",
+          "summary": "4 Any references",
+          "details": {
+            "count": 4
+          }
+        },
+        {
+          "id": "installed-sentinel:velvet_bot/app/media_delivery_ui_install.py:f6cfdefc6fad542d",
+          "category": "installed-sentinel",
+          "path": "velvet_bot/app/media_delivery_ui_install.py",
+          "fingerprint": "f6cfdefc6fad542ddfd4471e28a51a817363f2509633a0b350789588bbf2d342",
+          "summary": "4 _INSTALLED references",
+          "details": {
+            "count": 4
+          }
+        }
+      ]
+    },
+    {
       "path": "velvet_bot/app/meow_cancel_ui_install.py",
       "module": "velvet_bot.app.meow_cancel_ui_install",
       "layer": "composition",
@@ -12475,6 +12649,185 @@
       "env_reads": [],
       "polling_values": [],
       "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/application/media_delivery.py",
+      "module": "velvet_bot.application.media_delivery",
+      "layer": "application",
+      "target_package": "application",
+      "loc": 24,
+      "function_count": 0,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 0,
+      "branch_count": 0,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery_deliver",
+        "velvet_bot.application.media_delivery_models",
+        "velvet_bot.application.media_delivery_redeliver",
+        "velvet_bot.application.media_delivery_resolve"
+      ],
+      "external_import_count": 1,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/application/media_delivery_deliver.py",
+      "module": "velvet_bot.application.media_delivery_deliver",
+      "layer": "application",
+      "target_package": "application",
+      "loc": 141,
+      "function_count": 4,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 108,
+      "branch_count": 25,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery_models"
+      ],
+      "external_import_count": 4,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [
+        {
+          "line": 15,
+          "owner": "__init__",
+          "call": "worker_id.strip"
+        }
+      ],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/application/media_delivery_models.py",
+      "module": "velvet_bot.application.media_delivery_models",
+      "layer": "application",
+      "target_package": "application",
+      "loc": 129,
+      "function_count": 18,
+      "class_count": 10,
+      "handler_count": 0,
+      "max_function_length": 2,
+      "branch_count": 0,
+      "internal_imports": [],
+      "external_import_count": 5,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/application/media_delivery_redeliver.py",
+      "module": "velvet_bot.application.media_delivery_redeliver",
+      "layer": "application",
+      "target_package": "application",
+      "loc": 21,
+      "function_count": 2,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 6,
+      "branch_count": 1,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery_deliver",
+        "velvet_bot.application.media_delivery_models"
+      ],
+      "external_import_count": 2,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/application/media_delivery_resolve.py",
+      "module": "velvet_bot.application.media_delivery_resolve",
+      "layer": "application",
+      "target_package": "application",
+      "loc": 51,
+      "function_count": 5,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 21,
+      "branch_count": 4,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery_models"
+      ],
+      "external_import_count": 5,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [
+        {
+          "line": 16,
+          "owner": "__init__",
+          "call": "worker_id.strip"
+        }
+      ],
       "violations": []
     },
     {
@@ -17638,19 +17991,20 @@
       "module": "velvet_bot.domains.media_generation.friendly_worker",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 353,
-      "function_count": 12,
+      "loc": 345,
+      "function_count": 15,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 69,
-      "branch_count": 25,
+      "max_function_length": 54,
+      "branch_count": 24,
       "internal_imports": [
+        "velvet_bot.app.media_delivery_ui_install",
         "velvet_bot.domains.ai_usage",
         "velvet_bot.domains.media_generation.economy_worker",
-        "velvet_bot.domains.media_generation.file_delivery_worker",
         "velvet_bot.domains.media_generation.models",
         "velvet_bot.domains.media_generation.worker",
-        "velvet_bot.infrastructure.ai"
+        "velvet_bot.infrastructure.ai",
+        "velvet_bot.infrastructure.media_delivery_runtime"
       ],
       "external_import_count": 8,
       "aiogram_imports": [
@@ -17659,16 +18013,21 @@
       "sql_literal_count": 2,
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
-      "dynamic_import_count": 1,
-      "any_count": 1,
+      "dynamic_import_count": 2,
+      "any_count": 2,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
       "install_definitions": [
         "install_friendly_media_worker"
       ],
-      "install_calls": [],
-      "installed_sentinel_count": 4,
+      "install_calls": [
+        {
+          "line": 300,
+          "call": "install_media_delivery_ui"
+        }
+      ],
+      "installed_sentinel_count": 6,
       "package_getattr": false,
       "env_reads": [],
       "polling_values": [],
@@ -17683,6 +18042,18 @@
           "details": {
             "imports": [
               "aiogram.exceptions"
+            ]
+          }
+        },
+        {
+          "id": "domain-layer-import:velvet_bot/domains/media_generation/friendly_worker.py:3db72077981a5adf",
+          "category": "domain-layer-import",
+          "path": "velvet_bot/domains/media_generation/friendly_worker.py",
+          "fingerprint": "3db72077981a5adf123fc90e60181dfd5eacdd4b8592f84b51fe9e747bbdb62d",
+          "summary": "1 domain imports from app/presentation",
+          "details": {
+            "imports": [
+              "velvet_bot.app.media_delivery_ui_install"
             ]
           }
         },
@@ -17703,36 +18074,36 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/domains/media_generation/friendly_worker.py:d411e9a04db64ce0",
+          "id": "dynamic-import:velvet_bot/domains/media_generation/friendly_worker.py:cf558a65a6984356",
           "category": "dynamic-import",
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-          "fingerprint": "d411e9a04db64ce01fd548f865af65286a7362dd4b1ed42f2b4d1bf45b83c62e",
-          "summary": "1 dynamic imports",
+          "fingerprint": "cf558a65a6984356dc0375cd2e08960aa71c31815fbfc444718501e3177841c2",
+          "summary": "2 dynamic imports",
           "details": {
-            "count": 1,
+            "count": 2,
             "calls": [
               "importlib.import_module"
             ]
           }
         },
         {
-          "id": "typing-any-usage:velvet_bot/domains/media_generation/friendly_worker.py:fc0ce05c34c12991",
+          "id": "typing-any-usage:velvet_bot/domains/media_generation/friendly_worker.py:a90fff492f411429",
           "category": "typing-any-usage",
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-          "fingerprint": "fc0ce05c34c12991371aebe865e9d6d0bc96e03836d23a6151d36c5fe2e404a4",
-          "summary": "1 Any references",
+          "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
+          "summary": "2 Any references",
           "details": {
-            "count": 1
+            "count": 2
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:411f783919f2fdb3",
+          "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:926e7ac17fb7a7fe",
           "category": "installed-sentinel",
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-          "fingerprint": "411f783919f2fdb386b56346c8408d47616874706a73d0f3b2330e4742992267",
-          "summary": "4 _INSTALLED references",
+          "fingerprint": "926e7ac17fb7a7fe4eea77f797da40103922bf8a7d9c0510156eecb8a7107da1",
+          "summary": "6 _INSTALLED references",
           "details": {
-            "count": 4
+            "count": 6
           }
         }
       ]
@@ -17826,21 +18197,23 @@
       "module": "velvet_bot.domains.media_generation.task_queue",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 110,
-      "function_count": 4,
+      "loc": 335,
+      "function_count": 14,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 27,
-      "branch_count": 4,
+      "max_function_length": 39,
+      "branch_count": 23,
       "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.application.media_tasks",
         "velvet_bot.core.ai_budget",
         "velvet_bot.database",
         "velvet_bot.domains.ai_usage"
       ],
-      "external_import_count": 5,
+      "external_import_count": 6,
       "aiogram_imports": [],
-      "sql_literal_count": 3,
-      "database_acquire_count": 3,
+      "sql_literal_count": 5,
+      "database_acquire_count": 5,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
       "any_count": 0,
@@ -17855,34 +18228,55 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 90,
+          "line": 208,
           "owner": "fail_terminal",
           "call": "worker_id.strip"
         },
         {
-          "line": 53,
+          "line": 98,
           "owner": "claim_next",
           "call": "worker_id.strip"
         },
         {
-          "line": 76,
+          "line": 132,
+          "owner": "_restore_successful_provider_task",
+          "call": "worker_id.strip"
+        },
+        {
+          "line": 161,
           "owner": "patch_payload",
           "call": "worker_id.strip"
         }
       ],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:e480f21e3a5e3b08",
+          "id": "domain-layer-import:velvet_bot/domains/media_generation/task_queue.py:3be27434923b245d",
+          "category": "domain-layer-import",
+          "path": "velvet_bot/domains/media_generation/task_queue.py",
+          "fingerprint": "3be27434923b245d2223ce3edf42d3a2d1ebf83121727dcba5657375c15854f9",
+          "summary": "2 domain imports from app/presentation",
+          "details": {
+            "imports": [
+              "velvet_bot.application.media_delivery",
+              "velvet_bot.application.media_tasks"
+            ]
+          }
+        },
+        {
+          "id": "sql-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:2f5df3962bbe7430",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/domains/media_generation/task_queue.py",
-          "fingerprint": "e480f21e3a5e3b083f86f4556491473a54d9587999e984b63c549f2fab78577c",
-          "summary": "3 SQL literals outside persistence",
+          "fingerprint": "2f5df3962bbe7430d15b66422cd5b9be0f449742ebb78a780a1666e0b91def43",
+          "summary": "5 SQL literals outside persistence",
           "details": {
-            "count": 3,
+            "count": 5,
             "keywords": [
+              "SELECT",
               "UPDATE"
             ],
             "owners": [
+              "_record_submission_best_effort",
+              "_restore_successful_provider_task",
               "claim_next",
               "fail_terminal",
               "patch_payload"
@@ -17890,17 +18284,19 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:fa747c978ff4714f",
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:6f33519fde8df698",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/domains/media_generation/task_queue.py",
-          "fingerprint": "fa747c978ff4714f93d53155c15999a84cf0553b97b57dc5d180aa85ead36e6f",
-          "summary": "3 acquire calls outside persistence",
+          "fingerprint": "6f33519fde8df6987fab7e2984188d5bbaf668a50389bbed1f57a0b27be3c510",
+          "summary": "5 acquire calls outside persistence",
           "details": {
-            "count": 3,
+            "count": 5,
             "calls": [
               "self._database.acquire"
             ],
             "owners": [
+              "_record_submission_best_effort",
+              "_restore_successful_provider_task",
               "claim_next",
               "fail_terminal",
               "patch_payload"
@@ -23964,6 +24360,313 @@
           }
         }
       ]
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_repository.py",
+      "module": "velvet_bot.infrastructure.media_delivery_repository",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 17,
+      "function_count": 0,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 0,
+      "branch_count": 0,
+      "internal_imports": [
+        "velvet_bot.infrastructure.media_delivery_repository_backfill",
+        "velvet_bot.infrastructure.media_delivery_repository_claim",
+        "velvet_bot.infrastructure.media_delivery_repository_finish",
+        "velvet_bot.infrastructure.media_delivery_repository_helpers",
+        "velvet_bot.infrastructure.media_delivery_repository_record"
+      ],
+      "external_import_count": 1,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_repository_backfill.py",
+      "module": "velvet_bot.infrastructure.media_delivery_repository_backfill",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 47,
+      "function_count": 3,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 16,
+      "branch_count": 4,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.application.media_tasks",
+        "velvet_bot.database",
+        "velvet_bot.infrastructure.media_delivery_repository_helpers"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [],
+      "sql_literal_count": 3,
+      "database_acquire_count": 2,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_repository_claim.py",
+      "module": "velvet_bot.infrastructure.media_delivery_repository_claim",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 35,
+      "function_count": 3,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 8,
+      "branch_count": 2,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.application.media_tasks",
+        "velvet_bot.database",
+        "velvet_bot.infrastructure.media_delivery_repository_helpers"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [],
+      "sql_literal_count": 5,
+      "database_acquire_count": 3,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_repository_finish.py",
+      "module": "velvet_bot.infrastructure.media_delivery_repository_finish",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 46,
+      "function_count": 5,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 9,
+      "branch_count": 2,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.application.media_tasks",
+        "velvet_bot.database",
+        "velvet_bot.infrastructure.media_delivery_repository_helpers"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [],
+      "sql_literal_count": 6,
+      "database_acquire_count": 5,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_repository_helpers.py",
+      "module": "velvet_bot.infrastructure.media_delivery_repository_helpers",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 52,
+      "function_count": 8,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 7,
+      "branch_count": 5,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.application.media_tasks"
+      ],
+      "external_import_count": 4,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_repository_record.py",
+      "module": "velvet_bot.infrastructure.media_delivery_repository_record",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 34,
+      "function_count": 3,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 14,
+      "branch_count": 2,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.application.media_tasks",
+        "velvet_bot.database",
+        "velvet_bot.infrastructure.media_delivery_repository_helpers"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [],
+      "sql_literal_count": 6,
+      "database_acquire_count": 2,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_runtime.py",
+      "module": "velvet_bot.infrastructure.media_delivery_runtime",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 209,
+      "function_count": 10,
+      "class_count": 2,
+      "handler_count": 0,
+      "max_function_length": 52,
+      "branch_count": 9,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.application.workspace_tasks",
+        "velvet_bot.database",
+        "velvet_bot.domains.media_generation.models",
+        "velvet_bot.infrastructure.ai",
+        "velvet_bot.infrastructure.media_delivery_repository",
+        "velvet_bot.infrastructure.media_delivery_telegram"
+      ],
+      "external_import_count": 6,
+      "aiogram_imports": [
+        "aiogram"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 2,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": [
+        {
+          "id": "typing-any-usage:velvet_bot/infrastructure/media_delivery_runtime.py:a90fff492f411429",
+          "category": "typing-any-usage",
+          "path": "velvet_bot/infrastructure/media_delivery_runtime.py",
+          "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
+          "summary": "2 Any references",
+          "details": {
+            "count": 2
+          }
+        }
+      ]
+    },
+    {
+      "path": "velvet_bot/infrastructure/media_delivery_telegram.py",
+      "module": "velvet_bot.infrastructure.media_delivery_telegram",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 219,
+      "function_count": 12,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 32,
+      "branch_count": 5,
+      "internal_imports": [
+        "velvet_bot.application.media_delivery",
+        "velvet_bot.domains.media_generation.file_delivery_worker",
+        "velvet_bot.domains.media_generation.model_catalog",
+        "velvet_bot.presentation.telegram.shared.retry"
+      ],
+      "external_import_count": 8,
+      "aiogram_imports": [
+        "aiogram",
+        "aiogram.exceptions",
+        "aiogram.types"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
     },
     {
       "path": "velvet_bot/infrastructure/pose_extractor.py",
