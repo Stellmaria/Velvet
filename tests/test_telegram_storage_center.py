@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+from velvet_bot.domains.telegram_storage.deletion import DeletionPolicy
 from velvet_bot.domains.telegram_storage.files import (
     decrypt_file,
     encrypt_file,
@@ -125,7 +126,7 @@ class _FloodOnceBot(_FakeBot):
 class TelegramStorageUploaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_local_file_is_deleted_only_after_database_index(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             source = root / "report.json"
             source.write_text('{"ok":true}', encoding="utf-8")
             settings = SimpleNamespace(
@@ -134,6 +135,10 @@ class TelegramStorageUploaderTests(unittest.IsolatedAsyncioTestCase):
                 staging_dir=root / "staging",
                 max_part_bytes=1024 * 1024,
                 delete_after_upload=True,
+                deletion_policy_for=lambda kind: DeletionPolicy(
+                    name=f"test-{kind}",
+                    allowed_roots=(root,),
+                ),
             )
             stored = StoredObject(
                 object_id=9,
