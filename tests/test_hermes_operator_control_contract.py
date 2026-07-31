@@ -58,7 +58,9 @@ class HermesOperatorControlContractTests(unittest.TestCase):
     def test_host_bridge_has_a_fixed_start_allowlist(self) -> None:
         self.assertIn('services=frozenset({"bot"})', self.host_start)
         self.assertIn('services=frozenset({"bot", "userbot"})', self.host_start)
-        self.assertIn('self._compose(target, "up", "-d", service)', self.host_start)
+        self.assertIn('"up",', self.host_start)
+        self.assertIn('"--no-build",', self.host_start)
+        self.assertIn('"--no-recreate",', self.host_start)
         self.assertIn('set(payload) != {', self.host_start)
         self.assertIn('"token",', self.host_start)
         self.assertIn('"project",', self.host_start)
