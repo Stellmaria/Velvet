@@ -12,7 +12,10 @@ x-hermes-coder: &hermes-coder
     HERMES_UID: ${HERMES_UID:-10000}
     HERMES_GID: ${HERMES_GID:-10000}
     HERMES_WRITE_SAFE_ROOT: /workspace
-    API_SERVER_ENABLED: "false"
+    API_SERVER_ENABLED: "true"
+    API_SERVER_HOST: 127.0.0.1
+    API_SERVER_PORT: "8642"
+    API_SERVER_KEY: hermes-coder-local-healthcheck-only
     HERMES_DASHBOARD: "0"
   tmpfs:
     - /tmp:size=512m,mode=1777
@@ -31,7 +34,11 @@ x-hermes-coder: &hermes-coder
   security_opt:
     - no-new-privileges:true
   healthcheck:
-    test: ["CMD-SHELL", "pgrep -f 'gateway run' >/dev/null"]
+    test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3).read()
     interval: 30s
     timeout: 5s
     retries: 3
