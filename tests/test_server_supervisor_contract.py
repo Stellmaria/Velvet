@@ -86,6 +86,13 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("scripts/server_smoke.py", self.deploy)
         self.assertIn("build --pull bot supervisor-proxy", self.deploy)
         self.assertIn("postgres supervisor-proxy bot", self.deploy)
+        self.assertIn('${TMPDIR:-/tmp}/velvet-deploy.lock', self.deploy)
+        self.assertIn(
+            'docker_config="${DOCKER_CONFIG:-$data_dir/runtime/docker-config}"',
+            self.deploy,
+        )
+        self.assertIn('export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"', self.deploy)
+        self.assertIn('chmod 0700 "$docker_config"', self.deploy)
 
     def test_systemd_runtime_is_unprivileged_and_restartable(self) -> None:
         self.assertIn("User=velvet", self.unit)
@@ -93,6 +100,15 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("NoNewPrivileges=true", self.unit)
         self.assertIn("ProtectSystem=strict", self.unit)
         self.assertIn("ProtectHome=read-only", self.unit)
+        self.assertIn(
+            "ReadWritePaths=/srv/velvet /srv/velvet/data /tmp",
+            self.unit,
+        )
+        self.assertIn(
+            "Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config",
+            self.unit,
+        )
+        self.assertIn("Environment=COMPOSE_BAKE=false", self.unit)
         self.assertIn("Restart=always", self.unit)
         self.assertIn("scripts/server_supervisor.py", self.unit)
         self.assertNotIn("User=root", self.unit)
@@ -108,6 +124,8 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("systemctl enable velvet-server-supervisor.service", self.installer)
         self.assertIn("systemctl restart velvet-server-supervisor.service", self.installer)
         self.assertIn("systemctl reload velvet-compose.service", self.installer)
+        self.assertIn('"$data_dir/runtime/docker-config"', self.installer)
+        self.assertIn('chmod 0700 "$data_dir/runtime/docker-config"', self.installer)
         self.assertNotIn(
             "install -d -m 0755 -o velvet -g velvet",
             self.installer,

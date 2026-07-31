@@ -14,6 +14,8 @@ EnvironmentFile=/srv/velvet/.env.server
 Environment=VELVET_APP_DIR=/srv/velvet
 Environment=VELVET_ENV_FILE=.env.server
 Environment=VELVET_COMPOSE_FILE=docker-compose.server.yml
+Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config
+Environment=COMPOSE_BAKE=false
 ExecStart=/usr/bin/python3 /srv/velvet/scripts/server_supervisor.py
 Restart=always
 RestartSec=3
@@ -22,7 +24,9 @@ KillSignal=SIGTERM
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/srv/velvet /srv/velvet/data
+# deploy.sh and manual SSH deploys share /tmp/velvet-deploy.lock. Keep that
+# single lock writable inside the systemd sandbox so both entrypoints serialize.
+ReadWritePaths=/srv/velvet /srv/velvet/data /tmp
 
 [Install]
 WantedBy=multi-user.target
