@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   repair:
-    if: github.event.head_commit.message == 'chore: run issue 457 repair'
+    if: github.event.head_commit.message == 'chore: rerun issue 457 repair'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -43,28 +43,46 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check -r requirements.txt
 
-      - name: Merge current main
+      - name: Repair, validate and publish
+        shell: bash
         run: |
+          set -Eeuo pipefail
+          log=/tmp/issue457-repair.log
+          exec > >(tee "$log") 2>&1
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin main
-          git merge --no-edit origin/main
 
-      - name: Repair integration fixtures and obsolete delivery contract
-        run: |
+          report_failure() {
+            code=$?
+            trap - ERR
+            mkdir -p docs/worklog
+            cp "$log" docs/worklog/issue457-repair-failure.log
+            git add docs/worklog/issue457-repair-failure.log
+            git commit -m 'chore: record issue 457 repair failure' || true
+            git push origin HEAD:agent/issue-457-durable-media-delivery || true
+            exit "$code"
+          }
+          trap report_failure ERR
+
           python - <<'PY'
           from pathlib import Path
 
-          for name in (
-              "tests/test_ai_task_queue_repository_integration.py",
-              "tests/test_ai_vision_batch_postgres.py",
-          ):
+          replacements = {
+              "tests/test_ai_task_queue_repository_integration.py": (
+                  'TRUNCATE ai_tasks RESTART IDENTITY',
+                  'TRUNCATE media_delivery_jobs, ai_tasks RESTART IDENTITY',
+              ),
+              "tests/test_ai_vision_batch_postgres.py": (
+                  'TRUNCATE ai_tasks,ai_task_batches',
+                  'TRUNCATE media_delivery_jobs, ai_tasks, ai_task_batches RESTART IDENTITY',
+              ),
+          }
+          for name, (old, new) in replacements.items():
               path = Path(name)
               text = path.read_text(encoding="utf-8")
-              old = 'TRUNCATE ai_tasks RESTART IDENTITY'
-              new = 'TRUNCATE media_delivery_jobs, ai_tasks RESTART IDENTITY'
               if old not in text:
-                  raise RuntimeError(f"Expected TRUNCATE fixture not found in {name}")
+                  raise RuntimeError(f"Expected fixture not found in {name}: {old}")
               path.write_text(text.replace(old, new), encoding="utf-8")
           PY
 
@@ -147,8 +165,6 @@ jobs:
               unittest.main()
           PY
 
-      - name: Regenerate repository contracts
-        run: |
           python scripts/update_p2_stability_inventory.py \
             --label issue-457-durable-media-delivery \
             --schema-version 75
@@ -163,8 +179,6 @@ jobs:
             --bootstrap-exemptions \
             --label issue-457-durable-media-delivery
 
-      - name: Refresh reviewed numeric baselines
-        run: |
           python - <<'PY'
           import json
           import re
@@ -180,10 +194,7 @@ jobs:
           def replace_assert(expression: str, value: int) -> None:
               global text
               pattern = rf'self\.assertEqual\([0-9_]+, {re.escape(expression)}\)'
-              replacement = (
-                  f"self.assertEqual({value:,}".replace(",", "_")
-                  + f", {expression})"
-              )
+              replacement = f"self.assertEqual({value:_}, {expression})"
               text, count = re.subn(pattern, replacement, text, count=1)
               if count != 1:
                   raise RuntimeError(f"Could not update assertion for {expression}")
@@ -227,7 +238,6 @@ jobs:
               text, count = re.subn(pattern, replacement, text, count=1)
               if count != 1:
                   raise RuntimeError(f"Could not update markdown assertion for {label}")
-
           path.write_text(text, encoding="utf-8")
 
           layout = json.loads(
@@ -246,11 +256,9 @@ jobs:
           path.write_text(text, encoding="utf-8")
           PY
 
-      - name: Remove temporary workflow
-        run: git rm .github/workflows/issue457-refresh-inventory.yml
+          git rm .github/workflows/issue457-refresh-inventory.yml
+          rm -f docs/worklog/issue457-repair-failure.log
 
-      - name: Validate repaired contracts
-        run: |
           python -m unittest \
             tests/test_ai_task_queue_repository_integration.py \
             tests/test_ai_vision_batch_postgres.py \
@@ -262,21 +270,7 @@ jobs:
             tests/test_p3e_repository_layout_inventory.py \
             tests/test_telegram_navigation_inventory.py
 
-      - name: Commit repair
-        run: |
-          git add \
-            docs/generated/telegram_navigation_inventory.md \
-            docs/p2_stability_inventory.json \
-            docs/p2_stability_inventory.md \
-            docs/repository_layout_inventory.json \
-            docs/repository_layout_inventory.md \
-            docs/package_architecture_inventory.json \
-            docs/package_architecture_inventory.md \
-            docs/package_architecture_exemptions.json \
-            tests/test_ai_task_queue_repository_integration.py \
-            tests/test_ai_vision_batch_postgres.py \
-            tests/test_friendly_grs_file_delivery.py \
-            tests/test_package_architecture_inventory.py \
-            tests/test_p3e_repository_layout_inventory.py
+          trap - ERR
+          git add -A
           git commit -m 'fix: repair durable delivery CI contracts'
           git push origin HEAD:agent/issue-457-durable-media-delivery
