@@ -74,6 +74,7 @@ backup, smoke, healthcheck и rollback: делать `git pull` из проце�
 - Docker build.
 
 После финализации worklog повторно запускаются full unit tests и project notes contract.
+Финальный CI повторно запущен на актуальном head после обновления generated inventory.
 
 ### PR и commit
 
