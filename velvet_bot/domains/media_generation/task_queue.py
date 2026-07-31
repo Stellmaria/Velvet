@@ -6,7 +6,12 @@ from collections.abc import Mapping
 from dataclasses import replace
 from uuid import UUID
 
-from velvet_bot.application.media_delivery import DeliverMediaResult, ResolveProviderResult
+from velvet_bot.application.media_delivery import (
+    DeliverMediaResult,
+    ResolveProviderResult,
+    classify_media_delivery_error,
+    raise_if_programming_error,
+)
 from velvet_bot.application.media_tasks import task_payload_mapping, task_result_urls
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.database import Database
@@ -90,9 +95,11 @@ class KieTaskQueueService(AITaskQueueService):
 
         async with self._database.acquire() as connection:
             result = await connection.execute(
-                """UPDATE ai_tasks
-                   SET max_attempts=GREATEST(max_attempts,$2::INTEGER),updated_at=NOW()
-                   WHERE id=$1::UUID AND status='running' AND locked_by=$3::VARCHAR""",
+                """
+                UPDATE ai_tasks
+                SET max_attempts=GREATEST(max_attempts,$2::INTEGER),updated_at=NOW()
+                WHERE id=$1::UUID AND status='running' AND locked_by=$3::VARCHAR
+                """,
                 task.id,
                 self._max_attempts,
                 worker_id.strip(),
@@ -100,7 +107,6 @@ class KieTaskQueueService(AITaskQueueService):
         if not result.endswith(" 1"):
             return task
         return replace(task, max_attempts=self._max_attempts)
-
 
     async def _restore_successful_provider_task(
         self,
@@ -125,9 +131,11 @@ class KieTaskQueueService(AITaskQueueService):
         payload["kie_campaign"] = runtime
         async with self._database.acquire() as connection:
             result = await connection.execute(
-                """UPDATE ai_tasks
-                   SET payload=$3::JSONB,updated_at=NOW(),locked_at=NOW()
-                   WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR""",
+                """
+                UPDATE ai_tasks
+                SET payload=$3::JSONB,updated_at=NOW(),locked_at=NOW()
+                WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR
+                """,
                 task.id,
                 worker_id.strip(),
                 json.dumps(payload, ensure_ascii=False, default=str),
@@ -135,7 +143,8 @@ class KieTaskQueueService(AITaskQueueService):
         if not result.endswith(" 1"):
             return task
         logger.warning(
-            "Recovered successful provider task before queue completion task=%s provider_task=%s",
+            "Recovered successful provider task before queue completion task=%s "
+            "provider_task=%s",
             task.id,
             provider_task_id,
         )
@@ -154,9 +163,11 @@ class KieTaskQueueService(AITaskQueueService):
             return True
         async with self._database.acquire() as connection:
             result = await connection.execute(
-                """UPDATE ai_tasks
-                   SET payload=payload || $3::JSONB,updated_at=NOW(),locked_at=NOW()
-                   WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR""",
+                """
+                UPDATE ai_tasks
+                SET payload=payload || $3::JSONB,updated_at=NOW(),locked_at=NOW()
+                WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR
+                """,
                 task_id,
                 worker_id.strip(),
                 json.dumps(dict(patch), ensure_ascii=False, default=str),
@@ -187,12 +198,13 @@ class KieTaskQueueService(AITaskQueueService):
         if delivery is not None:
             try:
                 await delivery.execute(task_id=task.id)
-            except Exception:
+            except Exception as error:  # p2-approved-boundary: isolate-post-completion-delivery
                 # Provider success and ai_tasks.result are already durable. Recovery
                 # imports/retries this delivery without calling generation again.
-                logger.exception(
-                    "Durable media delivery failed after task completion task=%s",
-                    task.id,
+                _report_delivery_boundary(
+                    error,
+                    phase="post_completion_delivery",
+                    task_id=task.id,
                 )
         return task
 
@@ -208,9 +220,11 @@ class KieTaskQueueService(AITaskQueueService):
         normalized_worker = worker_id.strip()
         async with self._database.acquire() as connection:
             result = await connection.execute(
-                """UPDATE ai_tasks
-                   SET max_attempts=GREATEST(1,attempt_count),updated_at=NOW()
-                   WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR""",
+                """
+                UPDATE ai_tasks
+                SET max_attempts=GREATEST(1,attempt_count),updated_at=NOW()
+                WHERE id=$1::UUID AND status='running' AND locked_by=$2::VARCHAR
+                """,
                 task_id,
                 normalized_worker,
             )
@@ -257,10 +271,11 @@ class KieTaskQueueService(AITaskQueueService):
                 media_kind=("video" if model in _VIDEO_MODELS else "image"),
                 request=_delivery_metadata(request),
             )
-        except Exception:
-            logger.exception(
-                "Could not persist provider submission for media delivery task=%s",
-                task_id,
+        except Exception as error:  # p2-approved-boundary: isolate-provider-submission-registration
+            _report_delivery_boundary(
+                error,
+                phase="provider_submission_registration",
+                task_id=task_id,
             )
 
     async def _record_success_best_effort(
@@ -297,11 +312,29 @@ class KieTaskQueueService(AITaskQueueService):
                 request=_delivery_metadata(request),
                 result_urls=task_result_urls(result),
             )
-        except Exception:
-            logger.exception(
-                "Could not normalize provider success for media delivery task=%s",
-                task.id,
+        except Exception as error:  # p2-approved-boundary: isolate-provider-success-registration
+            _report_delivery_boundary(
+                error,
+                phase="provider_success_registration",
+                task_id=task.id,
             )
+
+
+def _report_delivery_boundary(
+    error: BaseException,
+    *,
+    phase: str,
+    task_id: UUID,
+) -> None:
+    failure = classify_media_delivery_error(error, phase=phase)
+    logger.error(
+        "media_delivery_boundary_failed task=%s phase=%s code=%s fingerprint=%s",
+        task_id,
+        phase,
+        failure.code,
+        failure.fingerprint,
+    )
+    raise_if_programming_error(error, phase=phase)
 
 
 def _delivery_metadata(request: Mapping[str, object]) -> dict[str, object]:
@@ -311,7 +344,9 @@ def _delivery_metadata(request: Mapping[str, object]) -> dict[str, object]:
         "resolution": str(request.get("resolution") or "").strip(),
         "aspect_ratio": str(request.get("aspect_ratio") or "").strip(),
         "content_mode": str(request.get("content_mode") or "").strip(),
-        "reference_count": len(references) if isinstance(references, (list, tuple)) else 0,
+        "reference_count": (
+            len(references) if isinstance(references, (list, tuple)) else 0
+        ),
     }
 
 

@@ -61,9 +61,9 @@ Velvet Archive — owner-oriented архивный Telegram-бот для пер
 Не завершено физически:
 
 - 113 root modules, из которых 110 non-facade должны мигрировать bounded families по #463;
-- startup graph из 27 side-effect installers по #455;
+- startup graph из 28 side-effect installers по #455;
 - часть Ауф/provider/delivery/UI logic остаётся в `app/*_install.py`;
-- 518 registered package fingerprints должны уменьшаться owner-by-owner, а не скрываться обновлением baseline.
+- 546 registered package fingerprints должны уменьшаться owner-by-owner, а не скрываться обновлением baseline.
 
 ## Фазы 8–11. Управление и production foundation
 
@@ -91,7 +91,7 @@ Velvet Archive — owner-oriented архивный Telegram-бот для пер
 
 - внешний `Database._require_pool()` debt: 0/0;
 - новые private pool accesses блокируются CI;
-- repository inventory: 35 modules, 34 domain + 1 infrastructure;
+- repository inventory: 41 modules, 34 domain + 7 infrastructure;
 - central/root repositories: 0.
 
 ## Фаза 19. Velvet AI operations
@@ -155,10 +155,10 @@ Historical migrations и dual-read `meow_*` aliases остаются до live r
 
 Generated baseline:
 
-- broad exception boundaries: 76;
-- approved boundaries: 76;
+- broad exception boundaries: 102;
+- approved boundaries: 102;
 - unresolved boundaries: 0;
-- callback handlers: 98;
+- callback handlers: 132;
 - late/missing callback acknowledgments: 0.
 
 Широкие catches допускаются только на проверенных внешних boundaries с logging/compensation и явным `CancelledError` propagation.
@@ -197,9 +197,9 @@ Canonical docs обязаны отличать shipped code от live obligation
 
 Статус: завершено.
 
-- repository modules: 35;
+- repository modules: 41;
 - domain repositories: 34;
-- infrastructure adapters: 1;
+- infrastructure adapters: 7;
 - central/root repositories: 0.
 
 ## P3F. Статическая типизация
@@ -212,11 +212,11 @@ Canonical docs обязаны отличать shipped code от live obligation
 
 Current reproducible baseline:
 
-- 604 production modules;
-- 128 870 LOC;
-- 27 ordered startup installer stages;
-- 518 registered file/category fingerprints;
-- 518 complete exemptions;
+- 631 production modules;
+- 136 683 LOC;
+- 28 ordered startup installer stages;
+- 546 registered file/category fingerprints;
+- 546 complete exemptions;
 - 0 unregistered fingerprints;
 - 0 stale exemptions.
 
@@ -226,11 +226,11 @@ Scanner покрывает layers/targets, imports, aiogram boundaries, SQL/acqu
 
 Package-wide shared inventory текущего baseline:
 
-- 596 production Python files;
-- 3306 functions;
-- 136 registered private cross-module accesses;
+- 631 production Python files;
+- 3597 functions;
+- 182 registered private cross-module accesses;
 - 0 blocking known private contracts;
-- 55 exact, 92 normalized и 9 semantic duplicate groups.
+- 62 exact, 97 normalized и 9 semantic duplicate groups.
 
 Canonical helpers уже созданы, но transitional debt закрывается family-by-family по #419/#455/#457/#458/#459. Package gate отслеживает fingerprint shared-private baseline и не позволяет изменить его незаметно.
 

@@ -68,7 +68,7 @@ class CanonicalDocsSyncTests(unittest.TestCase):
             self.assertIn(value, self.audit)
 
         self.assertIn("84 active Router imports", self.memory)
-        self.assertIn("repository modules: 35", self.memory)
+        self.assertIn("repository modules: 41", self.memory)
         self.assertNotIn("60 активных routers", self.status)
         self.assertNotIn("30 domain repositories", self.audit)
 
@@ -99,13 +99,13 @@ class CanonicalDocsSyncTests(unittest.TestCase):
             self.assertIn("#438", document)
             self.assertIn("meow_*", document)
 
-        self.assertIn("27 side-effect installation stages", self.audit)
+        self.assertIn("28 side-effect installation stages", self.audit)
         self.assertIn("PR #450/#456", self.audit)
         self.assertIn("временной stabilization", self.status)
         self.assertIn("не закрывается зелёным CI", self.audit)
 
     def test_navigation_and_branch_maintenance_status_are_current(self) -> None:
-        self.assertIn("Python files scanned: **630**", self.navigation)
+        self.assertIn("Python files scanned: **631**", self.navigation)
         self.assertIn("Buttons: **1049**", self.navigation)
         self.assertIn("Violations: **0**", self.navigation)
 

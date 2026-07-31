@@ -9,9 +9,13 @@ from aiogram import Bot
 
 from velvet_bot.application.media_delivery import (
     DeliverMediaResult,
+    MediaDeliveryTerminalError,
+    MediaDeliveryTransientError,
     ProviderResultResolver,
     RedeliverMediaResult,
     ResolveProviderResult,
+    classify_media_delivery_error,
+    raise_if_programming_error,
 )
 from velvet_bot.application.workspace_tasks import get_owned_success_task
 from velvet_bot.database import Database
@@ -43,16 +47,24 @@ class KieProviderResultResolver(ProviderResultResolver):
         del provider
         record = await self._client.get_task(provider_task_id)
         if record.state is KieTaskState.FAIL:
-            raise RuntimeError(
-                "Провайдер завершил сохранённую задачу ошибкой: "
-                f"{record.failure_code or record.failure_message or 'unknown'}."
+            raise MediaDeliveryTerminalError(
+                "provider_result_failed",
+                "Провайдер завершил сохранённую задачу ошибкой.",
             )
         if record.state is not KieTaskState.SUCCESS:
-            raise RuntimeError(
-                "Провайдер ещё не подтвердил готовый результат: "
-                f"{record.state.value}."
+            raise MediaDeliveryTransientError(
+                "provider_result_pending",
+                "Провайдер ещё не подтвердил готовый результат.",
             )
-        return tuple(url for value in record.result_urls if (url := str(value).strip()))
+        urls = tuple(
+            url for value in record.result_urls if (url := str(value).strip())
+        )
+        if not urls:
+            raise MediaDeliveryTransientError(
+                "provider_result_urls_pending",
+                "Провайдер подтвердил задачу, но URL результата ещё недоступен.",
+            )
+        return urls
 
 
 class MediaDeliveryRuntime:
@@ -173,11 +185,18 @@ async def redeliver_owned_task(
         )
     except asyncio.CancelledError:
         raise
-    except Exception as error:
-        logger.exception("Could not redeliver durable media task=%s", task_id)
+    except Exception as error:  # p2-approved-boundary: report-redelivery-failure
+        failure = classify_media_delivery_error(error, phase="redelivery")
+        logger.error(
+            "media_redelivery_failed task=%s code=%s fingerprint=%s",
+            task_id,
+            failure.code,
+            failure.fingerprint,
+        )
+        raise_if_programming_error(error, phase="redelivery")
         await callback.answer(
-            "Не удалось восстановить сохранённый результат: "
-            f"{str(error)[:250]}",
+            "Не удалось восстановить сохранённый результат. "
+            "Новая генерация и новое списание не запускались.",
             show_alert=True,
         )
         return

@@ -93,24 +93,24 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 
 По generated inventories текущего среза:
 
-- production modules package-wide: **604**;
-- production LOC: **128 870**;
+- production modules package-wide: **631**;
+- production LOC: **136 683**;
 - root modules `velvet_bot/*.py`: **113**;
 - активные Router imports в четырёх bundles: **84**;
 - runtime compatibility components: **8**;
-- repository modules: **35**;
+- repository modules: **41**;
 - domain repositories: **34**;
-- infrastructure PostgreSQL adapters: **1**;
-- startup installer stages: **27**;
-- registered package architecture fingerprints: **518**;
-- mandatory package exemptions: **518**;
-- production Python files в shared-contract inventory: **596**;
-- функций inventoried: **3306**;
-- registered private cross-module debt: **136**;
-- exact / normalized / semantic duplicate groups: **55 / 92 / 9**;
-- Telegram navigation scan: **604 Python files**, **1024 inline buttons**, **0 violations**.
+- infrastructure PostgreSQL adapters: **7**;
+- startup installer stages: **28**;
+- registered package architecture fingerprints: **546**;
+- mandatory package exemptions: **546**;
+- production Python files в shared-contract inventory: **631**;
+- функций inventoried: **3597**;
+- registered private cross-module debt: **182**;
+- exact / normalized / semantic duplicate groups: **62 / 97 / 9**;
+- Telegram navigation scan: **631 Python files**, **1049 inline buttons**, **0 violations**.
 
-518 package fingerprints — это измеренный текущий debt, а не 518 исправленных проблем. Новый или изменённый fingerprint блокирует CI до явного owner/reason/replacement/removal issue review; удалённый debt требует удаления stale exemption.
+546 package fingerprints — это измеренный текущий debt, а не 518 исправленных проблем. Новый или изменённый fingerprint блокирует CI до явного owner/reason/replacement/removal issue review; удалённый debt требует удаления stale exemption.
 
 Источники: `docs/package_architecture_inventory.*`, `docs/package_architecture_exemptions.json`, `docs/architecture_layout_inventory.*`, `docs/repository_layout_inventory.*`, `docs/shared_contract_inventory.*`, `docs/generated/telegram_navigation_inventory.md`.
 
