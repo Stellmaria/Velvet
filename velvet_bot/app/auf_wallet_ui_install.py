@@ -53,6 +53,8 @@ def install_auf_wallet_ui() -> None:
             ai_usage_service,
             ai_task_queue_service,
             auf_runtime_service,
+            auf_wallet_service,
+            auf_purchase_service,
         )
 
     controller.handle_scoped_auf_action = handle_scoped_auf_action_with_wallet
