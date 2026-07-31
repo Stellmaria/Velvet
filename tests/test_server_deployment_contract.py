@@ -25,6 +25,15 @@ class ServerDeploymentContractTests(unittest.TestCase):
         self.assertNotIn("/var/lib/postgresql", hermes)
         self.assertIn('"127.0.0.1:${HERMES_LOOPBACK_PORT:-8642}:8642"', hermes)
 
+    def test_hermes_preserves_s6_overlay_as_pid_one(self) -> None:
+        source = Path("docker-compose.server.yml").read_text(encoding="utf-8")
+        bot = source.split("  bot:", 1)[1].split("\n  # Запускается", 1)[0]
+        hermes = source.split("  hermes:", 1)[1]
+        self.assertIn("init: true", bot)
+        self.assertNotIn("init: true", hermes)
+        self.assertIn("s6-overlay", hermes)
+        self.assertIn('command: ["gateway", "run"]', hermes)
+
     def test_server_env_starts_with_expensive_features_disabled(self) -> None:
         source = Path(".env.server.example").read_text(encoding="utf-8")
         for line in (
