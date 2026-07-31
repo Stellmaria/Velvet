@@ -57,3 +57,26 @@ jobs:
           path: unit-test-output.txt
           if-no-files-found: error
           retention-days: 7
+
+      - name: Generate current inventory previews
+        if: always()
+        shell: bash
+        run: |
+          rm -rf generated-inventories
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline \
+            --output-dir generated-inventories
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown generated-inventories/telegram_navigation_inventory.md
+
+      - name: Upload current inventory previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-inventories
+          path: generated-inventories/
+          if-no-files-found: error
+          retention-days: 1
