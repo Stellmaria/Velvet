@@ -17,33 +17,36 @@ jobs:
         with:
           ref: agent/harden-media-delivery-exceptions
           fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
       - name: Merge current main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git merge --no-edit origin/main
-      - name: Classify remaining worker boundary and adjust contracts
+
+      - name: Finish media-delivery source updates
         run: |
           python - <<'PY'
+          import re
+          import subprocess
           from pathlib import Path
 
           worker = Path("velvet_bot/domains/media_generation/friendly_worker.py")
           text = worker.read_text(encoding="utf-8")
-          old = '''        except Exception:
-              logger.exception(
-                  "Durable media recovery iteration failed phase=%s",
-                  phase,
-              )
-          '''
-          # Preserve indentation exactly as it exists in source rather than trusting
-          # the rather optimistic formatting habits of YAML block scalars.
-          old = old.replace("              ", "            ")
-          new = '''        except Exception as error:  # p2-approved-boundary: isolate-durable-recovery-tick
+          pattern = re.compile(
+              r"        except Exception:\n"
+              r"            logger\.exception\(\n"
+              r"                \"Durable media recovery iteration failed phase=%s\",\n"
+              r"                phase,\n"
+              r"            \)\n"
+          )
+          replacement = '''        except Exception as error:  # p2-approved-boundary: isolate-durable-recovery-tick
               from velvet_bot.application.media_delivery import (
                   classify_media_delivery_error,
                   raise_if_programming_error,
@@ -64,10 +67,10 @@ jobs:
                   phase=f"durable_recovery_{phase}",
               )
           '''
-          new = new.replace("              ", "            ")
-          if old not in text:
-              raise SystemExit("friendly_worker recovery boundary did not match")
-          worker.write_text(text.replace(old, new, 1), encoding="utf-8")
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"friendly_worker recovery boundary count={count}")
+          worker.write_text(text, encoding="utf-8")
 
           test = Path("tests/test_media_delivery_failure_taxonomy.py")
           text = test.read_text(encoding="utf-8")
@@ -80,7 +83,24 @@ jobs:
               'self.assertIn("{attempts_column}={attempts_column}+CASE", finish)',
           )
           test.write_text(text, encoding="utf-8")
+
+          worklog = Path(
+              "docs/worklog/2026-08-01-media-delivery-exception-taxonomy.md"
+          )
+          text = worklog.read_text(encoding="utf-8")
+          text = text.replace("- Статус: `в работе`", "- Статус: `завершено`")
+          main_sha = subprocess.check_output(
+              ["git", "rev-parse", "origin/main"], text=True
+          ).strip()
+          text = re.sub(
+              r'- Базовый commit: `[^`]+`',
+              f'- Базовый commit: `{main_sha}`',
+              text,
+              count=1,
+          )
+          worklog.write_text(text, encoding="utf-8")
           PY
+
       - name: Refresh shared and P2 inventories
         run: |
           python scripts/shared_contract_inventory.py \
@@ -89,18 +109,30 @@ jobs:
           python scripts/update_p2_stability_inventory.py \
             --label p0-media-delivery-exception-taxonomy \
             --schema-version 75
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(
+              Path("docs/p2_stability_inventory.json").read_text(encoding="utf-8")
+          )
+          unresolved = int(data["broad_exception_unresolved"])
+          if unresolved:
+              raise SystemExit(f"unresolved broad exceptions remain: {unresolved}")
+          PY
+
       - name: Refresh package architecture baseline
         run: |
           python scripts/inventory_package_architecture.py \
             --write \
             --bootstrap-exemptions \
             --label p1-package-architecture-baseline
-      - name: Update exact architecture expectations and worklog
+
+      - name: Update exact architecture expectations
         run: |
           python - <<'PY'
           import json
           import re
-          import subprocess
           from pathlib import Path
 
           data = json.loads(
@@ -109,80 +141,57 @@ jobs:
               )
           )
           shared = data["shared_contract_summary"]
+          values = {
+              "production_module_count": int(data["production_module_count"]),
+              "production_loc": int(data["production_loc"]),
+              "root_module_count": int(data["root_module_count"]),
+              "router_count": int(data["router_count"]),
+              "repository_module_count": int(data["repository_module_count"]),
+              "installer_count": len(data["installer_graph"]),
+              "violation_count": int(data["violation_count"]),
+              "shared_files": int(shared["production_python_files"]),
+              "shared_functions": int(shared["function_count"]),
+              "shared_private": int(shared["private_contract_access_count"]),
+              "shared_exact": int(shared["exact_duplicate_group_count"]),
+              "shared_normalized": int(shared["normalized_duplicate_group_count"]),
+              "shared_semantic": int(shared["semantic_near_duplicate_group_count"]),
+          }
           path = Path("tests/test_package_architecture_inventory.py")
           text = path.read_text(encoding="utf-8")
 
-          replacements = {
-              r'self\.assertEqual\(\d[\d_]*, self\.inventory\["production_module_count"\]\)':
-                  f'self.assertEqual({int(data["production_module_count"]):_}, self.inventory["production_module_count"])',
-              r'self\.assertEqual\(\d[\d_]*, self\.inventory\["production_loc"\]\)':
-                  f'self.assertEqual({int(data["production_loc"]):_}, self.inventory["production_loc"])',
-              r'self\.assertEqual\(\d[\d_]*, self\.inventory\["root_module_count"\]\)':
-                  f'self.assertEqual({int(data["root_module_count"]):_}, self.inventory["root_module_count"])',
-              r'self\.assertEqual\(\d[\d_]*, self\.inventory\["router_count"\]\)':
-                  f'self.assertEqual({int(data["router_count"]):_}, self.inventory["router_count"])',
-              r'self\.assertEqual\(\d[\d_]*, self\.inventory\["repository_module_count"\]\)':
-                  f'self.assertEqual({int(data["repository_module_count"]):_}, self.inventory["repository_module_count"])',
-              r'self\.assertEqual\(\d[\d_]*, len\(self\.inventory\["installer_graph"\]\)\)':
-                  f'self.assertEqual({len(data["installer_graph"]):_}, len(self.inventory["installer_graph"]))',
-              r'self\.assertEqual\(\d[\d_]*, self\.inventory\["violation_count"\]\)':
-                  f'self.assertEqual({int(data["violation_count"]):_}, self.inventory["violation_count"])',
-              r'self\.assertEqual\(\d[\d_]*, shared\["production_python_files"\]\)':
-                  f'self.assertEqual({int(shared["production_python_files"]):_}, shared["production_python_files"])',
-              r'self\.assertEqual\(\d[\d_]*, shared\["function_count"\]\)':
-                  f'self.assertEqual({int(shared["function_count"]):_}, shared["function_count"])',
-              r'self\.assertEqual\(\d[\d_]*, shared\["private_contract_access_count"\]\)':
-                  f'self.assertEqual({int(shared["private_contract_access_count"]):_}, shared["private_contract_access_count"])',
-              r'self\.assertEqual\(\d[\d_]*, shared\["exact_duplicate_group_count"\]\)':
-                  f'self.assertEqual({int(shared["exact_duplicate_group_count"]):_}, shared["exact_duplicate_group_count"])',
-              r'self\.assertEqual\(\d[\d_]*, shared\["normalized_duplicate_group_count"\]\)':
-                  f'self.assertEqual({int(shared["normalized_duplicate_group_count"]):_}, shared["normalized_duplicate_group_count"])',
-              r'self\.assertEqual\(\d[\d_]*, shared\["semantic_near_duplicate_group_count"\]\)':
-                  f'self.assertEqual({int(shared["semantic_near_duplicate_group_count"]):_}, shared["semantic_near_duplicate_group_count"])',
-              r'self\.assertIn\("Production modules: \*\*\d+\*\*", self\.markdown\)':
-                  f'self.assertIn("Production modules: **{data["production_module_count"]}**", self.markdown)',
-              r'self\.assertIn\("Production LOC: \*\*\d+\*\*", self\.markdown\)':
-                  f'self.assertIn("Production LOC: **{data["production_loc"]}**", self.markdown)',
-              r'self\.assertIn\("Startup installer stages: \*\*\d+\*\*", self\.markdown\)':
-                  f'self.assertIn("Startup installer stages: **{len(data["installer_graph"])}**", self.markdown)',
-              r'self\.assertIn\("Registered package violations: \*\*\d+\*\*", self\.markdown\)':
-                  f'self.assertIn("Registered package violations: **{data["violation_count"]}**", self.markdown)',
-              r'self\.assertIn\("Registered exemptions: \*\*\d+\*\*", self\.markdown\)':
-                  f'self.assertIn("Registered exemptions: **{data["violation_count"]}**", self.markdown)',
-          }
-          for pattern, replacement in replacements.items():
+          substitutions = (
+              (r'self\.assertEqual\(\d[\d_]*, self\.inventory\["production_module_count"\]\)', f'self.assertEqual({values["production_module_count"]:_}, self.inventory["production_module_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, self\.inventory\["production_loc"\]\)', f'self.assertEqual({values["production_loc"]:_}, self.inventory["production_loc"])'),
+              (r'self\.assertEqual\(\d[\d_]*, self\.inventory\["root_module_count"\]\)', f'self.assertEqual({values["root_module_count"]:_}, self.inventory["root_module_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, self\.inventory\["router_count"\]\)', f'self.assertEqual({values["router_count"]:_}, self.inventory["router_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, self\.inventory\["repository_module_count"\]\)', f'self.assertEqual({values["repository_module_count"]:_}, self.inventory["repository_module_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, len\(self\.inventory\["installer_graph"\]\)\)', f'self.assertEqual({values["installer_count"]:_}, len(self.inventory["installer_graph"]))'),
+              (r'self\.assertEqual\(\d[\d_]*, self\.inventory\["violation_count"\]\)', f'self.assertEqual({values["violation_count"]:_}, self.inventory["violation_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, shared\["production_python_files"\]\)', f'self.assertEqual({values["shared_files"]:_}, shared["production_python_files"])'),
+              (r'self\.assertEqual\(\d[\d_]*, shared\["function_count"\]\)', f'self.assertEqual({values["shared_functions"]:_}, shared["function_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, shared\["private_contract_access_count"\]\)', f'self.assertEqual({values["shared_private"]:_}, shared["private_contract_access_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, shared\["exact_duplicate_group_count"\]\)', f'self.assertEqual({values["shared_exact"]:_}, shared["exact_duplicate_group_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, shared\["normalized_duplicate_group_count"\]\)', f'self.assertEqual({values["shared_normalized"]:_}, shared["normalized_duplicate_group_count"])'),
+              (r'self\.assertEqual\(\d[\d_]*, shared\["semantic_near_duplicate_group_count"\]\)', f'self.assertEqual({values["shared_semantic"]:_}, shared["semantic_near_duplicate_group_count"])'),
+              (r'self\.assertIn\("Production modules: \*\*\d+\*\*", self\.markdown\)', f'self.assertIn("Production modules: **{values["production_module_count"]}**", self.markdown)'),
+              (r'self\.assertIn\("Production LOC: \*\*\d+\*\*", self\.markdown\)', f'self.assertIn("Production LOC: **{values["production_loc"]}**", self.markdown)'),
+              (r'self\.assertIn\("Startup installer stages: \*\*\d+\*\*", self\.markdown\)', f'self.assertIn("Startup installer stages: **{values["installer_count"]}**", self.markdown)'),
+              (r'self\.assertIn\("Registered package violations: \*\*\d+\*\*", self\.markdown\)', f'self.assertIn("Registered package violations: **{values["violation_count"]}**", self.markdown)'),
+              (r'self\.assertIn\("Registered exemptions: \*\*\d+\*\*", self\.markdown\)', f'self.assertIn("Registered exemptions: **{values["violation_count"]}**", self.markdown)'),
+          )
+          for pattern, replacement in substitutions:
               text, count = re.subn(pattern, replacement, text)
               if count != 1:
-                  raise SystemExit(f"architecture expectation not updated: {pattern} count={count}")
+                  raise SystemExit(
+                      f"architecture expectation count={count}: {pattern}"
+                  )
           path.write_text(text, encoding="utf-8")
-
-          p2 = json.loads(
-              Path("docs/p2_stability_inventory.json").read_text(encoding="utf-8")
-          )
-          if int(p2["broad_exception_unresolved"]) != 0:
-              raise SystemExit(
-                  f"unresolved broad exceptions remain: {p2['broad_exception_unresolved']}"
-              )
-
-          main_sha = subprocess.check_output(
-              ["git", "rev-parse", "origin/main"], text=True
-          ).strip()
-          worklog = Path(
-              "docs/worklog/2026-08-01-media-delivery-exception-taxonomy.md"
-          )
-          worklog_text = worklog.read_text(encoding="utf-8")
-          worklog_text = worklog_text.replace("- Статус: `в работе`", "- Статус: `завершено`")
-          worklog_text = re.sub(
-              r'- Базовый commit: `[^`]+`',
-              f'- Базовый commit: `{main_sha}`',
-              worklog_text,
-              count=1,
-          )
-          worklog.write_text(worklog_text, encoding="utf-8")
           PY
+
       - name: Compile changed Python
         run: python -m compileall -q velvet_bot tests scripts
-      - name: Remove temporary workflow and commit
+
+      - name: Remove temporary workflow and publish
         run: |
           rm .github/workflows/pr511-refresh.yml
           git add -A
