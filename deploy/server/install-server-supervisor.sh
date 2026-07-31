@@ -97,15 +97,21 @@ print(value)
 PY
 )"
 
-install -d -m 0755 -o velvet -g velvet \
-  "$data_dir/runtime" \
-  "$data_dir/runtime/supervisor"
-install -d -m 0750 -o velvet -g velvet "$data_dir/logs"
+mkdir -p "$data_dir/runtime/supervisor"
+chown velvet:velvet "$data_dir/runtime/supervisor"
+chmod 0755 "$data_dir/runtime/supervisor"
 install -m 0644 "$SERVER_UNIT_SOURCE" "$SERVER_UNIT_TARGET"
 install -m 0644 "$COMPOSE_UNIT_SOURCE" "$COMPOSE_UNIT_TARGET"
 systemctl daemon-reload
 systemctl enable --now velvet-server-supervisor.service
-systemctl restart velvet-compose.service
+
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
+  build --pull supervisor-proxy
+if systemctl is-active --quiet velvet-compose.service; then
+  systemctl reload velvet-compose.service
+else
+  systemctl enable --now velvet-compose.service
+fi
 
 python3 - "$data_dir/runtime/supervisor/velvet-server-supervisor.sock" <<'PY'
 from __future__ import annotations
