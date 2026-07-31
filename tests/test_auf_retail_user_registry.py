@@ -87,9 +87,9 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(Decimal("0.02"), quote.provider_cost_usd)
         self.assertEqual(Decimal("0.026"), quote.target_retail_usd)
-        self.assertEqual(20_000, quote.quoted_units)
-        self.assertEqual(Decimal("2.0000"), quote.quoted_auf)
-        self.assertEqual(Decimal("0.05"), quote.minimum_revenue_usd)
+        self.assertEqual(30_000, quote.quoted_units)
+        self.assertEqual(Decimal("3.0000"), quote.quoted_auf)
+        self.assertEqual(Decimal("0.075"), quote.minimum_revenue_usd)
         self.assertEqual(3, connection.calls)
 
     async def test_seconds_and_references_are_priced_before_whole_rounding(self) -> None:
