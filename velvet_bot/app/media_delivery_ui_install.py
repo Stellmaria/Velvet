@@ -259,8 +259,8 @@ def install_media_delivery_ui() -> None:
         ai_usage_service,
         ai_task_queue_service,
         auf_runtime_service,
-        auf_wallet_service,
-        auf_purchase_service,
+        auf_wallet_service=None,
+        auf_purchase_service=None,
     ) -> None:
         if callback_data.action != "deliver":
             await original_action(
@@ -273,9 +273,9 @@ def install_media_delivery_ui() -> None:
                 ai_usage_service,
                 ai_task_queue_service,
                 auf_runtime_service,
-                auf_wallet_service,
-                auf_purchase_service,
             )
+            del auf_wallet_service
+            del auf_purchase_service
             return
         if not await controller.require_auf_callback(
             callback,
