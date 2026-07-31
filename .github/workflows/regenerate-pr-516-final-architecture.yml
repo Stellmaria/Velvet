@@ -1,9 +1,11 @@
 name: regenerate final PR 516 architecture inventory
 
 on:
-  push:
-    branches:
-      - hotfix/auf-menu-provider-balances-sigterm
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
     paths:
       - .github/workflows/regenerate-pr-516-final-architecture.yml
 
