@@ -1,0 +1,126 @@
+name: hermes-coders
+
+x-hermes-coder: &hermes-coder
+  image: velvet-hermes-coder:local
+  build:
+    context: .
+    dockerfile: Dockerfile.coder
+  restart: unless-stopped
+  command: ["gateway", "run"]
+  working_dir: /workspace
+  environment:
+    HERMES_UID: ${HERMES_UID:-10000}
+    HERMES_GID: ${HERMES_GID:-10000}
+    HERMES_WRITE_SAFE_ROOT: /workspace
+    API_SERVER_ENABLED: "false"
+    HERMES_DASHBOARD: "0"
+  tmpfs:
+    - /tmp:size=512m,mode=1777
+  mem_limit: ${HERMES_CODER_MEMORY_LIMIT:-4g}
+  cpus: ${HERMES_CODER_CPU_LIMIT:-2.0}
+  pids_limit: 256
+  shm_size: 1gb
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+    - DAC_OVERRIDE
+    - FOWNER
+    - SETGID
+    - SETUID
+  security_opt:
+    - no-new-privileges:true
+  healthcheck:
+    test: ["CMD-SHELL", "pgrep -f 'gateway run' >/dev/null"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 60s
+
+x-db-proxy: &db-proxy
+  image: velvet-hermes-db-proxy:local
+  build:
+    context: .
+    dockerfile: Dockerfile.db-proxy
+  restart: unless-stopped
+  environment:
+    DB_PROXY_UPSTREAM_HOST: postgres
+    DB_PROXY_UPSTREAM_PORT: "5432"
+    DB_PROXY_LISTEN_PORT: "5432"
+  read_only: true
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+  mem_limit: 64m
+  cpus: 0.20
+  pids_limit: 64
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  velvet-db-proxy:
+    <<: *db-proxy
+    profiles: ["velvet"]
+    networks:
+      velvet-production: {}
+      velvet-db:
+        aliases:
+          - postgres
+
+  hermes-coder-velvet:
+    <<: *hermes-coder
+    profiles: ["velvet"]
+    env_file:
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/velvet.env
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/velvet-db.env
+    volumes:
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/data/velvet:/opt/data
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/workspaces/velvet:/workspace
+    depends_on:
+      velvet-db-proxy:
+        condition: service_healthy
+    networks:
+      - egress
+      - velvet-db
+
+  max-db-proxy:
+    <<: *db-proxy
+    profiles: ["max"]
+    networks:
+      max-production: {}
+      max-db:
+        aliases:
+          - postgres
+
+  hermes-coder-max:
+    <<: *hermes-coder
+    profiles: ["max"]
+    env_file:
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/max.env
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/max-db.env
+    volumes:
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/data/max:/opt/data
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/workspaces/max:/workspace
+    depends_on:
+      max-db-proxy:
+        condition: service_healthy
+    networks:
+      - egress
+      - max-db
+
+networks:
+  egress:
+    driver: bridge
+  velvet-db:
+    driver: bridge
+    internal: true
+  max-db:
+    driver: bridge
+    internal: true
+  velvet-production:
+    external: true
+    name: velvet_backend
+  max-production:
+    external: true
+    name: romaticclub_default
