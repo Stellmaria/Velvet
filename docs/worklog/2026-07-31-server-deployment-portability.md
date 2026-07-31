@@ -54,6 +54,7 @@ Production dump был создан PostgreSQL 17.6, серверный прим
 - Kie numeric parser применяет документированные defaults к пустым значениям, сохраняя строгую enabled-валидацию.
 - Migration checksum канонизируется по LF, принимает исторические raw LF/CRLF hashes и переписывает legacy hash в canonical без повторного запуска SQL.
 - Добавлен отдельный regression suite `tests/test_server_deployment_portability.py`.
+- Архитектурные inventory JSON/Markdown обновлены штатным генератором под Python 3.13; временные CI-workflow удалены из ветки.
 
 ### Изменённые модули и контракты
 
@@ -62,7 +63,8 @@ Production dump был создан PostgreSQL 17.6, серверный прим
 - `scripts/server_smoke.py` — post-deploy schema smoke;
 - `velvet_bot/core/config/kie.py` — disabled numeric configuration parsing;
 - `velvet_bot/database.py` — portable migration checksum verification;
-- `tests/test_server_deployment_portability.py` — regression coverage.
+- `tests/test_server_deployment_portability.py` — regression coverage;
+- `docs/package_architecture_inventory.json` и `.md` — актуальный архитектурный snapshot.
 
 ### Миграции и совместимость
 
@@ -70,9 +72,12 @@ SQL-файлы миграций не изменялись. Каноническ�
 
 ### Проверки
 
-- GitHub Actions `type check` — успешно;
-- GitHub Actions `docker build` — успешно;
-- GitHub Actions `tests`, `backup restore drill` и повторный `project notes contract` — выполняются на актуальном head PR #485.
+- GitHub Actions `type check` — успешно на исправленном коде;
+- GitHub Actions `docker build` — успешно на исправленном коде;
+- GitHub Actions `backup restore drill` — успешно на исправленном коде;
+- GitHub Actions `project notes contract` — успешно на исправленном коде;
+- server smoke regression использует каноническую таблицу `roleplay_sessions`;
+- финальный полный CI повторно запущен на чистом head после обновления inventory.
 
 ### PR и commit
 
@@ -80,8 +85,8 @@ Draft PR #485: `agent/fix-server-deployment-portability` → `main`.
 
 ### Незавершённое
 
-После зелёного CI необходимо слить PR, обновить VPS, выполнить обычный Docker build без `git archive`, запустить штатный `scripts/server_smoke.py` и только затем провести минимальные платные smoke-tests Kie/GRS.
+После зелёного финального CI необходимо слить PR, обновить VPS, выполнить обычный Docker build без `git archive`, запустить штатный `scripts/server_smoke.py` и только затем провести минимальные платные smoke-tests Kie/GRS.
 
 ### Следующий шаг
 
-Дождаться зелёного CI, слить PR #485 и обновить `/srv/velvet` с повторной проверкой Compose, logs и server smoke.
+Дождаться зелёного финального CI, слить PR #485 и обновить `/srv/velvet` с повторной проверкой Compose, logs и server smoke.
