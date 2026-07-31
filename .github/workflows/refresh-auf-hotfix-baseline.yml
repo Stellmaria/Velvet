@@ -1,0 +1,86 @@
+name: Refresh Auf hotfix architecture baseline
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  refresh:
+    if: github.head_ref == 'hotfix/remove-qwen-flux-generation-root-buttons'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@v4
+        with:
+          ref: hotfix/remove-qwen-flux-generation-root-buttons
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Refresh checked architecture baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python - <<'PY'
+          import json
+          from scripts import inventory_package_architecture as inventory
+
+          label = "p1-package-architecture-baseline"
+          data = inventory.build_inventory(label=label)
+          exemptions_path = inventory.EXEMPTIONS_JSON
+          exemptions = json.loads(exemptions_path.read_text(encoding="utf-8"))
+          registered = {
+              str(row["id"]): row
+              for row in exemptions.get("exceptions", [])
+          }
+          consumers = inventory._reverse_consumers(list(data["modules"]))
+          exemptions["shared_private_access_sha256"] = data[
+              "shared_contract_summary"
+          ]["private_access_sha256"]
+          exemptions["root_module_sha256"] = data["root_module_sha256"]
+          exemptions["exceptions"] = [
+              registered.get(str(violation["id"]))
+              or inventory._suggest_exception(violation, consumers)
+              for violation in sorted(
+                  data["violations"], key=lambda row: str(row["id"])
+              )
+          ]
+          inventory.INVENTORY_JSON.write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          exemptions_path.write_text(
+              json.dumps(exemptions, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          inventory.INVENTORY_MD.write_text(
+              inventory.render_markdown(data, exemptions),
+              encoding="utf-8",
+          )
+          PY
+          python scripts/inventory_package_architecture.py \
+            --label p1-package-architecture-baseline \
+            --check
+          python -m compileall -q main.py velvet_bot scripts tests
+          rm -f .github/workflows/refresh-auf-hotfix-baseline.yml
+
+      - name: Commit checked architecture baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Пересобрать baseline архитектурного inventory Ауф"
+          git push origin HEAD:hotfix/remove-qwen-flux-generation-root-buttons
