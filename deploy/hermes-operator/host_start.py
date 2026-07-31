@@ -204,7 +204,14 @@ class StartRuntime:
             if not was_running:
                 self._run(
                     target,
-                    self._compose(target, "up", "-d", service),
+                    self._compose(
+                        target,
+                        "up",
+                        "-d",
+                        "--no-build",
+                        "--no-recreate",
+                        service,
+                    ),
                     timeout=self.command_timeout,
                 )
             latest = self._wait_ready(target, service)
