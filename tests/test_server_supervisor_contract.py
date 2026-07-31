@@ -92,9 +92,11 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("Group=velvet", self.unit)
         self.assertIn("NoNewPrivileges=true", self.unit)
         self.assertIn("ProtectSystem=strict", self.unit)
+        self.assertIn("ProtectHome=read-only", self.unit)
         self.assertIn("Restart=always", self.unit)
         self.assertIn("scripts/server_supervisor.py", self.unit)
         self.assertNotIn("User=root", self.unit)
+        self.assertNotIn("PrivateTmp=true", self.unit)
 
     def test_installer_generates_token_and_enables_server_endpoint(self) -> None:
         self.assertIn('"SUPERVISOR_ENABLED": "true"', self.installer)
@@ -104,7 +106,9 @@ class ServerSupervisorContractTests(unittest.TestCase):
         )
         self.assertIn("secrets.token_urlsafe(48)", self.installer)
         self.assertIn("systemctl enable --now velvet-server-supervisor.service", self.installer)
-        self.assertIn("systemctl restart velvet-compose.service", self.installer)
+        self.assertIn("systemctl reload velvet-compose.service", self.installer)
+        self.assertNotIn('install -d -m 0755 -o velvet -g velvet \\\n  "$data_dir/runtime"', self.installer)
+        self.assertNotIn('install -d -m 0750 -o velvet -g velvet "$data_dir/logs"', self.installer)
 
     def test_proxy_forwards_to_unix_socket_without_auth_secrets(self) -> None:
         self.assertIn("asyncio.open_unix_connection", self.proxy)
