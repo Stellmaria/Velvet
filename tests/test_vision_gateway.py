@@ -9,6 +9,7 @@ from PIL import Image
 from vision_gateway.app import (
     GatewayRequestError,
     GatewaySettings,
+    create_app,
     normalize_image_data_uri,
     sanitize_chat_payload,
 )
@@ -131,6 +132,55 @@ class VisionGatewayPayloadTests(unittest.TestCase):
                 {"messages": [{"role": "user", "content": parts}]},
                 settings=_settings(max_images=1),
             )
+
+    def test_unknown_top_level_fields_are_rejected(self) -> None:
+        with self.assertRaisesRegex(GatewayRequestError, "Unsupported request fields"):
+            sanitize_chat_payload(
+                {
+                    "messages": [{"role": "user", "content": "test"}],
+                    "tools": [{"type": "function"}],
+                },
+                settings=_settings(),
+            )
+
+    def test_unknown_content_part_is_rejected(self) -> None:
+        with self.assertRaisesRegex(GatewayRequestError, "Only text and image_url"):
+            sanitize_chat_payload(
+                {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [{"type": "audio_url", "audio_url": {}}],
+                        }
+                    ]
+                },
+                settings=_settings(),
+            )
+
+    def test_images_are_rejected_outside_user_messages(self) -> None:
+        with self.assertRaisesRegex(GatewayRequestError, "only in user messages"):
+            sanitize_chat_payload(
+                {
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": _image_data_uri(10, 10)},
+                                }
+                            ],
+                        }
+                    ]
+                },
+                settings=_settings(),
+            )
+
+
+class VisionGatewayConfigurationTests(unittest.TestCase):
+    def test_runtime_endpoint_must_use_internal_compose_host(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "Compose host vision-runtime"):
+            create_app(_settings(runtime_base_url="https://example.com"))
 
 
 if __name__ == "__main__":
