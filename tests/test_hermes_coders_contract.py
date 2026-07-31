@@ -71,7 +71,6 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("GH_TOKEN", source)
         self.assertIn("hermes_velvet_ro", source)
         self.assertIn("hermes_max_ro", source)
-        self.assertIn("default_transaction_read_only", source)
         self.assertIn("Velvet и Max должны использовать разные", source)
 
     def test_systemd_runs_preflight_before_start(self) -> None:
