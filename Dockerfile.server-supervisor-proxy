@@ -2,7 +2,7 @@ FROM python:3.13-alpine
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    SERVER_SUPERVISOR_SOCKET=/runtime/supervisor/velvet-server-supervisor.sock \
+    SERVER_SUPERVISOR_SOCKET=/run/velvet-supervisor/velvet-server-supervisor.sock \
     SERVER_SUPERVISOR_PROXY_HOST=0.0.0.0 \
     SERVER_SUPERVISOR_PROXY_PORT=8765
 
