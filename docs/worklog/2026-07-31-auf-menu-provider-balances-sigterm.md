@@ -67,6 +67,8 @@
 
 Архитектурный inventory и exemption fingerprints пересчитаны после переноса хотфикса на актуальную базу; временный генератор удалён из итогового diff.
 
+Telegram navigation inventory пересчитан после добавления служебного callback-экрана: 630 файлов просканировано, 1049 inline-кнопок, нарушений мобильного контракта нет.
+
 ### PR и commit
 
 - PR: `#516 Fix Auf callbacks, owner balances and SIGTERM noise`;
