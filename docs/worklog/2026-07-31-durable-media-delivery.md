@@ -72,7 +72,9 @@
 
 - PR: `#488`
 - основной commit реализации: `03762369d7c377f58c9b0ef254c4a7ca64eec2e8`
-- commit ремонта CI и architecture baseline: `dadd9905482ddbbad5075a12460b69634f4f06be`
+- первый commit ремонта CI и architecture baseline: `dadd9905482ddbbad5075a12460b69634f4f06be`
+- merge текущего `main` с #486 и #495: `0871aa6c2e2e3b09732315b3f790418988de467c`
+- финальная регенерация baseline на текущем `main`: `235bcee8dab3b8c760943d1f41f81c377b200750`
 
 ### Ремонт CI
 
@@ -80,7 +82,8 @@
 - устаревший тест прямой GRS-доставки заменён проверкой durable delivery ownership;
 - пересобраны P2 stability, repository layout, Telegram navigation и package architecture inventories;
 - обновлены reviewed numeric baselines и канонические inventory labels;
-- временные repair-workflows удалены, штатная `.github/workflows/tests.yml` восстановлена.
+- PR синхронизирован с актуальным `main`, включая server-safe restart и ускоренный CI на native PostgreSQL/uv;
+- временные repair-секции удалены, штатные `.github/workflows/tests.yml` и `.github/workflows/type-check.yml` восстановлены.
 
 ### Незавершённое
 
@@ -88,4 +91,4 @@
 
 ### Следующий шаг
 
-Подтвердить чистую CI-матрицу финального head и после этого перевести PR из draft в ready.
+Подтвердить чистую полную CI-матрицу финального head и перевести PR из draft в ready.
