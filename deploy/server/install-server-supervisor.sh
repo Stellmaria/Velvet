@@ -103,7 +103,8 @@ chmod 0755 "$data_dir/runtime/supervisor"
 install -m 0644 "$SERVER_UNIT_SOURCE" "$SERVER_UNIT_TARGET"
 install -m 0644 "$COMPOSE_UNIT_SOURCE" "$COMPOSE_UNIT_TARGET"
 systemctl daemon-reload
-systemctl enable --now velvet-server-supervisor.service
+systemctl enable velvet-server-supervisor.service
+systemctl restart velvet-server-supervisor.service
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
   build --pull supervisor-proxy
