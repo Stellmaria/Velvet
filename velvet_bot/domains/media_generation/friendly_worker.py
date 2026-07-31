@@ -59,11 +59,24 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         return super().__getattribute__(name)
 
     async def process_once(self) -> bool:
+        await self._recover_durable_delivery(phase="before-generation")
+        processed = await super().process_once()
+        if processed:
+            # A provider may finish without URLs in the first success payload, or
+            # durable registration may need the now-committed ai_tasks row. Run the
+            # task-independent recovery immediately instead of waiting for the next
+            # periodic tick while the user sees a completed progress message.
+            await self._recover_durable_delivery(phase="after-generation")
+        return processed
+
+    async def _recover_durable_delivery(self, *, phase: str) -> None:
         try:
             await self._media_delivery_runtime.recover_once()
         except Exception:
-            logger.exception("Durable media recovery iteration failed")
-        return await super().process_once()
+            logger.exception(
+                "Durable media recovery iteration failed phase=%s",
+                phase,
+            )
 
     async def _start_progress(
         self,
