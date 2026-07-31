@@ -1,0 +1,39 @@
+name: pr511 observable refresh
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/harden-media-delivery-exceptions
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Merge current main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+      - name: Refresh sources and inventories
+        run: python scripts/pr511_refresh.py
+      - name: Remove temporary automation and publish
+        run: |
+          rm .github/workflows/pr511-refresh.yml
+          rm .github/workflows/pr511-refresh-pr.yml
+          rm scripts/pr511_refresh.py
+          git add -A
+          git commit -m "Синхронизировать taxonomy доставки и inventories"
+          git push origin HEAD:agent/harden-media-delivery-exceptions
