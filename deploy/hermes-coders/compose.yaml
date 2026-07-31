@@ -1,7 +1,6 @@
 name: hermes-coders
 
 x-hermes-coder: &hermes-coder
-  image: velvet-hermes-coder:local
   build:
     context: .
     dockerfile: Dockerfile.coder
@@ -45,7 +44,6 @@ x-hermes-coder: &hermes-coder
     start_period: 60s
 
 x-db-proxy: &db-proxy
-  image: velvet-hermes-db-proxy:local
   build:
     context: .
     dockerfile: Dockerfile.db-proxy
@@ -68,6 +66,7 @@ x-db-proxy: &db-proxy
 services:
   velvet-db-proxy:
     <<: *db-proxy
+    image: velvet-hermes-db-proxy-velvet:local
     profiles: ["velvet"]
     networks:
       velvet-production: {}
@@ -77,6 +76,7 @@ services:
 
   hermes-coder-velvet:
     <<: *hermes-coder
+    image: velvet-hermes-coder-velvet:local
     profiles: ["velvet"]
     env_file:
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/velvet.env
@@ -93,6 +93,7 @@ services:
 
   max-db-proxy:
     <<: *db-proxy
+    image: velvet-hermes-db-proxy-max:local
     profiles: ["max"]
     networks:
       max-production: {}
@@ -102,6 +103,7 @@ services:
 
   hermes-coder-max:
     <<: *hermes-coder
+    image: velvet-hermes-coder-max:local
     profiles: ["max"]
     env_file:
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/max.env
