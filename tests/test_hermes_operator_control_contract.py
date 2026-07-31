@@ -32,6 +32,7 @@ class HermesOperatorControlContractTests(unittest.TestCase):
         self.assertNotIn("/srv/romatic-club-max", self.compose)
         self.assertNotIn("ports:", self.compose)
         self.assertIn("/srv/hermes-operator-control/runtime", self.compose)
+        self.assertIn('user: "10001:${HERMES_OPS_SOCKET_GID:-10001}"', self.compose)
         self.assertIn("read_only: true", self.compose)
         self.assertIn("cap_drop:\n      - ALL", self.compose)
         self.assertIn("no-new-privileges:true", self.compose)
