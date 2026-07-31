@@ -131,6 +131,8 @@ class HermesOperatorHostStartTests(unittest.TestCase):
                     "compose.yaml",
                     "up",
                     "-d",
+                    "--no-build",
+                    "--no-recreate",
                     "userbot",
                 ]
             ],
