@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 630,
-  "production_loc": 135087,
+  "production_loc": 135100,
   "layer_counts": {
     "application": 19,
     "composition": 63,
@@ -3446,10 +3446,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:926e7ac17fb7a7fe",
+      "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:945b4a9a7c420c7e",
       "category": "installed-sentinel",
       "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-      "fingerprint": "926e7ac17fb7a7fe4eea77f797da40103922bf8a7d9c0510156eecb8a7107da1",
+      "fingerprint": "945b4a9a7c420c7e1a518b8de1d7160e413ba535245db93d89bc329d964ffe8a",
       "summary": "6 _INSTALLED references",
       "details": {
         "count": 6
@@ -18611,12 +18611,12 @@
       "module": "velvet_bot.domains.media_generation.friendly_worker",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 345,
-      "function_count": 15,
+      "loc": 358,
+      "function_count": 16,
       "class_count": 1,
       "handler_count": 0,
       "max_function_length": 54,
-      "branch_count": 24,
+      "branch_count": 25,
       "internal_imports": [
         "velvet_bot.app.media_delivery_ui_install",
         "velvet_bot.domains.ai_usage",
@@ -18643,7 +18643,7 @@
       ],
       "install_calls": [
         {
-          "line": 300,
+          "line": 313,
           "call": "install_media_delivery_ui"
         }
       ],
@@ -18717,10 +18717,10 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:926e7ac17fb7a7fe",
+          "id": "installed-sentinel:velvet_bot/domains/media_generation/friendly_worker.py:945b4a9a7c420c7e",
           "category": "installed-sentinel",
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
-          "fingerprint": "926e7ac17fb7a7fe4eea77f797da40103922bf8a7d9c0510156eecb8a7107da1",
+          "fingerprint": "945b4a9a7c420c7e1a518b8de1d7160e413ba535245db93d89bc329d964ffe8a",
           "summary": "6 _INSTALLED references",
           "details": {
             "count": 6
