@@ -1,26 +1,81 @@
 # Durable media delivery
 
-Issue: #457
+- Дата: `2026-07-31`
+- ID: `#457`
+- Линия/фаза: `P0 · media generation delivery`
+- Статус: `завершено`
+- Ветка: `agent/issue-457-durable-media-delivery`
+- Базовый commit: `e46832138d77d9219b0be9adb14dd95763fcacde`
 
-## Problem
+## Перед началом
 
-Provider success and financial completion previously happened before best-effort Telegram delivery. A CDN or Telegram outage could therefore leave a paid generation without a durable delivery state, while the active implementation depended on installer order and worker monkeypatches.
+### Цель
 
-## Implementation
+Собрать единый provider-neutral durable pipeline доставки результатов фото и видео, чтобы успешная и оплаченная генерация не терялась из-за перезапуска процесса, ошибки CDN или Telegram и не запускалась повторно при восстановлении.
 
-- Added durable `media_delivery_jobs` and `media_delivery_items` state with independent result resolution, download, original, preview and notification outcomes.
-- Added provider-neutral application use cases: `ResolveProviderResult`, `DeliverMediaResult` and `RedeliverMediaResult`.
-- Added PostgreSQL, provider-result, HTTP download and Telegram delivery adapters.
-- All generation slots reuse one process-level delivery runtime; database claims serialize recovery work.
-- Generation workers register provider success and delegate result delivery to the durable use cases.
-- Restart recovery reuses the saved provider task ID and never submits a replacement paid generation.
-- Explicit redelivery checks workspace/user ownership and cannot call provider submit or charging paths.
-- The existing composition stage names remain during rollout, but their legacy delivery installers are neutralized and `_deliver_best_effort` cannot override the canonical pipeline. Their physical removal is deferred to the broader installer cleanup in #455.
+### Исходный контекст
 
-## Outcomes
+`ai_tasks` переводилась в `success` до best-effort доставки файла. Активная доставка зависела от порядка installer stages и monkeypatch worker-классов. После provider success сбой процесса мог оставить пользователя без результата, а обычный retry создавал риск второй платной provider task.
 
-- Original and preview delivery are independent and durable.
-- Missing provider URLs are resolved later from the existing provider task.
-- HTTP 404/410 is recorded as an explicit expired result.
-- Telegram/CDN failures are retried with persisted attempts and errors.
-- Structured resolution and delivery outcome logs are emitted best-effort for observability.
+### Планируемый объём
+
+- отдельное durable-состояние provider submit/success, URL resolution, download, original, preview и notification;
+- provider-neutral application use cases и infrastructure adapters;
+- recovery worker с DB claim/lock;
+- восстановление только по сохранённому `provider_task_id`;
+- redelivery с проверкой actor/workspace ownership без submit и списания;
+- совместимый rollout с нейтрализацией legacy delivery installers;
+- миграция и regression-тесты критических сценариев.
+
+### Критерии готовности
+
+- provider success не означает автоматически успешную доставку;
+- original и preview имеют независимые outcomes;
+- restart recovery не вызывает новую генерацию;
+- expired URL фиксируется явно;
+- повторные попытки и ошибки сохраняются в БД;
+- старые успешные задачи доступны для backfill/redelivery;
+- CI и проектные контракты проходят.
+
+### Риски и ограничения
+
+- физическое удаление всех legacy stage names относится к более широкому installer cleanup в #455;
+- provider URL может истечь до первой успешной загрузки, поэтому это отдельный terminal outcome, а не скрытый retry;
+- Telegram может принять preview, но отклонить document, поэтому каналы доставки нельзя объединять в один флаг.
+
+## После завершения
+
+### Фактически сделано
+
+- добавлены `media_delivery_jobs` и `media_delivery_items`;
+- реализованы `ResolveProviderResult`, `DeliverMediaResult` и `RedeliverMediaResult`;
+- добавлены PostgreSQL repository, provider-result resolver, HTTP downloader и Telegram transport;
+- все generation slots используют один process-level runtime, а recovery сериализуется через DB claims;
+- task queue сохраняет provider submission/success и восстанавливает crash-window по тому же provider task;
+- worker больше не владеет отправкой файлов, а legacy `_deliver_best_effort` принудительно становится no-op guard;
+- redelivery проверяет принадлежность задачи пользователю и workspace;
+- добавлены typed task view, UI-кнопка повторной доставки и structured outcome logs.
+
+### Миграции и совместимость
+
+Добавлена миграция `migrations/z029_durable_media_delivery.sql`. Существующие stage names временно остаются совместимыми оболочками, но их legacy installers нейтрализуются и не могут перехватить доставку. Старые успешные `ai_tasks` импортируются backfill-механизмом.
+
+### Проверки
+
+- syntax compilation новых модулей;
+- regression tests: partial original/preview delivery, expired URL, missing result URL, restart recovery, redelivery без generation API и legacy override guard;
+- project notes contract;
+- полная GitHub Actions CI-матрица PR #488.
+
+### PR и commit
+
+- PR: `#488`
+- основной commit реализации: `03762369d7c377f58c9b0ef254c4a7ca64eec2e8`
+
+### Незавершённое
+
+Физическое удаление устаревших installer stages и дальнейшее упрощение composition остаётся в scope issue #455. Для issue #457 активная доставка уже принадлежит единому durable pipeline.
+
+### Следующий шаг
+
+Дождаться полной CI-матрицы, исправить найденные контрактные ошибки и перевести PR из draft в ready после зелёных проверок.
