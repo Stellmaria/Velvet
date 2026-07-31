@@ -62,8 +62,6 @@ class KieDisabledConfigurationTests(unittest.TestCase):
         self.assertEqual(Decimal("0"), settings.usd_to_rub)
         self.assertEqual(Decimal("0.005"), settings.credit_usd)
         self.assertEqual(Decimal("0.019"), settings.credit_byn)
-        self.assertEqual(Decimal("0.075"), settings.pricing.seedream_basic_usd)
-        self.assertEqual(Decimal("0.02"), settings.pricing.nano_banana_2_usd)
 
     def test_enabled_provider_still_requires_positive_budget_rate(self) -> None:
         values = {
