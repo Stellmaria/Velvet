@@ -22,7 +22,9 @@ KillSignal=SIGTERM
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/srv/velvet /srv/velvet/data
+# deploy.sh and manual SSH deploys share /tmp/velvet-deploy.lock. Keep that
+# single lock writable inside the systemd sandbox so both entrypoints serialize.
+ReadWritePaths=/srv/velvet /srv/velvet/data /tmp
 
 [Install]
 WantedBy=multi-user.target
