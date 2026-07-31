@@ -69,6 +69,8 @@
 
 Telegram navigation inventory пересчитан после добавления служебного callback-экрана: 630 файлов просканировано, 1049 inline-кнопок, нарушений мобильного контракта нет.
 
+Финальный доверенный коммит добавлен после автоматического пересчёта, чтобы обязательные GitHub Actions запускались на итоговом состоянии ветки, а не оставались в статусе `action_required` после bot-push.
+
 ### PR и commit
 
 - PR: `#516 Fix Auf callbacks, owner balances and SIGTERM noise`;
