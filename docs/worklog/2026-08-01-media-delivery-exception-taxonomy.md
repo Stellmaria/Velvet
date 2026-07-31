@@ -76,7 +76,9 @@ Legacy delivery installers нельзя удалить в этом срезе б
 - `broad_exception_approved = 102`;
 - `broad_exception_unresolved = 0`;
 - shared-contract и package-architecture inventories пересобраны;
-- временная automation удалена из ветки;
+- Telegram navigation inventory пересобран: `631` Python-файл, `1049` inline-кнопок, `0` нарушений;
+- canonical `development_status`, `project_memory` и `ARCHITECTURE_AUDIT` синхронизированы с generated baseline;
+- временные scripts/workflows удалены из ветки;
 - финальная GitHub Actions матрица запускается на владельческом commit.
 
 ### PR и commit
