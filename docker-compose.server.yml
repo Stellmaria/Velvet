@@ -28,20 +28,21 @@ services:
 
   # The proxy has no Docker socket, repository checkout, systemd access or
   # production secrets. It only forwards the authenticated HTTP contract from
-  # the private Compose network to the host Supervisor Unix socket.
+  # the private Compose network to the host Supervisor Unix socket. The socket
+  # is mounted from a dedicated control directory that bot/Krita/Hermes never see.
   supervisor-proxy:
     image: ${SUPERVISOR_PROXY_IMAGE:-velvet-server-supervisor-proxy:local}
     build:
       context: .
       dockerfile: Dockerfile.server-supervisor-proxy
     restart: unless-stopped
-    user: "10001:10001"
+    user: "${SERVER_SUPERVISOR_CLIENT_UID:-10001}:${SERVER_SUPERVISOR_CLIENT_GID:-10001}"
     environment:
-      SERVER_SUPERVISOR_SOCKET: ${SERVER_SUPERVISOR_SOCKET:-/runtime/supervisor/velvet-server-supervisor.sock}
+      SERVER_SUPERVISOR_SOCKET: ${SERVER_SUPERVISOR_SOCKET:-/run/velvet-supervisor/velvet-server-supervisor.sock}
       SERVER_SUPERVISOR_PROXY_HOST: 0.0.0.0
       SERVER_SUPERVISOR_PROXY_PORT: 8765
     volumes:
-      - ${VELVET_DATA_DIR:-./server-data}/runtime:/runtime
+      - ${VELVET_DATA_DIR:-./server-data}/control/supervisor:/run/velvet-supervisor:ro
     read_only: true
     tmpfs:
       - /tmp:size=32m,mode=1777
