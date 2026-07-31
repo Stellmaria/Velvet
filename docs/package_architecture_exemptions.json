@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "baseline_issue": "#460",
-  "shared_private_access_sha256": "73739e68a7a463d23be24137bac72837de2a2e60f18633ba1ce3bb9a89a73376",
+  "shared_private_access_sha256": "be36dd80346c046172988d28852b2f24693ecadd86dcf3a2c5fefd48f15bfb38",
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",
   "exceptions": [
     {
