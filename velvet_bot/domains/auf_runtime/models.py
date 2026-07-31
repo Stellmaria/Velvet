@@ -20,6 +20,9 @@ class AufProvider(StrEnum):
             return ("nano_banana_2", "nano_banana_pro")
         return (
             "seedream_5_pro",
+            "qwen2_image_edit",
+            "wan_27_image",
+            "flux_2_pro_image",
             "grok_imagine_video",
             "grok_imagine_video_15",
             "seedance_15_pro_video",
