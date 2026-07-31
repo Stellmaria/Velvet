@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - hotfix/remove-qwen-flux-generation-root-buttons
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -13,6 +16,7 @@ env:
 
 jobs:
   finalize:
+    if: github.event_name == 'push' || github.head_ref == 'hotfix/remove-qwen-flux-generation-root-buttons'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -55,5 +59,3 @@ jobs:
           git add -A
           git commit -m "Убрать Qwen и FLUX из активной генерации Ауф"
           git push origin HEAD:hotfix/remove-qwen-flux-generation-root-buttons
-
-# Triggered after the workflow became present on the branch.
