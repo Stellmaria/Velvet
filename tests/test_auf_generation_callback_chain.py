@@ -77,9 +77,10 @@ class AufGenerationCallbackChainTests(unittest.TestCase):
         for model in models:
             with self.subTest(model=model):
                 markup = photo_modes._final_keyboard(42, model)
-                callback_data = AufCallback.unpack(
-                    markup.inline_keyboard[0][0].callback_data
-                )
+                packed_callback = markup.inline_keyboard[0][0].callback_data
+                if packed_callback is None:
+                    self.fail(f"Final button for {model.value} has no callback data")
+                callback_data = AufCallback.unpack(packed_callback)
                 self.assertEqual("photo_generate", callback_data.action)
 
                 callback = object()
