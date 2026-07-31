@@ -220,6 +220,6 @@ Hermes Coder infrastructure prepared.
   $ROOT/secrets/max.env
 
 Затем:
-  sudo -u $APP_USER HERMES_CODERS_ROOT=$ROOT python3 $SOURCE_DIR/preflight.py
+  sudo env HERMES_CODERS_ROOT=$ROOT python3 $SOURCE_DIR/preflight.py
   sudo systemctl enable --now hermes-coders.service
 EOF
