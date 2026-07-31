@@ -58,6 +58,27 @@ class TelegramStorageDeletionPolicyTests(unittest.TestCase):
             self.assertEqual("outside_allowlist", result.issues[0].code)
             self.assertTrue(outside.exists())
 
+    def test_policy_refusal_prevents_deleting_other_paths_in_batch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve()
+            allowed = base / "allowed"
+            allowed.mkdir()
+            safe = allowed / "safe.txt"
+            safe.write_text("retain because batch is invalid", encoding="utf-8")
+            outside = base / "outside.txt"
+            outside.write_text("keep", encoding="utf-8")
+
+            result = delete_paths(
+                (safe, outside),
+                policy=self._policy(allowed),
+            )
+
+            self.assertFalse(result.complete)
+            self.assertEqual(0, result.deleted_count)
+            self.assertEqual("outside_allowlist", result.issues[0].code)
+            self.assertTrue(safe.exists())
+            self.assertTrue(outside.exists())
+
     def test_dotdot_cannot_escape_allowlist(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory).resolve()
@@ -116,6 +137,40 @@ class TelegramStorageDeletionPolicyTests(unittest.TestCase):
             self.assertTrue(target.exists())
             self.assertTrue(linked_directory.is_symlink())
 
+    def test_configured_symlink_root_is_rejected_without_following_target(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve()
+            target = base / "target"
+            target.mkdir()
+            root_link = base / "allowed-link"
+            try:
+                root_link.symlink_to(target, target_is_directory=True)
+            except (OSError, NotImplementedError) as error:
+                self.skipTest(f"directory symlink is unavailable: {error}")
+
+            with self.assertRaisesRegex(ValueError, "allowlist root is unsafe"):
+                self._policy(root_link)
+
+            self.assertTrue(root_link.is_symlink())
+            self.assertTrue(target.exists())
+
+    def test_symlink_ancestor_of_configured_root_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve()
+            target = base / "target"
+            nested = target / "nested"
+            nested.mkdir(parents=True)
+            parent_link = base / "parent-link"
+            try:
+                parent_link.symlink_to(target, target_is_directory=True)
+            except (OSError, NotImplementedError) as error:
+                self.skipTest(f"directory symlink is unavailable: {error}")
+
+            with self.assertRaisesRegex(ValueError, "allowlist root is unsafe"):
+                self._policy(parent_link / "nested")
+
+            self.assertTrue(nested.exists())
+
     def test_directory_requires_explicit_recursive_policy(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -161,6 +216,16 @@ class TelegramStorageDeletionPolicyTests(unittest.TestCase):
                             project_dir=project,
                             data_dir=data,
                         )
+
+    def test_existing_regular_file_cannot_be_allowlist_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root_file = Path(directory).resolve() / "not-a-directory"
+            root_file.write_text("keep", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "real directory"):
+                self._policy(root_file)
+
+            self.assertTrue(root_file.exists())
 
     def test_env_and_git_metadata_are_refused(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
