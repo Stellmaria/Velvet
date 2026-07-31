@@ -56,6 +56,21 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("max-db", max_proxy)
         self.assertNotIn("egress", max_proxy)
 
+    def test_parallel_builds_use_distinct_image_tags(self) -> None:
+        source = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+        expected = (
+            "velvet-hermes-coder-velvet:local",
+            "velvet-hermes-coder-max:local",
+            "velvet-hermes-db-proxy-velvet:local",
+            "velvet-hermes-db-proxy-max:local",
+        )
+        for image in expected:
+            with self.subTest(image=image):
+                self.assertEqual(1, source.count(f"image: {image}"))
+
+        self.assertNotIn("image: velvet-hermes-coder:local", source)
+        self.assertNotIn("image: velvet-hermes-db-proxy:local", source)
+
     def test_model_routing_uses_only_verified_gpt_routes(self) -> None:
         source = (ROOT / "config.yaml").read_text(encoding="utf-8")
         self.assertIn("default: gpt-5.4-mini", source)
