@@ -3,7 +3,7 @@
 - Дата: 2026-07-31
 - ID: #505
 - Линия/фаза: Hybrid AI / PR B
-- Статус: частично
+- Статус: завершено
 - Ветка: `feat/505-vision-runtime-gateway`
 - Базовый commit: `07138a89fc2b2ae82a5a1ef9f500a041a102f4b5`
 
@@ -77,19 +77,24 @@ runtime не пройдёт живой benchmark и отдельную sensitive
 
 ### Проверки
 
-- первый test run выявил слишком узкое ожидание текста ошибки runtime URL;
-- contract test исправлен на проверку public HTTP host;
-- после синхронизации с `main` запущен повторный полный CI;
-- финальные результаты CI фиксируются перед переводом PR из draft.
+На implementation head `07c0f893267e870fd6a9ead8bc7553e458a8af10`:
+
+- test shards и architecture preflight: success;
+- type check: success;
+- project notes contract: success;
+- Compose validation для `vision` и `vision-bootstrap`: success;
+- gateway/runtime image builds: success;
+- Velvet, Supervisor proxy, Krita и Hermes Coder builds: success;
+- Krita plugin smoke: success.
 
 ### PR и commit
 
 - PR: #519;
-- актуальный head перед повторным CI фиксируется следующим успешным run.
+- implementation head с полным зелёным CI:
+  `07c0f893267e870fd6a9ead8bc7553e458a8af10`.
 
 ### Незавершённое
 
-- подтвердить зелёные test shards, type check, notes и Docker build;
 - live Q4/Q8 benchmark;
 - model digest pin на production;
 - NSFW routing;
@@ -98,5 +103,5 @@ runtime не пройдёт живой benchmark и отдельную sensitive
 
 ### Следующий шаг
 
-Довести PR #519 до merge и выполнить контролируемый Q4 benchmark на VPS с
-`AI_VISION_ENABLED=false`.
+После merge PR #519 выполнить контролируемый Q4 benchmark на VPS с
+`AI_VISION_ENABLED=false`, затем продолжить #505 отдельным sensitive-routing PR.
