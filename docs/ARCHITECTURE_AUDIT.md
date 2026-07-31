@@ -8,7 +8,7 @@
 
 Проверены:
 
-- все 604 production Python modules под `velvet_bot`;
+- все 631 production Python modules под `velvet_bot`;
 - application bootstrap и startup composition;
 - Router bundles и порядок Telegram controllers;
 - domain/application/infrastructure boundaries;
@@ -34,12 +34,12 @@ Velvet имеет рабочие логические domain/application/persist
 
 По `docs/package_architecture_inventory.*` и `docs/package_architecture_exemptions.json`:
 
-- production modules: **604**;
-- production LOC: **128 870**;
-- layer counts: application 14, composition 52, core 7, domain 175, infrastructure 17, other 1, presentation 213, root 114, service 8, worker 3;
-- startup installer stages: **27**;
-- registered file/category fingerprints: **518**;
-- mandatory exemptions: **518**;
+- production modules: **631**;
+- production LOC: **136 683**;
+- layer counts: application 20, composition 63, core 7, domain 176, infrastructure 25, other 1, presentation 214, root 114, service 8, worker 3;
+- startup installer stages: **28**;
+- registered file/category fingerprints: **546**;
+- mandatory exemptions: **546**;
 - unregistered fingerprints: **0**;
 - stale exemptions: **0**.
 
@@ -80,9 +80,9 @@ Exemptions распределены между owner issues #455/#457/#458/#459/
 
 По `docs/repository_layout_inventory.*`:
 
-- repository modules: **35**;
+- repository modules: **41**;
 - domain repositories: **34**;
-- infrastructure PostgreSQL adapters: **1**;
+- infrastructure PostgreSQL adapters: **7**;
 - central repositories: **0**;
 - root repositories: **0**;
 - root modules `velvet_bot/*.py`: **113**.
@@ -91,22 +91,22 @@ Exemptions распределены между owner issues #455/#457/#458/#459/
 
 По `docs/shared_contract_inventory.*`:
 
-- production Python files: **596**;
-- functions inventoried: **3306**;
-- registered private cross-module accesses: **136**;
+- production Python files: **631**;
+- functions inventoried: **3597**;
+- registered private cross-module accesses: **182**;
 - blocking known private contracts: **0**;
-- exact duplicate groups: **55**;
-- normalized near-duplicate groups: **92**;
+- exact duplicate groups: **62**;
+- normalized near-duplicate groups: **97**;
 - semantic near-duplicate groups: **9**.
 
-Package gate связывает shared/private и root-module SHA-256 fingerprints. Ноль blocking known contracts означает, что перечисленные обязательные private APIs мигрированы. Это не означает нулевой transitional debt: 136 accesses остаются зарегистрированным burn-down baseline для #419/#455/#457/#458/#459.
+Package gate связывает shared/private и root-module SHA-256 fingerprints. Ноль blocking known contracts означает, что перечисленные обязательные private APIs мигрированы. Это не означает нулевой transitional debt: 182 accesses остаются зарегистрированным burn-down baseline для #419/#455/#457/#458/#459.
 
 ### Navigation
 
 По `docs/generated/telegram_navigation_inventory.md`:
 
-- scanned Python files: **604**;
-- inline buttons: **1024**;
+- scanned Python files: **631**;
+- inline buttons: **1049**;
 - reply buttons: **0**;
 - navigation violations: **0**.
 
@@ -121,10 +121,10 @@ Package gate связывает shared/private и root-module SHA-256 fingerprin
 
 ### P2 stability
 
-- broad exception boundaries: 76;
-- approved boundaries: 76;
+- broad exception boundaries: 102;
+- approved boundaries: 102;
 - unresolved boundaries: 0;
-- callback handlers: 98;
+- callback handlers: 132;
 - late/missing acknowledgments: 0.
 
 ### Legacy Telegram layer
@@ -178,12 +178,12 @@ PR #478 закрывает #460:
 
 ```text
 velvet_bot/
-  app/                         bootstrap и 52 composition modules/installers
-  application/                 14 transport-neutral use-case modules
+  app/                         bootstrap и 63 composition modules/installers
+  application/                 20 transport-neutral use-case modules
   core/                        7 config/access/base contract modules
-  domains/                     175 domain modules и 34 repositories
-  infrastructure/              17 PostgreSQL/provider/Telegram/filesystem adapters
-  presentation/                213 Telegram presentation modules
+  domains/                     176 domain modules и 34 repositories
+  infrastructure/              25 PostgreSQL/provider/Telegram/filesystem adapters
+  presentation/                214 Telegram presentation modules
   services/                    8 integration/application service modules
   workers/                     3 worker boundary modules
   *.py                         113 classified root modules + package __init__
@@ -195,7 +195,7 @@ velvet_bot/
 
 - 2 installers до bootstrap;
 - 25 installers внутри configured startup;
-- всего **27 side-effect installation stages**.
+- всего **28 side-effect installation stages**.
 
 Package inventory теперь фиксирует exact order, origin module и detected patched symbols каждого stage. Первый stage — `install_runtime_stability`, последний — `install_auf_branding`.
 
@@ -245,7 +245,7 @@ Kie/GRS routing, model labels, retry и error normalization должны ста�
 
 ### Package-wide drift gates — #460
 
-Статус: governance gate завершён. Он не исправляет существующие 518 fingerprints, но делает их measurable, owned и non-silent. Обновление generated baseline без содержательного worklog и issue-backed change не считается исправлением.
+Статус: governance gate завершён. Он не исправляет существующие 546 fingerprints, но делает их measurable, owned и non-silent. Обновление generated baseline без содержательного worklog и issue-backed change не считается исправлением.
 
 ### Root modules — #463
 
