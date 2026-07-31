@@ -81,8 +81,11 @@ Regression-контракт проверяет:
 - отсутствие model и Telegram tokens в passthrough;
 - сохранение существующих изоляционных, network, build и preflight контрактов.
 
+Первый полный CI run подтвердил новый Hermes contract, project notes, type check и остальные тесты до единственного постороннего flaky-падения `test_socket_is_0660_and_health_requires_allowed_peer`: тест прочитал HTTP headers до body и закрыл socket, после чего тестовый server получил `BrokenPipeError`. Изменения PR не затрагивают Server Supervisor; CI перезапущен новым commit без обхода обязательной проверки.
+
 ### PR и commit
 
+- PR: `#520`
 - Ветка: `fix/hermes-coder-github-token-passthrough`
 - Основные commits: `256f82d19c83bc7e9a77dbb289f19a3bb38a101c`, `db920198890aee785812a0798aa577a91a92abc2`, `4fd1afb5022a28f1299e673c889e334cefd81376`
 
@@ -92,4 +95,4 @@ Regression-контракт проверяет:
 
 ### Следующий шаг
 
-Дождаться зелёных CI checks, слить PR, обновить `/srv/velvet`, пересоздать coder-контейнеры и подтвердить GitHub auth без вывода токенов.
+Дождаться зелёного повторного CI, слить PR, обновить `/srv/velvet`, пересоздать coder-контейнеры и подтвердить GitHub auth без вывода токенов.
