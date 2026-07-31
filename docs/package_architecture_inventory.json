@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 629,
-  "production_loc": 134657,
+  "production_loc": 134748,
   "layer_counts": {
     "application": 19,
     "composition": 63,
@@ -21472,12 +21472,12 @@
       "module": "velvet_bot.domains.telegram_storage.deletion",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 557,
-      "function_count": 20,
+      "loc": 646,
+      "function_count": 22,
       "class_count": 5,
       "handler_count": 0,
-      "max_function_length": 93,
-      "branch_count": 58,
+      "max_function_length": 101,
+      "branch_count": 65,
       "internal_imports": [],
       "external_import_count": 7,
       "aiogram_imports": [],
@@ -21495,22 +21495,22 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 141,
+          "line": 149,
           "owner": "temporary_deletion_policy",
           "call": "os.getenv"
         },
         {
-          "line": 146,
+          "line": 154,
           "owner": "temporary_deletion_policy",
           "call": "os.getenv"
         },
         {
-          "line": 151,
+          "line": 159,
           "owner": "temporary_deletion_policy",
           "call": "os.getenv"
         },
         {
-          "line": 155,
+          "line": 163,
           "owner": "temporary_deletion_policy",
           "call": "os.getenv"
         }
@@ -21557,7 +21557,7 @@
       "module": "velvet_bot.domains.telegram_storage.models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 289,
+      "loc": 291,
       "function_count": 9,
       "class_count": 6,
       "handler_count": 0,
@@ -21587,13 +21587,8 @@
           "call": "os.getenv"
         },
         {
-          "line": 60,
+          "line": 62,
           "owner": "_paths_env",
-          "call": "os.getenv"
-        },
-        {
-          "line": 109,
-          "owner": "from_env",
           "call": "os.getenv"
         },
         {
@@ -21602,7 +21597,12 @@
           "call": "os.getenv"
         },
         {
-          "line": 114,
+          "line": 113,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 116,
           "owner": "from_env",
           "call": "os.getenv"
         },
@@ -21612,42 +21612,42 @@
           "call": "os.getenv"
         },
         {
-          "line": 117,
-          "owner": "from_env",
-          "call": "os.getenv"
-        },
-        {
-          "line": 118,
-          "owner": "from_env",
-          "call": "os.getenv"
-        },
-        {
           "line": 119,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 143,
+          "line": 120,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 144,
+          "line": 121,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 147,
+          "line": 145,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 161,
+          "line": 146,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 165,
+          "line": 149,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 163,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 167,
           "owner": "from_env",
           "call": "os.getenv"
         }
