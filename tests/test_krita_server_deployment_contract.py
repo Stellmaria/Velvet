@@ -28,6 +28,20 @@ def test_server_compose_isolates_krita_and_shares_only_runtime() -> None:
     assert "no-new-privileges:true" in compose
 
 
+def test_krita_plugin_prefers_worker_and_server_bridge_environment() -> None:
+    plugin = (
+        ROOT / "tools/krita/velvet_logo/velvet_logo.py"
+    ).read_text(encoding="utf-8")
+
+    worker_env = 'os.getenv("VELVET_KRITA_BRIDGE_DIR", "").strip()'
+    server_env = 'os.getenv("KRITA_BRIDGE_DIR", "").strip()'
+    fallback = 'str(Path.home() / "VelvetKritaBridge")'
+    assert worker_env in plugin
+    assert server_env in plugin
+    assert fallback in plugin
+    assert plugin.index(worker_env) < plugin.index(server_env) < plugin.index(fallback)
+
+
 def test_krita_entrypoint_uses_virtual_display_without_tcp() -> None:
     entrypoint = (ROOT / "deploy/krita-server/entrypoint.sh").read_text(
         encoding="utf-8"
