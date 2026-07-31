@@ -93,6 +93,20 @@ class HermesOperatorHostStartTests(unittest.TestCase):
         self.assertFalse(result["changed"])
         self.assertEqual(runtime.commands, [])
 
+    def test_running_service_with_starting_health_is_only_observed(self) -> None:
+        runtime = FakeStartRuntime(
+            [
+                {"running": True, "status": "running", "health": "starting"},
+                {"running": True, "status": "running", "health": "healthy"},
+            ]
+        )
+
+        result = runtime.start("velvet", "bot")
+
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["changed"])
+        self.assertEqual(runtime.commands, [])
+
     def test_missing_service_uses_fixed_compose_up(self) -> None:
         runtime = FakeStartRuntime(
             [
@@ -131,6 +145,16 @@ class HermesOperatorHostStartTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["error_code"], "unknown_target")
+        self.assertEqual(runtime.commands, [])
+
+    def test_already_unhealthy_service_requires_explicit_restart(self) -> None:
+        runtime = FakeStartRuntime(
+            [{"running": True, "status": "running", "health": "unhealthy"}]
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "use explicit restart"):
+            runtime.start("velvet", "bot")
+
         self.assertEqual(runtime.commands, [])
 
     def test_unhealthy_service_fails_after_fixed_start(self) -> None:
