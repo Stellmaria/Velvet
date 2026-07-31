@@ -77,9 +77,9 @@ class TelegramStorageDeletionPreflightTests(unittest.TestCase):
             ), redirect_stdout(output):
                 code = main(["--kind", "exports", "--path", str(outside)])
 
-        self.assertEqual(1, code)
-        self.assertIn("code=outside_allowlist", output.getvalue())
-        self.assertTrue(outside.exists())
+            self.assertEqual(1, code)
+            self.assertIn("code=outside_allowlist", output.getvalue())
+            self.assertTrue(outside.exists())
 
 
 if __name__ == "__main__":
