@@ -5,13 +5,15 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -31,7 +33,7 @@ jobs:
               for row in exemptions.get("exceptions", [])
               if str(row["id"]) in observed
           }
-          for row_id, violation in observed.items():
+          for row_id in sorted(observed):
               if row_id in existing:
                   continue
               existing[row_id] = {
@@ -54,11 +56,11 @@ jobs:
         run: python scripts/inventory_package_architecture.py --write --label p1-package-architecture-baseline
       - name: Verify generated contracts
         run: python scripts/inventory_package_architecture.py --check --label p1-package-architecture-baseline
-      - uses: actions/upload-artifact@v4
-        with:
-          name: pr492-package-architecture
-          path: |
-            docs/package_architecture_exemptions.json
-            docs/package_architecture_inventory.json
-            docs/package_architecture_inventory.md
-          retention-days: 1
+      - name: Commit generated contracts and remove helper workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/pr492-generate-architecture.yml
+          git add docs/package_architecture_exemptions.json docs/package_architecture_inventory.json docs/package_architecture_inventory.md
+          git commit -m "Синхронизировать архитектурные контракты PR 492"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
