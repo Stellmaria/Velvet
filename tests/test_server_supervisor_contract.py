@@ -86,6 +86,7 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("scripts/server_smoke.py", self.deploy)
         self.assertIn("build --pull bot supervisor-proxy", self.deploy)
         self.assertIn("postgres supervisor-proxy bot", self.deploy)
+        self.assertIn('${TMPDIR:-/tmp}/velvet-deploy.lock', self.deploy)
 
     def test_systemd_runtime_is_unprivileged_and_restartable(self) -> None:
         self.assertIn("User=velvet", self.unit)
@@ -93,6 +94,10 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("NoNewPrivileges=true", self.unit)
         self.assertIn("ProtectSystem=strict", self.unit)
         self.assertIn("ProtectHome=read-only", self.unit)
+        self.assertIn(
+            "ReadWritePaths=/srv/velvet /srv/velvet/data /tmp",
+            self.unit,
+        )
         self.assertIn("Restart=always", self.unit)
         self.assertIn("scripts/server_supervisor.py", self.unit)
         self.assertNotIn("User=root", self.unit)
