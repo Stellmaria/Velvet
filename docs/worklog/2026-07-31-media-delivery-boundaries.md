@@ -80,7 +80,7 @@ Existing pending/failed/success/expired/skipped rows остаются валид
 - отсутствия `except Exception` в пяти целевых файлах;
 - сохранения legacy worker delivery guard.
 
-Generated P2 stability, shared-contract и package architecture inventories пересобраны в полном GitHub Actions checkout и зафиксированы в ветке.
+Generated P2 stability, shared-contract и package architecture inventories пересобраны в полном GitHub Actions checkout и зафиксированы в ветке. Shared private-access fingerprint синхронизирован с итоговым package baseline.
 
 ### PR и commit
 
