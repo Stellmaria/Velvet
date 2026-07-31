@@ -104,9 +104,41 @@ services:
       - backend
       - vision-front
 
-  # Internal-only CPU inference runtime. It has no published port and can be
-  # reached only by vision-gateway through vision-back. vision-egress exists
-  # solely so the runtime can pull the configured model into persistent storage.
+  # One-shot model installer. It is the only vision service with internet
+  # egress and never receives Telegram images or production bot secrets.
+  vision-model-loader:
+    image: ${VISION_RUNTIME_IMAGE:-velvet-vision-runtime:local}
+    profiles: ["vision-bootstrap"]
+    build:
+      context: .
+      dockerfile: Dockerfile.vision-runtime
+      args:
+        VISION_RUNTIME_BASE_IMAGE: ${VISION_RUNTIME_BASE_IMAGE:-ollama/ollama:0.32.3}
+    entrypoint: ["/usr/local/bin/vision-model-loader"]
+    restart: "no"
+    init: true
+    environment:
+      VISION_MODEL: ${VISION_MODEL:-qwen3-vl:8b-instruct-q4_K_M}
+      VISION_MODEL_EXPECTED_DIGEST: ${VISION_MODEL_EXPECTED_DIGEST:-}
+      VISION_RUNTIME_STARTUP_TIMEOUT_SECONDS: ${VISION_RUNTIME_STARTUP_TIMEOUT_SECONDS:-1800}
+      OLLAMA_MODELS: /root/.ollama/models
+    volumes:
+      - ${VELVET_DATA_DIR:-./server-data}/vision:/root/.ollama
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    mem_limit: ${VISION_LOADER_MEMORY_LIMIT:-4g}
+    cpus: ${VISION_LOADER_CPU_LIMIT:-2.0}
+    pids_limit: 256
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - vision-egress
+
+  # Internal-only CPU inference runtime. It has no published port and no
+  # internet-facing network. The model must be installed by vision-model-loader.
   vision-runtime:
     image: ${VISION_RUNTIME_IMAGE:-velvet-vision-runtime:local}
     profiles: ["vision"]
@@ -140,7 +172,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: ${VISION_RUNTIME_HEALTH_START_PERIOD:-30m}
+      start_period: ${VISION_RUNTIME_HEALTH_START_PERIOD:-5m}
     stop_grace_period: 90s
     mem_limit: ${VISION_RUNTIME_MEMORY_LIMIT:-12g}
     cpus: ${VISION_RUNTIME_CPU_LIMIT:-6.0}
@@ -152,7 +184,6 @@ services:
       - no-new-privileges:true
     networks:
       - vision-back
-      - vision-egress
 
   # Provider-neutral gateway is the only VL endpoint visible to the bot. It
   # preprocesses images in memory, enforces the exact model and serializes load.
