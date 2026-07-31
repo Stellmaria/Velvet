@@ -78,6 +78,8 @@ SQL-миграций нет. Формат Telegram Storage objects и HTTP/Teleg
 
 Первый CI run дополнительно выявил flaky test Server Supervisor: один `recv()` иногда получал только HTTP headers. Тест исправлен чтением ответа до EOF; production-код Supervisor не менялся.
 
+Generated architecture baseline пересобран в полном GitHub Actions checkout. Итоговые метрики: 629 production modules, 134657 LOC, 546 зарегистрированных violations/exemptions. Временные generator workflows удалили себя из ветки после записи результатов.
+
 ### PR и commit
 
 - Issue: `#507`
@@ -87,8 +89,8 @@ SQL-миграций нет. Формат Telegram Storage objects и HTTP/Teleg
 
 ### Незавершённое
 
-До merge требуется пересобрать generated package architecture inventory и получить зелёные repository CI checks. После merge на production нужно выполнить deletion preflight с `.env.server` до следующего storage migration.
+После merge на production нужно выполнить deletion preflight с `.env.server` до следующего storage migration и проверить dry-run фактических путей по runbook.
 
 ### Следующий шаг
 
-Пересобрать generated inventory в полном CI checkout, повторить tests/type-check/docker-build/project-notes checks и слить PR после зелёного результата.
+Получить зелёный финальный tests/type-check/docker-build/project-notes matrix, слить PR и выполнить production preflight до следующей очистки Telegram Storage.
