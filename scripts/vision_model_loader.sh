@@ -30,6 +30,22 @@ until ollama list >/dev/null 2>&1; do
   elapsed=$((elapsed + 1))
 done
 
+installed_id="$(ollama list | awk -v target="$model" 'NR > 1 && $1 == target {print $2; exit}')"
+if [ -n "$installed_id" ]; then
+  actual_lower="$(printf '%s' "$installed_id" | tr '[:upper:]' '[:lower:]')"
+  expected_lower="$(printf '%s' "$expected_digest" | tr '[:upper:]' '[:lower:]')"
+  if [ -z "$expected_digest" ]; then
+    echo "Vision model already installed model=$model digest=$installed_id"
+    exit 0
+  fi
+  case "$actual_lower" in
+    "$expected_lower"*)
+      echo "Vision model already installed model=$model digest=$installed_id"
+      exit 0
+      ;;
+  esac
+fi
+
 echo "Pulling configured vision model: $model"
 ollama pull "$model"
 installed_id="$(ollama list | awk -v target="$model" 'NR > 1 && $1 == target {print $2; exit}')"
