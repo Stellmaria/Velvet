@@ -8,7 +8,7 @@ from velvet_bot.presentation.telegram.shared import safe_edit_message_text
 async def edit_supervisor_message(
     message: Message,
     text: str,
-    keyboard: InlineKeyboardMarkup,
+    keyboard: InlineKeyboardMarkup | None,
 ) -> None:
     """Edit a Supervisor card through the canonical Telegram editing contract."""
 
