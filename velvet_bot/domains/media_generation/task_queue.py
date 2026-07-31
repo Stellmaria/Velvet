@@ -6,7 +6,13 @@ from collections.abc import Mapping
 from dataclasses import replace
 from uuid import UUID
 
-from velvet_bot.application.media_delivery import DeliverMediaResult, ResolveProviderResult
+import asyncpg
+
+from velvet_bot.application.media_delivery import (
+    DeliverMediaResult,
+    MediaDeliveryError,
+    ResolveProviderResult,
+)
 from velvet_bot.application.media_tasks import task_payload_mapping, task_result_urls
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.database import Database
@@ -27,6 +33,12 @@ _VIDEO_MODELS = frozenset(
     }
 )
 _GRS_MODELS = frozenset({"nano_banana_2", "nano_banana_pro"})
+_DATABASE_OPERATION_ERRORS = (
+    asyncpg.PostgresError,
+    OSError,
+    TimeoutError,
+    RuntimeError,
+)
 
 
 class KieTaskQueueService(AITaskQueueService):
@@ -100,7 +112,6 @@ class KieTaskQueueService(AITaskQueueService):
         if not result.endswith(" 1"):
             return task
         return replace(task, max_attempts=self._max_attempts)
-
 
     async def _restore_successful_provider_task(
         self,
@@ -187,12 +198,13 @@ class KieTaskQueueService(AITaskQueueService):
         if delivery is not None:
             try:
                 await delivery.execute(task_id=task.id)
-            except Exception:
+            except MediaDeliveryError as error:
                 # Provider success and ai_tasks.result are already durable. Recovery
                 # imports/retries this delivery without calling generation again.
                 logger.exception(
-                    "Durable media delivery failed after task completion task=%s",
+                    "Durable media delivery failed after task completion task=%s code=%s",
                     task.id,
+                    error.code,
                 )
         return task
 
@@ -257,10 +269,17 @@ class KieTaskQueueService(AITaskQueueService):
                 media_kind=("video" if model in _VIDEO_MODELS else "image"),
                 request=_delivery_metadata(request),
             )
-        except Exception:
+        except MediaDeliveryError as error:
             logger.exception(
-                "Could not persist provider submission for media delivery task=%s",
+                "Could not persist provider submission for media delivery task=%s code=%s",
                 task_id,
+                error.code,
+            )
+        except _DATABASE_OPERATION_ERRORS as error:
+            logger.exception(
+                "Could not load provider submission payload task=%s type=%s",
+                task_id,
+                type(error).__name__,
             )
 
     async def _record_success_best_effort(
@@ -297,10 +316,11 @@ class KieTaskQueueService(AITaskQueueService):
                 request=_delivery_metadata(request),
                 result_urls=task_result_urls(result),
             )
-        except Exception:
+        except MediaDeliveryError as error:
             logger.exception(
-                "Could not normalize provider success for media delivery task=%s",
+                "Could not normalize provider success for media delivery task=%s code=%s",
                 task.id,
+                error.code,
             )
 
 
@@ -311,7 +331,9 @@ def _delivery_metadata(request: Mapping[str, object]) -> dict[str, object]:
         "resolution": str(request.get("resolution") or "").strip(),
         "aspect_ratio": str(request.get("aspect_ratio") or "").strip(),
         "content_mode": str(request.get("content_mode") or "").strip(),
-        "reference_count": len(references) if isinstance(references, (list, tuple)) else 0,
+        "reference_count": len(references)
+        if isinstance(references, (list, tuple))
+        else 0,
     }
 
 
