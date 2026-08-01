@@ -1,8 +1,8 @@
 # Package-wide architecture inventory
 
-- Generated from: `p1-package-architecture-baseline`
+- Generated from: `storage-librarian-local-qwen`
 - Production modules: **640**
-- Production LOC: **139035**
+- Production LOC: **139184**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **42**
