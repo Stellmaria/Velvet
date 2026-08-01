@@ -6,6 +6,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from velvet_bot.application.storage_librarian import (
+    _fallback_analysis_rows,
+    _search_terms,
+)
 from velvet_bot.domains.telegram_storage.librarian_content import (
     extract_storage_text,
     parse_librarian_analysis,
@@ -79,7 +83,30 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
         self.assertIn("TelegramStorageLibrarianReportPublisher", presentation)
         self.assertIn('threads.for_kind("analysis")', publisher)
         self.assertIn("STORAGE_LIBRARIAN_PUBLISH_REPORTS", installer)
-        self.assertIn("velvet-librarian:v2", installer)
+        self.assertIn("velvet-librarian:qwen3.5-9b-local:v3", installer)
+
+    def test_local_runtime_is_private_pinned_and_without_cloud_fallback(self) -> None:
+        compose = (ROOT / "deploy/hermes-librarian/compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        profile = (ROOT / "deploy/hermes-librarian/prepare_profile.py").read_text(
+            encoding="utf-8"
+        )
+        start = (ROOT / "deploy/hermes-librarian/start.sh").read_text(
+            encoding="utf-8"
+        )
+        modelfile = (ROOT / "deploy/hermes-librarian/Modelfile").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("ollama/ollama:0.32.3", compose)
+        self.assertIn("ollama-librarian", compose)
+        self.assertIn("librarian-ollama:/root/.ollama", compose)
+        self.assertNotIn("ports:", compose)
+        self.assertIn('"provider": "custom"', profile)
+        self.assertIn('config["fallback_providers"] = []', profile)
+        self.assertIn("ollama pull", start)
+        self.assertIn("qwen3.5:9b-q4_K_M", modelfile)
+        self.assertIn("PARAMETER num_ctx 65536", modelfile)
 
     def test_kael_installer_checks_runtime_user_not_root_exec(self) -> None:
         installer = (
@@ -130,6 +157,11 @@ class StorageLibrarianSettingsTests(unittest.TestCase):
         self.assertFalse(settings.enabled)
         self.assertNotIn("backups", settings.allowed_kinds)
         self.assertNotIn("watermarks", settings.allowed_kinds)
+        self.assertEqual(
+            "velvet-librarian:qwen3.5-9b-local:v3",
+            settings.analyzer_version,
+        )
+        self.assertEqual(900, settings.run_timeout_seconds)
 
     def test_protected_storage_kinds_are_rejected(self) -> None:
         with patch.dict(
@@ -139,6 +171,65 @@ class StorageLibrarianSettingsTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ValueError, "защищённые категории"):
                 StorageLibrarianSettings.from_env()
+
+
+class StorageLibrarianSearchTests(unittest.TestCase):
+    def test_russian_inflections_find_error_summary(self) -> None:
+        candidates = [
+            {
+                "storage_object_id": 2143,
+                "storage_kind": "diagnostics",
+                "logical_key": "diagnostics:logs:server-supervisor.log",
+                "original_name": "server-supervisor.log",
+                "summary": (
+                    "Проверки health прошли успешно, ошибок в предоставленном "
+                    "фрагменте нет."
+                ),
+                "tags": ["health-check", "server-supervisor"],
+                "entities": [],
+                "action_items": [],
+                "analyzed_at": "2026-08-02T01:04:00Z",
+            },
+            {
+                "storage_object_id": 2134,
+                "storage_kind": "diagnostics",
+                "logical_key": "diagnostics:logs:server-supervisor.log",
+                "original_name": "server-supervisor.log",
+                "summary": (
+                    "Ранний update завершился ошибкой read-only filesystem и "
+                    "автоматическим откатом deployment."
+                ),
+                "tags": ["update-failure", "read-only-filesystem"],
+                "entities": [],
+                "action_items": [],
+                "analyzed_at": "2026-08-02T00:10:00Z",
+            },
+        ]
+        rows = _fallback_analysis_rows(
+            "какие ошибки и предупреждения повторялись?",
+            candidates,
+            limit=8,
+        )
+        self.assertIn("ошибк", _search_terms("какие ошибки повторялись?"))
+        self.assertEqual([2134], [row["storage_object_id"] for row in rows])
+
+    def test_unrelated_question_does_not_return_random_recent_rows(self) -> None:
+        rows = _fallback_analysis_rows(
+            "какие платежи были по подпискам?",
+            [
+                {
+                    "storage_object_id": 2149,
+                    "summary": "Запуск монитора инцидентов Hermes.",
+                    "tags": ["diagnostics"],
+                    "entities": [],
+                    "action_items": [],
+                    "logical_key": "diagnostics:monitor",
+                    "original_name": "monitor.log",
+                }
+            ],
+            limit=8,
+        )
+        self.assertEqual([], rows)
 
 
 class StorageLibrarianPayloadTests(unittest.TestCase):

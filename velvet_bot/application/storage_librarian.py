@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 from datetime import UTC, datetime
 from typing import Protocol, cast
 
@@ -29,6 +30,94 @@ from velvet_bot.domains.telegram_storage.librarian_repository import (
 )
 
 logger = logging.getLogger(__name__)
+_TOKEN_RE = re.compile(r"[0-9A-Za-zА-Яа-яЁё_-]{3,}")
+_SEARCH_STOPWORDS = frozenset(
+    {
+        "какие",
+        "какой",
+        "какая",
+        "какое",
+        "каких",
+        "которые",
+        "который",
+        "что",
+        "чем",
+        "где",
+        "когда",
+        "почему",
+        "были",
+        "было",
+        "есть",
+        "это",
+        "эти",
+        "этот",
+        "последних",
+        "последние",
+        "архиве",
+        "материалах",
+        "проанализированных",
+        "the",
+        "what",
+        "which",
+        "were",
+        "was",
+        "are",
+        "from",
+        "with",
+        "latest",
+    }
+)
+_RUSSIAN_SUFFIXES = (
+    "иями",
+    "ями",
+    "ами",
+    "ение",
+    "ения",
+    "ений",
+    "ениями",
+    "остью",
+    "ости",
+    "овать",
+    "ировать",
+    "лись",
+    "лась",
+    "лось",
+    "ого",
+    "ему",
+    "ому",
+    "иях",
+    "ах",
+    "ях",
+    "ами",
+    "ями",
+    "ов",
+    "ев",
+    "ей",
+    "ой",
+    "ий",
+    "ый",
+    "ая",
+    "яя",
+    "ое",
+    "ее",
+    "ые",
+    "ие",
+    "ам",
+    "ям",
+    "ом",
+    "ем",
+    "ия",
+    "ья",
+    "ы",
+    "и",
+    "а",
+    "я",
+    "у",
+    "ю",
+    "е",
+    "о",
+)
+_ENGLISH_SUFFIXES = ("ingly", "edly", "ing", "ed", "es", "s")
 
 
 class StorageObjectLoader(Protocol):
@@ -69,6 +158,61 @@ def _json_list(value: object) -> list[JsonValue]:
         if isinstance(decoded, list):
             return cast(list[JsonValue], decoded)
     return []
+
+
+def _stem_token(value: str) -> str:
+    token = value.casefold().replace("ё", "е").strip("_-")
+    if len(token) < 3 or token in _SEARCH_STOPWORDS:
+        return ""
+    suffixes = _ENGLISH_SUFFIXES if token.isascii() else _RUSSIAN_SUFFIXES
+    for suffix in suffixes:
+        if token.endswith(suffix) and len(token) - len(suffix) >= 4:
+            return token[: -len(suffix)]
+    return token
+
+
+def _search_terms(value: str) -> tuple[str, ...]:
+    result: list[str] = []
+    for raw in _TOKEN_RE.findall(value):
+        token = _stem_token(raw)
+        if token and token not in result:
+            result.append(token)
+    return tuple(result[:16])
+
+
+def _row_terms(row: dict[str, object]) -> set[str]:
+    values = (
+        str(row.get("summary") or ""),
+        str(row.get("logical_key") or ""),
+        str(row.get("original_name") or ""),
+        json.dumps(_json_list(row.get("tags")), ensure_ascii=False),
+        json.dumps(_json_list(row.get("entities")), ensure_ascii=False),
+        json.dumps(_json_list(row.get("action_items")), ensure_ascii=False),
+    )
+    return {
+        token
+        for value in values
+        for raw in _TOKEN_RE.findall(value)
+        if (token := _stem_token(raw))
+    }
+
+
+def _fallback_analysis_rows(
+    question: str,
+    candidates: list[dict[str, object]],
+    *,
+    limit: int,
+) -> list[dict[str, object]]:
+    terms = set(_search_terms(question))
+    if not terms:
+        return []
+    scored: list[tuple[int, dict[str, object]]] = []
+    for row in candidates:
+        score = len(terms.intersection(_row_terms(row)))
+        if score:
+            scored.append((score, row))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [row for _, row in scored[: max(1, min(int(limit), 20))]]
 
 
 class StorageLibrarianService:
@@ -161,6 +305,9 @@ class StorageLibrarianService:
             raise StorageLibrarianError("Storage Librarian выключен.")
         rows = await self.repository.search_analyses(question, limit=8)
         if not rows:
+            recent = await self.repository.recent_analyses(days=365, limit=50)
+            rows = _fallback_analysis_rows(question, recent, limit=8)
+        if not rows:
             return "В проанализированном архиве совпадений пока нет."
         context: list[dict[str, object]] = []
         for row in rows:
@@ -182,16 +329,18 @@ class StorageLibrarianService:
         run = await self.run_client.run(
             prompt=(
                 "Ответь на вопрос владельца Velvet только по приведённым индексированным "
-                "резюме. Не используй инструменты и не выдумывай отсутствующие факты. "
+                "резюме. Сравни источники, явно отличай единичный сбой от повторяющейся "
+                "проблемы, не используй внешние знания и не выдумывай отсутствующие факты. "
                 "Для каждого важного утверждения укажи Storage ID.\n\n"
-                f"Вопрос: {redact_sensitive(question)[:2000]}\n\n"
+                f"Вопрос: {redact_sensitive(question)[:2000]}\n"
+                f"Ключи поиска: {', '.join(_search_terms(question))}\n\n"
                 "Контекст:\n"
                 + json.dumps(context, ensure_ascii=False, indent=2)[:100000]
             ),
             session_id=f"velvet-storage-ask-{question_hash}-{stamp}",
             instructions=(
-                "Ты поисковый слой Telegram Storage Velvet. Отвечай по-русски, кратко, "
-                "с указанием Storage ID и без вызова инструментов."
+                "Ты локальный поисковый слой Telegram Storage Velvet. Отвечай по-русски, "
+                "кратко, с указанием Storage ID и без вызова инструментов."
             ),
         )
         return run.output[:12000]
