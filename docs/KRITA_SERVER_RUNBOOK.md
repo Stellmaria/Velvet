@@ -104,6 +104,27 @@ sudo systemctl reload-or-restart velvet-compose.service
 
 Для возврата к Windows-worker включите `KRITA_REMOTE_WORKER_ENABLED=true` и используйте процедуру из `.env.krita-remote.example`. Одновременно серверный и удалённый worker включать нельзя.
 
+
+## Безопасный удалённый Windows-worker
+
+Remote API по умолчанию слушает только `127.0.0.1`. Windows подключается через SSH tunnel:
+
+```bash
+ssh -N -L 8766:127.0.0.1:8766 velvet@SERVER_IP
+```
+
+В `.env.server` оставьте `KRITA_REMOTE_BIND_HOST=127.0.0.1` и
+`KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND=false`. Compose overlay использует wildcard
+только внутри bot-контейнера и одновременно публикует порт исключительно на host
+loopback. Публичный bind без явного unsafe override блокируется и runtime, и server
+preflight. Unsafe override допускается только за private VPN или mTLS gateway; открывать
+порт в публичный интерфейс VPS нельзя.
+
+Upload принимает только `image/png` с `Content-Length`, проверяет PNG chunks/CRC,
+ограничивает размер, параллелизм и время запроса. Временные staging-файлы удаляются
+при ошибке или отмене. Повторные auth/lease failures получают cooldown; в журнал пишется
+только fingerprint клиента, без bearer/lease token и имён исходников.
+
 ## Обновление образа вручную
 
 ```bash
