@@ -5,6 +5,7 @@ RUN addgroup -g 10001 app \
 
 WORKDIR /app
 COPY deploy/hermes-operator/gateway.py /app/gateway.py
+COPY deploy/hermes-operator/coder_router.py /app/coder_router.py
 
 USER 10001:10001
-ENTRYPOINT ["python", "/app/gateway.py"]
+CMD ["python", "/app/gateway.py"]
