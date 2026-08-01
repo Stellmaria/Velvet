@@ -22,6 +22,10 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
 from velvet_bot.domains.telegram_storage.librarian_repository import (
     StorageLibrarianRepository,
 )
+from velvet_bot.infrastructure.ai.storage_librarian_hermes import HermesRunsClient
+from velvet_bot.infrastructure.telegram.storage_librarian_files import (
+    TelegramStorageObjectLoader,
+)
 
 logger = logging.getLogger(__name__)
 _scheduler_task: asyncio.Task[None] | None = None
@@ -33,6 +37,20 @@ def _env_enabled(name: str, default: bool = False) -> bool:
     if not raw:
         return default
     return raw in {"1", "true", "yes", "on", "да"}
+
+
+def _build_service(
+    *,
+    bot: Bot,
+    database: Database,
+    settings: StorageLibrarianSettings,
+) -> StorageLibrarianService:
+    return StorageLibrarianService(
+        database=database,
+        settings=settings,
+        object_loader=TelegramStorageObjectLoader(bot),
+        run_client=HermesRunsClient(settings),
+    )
 
 
 def _short(value: str, limit: int = 700) -> str:
@@ -75,7 +93,7 @@ async def _librarian_scheduler_loop(
     database: Database,
     settings: StorageLibrarianSettings,
 ) -> None:
-    service = StorageLibrarianService(
+    service = _build_service(
         bot=bot,
         database=database,
         settings=settings,
@@ -185,7 +203,7 @@ async def _process_manual_once(
     settings: StorageLibrarianSettings,
 ) -> None:
     try:
-        processed = await StorageLibrarianService(
+        processed = await _build_service(
             bot=bot,
             database=database,
             settings=settings,
@@ -309,7 +327,7 @@ async def handle_storage_ask(
     status = await message.answer("<b>Ищу по индексу Telegram Storage…</b>")
     try:
         settings = StorageLibrarianSettings.from_env()
-        answer = await StorageLibrarianService(
+        answer = await _build_service(
             bot=bot,
             database=database,
             settings=settings,
