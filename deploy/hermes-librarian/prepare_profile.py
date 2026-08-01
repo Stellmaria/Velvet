@@ -94,24 +94,40 @@ def prepare(
     agent["disabled_toolsets"] = list(DISABLED_TOOLSETS)
     config["agent"] = agent
 
-    # Librarian uses only the private Ollama endpoint. Cloud fallbacks are
-    # deliberately removed so a local failure cannot silently spend tokens.
+    local_model = (
+        os.getenv("STORAGE_LIBRARIAN_LOCAL_MODEL", DEFAULT_LOCAL_MODEL).strip()
+        or DEFAULT_LOCAL_MODEL
+    )
+    local_base_url = (
+        os.getenv(
+            "STORAGE_LIBRARIAN_LOCAL_BASE_URL",
+            DEFAULT_LOCAL_BASE_URL,
+        ).strip().rstrip("/")
+        or DEFAULT_LOCAL_BASE_URL
+    )
+
+    # Librarian uses only the private Ollama endpoint. Cloud fallbacks and
+    # inherited auxiliary cloud routes are deliberately removed so a local
+    # failure cannot silently spend tokens.
     config["model"] = {
-        "default": (
-            os.getenv("STORAGE_LIBRARIAN_LOCAL_MODEL", DEFAULT_LOCAL_MODEL).strip()
-            or DEFAULT_LOCAL_MODEL
-        ),
+        "default": local_model,
         "provider": "custom",
-        "base_url": (
-            os.getenv(
-                "STORAGE_LIBRARIAN_LOCAL_BASE_URL",
-                DEFAULT_LOCAL_BASE_URL,
-            ).strip().rstrip("/")
-            or DEFAULT_LOCAL_BASE_URL
-        ),
+        "base_url": local_base_url,
         "context_length": _local_context_length(),
     }
     config["fallback_providers"] = []
+    config.pop("fallback_model", None)
+    config["auxiliary"] = {
+        "title_generation": {"enabled": False},
+        "compression": {
+            "provider": "main",
+            "model": local_model,
+        },
+    }
+    compression = _mapping(config.get("compression"))
+    for key in ("provider", "model", "base_url", "api_key"):
+        compression.pop(key, None)
+    config["compression"] = compression
 
     # Librarian never needs project checkout, terminal hooks, MCP or browser.
     terminal = _mapping(config.get("terminal"))
