@@ -21,6 +21,8 @@ for path in \
   "$VELVET_COMPOSE_FILE" \
   "$SOURCE_DIR/compose.yaml" \
   "$SOURCE_DIR/prepare_profile.py" \
+  "$SOURCE_DIR/Modelfile" \
+  "$SOURCE_DIR/start.sh" \
   "$SOURCE_DIR/SOUL.md" \
   "$SOURCE_DIR/AGENTS.md" \
   "$UNIT_SOURCE"
@@ -61,8 +63,12 @@ if len(key) < 24:
 updates = {
     "STORAGE_LIBRARIAN_HERMES_BASE_URL": "http://librarian-hermes:8642",
     "STORAGE_LIBRARIAN_HERMES_API_KEY": key,
-    "STORAGE_LIBRARIAN_ANALYZER_VERSION": "velvet-librarian:v2",
+    "STORAGE_LIBRARIAN_ANALYZER_VERSION": "velvet-librarian:qwen3.5-9b-local:v3",
     "STORAGE_LIBRARIAN_PUBLISH_REPORTS": "true",
+    "STORAGE_LIBRARIAN_LOCAL_MODEL": "velvet-librarian-local:v1",
+    "STORAGE_LIBRARIAN_LOCAL_BASE_URL": "http://ollama-librarian:11434/v1",
+    "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH": "65536",
+    "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS": "900",
 }
 result = []
 seen = set()
@@ -82,7 +88,7 @@ for name, value in updates.items():
         result.append(f"{name}={value}")
 path.write_text("\n".join(result).rstrip() + "\n", encoding="utf-8")
 os.chmod(path, 0o600)
-print("Velvet Librarian credentials and report settings prepared without printing secret values.")
+print("Velvet Librarian credentials and local inference settings prepared without printing secret values.")
 PY
 
 readarray -t resolved < <(python3 - "$VELVET_ENV_FILE" <<'PY'
@@ -98,10 +104,16 @@ for raw in Path(sys.argv[1]).read_text(encoding="utf-8-sig").splitlines():
     values[key.strip()] = value.strip().strip('"').strip("'")
 print(values.get("VELVET_DATA_DIR", "/srv/velvet/data"))
 print(values.get("HERMES_IMAGE", "nousresearch/hermes-agent@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a"))
+print(values.get("STORAGE_LIBRARIAN_LOCAL_MODEL", "velvet-librarian-local:v1"))
+print(values.get("STORAGE_LIBRARIAN_LOCAL_BASE_URL", "http://ollama-librarian:11434/v1"))
+print(values.get("STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH", "65536"))
 PY
 )
 VELVET_DATA_DIR="${resolved[0]}"
 HERMES_IMAGE="${resolved[1]}"
+LOCAL_MODEL="${resolved[2]}"
+LOCAL_BASE_URL="${resolved[3]}"
+LOCAL_CONTEXT_LENGTH="${resolved[4]}"
 SOURCE_CONFIG="$VELVET_DATA_DIR/hermes/config.yaml"
 TARGET_DIR="$VELVET_DATA_DIR/hermes-librarian"
 
@@ -119,6 +131,9 @@ install -d -m 0750 -o "$source_uid" -g "$source_gid" "$TARGET_DIR"
 docker run --rm \
   --network none \
   --entrypoint python \
+  -e STORAGE_LIBRARIAN_LOCAL_MODEL="$LOCAL_MODEL" \
+  -e STORAGE_LIBRARIAN_LOCAL_BASE_URL="$LOCAL_BASE_URL" \
+  -e STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
   -v "$SOURCE_CONFIG:/source/config.yaml:ro" \
   -v "$SOURCE_DIR:/bootstrap:ro" \
   -v "$TARGET_DIR:/target" \
@@ -133,13 +148,17 @@ chown -R "$source_uid:$source_gid" "$TARGET_DIR"
 find "$TARGET_DIR" -type d -exec chmod 0750 {} +
 find "$TARGET_DIR" -type f -exec chmod 0640 {} +
 
-# Validate the exact deny-all profile with the same image and parser.
+# Validate the exact deny-all and local-only profile with the same image and parser.
 docker run --rm -i \
   --network none \
   --entrypoint python \
+  -e STORAGE_LIBRARIAN_LOCAL_MODEL="$LOCAL_MODEL" \
+  -e STORAGE_LIBRARIAN_LOCAL_BASE_URL="$LOCAL_BASE_URL" \
+  -e STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
   -v "$TARGET_DIR/config.yaml:/profile/config.yaml:ro" \
   "$HERMES_IMAGE" \
   - <<'PY'
+import os
 from pathlib import Path
 import yaml
 
@@ -147,16 +166,23 @@ config = yaml.safe_load(Path("/profile/config.yaml").read_text(encoding="utf-8")
 platform = config.get("platform_toolsets") or {}
 agent = config.get("agent") or {}
 disabled = set(agent.get("disabled_toolsets") or [])
+model = config.get("model") or {}
 required = {"terminal", "file", "web", "browser", "messaging", "memory", "delegation", "code_execution", "skills"}
 assert platform.get("api_server") == [], platform
 assert required.issubset(disabled), sorted(required - disabled)
 assert config.get("mcp_servers") == {}, config.get("mcp_servers")
-print("Velvet Librarian deny-all tool contract: OK")
+assert config.get("fallback_providers") == [], config.get("fallback_providers")
+assert model.get("provider") == "custom", model
+assert model.get("default") == os.environ["STORAGE_LIBRARIAN_LOCAL_MODEL"], model
+assert model.get("base_url") == os.environ["STORAGE_LIBRARIAN_LOCAL_BASE_URL"].rstrip("/"), model
+assert int(model.get("context_length") or 0) == int(os.environ["STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH"]), model
+print("Velvet Librarian local-only deny-all contract: OK")
 PY
 
 install -m 0644 "$UNIT_SOURCE" "$UNIT_TARGET"
 systemctl daemon-reload
-systemctl enable --now velvet-librarian.service
+systemctl enable velvet-librarian.service
+systemctl restart velvet-librarian.service
 
 runuser -u "$SERVICE_USER" -- bash -ceu "
   cd '$VELVET_APP_DIR'
@@ -193,15 +219,20 @@ if [[ "$healthy" != "true" ]]; then
   systemctl --no-pager --full status velvet-librarian.service >&2 || true
   runuser -u "$SERVICE_USER" -- \
     docker compose --env-file "$VELVET_ENV_FILE" -f "$SOURCE_DIR/compose.yaml" \
-      logs --tail=100 librarian-hermes >&2 || true
+      logs --tail=120 ollama-librarian librarian-hermes >&2 || true
   echo "Velvet Librarian API не достиг healthy status." >&2
   exit 4
 fi
 
+runuser -u "$SERVICE_USER" -- \
+  docker compose --env-file "$VELVET_ENV_FILE" -f "$SOURCE_DIR/compose.yaml" \
+    exec -T ollama-librarian ollama show "$LOCAL_MODEL" >/dev/null
+
 printf '%s\n' \
   "Velvet Librarian profile installed." \
   "Dedicated API key configured." \
-  "Analyzer version set to velvet-librarian:v2." \
+  "Local model configured: $LOCAL_MODEL." \
+  "Analyzer version set to velvet-librarian:qwen3.5-9b-local:v3." \
   "Hermes Reports publication enabled." \
   "Bot-to-Librarian health verified." \
   "Automatic enqueue remains controlled by STORAGE_LIBRARIAN_AUTO_ENQUEUE."
