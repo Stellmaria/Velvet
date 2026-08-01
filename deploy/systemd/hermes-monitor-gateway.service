@@ -1,0 +1,25 @@
+[Unit]
+Description=Internal read-only monitoring gateway for the trusted Velvet Hermes operator
+Requires=docker.service hermes-operator-monitor.service
+After=docker.service network-online.target hermes-operator-monitor.service velvet-compose.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet/deploy/hermes-monitor
+EnvironmentFile=/srv/hermes-operator-control/operator.env
+Environment=HERMES_OPS_ENV_FILE=/srv/hermes-operator-control/operator.env
+Environment=HERMES_OPS_MONITOR_RUNTIME_DIR=/run/hermes-operator-monitor
+Environment=VELVET_BACKEND_NETWORK=velvet_backend
+ExecStartPre=/usr/bin/docker compose -f compose.yaml config --quiet
+ExecStart=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
+ExecStop=/usr/bin/docker compose -f compose.yaml stop --timeout 20
+ExecReload=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
+TimeoutStartSec=0
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
