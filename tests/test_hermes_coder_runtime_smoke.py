@@ -90,6 +90,15 @@ class HermesCoderRuntimeSmokeTests(unittest.TestCase):
             source.index("ExecReload=/usr/bin/docker"), source.index(reload_smoke)
         )
 
+    def test_reinstall_preserves_runs_api_key_and_requires_smoke(self) -> None:
+        source = Path("deploy/hermes-coders/install.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            '"API_SERVER_KEY": existing.get("API_SERVER_KEY", "")',
+            source,
+        )
+        self.assertIn('"$SOURCE_DIR/runtime_smoke.py"', source)
+        self.assertIn("python3 $SOURCE_DIR/runtime_smoke.py", source)
+
 
 if __name__ == "__main__":
     unittest.main()
