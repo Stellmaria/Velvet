@@ -99,6 +99,19 @@ class CodexModelRoutingTests(unittest.TestCase):
             )
             self.assertEqual("gpt-5.6-sol", submit.call_args.args[1]["model"])
 
+    def test_container_uses_routed_entrypoint(self) -> None:
+        compose = (ROOT / "deploy/hermes-coders/compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        dockerfile = (ROOT / "deploy/hermes-coders/Dockerfile.coder").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('/app/codex_routed_runner.py"]', compose)
+        self.assertIn(
+            "COPY --chmod=0555 codex_routed_runner.py /app/codex_routed_runner.py",
+            dockerfile,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
