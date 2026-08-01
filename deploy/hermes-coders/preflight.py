@@ -118,6 +118,15 @@ def validate_data(path: Path) -> None:
         )
 
 
+def validate_api_key(path: Path, values: dict[str, str]) -> str:
+    key = values.get("API_SERVER_KEY", "")
+    if len(key) < 24:
+        raise PreflightError(
+            f"API_SERVER_KEY в {path} должен содержать минимум 24 символа"
+        )
+    return key
+
+
 def main() -> int:
     velvet_env_path = ROOT / "secrets" / "velvet.env"
     max_env_path = ROOT / "secrets" / "max.env"
@@ -130,6 +139,7 @@ def main() -> int:
         "TELEGRAM_BOT_TOKEN",
         "TELEGRAM_ALLOWED_USERS",
         "GH_TOKEN",
+        "API_SERVER_KEY",
     )
     require_values(velvet_env_path, velvet_env, required)
     require_values(max_env_path, max_env, required)
@@ -138,6 +148,11 @@ def main() -> int:
         raise PreflightError("Два coder-контейнера не могут использовать один Telegram bot token")
     if velvet_env["GH_TOKEN"] == max_env["GH_TOKEN"]:
         raise PreflightError("Velvet и Max должны использовать разные fine-grained GitHub tokens")
+
+    velvet_api_key = validate_api_key(velvet_env_path, velvet_env)
+    max_api_key = validate_api_key(max_env_path, max_env)
+    if velvet_api_key == max_api_key:
+        raise PreflightError("Velvet и Max должны использовать разные API_SERVER_KEY")
 
     validate_db_env(
         ROOT / "secrets" / "velvet-db.env",
@@ -159,6 +174,7 @@ def main() -> int:
     print("- workspaces: isolated")
     print("- Telegram tokens: distinct")
     print("- GitHub tokens: distinct")
+    print("- API server keys: distinct")
     print("- PostgreSQL identities: read-only")
     print("- model routing: mini -> terra -> luna")
     print("- terminal passthrough: GH_TOKEN")
