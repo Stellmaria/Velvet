@@ -1,28 +1,34 @@
-name: temporary package inventory export
+name: temporary package inventory commit
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches:
+      - fix/byesu-balance-key-status
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  export:
+  commit:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: fix/byesu-balance-key-status
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
       - name: Generate package architecture inventory
         run: python scripts/inventory_package_architecture_fast.py --write
-      - name: Upload generated inventory
-        uses: actions/upload-artifact@v4
-        with:
-          name: package-architecture-inventory
-          path: |
-            docs/package_architecture_inventory.json
-            docs/package_architecture_inventory.md
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit generated inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- docs/package_architecture_inventory.json docs/package_architecture_inventory.md
+          if git diff --cached --quiet; then
+            echo "Inventory is already current."
+            exit 0
+          fi
+          git commit -m "docs: refresh package architecture inventory"
+          git push origin HEAD:fix/byesu-balance-key-status
