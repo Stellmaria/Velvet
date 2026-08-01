@@ -168,7 +168,7 @@
     {
       "path": "velvet_bot/application/storage_librarian.py",
       "function": "process_once",
-      "line": 117,
+      "line": 132,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-storage-librarian-job"

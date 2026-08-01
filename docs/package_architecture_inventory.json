@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 638,
-  "production_loc": 138468,
+  "production_loc": 138525,
   "layer_counts": {
     "application": 21,
     "composition": 63,
@@ -13895,24 +13895,20 @@
       "module": "velvet_bot.application.storage_librarian",
       "layer": "application",
       "target_package": "application",
-      "loc": 162,
-      "function_count": 4,
-      "class_count": 1,
+      "loc": 181,
+      "function_count": 6,
+      "class_count": 3,
       "handler_count": 0,
-      "max_function_length": 59,
+      "max_function_length": 58,
       "branch_count": 13,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.telegram_storage.librarian_content",
         "velvet_bot.domains.telegram_storage.librarian_models",
-        "velvet_bot.domains.telegram_storage.librarian_repository",
-        "velvet_bot.infrastructure.ai.storage_librarian_hermes",
-        "velvet_bot.infrastructure.telegram.storage_librarian_files"
+        "velvet_bot.domains.telegram_storage.librarian_repository"
       ],
-      "external_import_count": 8,
-      "aiogram_imports": [
-        "aiogram"
-      ],
+      "external_import_count": 7,
+      "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
@@ -25926,9 +25922,9 @@
       "module": "velvet_bot.infrastructure.telegram.storage_librarian_files",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 101,
-      "function_count": 2,
-      "class_count": 0,
+      "loc": 121,
+      "function_count": 4,
+      "class_count": 1,
       "handler_count": 0,
       "max_function_length": 39,
       "branch_count": 11,
@@ -36473,8 +36469,8 @@
       "module": "velvet_bot.presentation.telegram.storage_librarian",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 349,
-      "function_count": 13,
+      "loc": 367,
+      "function_count": 14,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 47,
@@ -36483,7 +36479,9 @@
         "velvet_bot.application.storage_librarian",
         "velvet_bot.database",
         "velvet_bot.domains.telegram_storage.librarian_models",
-        "velvet_bot.domains.telegram_storage.librarian_repository"
+        "velvet_bot.domains.telegram_storage.librarian_repository",
+        "velvet_bot.infrastructure.ai.storage_librarian_hermes",
+        "velvet_bot.infrastructure.telegram.storage_librarian_files"
       ],
       "external_import_count": 11,
       "aiogram_imports": [
@@ -36506,14 +36504,14 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 32,
+          "line": 36,
           "owner": "_env_enabled",
           "call": "os.getenv"
         }
       ],
       "polling_values": [
         {
-          "line": 97,
+          "line": 115,
           "owner": "_librarian_scheduler_loop",
           "call": "asyncio.sleep",
           "values": [

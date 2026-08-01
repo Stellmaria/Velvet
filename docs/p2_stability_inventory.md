@@ -33,7 +33,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/application/media_delivery_deliver.py:453` `_compensate_claim`: preserve-lease-recovery-on-compensation-failure.
 - `velvet_bot/application/media_delivery_resolve.py:122` `execute`: compensate-claimed-result-resolution.
 - `velvet_bot/application/media_delivery_resolve.py:172` `_finish_claim`: preserve-resolution-lease-recovery.
-- `velvet_bot/application/storage_librarian.py:117` `process_once`: isolate-storage-librarian-job.
+- `velvet_bot/application/storage_librarian.py:132` `process_once`: isolate-storage-librarian-job.
 - `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/backup_runtime.py:163` `_create_dump_file`: cleanup-invalid-backup-artifacts.
 - `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
