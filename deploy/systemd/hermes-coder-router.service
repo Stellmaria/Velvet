@@ -10,7 +10,6 @@ RemainAfterExit=yes
 User=velvet
 Group=velvet
 WorkingDirectory=/srv/velvet/deploy/hermes-orchestration
-EnvironmentFile=/srv/hermes-operator-control/coders.env
 Environment=HERMES_CODER_ROUTER_ENV_FILE=/srv/hermes-operator-control/coders.env
 Environment=HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control
 Environment=VELVET_BACKEND_NETWORK=velvet_backend
