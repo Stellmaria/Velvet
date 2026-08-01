@@ -4,22 +4,27 @@ import json
 import logging
 import os
 import signal
-import stat
 import subprocess
+import sys
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from velvet_supervisor.hermes_incident import (
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from velvet_supervisor.hermes_incident import (  # noqa: E402
     HermesIncident,
     HermesIncidentClient,
     redact_sensitive,
 )
-from velvet_supervisor.notifier import TelegramNotifier
+from velvet_supervisor.notifier import TelegramNotifier  # noqa: E402
 
 logger = logging.getLogger("velvet.hermes_incident_monitor")
+_ACTIVE_INCIDENT_STATES = frozenset({"queued", "submitted", "running"})
 
 
 def _parse_bool(name: str, default: bool = False) -> bool:
@@ -43,16 +48,25 @@ def _parse_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
 
 
 def _optional_chat_id() -> int | None:
-    raw = os.getenv(
+    direct = os.getenv(
         "SUPERVISOR_NOTIFICATION_CHAT_ID",
         os.getenv("LOG_CHAT_ID", ""),
     ).strip()
-    if not raw:
-        return None
-    try:
-        return int(raw)
-    except ValueError as error:
-        raise RuntimeError("Supervisor notification chat id must be numeric.") from error
+    candidates = [direct] if direct else []
+    owners = os.getenv(
+        "SUPERVISOR_NOTIFICATION_OWNER_IDS",
+        os.getenv(
+            "ALLOWED_USER_IDS",
+            os.getenv("TELEGRAM_ALLOWED_USERS", ""),
+        ),
+    )
+    candidates.extend(item.strip() for item in owners.split(",") if item.strip())
+    for raw in candidates:
+        try:
+            return int(raw)
+        except ValueError:
+            logger.warning("Invalid incident notification chat id: %r", raw)
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,9 +126,20 @@ class HermesIncidentMonitor:
             minimum=20,
             maximum=2000,
         )
+        self.event_cooldown_seconds = _parse_int(
+            "HERMES_INCIDENT_COOLDOWN_SECONDS",
+            600,
+            minimum=30,
+            maximum=86_400,
+        )
         self._stop = threading.Event()
         self._state = self._load_state()
         self._unhealthy_polls = 0
+        self._last_event_key = str(self._state.get("last_event_key") or "")
+        try:
+            self._last_event_at = float(self._state.get("last_event_at") or 0.0)
+        except (TypeError, ValueError):
+            self._last_event_at = 0.0
         self.notifier = TelegramNotifier(
             bot_token=(
                 os.getenv("SUPERVISOR_NOTIFICATION_BOT_TOKEN", "").strip()
@@ -136,12 +161,7 @@ class HermesIncidentMonitor:
                 minimum=3,
                 maximum=300,
             ),
-            cooldown_seconds=_parse_int(
-                "HERMES_INCIDENT_COOLDOWN_SECONDS",
-                600,
-                minimum=30,
-                maximum=86400,
-            ),
+            cooldown_seconds=self.event_cooldown_seconds,
             max_log_chars=_parse_int(
                 "HERMES_MAX_LOG_CHARS",
                 12_000,
@@ -268,6 +288,8 @@ class HermesIncidentMonitor:
             "updated_at": time.time(),
             "probe": probe.to_dict(),
             "incident": self.client.status(),
+            "last_event_key": self._last_event_key,
+            "last_event_at": self._last_event_at,
         }
         temporary = self.state_path.with_suffix(".tmp")
         temporary.write_text(
@@ -289,9 +311,6 @@ class HermesIncidentMonitor:
             if not probe.running or probe.health == "unhealthy":
                 return "initial-unhealthy-state"
             return None
-        previous_container = str(previous.get("container_id") or "")
-        if previous_container and probe.container_id and previous_container != probe.container_id:
-            return "container-recreated"
         previous_restarts = max(0, int(previous.get("restart_count", 0) or 0))
         if probe.restart_count > previous_restarts:
             return "container-auto-restarted"
@@ -304,6 +323,25 @@ class HermesIncidentMonitor:
         else:
             self._unhealthy_polls = 0
         return None
+
+    @staticmethod
+    def _event_key(probe: BotProbe, reason: str) -> str:
+        return "|".join(
+            (
+                reason,
+                probe.container_id or "missing",
+                str(probe.restart_count),
+                probe.status or "unknown",
+                probe.health or "none",
+            )
+        )
+
+    def _can_submit(self, event_key: str) -> bool:
+        if str(self.client.status().get("state")) in _ACTIVE_INCIDENT_STATES:
+            return False
+        if event_key != self._last_event_key:
+            return True
+        return time.time() - self._last_event_at >= self.event_cooldown_seconds
 
     def _logs(self) -> str:
         result = self._run(
@@ -324,6 +362,9 @@ class HermesIncidentMonitor:
         return value if result.returncode == 0 and value else None
 
     def _submit(self, probe: BotProbe, reason: str) -> None:
+        event_key = self._event_key(probe, reason)
+        if not self._can_submit(event_key):
+            return
         incident = HermesIncident(
             service="velvet-bot",
             reason=reason,
@@ -335,6 +376,8 @@ class HermesIncidentMonitor:
             branch=self._git("branch", "--show-current"),
         )
         if self.client.submit_async(incident):
+            self._last_event_key = event_key
+            self._last_event_at = time.time()
             logger.warning(
                 "Submitted server incident reason=%s restarts=%s health=%s",
                 reason,
