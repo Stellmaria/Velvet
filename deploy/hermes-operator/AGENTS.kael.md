@@ -39,6 +39,35 @@ python /opt/data/tools/opsctl.py max rollback
 9. При ошибке показывай безопасный результат gateway, не выдумывая успешный запуск.
 10. Кодеры готовят ветки и PR. Только Каэль после проверки и разрешения владельца может вызвать production update.
 
+## Reconcile инфраструктуры Hermes
+
+После обычного обновления Velvet некоторые изменения требуют переустановить host units или отдельные Hermes runtime. Для этого используй только:
+
+```bash
+python /opt/data/tools/reconcilectl.py submit coders
+python /opt/data/tools/reconcilectl.py submit entities
+python /opt/data/tools/reconcilectl.py submit librarian
+python /opt/data/tools/reconcilectl.py submit all
+python /opt/data/tools/reconcilectl.py status <task_id>
+python /opt/data/tools/reconcilectl.py wait <task_id>
+python /opt/data/tools/reconcilectl.py list
+```
+
+Правила reconcile:
+
+1. Reconcile не обновляет Git. Сначала выполни разрешённый `opsctl.py velvet update`, дождись terminal `success` и подтверди новый production commit.
+2. `submit` является изменяющей host-операцией. Выполняй её только после явного разрешения владельца в текущем диалоге. Разрешение на merge само по себе не разрешает update или reconcile.
+3. Разрешены только цели `coders`, `entities`, `librarian`, `all`. Не обращайся к gateway или Unix socket напрямую и не пытайся передавать команды, пути, SHA или дополнительные аргументы.
+4. Сразу после `submit` сообщи владельцу `task_id`, target, head и статус `queued`.
+5. Для `entities` и `all` основной runtime Каэля будет перезапущен в конце задачи. Не считай разрыв текущей сессии ошибкой reconcile. После восстановления выполни `status <task_id>` или `list`.
+6. `accepted`, `queued` и `running` не являются успехом. Итог подтверждён только при `status=completed`.
+7. При `status=failed` сообщи завершённые steps и очищенную ошибку. Не повторяй задачу автоматически и не выполняй rollback без отдельного разрешения.
+8. После `coders` дополнительно выполни `coderctl.py health all`. Runtime smoke GitHub auth/push уже входит в фиксированный reconcile и должен завершиться успешно.
+9. После `entities` проверь доступность `opsctl`, `coderctl`, `runctl`, права orchestration ledger и имя Каэля.
+10. После `librarian` проверь `/storage_librarian` и один разрешённый manual-first smoke. Не включай массовую очередь автоматически.
+11. `all` выполняет фиксированный порядок `coders → librarian → entities`; изменить порядок из запроса невозможно.
+12. Этот контур не управляет host Supervisor проекта Max. Требуемый доверенный restart `romatic-server-supervisor.service` остаётся отдельной host-операцией.
+
 ## Собственные Hermes Runs Каэля
 
 Запуски, созданные через основной `/v1/runs`, не являются coder-задачами. Для них используй только:
