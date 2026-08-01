@@ -24,6 +24,8 @@ for path in \
   "$CODERS_SOURCE/compose.yaml" \
   "$CODERS_SOURCE/SOUL.velvet.md" \
   "$CODERS_SOURCE/SOUL.max.md" \
+  "$CODERS_SOURCE/ensure_runtime_config.py" \
+  "$CODERS_SOURCE/preflight.py" \
   "$OPERATOR_SOURCE/compose.yaml" \
   "$OPERATOR_SOURCE/coder_router.py" \
   "$OPERATOR_SOURCE/coderctl.py" \
@@ -157,6 +159,13 @@ chmod 0600 \
   "$CODERS_ROOT/secrets/max.env" \
   "$CODER_ROUTER_ENV"
 
+python3 \
+  "$CODERS_SOURCE/ensure_runtime_config.py" \
+  "$CODERS_ROOT/data/velvet/config.yaml" \
+  "$CODERS_ROOT/data/max/config.yaml"
+env HERMES_CODERS_ROOT="$CODERS_ROOT" \
+  python3 "$CODERS_SOURCE/preflight.py"
+
 velvet_data_dir="$(python3 - "$VELVET_ENV_FILE" <<'PY'
 from pathlib import Path
 import sys
@@ -241,17 +250,27 @@ if [[ -f "$VELVET_APP_DIR/.env.hermes" ]]; then
   "
 fi
 
+router_healthy=false
 for _ in $(seq 1 30); do
   if runuser -u "$SERVICE_USER" -- env \
     HERMES_CODER_ROUTER_ENV_FILE="$CODER_ROUTER_ENV" \
     HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
     docker compose -f "$OPERATOR_SOURCE/compose.yaml" exec -T hermes-coder-router \
-      python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8878/health', timeout=3).read()" \
+      python -c "import json,urllib.request; payload=json.load(urllib.request.urlopen('http://127.0.0.1:8878/health', timeout=3)); raise SystemExit(0 if payload.get('status') == 'ok' else 1)" \
       >/dev/null 2>&1; then
+    router_healthy=true
     break
   fi
   sleep 2
 done
+if [[ "$router_healthy" != "true" ]]; then
+  runuser -u "$SERVICE_USER" -- env \
+    HERMES_CODER_ROUTER_ENV_FILE="$CODER_ROUTER_ENV" \
+    HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
+    docker compose -f "$OPERATOR_SOURCE/compose.yaml" logs --tail=100 hermes-coder-router >&2 || true
+  echo "Hermes coder router не достиг healthy status." >&2
+  exit 5
+fi
 
 runuser -u "$SERVICE_USER" -- env \
   HERMES_CODER_ROUTER_ENV_FILE="$CODER_ROUTER_ENV" \
