@@ -32,6 +32,9 @@ jobs:
           python scripts/inventory_repository_layout.py \
             --label storage-librarian \
             --write
+          python scripts/update_p2_stability_inventory.py \
+            --label storage-librarian \
+            --schema-version 76
 
       - name: Upload inventories
         uses: actions/upload-artifact@v4
@@ -42,5 +45,7 @@ jobs:
             docs/package_architecture_inventory.md
             docs/repository_layout_inventory.json
             docs/repository_layout_inventory.md
+            docs/p2_stability_inventory.json
+            docs/p2_stability_inventory.md
           if-no-files-found: error
           retention-days: 1
