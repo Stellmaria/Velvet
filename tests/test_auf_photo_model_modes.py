@@ -48,26 +48,23 @@ class AufPhotoModelModeTests(unittest.TestCase):
                 self.assertIn("только текст", text.casefold())
                 self.assertIn("фото + текст", text.casefold())
 
-    def test_request_preserves_qwen_photo_and_two_prompt_parts(self) -> None:
-        request = modes._request(
-            {
-                "auf_model": KieModelAlias.QWEN2_IMAGE_EDIT.value,
-                "auf_input_mode": KieInputMode.PHOTO_TEXT.value,
-                "auf_prompt_parts": ["first part", "second part"],
-                "auf_references": [_reference().to_payload()],
-                "auf_resolution": "2K",
-                "auf_aspect_ratio": "9:16",
-            }
-        )
-        self.assertEqual(KieInputMode.PHOTO_TEXT, request.input_mode)
-        self.assertEqual("first part\n\nsecond part", request.prompt)
-        self.assertEqual(1, len(request.references))
-
-        payload = modes._to_input(
-            request.with_image_urls(("https://example.com/qwen.jpg",))
-        )
-        self.assertEqual("https://example.com/qwen.jpg", payload["image_url"])
-        self.assertNotIn("seed", payload)
+    def test_retired_qwen_and_flux_are_rejected_by_active_request_builder(self) -> None:
+        for model in (
+            KieModelAlias.QWEN2_IMAGE_EDIT,
+            KieModelAlias.FLUX_2_PRO_IMAGE,
+        ):
+            with self.subTest(model=model):
+                with self.assertRaisesRegex(ValueError, "Сначала выберите модель"):
+                    modes._request(
+                        {
+                            "auf_model": model.value,
+                            "auf_input_mode": KieInputMode.PHOTO_TEXT.value,
+                            "auf_prompt_parts": ["first part", "second part"],
+                            "auf_references": [_reference().to_payload()],
+                            "auf_resolution": "2K",
+                            "auf_aspect_ratio": "9:16",
+                        }
+                    )
 
     def test_flux_photo_payload_keeps_uploaded_reference(self) -> None:
         request = KieGenerationRequest(
@@ -132,17 +129,17 @@ class AufPhotoModelModeTests(unittest.TestCase):
         )
         self.assertEqual("jpeg", seedream.output_format)
 
-        flux = modes._request(
+        wan = modes._request(
             {
-                "auf_model": KieModelAlias.FLUX_2_PRO_IMAGE.value,
+                "auf_model": KieModelAlias.WAN_27_IMAGE.value,
                 "auf_input_mode": KieInputMode.TEXT.value,
                 "auf_prompt_parts": ["portrait"],
-                "auf_resolution": "2K",
+                "auf_resolution": "1K",
                 "auf_aspect_ratio": "9:16",
                 "auf_output_format": "jpeg",
             }
         )
-        self.assertEqual("png", flux.output_format)
+        self.assertEqual("png", wan.output_format)
 
     def test_wan_n_and_sequential_are_the_only_advanced_controls(self) -> None:
         request = KieGenerationRequest(

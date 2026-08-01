@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **631**
-- Production LOC: **136683**
+- Production LOC: **136679**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **41**
@@ -81,11 +81,11 @@
 ## Largest modules
 
 - `velvet_bot/presentation/telegram/routers/workspace_owner_controls.py`: 2263 LOC, 40 functions, max function 474 lines, target `presentation`.
-- `velvet_bot/app/auf_photo_model_modes.py`: 1782 LOC, 52 functions, max function 284 lines, target `composition`.
+- `velvet_bot/app/auf_photo_model_modes.py`: 1780 LOC, 52 functions, max function 284 lines, target `composition`.
 - `velvet_bot/presentation/telegram/routers/workspace_guided_actions.py`: 1773 LOC, 40 functions, max function 468 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_auf.py`: 1427 LOC, 34 functions, max function 451 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/workspace_qwen.py`: 1236 LOC, 25 functions, max function 238 lines, target `presentation`.
-- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py`: 1231 LOC, 38 functions, max function 248 lines, target `presentation`.
+- `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py`: 1229 LOC, 38 functions, max function 248 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_reference_library.py`: 1208 LOC, 26 functions, max function 170 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_character_pickers.py`: 1152 LOC, 24 functions, max function 154 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video.py`: 1102 LOC, 31 functions, max function 140 lines, target `presentation`.

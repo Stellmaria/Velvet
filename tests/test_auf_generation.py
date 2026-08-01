@@ -156,9 +156,9 @@ class AufUIContractTests(unittest.TestCase):
         )
         self.assertNotIn("Ауф", _labels(keyboard))
 
-    def test_generation_root_has_create_and_animate(self) -> None:
+    def test_generation_root_has_photo_and_video(self) -> None:
         self.assertEqual(
-            ["Создать", "Оживить", "↩️ Моё пространство"],
+            ["Фото", "Видео", "↩️ Моё пространство"],
             _labels(build_auf_root_keyboard(workspace_id=9, enabled=True)),
         )
 
