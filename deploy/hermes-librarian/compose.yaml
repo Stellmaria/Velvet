@@ -47,6 +47,16 @@ services:
       TELEGRAM_BOT_TOKEN: ""
       TELEGRAM_ALLOWED_USERS: ""
       GH_TOKEN: ""
+      OPENAI_API_KEY: ollama
+      OPENAI_BASE_URL: ${STORAGE_LIBRARIAN_LOCAL_BASE_URL:-http://ollama-librarian:11434/v1}
+      OPENROUTER_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GOOGLE_API_KEY: ""
+      GEMINI_API_KEY: ""
+      XAI_API_KEY: ""
+      TOGETHER_API_KEY: ""
+      FIREWORKS_API_KEY: ""
+      NOUS_API_KEY: ""
       API_SERVER_ENABLED: "true"
       API_SERVER_HOST: 0.0.0.0
       API_SERVER_PORT: "8642"
