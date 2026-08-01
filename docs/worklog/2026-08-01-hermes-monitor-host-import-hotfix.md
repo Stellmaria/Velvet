@@ -5,6 +5,7 @@
 - Линия/фаза: `server operations`
 - Статус: `частично`
 - Ветка: `hotfix/hermes-monitor-host-import`
+- Базовый commit: `a9408625d6b7401af47aa0a361a37be5a899d178`
 
 ## Перед началом
 
@@ -33,6 +34,13 @@
 - CI зелёный;
 - после deploy service имеет `active/running`, `ExecMainStatus=0` и не увеличивает `NRestarts`.
 
+### Риски и ограничения
+
+- изменение package `__init__` затрагивает legacy Windows Supervisor, поэтому публичные exports сохраняются через `__getattr__`;
+- hotfix не исправляет отдельный crash-loop Max `bot/userbot`, обнаруженный одновременно на VPS;
+- production monitor останется остановленным до merge и повторной установки unit;
+- SQL, Docker permissions и production secrets не должны изменяться.
+
 ## После завершения
 
 Статус: `частично`.
@@ -48,6 +56,12 @@
 
 SQL и runtime data не изменяются. Установка `python-dotenv` в host Python не требуется. Legacy Windows Supervisor продолжает получать те же публичные классы при обращении к ним.
 
+### Риски и ограничения
+
+- CI должен подтвердить, что lazy exports не ломают существующие bootstrap/runtime imports;
+- systemd restart limit предотвращает шум, но не маскирует ошибку запуска;
+- Max runtime диагностируется отдельно по container logs.
+
 ### Проверки
 
 - GitHub Actions CI после открытия PR;
@@ -55,7 +69,8 @@ SQL и runtime data не изменяются. Установка `python-dotenv
 
 ### PR и commit
 
-- PR будет создан из `hotfix/hermes-monitor-host-import`;
+- PR: `#536` — `Исправить host-import Velvet Hermes monitor`;
+- ветка: `hotfix/hermes-monitor-host-import`;
 - production пока не изменён.
 
 ### Незавершённое
@@ -66,4 +81,4 @@ SQL и runtime data не изменяются. Установка `python-dotenv
 
 ### Следующий шаг
 
-Открыть hotfix PR и проверить все обязательные workflow.
+Довести PR `#536` до зелёного состояния, затем обновить VPS и повторить host smoke.
