@@ -18,7 +18,7 @@ esac
 ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 SOURCE_DIR="${HERMES_CODERS_SOURCE_DIR:-/srv/velvet/deploy/hermes-coders}"
 SERVICE_USER="${HERMES_CODERS_APP_USER:-velvet}"
-service="codex-coder-$project"
+service="hermes-coder-$project"
 
 if [[ ! -f "$SOURCE_DIR/compose.yaml" ]]; then
   echo "Не найден Compose-файл: $SOURCE_DIR/compose.yaml" >&2
