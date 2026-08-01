@@ -3,6 +3,8 @@ Description=Read-only Velvet Hermes incident monitor
 Requires=docker.service velvet-server-supervisor.service
 After=docker.service velvet-server-supervisor.service network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -17,7 +19,7 @@ Environment=VELVET_COMPOSE_FILE=docker-compose.server.yml
 Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config
 Environment=COMPOSE_BAKE=false
 ExecStart=/usr/bin/python3 /srv/velvet/scripts/hermes_incident_monitor.py
-Restart=always
+Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 KillSignal=SIGTERM
