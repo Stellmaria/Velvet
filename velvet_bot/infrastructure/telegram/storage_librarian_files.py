@@ -98,4 +98,24 @@ async def download_storage_object(
     return result
 
 
-__all__ = ("download_storage_object",)
+class TelegramStorageObjectLoader:
+    def __init__(self, bot: Bot) -> None:
+        self._bot = bot
+
+    async def download(
+        self,
+        item: LibrarianObject,
+        *,
+        max_bytes: int,
+    ) -> bytes:
+        return await download_storage_object(
+            self._bot,
+            item,
+            max_bytes=max_bytes,
+        )
+
+
+__all__ = (
+    "TelegramStorageObjectLoader",
+    "download_storage_object",
+)
