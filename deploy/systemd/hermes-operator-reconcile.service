@@ -1,0 +1,40 @@
+[Unit]
+Description=Fixed Hermes infrastructure reconcile bridge for the trusted Velvet operator
+Requires=docker.service
+After=docker.service network-online.target hermes-operator-host.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/srv/velvet
+EnvironmentFile=/srv/hermes-operator-control/operator.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /usr/local/libexec/velvet-hermes-operator-reconcile.py
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+TimeoutStopSec=20
+RuntimeDirectory=hermes-operator-reconcile
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectHostname=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/srv/velvet /srv/hermes-coders /srv/hermes-operator-control/reconcile-docker-config /srv/hermes-operator-control/reconcile-state /etc/systemd/system /run/hermes-operator-reconcile
+
+[Install]
+WantedBy=multi-user.target
