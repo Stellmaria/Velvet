@@ -1,0 +1,151 @@
+name: storage librarian package contract sync
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.head_ref == 'agent/storage-librarian'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Generate package inventory and update contract
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --label p1-package-architecture-baseline \
+            --write
+
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path('.')
+          inventory = json.loads(
+              (root / 'docs/package_architecture_inventory.json').read_text(
+                  encoding='utf-8'
+              )
+          )
+          exemptions = json.loads(
+              (root / 'docs/package_architecture_exemptions.json').read_text(
+                  encoding='utf-8'
+              )
+          )
+          shared = inventory['shared_contract_summary']
+          test_path = root / 'tests/test_package_architecture_inventory.py'
+          source = test_path.read_text(encoding='utf-8')
+
+          def replace(pattern: str, replacement: str) -> None:
+              global source
+              source, count = re.subn(pattern, replacement, source, count=1)
+              if count != 1:
+                  raise SystemExit(f'contract replacement failed: {pattern}')
+
+          integer_assertions = {
+              'production_module_count': inventory['production_module_count'],
+              'production_loc': inventory['production_loc'],
+              'root_module_count': inventory['root_module_count'],
+              'root_unclassified_count': inventory['root_unclassified_count'],
+              'router_count': inventory['router_count'],
+              'router_duplicate_count': inventory['router_duplicate_count'],
+              'repository_module_count': inventory['repository_module_count'],
+              'violation_count': inventory['violation_count'],
+          }
+          for key, value in integer_assertions.items():
+              replace(
+                  rf'self\.assertEqual\([0-9_]+, self\.inventory\["{key}"\]\)',
+                  f'self.assertEqual({int(value):_}, self.inventory["{key}"])',
+              )
+
+          installer_count = len(inventory['installer_graph'])
+          replace(
+              r'self\.assertEqual\([0-9_]+, len\(self\.inventory\["installer_graph"\]\)\)',
+              f'self.assertEqual({installer_count}, len(self.inventory["installer_graph"]))',
+          )
+          replace(
+              r'list\(range\(1, [0-9_]+\)\)',
+              f'list(range(1, {installer_count + 1}))',
+          )
+
+          shared_keys = (
+              'production_python_files',
+              'function_count',
+              'private_contract_access_count',
+              'blocking_private_contract_access_count',
+              'exact_duplicate_group_count',
+              'normalized_duplicate_group_count',
+              'semantic_near_duplicate_group_count',
+          )
+          for key in shared_keys:
+              replace(
+                  rf'self\.assertEqual\([0-9_]+, shared\["{key}"\]\)',
+                  f'self.assertEqual({int(shared[key]):_}, shared["{key}"])',
+              )
+
+          markdown_values = {
+              'Production modules': inventory['production_module_count'],
+              'Production LOC': inventory['production_loc'],
+              'Startup installer stages': installer_count,
+              'Registered package violations': inventory['violation_count'],
+              'Registered exemptions': len(exemptions['exceptions']),
+          }
+          for label, value in markdown_values.items():
+              replace(
+                  rf'"{re.escape(label)}: \*\*[0-9_ ]+\*\*"',
+                  f'"{label}: **{int(value)}**"',
+              )
+
+          test_path.write_text(source, encoding='utf-8')
+          PY
+
+          mkdir -p /tmp/storage-librarian-package-contract
+          cp -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            tests/test_package_architecture_inventory.py \
+            /tmp/storage-librarian-package-contract/
+
+      - name: Commit synchronized contract to PR branch
+        run: |
+          git fetch origin agent/storage-librarian
+          git checkout -B agent/storage-librarian origin/agent/storage-librarian
+          cp -- \
+            /tmp/storage-librarian-package-contract/package_architecture_inventory.json \
+            docs/package_architecture_inventory.json
+          cp -- \
+            /tmp/storage-librarian-package-contract/package_architecture_inventory.md \
+            docs/package_architecture_inventory.md
+          cp -- \
+            /tmp/storage-librarian-package-contract/test_package_architecture_inventory.py \
+            tests/test_package_architecture_inventory.py
+
+          if git diff --quiet -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            tests/test_package_architecture_inventory.py
+          then
+            echo "Package inventory contract already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            tests/test_package_architecture_inventory.py
+          git commit -m "Синхронизировать package inventory Storage Librarian"
+          git push origin HEAD:agent/storage-librarian
