@@ -41,6 +41,9 @@ DISABLED_TOOLSETS = (
     "web",
     "yuanbao",
 )
+DEFAULT_LOCAL_MODEL = "velvet-librarian-local:v1"
+DEFAULT_LOCAL_BASE_URL = "http://ollama-librarian:11434/v1"
+DEFAULT_LOCAL_CONTEXT_LENGTH = 65536
 
 
 class ProfileError(RuntimeError):
@@ -49,6 +52,24 @@ class ProfileError(RuntimeError):
 
 def _mapping(value: object) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _local_context_length() -> int:
+    raw = os.getenv(
+        "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH",
+        str(DEFAULT_LOCAL_CONTEXT_LENGTH),
+    ).strip()
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ProfileError(
+            "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH должен быть целым числом."
+        ) from error
+    if not 65536 <= value <= 262144:
+        raise ProfileError(
+            "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH должен быть от 65536 до 262144."
+        )
+    return value
 
 
 def prepare(
@@ -72,6 +93,25 @@ def prepare(
     agent = _mapping(config.get("agent"))
     agent["disabled_toolsets"] = list(DISABLED_TOOLSETS)
     config["agent"] = agent
+
+    # Librarian uses only the private Ollama endpoint. Cloud fallbacks are
+    # deliberately removed so a local failure cannot silently spend tokens.
+    config["model"] = {
+        "default": (
+            os.getenv("STORAGE_LIBRARIAN_LOCAL_MODEL", DEFAULT_LOCAL_MODEL).strip()
+            or DEFAULT_LOCAL_MODEL
+        ),
+        "provider": "custom",
+        "base_url": (
+            os.getenv(
+                "STORAGE_LIBRARIAN_LOCAL_BASE_URL",
+                DEFAULT_LOCAL_BASE_URL,
+            ).strip().rstrip("/")
+            or DEFAULT_LOCAL_BASE_URL
+        ),
+        "context_length": _local_context_length(),
+    }
+    config["fallback_providers"] = []
 
     # Librarian never needs project checkout, terminal hooks, MCP or browser.
     terminal = _mapping(config.get("terminal"))
@@ -110,7 +150,7 @@ def main(argv: list[str]) -> int:
             "usage: prepare_profile.py SOURCE_CONFIG TARGET_DIR SOUL_SOURCE AGENTS_SOURCE"
         )
     prepare(*(Path(item) for item in argv[1:]))
-    print("Velvet Librarian profile prepared with all toolsets disabled.")
+    print("Velvet Librarian profile prepared with local Ollama and all toolsets disabled.")
     return 0
 
 
