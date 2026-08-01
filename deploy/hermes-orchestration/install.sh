@@ -9,6 +9,7 @@ fi
 VELVET_APP_DIR="${VELVET_APP_DIR:-/srv/velvet}"
 VELVET_ENV_FILE="${VELVET_ENV_FILE:-$VELVET_APP_DIR/.env.server}"
 VELVET_COMPOSE_FILE="${VELVET_COMPOSE_FILE:-$VELVET_APP_DIR/docker-compose.server.yml}"
+HERMES_ENV_FILE="${HERMES_ENV_FILE:-$VELVET_APP_DIR/.env.hermes}"
 SERVICE_USER="${HERMES_ORCHESTRATION_SERVICE_USER:-velvet}"
 CODERS_ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 CODERS_SOURCE="$VELVET_APP_DIR/deploy/hermes-coders"
@@ -16,11 +17,15 @@ OPERATOR_SOURCE="$VELVET_APP_DIR/deploy/hermes-operator"
 CONTROL_ROOT="${HERMES_OPERATOR_CONTROL_ROOT:-/srv/hermes-operator-control}"
 OPERATOR_ENV="$CONTROL_ROOT/operator.env"
 CODER_ROUTER_ENV="$CONTROL_ROOT/coders.env"
+INCIDENT_ENV="$CONTROL_ROOT/incident.env"
+INCIDENT_UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/velvet-hermes-incident-monitor.service"
+INCIDENT_UNIT_TARGET="/etc/systemd/system/velvet-hermes-incident-monitor.service"
 AGENT_CONTROL_NETWORK="${HERMES_AGENT_CONTROL_NETWORK:-hermes-agent-control}"
 
 for path in \
   "$VELVET_ENV_FILE" \
   "$VELVET_COMPOSE_FILE" \
+  "$HERMES_ENV_FILE" \
   "$CODERS_SOURCE/compose.yaml" \
   "$CODERS_SOURCE/SOUL.velvet.md" \
   "$CODERS_SOURCE/SOUL.max.md" \
@@ -30,6 +35,8 @@ for path in \
   "$OPERATOR_SOURCE/coder_router.py" \
   "$OPERATOR_SOURCE/coderctl.py" \
   "$OPERATOR_SOURCE/SOUL.operator.md" \
+  "$VELVET_APP_DIR/scripts/hermes_incident_monitor.py" \
+  "$INCIDENT_UNIT_SOURCE" \
   "$OPERATOR_ENV" \
   "$CODERS_ROOT/secrets/velvet.env" \
   "$CODERS_ROOT/secrets/max.env"; do
@@ -150,14 +157,67 @@ os.chmod(router_path, 0o600)
 print("Coder API and router credentials prepared without printing secret values.")
 PY
 
+python3 - \
+  "$HERMES_ENV_FILE" \
+  "$VELVET_ENV_FILE" \
+  "$INCIDENT_ENV" <<'PY'
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+
+def parse_env(path: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        key, value = line.split("=", 1)
+        result[key.strip()] = value.strip().strip('"').strip("'")
+    return result
+
+
+hermes = parse_env(Path(sys.argv[1]))
+server = parse_env(Path(sys.argv[2]))
+target = Path(sys.argv[3])
+api_key = hermes.get("API_SERVER_KEY", "")
+if len(api_key) < 24:
+    raise SystemExit("API_SERVER_KEY основного Hermes отсутствует или слишком короткий")
+port = server.get("HERMES_LOOPBACK_PORT", "8642")
+if not port.isdigit() or not 1024 <= int(port) <= 65535:
+    raise SystemExit("HERMES_LOOPBACK_PORT должен быть корректным TCP port")
+values = {
+    "HERMES_INCIDENT_ENABLED": "true",
+    "HERMES_BASE_URL": f"http://127.0.0.1:{port}",
+    "HERMES_API_KEY": api_key,
+    "HERMES_INCIDENT_POLL_SECONDS": server.get("HERMES_INCIDENT_POLL_SECONDS", "30"),
+    "HERMES_INCIDENT_UNHEALTHY_POLLS": server.get("HERMES_INCIDENT_UNHEALTHY_POLLS", "2"),
+    "HERMES_INCIDENT_LOG_LINES": server.get("HERMES_INCIDENT_LOG_LINES", "200"),
+    "HERMES_INCIDENT_RUN_POLL_SECONDS": server.get("HERMES_INCIDENT_RUN_POLL_SECONDS", "5"),
+    "HERMES_INCIDENT_RUN_TIMEOUT_SECONDS": server.get("HERMES_INCIDENT_RUN_TIMEOUT_SECONDS", "3600"),
+}
+target.write_text(
+    "\n".join(f"{name}={value}" for name, value in values.items()) + "\n",
+    encoding="utf-8",
+)
+os.chmod(target, 0o600)
+print("Incident monitor credentials prepared without printing secret values.")
+PY
+
 chown "$SERVICE_USER:$SERVICE_USER" \
   "$CODERS_ROOT/secrets/velvet.env" \
   "$CODERS_ROOT/secrets/max.env" \
-  "$CODER_ROUTER_ENV"
+  "$CODER_ROUTER_ENV" \
+  "$INCIDENT_ENV"
 chmod 0600 \
   "$CODERS_ROOT/secrets/velvet.env" \
   "$CODERS_ROOT/secrets/max.env" \
-  "$CODER_ROUTER_ENV"
+  "$CODER_ROUTER_ENV" \
+  "$INCIDENT_ENV"
 
 python3 \
   "$CODERS_SOURCE/ensure_runtime_config.py" \
@@ -242,13 +302,13 @@ runuser -u "$SERVICE_USER" -- env \
   docker compose -f compose.yaml config --quiet
 systemctl restart hermes-operator-control.service
 
-if [[ -f "$VELVET_APP_DIR/.env.hermes" ]]; then
-  runuser -u "$SERVICE_USER" -- bash -ceu "
-    cd '$VELVET_APP_DIR'
-    docker compose --env-file '$VELVET_ENV_FILE' -f '$VELVET_COMPOSE_FILE' \
-      --profile agent restart hermes
-  "
-fi
+runuser -u "$SERVICE_USER" -- bash -ceu "
+  cd '$VELVET_APP_DIR'
+  docker compose --env-file '$VELVET_ENV_FILE' -f '$VELVET_COMPOSE_FILE' \
+    --profile agent up -d hermes
+  docker compose --env-file '$VELVET_ENV_FILE' -f '$VELVET_COMPOSE_FILE' \
+    --profile agent restart hermes
+"
 
 router_healthy=false
 for _ in $(seq 1 30); do
@@ -272,6 +332,42 @@ if [[ "$router_healthy" != "true" ]]; then
   exit 5
 fi
 
+hermes_healthy=false
+for _ in $(seq 1 45); do
+  if python3 - "$INCIDENT_ENV" <<'PY' >/dev/null 2>&1
+from pathlib import Path
+import json
+import sys
+import urllib.request
+
+values = {}
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if "=" not in raw:
+        continue
+    key, value = raw.split("=", 1)
+    values[key.strip()] = value.strip()
+payload = json.load(urllib.request.urlopen(values["HERMES_BASE_URL"] + "/health", timeout=3))
+raise SystemExit(0 if payload else 1)
+PY
+  then
+    hermes_healthy=true
+    break
+  fi
+  sleep 2
+done
+if [[ "$hermes_healthy" != "true" ]]; then
+  echo "Основной Hermes API не достиг healthy status." >&2
+  exit 6
+fi
+
+install -m 0644 "$INCIDENT_UNIT_SOURCE" "$INCIDENT_UNIT_TARGET"
+systemctl daemon-reload
+systemctl enable --now velvet-hermes-incident-monitor.service
+if ! systemctl is-active --quiet velvet-hermes-incident-monitor.service; then
+  systemctl --no-pager --full status velvet-hermes-incident-monitor.service >&2 || true
+  exit 7
+fi
+
 runuser -u "$SERVICE_USER" -- env \
   HERMES_CODER_ROUTER_ENV_FILE="$CODER_ROUTER_ENV" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
@@ -280,9 +376,11 @@ runuser -u "$SERVICE_USER" -- env \
   HERMES_CODERS_ROOT="$CODERS_ROOT" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
   docker compose --profile velvet --profile max -f "$CODERS_SOURCE/compose.yaml" ps
+systemctl --no-pager --full status velvet-hermes-incident-monitor.service
 
 echo
 printf '%s\n' \
   "Hermes coder orchestration installed." \
   "Main Hermes can submit/status/wait/list tasks through /opt/data/tools/coderctl.py." \
+  "Read-only Velvet incident monitor is active and reports terminal results to Telegram." \
   "Coder API keys remain only in coder secrets and the isolated router env."
