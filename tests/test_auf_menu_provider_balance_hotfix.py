@@ -5,13 +5,17 @@ import inspect
 import logging
 import os
 import unittest
+import urllib.error
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
 from velvet_bot.app import workspace_owner_generation_hotfix as generation_hotfix
 from velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback
 from velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances import (
+    _byesu_api_key,
     _fetch_byesu_balance,
+    _read_json,
 )
 from velvet_bot.presentation.telegram.routers.workspace_auf_root import (
     _build_root_keyboard,
@@ -55,9 +59,24 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
         self.assertEqual("provider_balances", parsed.action)
         self.assertEqual(42, parsed.workspace_id)
 
+    def test_byesu_balance_key_has_priority_over_shared_cloud_key(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "BYESU_BALANCE_API_KEY": "sk-balance",
+                "BYESU_API_KEY": "sk-shared",
+            },
+            clear=True,
+        ):
+            self.assertEqual("sk-balance", _byesu_api_key())
+
     def test_byesu_balance_uses_documented_billing_response(self) -> None:
         with (
-            patch.dict(os.environ, {"BYESU_API_KEY": "sk-test"}, clear=True),
+            patch.dict(
+                os.environ,
+                {"BYESU_BALANCE_API_KEY": "sk-test"},
+                clear=True,
+            ),
             patch(
                 "velvet_bot.presentation.telegram.routers."
                 "workspace_auf_provider_balances._read_json",
@@ -69,6 +88,44 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
         self.assertEqual("12.3456", str(balance.value))
         self.assertEqual("$", balance.unit)
         self.assertIsNone(balance.error)
+
+    def test_byesu_http_401_is_reported_as_rejected_key(self) -> None:
+        error = urllib.error.HTTPError(
+            url="https://byesu.com/dashboard/billing/subscription",
+            code=401,
+            msg="Unauthorized",
+            hdrs={},
+            fp=BytesIO(b'{"error":{"message":"Invalid token"}}'),
+        )
+        with patch(
+            "velvet_bot.presentation.telegram.routers."
+            "workspace_auf_provider_balances.urllib.request.urlopen",
+            side_effect=error,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "^ключ Byesu отклонён$"):
+                _read_json(
+                    "https://byesu.com/dashboard/billing/subscription",
+                    api_key="sk-invalid",
+                    timeout_seconds=8,
+                )
+
+    def test_byesu_balance_exposes_safe_runtime_error(self) -> None:
+        with (
+            patch.dict(
+                os.environ,
+                {"BYESU_BALANCE_API_KEY": "sk-test"},
+                clear=True,
+            ),
+            patch(
+                "velvet_bot.presentation.telegram.routers."
+                "workspace_auf_provider_balances._read_json",
+                side_effect=RuntimeError("ключ Byesu отклонён"),
+            ),
+        ):
+            balance = asyncio.run(_fetch_byesu_balance())
+
+        self.assertIsNone(balance.value)
+        self.assertEqual("ключ Byesu отклонён", balance.error)
 
     def test_canonical_callback_handler_has_explicit_dependency_signature(self) -> None:
         source = inspect.getsource(generation_hotfix._install_canonical_photo_route)
