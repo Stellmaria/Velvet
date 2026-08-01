@@ -1,0 +1,28 @@
+name: temporary package inventory export
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Generate package architecture inventory
+        run: python scripts/inventory_package_architecture_fast.py --write
+      - name: Upload generated inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-architecture-inventory
+          path: |
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+          if-no-files-found: error
+          retention-days: 1
