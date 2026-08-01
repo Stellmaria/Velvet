@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `pricing-owner-cost-only`
+- Generated from: `working-tree`
 - Production modules: **639**
 - Production LOC: **138918**
 - Root modules: **113**
