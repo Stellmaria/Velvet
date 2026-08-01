@@ -1,19 +1,19 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **638**
-- Production LOC: **138538**
+- Production modules: **639**
+- Production LOC: **138918**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **42**
 - Startup installer stages: **28**
-- Registered package violations: **546**
-- Registered exemptions: **546**
+- Registered package violations: **549**
+- Registered exemptions: **549**
 
 ## Layers
 
 - `application`: **21** modules
-- `composition`: **63** modules
+- `composition`: **64** modules
 - `core`: **7** modules
 - `domain`: **179** modules
 - `infrastructure`: **27** modules
@@ -25,10 +25,10 @@
 
 ## Shared/private baseline
 
-- private cross-module accesses: **182**
+- private cross-module accesses: **186**
 - blocking known private contracts: **0**
-- exact / normalized / semantic duplicate groups: **62 / 97 / 9**
-- private access fingerprint: `aee06530d77caa88ba4a9227385ef41960b08e7bf5aa22fb22ecf6d51b58517b`
+- exact / normalized / semantic duplicate groups: **64 / 98 / 9**
+- private access fingerprint: `09eda473b2f3e223be6ec9ba8f43708a46dcabbc1f0f87fff32ae8ed7ef35af8`
 
 ## Installer graph
 
@@ -66,10 +66,10 @@
 - `database-acquire-outside-persistence`: **89**
 - `domain-aiogram-import`: **19**
 - `domain-layer-import`: **3**
-- `dynamic-import`: **20**
+- `dynamic-import`: **21**
 - `foreign-assignment`: **39**
-- `installed-sentinel`: **43**
-- `installer-like-module`: **24**
+- `installed-sentinel`: **44**
+- `installer-like-module`: **25**
 - `method-assign-ignore`: **10**
 - `monolithic-function`: **24**
 - `monolithic-module-loc`: **17**

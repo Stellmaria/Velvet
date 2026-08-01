@@ -8,7 +8,7 @@ from typing import Any
 
 from velvet_bot.database import Database
 
-from .models import AUF_SCALE, format_auf_units, format_vl_units, units_to_auf
+from .models import AUF_SCALE, units_to_auf
 
 
 @dataclass(frozen=True, slots=True)
@@ -271,14 +271,20 @@ async def quote_auf_payload(
     markup_multiplier = Decimal("1") + markup_percent / Decimal("100")
     target_retail_usd = provider_cost * markup_multiplier
     target_retail_rub = target_retail_usd * usd_to_rub
-    base_whole_velvets = max(
-        1,
-        int(
-            (target_retail_rub / minimum_rub_per_auf).to_integral_value(
-                rounding=ROUND_CEILING
-            )
-        ),
-    )
+    if _is_banana_model(model_alias):
+        base_whole_velvets = _banana_base_whole_velvets(
+            markup_percent=markup_percent,
+            global_markup_percent=global_markup_percent,
+        )
+    else:
+        base_whole_velvets = max(
+            1,
+            int(
+                (target_retail_rub / minimum_rub_per_auf).to_integral_value(
+                    rounding=ROUND_CEILING
+                )
+            ),
+        )
     whole_velvets = base_whole_velvets + quality_surcharge_velvets
     quoted_units = whole_velvets * AUF_SCALE
     minimum_revenue_rub = minimum_rub_per_auf * Decimal(whole_velvets)
@@ -339,38 +345,12 @@ async def _load_user_markup_policy(
 
 
 def format_owner_price_details(quote: AufPriceQuote) -> str:
-    """Render provider economics only for an already-authorized creator view."""
+    """Render provider identity and real cost for an authorized Стэл view."""
 
-    if quote.user_markup_override_percent is None:
-        markup_line = f"Наценка: <b>{_compact_decimal(quote.markup_percent)}%</b>"
-    else:
-        markup_line = (
-            "Наценка: "
-            f"<b>{_compact_decimal(quote.markup_percent)}%</b> индивидуальная · "
-            f"глобальная {_compact_decimal(quote.global_markup_percent)}%"
-        )
-    surcharge_line = (
-        ""
-        if quote.quality_surcharge_velvets <= 0
-        else (
-            "\nНадбавка качества: "
-            f"<b>+{quote.quality_surcharge_velvets} VL</b>"
-        )
-    )
     return (
-        "<b>Служебная экономика · только Стэл</b>\n"
+        "<b>Себестоимость провайдера · только Стэл</b>\n"
         f"Провайдер: <code>{escape(quote.provider.upper())}</code>\n"
-        f"{markup_line}\n"
-        f"Себестоимость: {_money_triplet(quote.provider_cost_usd, quote)}\n"
-        f"Цена по проценту: {_money_triplet(quote.target_retail_usd, quote)}"
-        f"{surcharge_line}\n"
-        f"Списание: <b>{format_vl_units(quote.quoted_units)}</b> · "
-        f"{format_auf_units(quote.quoted_units, max_places=0)}\n"
-        "Минимальная выручка по самому выгодному пакету: "
-        f"{_money_triplet(quote.minimum_revenue_usd, quote)}\n"
-        "Минимальная прибыль: "
-        f"{_money_triplet(quote.minimum_profit_usd, quote)} · "
-        f"{_compact_decimal(quote.actual_markup_percent)}%"
+        f"Себестоимость: {_money_triplet(quote.provider_cost_usd, quote)}"
     )
 
 
@@ -380,15 +360,33 @@ def _money_triplet(usd: Decimal, quote: AufPriceQuote) -> str:
     return f"<b>${usd:.4f}</b> · <b>{rub:.2f} ₽ РФ</b> · <b>{byn:.2f} Br</b>"
 
 
-def _compact_decimal(value: Decimal) -> str:
-    rendered = f"{value.quantize(Decimal('0.01')):.2f}".rstrip("0").rstrip(".")
-    return rendered or "0"
-
-
 def _banana_quality_surcharge(model_alias: str, resolution: str) -> int:
-    if model_alias not in {"nano_banana_2", "nano_banana_pro"}:
+    if not _is_banana_model(model_alias):
         return 0
     return {"2K": 1, "4K": 2}.get(resolution.strip().upper(), 0)
+
+
+def _is_banana_model(model_alias: str) -> bool:
+    return model_alias in {"nano_banana_2", "nano_banana_pro"}
+
+
+def _banana_base_whole_velvets(
+    *,
+    markup_percent: Decimal,
+    global_markup_percent: Decimal,
+) -> int:
+    """Price both Banana models from the shared 1 VL global baseline."""
+
+    effective_multiplier = Decimal("1") + markup_percent / Decimal("100")
+    baseline_multiplier = Decimal("1") + global_markup_percent / Decimal("100")
+    return max(
+        1,
+        int(
+            (effective_multiplier / baseline_multiplier).to_integral_value(
+                rounding=ROUND_CEILING
+            )
+        ),
+    )
 
 
 def _validate_markup_percent(value: Decimal) -> Decimal:

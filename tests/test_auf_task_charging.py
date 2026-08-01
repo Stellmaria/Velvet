@@ -140,7 +140,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     model="nano_banana_pro",
                     resolution="4K",
                 ).payload,
-                Decimal("4"),
+                Decimal("3"),
             ),
             (
                 self._request(

@@ -292,3 +292,13 @@ Historical migrations, compatibility packages и dual-read `meow_*` FSM/transpor
 - feature branch mutation не создаёт runner-PR;
 - live obligation не закрывается зелёным CI;
 - canonical docs обновляются только по merged state и generated figures.
+
+## Актуализация inventory после pricing-среза 1 августа 2026
+
+Воспроизводимый shared-contract срез после добавления закрытого pricing UI:
+
+- production Python files: **639**;
+- inventoried functions: **3660**;
+- registered transitional private accesses: **186**;
+- blocking known private contracts: **0**;
+- целевая консолидация временных delivery/UI layers остаётся в **#457**.

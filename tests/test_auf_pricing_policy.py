@@ -62,14 +62,14 @@ class AufIndividualPricingPolicyTests(unittest.IsolatedAsyncioTestCase):
             },
         }
 
-    async def test_global_thirty_percent_and_quality_step_are_combined(self) -> None:
+    async def test_global_thirty_percent_uses_fixed_banana_quality_grid(self) -> None:
         quote = await quote_auf_payload(
             _Connection(override=None, quality_surcharge=1),
             self._payload(),
         )
         self.assertEqual(Decimal("30"), quote.markup_percent)
         self.assertEqual(1, quote.quality_surcharge_velvets)
-        self.assertEqual(3 * AUF_SCALE, quote.quoted_units)
+        self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
 
     async def test_individual_markup_replaces_global_percent(self) -> None:
         quote = await quote_auf_payload(

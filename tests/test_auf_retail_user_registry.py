@@ -67,7 +67,7 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             }
         }
 
-    async def test_provider_cost_plus_thirty_percent_and_quality_rounds_to_whole_velvet(self) -> None:
+    async def test_fixed_banana_price_and_quality_are_whole_velvets(self) -> None:
         connection = _PriceConnection(
             {
                 "id": 1,
@@ -87,9 +87,9 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(Decimal("0.02"), quote.provider_cost_usd)
         self.assertEqual(Decimal("0.026"), quote.target_retail_usd)
-        self.assertEqual(30_000, quote.quoted_units)
-        self.assertEqual(Decimal("3.0000"), quote.quoted_auf)
-        self.assertEqual(Decimal("0.075"), quote.minimum_revenue_usd)
+        self.assertEqual(20_000, quote.quoted_units)
+        self.assertEqual(Decimal("2.0000"), quote.quoted_auf)
+        self.assertEqual(Decimal("0.05"), quote.minimum_revenue_usd)
         self.assertEqual(3, connection.calls)
 
     async def test_seconds_and_references_are_priced_before_whole_rounding(self) -> None:
@@ -121,7 +121,7 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(100_000, quote.quoted_units)
         self.assertEqual(0, quote.quoted_units % 10_000)
 
-    async def test_owner_breakdown_contains_three_currencies(self) -> None:
+    async def test_owner_breakdown_contains_only_provider_cost_in_three_currencies(self) -> None:
         connection = _PriceConnection(
             {
                 "id": 3,
@@ -140,11 +140,21 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             self._payload(model="nano_banana_2", resolution="1K"),
         )
         text = format_owner_price_details(quote)
+        self.assertIn("PRIVATE-PROVIDER", text)
         self.assertIn("$", text)
         self.assertIn("₽ РФ", text)
         self.assertIn("Br", text)
         self.assertIn("только Стэл", text)
-        self.assertIn("2 вельвет", text)
+        for forbidden in (
+            "VL",
+            "вельвет",
+            "Наценка",
+            "Выручка",
+            "Прибыль",
+            "маржа",
+            "Списание",
+        ):
+            self.assertNotIn(forbidden, text)
 
 
 class AufReferencePrivacyTests(unittest.IsolatedAsyncioTestCase):
