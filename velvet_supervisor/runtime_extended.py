@@ -10,7 +10,7 @@ from .dependencies import (
     sync_current_requirements,
     sync_remote_requirements,
 )
-from .hermes_incident import HermesIncident, HermesIncidentClient
+from .hermes_incident import HermesIncident, HermesIncidentClient, redact_sensitive
 from .krita_process import KritaProcessManager
 from .models import OperationState, utc_now
 from .polling_log_filter import install_supervisor_polling_filter
@@ -36,6 +36,7 @@ class VelvetSupervisor(BaseVelvetSupervisor):
             timeout_seconds=settings.hermes_timeout_seconds,
             cooldown_seconds=settings.hermes_cooldown_seconds,
             max_log_chars=settings.hermes_max_log_chars,
+            result_callback=self._on_hermes_incident_result,
         )
 
     def start(self) -> None:
@@ -73,6 +74,17 @@ class VelvetSupervisor(BaseVelvetSupervisor):
         payload["krita"] = self.krita.status()
         payload["hermes_incidents"] = self.hermes_incidents.status()
         return payload
+
+    def _on_hermes_incident_result(self, report: dict[str, Any]) -> None:
+        run_id = str(report.get("run_id") or "unknown")
+        status = str(report.get("status") or "unknown")
+        output = redact_sensitive(str(report.get("output") or "[empty]"))[-3000:]
+        level = "INFO" if status == "completed" else "ERROR"
+        self._notifier.send(
+            "Hermes завершил разбор инцидента",
+            f"run_id={run_id}\nstatus={status}\n\n{output}",
+            level=level,
+        )
 
     def _register_crash_locked(self) -> float | None:
         restart_delay = super()._register_crash_locked()
