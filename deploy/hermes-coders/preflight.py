@@ -89,6 +89,15 @@ def validate_workspace(path: Path) -> None:
         raise PreflightError(f"Workspace не является отдельным Git checkout: {path}")
 
 
+def validate_codex_workspace(path: Path) -> None:
+    validate_workspace(path)
+    config = require_readable_file(path / ".git" / "config")
+    if "gh auth git-credential" not in config:
+        raise PreflightError(f"В {path} не настроен GitHub credential helper")
+    if "[user]" not in config or "noreply.github.com" not in config:
+        raise PreflightError(f"В {path} не настроена Git identity")
+
+
 def require_readable_file(path: Path) -> str:
     try:
         if not path.is_file():
@@ -118,13 +127,58 @@ def validate_data(path: Path) -> None:
         )
 
 
-def validate_api_key(path: Path, values: dict[str, str]) -> str:
-    key = values.get("API_SERVER_KEY", "")
+def validate_api_key(path: Path, values: dict[str, str], name: str) -> str:
+    key = values.get(name, "")
     if len(key) < 24:
-        raise PreflightError(
-            f"API_SERVER_KEY в {path} должен содержать минимум 24 символа"
-        )
+        raise PreflightError(f"{name} в {path} должен содержать минимум 24 символа")
     return key
+
+
+def validate_codex_home(path: Path) -> None:
+    if not path.is_dir():
+        raise PreflightError(f"Отсутствует CODEX_HOME: {path}")
+    config = path / "config.toml"
+    auth = path / "auth.json"
+    config_text = require_readable_file(config)
+    if 'model = "gpt-5.6-terra"' not in config_text:
+        raise PreflightError(f"В {config} не задан безопасный default gpt-5.6-terra")
+    required_config = (
+        'sandbox_mode = "workspace-write"',
+        'approval_policy = "never"',
+        'cli_auth_credentials_store = "file"',
+        'check_for_update_on_startup = false',
+        'network_access = true',
+        'ignore_default_excludes = true',
+        'apps = false',
+        'plugins = false',
+        'tool_suggest = false',
+    )
+    missing_config = [item for item in required_config if item not in config_text]
+    if missing_config:
+        raise PreflightError(
+            f"В {config} отсутствуют обязательные Codex настройки: "
+            + ", ".join(missing_config)
+        )
+    for secret in (
+        "API_SERVER_KEY",
+        "BYESU_HERMES_CODEX_API_KEY",
+        "BYESU_HERMES_GPT_PRO_API_KEY",
+        "CODEX_RUNNER_API_KEY",
+        "DATABASE_URL",
+        "PGPASSWORD",
+        "TELEGRAM_BOT_TOKEN",
+    ):
+        if f'"{secret}"' not in config_text:
+            raise PreflightError(f"В {config} shell policy не исключает {secret}")
+    if '"GH_TOKEN"' in config_text:
+        raise PreflightError(f"В {config} GH_TOKEN ошибочно исключён из Codex shell")
+    if not auth.is_file() or auth.stat().st_size == 0:
+        raise PreflightError(
+            f"Codex не авторизован в {path}; выполните codex-login.sh для проекта"
+        )
+    mode = stat.S_IMODE(auth.stat().st_mode)
+    if mode & 0o077:
+        raise PreflightError(f"Слишком широкие права на {auth}: {mode:04o}; требуется 0600")
 
 
 def main() -> int:
@@ -140,6 +194,7 @@ def main() -> int:
         "TELEGRAM_ALLOWED_USERS",
         "GH_TOKEN",
         "API_SERVER_KEY",
+        "CODEX_RUNNER_API_KEY",
     )
     require_values(velvet_env_path, velvet_env, required)
     require_values(max_env_path, max_env, required)
@@ -149,10 +204,22 @@ def main() -> int:
     if velvet_env["GH_TOKEN"] == max_env["GH_TOKEN"]:
         raise PreflightError("Velvet и Max должны использовать разные fine-grained GitHub tokens")
 
-    velvet_api_key = validate_api_key(velvet_env_path, velvet_env)
-    max_api_key = validate_api_key(max_env_path, max_env)
+    velvet_api_key = validate_api_key(velvet_env_path, velvet_env, "API_SERVER_KEY")
+    max_api_key = validate_api_key(max_env_path, max_env, "API_SERVER_KEY")
     if velvet_api_key == max_api_key:
         raise PreflightError("Velvet и Max должны использовать разные API_SERVER_KEY")
+
+    velvet_runner_key = validate_api_key(
+        velvet_env_path, velvet_env, "CODEX_RUNNER_API_KEY"
+    )
+    max_runner_key = validate_api_key(max_env_path, max_env, "CODEX_RUNNER_API_KEY")
+    if velvet_runner_key == max_runner_key:
+        raise PreflightError("Velvet и Max должны использовать разные CODEX_RUNNER_API_KEY")
+    if velvet_runner_key != velvet_api_key or max_runner_key != max_api_key:
+        raise PreflightError(
+            "CODEX_RUNNER_API_KEY должен совпадать с API_SERVER_KEY своего проекта, "
+            "пока router использует существующий Runs API token contract"
+        )
 
     validate_db_env(
         ROOT / "secrets" / "velvet-db.env",
@@ -165,18 +232,28 @@ def main() -> int:
         expected_database="card_hunter",
     )
 
-    validate_workspace(ROOT / "workspaces" / "velvet")
-    validate_workspace(ROOT / "workspaces" / "max")
+    for workspace in (
+        ROOT / "workspaces" / "velvet",
+        ROOT / "workspaces" / "max",
+    ):
+        validate_workspace(workspace)
+    validate_codex_workspace(ROOT / "workspaces" / "velvet-codex")
+    validate_codex_workspace(ROOT / "workspaces" / "max-codex")
     validate_data(ROOT / "data" / "velvet")
     validate_data(ROOT / "data" / "max")
+    validate_codex_home(ROOT / "codex" / "velvet")
+    validate_codex_home(ROOT / "codex" / "max")
 
     print("Hermes Coder preflight: OK")
-    print("- workspaces: isolated")
+    print("- Hermes chat gateways: isolated")
+    print("- Codex workspaces and auth: isolated")
     print("- Telegram tokens: distinct")
     print("- GitHub tokens: distinct")
-    print("- API server keys: distinct")
+    print("- Runs API keys: distinct")
     print("- PostgreSQL identities: read-only")
-    print("- model routing: mini -> terra -> luna")
+    print("- Codex routing: luna -> terra -> sol")
+    print("- Codex CLI minimum: 0.144.0; image pin: 0.144.4")
+    print("- Codex sandbox: workspace-write + GitHub network")
     print("- terminal passthrough: GH_TOKEN")
     return 0
 

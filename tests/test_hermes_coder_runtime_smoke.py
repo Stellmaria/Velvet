@@ -30,7 +30,7 @@ class HermesCoderRuntimeSmokeTests(unittest.TestCase):
                 self.assertNotIn("gh api --method", script)
                 self.assertNotIn("git -C /workspace push origin", script)
 
-    def test_wait_for_gateway_retries_then_succeeds(self) -> None:
+    def test_wait_for_service_retries_then_succeeds(self) -> None:
         calls: list[list[str]] = []
         results = [
             subprocess.CompletedProcess([], 1, "", "not ready"),
@@ -42,8 +42,8 @@ class HermesCoderRuntimeSmokeTests(unittest.TestCase):
             calls.append(list(args))
             return results.pop(0)
 
-        runtime_smoke.wait_for_gateway(
-            runtime_smoke.CODERS[0],
+        runtime_smoke.wait_for_service(
+            runtime_smoke.CODERS[0].coder_service,
             timeout_seconds=10,
             poll_seconds=0,
             runner=runner,
