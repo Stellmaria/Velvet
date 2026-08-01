@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "hotfix-remove-qwen-flux-generation",
+  "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 631,
   "production_loc": 136679,
   "layer_counts": {

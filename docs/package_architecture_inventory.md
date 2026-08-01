@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `hotfix-remove-qwen-flux-generation`
+- Generated from: `p1-package-architecture-baseline`
 - Production modules: **631**
 - Production LOC: **136679**
 - Root modules: **113**
