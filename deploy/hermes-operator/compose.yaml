@@ -38,6 +38,42 @@ services:
           - hermes-ops-gateway
       supervisor-control: {}
 
+  hermes-coder-router:
+    image: ${HERMES_OPS_GATEWAY_IMAGE:-velvet-hermes-ops-gateway:local}
+    build:
+      context: ../..
+      dockerfile: deploy/hermes-operator/Dockerfile
+    command: ["python", "/app/coder_router.py"]
+    restart: unless-stopped
+    user: "10001:10001"
+    env_file:
+      - ${HERMES_CODER_ROUTER_ENV_FILE:-/srv/hermes-operator-control/coders.env}
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8878/health', timeout=3).read()
+      interval: 15s
+      timeout: 4s
+      retries: 4
+      start_period: 10s
+    mem_limit: ${HERMES_CODER_ROUTER_MEMORY_LIMIT:-128m}
+    cpus: ${HERMES_CODER_ROUTER_CPU_LIMIT:-0.25}
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      velvet-backend:
+        aliases:
+          - hermes-coder-router
+      agent-control: {}
+
 networks:
   velvet-backend:
     external: true
@@ -45,3 +81,6 @@ networks:
   supervisor-control:
     external: true
     name: ${HERMES_SUPERVISOR_NETWORK:-hermes-supervisor-control}
+  agent-control:
+    external: true
+    name: ${HERMES_AGENT_CONTROL_NETWORK:-hermes-agent-control}
