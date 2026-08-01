@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -39,8 +39,6 @@ jobs:
 
       - name: Run fast architecture contracts
         shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           python scripts/ci_preflight.py 2>&1 | tee preflight-output.txt
