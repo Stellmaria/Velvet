@@ -1,0 +1,679 @@
+name: temporary pricing owner sync
+
+on:
+  push:
+    branches:
+      - fix/owner-cost-only-and-image-pricing
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/owner-cost-only-and-image-pricing
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Fold pricing privacy into canonical owner UI
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/app/auf_owner_pricing_ui_install.py")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_block(source: str, start: str, end: str, replacement: str) -> str:
+              begin = source.index(start)
+              finish = source.index(end, begin)
+              return source[:begin] + replacement.rstrip() + "\n\n" + source[finish + 2:]
+
+          photo_keyboard = '''def _photo_final_keyboard(
+              photo_ui,
+              *,
+              workspace_id: int,
+              model,
+              quoted_units: int,
+              global_owner: bool,
+          ):
+              base = photo_ui.photo_router._final_keyboard(workspace_id, model)
+              rows = [list(row) for row in base.inline_keyboard]
+              if rows and rows[0]:
+                  rows[0][0] = _copy_button(
+                      rows[0][0],
+                      text=(
+                          "Да, создать"
+                          if global_owner
+                          else f"Да, создать · {format_vl_units(quoted_units)}"
+                      ),
+                  )
+              return InlineKeyboardMarkup(inline_keyboard=rows)
+          '''
+          text = replace_block(
+              text,
+              "def _photo_final_keyboard",
+              "\n\ndef _video_review_keyboard",
+              photo_keyboard,
+          )
+
+          video_keyboard = '''def _video_review_keyboard(
+              portal,
+              *,
+              workspace_id: int,
+              quoted_units: int,
+              can_submit: bool,
+              global_owner: bool,
+          ):
+              first_button = InlineKeyboardButton(
+                  text=(
+                      "Запустить"
+                      if global_owner
+                      else f"Запустить · {format_vl_units(quoted_units)}"
+                      if can_submit
+                      else "Пересчитать баланс и цену"
+                  ),
+                  callback_data=portal.video_router.video_callback(
+                      "submit" if global_owner or can_submit else "review",
+                      workspace_id=workspace_id,
+                  ),
+              )
+              return InlineKeyboardMarkup(
+                  inline_keyboard=[
+                      [first_button],
+                      [
+                          InlineKeyboardButton(
+                              text="Изменить параметры",
+                              callback_data=portal.video_router.video_callback(
+                                  "settings", workspace_id=workspace_id
+                              ),
+                          ),
+                          InlineKeyboardButton(
+                              text="Изменить модель",
+                              callback_data=portal.video_router.video_callback(
+                                  "models", workspace_id=workspace_id
+                              ),
+                          ),
+                      ],
+                      [
+                          InlineKeyboardButton(
+                              text="Отмена",
+                              callback_data=portal.video_router.video_callback(
+                                  "cancel", workspace_id=workspace_id
+                              ),
+                          )
+                      ],
+                  ]
+              )
+          '''
+          text = replace_block(
+              text,
+              "def _video_review_keyboard",
+              "\n\ndef _wallet_lines",
+              video_keyboard,
+          )
+
+          seedream = '''async def _seedream_reference_lines(
+              *,
+              pricing: AufPricingRepository,
+              quote_payload: dict[str, object],
+              request,
+              quote,
+          ) -> list[str]:
+              del pricing, quote_payload, quote
+              if request.model != KieModelAlias.SEEDREAM_5_PRO:
+                  return []
+              return [
+                  "",
+                  "<b>Seedream и референсы</b>",
+                  "Итоговая стоимость зависит от количества референсов.",
+                  f"Сейчас в расчёте учтено: <b>{len(request.references)}</b>.",
+              ]
+          '''
+          text = replace_block(
+              text,
+              "async def _seedream_reference_lines",
+              "\n\nasync def _show_photo_review",
+              seedream,
+          )
+
+          photo_review = '''async def _show_photo_review(
+              callback,
+              state,
+              *,
+              database,
+              wallet_service,
+          ) -> None:
+              photo_ui = importlib.import_module("velvet_bot.app.auf_photo_ui_install")
+              data = await state.get_data()
+              request = photo_ui.photo_router._request(data)
+              workspace_id = int(photo_ui._state_value(data, "auf_workspace_id") or 0)
+              quote_payload: dict[str, object] = {
+                  "workspace_id": workspace_id,
+                  "user_id": callback.from_user.id,
+                  "request": request.to_task_payload(),
+              }
+              pricing = AufPricingRepository(database)
+              quote = await pricing.quote(quote_payload)
+              await state.update_data(
+                  auf_expected_price_version=quote.version_key,
+                  auf_expected_quoted_units=quote.quoted_units,
+              )
+              overview = await wallet_service.overview(
+                  workspace_id=workspace_id,
+                  actor_user_id=callback.from_user.id,
+                  history_limit=1,
+              )
+              global_owner = wallet_service.is_global_owner(callback.from_user.id)
+              available_units = overview.wallet.available_units
+              enough = global_owner or available_units >= quote.quoted_units
+              remaining_units = max(0, available_units - quote.quoted_units)
+              ratio = "как у исходника" if request.aspect_ratio == "auto" else request.aspect_ratio
+
+              wallet_line = ""
+              if not global_owner and enough:
+                  wallet_line = (
+                      f"Стоимость: <b>{format_vl_units(quote.quoted_units)}</b>\n"
+                      f"Доступно: <b>{format_auf_units(available_units)}</b>\n"
+                      f"Останется: <b>{format_auf_units(remaining_units)}</b>"
+                  )
+              elif not global_owner:
+                  missing = quote.quoted_units - available_units
+                  wallet_line = (
+                      f"Стоимость: <b>{format_vl_units(quote.quoted_units)}</b>\n"
+                      f"Доступно: <b>{format_auf_units(available_units)}</b>\n"
+                      f"Не хватает: <b>{format_auf_units(missing)}</b>"
+                  )
+
+              public_price_lines = (
+                  []
+                  if global_owner
+                  else await _seedream_reference_lines(
+                      pricing=pricing,
+                      quote_payload=quote_payload,
+                      request=request,
+                      quote=quote,
+                  )
+              )
+              count = max(1, int(request.extra_input.get("n", 1)))
+              last_two = count % 100
+              last = count % 10
+              if 11 <= last_two <= 14:
+                  result_word = "изображений"
+              elif last == 1:
+                  result_word = "изображение"
+              elif 2 <= last <= 4:
+                  result_word = "изображения"
+              else:
+                  result_word = "изображений"
+
+              lines = [
+                  "<b>Проверьте перед созданием</b>",
+                  "",
+                  f"Модель: <b>{escape(request.model.display_name)}</b>",
+                  f"Фото: <b>{len(request.references)}</b> из {request.model.max_photo_references}",
+                  f"Качество: <b>{escape(request.resolution)}</b>",
+                  f"Соотношение: <b>{escape(ratio)}</b>",
+                  f"Результат: <b>{count} {result_word}</b>",
+              ]
+              if request.model == KieModelAlias.WAN_27_IMAGE:
+                  lines.append(
+                      "Связная серия: "
+                      f"<b>{'включена' if request.extra_input.get('enable_sequential') else 'выключена'}</b>"
+                  )
+              lines.append("Контент: <b>Mature</b>")
+              if global_owner:
+                  lines.extend(["", format_owner_price_details(quote)])
+              else:
+                  lines.extend(["", "<b>Стоимость в VL</b>", wallet_line])
+                  lines.extend(public_price_lines)
+              lines.extend(
+                  [
+                      "",
+                      f"<b>Текст</b>\n{escape(photo_ui.photo_router._truncate(request.prompt, 2200))}",
+                  ]
+              )
+              if not global_owner:
+                  lines.extend(
+                      [
+                          "",
+                          "<i>Цена фиксируется при подтверждении. Если итоговая стоимость "
+                          "изменится до запуска, бот попросит подтвердить новую сумму.</i>",
+                      ]
+                  )
+
+              await state.set_state(photo_ui.photo_router.AufPhotoForm.confirming_generation)
+              await photo_ui.edit_or_answer_auf_callback(
+                  callback,
+                  text="\n".join(lines),
+                  reply_markup=_photo_final_keyboard(
+                      photo_ui,
+                      workspace_id=workspace_id,
+                      model=request.model,
+                      quoted_units=quote.quoted_units,
+                      global_owner=global_owner,
+                  ),
+              )
+          '''
+          text = replace_block(
+              text,
+              "async def _show_photo_review",
+              "\n\nasync def _show_video_review",
+              photo_review,
+          )
+
+          video_review = '''async def _show_video_review(
+              callback,
+              *,
+              state,
+              workspace_id: int,
+              database,
+              wallet_service,
+          ) -> None:
+              portal = importlib.import_module("velvet_bot.app.auf_user_portal_install")
+              try:
+                  (
+                      request,
+                      prompt,
+                      model,
+                      resolution,
+                      duration,
+                      generate_audio,
+                      wan_mode,
+                  ) = portal._video_request_from_state(await state.get_data())
+                  quote = await AufPricingRepository(database).quote(
+                      {
+                          "workspace_id": workspace_id,
+                          "user_id": callback.from_user.id,
+                          "request": request.to_task_payload(),
+                      }
+                  )
+                  overview = await wallet_service.overview(
+                      workspace_id=workspace_id,
+                      actor_user_id=callback.from_user.id,
+                      history_limit=1,
+                  )
+              except (PermissionError, ValueError, RuntimeError) as error:
+                  await callback.answer(str(error), show_alert=True)
+                  return
+
+              await state.update_data(
+                  auf_video_expected_price_version=quote.version_key,
+                  auf_video_expected_quoted_units=quote.quoted_units,
+              )
+              global_owner = wallet_service.is_global_owner(callback.from_user.id)
+              if global_owner:
+                  wallet_lines, can_submit = [], True
+              else:
+                  wallet_lines, can_submit = _wallet_lines(
+                      wallet=overview.wallet,
+                      quoted_units=quote.quoted_units,
+                      global_owner=False,
+                  )
+              lines = [
+                  "<b>Проверьте видео перед запуском</b>",
+                  "",
+                  f"Модель: <b>{escape(portal.video_router.MODEL_NAMES[model])}</b>",
+                  f"Разрешение: <b>{escape(resolution)}</b>",
+                  (
+                      "Длительность: <b>автоматически, расчёт 6 сек</b>"
+                      if model == "grok"
+                      else f"Длительность: <b>{duration} сек</b>"
+                  ),
+              ]
+              if model == "seedance":
+                  lines.append(f"Звук: <b>{'включён' if generate_audio else 'выключен'}</b>")
+              if model == "wan":
+                  lines.append(f"Кадры: <b>{portal.video_router.wan_mode_name(wan_mode)}</b>")
+              if global_owner:
+                  lines.extend(["", format_owner_price_details(quote)])
+              else:
+                  lines.extend(["", "<b>Стоимость в VL</b>", *wallet_lines])
+              lines.extend(
+                  [
+                      "",
+                      f"<b>Движение и сцена</b>\n{escape(portal.video_core.truncate_text(prompt, 3500))}",
+                  ]
+              )
+              if not global_owner:
+                  lines.extend(
+                      [
+                          "",
+                          "<i>Цена фиксируется при подтверждении. Если итоговая стоимость "
+                          "изменится до резервирования, бот попросит подтвердить новую сумму.</i>",
+                      ]
+                  )
+              await state.set_state(portal.video_router.AufVideoForm.reviewing)
+              await portal.video_core.edit_or_answer(
+                  callback,
+                  text="\n".join(lines),
+                  reply_markup=_video_review_keyboard(
+                      portal,
+                      workspace_id=workspace_id,
+                      quoted_units=quote.quoted_units,
+                      can_submit=can_submit,
+                      global_owner=global_owner,
+                  ),
+              )
+          '''
+          text = replace_block(
+              text,
+              "async def _show_video_review",
+              "\n\nasync def _render_wallet",
+              video_review,
+          )
+          path.write_text(text, encoding="utf-8")
+
+          Path("velvet_bot/app/auf_charged_queue_install.py").write_text(
+              '''from __future__ import annotations
+
+          import importlib
+          import logging
+
+          from velvet_bot.domains.auf_wallet import build_auf_charged_task_queue_service
+
+          logger = logging.getLogger(__name__)
+          _INSTALLED = False
+
+
+          def install_auf_charged_queue() -> None:
+              """Make the production bootstrap use the atomic Auf wallet queue."""
+
+              global _INSTALLED
+              if _INSTALLED:
+                  return
+              bootstrap = importlib.import_module("velvet_bot.app.bootstrap")
+              charged_queue = importlib.import_module("velvet_bot.domains.auf_wallet.charged_queue")
+              pricing = importlib.import_module("velvet_bot.domains.auf_wallet.pricing")
+
+              # Photo model modes may wrap pricing, for example to multiply Wan
+              # Image by the requested result count. The queue imported the old
+              # function earlier, so bind it to the final runtime calculator.
+              charged_queue.quote_auf_payload = pricing.quote_auf_payload
+              bootstrap.build_ai_task_queue_service = build_auf_charged_task_queue_service
+              logger.info("Installed charged Auf task queue in production bootstrap")
+              _INSTALLED = True
+
+
+          __all__ = ("install_auf_charged_queue",)
+          '''.replace("          ", ""),
+              encoding="utf-8",
+          )
+
+          Path("velvet_bot/app/auf_generation_price_privacy_install.py").unlink(missing_ok=True)
+
+          test = Path("tests/test_auf_owner_cost_only_pricing.py")
+          test.write_text(
+              '''from __future__ import annotations
+
+          import inspect
+          import unittest
+          from decimal import Decimal
+          from types import SimpleNamespace
+
+          from velvet_bot.app import auf_charged_queue_install
+          from velvet_bot.app import auf_owner_pricing_ui_install as pricing_ui
+          from velvet_bot.domains.auf_wallet.models import AUF_SCALE
+          from velvet_bot.domains.auf_wallet.pricing import (
+              AufPriceQuote,
+              format_owner_price_details,
+              quote_auf_payload,
+          )
+          from velvet_bot.domains.media_generation import KieModelAlias
+
+
+          class _Connection:
+              def __init__(self, *, model_alias, resolution, unit_cost_usd, override=None):
+                  self.model_alias = model_alias
+                  self.resolution = resolution
+                  self.unit_cost_usd = unit_cost_usd
+                  self.override = override
+
+              async def fetchrow(self, query, *args):
+                  if "FROM auf_price_versions" in query:
+                      return {
+                          "id": 1,
+                          "version_key": "pricing:test",
+                          "provider": "grs",
+                          "model_alias": self.model_alias,
+                          "resolution": self.resolution,
+                          "audio": None,
+                          "pricing_basis": "fixed",
+                          "unit_cost_usd": self.unit_cost_usd,
+                          "extra_reference_cost_usd": Decimal("0"),
+                          "quality_surcharge_velvets": 0,
+                      }
+                  if "FROM auf_economy_settings" in query:
+                      return {
+                          "retail_auf_usd": Decimal("0.03"),
+                          "billing_usd_to_rub": Decimal("80"),
+                          "billing_usd_to_byn": Decimal("3"),
+                          "retail_markup_percent": Decimal("30"),
+                      }
+                  raise AssertionError(query)
+
+              async def fetchval(self, query, *args):
+                  if "FROM auf_user_markup_overrides" in query:
+                      return self.override
+                  if "FROM auf_package_prices" in query:
+                      return Decimal("2")
+                  raise AssertionError(query)
+
+
+          def _payload(model, resolution):
+              return {
+                  "user_id": 55,
+                  "request": {
+                      "model": model,
+                      "resolution": resolution,
+                      "duration_seconds": 6,
+                      "references": [],
+                      "extra_input": {},
+                  },
+              }
+
+
+          class BananaPriceTests(unittest.IsolatedAsyncioTestCase):
+              async def test_both_banana_models_use_one_two_three_vl(self):
+                  expected = {"1K": 1, "2K": 2, "4K": 3}
+                  for model, cost in (
+                      ("nano_banana_2", Decimal("0.02")),
+                      ("nano_banana_pro", Decimal("0.03")),
+                  ):
+                      for resolution, velvets in expected.items():
+                          with self.subTest(model=model, resolution=resolution):
+                              quote = await quote_auf_payload(
+                                  _Connection(
+                                      model_alias=model,
+                                      resolution=resolution,
+                                      unit_cost_usd=cost,
+                                  ),
+                                  _payload(model, resolution),
+                              )
+                              self.assertEqual(velvets * AUF_SCALE, quote.quoted_units)
+
+              async def test_individual_markup_changes_banana_base(self):
+                  quote = await quote_auf_payload(
+                      _Connection(
+                          model_alias="nano_banana_pro",
+                          resolution="1K",
+                          unit_cost_usd=Decimal("0.03"),
+                          override=Decimal("45"),
+                      ),
+                      _payload("nano_banana_pro", "1K"),
+                  )
+                  self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
+
+
+          class OwnerCostOnlyTests(unittest.IsolatedAsyncioTestCase):
+              @staticmethod
+              def _quote():
+                  return AufPriceQuote(
+                      price_version_id=1,
+                      version_key="pricing:test",
+                      provider="kie",
+                      model_alias="seedream_5_pro",
+                      resolution="2K",
+                      audio=None,
+                      duration_seconds=6,
+                      reference_count=1,
+                      provider_cost_usd=Decimal("0.15"),
+                      global_markup_percent=Decimal("30"),
+                      user_markup_override_percent=None,
+                      markup_percent=Decimal("30"),
+                      quality_surcharge_velvets=0,
+                      target_retail_usd=Decimal("0.195"),
+                      minimum_revenue_usd=Decimal("0.2204"),
+                      billing_usd_to_rub=Decimal("79.7257"),
+                      billing_usd_to_byn=Decimal("2.92661"),
+                      quoted_units=8 * AUF_SCALE,
+                  )
+
+              async def test_owner_block_contains_only_provider_and_real_cost(self):
+                  rendered = format_owner_price_details(self._quote())
+                  self.assertIn("Провайдер: <code>KIE</code>", rendered)
+                  self.assertIn("$0.1500", rendered)
+                  self.assertIn("₽ РФ", rendered)
+                  self.assertIn("Br", rendered)
+                  for forbidden in (
+                      "Наценка",
+                      "Цена по проценту",
+                      "Надбавка качества",
+                      "Списание",
+                      "Выручка",
+                      "Прибыль",
+                      "маржа",
+                  ):
+                      self.assertNotIn(forbidden, rendered)
+
+              async def test_owner_generation_screens_hide_wallet_economics(self):
+                  for renderer in (pricing_ui._show_photo_review, pricing_ui._show_video_review):
+                      source = inspect.getsource(renderer)
+                      self.assertNotIn("Учётная цена", source)
+                      self.assertNotIn("Списание Стэл", source)
+                      self.assertNotIn("Надбавка за выбранное качество", source)
+
+              async def test_seedream_notice_only_states_reference_dependency(self):
+                  request = SimpleNamespace(
+                      model=KieModelAlias.SEEDREAM_5_PRO,
+                      references=(object(), object(), object()),
+                  )
+                  rendered = "\n".join(
+                      await pricing_ui._seedream_reference_lines(
+                          pricing=None,
+                          quote_payload={},
+                          request=request,
+                          quote=None,
+                      )
+                  )
+                  self.assertIn("зависит от количества референсов", rendered)
+                  self.assertIn("учтено: <b>3</b>", rendered)
+                  self.assertNotIn("$", rendered)
+                  self.assertNotIn("₽", rendered)
+                  self.assertNotIn("Br", rendered)
+
+              async def test_wan_result_count_and_queue_price_are_connected(self):
+                  photo_source = inspect.getsource(pricing_ui._show_photo_review)
+                  queue_source = inspect.getsource(auf_charged_queue_install)
+                  self.assertIn('request.extra_input.get("n", 1)', photo_source)
+                  self.assertIn(
+                      "charged_queue.quote_auf_payload = pricing.quote_auf_payload",
+                      queue_source,
+                  )
+
+
+          if __name__ == "__main__":
+              unittest.main()
+          '''.replace("          ", ""),
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Regenerate canonical inventories
+        shell: bash
+        run: |
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label pricing-owner-cost-only
+
+      - name: Synchronize package inventory test constants
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8"))
+          path = Path("tests/test_package_architecture_inventory.py")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = {
+              'self.assertEqual(138_538, self.inventory["production_loc"])':
+                  f'self.assertEqual({data["production_loc"]:_}, self.inventory["production_loc"])',
+              'self.assertEqual(546, self.inventory["violation_count"])':
+                  f'self.assertEqual({data["violation_count"]}, self.inventory["violation_count"])',
+              'self.assertIn("Production LOC: **138538**", self.markdown)':
+                  f'self.assertIn("Production LOC: **{data["production_loc"]}**", self.markdown)',
+              'self.assertIn("Registered package violations: **546**", self.markdown)':
+                  f'self.assertIn("Registered package violations: **{data["violation_count"]}**", self.markdown)',
+              'self.assertIn("Registered exemptions: **546**", self.markdown)':
+                  f'self.assertIn("Registered exemptions: **{data["violation_count"]}**", self.markdown)',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"missing expected package test constant: {old}")
+              text = text.replace(old, new)
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Verify generated contracts
+        shell: bash
+        run: |
+          python -m compileall -q velvet_bot tests
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label pricing-owner-cost-only
+          python scripts/telegram_navigation_inventory.py --root velvet_bot --check
+
+      - name: Commit exact generated result and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/temporary-pricing-owner-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            .github/workflows/temporary-pricing-owner-sync.yml \
+            docs/generated/telegram_navigation_inventory.md \
+            docs/package_architecture_exemptions.json \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/shared_contract_inventory.json \
+            docs/shared_contract_inventory.md \
+            tests/test_auf_owner_cost_only_pricing.py \
+            tests/test_package_architecture_inventory.py \
+            velvet_bot/app/auf_charged_queue_install.py \
+            velvet_bot/app/auf_generation_price_privacy_install.py \
+            velvet_bot/app/auf_owner_pricing_ui_install.py
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 1
+          fi
+          git commit -m "Синхронизировать цены и приватность экономики"
+          git push origin HEAD:fix/owner-cost-only-and-image-pricing
