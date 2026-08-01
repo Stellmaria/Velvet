@@ -3,7 +3,7 @@
 - Дата: 2026-08-01
 - ID: `kael-librarian-personas-20260801`
 - Линия/фаза: Hermes identities, project context и runtime isolation
-- Статус: `частично`
+- Статус: `завершено в коде, production rollout ожидается`
 - Ветка: `agent/kael-librarian-personas`
 - Базовый commit: `b1c15532566674f423f64776efba934123ddca6d`
 
@@ -70,21 +70,31 @@ Storage Librarian из PR #535 выполнялся через основной 
 
 ### Проверки
 
-Draft PR #538 открыт. Полный CI выполняется. Production install и Telegram smoke ожидаются после merge.
+На head `24be555cfeae99c2fb8832e8ab75af262481cbe0` прошли:
+
+- полный tests workflow и четыре test shards;
+- architecture preflight;
+- type check;
+- project notes contract;
+- Docker Compose validation;
+- сборка Velvet, Supervisor proxy, VL, Krita, Hermes coder и operator/router images;
+- Krita plugin smoke.
+
+Production install и Telegram smoke выполняются только после merge.
 
 ### PR и commit
 
 - PR: `https://github.com/Stellmaria/Velvet/pull/538`;
-- head commit на момент открытия: `09f3e7021c33e488b32cacbf3537f3cd9d88837b`;
+- проверенный runtime head: `24be555cfeae99c2fb8832e8ab75af262481cbe0`;
 - merge commit: ожидается после проверки и явного разрешения владельца.
 
 ### Незавершённое
 
-- полный CI;
 - production установка `hermes-entities` и `hermes-librarian`;
-- ручной `/storage_analyze ID`;
+- проверка Telegram display name Каэля;
+- ручной `/storage_analyze ID` через отдельного Velvet Librarian;
 - исправление Max incident dedup и повторное включение его monitor.
 
 ### Следующий шаг
 
-Устранить замечания CI. После merge обновить VPS, выполнить два installer, проверить сущности и права, затем провести manual-first Librarian smoke-test.
+После merge обновить VPS, выполнить `deploy/hermes-entities/install.sh` и `deploy/hermes-librarian/install.sh`, проверить сущности и права, затем провести manual-first Librarian smoke-test.
