@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 from html import escape
 
 import asyncpg
@@ -24,6 +26,13 @@ _scheduler_task: asyncio.Task[None] | None = None
 _background_tasks: set[asyncio.Task[None]] = set()
 
 
+def _env_enabled(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name, "").strip().casefold()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on", "да"}
+
+
 def _short(value: str, limit: int = 700) -> str:
     text = value.strip()
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
@@ -34,13 +43,17 @@ def _jsonish_list(value) -> list:
         return value
     if isinstance(value, tuple):
         return list(value)
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+        return decoded if isinstance(decoded, list) else []
     return []
 
 
 async def _send_chunks(message: Message, text: str) -> None:
-    remaining = text.strip()
-    if not remaining:
-        remaining = "Результат пуст."
+    remaining = text.strip() or "Результат пуст."
     while remaining:
         if len(remaining) <= 3900:
             chunk = remaining
@@ -94,6 +107,9 @@ async def start_storage_librarian(bot: Bot, database: Database) -> None:
     if not settings.enabled:
         logger.info("Storage Librarian is disabled")
         return
+    if not _env_enabled("STORAGE_LIBRARIAN_AUTO_ENQUEUE", False):
+        logger.info("Storage Librarian is manual-only; background queue is disabled")
+        return
     _scheduler_task = asyncio.create_task(
         _librarian_scheduler_loop(
             bot=bot,
@@ -129,10 +145,12 @@ async def handle_storage_librarian_status(
             "<b>Storage Librarian недоступен</b>\n\n" + escape(str(error))
         )
         return
+    auto_enqueue = _env_enabled("STORAGE_LIBRARIAN_AUTO_ENQUEUE", False)
     lines = [
         "<b>Storage Librarian</b>",
         "",
         f"Состояние: <b>{'включён' if settings.enabled else 'выключен'}</b>",
+        f"Фоновая очередь: <b>{'включена' if auto_enqueue else 'выключена'}</b>",
         f"Версия: <code>{escape(settings.analyzer_version)}</code>",
         "Категории: <code>" + escape(", ".join(settings.allowed_kinds)) + "</code>",
         "",
@@ -146,12 +164,12 @@ async def handle_storage_librarian_status(
         "<code>/storage_digest 7</code> — сводка за дни",
         "<code>/storage_ask вопрос</code> — поиск и ответ по индексу",
     ]
-    if not settings.enabled:
+    if settings.enabled and not auto_enqueue:
         lines.extend(
             (
                 "",
-                "Фоновый анализ не расходует токены, пока "
-                "<code>STORAGE_LIBRARIAN_ENABLED=false</code>.",
+                "Режим manual-first активен: старый архив не анализируется массово и "
+                "не расходует токены без ручной команды.",
             )
         )
     await message.answer("\n".join(lines))
