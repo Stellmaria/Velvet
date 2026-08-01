@@ -3,7 +3,7 @@
 - Дата: `2026-08-01`
 - ID: `hermes-coder-orchestration`
 - Линия/фаза: `server operations`
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `agent/hermes-coder-orchestration`
 - Базовый commit: `1d763e9217204841a0b7ed0437434737f4cbae27`
 
@@ -52,7 +52,7 @@ Production VPS использует `scripts/server_supervisor.py` через `v
 
 ## После завершения
 
-Статус: `в работе`.
+Статус: `частично`.
 
 ### Фактически сделано
 
@@ -92,15 +92,22 @@ SQL-миграций нет. Production базы и bot runtime не измен�
 - локальный AST/compile новых Python-модулей;
 - локальный `bash -n` installer;
 - unit tests router, ledger, redaction, terminal incident callback и server monitor;
-- полный GitHub Actions CI после публикации draft PR.
+- полный GitHub Actions CI запущен для draft PR `#534`;
+- production smoke не выполняется до merge.
+
+### PR и commit
+
+- PR: `#534` — draft `Добавить оркестрацию Hermes coder-агентов`;
+- ветка: `agent/hermes-coder-orchestration`;
+- commits публикуются последовательно в той же ветке; финальный head фиксируется после стабилизации CI.
 
 ### Незавершённое
 
-- синхронизировать ветку с текущим `main`;
-- открыть draft PR и исправить CI;
+- исправить найденные CI regressions;
+- синхронизировать ветку с текущим `main` перед готовностью к review;
 - после merge установить на VPS и выполнить health/task smoke;
 - отдельным PR добавить автоматический incident watcher Max.
 
 ### Следующий шаг
 
-Открыть draft PR и довести все обязательные проверки до зелёного состояния без установки production orchestration до merge.
+Довести все обязательные проверки PR `#534` до зелёного состояния без установки production orchestration до merge.
