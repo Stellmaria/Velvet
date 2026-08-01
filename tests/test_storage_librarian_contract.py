@@ -6,12 +6,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from velvet_bot.domains.telegram_storage.librarian import (
-    LibrarianObject,
-    StorageLibrarianSettings,
+from velvet_bot.domains.telegram_storage.librarian_content import (
     extract_storage_text,
     parse_librarian_analysis,
     redact_sensitive,
+)
+from velvet_bot.domains.telegram_storage.librarian_models import (
+    LibrarianObject,
+    StorageLibrarianSettings,
 )
 
 
@@ -39,6 +41,46 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
             / "owner_menu.py"
         ).read_text(encoding="utf-8")
         self.assertIn("register_storage_librarian(router)", source)
+
+    def test_manual_analysis_does_not_bulk_enqueue_archive(self) -> None:
+        source = (
+            ROOT
+            / "velvet_bot"
+            / "presentation"
+            / "telegram"
+            / "storage_librarian.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("process_once(auto_enqueue=False)", source)
+        self.assertIn("STORAGE_LIBRARIAN_AUTO_ENQUEUE", source)
+
+    def test_librarian_is_split_across_architecture_layers(self) -> None:
+        old_monolith = (
+            ROOT
+            / "velvet_bot"
+            / "domains"
+            / "telegram_storage"
+            / "librarian.py"
+        )
+        self.assertFalse(old_monolith.exists())
+        expected = (
+            ROOT / "velvet_bot" / "application" / "storage_librarian.py",
+            ROOT
+            / "velvet_bot"
+            / "domains"
+            / "telegram_storage"
+            / "librarian_repository.py",
+            ROOT
+            / "velvet_bot"
+            / "infrastructure"
+            / "telegram"
+            / "storage_librarian_files.py",
+            ROOT
+            / "velvet_bot"
+            / "infrastructure"
+            / "ai"
+            / "storage_librarian_hermes.py",
+        )
+        self.assertTrue(all(path.is_file() for path in expected))
 
 
 class StorageLibrarianSettingsTests(unittest.TestCase):
