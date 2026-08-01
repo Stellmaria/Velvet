@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import time
@@ -23,24 +25,29 @@ POLL_INTERVAL_SECONDS = max(
     1.0,
     float(os.environ.get("HERMES_CODERS_SMOKE_POLL_SECONDS", "3")),
 )
+CODEX_VERSION = "0.144.4"
+CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
 
 
 @dataclass(frozen=True)
 class CoderTarget:
     project: str
-    service: str
+    coder_service: str
+    chat_service: str
     repository: str
 
 
 CODERS = (
     CoderTarget(
         project="velvet",
-        service="hermes-coder-velvet",
+        coder_service="hermes-coder-velvet",
+        chat_service="hermes-chat-velvet",
         repository="Stellmaria/Velvet",
     ),
     CoderTarget(
         project="max",
-        service="hermes-coder-max",
+        coder_service="hermes-coder-max",
+        chat_service="hermes-chat-max",
         repository="Stellmaria/romatic_club_bot_max",
     ),
 )
@@ -122,12 +129,12 @@ def run_checked(
     return result
 
 
-def gateway_probe_command(target: CoderTarget) -> list[str]:
+def gateway_probe_command(service: str) -> list[str]:
     return [
         *compose_prefix(),
         "exec",
         "-T",
-        target.service,
+        service,
         "python",
         "-c",
         (
@@ -135,6 +142,32 @@ def gateway_probe_command(target: CoderTarget) -> list[str]:
             "urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3).read()"
         ),
     ]
+
+
+def wait_for_service(
+    service: str,
+    *,
+    timeout_seconds: int = STARTUP_TIMEOUT_SECONDS,
+    poll_seconds: float = POLL_INTERVAL_SECONDS,
+    runner: Runner = _default_runner,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> None:
+    deadline = monotonic() + timeout_seconds
+    last_details = "контейнер ещё не ответил"
+    while monotonic() < deadline:
+        try:
+            result = runner(gateway_probe_command(service), 10)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            last_details = type(exc).__name__
+        else:
+            if result.returncode == 0:
+                return
+            last_details = _result_details(result)
+        sleeper(poll_seconds)
+    raise SmokeError(
+        f"Service {service} не стал готов за {timeout_seconds} секунд: {last_details}"
+    )
 
 
 def github_probe_script(target: CoderTarget) -> str:
@@ -161,19 +194,13 @@ test "$push_allowed" = "true"
 remote="$(git -C /workspace remote get-url origin)"
 case "$remote" in
   {https_remote}|{https_remote}.git) ;;
-  *)
-    echo "unexpected origin remote for {target.project}" >&2
-    exit 31
-    ;;
+  *) echo "unexpected origin remote for {target.project}" >&2; exit 31 ;;
 esac
 
 helper="$(git config --global --get credential.https://github.com.helper || true)"
 case "$helper" in
   *"gh auth git-credential"*) ;;
-  *)
-    echo "GitHub credential helper is not configured for {target.project}" >&2
-    exit 32
-    ;;
+  *) echo "GitHub credential helper is not configured for {target.project}" >&2; exit 32 ;;
 esac
 
 git -C /workspace push --dry-run origin \
@@ -186,38 +213,72 @@ def github_probe_command(target: CoderTarget) -> list[str]:
         *compose_prefix(),
         "exec",
         "-T",
-        target.service,
+        target.chat_service,
         "sh",
         "-ceu",
         github_probe_script(target),
     ]
 
 
-def wait_for_gateway(
-    target: CoderTarget,
-    *,
-    timeout_seconds: int = STARTUP_TIMEOUT_SECONDS,
-    poll_seconds: float = POLL_INTERVAL_SECONDS,
-    runner: Runner = _default_runner,
-    monotonic: Callable[[], float] = time.monotonic,
-    sleeper: Callable[[float], None] = time.sleep,
-) -> None:
-    deadline = monotonic() + timeout_seconds
-    last_details = "контейнер ещё не ответил"
-    while monotonic() < deadline:
-        try:
-            result = runner(gateway_probe_command(target), 10)
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            last_details = type(exc).__name__
-        else:
-            if result.returncode == 0:
-                return
-            last_details = _result_details(result)
-        sleeper(poll_seconds)
-    raise SmokeError(
-        f"Gateway {target.service} не стал готов за {timeout_seconds} секунд: "
-        f"{last_details}"
-    )
+def codex_probe_script(target: CoderTarget) -> str:
+    repository = target.repository
+    https_remote = f"https://github.com/{repository}"
+    models_json = json.dumps(CODEX_MODELS)
+    return f"""set -eu
+
+test -s /opt/codex/auth.json
+mode="$(stat -c '%a' /opt/codex/auth.json)"
+test "$mode" = "600"
+codex --version | grep -F '{CODEX_VERSION}' >/dev/null
+CODEX_HOME=/opt/codex codex login status >/dev/null
+
+python - <<'PYCAP'
+import json
+import os
+import urllib.request
+
+request = urllib.request.Request(
+    'http://127.0.0.1:8642/v1/capabilities',
+    headers={{'Authorization': 'Bearer ' + os.environ['CODEX_RUNNER_API_KEY']}},
+)
+with urllib.request.urlopen(request, timeout=5) as response:
+    payload = json.load(response)
+if payload.get('provider') != 'openai-codex-cli':
+    raise SystemExit('unexpected runner provider')
+if payload.get('authenticated') is not True:
+    raise SystemExit('runner reports unauthenticated Codex')
+if payload.get('default_model') != 'gpt-5.6-terra':
+    raise SystemExit('unexpected default model')
+if payload.get('models') != {models_json}:
+    raise SystemExit('unexpected model set')
+PYCAP
+
+test -n "${{GH_TOKEN:-}}"
+gh api user --jq .login >/dev/null
+actual_repo="$(gh api repos/{repository} --jq .full_name)"
+test "$actual_repo" = "{repository}"
+push_allowed="$(gh api repos/{repository} --jq '.permissions.push')"
+test "$push_allowed" = "true"
+remote="$(git -C /workspace remote get-url origin)"
+case "$remote" in
+  {https_remote}|{https_remote}.git) ;;
+  *) echo "unexpected Codex origin remote for {target.project}" >&2; exit 41 ;;
+esac
+git -C /workspace push --dry-run origin \
+  HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
+"""
+
+
+def codex_probe_command(target: CoderTarget) -> list[str]:
+    return [
+        *compose_prefix(),
+        "exec",
+        "-T",
+        target.coder_service,
+        "sh",
+        "-ceu",
+        codex_probe_script(target),
+    ]
 
 
 def verify_github_access(
@@ -225,11 +286,21 @@ def verify_github_access(
     *,
     runner: Runner = _default_runner,
 ) -> None:
-    run_checked(
-        github_probe_command(target),
-        timeout_seconds=45,
-        runner=runner,
-    )
+    run_checked(github_probe_command(target), timeout_seconds=45, runner=runner)
+
+
+def verify_codex_access(
+    target: CoderTarget,
+    *,
+    runner: Runner = _default_runner,
+) -> None:
+    auth = ROOT / "codex" / target.project / "auth.json"
+    if not auth.is_file() or auth.stat().st_size == 0:
+        raise SmokeError(f"Codex auth отсутствует: {auth}")
+    mode = stat.S_IMODE(auth.stat().st_mode)
+    if mode != 0o600:
+        raise SmokeError(f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}")
+    run_checked(codex_probe_command(target), timeout_seconds=60, runner=runner)
 
 
 def main() -> int:
@@ -239,11 +310,13 @@ def main() -> int:
         raise SmokeError(f"Отсутствует Hermes Coder root: {ROOT}")
 
     for target in CODERS:
-        wait_for_gateway(target)
+        wait_for_service(target.chat_service)
+        wait_for_service(target.coder_service)
         verify_github_access(target)
+        verify_codex_access(target)
         print(
-            f"Hermes Coder GitHub smoke: {target.project} -> "
-            f"{target.repository}: AUTH_OK, PUSH_OK"
+            f"Hermes/Codex smoke: {target.project} -> {target.repository}: "
+            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, PUSH_OK"
         )
     return 0
 
