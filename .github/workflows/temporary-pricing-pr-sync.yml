@@ -54,10 +54,23 @@ jobs:
               raise SystemExit(f'expected 5 prepared run blocks, found {len(blocks)}')
           for number, block in enumerate(blocks[:-1], start=1):
               if number == 1:
+                  block = block.replace(
+                      "from pathlib import Path\n",
+                      "from pathlib import Path\nfrom inspect import cleandoc\n",
+                      1,
+                  )
                   block = block.replace(" = '''", " = r'''")
                   block = block.replace(
                       "write_text(\n              '''",
                       "write_text(\n              r'''",
+                  )
+                  block = block.replace(
+                      "write_text(\n              r'''",
+                      "write_text(\n              cleandoc(r'''",
+                  )
+                  block = block.replace(
+                      "'''.replace(\"          \", \"\"),\n              encoding=\"utf-8\",",
+                      "''') + \"\\n\",\n              encoding=\"utf-8\",",
                   )
               print(f'Executing prepared block {number}')
               subprocess.run(
