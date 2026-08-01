@@ -8,7 +8,7 @@
 
 Проверены:
 
-- все 631 production Python modules под `velvet_bot`;
+- все 638 production Python modules под `velvet_bot`;
 - application bootstrap и startup composition;
 - Router bundles и порядок Telegram controllers;
 - domain/application/infrastructure boundaries;
@@ -34,9 +34,9 @@ Velvet имеет рабочие логические domain/application/persist
 
 По `docs/package_architecture_inventory.*` и `docs/package_architecture_exemptions.json`:
 
-- production modules: **631**;
-- production LOC: **136 683**;
-- layer counts: application 20, composition 63, core 7, domain 176, infrastructure 25, other 1, presentation 214, root 114, service 8, worker 3;
+- production modules: **638**;
+- production LOC: **138 468**;
+- layer counts: application 21, composition 63, core 7, domain 179, infrastructure 27, other 1, presentation 215, root 114, service 8, worker 3;
 - startup installer stages: **28**;
 - registered file/category fingerprints: **546**;
 - mandatory exemptions: **546**;
@@ -80,8 +80,8 @@ Exemptions распределены между owner issues #455/#457/#458/#459/
 
 По `docs/repository_layout_inventory.*`:
 
-- repository modules: **41**;
-- domain repositories: **34**;
+- repository modules: **42**;
+- domain repositories: **35**;
 - infrastructure PostgreSQL adapters: **7**;
 - central repositories: **0**;
 - root repositories: **0**;
@@ -121,8 +121,8 @@ Package gate связывает shared/private и root-module SHA-256 fingerprin
 
 ### P2 stability
 
-- broad exception boundaries: 102;
-- approved boundaries: 102;
+- broad exception boundaries: 103;
+- approved boundaries: 103;
 - unresolved boundaries: 0;
 - callback handlers: 132;
 - late/missing acknowledgments: 0.
@@ -179,11 +179,11 @@ PR #478 закрывает #460:
 ```text
 velvet_bot/
   app/                         bootstrap и 63 composition modules/installers
-  application/                 20 transport-neutral use-case modules
+  application/                 21 transport-neutral use-case modules
   core/                        7 config/access/base contract modules
-  domains/                     176 domain modules и 34 repositories
-  infrastructure/              25 PostgreSQL/provider/Telegram/filesystem adapters
-  presentation/                214 Telegram presentation modules
+  domains/                     179 domain modules и 35 repositories
+  infrastructure/              27 PostgreSQL/provider/Telegram/filesystem adapters
+  presentation/                215 Telegram presentation modules
   services/                    8 integration/application service modules
   workers/                     3 worker boundary modules
   *.py                         113 classified root modules + package __init__

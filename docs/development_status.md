@@ -93,13 +93,13 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 
 По generated inventories текущего среза:
 
-- production modules package-wide: **631**;
-- production LOC: **136 683**;
+- production modules package-wide: **638**;
+- production LOC: **138 468**;
 - root modules `velvet_bot/*.py`: **113**;
 - активные Router imports в четырёх bundles: **84**;
 - runtime compatibility components: **8**;
-- repository modules: **41**;
-- domain repositories: **34**;
+- repository modules: **42**;
+- domain repositories: **35**;
 - infrastructure PostgreSQL adapters: **7**;
 - startup installer stages: **28**;
 - registered package architecture fingerprints: **546**;
