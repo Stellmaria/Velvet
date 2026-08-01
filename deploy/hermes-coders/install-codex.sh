@@ -41,22 +41,37 @@ install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$ROOT/workspaces"
 clone_workspace() {
   local repo_url="$1"
   local target="$2"
+  local git_name="$3"
+  local git_email="$4"
 
   if [[ -d "$target/.git" ]]; then
     echo "Codex workspace уже существует: $target"
-    return
+    chown -R "$APP_USER:$APP_GROUP" "$target"
+  else
+    if [[ -e "$target" ]] && [[ -n "$(find "$target" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+      echo "Каталог не пуст и не является Git checkout: $target" >&2
+      exit 3
+    fi
+    rm -rf "$target"
+    runuser -u "$APP_USER" -- git clone --filter=blob:none "$repo_url" "$target"
   fi
-  if [[ -e "$target" ]] && [[ -n "$(find "$target" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-    echo "Каталог не пуст и не является Git checkout: $target" >&2
-    exit 3
-  fi
-  rm -rf "$target"
-  runuser -u "$APP_USER" -- git clone --filter=blob:none "$repo_url" "$target"
+  runuser -u "$APP_USER" -- git -C "$target" config user.name "$git_name"
+  runuser -u "$APP_USER" -- git -C "$target" config user.email "$git_email"
+  runuser -u "$APP_USER" -- git -C "$target" config \
+    credential.https://github.com.helper '!gh auth git-credential'
   chown -R "$HERMES_UID_VALUE:$HERMES_GID_VALUE" "$target"
 }
 
-clone_workspace "$VELVET_REPO" "$ROOT/workspaces/velvet-codex"
-clone_workspace "$MAX_REPO" "$ROOT/workspaces/max-codex"
+clone_workspace \
+  "$VELVET_REPO" \
+  "$ROOT/workspaces/velvet-codex" \
+  "Codex Velvet Coder" \
+  "codex-velvet@users.noreply.github.com"
+clone_workspace \
+  "$MAX_REPO" \
+  "$ROOT/workspaces/max-codex" \
+  "Codex Max Coder" \
+  "codex-max@users.noreply.github.com"
 
 python3 - "$ROOT/secrets/velvet.env" "$ROOT/secrets/max.env" <<'PY'
 from __future__ import annotations
@@ -122,9 +137,16 @@ for project in velvet max; do
   codex_home="$ROOT/codex/$project"
   cat > "$codex_home/config.toml" <<'EOF'
 model = "gpt-5.6-terra"
+sandbox_mode = "workspace-write"
+approval_policy = "never"
 cli_auth_credentials_store = "file"
+check_for_update_on_startup = false
+
+[sandbox_workspace_write]
+network_access = true
 
 [shell_environment_policy]
+ignore_default_excludes = true
 exclude = [
   "API_SERVER_KEY",
   "BYESU_HERMES_CODEX_API_KEY",
@@ -134,6 +156,11 @@ exclude = [
   "PGPASSWORD",
   "TELEGRAM_BOT_TOKEN",
 ]
+
+[features]
+apps = false
+plugins = false
+tool_suggest = false
 EOF
   chown "$HERMES_UID_VALUE:$HERMES_GID_VALUE" "$codex_home/config.toml"
   chmod 0600 "$codex_home/config.toml"
