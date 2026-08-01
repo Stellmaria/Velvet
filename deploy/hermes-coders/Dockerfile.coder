@@ -39,6 +39,7 @@ RUN set -eux; \
     codex --version | grep -F "${CODEX_VERSION}"
 
 COPY --chmod=0555 codex_runner.py /app/codex_runner.py
+COPY --chmod=0555 codex_routed_runner.py /app/codex_routed_runner.py
 
 LABEL org.opencontainers.image.title="Velvet Hermes Coder" \
       org.opencontainers.image.description="Hermes Agent plus pinned OpenAI Codex CLI, GitHub and PostgreSQL tooling"
