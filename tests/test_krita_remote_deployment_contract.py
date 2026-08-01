@@ -9,6 +9,9 @@ def test_server_compose_exposes_krita_api_only_on_loopback() -> None:
 
     assert "127.0.0.1:${KRITA_REMOTE_HOST_PORT:-8766}" in compose
     assert "${KRITA_REMOTE_PORT:-8766}" in compose
+    assert 'KRITA_REMOTE_BIND_HOST: 0.0.0.0' in compose
+    assert 'KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND: "true"' in compose
+    assert '0.0.0.0:${KRITA_REMOTE_HOST_PORT' not in compose
 
 
 def test_remote_worker_migration_has_lease_and_worker_registry() -> None:
@@ -25,5 +28,9 @@ def test_server_env_keeps_remote_worker_disabled_by_default() -> None:
     env = (ROOT / ".env.krita-remote.example").read_text(encoding="utf-8")
 
     assert "KRITA_REMOTE_WORKER_ENABLED=false" in env
+    assert "KRITA_REMOTE_BIND_HOST=127.0.0.1" in env
+    assert "KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND=false" in env
     assert "KRITA_REMOTE_WORKER_TOKEN=" in env
+    assert "KRITA_REMOTE_MAX_CONCURRENT_UPLOADS=2" in env
+    assert "KRITA_REMOTE_REQUEST_TIMEOUT_SECONDS=120" in env
     assert "KRITA_BRIDGE_DIR=/app/runtime/krita" in env
