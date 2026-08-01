@@ -4,12 +4,24 @@ on:
   push:
     branches:
       - hotfix/krita-stale-cleanup-warning
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
+concurrency:
+  group: apply-krita-stale-cleanup-hotfix
+  cancel-in-progress: true
+
 jobs:
   apply:
+    if: github.head_ref == 'hotfix/krita-stale-cleanup-warning' || github.ref_name == 'hotfix/krita-stale-cleanup-warning'
     runs-on: ubuntu-24.04
     env:
       PYTHONUNBUFFERED: "1"
