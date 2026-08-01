@@ -42,7 +42,7 @@ from velvet_bot.domains.telegram_storage.repository import (
     WatermarkBackfillItem,
 )
 from velvet_bot.domains.telegram_storage.uploader import TelegramStorageUploader
-from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
+from velvet_bot.infrastructure.krita_bridge import KritaBridge
 
 logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[str], Awaitable[None]]
@@ -81,7 +81,7 @@ class TelegramStorageMigrationService:
             repository=self.repository,
             settings=self.settings,
         )
-        self.bridge = KritaBridge(default_krita_bridge_dir())
+        self.bridge = KritaBridge(self.settings.krita_bridge_dir)
 
     async def run(
         self,
@@ -366,7 +366,7 @@ class TelegramStorageMigrationService:
             try:
                 safe.append(self.bridge.paths.ensure_inside(value))
             except ValueError:
-                logger.warning("Refusing to delete path outside Krita bridge: %s", value)
+                logger.log(logging.WARNING if Path(value).exists() or Path(value).is_symlink() else logging.DEBUG, "Refusing to delete path outside Krita bridge: %s", value)
         return tuple(dict.fromkeys(safe))
 
     async def _migrate_backups(self, summary: MigrationSummary) -> None:
