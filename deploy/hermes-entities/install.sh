@@ -142,6 +142,7 @@ PY
 runuser -u "$SERVICE_USER" -- \
   docker compose --env-file "$VELVET_ENV_FILE" -f "$VELVET_COMPOSE_FILE" \
     --profile agent exec -T hermes \
+    /command/s6-setuidgid hermes \
     sh -ceu '
       test "$(id -u)" = "10000"
       test -r /opt/data/SOUL.md
