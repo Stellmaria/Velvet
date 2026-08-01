@@ -1,0 +1,120 @@
+name: storage librarian repository contract sync
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.head_ref == 'agent/storage-librarian'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Generate inventories and update P3E contract
+        run: |
+          python scripts/inventory_repository_layout.py \
+            --label p3e-repository-layout-complete \
+            --write
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path('.')
+          inventory = json.loads(
+              (root / 'docs/repository_layout_inventory.json').read_text(
+                  encoding='utf-8'
+              )
+          )
+          test_path = root / 'tests/test_p3e_repository_layout_inventory.py'
+          source = test_path.read_text(encoding='utf-8')
+
+          def replace(pattern: str, replacement: str) -> None:
+              global source
+              source, count = re.subn(pattern, replacement, source, count=1)
+              if count != 1:
+                  raise SystemExit(f'P3E contract replacement failed: {pattern}')
+
+          replacements = {
+              r'self\.assertEqual\([0-9_]+, inventory\["repository_module_count"\]\)': (
+                  f'self.assertEqual({int(inventory["repository_module_count"]):_}, '
+                  'inventory["repository_module_count"])'
+              ),
+              r'self\.assertEqual\([0-9_]+, inventory\["layout_counts"\]\["domain"\]\)': (
+                  f'self.assertEqual({int(inventory["layout_counts"]["domain"]):_}, '
+                  'inventory["layout_counts"]["domain"])'
+              ),
+              r'self\.assertEqual\([0-9_]+, inventory\["layout_counts"\]\["infrastructure"\]\)': (
+                  f'self.assertEqual({int(inventory["layout_counts"]["infrastructure"]):_}, '
+                  'inventory["layout_counts"]["infrastructure"])'
+              ),
+              r'self\.assertEqual\([0-9_]+, inventory\["root_module_count"\]\)': (
+                  f'self.assertEqual({int(inventory["root_module_count"]):_}, '
+                  'inventory["root_module_count"])'
+              ),
+          }
+          for pattern, replacement in replacements.items():
+              replace(pattern, replacement)
+          test_path.write_text(source, encoding='utf-8')
+          PY
+
+          mkdir -p /tmp/storage-librarian-repository-contract
+          cp -- \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/generated/telegram_navigation_inventory.md \
+            tests/test_p3e_repository_layout_inventory.py \
+            /tmp/storage-librarian-repository-contract/
+
+      - name: Commit synchronized repository contract to PR branch
+        run: |
+          git fetch origin agent/storage-librarian
+          git checkout -B agent/storage-librarian origin/agent/storage-librarian
+          cp -- \
+            /tmp/storage-librarian-repository-contract/repository_layout_inventory.json \
+            docs/repository_layout_inventory.json
+          cp -- \
+            /tmp/storage-librarian-repository-contract/repository_layout_inventory.md \
+            docs/repository_layout_inventory.md
+          cp -- \
+            /tmp/storage-librarian-repository-contract/telegram_navigation_inventory.md \
+            docs/generated/telegram_navigation_inventory.md
+          cp -- \
+            /tmp/storage-librarian-repository-contract/test_p3e_repository_layout_inventory.py \
+            tests/test_p3e_repository_layout_inventory.py
+
+          if git diff --quiet -- \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/generated/telegram_navigation_inventory.md \
+            tests/test_p3e_repository_layout_inventory.py
+          then
+            echo "Repository inventory contract already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/generated/telegram_navigation_inventory.md \
+            tests/test_p3e_repository_layout_inventory.py
+          git commit -m "Синхронизировать repository inventory Storage Librarian"
+          git push origin HEAD:agent/storage-librarian
