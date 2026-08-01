@@ -134,7 +134,8 @@ class HermesEntityDeploymentTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('install -d -m 0750 -o "$hermes_uid" -g "$hermes_gid"', source)
-        self.assertIn('tasks.json.lock', source)
+        self.assertIn('ledger="$hermes_data/orchestration/tasks.json"', source)
+        self.assertIn('lock="$ledger.lock"', source)
         self.assertIn('chmod 0600 "$ledger" "$lock"', source)
         self.assertIn('workspace / ".hermes.md"', source)
         self.assertIn('workspace / "AGENTS.md"', source)
