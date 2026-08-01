@@ -1,0 +1,31 @@
+[Unit]
+Description=Read-only Velvet Hermes incident monitor
+Requires=docker.service velvet-server-supervisor.service
+After=docker.service velvet-server-supervisor.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet
+EnvironmentFile=/srv/velvet/.env.server
+EnvironmentFile=/srv/hermes-operator-control/incident.env
+Environment=VELVET_APP_DIR=/srv/velvet
+Environment=VELVET_ENV_FILE=.env.server
+Environment=VELVET_COMPOSE_FILE=docker-compose.server.yml
+Environment=DOCKER_CONFIG=/srv/velvet/data/runtime/docker-config
+Environment=COMPOSE_BAKE=false
+ExecStart=/usr/bin/python3 /srv/velvet/scripts/hermes_incident_monitor.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/srv/velvet/data/runtime/supervisor /srv/velvet/data/logs
+
+[Install]
+WantedBy=multi-user.target
