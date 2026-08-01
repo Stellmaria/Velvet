@@ -17,6 +17,8 @@
 
 PR `#529` добавил главному Hermes фиксированный gateway для `status/logs/start/restart/update/rollback`. PR `#500` ранее разделил coder-агентов по репозиториям и выдал им отдельные workspaces, GitHub credentials и read-only DB роли. Между главным Hermes и coder-агентами отсутствовали очередь заданий, внутренний transport, журнал состояния, ожидание terminal результата и обратная доставка отчёта.
 
+Production VPS использует `scripts/server_supervisor.py` через `velvet-server-supervisor.service`. Пакет `velvet_supervisor` остаётся deprecated Windows runtime и не может быть единственной точкой автоматического обнаружения серверных падений.
+
 ### Планируемый объём
 
 - добавить отдельный `hermes-coder-router` без host mounts и runtime credentials;
@@ -24,8 +26,9 @@ PR `#529` добавил главному Hermes фиксированный gate
 - добавить `coderctl.py` с submit/status/wait/list/stop и постоянным журналом;
 - зафиксировать project routing Velvet/Max и строгий контракт задания;
 - расширить managed SOUL главного Hermes и обоих coder-агентов;
+- добавить read-only VPS incident monitor для Docker bot state/logs;
 - дождаться terminal результата аварийного Hermes run;
-- отправлять итог разбирательства через существующий Telegram notifier Supervisor;
+- отправлять начало и итог разбирательства через Telegram notifier;
 - добавить installer, runbook и regression tests.
 
 ### Критерии готовности
@@ -35,6 +38,7 @@ PR `#529` добавил главному Hermes фиксированный gate
 - Velvet-задача не может быть направлена Max-coder и наоборот;
 - coder создаёт ветку/PR, но не может выполнять merge или deployment;
 - task/run сохраняются в постоянном журнале;
+- VPS monitor выполняет только read-only `compose ps/logs` и `docker inspect`;
 - автоматический Velvet-инцидент завершается Telegram-отчётом;
 - unit, type, project notes, Docker и Compose checks проходят.
 
@@ -44,7 +48,7 @@ PR `#529` добавил главному Hermes фиксированный gate
 - новый internal network является единственным маршрутом router → coders;
 - автоматический watcher Max не входит в Velvet runtime и потребует связанного PR в Max;
 - ошибки модели или coder не являются основанием для merge/update без независимой проверки;
-- автоматическая передача инцидентов остаётся выключенной до server-side `HERMES_INCIDENT_ENABLED=true`.
+- installer включает отдельный read-only monitor, но не выдаёт ему mutating runtime routes.
 
 ## После завершения
 
@@ -58,8 +62,10 @@ PR `#529` добавил главному Hermes фиксированный gate
 - добавлены разные `API_SERVER_KEY` и preflight-проверки;
 - главный Hermes получил project routing, PR/CI verification и owner-approval contract;
 - coder SOUL требует одну ветку, один PR и структурированный terminal report;
-- Velvet incident client ожидает terminal Hermes run и возвращает очищенный результат;
-- Supervisor notifier отправляет terminal report владельцу;
+- Hermes incident client ожидает terminal run и возвращает очищенный результат;
+- добавлен отдельный `velvet-hermes-incident-monitor.service` для реального VPS runtime;
+- monitor детектирует container stop, auto-restart и подтверждённый unhealthy state, но не выполняет restart/update;
+- Telegram notifier отправляет начало и terminal report владельцу;
 - добавлен идемпотентный orchestration installer и runbook;
 - добавлены unit/security/deployment contract tests.
 
@@ -70,30 +76,31 @@ PR `#529` добавил главному Hermes фиксированный gate
 - `deploy/hermes-operator/compose.yaml` — router service;
 - `deploy/hermes-coders/compose.yaml` — private agent control network;
 - `deploy/hermes-coders/preflight.py` — разные API keys;
+- `scripts/hermes_incident_monitor.py` — read-only VPS watcher;
+- `deploy/systemd/velvet-hermes-incident-monitor.service` — systemd sandbox;
 - `deploy/hermes-orchestration/install.sh` — production installer;
-- `velvet_supervisor/hermes_incident.py` — terminal polling/callback;
-- `velvet_supervisor/runtime_extended.py` — Telegram terminal report;
-- `tests/test_hermes_coder_orchestration.py` и `tests/test_supervisor_hermes_incident.py` — regressions.
+- `velvet_supervisor/hermes_incident.py` — terminal polling/callback для совместимости runtime;
+- `velvet_supervisor/runtime_extended.py` — Telegram terminal report legacy runtime;
+- `tests/test_hermes_coder_orchestration.py`, `tests/test_server_hermes_incident_monitor.py` и `tests/test_supervisor_hermes_incident.py` — regressions.
 
 ### Миграции и совместимость
 
-SQL-миграций нет. Production базы и bot runtime не изменяются. Existing Telegram/GitHub/model credentials coder-агентов сохраняются. Installer добавляет только отдельные coder API keys и router env.
+SQL-миграций нет. Production базы и bot runtime не изменяются. Existing Telegram/GitHub/model credentials coder-агентов сохраняются. Installer добавляет только отдельные coder API keys, router env и incident env.
 
 ### Проверки
 
 - локальный AST/compile новых Python-модулей;
 - локальный `bash -n` installer;
-- unit tests router, ledger, redaction, terminal incident callback;
+- unit tests router, ledger, redaction, terminal incident callback и server monitor;
 - полный GitHub Actions CI после публикации draft PR.
 
 ### Незавершённое
 
 - синхронизировать ветку с текущим `main`;
-- завершить preflight вызов в installer;
 - открыть draft PR и исправить CI;
-- после merge установить на VPS и выполнить health smoke;
+- после merge установить на VPS и выполнить health/task smoke;
 - отдельным PR добавить автоматический incident watcher Max.
 
 ### Следующий шаг
 
-Завершить installer/runbook, открыть draft PR и довести все обязательные проверки до зелёного состояния без включения production orchestration до merge.
+Открыть draft PR и довести все обязательные проверки до зелёного состояния без установки production orchestration до merge.
