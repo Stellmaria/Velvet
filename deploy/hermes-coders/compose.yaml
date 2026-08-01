@@ -88,11 +88,9 @@ services:
       velvet-db-proxy:
         condition: service_healthy
     networks:
-      egress: {}
-      velvet-db: {}
-      agent-control:
-        aliases:
-          - hermes-coder-velvet
+      - egress
+      - velvet-db
+      - agent-control
 
   max-db-proxy:
     <<: *db-proxy
@@ -118,11 +116,9 @@ services:
       max-db-proxy:
         condition: service_healthy
     networks:
-      egress: {}
-      max-db: {}
-      agent-control:
-        aliases:
-          - hermes-coder-max
+      - egress
+      - max-db
+      - agent-control
 
 networks:
   egress:
