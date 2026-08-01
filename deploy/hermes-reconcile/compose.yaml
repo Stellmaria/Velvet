@@ -1,0 +1,43 @@
+name: hermes-reconcile-control
+
+services:
+  hermes-reconcile-gateway:
+    image: ${HERMES_RECONCILE_GATEWAY_IMAGE:-velvet-hermes-reconcile-gateway:local}
+    build:
+      context: ../..
+      dockerfile: deploy/hermes-reconcile/Dockerfile
+    restart: unless-stopped
+    user: "10001:${HERMES_OPS_SOCKET_GID:-10001}"
+    env_file:
+      - ${HERMES_OPS_ENV_FILE:-/srv/hermes-operator-control/operator.env}
+    volumes:
+      - /run/hermes-operator-reconcile:/run/hermes-operator-reconcile
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8878/health', timeout=3).read()
+      interval: 15s
+      timeout: 4s
+      retries: 4
+      start_period: 10s
+    mem_limit: ${HERMES_RECONCILE_MEMORY_LIMIT:-128m}
+    cpus: ${HERMES_RECONCILE_CPU_LIMIT:-0.25}
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      velvet-backend:
+        aliases:
+          - hermes-reconcile-gateway
+
+networks:
+  velvet-backend:
+    external: true
+    name: ${VELVET_BACKEND_NETWORK:-velvet_backend}
