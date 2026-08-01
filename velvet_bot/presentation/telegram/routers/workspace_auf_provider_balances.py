@@ -45,9 +45,14 @@ def _decimal(value: object) -> Decimal | None:
 
 
 def _byesu_api_key() -> str | None:
+    balance_key = os.getenv("BYESU_BALANCE_API_KEY", "").strip()
+    if balance_key:
+        return balance_key
+
     direct = os.getenv("BYESU_API_KEY", "").strip()
     if direct:
         return direct
+
     candidates = (
         ("AI_VISION_BASE_URL", "AI_VISION_API_KEY"),
         ("AI_TEXT_BASE_URL", "AI_TEXT_API_KEY"),
@@ -79,12 +84,25 @@ def _read_json(
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
-        raise RuntimeError("Byesu не ответил на запрос баланса.") from error
+    except urllib.error.HTTPError as error:
+        if error.code == 401:
+            message = "ключ Byesu отклонён"
+        elif error.code == 403:
+            message = "доступ к балансу Byesu запрещён"
+        elif error.code == 429:
+            message = "Byesu временно ограничил запросы"
+        else:
+            message = f"Byesu вернул HTTP {error.code}"
+        raise RuntimeError(message) from error
+    except (urllib.error.URLError, TimeoutError) as error:
+        raise RuntimeError("сеть Byesu недоступна") from error
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Byesu вернул неизвестный формат баланса") from error
+
     if not isinstance(payload, Mapping):
-        raise RuntimeError("Byesu вернул неизвестный формат баланса.")
+        raise RuntimeError("Byesu вернул неизвестный формат баланса")
     if payload.get("error"):
-        raise RuntimeError("Byesu отклонил запрос баланса.")
+        raise RuntimeError("Byesu отклонил запрос баланса")
     return payload
 
 
@@ -102,8 +120,10 @@ async def _fetch_byesu_balance() -> ProviderBalance:
             ),
             timeout=_PROVIDER_TIMEOUT_SECONDS + 1,
         )
-    except (RuntimeError, TimeoutError):
-        return ProviderBalance(None, "$", "баланс временно недоступен")
+    except TimeoutError:
+        return ProviderBalance(None, "$", "запрос баланса превысил время ожидания")
+    except RuntimeError as error:
+        return ProviderBalance(None, "$", str(error))
 
     value = _decimal(payload.get("balance_usd"))
     if value is None:
@@ -254,7 +274,7 @@ async def handle_auf_provider_balances(
             "<b>Внешние провайдеры</b>",
             _provider_line("Kie.ai", kie_balance),
             _provider_line("GRS AI", grs_balance),
-            _provider_line("Byesu", byesu_balance),
+            _provider_line("Byesu · баланс аккаунта", byesu_balance),
             "",
             "<b>Внутренний кошелёк Velvet</b>",
             f"• Доступно: <b>{format_auf_units(wallet.available_units)}</b>",
