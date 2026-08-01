@@ -23,14 +23,30 @@ Codex runners не получают production Docker socket, systemd, productio
 - GitHub token;
 - контейнер и resource limits.
 
-## Модели
+## Модели и маршрутизация
 
 ```text
-Основная: gpt-5.6-terra
-Резерв при model/rate/capacity error:
-  Terra -> Sol -> Luna
-  Luna  -> Terra -> Sol
-  Sol   -> Terra -> Luna
+Мелкая правка, README, документация, переименование -> gpt-5.6-luna
+Обычная разработка и исправление багов              -> gpt-5.6-terra
+Архитектура, миграции, security, большой рефактор   -> gpt-5.6-sol
+```
+
+Явный выбор в тексте задачи имеет приоритет:
+
+```text
+/model luna
+/model terra
+/model sol
+```
+
+Также поддерживаются формы `модель: луна`, `модель: терра` и `модель: сол`.
+
+При model/rate/capacity error действует резервная цепочка:
+
+```text
+Terra -> Sol -> Luna
+Luna  -> Terra -> Sol
+Sol   -> Terra -> Luna
 ```
 
 Разрешены только:
@@ -122,6 +138,8 @@ POST /v1/runs/{run_id}/stop
 Одновременно выполняется только одна задача на проект. Остальные runs ждут в очереди внутри процесса. Статус и очищенный вывод сохраняются атомарно в JSON-файлах с режимом `0600`.
 
 ## Безопасность окружения
+
+Codex работает в `workspace-write`; GitHub network включён внутри изолированного coder-контейнера. Apps, plugins и tool suggestions выключены.
 
 Codex shell не получает:
 
