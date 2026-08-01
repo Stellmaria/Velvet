@@ -1,9 +1,8 @@
 name: temporary package inventory commit
 
 on:
-  push:
-    branches:
-      - fix/byesu-balance-key-status
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
