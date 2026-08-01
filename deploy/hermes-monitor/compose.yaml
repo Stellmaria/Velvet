@@ -1,0 +1,43 @@
+name: hermes-monitor
+
+services:
+  hermes-monitor-gateway:
+    image: ${HERMES_MONITOR_GATEWAY_IMAGE:-velvet-hermes-monitor-gateway:local}
+    build:
+      context: ../..
+      dockerfile: deploy/hermes-monitor/Dockerfile
+    restart: unless-stopped
+    user: "10001:${HERMES_OPS_SOCKET_GID:-10001}"
+    env_file:
+      - ${HERMES_OPS_ENV_FILE:-/srv/hermes-operator-control/operator.env}
+    volumes:
+      - ${HERMES_OPS_MONITOR_RUNTIME_DIR:-/run/hermes-operator-monitor}:${HERMES_OPS_MONITOR_RUNTIME_DIR:-/run/hermes-operator-monitor}
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8879/health', timeout=3).read()
+      interval: 15s
+      timeout: 4s
+      retries: 4
+      start_period: 10s
+    mem_limit: ${HERMES_MONITOR_MEMORY_LIMIT:-128m}
+    cpus: ${HERMES_MONITOR_CPU_LIMIT:-0.25}
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      velvet-backend:
+        aliases:
+          - hermes-monitor-gateway
+
+networks:
+  velvet-backend:
+    external: true
+    name: ${VELVET_BACKEND_NETWORK:-velvet_backend}
