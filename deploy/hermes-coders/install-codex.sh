@@ -28,7 +28,7 @@ for required in \
   fi
 done
 
-install -d -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0700 \
+install -d -o "$HERMES_UID_VALUE" -g "$APP_GROUP" -m 0750 \
   "$ROOT/codex" \
   "$ROOT/codex/velvet" \
   "$ROOT/codex/max"
