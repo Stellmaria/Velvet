@@ -26,6 +26,9 @@ from velvet_bot.infrastructure.ai.storage_librarian_hermes import HermesRunsClie
 from velvet_bot.infrastructure.telegram.storage_librarian_files import (
     TelegramStorageObjectLoader,
 )
+from velvet_bot.infrastructure.telegram.storage_librarian_reports import (
+    TelegramStorageLibrarianReportPublisher,
+)
 
 logger = logging.getLogger(__name__)
 _scheduler_task: asyncio.Task[None] | None = None
@@ -45,11 +48,17 @@ def _build_service(
     database: Database,
     settings: StorageLibrarianSettings,
 ) -> StorageLibrarianService:
+    publish_reports = _env_enabled("STORAGE_LIBRARIAN_PUBLISH_REPORTS", False)
     return StorageLibrarianService(
         database=database,
         settings=settings,
         object_loader=TelegramStorageObjectLoader(bot),
         run_client=HermesRunsClient(settings),
+        report_publisher=(
+            TelegramStorageLibrarianReportPublisher(bot)
+            if publish_reports
+            else None
+        ),
     )
 
 
@@ -166,11 +175,13 @@ async def handle_storage_librarian_status(
         )
         return
     auto_enqueue = _env_enabled("STORAGE_LIBRARIAN_AUTO_ENQUEUE", False)
+    publish_reports = _env_enabled("STORAGE_LIBRARIAN_PUBLISH_REPORTS", False)
     lines = [
         "<b>Storage Librarian</b>",
         "",
         f"Состояние: <b>{'включён' if settings.enabled else 'выключен'}</b>",
         f"Фоновая очередь: <b>{'включена' if auto_enqueue else 'выключена'}</b>",
+        f"Публикация отчётов: <b>{'включена' if publish_reports else 'выключена'}</b>",
         f"Версия: <code>{escape(settings.analyzer_version)}</code>",
         "Категории: <code>" + escape(", ".join(settings.allowed_kinds)) + "</code>",
         "",
