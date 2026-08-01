@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "storage-librarian",
+  "generated_from": "working-tree",
   "repository_module_count": 42,
   "layout_counts": {
     "domain": 35,

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "storage-librarian",
+  "generated_from": "working-tree",
   "production_module_count": 638,
   "production_loc": 138468,
   "layer_counts": {

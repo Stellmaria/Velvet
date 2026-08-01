@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `storage-librarian`
+- Generated from: `working-tree`
 - Production modules: **638**
 - Production LOC: **138468**
 - Root modules: **113**
