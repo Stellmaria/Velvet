@@ -1,0 +1,169 @@
+from __future__ import annotations
+
+import json
+import os
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from velvet_bot.domains.telegram_storage.librarian_content import (
+    extract_storage_text,
+    parse_librarian_analysis,
+    redact_sensitive,
+)
+from velvet_bot.domains.telegram_storage.librarian_models import (
+    LibrarianObject,
+    StorageLibrarianSettings,
+)
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class StorageLibrarianMigrationContractTests(unittest.TestCase):
+    def test_migration_adds_librarian_queue_and_analysis_tables(self) -> None:
+        sql = (ROOT / "migrations" / "z031_telegram_storage_librarian.sql").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("telegram_storage_analysis_jobs", sql)
+        self.assertIn("telegram_storage_analysis", sql)
+        self.assertIn("'inbox'", sql)
+        self.assertIn("'analysis'", sql)
+
+    def test_owner_router_registers_librarian(self) -> None:
+        source = (
+            ROOT
+            / "velvet_bot"
+            / "presentation"
+            / "telegram"
+            / "routers"
+            / "core_operations_controllers"
+            / "owner_menu.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("register_storage_librarian(router)", source)
+
+    def test_manual_analysis_does_not_bulk_enqueue_archive(self) -> None:
+        source = (
+            ROOT
+            / "velvet_bot"
+            / "presentation"
+            / "telegram"
+            / "storage_librarian.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("process_once(auto_enqueue=False)", source)
+        self.assertIn("STORAGE_LIBRARIAN_AUTO_ENQUEUE", source)
+
+    def test_librarian_is_split_across_architecture_layers(self) -> None:
+        old_monolith = (
+            ROOT
+            / "velvet_bot"
+            / "domains"
+            / "telegram_storage"
+            / "librarian.py"
+        )
+        self.assertFalse(old_monolith.exists())
+        expected = (
+            ROOT / "velvet_bot" / "application" / "storage_librarian.py",
+            ROOT
+            / "velvet_bot"
+            / "domains"
+            / "telegram_storage"
+            / "librarian_repository.py",
+            ROOT
+            / "velvet_bot"
+            / "infrastructure"
+            / "telegram"
+            / "storage_librarian_files.py",
+            ROOT
+            / "velvet_bot"
+            / "infrastructure"
+            / "ai"
+            / "storage_librarian_hermes.py",
+        )
+        self.assertTrue(all(path.is_file() for path in expected))
+
+
+class StorageLibrarianSettingsTests(unittest.TestCase):
+    def test_disabled_by_default(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            settings = StorageLibrarianSettings.from_env()
+        self.assertFalse(settings.enabled)
+        self.assertNotIn("backups", settings.allowed_kinds)
+        self.assertNotIn("watermarks", settings.allowed_kinds)
+
+    def test_protected_storage_kinds_are_rejected(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"STORAGE_LIBRARIAN_ALLOWED_KINDS": "diagnostics,backups"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "защищённые категории"):
+                StorageLibrarianSettings.from_env()
+
+
+class StorageLibrarianPayloadTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.settings = StorageLibrarianSettings(
+            enabled=False,
+            hermes_base_url="http://hermes:8642",
+            hermes_api_key=None,
+            scan_interval_seconds=300,
+            poll_interval_seconds=2,
+            run_timeout_seconds=300,
+            max_object_bytes=1024 * 1024,
+            max_text_chars=20_000,
+            max_zip_entries=20,
+            max_attempts=3,
+            analyzer_version="test:v1",
+            allowed_kinds=("diagnostics",),
+        )
+
+    def test_json_object_is_rendered_with_manifest(self) -> None:
+        payload = json.dumps({"error": "timeout", "count": 3}).encode("utf-8")
+        item = LibrarianObject(
+            object_id=7,
+            storage_kind="diagnostics",
+            logical_key="diagnostics:errors:7",
+            original_name="errors.json",
+            mime_type="application/json",
+            size_bytes=len(payload),
+            sha256="a" * 64,
+            encrypted=False,
+            manifest={"source": "test"},
+            parts=(),
+        )
+        result = extract_storage_text(item, payload, settings=self.settings)
+        self.assertIn('"error": "timeout"', result)
+        self.assertIn('"source": "test"', result)
+        self.assertIn("Storage ID: 7", result)
+
+    def test_analysis_json_is_normalized(self) -> None:
+        result = parse_librarian_analysis(
+            """```json
+            {
+              "summary": "Повторяется timeout",
+              "tags": ["timeout", "network"],
+              "entities": [{"name": "Kie", "type": "provider"}],
+              "action_items": [{"text": "Проверить retry", "priority": "high"}],
+              "sensitivity": "normal",
+              "confidence": 91
+            }
+            ```"""
+        )
+        self.assertEqual(result.summary, "Повторяется timeout")
+        self.assertEqual(result.tags, ("timeout", "network"))
+        self.assertEqual(result.confidence, 91)
+        self.assertEqual(result.action_items[0]["priority"], "high")
+
+    def test_sensitive_values_are_redacted(self) -> None:
+        value = redact_sensitive(
+            "BOT_TOKEN=123456789:abcdefghijklmnopqrstuvwxyzABCDE "
+            "DATABASE_URL=postgresql://velvet:secret@postgres:5432/velvet"
+        )
+        self.assertNotIn("abcdefghijklmnopqrstuvwxyz", value)
+        self.assertNotIn(":secret@", value)
+        self.assertIn("[REDACTED]", value)
+
+
+if __name__ == "__main__":
+    unittest.main()
