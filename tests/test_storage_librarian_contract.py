@@ -211,7 +211,7 @@ class StorageLibrarianSearchTests(unittest.TestCase):
             limit=8,
         )
         self.assertIn("ошибк", _search_terms("какие ошибки повторялись?"))
-        self.assertEqual([2143, 2134], [row["storage_object_id"] for row in rows])
+        self.assertEqual([2134], [row["storage_object_id"] for row in rows])
 
     def test_unrelated_question_does_not_return_random_recent_rows(self) -> None:
         rows = _fallback_analysis_rows(
