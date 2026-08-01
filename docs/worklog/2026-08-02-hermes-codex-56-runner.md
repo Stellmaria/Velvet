@@ -1,122 +1,92 @@
-# 2026-08-02 — Hermes coder через Codex GPT-5.6
+# Сессия: Hermes coder через Codex GPT-5.6
 
-- Дата: `2026-08-02`
-- ID: `hermes-codex-56-runner`
-- Линия/фаза: `server operations`
-- Статус: `реализовано в ветке, production smoke ожидает merge и device login`
-- Ветка: `infra/hermes-codex-56-runner`
-- Базовый commit: `0ad3e39e0607c55dc06fe4bdbb90ca3fdcaa779a`
+- Дата: 2026-08-02
+- ID: 2026-08-02-hermes-codex-56-runner
+- Линия/фаза: server operations / Hermes coder
+- Статус: частично
+- Ветка: infra/hermes-codex-56-runner
+- Базовый commit: 0ad3e39e0607c55dc06fe4bdbb90ca3fdcaa779a
 
-## Цель
+## Перед началом
 
-Перевести задания главного Hermes на Codex CLI, авторизованный через ChatGPT-план владельца, чтобы использовать модели `gpt-5.6-luna`, `gpt-5.6-terra` и `gpt-5.6-sol`, сохранив изоляцию проектов Velvet/Max, текущую Runs API orchestration и отдельные Telegram Hermes gateway.
+### Цель
 
-## Исходное состояние
+Перевести оркестрированные coder-задачи главного Hermes с Byesu-backed gateway на локальный OpenAI Codex CLI, авторизованный через ChatGPT-план владельца, сохранив отдельные проекты Velvet и Max, существующий Runs API и приватные Telegram Hermes gateway.
 
-До изменения `hermes-coder-velvet` и `hermes-coder-max` являлись Hermes gateway и отправляли модельные запросы на Byesu. Сброс лимита Codex/ChatGPT на них не влиял. Главный `hermes-coder-router` уже умел направлять задачи по фиксированным Runs API адресам, вести журнал, проверять PR и CI, поэтому менять внешний orchestration contract не требовалось.
+### Исходный контекст
 
-## Реализовано
+До изменения `hermes-coder-velvet` и `hermes-coder-max` отправляли модельные запросы через Byesu. Сброс лимита ChatGPT/Codex на эти запросы не влиял. `hermes-coder-router` уже направлял задачи по фиксированному Runs API, вёл журнал и проверял PR/CI, поэтому внешний orchestration contract требовалось сохранить.
 
-### Codex backend
+### Планируемый объём
 
-Добавлен `deploy/hermes-coders/codex_runner.py`:
+- добавить отдельный Codex runner для каждого проекта;
+- сохранить Runs API `capabilities`, `submit`, `status` и `stop`;
+- разделить Codex coder и старые Telegram chat gateway;
+- изолировать auth, workspaces, журналы и GitHub credentials;
+- добавить установку, device login, preflight, runtime smoke и документацию;
+- покрыть новую схему unit- и contract-тестами.
 
-- совместимый Runs API: capabilities, submit, status и stop;
-- запуск `codex exec --json --model ... --sandbox workspace-write`;
-- разрешённый набор только из Luna, Terra и Sol;
-- основная модель Terra;
-- fallback между моделями только при rate/model/capacity error;
-- один активный run на проект;
-- атомарный журнал runs с режимом `0600`;
-- timeout, process-group termination и stop endpoint;
-- очистка секретов из логов и terminal output.
+### Критерии готовности
 
-### Разделение сервисов
+- главный Hermes направляет coder-задачи в Codex CLI;
+- разрешены только `gpt-5.6-luna`, `gpt-5.6-terra` и `gpt-5.6-sol`;
+- Velvet и Max имеют отдельные `CODEX_HOME`, auth и workspaces;
+- Codex не получает production Docker socket, systemd, production checkout или DB credentials;
+- существующий router не требует изменения публичного контракта;
+- CI проекта проходит;
+- после merge выполнены device login, preflight и live smoke на VPS.
 
-Старые Telegram gateway переименованы:
+### Риски и ограничения
 
-```text
-hermes-chat-velvet
-hermes-chat-max
-```
+- device login требует интерактивного подтверждения владельца;
+- ChatGPT/Codex usage limits являются общими для авторизованного плана;
+- `GH_TOKEN` необходим внутри coder sandbox для branch, push и PR;
+- live production smoke невозможно завершить до merge и серверной авторизации;
+- изменения не должны прерывать существующие приватные Telegram coder-боты.
 
-Имена, на которые уже смотрит router, заняты Codex backend:
+## После завершения
 
-```text
-hermes-coder-velvet
-hermes-coder-max
-```
+### Фактически сделано
 
-Таким образом, главный Hermes начинает использовать Codex без изменения router URL, а приватные Telegram coder-боты сохраняются как отдельный Byesu-backed chat layer.
+- добавлены `codex_runner.py` и routed entrypoint;
+- сохранён существующий Runs API и внутренние адреса router;
+- старые Byesu-backed Telegram gateway выделены в `hermes-chat-velvet` и `hermes-chat-max`;
+- созданы отдельные Codex services `hermes-coder-velvet` и `hermes-coder-max`;
+- добавлены отдельные `CODEX_HOME`, workspaces, run journals и API keys;
+- Codex CLI закреплён на версии `0.144.4`, release asset проверяется по SHA-256;
+- добавлены `install-codex.sh`, `codex-login.sh`, `CODEX.md`, preflight и runtime smoke;
+- секреты Telegram, Byesu, database и Runs API исключены из Codex shell;
+- `GH_TOKEN` оставлен только для работы с ограниченным репозиторием;
+- исправлена тестовая совместимость после обобщения `wait_for_gateway` в `wait_for_service`.
 
-### Изоляция
+### Миграции и совместимость
 
-Каждый Codex runner получает отдельные:
+Публичный Runs API и URLs `hermes-coder-*` сохранены. Существующие Telegram gateway не удалены, а переименованы в `hermes-chat-*`. Production deployment требует создания Codex homes и workspaces, двух device login и перезапуска coder/router services. Миграций PostgreSQL нет.
 
-- `CODEX_HOME` и device-login auth;
-- Git checkout;
-- run journal;
-- Runs API key;
-- GitHub token;
-- Docker service и resource limits.
+### Проверки
 
-Codex services не подключены к production DB networks, не имеют Docker socket, systemd, production checkout или host ports. Доступны только egress и internal `hermes-agent-control`.
+- локальный целевой набор Codex/Hermes contract-тестов: `24 tests, OK`;
+- Python sources проходят compile/AST parse;
+- Bash installers проходят `bash -n`;
+- GitHub Actions PR #547: `type check` прошёл;
+- первый CI run выявил устаревшее имя helper-функции в regression-тесте и несоответствие worklog-шаблону; оба замечания исправлены в ветке;
+- актуальный полный CI должен пройти после публикации исправлений;
+- live VPS smoke остаётся обязательным после merge и device login.
 
-### CLI и supply chain
+### PR и commit
 
-`Dockerfile.coder` закрепляет Codex CLI `0.144.4`, скачивает официальный GitHub release asset и проверяет опубликованный SHA-256 digest. В образ также добавлены `bubblewrap`, `git` и `ripgrep`.
+- PR: #547 `Перевести Hermes coder на Codex GPT-5.6`;
+- ветка: `infra/hermes-codex-56-runner`;
+- commits: реализация и последующие CI-fixes в этой ветке.
 
-### Авторизация и установка
+### Незавершённое
 
-Добавлены:
+- получить зелёный полный CI для актуального head PR #547;
+- слить PR в `main`;
+- обновить `/srv/velvet` на VPS;
+- выполнить device login отдельно для Velvet и Max;
+- выполнить preflight, runtime smoke и тестовую coder-задачу с созданием PR.
 
-- `install-codex.sh` для отдельных homes, workspaces, ключей и сборки;
-- `codex-login.sh` для `codex login --device-auth` по каждому проекту;
-- `CODEX.md` с production runbook.
+### Следующий шаг
 
-Auth-файлы не копируются между проектами и должны иметь режим `0600`.
-
-### Sandbox и секреты
-
-Codex работает в `workspace-write`, без approval prompts. Network разрешён внутри отдельного coder-контейнера, поскольку агенту нужны GitHub push и PR operations.
-
-Shell получает `GH_TOKEN`, но исключает:
-
-- Runs API keys;
-- Byesu keys;
-- Telegram token;
-- database credentials.
-
-Apps/plugins/tool suggestions выключены, чтобы Codex не синхронизировал посторонние материалы в рабочий Git checkout.
-
-## Проверки
-
-Добавлены или обновлены:
-
-- `tests/test_hermes_codex_runner.py` — model allowlist, fallback, JSONL parsing, redaction, private run journal и capabilities;
-- `tests/test_hermes_coders_contract.py` — Compose isolation, отдельные workspaces/auth, pinned CLI, secret policy, device login и systemd order;
-- `runtime_smoke.py` — Telegram gateway health, Codex login, CLI version, Luna/Terra/Sol capabilities, GitHub auth и dry-run push;
-- `preflight.py` — отдельные keys/auth/workspaces, Git identity, sandbox/network policy и file modes.
-
-Локально выполнены Python compile, Bash syntax и 19 новых/переписанных unit/contract тестов. Полный GitHub Actions CI будет доступен после создания pull request.
-
-## Production-порядок после merge
-
-```bash
-cd /srv/velvet
-sudo bash deploy/hermes-coders/install-codex.sh
-sudo bash deploy/hermes-coders/codex-login.sh velvet
-sudo bash deploy/hermes-coders/codex-login.sh max
-sudo env HERMES_CODERS_ROOT=/srv/hermes-coders python3 deploy/hermes-coders/preflight.py
-sudo systemctl restart hermes-coders.service
-sudo systemctl restart hermes-coder-router.service
-sudo env HERMES_CODERS_ROOT=/srv/hermes-coders python3 deploy/hermes-coders/runtime_smoke.py
-```
-
-## Незавершённое
-
-- создать pull request и получить полный CI;
-- после merge обновить VPS;
-- выполнить два интерактивных device login;
-- провести live Codex task smoke на Velvet и Max;
-- проверить созданный test PR и только затем использовать backend для реальных задач.
+После зелёного CI слить PR #547. Затем установить Codex runner на VPS, выполнить два device login и подтвердить live smoke до передачи реальных задач.
