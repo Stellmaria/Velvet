@@ -3,7 +3,7 @@
 - Дата: 2026-08-01
 - ID: `kael-librarian-personas-20260801`
 - Линия/фаза: Hermes identities, project context и runtime isolation
-- Статус: `завершено в коде, production rollout ожидается`
+- Статус: `частично`
 - Ветка: `agent/kael-librarian-personas`
 - Базовый commit: `b1c15532566674f423f64776efba934123ddca6d`
 
