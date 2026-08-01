@@ -175,6 +175,9 @@ case "$helper" in
     exit 32
     ;;
 esac
+
+git -C /workspace push --dry-run origin \
+  HEAD:refs/heads/hermes-auth-smoke-{target.project} >/dev/null
 """
 
 
