@@ -1,0 +1,72 @@
+name: storage librarian merge inventory
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.head_ref == 'agent/storage-librarian'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Generate inventories on merge state
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --label storage-librarian \
+            --write
+          python scripts/inventory_repository_layout.py \
+            --label storage-librarian \
+            --write
+          python scripts/update_p2_stability_inventory.py \
+            --label storage-librarian \
+            --schema-version 76
+          mkdir -p /tmp/velvet-inventories
+          cp -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            /tmp/velvet-inventories/
+
+      - name: Commit merge-state inventories to PR branch
+        run: |
+          git fetch origin agent/storage-librarian
+          git checkout -B agent/storage-librarian origin/agent/storage-librarian
+          cp -- /tmp/velvet-inventories/* docs/
+          if git diff --quiet -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md
+          then
+            echo "Merge-state inventories already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md
+          git commit -m "Обновить merge-state inventory Storage Librarian"
+          git push origin HEAD:agent/storage-librarian
