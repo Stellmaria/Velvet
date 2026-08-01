@@ -1,21 +1,21 @@
 # Package-wide architecture inventory
 
-- Generated from: `p1-package-architecture-baseline`
-- Production modules: **640**
-- Production LOC: **139184**
+- Generated from: `pr-543-sensitive-vision-policy`
+- Production modules: **641**
+- Production LOC: **139635**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **42**
 - Startup installer stages: **28**
-- Registered package violations: **549**
-- Registered exemptions: **549**
+- Registered package violations: **548**
+- Registered exemptions: **548**
 
 ## Layers
 
 - `application`: **21** modules
 - `composition`: **64** modules
 - `core`: **7** modules
-- `domain`: **179** modules
+- `domain`: **180** modules
 - `infrastructure`: **28** modules
 - `other`: **1** modules
 - `presentation`: **215** modules
@@ -76,7 +76,7 @@
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **108**
 - `type-ignore-usage`: **18**
-- `typing-any-usage`: **113**
+- `typing-any-usage`: **112**
 
 ## Largest modules
 

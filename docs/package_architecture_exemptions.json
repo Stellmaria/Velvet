@@ -6828,20 +6828,6 @@
       "issue": "#460"
     },
     {
-      "id": "typing-any-usage:velvet_bot/domains/vision_routing/client.py:143bb3b5c3f17619",
-      "owner": "architecture-governance",
-      "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
-      "consumers": [
-        "velvet_bot/domains/vision_routing/__init__.py",
-        "velvet_bot/domains/vision_routing/factory.py",
-        "velvet_bot/domains/vision_routing/service.py"
-      ],
-      "replacement": "Canonical boundary tracked by #460.",
-      "removal_condition": "Remove this exemption when #460 retires the fingerprinted debt without behavior regression.",
-      "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#460"
-    },
-    {
       "id": "typing-any-usage:velvet_bot/domains/vision_routing/integration.py:a90fff492f411429",
       "owner": "architecture-governance",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
