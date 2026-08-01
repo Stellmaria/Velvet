@@ -1,6 +1,11 @@
-# Сущности Каэля, Velvet Librarian и coder-агентов
+# Сессия: сущности Каэля, Velvet Librarian и coder-агентов
 
-Статус: частично
+- Дата: 2026-08-01
+- ID: `kael-librarian-personas-20260801`
+- Линия/фаза: Hermes identities, project context и runtime isolation
+- Статус: `частично`
+- Ветка: `agent/kael-librarian-personas`
+- Базовый commit: `b1c15532566674f423f64776efba934123ddca6d`
 
 ## Перед началом
 
@@ -16,12 +21,7 @@
 
 ### Исходный контекст
 
-- Storage Librarian из PR #535 выполнялся через основной Hermes endpoint и имел только request-level instructions;
-- `SOUL.operator.md` смешивал личность с командами runtime;
-- coder `SOUL.md` смешивали личность, Git, БД и orchestration contract;
-- production-логи подтвердили root-owned `/opt/data/tools` и orchestration ledger;
-- main Hermes API уже поддерживает `POST /v1/runs/{run_id}/stop`, но operator пытался использовать coderctl;
-- Telegram topics созданы: Inbox `2476`, Hermes Reports `2478`.
+Storage Librarian из PR #535 выполнялся через основной Hermes endpoint и имел только request-level instructions. `SOUL.operator.md` и coder `SOUL.md` смешивали личность с runtime, Git, БД и orchestration procedures. Production-логи подтвердили root-owned `/opt/data/tools` и orchestration ledger. Main Hermes API поддерживает `POST /v1/runs/{run_id}/stop`, но operator пытался использовать coderctl. Telegram topics уже созданы: Inbox `2476`, Hermes Reports `2478`.
 
 ### Планируемый объём
 
@@ -45,16 +45,7 @@
 
 ### Риски и ограничения
 
-- отдельный Hermes runtime увеличивает постоянное потребление памяти;
-- provider routing копируется из проверенного профиля Каэля и требует production smoke;
-- автоматическая публикация в Hermes Reports не входит в этот срез;
-- Max incident monitor остаётся выключенным до отдельного исправления дедупликации restart-loop.
-
-### Базовый commit и ветка
-
-- session: `kael-librarian-personas-20260801`;
-- base: `b1c15532566674f423f64776efba934123ddca6d`;
-- branch: `agent/kael-librarian-personas`.
+Отдельный Hermes runtime увеличивает постоянное потребление памяти. Provider routing копируется из проверенного профиля Каэля и требует production smoke. Автоматическая публикация в Hermes Reports не входит в этот срез. Max incident monitor остаётся выключенным до отдельного исправления дедупликации restart-loop.
 
 ## После завершения
 
@@ -75,15 +66,17 @@
 
 ### Миграции и совместимость
 
-- новых SQL-миграций нет;
-- `z031` не изменяется;
-- generic `HERMES_BASE_URL/HERMES_API_KEY` сохраняются для Каэля и incident integration;
-- dedicated Librarian variables имеют fallback на старые generic variables для мягкого обновления.
+Новых SQL-миграций нет, `z031` не изменяется. Generic `HERMES_BASE_URL/HERMES_API_KEY` сохраняются для Каэля и incident integration. Dedicated Librarian variables имеют fallback на старые generic variables для мягкого обновления.
 
 ### Проверки
 
-- локальные/CI проверки: ожидаются;
-- production install и Telegram smoke: ожидаются после merge.
+Draft PR #538 открыт. Полный CI выполняется. Production install и Telegram smoke ожидаются после merge.
+
+### PR и commit
+
+- PR: `https://github.com/Stellmaria/Velvet/pull/538`;
+- head commit на момент открытия: `09f3e7021c33e488b32cacbf3537f3cd9d88837b`;
+- merge commit: ожидается после проверки и явного разрешения владельца.
 
 ### Незавершённое
 
@@ -94,4 +87,4 @@
 
 ### Следующий шаг
 
-Запустить CI, устранить contract/inventory drift, слить PR после явного разрешения и выполнить два installer на VPS с manual-first smoke-test.
+Устранить замечания CI. После merge обновить VPS, выполнить два installer, проверить сущности и права, затем провести manual-first Librarian smoke-test.
