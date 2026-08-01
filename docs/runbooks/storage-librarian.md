@@ -14,13 +14,23 @@ Velvet bot
   ├─ отправляет bounded text во внутренний Runs API
   └─ публикует готовое резюме в Hermes Reports
 
-Velvet Librarian
+Velvet Librarian Hermes
   ├─ отдельный /opt/data, SOUL.md и AGENTS.md
   ├─ отдельный API key
   ├─ без Telegram/GitHub token
   ├─ без host port
-  └─ без terminal/file/web/browser/memory/delegation/code tools
+  ├─ без terminal/file/web/browser/memory/delegation/code tools
+  └─ custom model endpoint: http://ollama-librarian:11434/v1
+
+Ollama Librarian
+  ├─ только внутренняя сеть velvet_backend
+  ├─ qwen3.5:9b-q4_K_M
+  ├─ alias velvet-librarian-local:v1
+  ├─ context 65536
+  └─ отдельный persistent Docker volume
 ```
+
+Cloud fallback намеренно отсутствует. Если локальная модель недоступна, задача завершается явной ошибкой и не расходует провайдерские токены.
 
 ## Защищённые категории
 
@@ -33,7 +43,7 @@ Velvet Librarian
 - файлы выше настроенного лимита;
 - неподдерживаемые бинарные форматы.
 
-Перед отправкой:
+Перед анализом:
 
 - multipart собирается в памяти;
 - SHA256 каждой части и итогового объекта проверяется;
@@ -58,15 +68,26 @@ STORAGE_THREAD_ANALYSIS=2478
 ```dotenv
 STORAGE_LIBRARIAN_HERMES_BASE_URL=http://librarian-hermes:8642
 STORAGE_LIBRARIAN_HERMES_API_KEY=<отдельный ключ, не ключ Каэля>
+STORAGE_LIBRARIAN_HERMES_MEMORY_LIMIT=2g
+STORAGE_LIBRARIAN_HERMES_CPU_LIMIT=1.0
+
+STORAGE_LIBRARIAN_LOCAL_MODEL=velvet-librarian-local:v1
+STORAGE_LIBRARIAN_LOCAL_BASE_URL=http://ollama-librarian:11434/v1
+STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH=65536
+STORAGE_LIBRARIAN_OLLAMA_IMAGE=ollama/ollama:0.32.3
+STORAGE_LIBRARIAN_OLLAMA_MEMORY_LIMIT=14g
+STORAGE_LIBRARIAN_OLLAMA_CPU_LIMIT=6.0
+STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE=30m
+STORAGE_LIBRARIAN_OLLAMA_VOLUME=velvet_librarian_ollama
 
 STORAGE_LIBRARIAN_ENABLED=false
 STORAGE_LIBRARIAN_AUTO_ENQUEUE=false
 STORAGE_LIBRARIAN_PUBLISH_REPORTS=true
 STORAGE_LIBRARIAN_ALLOWED_KINDS=diagnostics,exports,codex,releases,rework,inbox
-STORAGE_LIBRARIAN_ANALYZER_VERSION=velvet-librarian:v2
+STORAGE_LIBRARIAN_ANALYZER_VERSION=velvet-librarian:qwen3.5-9b-local:v3
 STORAGE_LIBRARIAN_SCAN_INTERVAL_SECONDS=300
 STORAGE_LIBRARIAN_POLL_INTERVAL_SECONDS=2
-STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=300
+STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=900
 STORAGE_LIBRARIAN_MAX_OBJECT_BYTES=12582912
 STORAGE_LIBRARIAN_MAX_TEXT_CHARS=120000
 STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES=40
@@ -84,35 +105,33 @@ cd /srv/velvet
 sudo bash deploy/hermes-entities/install.sh
 ```
 
-Installer:
-
-- ставит `SOUL.kael.md` как `/opt/data/SOUL.md` основного Hermes;
-- ставит операторский контракт как `/opt/data/AGENTS.md`;
-- устанавливает `runctl.py` для собственных Runs Каэля;
-- исправляет владельца `tools/`, `tasks.json` и `tasks.json.lock`;
-- ставит отдельные `SOUL.md` кодерам;
-- создаёт `.hermes.md` каждого coder workspace из репозиторного `AGENTS.md` и оркестрационного контракта;
-- добавляет generated `.hermes.md` в `.git/info/exclude`;
-- меняет Telegram display name основного бота на `Kᴀᴇʟ Vᴇʟᴠᴇᴛ`;
-- проверяет файлы и ledger от runtime-пользователя `hermes`, а не от root `docker exec`.
-
 Затем установить отдельный Librarian runtime:
 
 ```bash
 sudo bash deploy/hermes-librarian/install.sh
 ```
 
-Installer:
+Первый запуск:
+
+1. подготавливает local-only Hermes profile;
+2. запускает `ollama-librarian` без host port;
+3. скачивает `qwen3.5:9b-q4_K_M` размером около 6,6 ГБ;
+4. создаёт `velvet-librarian-local:v1` с контекстом 65 536;
+5. запускает `librarian-hermes`;
+6. пересоздаёт основной bot;
+7. проверяет bot → Librarian health.
+
+На CPU-only сервере первый pull и запуск могут занять несколько минут. `velvet-librarian.service` имеет `TimeoutStartSec=1800`.
+
+Installer также:
 
 - генерирует dedicated API key без вывода значения;
-- копирует и ограничивает конфигурацию основного provider routing;
 - устанавливает отдельные `SOUL.md` и `AGENTS.md`;
 - задаёт пустой API tool whitelist и глобальный deny-list;
-- устанавливает `velvet-librarian:v2`;
+- удаляет все cloud fallback providers из профиля;
+- устанавливает версию `velvet-librarian:qwen3.5-9b-local:v3`;
 - включает публикацию в Hermes Reports;
-- запускает `velvet-librarian.service`;
-- пересоздаёт bot, чтобы он получил dedicated endpoint/key;
-- проверяет bot → Librarian health.
+- сохраняет `STORAGE_LIBRARIAN_AUTO_ENQUEUE` под отдельным ручным контролем.
 
 ## Проверка runtime
 
@@ -131,26 +150,29 @@ sudo docker compose \
   ps
 ```
 
-Проверка файлов Каэля:
+Ожидаются два healthy-контейнера:
+
+- `ollama-librarian`;
+- `librarian-hermes`.
+
+Проверка модели:
 
 ```bash
 sudo docker compose \
   --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile agent \
-  exec -T hermes \
-  /command/s6-setuidgid hermes \
-  sh -ceu '
-    test "$(id -u)" = "10000"
-    test -r /opt/data/SOUL.md
-    test -r /opt/data/AGENTS.md
-    test -x /opt/data/tools/opsctl.py
-    test -x /opt/data/tools/coderctl.py
-    test -x /opt/data/tools/runctl.py
-    test -w /opt/data/orchestration/tasks.json
-    test -w /opt/data/orchestration/tasks.json.lock
-  '
+  -f deploy/hermes-librarian/compose.yaml \
+  exec -T ollama-librarian \
+  ollama show velvet-librarian-local:v1
 ```
+
+Проверка отсутствия публичного порта:
+
+```bash
+sudo docker inspect ollama-librarian \
+  --format '{{json .NetworkSettings.Ports}}'
+```
+
+Не должно быть host binding для `11434`.
 
 Проверка таблиц. Маска `\dt *librarian*` неверна: в именах таблиц нет слова `librarian`.
 
@@ -170,6 +192,18 @@ sudo docker compose \
 
 - `telegram_storage_analysis_jobs`;
 - `telegram_storage_analysis`.
+
+## Поиск `/storage_ask`
+
+Первичный SQL-поиск сохраняется для точных совпадений. Если полная фраза не найдена, application layer:
+
+1. читает до 50 последних анализов за 365 дней;
+2. удаляет служебные слова;
+3. нормализует распространённые русские и английские окончания;
+4. ранжирует summary, tags, entities, action items и имя объекта;
+5. передаёт до восьми релевантных источников локальной модели.
+
+Поэтому запрос `какие ошибки и предупреждения повторялись?` способен сопоставить форму `ошибки` с `ошибкой`/`ошибок`. Случайные последние записи без совпадений не подставляются.
 
 ## Manual-first rollout
 
@@ -192,31 +226,35 @@ STORAGE_LIBRARIAN_PUBLISH_REPORTS=true
 
 Для smoke-test выбрать небольшой TXT, JSON или log. Не выбирать backup, encrypted object, изображение, видео или большой ZIP. После успешного анализа в теме `Hermes Reports` должно появиться сообщение с Storage ID, резюме, тегами и действиями.
 
-Только после проверки качества и расхода можно включать:
+Автоматическую очередь включать только после проверки качества и длительности локального анализа:
 
 ```dotenv
 STORAGE_LIBRARIAN_AUTO_ENQUEUE=true
 ```
 
-## Backup
-
-Velvet уже создаёт daily/weekly backup внутренним worker и выгружает валидные dump в Telegram Storage. Дублирующий systemd timer удаляется:
+## Наблюдение за ресурсами
 
 ```bash
-sudo systemctl disable --now velvet-backup.timer 2>/dev/null || true
-sudo rm -f \
-  /etc/systemd/system/velvet-backup.service \
-  /etc/systemd/system/velvet-backup.timer \
-  /usr/local/sbin/velvet-postgres-backup
-sudo systemctl daemon-reload
-sudo systemctl reset-failed velvet-backup.service 2>/dev/null || true
+sudo docker stats --no-stream \
+  ollama-librarian \
+  librarian-hermes
+
+sudo docker compose \
+  --env-file .env.server \
+  -f deploy/hermes-librarian/compose.yaml \
+  exec -T ollama-librarian ollama ps
 ```
 
-Родной контур проверяется командами `/backup` и `/storage`.
+Если система начинает использовать swap во время коротких логов, снизить контекст или перейти на `qwen3.5:4b`. Для текущего VPS с 23 ГБ RAM и 8 vCPU целевой вариант — 9B Q4.
+
+## Backup
+
+Модель хранится в Docker volume и может быть повторно скачана, поэтому включать её в PostgreSQL backup не требуется. Анализы и очередь остаются в существующих таблицах PostgreSQL и попадают в обычный backup Velvet.
 
 ## Ограничения
 
+- CPU-only inference медленнее облачного, особенно на больших объектах;
 - PDF, изображения, видео, RAR и TAR не анализируются;
 - Inbox поддержан как storage kind, но отдельный UX ручной загрузки остаётся следующим срезом;
 - публикация отчёта не является отдельным Storage object и не запускает рекурсивный анализ;
-- mass auto-enqueue запрещён до smoke-test и проверки бюджета.
+- mass auto-enqueue запрещён до smoke-test качества и нагрузки.

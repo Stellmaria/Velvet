@@ -84,6 +84,8 @@ class LibrarianRuntimeIsolationTests(unittest.TestCase):
         self.assertIn('GH_TOKEN: ""', compose)
         self.assertIn("STORAGE_LIBRARIAN_HERMES_API_KEY", compose)
         self.assertIn("hermes-librarian:/opt/data", compose)
+        self.assertIn("ollama-librarian", compose)
+        self.assertIn("librarian-ollama:/root/.ollama", compose)
         self.assertIn("name: velvet_backend", compose)
         self.assertNotIn("ports:", compose)
         self.assertNotIn("docker.sock", compose)
@@ -97,6 +99,8 @@ class LibrarianRuntimeIsolationTests(unittest.TestCase):
         tree = ast.parse(source)
         self.assertIsNotNone(tree)
         self.assertIn('config["platform_toolsets"] = {"api_server": []}', source)
+        self.assertIn('"provider": "custom"', source)
+        self.assertIn('config["fallback_providers"] = []', source)
         for toolset in (
             "terminal",
             "file",
@@ -125,7 +129,11 @@ class LibrarianRuntimeIsolationTests(unittest.TestCase):
             settings = StorageLibrarianSettings.from_env()
         self.assertEqual("http://librarian-hermes:8642", settings.hermes_base_url)
         self.assertEqual("l" * 48, settings.hermes_api_key)
-        self.assertEqual("velvet-librarian:v2", settings.analyzer_version)
+        self.assertEqual(
+            "velvet-librarian:qwen3.5-9b-local:v3",
+            settings.analyzer_version,
+        )
+        self.assertEqual(900, settings.run_timeout_seconds)
 
 
 class HermesEntityDeploymentTests(unittest.TestCase):
@@ -172,6 +180,7 @@ class HermesEntityDeploymentTests(unittest.TestCase):
             "deploy/hermes-entities/reconcile.sh",
             "deploy/hermes-entities/install.sh",
             "deploy/hermes-librarian/install.sh",
+            "deploy/hermes-librarian/start.sh",
         ):
             result = subprocess.run(
                 [bash, "-n", str(ROOT / relative)],
@@ -192,6 +201,7 @@ class HermesEntityDeploymentTests(unittest.TestCase):
         self.assertIn("WantedBy=multi-user.target", entities)
         self.assertIn("After=docker.service velvet-compose.service", librarian)
         self.assertIn("User=velvet", librarian)
+        self.assertIn("deploy/hermes-librarian/start.sh", librarian)
         self.assertIn("WantedBy=multi-user.target", librarian)
 
 

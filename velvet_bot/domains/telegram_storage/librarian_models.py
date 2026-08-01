@@ -118,7 +118,7 @@ class StorageLibrarianSettings:
             ),
             run_timeout_seconds=_int_env(
                 "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS",
-                300,
+                900,
                 minimum=30,
                 maximum=1800,
             ),
@@ -149,9 +149,9 @@ class StorageLibrarianSettings:
             analyzer_version=(
                 os.getenv(
                     "STORAGE_LIBRARIAN_ANALYZER_VERSION",
-                    "velvet-librarian:v2",
+                    "velvet-librarian:qwen3.5-9b-local:v3",
                 ).strip()
-                or "velvet-librarian:v2"
+                or "velvet-librarian:qwen3.5-9b-local:v3"
             ),
             allowed_kinds=kinds,
         )
