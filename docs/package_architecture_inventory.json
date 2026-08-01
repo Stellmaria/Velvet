@@ -20,7 +20,7 @@
   "root_unclassified_count": 0,
   "router_count": 84,
   "router_duplicate_count": 0,
-  "repository_module_count": 41,
+  "repository_module_count": 42,
   "runtime_compatibility_components": [
     {
       "component": "ai-quality-schema",
