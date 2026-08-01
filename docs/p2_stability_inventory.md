@@ -4,8 +4,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **102** в **59** файлах;
-- approved boundaries: **102**;
+- raw broad exceptions: **103** в **60** файлах;
+- approved boundaries: **103**;
 - unresolved broad exceptions: **0** в **0** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
@@ -33,6 +33,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/application/media_delivery_deliver.py:453` `_compensate_claim`: preserve-lease-recovery-on-compensation-failure.
 - `velvet_bot/application/media_delivery_resolve.py:122` `execute`: compensate-claimed-result-resolution.
 - `velvet_bot/application/media_delivery_resolve.py:172` `_finish_claim`: preserve-resolution-lease-recovery.
+- `velvet_bot/application/storage_librarian.py:117` `process_once`: isolate-storage-librarian-job.
 - `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/backup_runtime.py:163` `_create_dump_file`: cleanup-invalid-backup-artifacts.
 - `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
