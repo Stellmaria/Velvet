@@ -53,6 +53,12 @@ jobs:
           if len(blocks) != 5:
               raise SystemExit(f'expected 5 prepared run blocks, found {len(blocks)}')
           for number, block in enumerate(blocks[:-1], start=1):
+              if number == 1:
+                  block = block.replace(" = '''", " = r'''")
+                  block = block.replace(
+                      "write_text(\n              '''",
+                      "write_text(\n              r'''",
+                  )
               print(f'Executing prepared block {number}')
               subprocess.run(
                   ['bash', '-euo', 'pipefail', '-c', block],
