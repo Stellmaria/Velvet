@@ -12,13 +12,15 @@ from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
+from velvet_bot.application.storage_librarian import StorageLibrarianService
 from velvet_bot.database import Database
-from velvet_bot.domains.telegram_storage.librarian import (
+from velvet_bot.domains.telegram_storage.librarian_models import (
     StorageLibrarianError,
-    StorageLibrarianRepository,
-    StorageLibrarianService,
     StorageLibrarianSettings,
     UnsupportedStorageContent,
+)
+from velvet_bot.domains.telegram_storage.librarian_repository import (
+    StorageLibrarianRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,17 +40,17 @@ def _short(value: str, limit: int = 700) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
-def _jsonish_list(value) -> list:
+def _jsonish_list(value: object) -> list[object]:
     if isinstance(value, list):
-        return value
+        return list(value)
     if isinstance(value, tuple):
         return list(value)
     if isinstance(value, str):
         try:
-            decoded = json.loads(value)
+            decoded: object = json.loads(value)
         except json.JSONDecodeError:
             return []
-        return decoded if isinstance(decoded, list) else []
+        return list(decoded) if isinstance(decoded, list) else []
     return []
 
 
@@ -80,7 +82,7 @@ async def _librarian_scheduler_loop(
     )
     while True:
         try:
-            processed = await service.process_once()
+            processed = await service.process_once(auto_enqueue=True)
         except asyncio.CancelledError:
             raise
         except (
@@ -187,7 +189,7 @@ async def _process_manual_once(
             bot=bot,
             database=database,
             settings=settings,
-        ).process_once()
+        ).process_once(auto_enqueue=False)
         text = (
             "<b>Storage Librarian</b>\n\n"
             + ("Задача обработана." if processed else "Очередь пока пуста.")
