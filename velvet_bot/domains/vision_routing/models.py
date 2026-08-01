@@ -15,6 +15,11 @@ class VisionRoute(StrEnum):
     SENSITIVE = "sensitive"
 
 
+class VisionAnalysisMode(StrEnum):
+    STANDARD = "standard"
+    SENSITIVE = "sensitive"
+
+
 @dataclass(frozen=True, slots=True)
 class VisionRouteConfig:
     route: VisionRoute
@@ -25,6 +30,8 @@ class VisionRouteConfig:
     timeout_seconds: int
     max_attempts: int
     pricing: AITokenPricing
+    prompt_version: int = 1
+    schema_version: int = 1
 
     def __post_init__(self) -> None:
         provider = self.provider.strip().casefold()
@@ -48,6 +55,8 @@ class VisionRouteConfig:
             raise ValueError("VL timeout должен быть не меньше 10 секунд.")
         if self.max_attempts < 1:
             raise ValueError("VL max_attempts должен быть положительным.")
+        if self.prompt_version < 1 or self.schema_version < 1:
+            raise ValueError("VL prompt/schema versions должны быть положительными.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +105,7 @@ class VisionCascadeResult:
 
 __all__ = (
     "CachedVisionAnalysis",
+    "VisionAnalysisMode",
     "VisionCascadeResult",
     "VisionProviderAnalysis",
     "VisionRoute",
