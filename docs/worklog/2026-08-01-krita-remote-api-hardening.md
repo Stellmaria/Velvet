@@ -1,74 +1,93 @@
-# Рабочая запись: защита Krita Remote API
+# 2026-08-01 — Защита Krita Remote API
 
-## Статус
+- Дата: `2026-08-01`
+- ID: `issue-510-krita-remote-api-hardening`
+- Линия/фаза: `P1 security hardening`
+- Статус: `завершено`
+- Ветка: `fix/issue-510-krita-loopback-security`
+- Базовый commit: `42522af0a19d67333e6a0c423af4d6589b201b44`
 
-- Дата: 2026-08-01
-- Issue: #510
-- PR: #537
-- Статус: реализация завершена, ожидается полный CI и merge
-- Ветка: `fix/issue-510-krita-loopback-security-v2`
+## Перед началом
 
-## Запрос
+### Цель
 
-Сделать optional Krita Remote API fail-closed по сетевому bind, аутентификации и загрузке результата, сохранив рабочий container deployment через host-loopback publish.
+Закрыть issue #510: сделать optional Krita Remote API fail-closed по сети, аутентификации и загрузке результата.
 
-## Что было не так
+### Исходный контекст
 
-Runtime по умолчанию слушал `0.0.0.0`, bearer token не имел ограничителя повторных отказов, upload проверял только PNG signature и использовал общий staging filename. Compose публиковал порт на host loopback, но runtime и server preflight не запрещали случайный публичный bind.
+Runtime по умолчанию слушал `0.0.0.0`, bearer token не имел cooldown, upload проверял только PNG signature и использовал общий staging filename. Compose уже публиковал порт на host loopback, но сам runtime и server preflight не запрещали случайный публичный bind. Исходная ветка PR #537 отстала от `main` и была пересобрана поверх актуальной базы без переноса устаревших generated inventories.
 
-## Анализ
+### Планируемый объём
 
-Безопасный runtime default должен быть loopback. Контейнерный wildcard bind допустим только как отдельное явное исключение, когда Docker публикует порт исключительно на `127.0.0.1`. Решение не должно журналировать токены, доверять одному Content-Type или оставлять частично записанные результаты после ошибки.
+- loopback bind по умолчанию и explicit unsafe override;
+- preflight-проверка токена и bind policy;
+- cooldown для auth/lease failures без журналирования секретов;
+- bounded timeout, размер и параллелизм upload;
+- строгая проверка PNG chunks/CRC;
+- уникальный staging и гарантированная очистка;
+- тесты, документация и синхронизация generated inventories.
 
-## Что сделано
+### Критерии готовности
+
+- случайный public/wildcard bind блокируется runtime и preflight;
+- Docker публикует remote port только на `127.0.0.1`;
+- upload принимает только валидный `image/png` с `Content-Length`;
+- повторные auth/lease failures получают cooldown;
+- токены и имена исходников не попадают в security log;
+- compile, preflight, unit tests, mypy, Docker/Krita smoke и project notes зелёные.
+
+### Риски и ограничения
+
+- контейнеру нужен explicit wildcard bind, потому что host-loopback находится вне network namespace контейнера;
+- live SSH tunnel и Windows worker smoke остаются эксплуатационной проверкой #411;
+- SQL и applied migrations не изменяются.
+
+## После завершения
+
+Статус: `завершено`.
+
+### Фактически сделано
 
 - runtime default изменён на `127.0.0.1`;
 - non-loopback bind требует `KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND=true`;
-- Compose использует внутренний wildcard только за host-loopback publish;
-- server preflight проверяет отдельный worker token и bind policy;
-- health требует bearer auth при non-loopback режиме;
-- auth и lease failures получают bounded fingerprint-based cooldown;
-- upload ограничен по Content-Type, Content-Length, размеру, timeout и concurrency;
+- Compose явно использует внутренний wildcard только за host-loopback publish;
+- server preflight проверяет отдельный token и bind policy;
+- health закрывается bearer auth при non-loopback режиме;
+- auth/lease failures получают bounded fingerprint-based cooldown;
+- upload ограничен по content type, length, size, timeout и concurrency;
 - PNG проходит проверку signature, IHDR, dimensions, IDAT, IEND и CRC;
-- output и response записываются через уникальный atomic staging с cleanup;
-- конкурентная загрузка одной revision отклоняется;
-- добавлены security, deployment и worker-protocol regression tests;
+- output/response пишутся через уникальный atomic staging с cleanup;
+- same-revision concurrent upload отклоняется;
+- добавлены security, deployment и worker protocol regression tests;
 - production feature остаётся выключенной по умолчанию.
 
-## Проверки
+### Миграции и совместимость
 
-Запланированы и обязательны перед merge:
+SQL-миграций нет. Windows worker сохраняет тот же HTTP protocol и подключается через SSH tunnel либо другой защищённый gateway. Прямой публичный bind теперь требует явного unsafe override.
 
-- targeted Krita security tests;
-- полный tests workflow со всеми shard’ами;
-- package/shared inventory contracts;
-- bounded type check;
+### Риски и ограничения
+
+Live SSH tunnel, controlled invalid-token test и Windows worker result upload не выполняются в CI; они остаются частью staging/production acceptance #411.
+
+### Проверки
+
+- compileall и generated inventory checks;
+- security/unit contracts Krita Remote API;
+- полный tests workflow;
+- bounded mypy;
+- Docker Compose/build и Krita plugin smoke;
 - project notes contract;
-- Docker Compose/build и Krita plugin smoke.
+- reviewable branch не содержит временных workflow или patch-скриптов.
 
-## Риски и замечания
+### PR и commit
 
-Контейнеру нужен explicit wildcard bind, поскольку host loopback находится вне container network namespace. Live SSH tunnel, controlled invalid-token test и Windows worker result upload не выполняются в CI и остаются эксплуатационной acceptance-проверкой #411.
+- PR: `#537` — `P1: закрыть Krita Remote API по умолчанию`;
+- итоговый merge commit заполняется GitHub после слияния.
 
-## Ветка и интеграция
+### Незавершённое
 
-Старая ветка PR #537 отстала от `main` на 110 коммитов и конфликтовала. Функциональный diff пересобран поверх актуального `main` без переноса устаревших generated inventories и без merge-коммита со старой историей.
+Кодовый scope #510 завершён. Осталась внешняя live acceptance по #411, которая не подменяется зелёным CI.
 
-## Что осталось сделать
+### Следующий шаг
 
-- синхронизировать generated package/shared inventories на актуальной базе;
-- исправить только выявленные текущим CI контракты;
-- получить полностью зелёный merge gate;
-- слить PR #537 в `main`.
-
-## Блокеры
-
-Внешних блокеров нет. Production enablement и live Windows-worker smoke намеренно не входят в merge gate этого code-slice.
-
-## Следующий шаг
-
-После merge выполнить отдельный SSH-tunnel и Windows-worker smoke в рамках #411 без открытия публичного порта VPS.
-
-## Продолжение работы
-
-Issue #510 закрывается этим code-slice после зелёного CI. Дальнейшие эксплуатационные проверки и включение сервиса ведутся отдельно, чтобы зелёный unit CI не изображал из себя сетевую инфраструктуру.
+После merge выполнить отдельный SSH-tunnel/Windows-worker smoke в рамках #411 без открытия публичного порта VPS.
