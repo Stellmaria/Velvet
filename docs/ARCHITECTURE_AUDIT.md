@@ -35,7 +35,7 @@ Velvet имеет рабочие логические domain/application/persist
 По `docs/package_architecture_inventory.*` и `docs/package_architecture_exemptions.json`:
 
 - production modules: **638**;
-- production LOC: **138 525**;
+- production LOC: **138 538**;
 - layer counts: application 21, composition 63, core 7, domain 179, infrastructure 27, other 1, presentation 215, root 114, service 8, worker 3;
 - startup installer stages: **28**;
 - registered file/category fingerprints: **546**;
