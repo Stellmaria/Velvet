@@ -25,7 +25,7 @@ if [[ ! -f "$SOURCE_DIR/compose.yaml" ]]; then
   exit 3
 fi
 if [[ ! -d "$ROOT/codex/$project" ]]; then
-  echo "Не найден CODEX_HOME: $ROOT/codex/$project. Сначала выполните install.sh." >&2
+  echo "Не найден CODEX_HOME: $ROOT/codex/$project. Сначала выполните install-codex.sh." >&2
   exit 3
 fi
 
