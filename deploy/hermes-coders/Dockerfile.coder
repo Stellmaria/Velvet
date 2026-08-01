@@ -1,15 +1,44 @@
 ARG HERMES_BASE_IMAGE=nousresearch/hermes-agent@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
 FROM ${HERMES_BASE_IMAGE}
 
+ARG CODEX_VERSION=0.144.4
+
 USER root
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        bubblewrap \
+        ca-certificates \
+        curl \
         gh \
+        git \
         jq \
         make \
         postgresql-client \
+        ripgrep \
+        tar \
     && rm -rf /var/lib/apt/lists/*
 
+RUN set -eux; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) target="x86_64-unknown-linux-musl" ;; \
+      arm64) target="aarch64-unknown-linux-musl" ;; \
+      *) echo "Unsupported architecture: $(dpkg --print-architecture)" >&2; exit 1 ;; \
+    esac; \
+    asset="codex-${target}.tar.gz"; \
+    release="$(curl -fsSL "https://api.github.com/repos/openai/codex/releases/tags/rust-v${CODEX_VERSION}")"; \
+    url="$(printf '%s' "$release" | jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .browser_download_url')"; \
+    digest="$(printf '%s' "$release" | jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .digest')"; \
+    test -n "$url"; test "$url" != "null"; \
+    test -n "$digest"; test "$digest" != "null"; \
+    curl -fsSL "$url" -o /tmp/codex.tar.gz; \
+    printf '%s  %s\n' "${digest#sha256:}" /tmp/codex.tar.gz | sha256sum -c -; \
+    tar -xzf /tmp/codex.tar.gz -C /tmp; \
+    install -m 0755 "/tmp/codex-${target}" /usr/local/bin/codex; \
+    rm -f /tmp/codex.tar.gz "/tmp/codex-${target}"; \
+    codex --version | grep -F "${CODEX_VERSION}"
+
+COPY --chmod=0555 codex_runner.py /app/codex_runner.py
+
 LABEL org.opencontainers.image.title="Velvet Hermes Coder" \
-      org.opencontainers.image.description="Hermes Agent with durable GitHub and PostgreSQL client tooling"
+      org.opencontainers.image.description="Hermes Agent plus pinned OpenAI Codex CLI, GitHub and PostgreSQL tooling"
