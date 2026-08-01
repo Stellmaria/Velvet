@@ -52,6 +52,7 @@
 
 ### Базовый commit и ветка
 
+- session: `kael-librarian-personas-20260801`;
 - base: `b1c15532566674f423f64776efba934123ddca6d`;
 - branch: `agent/kael-librarian-personas`.
 
