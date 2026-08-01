@@ -25,7 +25,9 @@ _SECRET_KEY = re.compile(r"(?i)(token|secret|password|api[_-]?key|authorization)
 _SECRET_TEXT_PATTERNS = (
     re.compile(r"(?i)(authorization\s*:\s*bearer\s+)[^\s,;]+"),
     re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{8,}"),
-    re.compile(r"(?i)([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)[^\s,;]+"),
+    re.compile(
+        r"(?i)([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)[^\s,;]+"
+    ),
     re.compile(r"\b\d{8,12}:[A-Za-z0-9_-]{20,}\b"),
 )
 
@@ -146,9 +148,13 @@ class RouterClient:
         try:
             token = self.token_file.read_text(encoding="utf-8").strip()
         except OSError as error:
-            raise CoderApiError(f"Не удалось прочитать token-файл {self.token_file}: {error}") from error
+            raise CoderApiError(
+                f"Не удалось прочитать token-файл {self.token_file}: {error}"
+            ) from error
         if len(token) < 24:
-            raise CoderApiError(f"Token-файл {self.token_file} пуст или содержит слишком короткое значение.")
+            raise CoderApiError(
+                f"Token-файл {self.token_file} пуст или содержит слишком короткое значение."
+            )
         return token
 
     def request(
@@ -166,19 +172,20 @@ class RouterClient:
             data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             headers["Content-Type"] = "application/json"
         request = urllib.request.Request(
-            f"{self.base_url}{path}",
-            data=data,
-            headers=headers,
-            method=method,
+            f"{self.base_url}{path}", data=data, headers=headers, method=method
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 raw = response.read().decode("utf-8", errors="replace")
         except urllib.error.HTTPError as error:
             details = error.read().decode("utf-8", errors="replace")[:2000]
-            raise CoderApiError(f"Coder router вернул HTTP {error.code}: {_redact_text(details)}") from error
+            raise CoderApiError(
+                f"Coder router вернул HTTP {error.code}: {_redact_text(details)}"
+            ) from error
         except (urllib.error.URLError, TimeoutError, OSError) as error:
-            raise CoderApiError(f"Coder router недоступен: {error}") from error
+            raise CoderApiError(
+                f"Coder router недоступен: {type(error).__name__}"
+            ) from error
         try:
             result = json.loads(raw)
         except json.JSONDecodeError as error:
@@ -190,7 +197,9 @@ class RouterClient:
     def health(self, project: str) -> dict[str, Any]:
         return self.request("GET", f"/v1/coders/{project}/capabilities")
 
-    def submit(self, project: str, *, task_id: str, task: str, source: str) -> dict[str, Any]:
+    def submit(
+        self, project: str, *, task_id: str, task: str, source: str
+    ) -> dict[str, Any]:
         return self.request(
             "POST",
             f"/v1/coders/{project}/runs",
@@ -203,8 +212,13 @@ class RouterClient:
     def stop(self, project: str, run_id: str) -> dict[str, Any]:
         return self.request("POST", f"/v1/coders/{project}/runs/{run_id}/stop", {})
 
+    def pull_request(self, project: str, number: int) -> dict[str, Any]:
+        return self.request("GET", f"/v1/coders/{project}/pulls/{number}")
 
-def _update_from_status(ledger: Ledger, record: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+
+def _update_from_status(
+    ledger: Ledger, record: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     status = str(payload.get("status", "unknown"))
     updated = {
         **record,
@@ -217,7 +231,11 @@ def _update_from_status(ledger: Ledger, record: dict[str, Any], payload: dict[st
         updated["output"] = payload.get("output") or payload.get("error")
         updated["usage"] = payload.get("usage")
     ledger.upsert(updated)
-    return {**payload, "task_id": updated["task_id"], "project": updated["project"]}
+    return {
+        **payload,
+        "task_id": updated["task_id"],
+        "project": updated["project"],
+    }
 
 
 def _print(payload: Any) -> None:
@@ -225,10 +243,14 @@ def _print(payload: Any) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Управление изолированными Hermes coder-задачами.")
+    parser = argparse.ArgumentParser(
+        description="Управление изолированными Hermes coder-задачами."
+    )
     parser.add_argument(
         "--ledger",
-        default=os.getenv("HERMES_CODER_LEDGER", "/opt/data/orchestration/tasks.json"),
+        default=os.getenv(
+            "HERMES_CODER_LEDGER", "/opt/data/orchestration/tasks.json"
+        ),
     )
     parser.add_argument("--timeout", type=int, default=30)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -255,6 +277,10 @@ def build_parser() -> argparse.ArgumentParser:
     listing = commands.add_parser("list")
     listing.add_argument("--project", choices=("velvet", "max"))
     listing.add_argument("--limit", type=int, default=20)
+
+    pull = commands.add_parser("pr")
+    pull.add_argument("project", choices=("velvet", "max"))
+    pull.add_argument("number", type=int)
     return parser
 
 
@@ -266,6 +292,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "health":
             projects = tuple(_PROJECTS) if args.project == "all" else (args.project,)
             _print({project: client.health(project) for project in projects})
+            return 0
+
+        if args.command == "pr":
+            _print(client.pull_request(args.project, args.number))
             return 0
 
         if args.command == "submit":
@@ -305,37 +335,49 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "list":
             records = ledger.list()
             if args.project:
-                records = [item for item in records if item.get("project") == args.project]
+                records = [
+                    item for item in records if item.get("project") == args.project
+                ]
             _print(records[: max(1, args.limit)])
             return 0
 
         record = ledger.find(args.reference)
         if record is None:
-            raise CoderApiError(f"Задача или run не найдены в журнале: {args.reference}")
+            raise CoderApiError(
+                f"Задача или run не найдены в журнале: {args.reference}"
+            )
         project = str(record["project"])
         run_id = str(record["run_id"])
 
         if args.command == "status":
-            payload = _update_from_status(ledger, record, client.status(project, run_id))
+            payload = _update_from_status(
+                ledger, record, client.status(project, run_id)
+            )
             _print(payload)
             return 2 if str(payload.get("status")) in {"failed", "cancelled"} else 0
 
         if args.command == "stop":
             payload = client.stop(project, run_id)
-            ledger.upsert({**record, "status": "stopping", "updated_at": _utc_now()})
+            ledger.upsert(
+                {**record, "status": "stopping", "updated_at": _utc_now()}
+            )
             _print({**payload, "task_id": record["task_id"], "project": project})
             return 0
 
         if args.command == "wait":
             deadline = time.monotonic() + max(1, args.wait_timeout)
             while True:
-                payload = _update_from_status(ledger, record, client.status(project, run_id))
+                payload = _update_from_status(
+                    ledger, record, client.status(project, run_id)
+                )
                 status = str(payload.get("status", "unknown"))
                 if status in TERMINAL_STATUSES:
                     _print(payload)
                     return 0 if status == "completed" else 2
                 if time.monotonic() >= deadline:
-                    raise CoderApiError(f"Ожидание run {run_id} превысило {args.wait_timeout} секунд.")
+                    raise CoderApiError(
+                        f"Ожидание run {run_id} превысило {args.wait_timeout} секунд."
+                    )
                 time.sleep(max(0.5, args.interval))
                 refreshed = ledger.find(str(record["task_id"]))
                 if refreshed is not None:
@@ -344,7 +386,10 @@ def main(argv: list[str] | None = None) -> int:
         raise CoderApiError(f"Неизвестная команда: {args.command}")
     except CoderApiError as error:
         print(
-            json.dumps({"ok": False, "error": _redact_text(str(error))}, ensure_ascii=False),
+            json.dumps(
+                {"ok": False, "error": _redact_text(str(error))},
+                ensure_ascii=False,
+            ),
             file=sys.stderr,
         )
         return 2
