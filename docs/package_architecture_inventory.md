@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `storage-librarian-local-qwen`
+- Generated from: `working-tree`
 - Production modules: **640**
 - Production LOC: **139184**
 - Root modules: **113**

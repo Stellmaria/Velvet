@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "storage-librarian-local-qwen",
+  "generated_from": "working-tree",
   "production_module_count": 640,
   "production_loc": 139184,
   "layer_counts": {
