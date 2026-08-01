@@ -148,7 +148,7 @@ class CoderCtlTests(unittest.TestCase):
 
 class OrchestrationDeploymentContractTests(unittest.TestCase):
     def test_router_has_no_host_access_or_production_secrets(self) -> None:
-        compose = (ROOT / "deploy/hermes-operator/compose.yaml").read_text(
+        compose = (ROOT / "deploy/hermes-orchestration/compose.yaml").read_text(
             encoding="utf-8"
         )
         router = compose.split("  hermes-coder-router:", 1)[1].split(
@@ -162,6 +162,25 @@ class OrchestrationDeploymentContractTests(unittest.TestCase):
         self.assertNotIn("docker.sock", router)
         self.assertNotIn("ports:", router)
         self.assertNotIn("operator.env", router)
+
+    def test_base_operator_compose_does_not_depend_on_orchestration(self) -> None:
+        compose = (ROOT / "deploy/hermes-operator/compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("hermes-ops-gateway", compose)
+        self.assertNotIn("hermes-coder-router", compose)
+        self.assertNotIn("coders.env", compose)
+        self.assertNotIn("agent-control", compose)
+
+    def test_router_has_dedicated_systemd_lifecycle(self) -> None:
+        unit = (ROOT / "deploy/systemd/hermes-coder-router.service").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("hermes-coders.service", unit)
+        self.assertIn("hermes-operator-control.service", unit)
+        self.assertIn("WorkingDirectory=/srv/velvet/deploy/hermes-orchestration", unit)
+        self.assertIn("User=velvet", unit)
+        self.assertNotIn("User=root", unit)
 
     def test_coder_api_is_only_on_internal_control_network(self) -> None:
         compose = (ROOT / "deploy/hermes-coders/compose.yaml").read_text(
@@ -187,8 +206,9 @@ class OrchestrationDeploymentContractTests(unittest.TestCase):
         )
         self.assertIn("secrets.token_urlsafe(48)", source)
         self.assertIn('docker network create --internal "$AGENT_CONTROL_NETWORK"', source)
-        self.assertIn("Coder API and router credentials prepared without printing", source)
+        self.assertIn("Orchestration credentials prepared without printing", source)
         self.assertIn("chmod 0600", source)
+        self.assertIn("coderctl.py health all", source)
         self.assertNotIn("cat \"$CODER_ROUTER_ENV\"", source)
         self.assertNotIn("echo \"$API_SERVER_KEY\"", source)
 
