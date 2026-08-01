@@ -12,7 +12,8 @@
 - Hermes data directory;
 - Git workspace;
 - read-only PostgreSQL роль;
-- внутреннюю DB-сеть.
+- внутреннюю DB-сеть;
+- `API_SERVER_KEY` для private Runs API.
 
 ## Сетевая граница
 
@@ -24,6 +25,8 @@ hermes-coder-max    -> max-db    -> max-db-proxy    -> romaticclub_default -> po
 ```
 
 Для GitHub, Telegram и Byesu оба coder-контейнера используют отдельную egress-сеть.
+
+Runs API слушает `8642` внутри контейнера, но host ports не публикуются. Доступ к API разрешён только `hermes-coder-router` через external internal-сеть `hermes-agent-control`. Главный Hermes не получает coder API keys.
 
 ## Модели
 
@@ -95,7 +98,7 @@ Installer:
 
 ## Заполнение отдельных токенов
 
-В файлах ниже должны быть разные Telegram и GitHub токены:
+В файлах ниже должны быть разные Telegram, GitHub и API credentials:
 
 ```text
 /srv/hermes-coders/secrets/velvet.env
@@ -113,7 +116,13 @@ sudo chown velvet:velvet /srv/hermes-coders/secrets/*.env
 
 Fine-grained GitHub token для Velvet ограничивается репозиторием `Stellmaria/Velvet`, а токен Max только `Stellmaria/romatic_club_bot_max`. Минимально нужны Contents и Pull requests read/write. Не выдавать Administration, Actions secrets и доступ к другим репозиториям.
 
-Один Telegram bot token нельзя использовать в двух gateway одновременно. Preflight специально блокирует такую попытку.
+Один Telegram bot token, GitHub token или `API_SERVER_KEY` нельзя использовать в двух coder gateway одновременно. Preflight специально блокирует такую попытку.
+
+Orchestration installer может безопасно сгенерировать разные `API_SERVER_KEY`, не печатая значения:
+
+```bash
+sudo bash /srv/velvet/deploy/hermes-orchestration/install.sh
+```
 
 ## Preflight и запуск
 
@@ -140,15 +149,17 @@ sudo systemctl --no-pager --full status hermes-coders.service
 ```bash
 cd /srv/velvet/deploy/hermes-coders
 HERMES_CODERS_ROOT=/srv/hermes-coders \
+HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
   docker compose --profile velvet --profile max -f compose.yaml ps
 
 HERMES_CODERS_ROOT=/srv/hermes-coders \
+HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
   docker compose --profile velvet --profile max -f compose.yaml logs --tail=100
 ```
 
 ## Проверка изоляции
 
-Coder-контейнеры должны видеть только egress и свою внутреннюю DB-сеть:
+Coder-контейнеры должны видеть только egress, свою внутреннюю DB-сеть и `hermes-agent-control`:
 
 ```bash
 docker inspect hermes-coders-hermes-coder-velvet-1 \
@@ -158,7 +169,7 @@ docker inspect hermes-coders-hermes-coder-max-1 \
   --format '{{json .NetworkSettings.Networks}}'
 ```
 
-На coder-контейнерах не должно быть сетей `velvet_backend` и `romaticclub_default`.
+На coder-контейнерах не должно быть сетей `velvet_backend`, `romaticclub_default` или `hermes-supervisor-control`.
 
 Проверка read-only identity:
 
@@ -219,6 +230,7 @@ sudo systemctl stop hermes-coders.service
 ```bash
 cd /srv/velvet/deploy/hermes-coders
 HERMES_CODERS_ROOT=/srv/hermes-coders \
+HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
   docker compose --profile velvet --profile max -f compose.yaml down
 ```
 

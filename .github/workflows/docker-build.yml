@@ -24,6 +24,7 @@ on:
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
+      - "scripts/hermes_incident_monitor.py"
       - "scripts/krita_server_healthcheck.py"
       - "scripts/server_supervisor.py"
       - "scripts/server_supervisor_proxy.py"
@@ -56,6 +57,7 @@ on:
       - "main.py"
       - "velvet_bot/**"
       - "scripts/container_healthcheck.py"
+      - "scripts/hermes_incident_monitor.py"
       - "scripts/krita_server_healthcheck.py"
       - "scripts/server_supervisor.py"
       - "scripts/server_supervisor_proxy.py"
@@ -113,29 +115,33 @@ jobs:
           EOF
           cp .env.hermes.example .env.hermes
 
-      - name: Prepare Hermes Coder compose environment
+      - name: Prepare Hermes Coder and router environment
         run: |
           set -Eeuo pipefail
           root="$PWD/.ci/hermes-coders"
+          control="$PWD/.ci/hermes-operator"
           mkdir -p \
             "$root/secrets" \
             "$root/data/velvet" \
             "$root/data/max" \
-            "$root/workspaces/velvet" \
-            "$root/workspaces/max"
+            "$root/workspaces/velvet/.git" \
+            "$root/workspaces/max/.git" \
+            "$control/runtime"
           cat > "$root/secrets/velvet.env" <<'EOF'
           BYESU_HERMES_CODEX_API_KEY=test_coder_key
           BYESU_HERMES_GPT_PRO_API_KEY=test_pro_key
           TELEGRAM_BOT_TOKEN=test_velvet_telegram_token
           TELEGRAM_ALLOWED_USERS=1
-          GH_TOKEN=test_velvet_github_token
+          GH_TOKEN=ci_velvet_github_token_abcdefghijklmnopqrstuvwxyz
+          API_SERVER_KEY=ci_velvet_api_server_key_abcdefghijklmnopqrstuvwxyz
           EOF
           cat > "$root/secrets/max.env" <<'EOF'
           BYESU_HERMES_CODEX_API_KEY=test_coder_key
           BYESU_HERMES_GPT_PRO_API_KEY=test_pro_key
           TELEGRAM_BOT_TOKEN=test_max_telegram_token
           TELEGRAM_ALLOWED_USERS=1
-          GH_TOKEN=test_max_github_token
+          GH_TOKEN=ci_max_github_token_abcdefghijklmnopqrstuvwxyz
+          API_SERVER_KEY=ci_max_api_server_key_abcdefghijklmnopqrstuvwxyz
           EOF
           cat > "$root/secrets/velvet-db.env" <<'EOF'
           DATABASE_URL=postgresql://hermes_velvet_ro:test@postgres:5432/velvet
@@ -143,10 +149,35 @@ jobs:
           cat > "$root/secrets/max-db.env" <<'EOF'
           DATABASE_URL=postgresql://hermes_max_ro:test@postgres:5432/card_hunter
           EOF
+          cat > "$control/operator.env" <<'EOF'
+          HERMES_OPS_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_OPS_HOST_TOKEN=ci_host_token_abcdefghijklmnopqrstuvwxyz
+          VELVET_SUPERVISOR_TOKEN=ci_velvet_supervisor_token_abcdefghijklmnopqrstuvwxyz
+          ROMATIC_SUPERVISOR_TOKEN=ci_max_supervisor_token_abcdefghijklmnopqrstuvwxyz
+          VELVET_SUPERVISOR_BASE_URL=http://supervisor-proxy:8765
+          ROMATIC_SUPERVISOR_BASE_URL=http://romatic-supervisor:8765
+          HERMES_OPS_HOST_RUNTIME_DIR=/tmp/hermes-operator/runtime
+          HERMES_OPS_HOST_SOCKET=/tmp/hermes-operator/runtime/start.sock
+          HERMES_OPS_SOCKET_GID=10001
+          EOF
+          cat > "$control/coders.env" <<'EOF'
+          HERMES_CODER_ROUTER_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_CODER_VELVET_TOKEN=ci_velvet_api_server_key_abcdefghijklmnopqrstuvwxyz
+          HERMES_CODER_MAX_TOKEN=ci_max_api_server_key_abcdefghijklmnopqrstuvwxyz
+          HERMES_CODER_VELVET_BASE_URL=http://hermes-coder-velvet:8642
+          HERMES_CODER_MAX_BASE_URL=http://hermes-coder-max:8642
+          HERMES_CODER_ROUTER_HOST=0.0.0.0
+          HERMES_CODER_ROUTER_PORT=8878
+          EOF
           cp deploy/hermes-coders/config.yaml "$root/data/velvet/config.yaml"
           cp deploy/hermes-coders/config.yaml "$root/data/max/config.yaml"
           cp deploy/hermes-coders/SOUL.velvet.md "$root/data/velvet/SOUL.md"
           cp deploy/hermes-coders/SOUL.max.md "$root/data/max/SOUL.md"
+          chmod 600 "$root/secrets/"*.env "$control/"*.env
+          python deploy/hermes-orchestration/prepare_router_env.py \
+            "$root/secrets/velvet.env" \
+            "$root/secrets/max.env" \
+            "$control/coders.env"
 
       - name: Validate deployment shell and Python
         run: |
@@ -157,15 +188,20 @@ jobs:
           bash -n deploy/server/wait-compose-health.sh
           bash -n deploy/krita-server/entrypoint.sh
           bash -n deploy/hermes-coders/install.sh
+          bash -n deploy/hermes-orchestration/install.sh
           bash -n scripts/vision_runtime_entrypoint.sh
           bash -n scripts/vision_model_loader.sh
           python -m py_compile \
             scripts/server_supervisor.py \
             scripts/server_supervisor_proxy.py \
+            scripts/hermes_incident_monitor.py \
             scripts/benchmark_vision_gateway.py \
             vision_gateway/app.py \
             deploy/hermes-coders/db_proxy.py \
-            deploy/hermes-coders/preflight.py
+            deploy/hermes-coders/preflight.py \
+            deploy/hermes-operator/coder_router.py \
+            deploy/hermes-operator/coderctl.py \
+            deploy/hermes-orchestration/prepare_router_env.py
 
       - name: Validate Docker Compose
         run: |
@@ -176,11 +212,21 @@ jobs:
           docker compose --env-file .env.server -f docker-compose.server.yml --profile vision config --quiet
           docker compose --env-file .env.server -f docker-compose.server.yml --profile vision-bootstrap config --quiet
           HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
+          HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
             docker compose \
               --profile velvet \
               --profile max \
               -f deploy/hermes-coders/compose.yaml \
               config --quiet
+          HERMES_OPS_ENV_FILE="$PWD/.ci/hermes-operator/operator.env" \
+          HERMES_OPS_HOST_RUNTIME_DIR="$PWD/.ci/hermes-operator/runtime" \
+          HERMES_SUPERVISOR_NETWORK=hermes-supervisor-control \
+          VELVET_BACKEND_NETWORK=velvet_backend \
+            docker compose -f deploy/hermes-operator/compose.yaml config --quiet
+          HERMES_CODER_ROUTER_ENV_FILE="$PWD/.ci/hermes-operator/coders.env" \
+          HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
+          VELVET_BACKEND_NETWORK=velvet_backend \
+            docker compose -f deploy/hermes-orchestration/compose.yaml config --quiet
 
       - name: Build Velvet image
         run: docker build --tag velvet-bot:ci .
@@ -207,11 +253,18 @@ jobs:
       - name: Build Hermes Coder images
         run: |
           HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
+          HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
             docker compose \
               --profile velvet \
               --profile max \
               -f deploy/hermes-coders/compose.yaml \
               build
+
+      - name: Build Hermes operator and coder router image
+        run: |
+          docker build \
+            --file deploy/hermes-operator/Dockerfile \
+            --tag velvet-hermes-coder-router:ci .
 
       - name: Run Krita plugin smoke
         run: |

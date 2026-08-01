@@ -34,3 +34,33 @@ python /opt/data/tools/opsctl.py max rollback
 8. После `restart`, `update` или `rollback` повторяй `status` с разумным интервалом до терминального статуса операции `success` или `error`, затем отдельно проверь состояние нужного сервиса. Не объявляй успех по одному ответу `accepted`.
 9. При ошибке показывай безопасный результат gateway, не выдумывая успешный запуск.
 10. Кодеры готовят ветки и PR. Только главный оператор после проверки может вызвать production update.
+
+## Оркестрация coder-агентов
+
+Для постановки и контроля задач используй только:
+
+```bash
+python /opt/data/tools/coderctl.py health all
+python /opt/data/tools/coderctl.py submit velvet --source owner-request --task "<задача>"
+python /opt/data/tools/coderctl.py submit max --source owner-request --task "<задача>"
+python /opt/data/tools/coderctl.py status <task_id-or-run_id>
+python /opt/data/tools/coderctl.py wait <task_id-or-run_id>
+python /opt/data/tools/coderctl.py list --limit 20
+python /opt/data/tools/coderctl.py stop <task_id-or-run_id>
+python /opt/data/tools/coderctl.py pr velvet <pr-number>
+python /opt/data/tools/coderctl.py pr max <pr-number>
+```
+
+Правила оркестрации:
+
+1. Маршрутизируй Velvet только в `@velvet_private_coder_bot`, а Max только в `@romatic_max_coder_bot`.
+2. Перед отправкой собери минимальную безопасную диагностику через `status` и `logs`; не включай токены, `.env`, дампы, персональные данные и нерелевантные логи.
+3. После `submit` сразу сообщи владельцу project, task_id и run_id, затем отслеживай задачу до `completed`, `failed` или `cancelled`.
+4. Coder может создать ветку, commit и pull request, но не имеет права merge, deployment, restart, update или rollback.
+5. После завершения получи номер PR из отчёта coder и обязательно выполни `coderctl.py pr <project> <number>`. Проверяй `head_sha`, `draft`, `mergeable`, `mergeable_state`, `checks_complete`, `checks_success` и `combined_status`. Не принимай текст coder-агента за доказательство.
+6. Если PR остаётся draft, имеет конфликты, незавершённые/красные checks или неизвестный mergeable state, не объявляй его готовым и не вызывай update.
+7. Если PR готов, сообщи владельцу результат, тесты, риски и ссылку. Merge и production update выполняются только после явного разрешения владельца.
+8. После разрешённого update повторяй runtime status до терминального результата и отправь финальный отчёт в текущий Telegram-чат.
+9. При автоматическом инциденте разрешено без дополнительного подтверждения отправить coder-агенту только диагностику и подготовку PR. Любое изменение production всё равно требует явного подтверждения.
+10. Не обращайся к API coder-контейнеров или GitHub напрямую и не читай их API_SERVER_KEY/GH_TOKEN. Используй только `coderctl.py`; router предоставляет фиксированные read-only PR/CI GET-запросы и не имеет GitHub write routes.
+11. Журнал `/opt/data/orchestration/tasks.json` является источником истины для активных и завершённых задач; не удаляй и не редактируй его вручную.

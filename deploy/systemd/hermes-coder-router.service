@@ -1,0 +1,26 @@
+[Unit]
+Description=Isolated router between the main Hermes operator and coder agents
+Requires=docker.service hermes-operator-control.service hermes-coders.service
+After=docker.service hermes-operator-control.service hermes-coders.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet/deploy/hermes-orchestration
+Environment=HERMES_CODER_ROUTER_ENV_FILE=/srv/hermes-operator-control/coders.env
+Environment=HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control
+Environment=VELVET_BACKEND_NETWORK=velvet_backend
+Environment=COMPOSE_BAKE=false
+ExecStartPre=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/prepare_router_env.py /srv/hermes-coders/secrets/velvet.env /srv/hermes-coders/secrets/max.env /srv/hermes-operator-control/coders.env
+ExecStartPre=/usr/bin/docker compose -f compose.yaml config --quiet
+ExecStart=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
+ExecReload=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
+ExecStop=/usr/bin/docker compose -f compose.yaml stop hermes-coder-router
+TimeoutStartSec=900
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
