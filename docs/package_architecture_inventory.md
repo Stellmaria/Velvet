@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `pr-543-sensitive-vision-policy`
+- Generated from: `p1-package-architecture-baseline`
 - Production modules: **641**
 - Production LOC: **139635**
 - Root modules: **113**

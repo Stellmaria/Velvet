@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "pr-543-sensitive-vision-policy",
+  "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 641,
   "production_loc": 139635,
   "layer_counts": {
