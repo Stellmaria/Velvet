@@ -14,7 +14,6 @@ PRODUCTION_WORKSPACES = {
     Path("/srv/velvet").resolve(),
     Path("/srv/romatic-club").resolve(),
 }
-CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
 
 
 class PreflightError(RuntimeError):
@@ -90,6 +89,15 @@ def validate_workspace(path: Path) -> None:
         raise PreflightError(f"Workspace не является отдельным Git checkout: {path}")
 
 
+def validate_codex_workspace(path: Path) -> None:
+    validate_workspace(path)
+    config = require_readable_file(path / ".git" / "config")
+    if "gh auth git-credential" not in config:
+        raise PreflightError(f"В {path} не настроен GitHub credential helper")
+    if "[user]" not in config or "noreply.github.com" not in config:
+        raise PreflightError(f"В {path} не настроена Git identity")
+
+
 def require_readable_file(path: Path) -> str:
     try:
         if not path.is_file():
@@ -134,8 +142,23 @@ def validate_codex_home(path: Path) -> None:
     config_text = require_readable_file(config)
     if 'model = "gpt-5.6-terra"' not in config_text:
         raise PreflightError(f"В {config} не задан безопасный default gpt-5.6-terra")
-    if 'cli_auth_credentials_store = "file"' not in config_text:
-        raise PreflightError(f"В {config} не зафиксировано file-хранилище Codex auth")
+    required_config = (
+        'sandbox_mode = "workspace-write"',
+        'approval_policy = "never"',
+        'cli_auth_credentials_store = "file"',
+        'check_for_update_on_startup = false',
+        'network_access = true',
+        'ignore_default_excludes = true',
+        'apps = false',
+        'plugins = false',
+        'tool_suggest = false',
+    )
+    missing_config = [item for item in required_config if item not in config_text]
+    if missing_config:
+        raise PreflightError(
+            f"В {config} отсутствуют обязательные Codex настройки: "
+            + ", ".join(missing_config)
+        )
     for secret in (
         "API_SERVER_KEY",
         "BYESU_HERMES_CODEX_API_KEY",
@@ -147,6 +170,8 @@ def validate_codex_home(path: Path) -> None:
     ):
         if f'"{secret}"' not in config_text:
             raise PreflightError(f"В {config} shell policy не исключает {secret}")
+    if '"GH_TOKEN"' in config_text:
+        raise PreflightError(f"В {config} GH_TOKEN ошибочно исключён из Codex shell")
     if not auth.is_file() or auth.stat().st_size == 0:
         raise PreflightError(
             f"Codex не авторизован в {path}; выполните codex-login.sh для проекта"
@@ -210,10 +235,10 @@ def main() -> int:
     for workspace in (
         ROOT / "workspaces" / "velvet",
         ROOT / "workspaces" / "max",
-        ROOT / "workspaces" / "velvet-codex",
-        ROOT / "workspaces" / "max-codex",
     ):
         validate_workspace(workspace)
+    validate_codex_workspace(ROOT / "workspaces" / "velvet-codex")
+    validate_codex_workspace(ROOT / "workspaces" / "max-codex")
     validate_data(ROOT / "data" / "velvet")
     validate_data(ROOT / "data" / "max")
     validate_codex_home(ROOT / "codex" / "velvet")
@@ -228,6 +253,7 @@ def main() -> int:
     print("- PostgreSQL identities: read-only")
     print("- Codex routing: luna -> terra -> sol")
     print("- Codex CLI minimum: 0.144.0; image pin: 0.144.4")
+    print("- Codex sandbox: workspace-write + GitHub network")
     print("- terminal passthrough: GH_TOKEN")
     return 0
 
