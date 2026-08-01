@@ -35,8 +35,8 @@ install -d -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0700 \
 install -d -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0750 \
   "$ROOT/codex-runs" \
   "$ROOT/codex-runs/velvet" \
-  "$ROOT/codex-runs/max" \
-  "$ROOT/workspaces"
+  "$ROOT/codex-runs/max"
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$ROOT/workspaces"
 
 clone_workspace() {
   local repo_url="$1"
