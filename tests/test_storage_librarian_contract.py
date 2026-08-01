@@ -12,8 +12,12 @@ from velvet_bot.domains.telegram_storage.librarian_content import (
     redact_sensitive,
 )
 from velvet_bot.domains.telegram_storage.librarian_models import (
+    LibrarianAnalysis,
     LibrarianObject,
     StorageLibrarianSettings,
+)
+from velvet_bot.infrastructure.telegram.storage_librarian_reports import (
+    build_storage_librarian_report,
 )
 
 
@@ -53,6 +57,37 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
         self.assertIn("process_once(auto_enqueue=False)", source)
         self.assertIn("STORAGE_LIBRARIAN_AUTO_ENQUEUE", source)
 
+    def test_reports_are_explicit_and_use_dedicated_topic_publisher(self) -> None:
+        presentation = (
+            ROOT
+            / "velvet_bot"
+            / "presentation"
+            / "telegram"
+            / "storage_librarian.py"
+        ).read_text(encoding="utf-8")
+        publisher = (
+            ROOT
+            / "velvet_bot"
+            / "infrastructure"
+            / "telegram"
+            / "storage_librarian_reports.py"
+        ).read_text(encoding="utf-8")
+        installer = (
+            ROOT / "deploy" / "hermes-librarian" / "install.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn("STORAGE_LIBRARIAN_PUBLISH_REPORTS", presentation)
+        self.assertIn("TelegramStorageLibrarianReportPublisher", presentation)
+        self.assertIn('threads.for_kind("analysis")', publisher)
+        self.assertIn("STORAGE_LIBRARIAN_PUBLISH_REPORTS", installer)
+        self.assertIn("velvet-librarian:v2", installer)
+
+    def test_kael_installer_checks_runtime_user_not_root_exec(self) -> None:
+        installer = (
+            ROOT / "deploy" / "hermes-entities" / "install.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn("/command/s6-setuidgid hermes", installer)
+        self.assertIn('test "$(id -u)" = "10000"', installer)
+
     def test_librarian_is_split_across_architecture_layers(self) -> None:
         old_monolith = (
             ROOT
@@ -74,6 +109,11 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
             / "infrastructure"
             / "telegram"
             / "storage_librarian_files.py",
+            ROOT
+            / "velvet_bot"
+            / "infrastructure"
+            / "telegram"
+            / "storage_librarian_reports.py",
             ROOT
             / "velvet_bot"
             / "infrastructure"
@@ -163,6 +203,38 @@ class StorageLibrarianPayloadTests(unittest.TestCase):
         self.assertNotIn("abcdefghijklmnopqrstuvwxyz", value)
         self.assertNotIn(":secret@", value)
         self.assertIn("[REDACTED]", value)
+
+    def test_report_is_bounded_escaped_and_references_storage_id(self) -> None:
+        item = LibrarianObject(
+            object_id=2149,
+            storage_kind="diagnostics",
+            logical_key="diagnostics:logs:incident",
+            original_name="incident<script>.log",
+            mime_type="text/plain",
+            size_bytes=238,
+            sha256="b" * 64,
+            encrypted=False,
+            manifest={},
+            parts=(),
+        )
+        analysis = LibrarianAnalysis(
+            summary="Повторные запуски <b>монитора</b>.",
+            tags=("diagnostics", "hermes"),
+            entities=(),
+            action_items=(
+                {"title": "Проверить дедупликацию", "priority": "high"},
+            ),
+            sensitivity="normal",
+            confidence=88,
+            raw={},
+        )
+        text = build_storage_librarian_report(item, analysis)
+        self.assertLessEqual(len(text), 4000)
+        self.assertIn("Storage ID: <code>2149</code>", text)
+        self.assertIn("/storage_download 2149", text)
+        self.assertIn("Проверить дедупликацию", text)
+        self.assertNotIn("<script>", text)
+        self.assertNotIn("<b>монитора</b>", text)
 
 
 if __name__ == "__main__":

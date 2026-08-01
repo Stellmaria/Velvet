@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 639,
-  "production_loc": 138918,
+  "production_module_count": 640,
+  "production_loc": 139035,
   "layer_counts": {
     "application": 21,
     "composition": 64,
     "core": 7,
     "domain": 179,
-    "infrastructure": 27,
+    "infrastructure": 28,
     "other": 1,
     "presentation": 215,
     "root": 114,
@@ -14001,19 +14001,19 @@
       "module": "velvet_bot.application.storage_librarian",
       "layer": "application",
       "target_package": "application",
-      "loc": 181,
-      "function_count": 6,
-      "class_count": 3,
+      "loc": 205,
+      "function_count": 7,
+      "class_count": 4,
       "handler_count": 0,
-      "max_function_length": 58,
-      "branch_count": 13,
+      "max_function_length": 67,
+      "branch_count": 15,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.telegram_storage.librarian_content",
         "velvet_bot.domains.telegram_storage.librarian_models",
         "velvet_bot.domains.telegram_storage.librarian_repository"
       ],
-      "external_import_count": 7,
+      "external_import_count": 8,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -26070,6 +26070,42 @@
       "violations": []
     },
     {
+      "path": "velvet_bot/infrastructure/telegram/storage_librarian_reports.py",
+      "module": "velvet_bot.infrastructure.telegram.storage_librarian_reports",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 82,
+      "function_count": 4,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 30,
+      "branch_count": 4,
+      "internal_imports": [
+        "velvet_bot.domains.telegram_storage.librarian_models",
+        "velvet_bot.domains.telegram_storage.models"
+      ],
+      "external_import_count": 4,
+      "aiogram_imports": [
+        "aiogram"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/infrastructure/transient_connections.py",
       "module": "velvet_bot.infrastructure.transient_connections",
       "layer": "infrastructure",
@@ -36585,7 +36621,7 @@
       "module": "velvet_bot.presentation.telegram.storage_librarian",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 367,
+      "loc": 378,
       "function_count": 14,
       "class_count": 0,
       "handler_count": 0,
@@ -36597,7 +36633,8 @@
         "velvet_bot.domains.telegram_storage.librarian_models",
         "velvet_bot.domains.telegram_storage.librarian_repository",
         "velvet_bot.infrastructure.ai.storage_librarian_hermes",
-        "velvet_bot.infrastructure.telegram.storage_librarian_files"
+        "velvet_bot.infrastructure.telegram.storage_librarian_files",
+        "velvet_bot.infrastructure.telegram.storage_librarian_reports"
       ],
       "external_import_count": 11,
       "aiogram_imports": [
@@ -36620,14 +36657,14 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 36,
+          "line": 39,
           "owner": "_env_enabled",
           "call": "os.getenv"
         }
       ],
       "polling_values": [
         {
-          "line": 115,
+          "line": 124,
           "owner": "_librarian_scheduler_loop",
           "call": "asyncio.sleep",
           "values": [
