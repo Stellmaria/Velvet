@@ -132,7 +132,7 @@ find "$TARGET_DIR" -type d -exec chmod 0750 {} +
 find "$TARGET_DIR" -type f -exec chmod 0640 {} +
 
 # Validate the exact deny-all profile with the same image and parser.
-docker run --rm \
+docker run --rm -i \
   --network none \
   --entrypoint python \
   -v "$TARGET_DIR/config.yaml:/profile/config.yaml:ro" \
