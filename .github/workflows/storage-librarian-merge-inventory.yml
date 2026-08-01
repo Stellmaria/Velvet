@@ -24,8 +24,8 @@ jobs:
 
       - name: Generate inventories on merge state
         run: |
-          python scripts/inventory_package_architecture.py --label storage-librarian --write
-          python scripts/inventory_repository_layout.py --label storage-librarian --write
+          python scripts/inventory_package_architecture.py --write
+          python scripts/inventory_repository_layout.py --write
           python scripts/update_p2_stability_inventory.py --label storage-librarian --schema-version 76
 
           python - <<'PY'
@@ -101,5 +101,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- docs/package_architecture_inventory.json docs/package_architecture_inventory.md docs/repository_layout_inventory.json docs/repository_layout_inventory.md docs/p2_stability_inventory.json docs/p2_stability_inventory.md docs/development_status.md docs/ARCHITECTURE_AUDIT.md
-          git commit -m "Синхронизировать inventory Storage Librarian с main"
+          git commit -m "Синхронизировать inventory Storage Librarian с CI"
           git push origin HEAD:agent/storage-librarian
