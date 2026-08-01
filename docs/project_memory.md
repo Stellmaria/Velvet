@@ -294,3 +294,13 @@ Canonical helpers уже созданы, но transitional debt закрывае
 Любое изменение registered package debt должно уменьшать/удалять fingerprint либо сопровождаться новым issue-backed exemption. Простое обновление generated baseline ради зелёного CI не считается архитектурной работой.
 
 Живая проверка, которую CI не способен выполнить, не помечается завершённой по факту существования кода.
+
+## Актуализация inventory после pricing-среза 1 августа 2026
+
+Воспроизводимый shared-contract срез после добавления закрытого pricing UI:
+
+- production Python files: **639**;
+- inventoried functions: **3660**;
+- registered transitional private accesses: **186**;
+- blocking known private contracts: **0**;
+- целевая консолидация временных delivery/UI layers остаётся в **#457**.

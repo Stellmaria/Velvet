@@ -193,3 +193,13 @@ CI блокирует содержательный PR без завершённ�
 - старые applied migrations не редактируются;
 - infrastructure capability не называется production-ready без доступной live-проверки;
 - каждая работа фиксирует checks, PR/commit, остаток и следующий шаг.
+
+## Актуализация inventory после pricing-среза 1 августа 2026
+
+Воспроизводимый shared-contract срез после добавления закрытого pricing UI:
+
+- production Python files: **639**;
+- inventoried functions: **3660**;
+- registered transitional private accesses: **186**;
+- blocking known private contracts: **0**;
+- целевая консолидация временных delivery/UI layers остаётся в **#457**.
