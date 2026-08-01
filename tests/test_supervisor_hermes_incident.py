@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -68,8 +69,42 @@ class HermesIncidentTests(unittest.TestCase):
         body = json.loads(request.data.decode("utf-8"))
         self.assertIn("input", body)
         self.assertIn("session_id", body)
+        self.assertIn("coderctl.py submit velvet", body["input"])
         self.assertNotIn("super-secret-token", body["input"])
         self.assertNotIn("database-password", body["input"])
+
+    def test_async_run_waits_for_terminal_result_and_invokes_callback(self) -> None:
+        responses = iter(
+            (
+                _FakeResponse({"run_id": "run_123", "status": "started"}),
+                _FakeResponse(
+                    {
+                        "run_id": "run_123",
+                        "status": "completed",
+                        "output": "PR ready",
+                    }
+                ),
+            )
+        )
+        callback_event = threading.Event()
+        reports: list[dict[str, object]] = []
+        client = HermesIncidentClient(
+            enabled=True,
+            base_url="http://hermes:8642",
+            api_key="12345678",
+            poll_interval_seconds=0.01,
+            run_timeout_seconds=60,
+            result_callback=lambda report: (reports.append(report), callback_event.set()),
+        )
+        with patch(
+            "velvet_supervisor.hermes_incident.urllib.request.urlopen",
+            side_effect=lambda *args, **kwargs: next(responses),
+        ):
+            self.assertTrue(client.submit_async(self._incident()))
+            self.assertTrue(callback_event.wait(1))
+        self.assertEqual("completed", reports[0]["status"])
+        self.assertEqual("PR ready", reports[0]["output"])
+        self.assertEqual("finished", client.status()["state"])
 
     def test_deduplicates_same_incident_during_cooldown(self) -> None:
         client = HermesIncidentClient(
@@ -79,10 +114,15 @@ class HermesIncidentTests(unittest.TestCase):
             cooldown_seconds=600,
         )
         client.submit = lambda incident: "run_test"  # type: ignore[method-assign]
+        client.wait_for_run = lambda run_id: {  # type: ignore[method-assign]
+            "run_id": run_id,
+            "status": "completed",
+            "output": "done",
+        }
         self.assertTrue(client.submit_async(self._incident()))
         self.assertFalse(client.submit_async(self._incident()))
         time.sleep(0.02)
-        self.assertIn(client.status()["state"], {"cooldown", "submitted"})
+        self.assertIn(client.status()["state"], {"cooldown", "finished"})
 
     def test_disabled_client_does_not_start_thread(self) -> None:
         client = HermesIncidentClient(
