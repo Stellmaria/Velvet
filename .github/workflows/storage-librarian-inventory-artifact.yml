@@ -24,18 +24,23 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Generate package inventory
-        run: >-
-          python scripts/inventory_package_architecture.py
-          --label storage-librarian
-          --write
+      - name: Generate inventories
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --label storage-librarian \
+            --write
+          python scripts/inventory_repository_layout.py \
+            --label storage-librarian \
+            --write
 
-      - name: Upload inventory
+      - name: Upload inventories
         uses: actions/upload-artifact@v4
         with:
-          name: storage-librarian-package-inventory
+          name: storage-librarian-inventories
           path: |
             docs/package_architecture_inventory.json
             docs/package_architecture_inventory.md
+            docs/repository_layout_inventory.json
+            docs/repository_layout_inventory.md
           if-no-files-found: error
           retention-days: 1
