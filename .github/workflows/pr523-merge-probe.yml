@@ -1,11 +1,12 @@
 name: PR 523 merge probe
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - agent/issue-511-media-delivery-boundaries
-    paths:
-      - .github/workflows/pr523-merge-probe.yml
 
 permissions:
   contents: read
