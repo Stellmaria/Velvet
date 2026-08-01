@@ -80,8 +80,8 @@
     }
   ],
   "shared_contract_summary": {
-    "production_python_files": 639,
-    "function_count": 3660,
+    "production_python_files": 641,
+    "function_count": 3685,
     "private_contract_access_count": 186,
     "blocking_private_contract_access_count": 0,
     "exact_duplicate_group_count": 64,
