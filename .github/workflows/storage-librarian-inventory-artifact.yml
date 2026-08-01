@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/storage-librarian
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
