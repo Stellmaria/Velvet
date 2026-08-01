@@ -59,7 +59,9 @@
 - добавлены contract и payload tests;
 - runbook обновлён;
 - package architecture inventory синхронизирован штатным генератором;
-- временный write-workflow удалён из итоговой ветки.
+- Telegram navigation inventory синхронизирован штатным генератором;
+- P2 stability inventory синхронизирован штатным генератором со schema version 77;
+- оба временных write-workflow удалены из итоговой ветки.
 
 ### Миграции и совместимость
 
@@ -67,7 +69,7 @@ SQL-миграций нет. Существующие записи анализ�
 
 ### Проверки
 
-На исходном кодовом head подтверждён зелёный bounded mypy. Первый tests-run ожидаемо остановился только из-за временного write-workflow, который затем был удалён автоматическим inventory-коммитом. Workflows на самом workflow-generated commit получили GitHub `action_required` без созданных jobs; этот commit запускает стандартный CI повторно от владельца.
+На исходном кодовом head подтверждены зелёные bounded mypy и project-notes. Первый чистый прогон выявил только generated drift: Telegram navigation учитывал 639 вместо 640 Python-файлов, а P2 inventory учитывал 103 вместо 104 одобренных broad boundaries. Оба реестра регенерированы штатными скриптами. Workflows на bot-generated commits получили GitHub `action_required` без jobs; этот обычный commit запускает финальный CI от владельца.
 
 Ожидаются:
 
@@ -81,13 +83,13 @@ SQL-миграций нет. Существующие записи анализ�
 ### PR и commit
 
 - PR: `https://github.com/Stellmaria/Velvet/pull/541`;
-- inventory head: `13e7373917a2b1d791be9085ee35424c1ffa55b5`;
-- проверенный финальный head: ожидается после повторного CI;
+- generated inventory head: `54145a08a35fb230d952658b611f9bfa87583620`;
+- проверенный финальный head: ожидается после финального CI;
 - merge commit: ожидается после явного разрешения владельца.
 
 ### Незавершённое
 
-- полный чистый CI на head без временного workflow;
+- полный финальный CI на head без временных workflow;
 - merge;
 - production update и smoke-test темы `Hermes Reports`.
 
