@@ -101,7 +101,7 @@ def write(path: Path) -> str:
     api_key = values.get("API_SERVER_KEY", "")
     if len(api_key) < 24:
         api_key = secrets.token_urlsafe(48)
-    runner_key = values.get("CODEX_RUNNER_API_KEY", "") or api_key
+    runner_key = api_key
     replacements = {
         "API_SERVER_KEY": api_key,
         "CODEX_RUNNER_API_KEY": runner_key,
