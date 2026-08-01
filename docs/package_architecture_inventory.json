@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 640,
-  "production_loc": 139184,
+  "production_module_count": 641,
+  "production_loc": 139635,
   "layer_counts": {
     "application": 21,
     "composition": 64,
     "core": 7,
-    "domain": 179,
+    "domain": 180,
     "infrastructure": 28,
     "other": 1,
     "presentation": 215,
@@ -393,7 +393,7 @@
       ]
     }
   ],
-  "violation_count": 549,
+  "violation_count": 548,
   "violation_counts": {
     "database-acquire-outside-persistence": 89,
     "domain-aiogram-import": 19,
@@ -408,7 +408,7 @@
     "package-getattr-side-effect": 19,
     "sql-outside-persistence": 108,
     "type-ignore-usage": 18,
-    "typing-any-usage": 113
+    "typing-any-usage": 112
   },
   "violations": [
     {
@@ -7272,16 +7272,6 @@
       "summary": "1 Any references",
       "details": {
         "count": 1
-      }
-    },
-    {
-      "id": "typing-any-usage:velvet_bot/domains/vision_routing/client.py:143bb3b5c3f17619",
-      "category": "typing-any-usage",
-      "path": "velvet_bot/domains/vision_routing/client.py",
-      "fingerprint": "143bb3b5c3f17619e03a9a3db6b0e6da857eed42cdba1d5bfdfec35ffa0ee83c",
-      "summary": "3 Any references",
-      "details": {
-        "count": 3
       }
     },
     {
@@ -22657,17 +22647,18 @@
       "module": "velvet_bot.domains.vision_routing.client",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 298,
+      "loc": 346,
       "function_count": 12,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 73,
+      "max_function_length": 85,
       "branch_count": 18,
       "internal_imports": [
         "velvet_bot.ai_vision",
         "velvet_bot.core.ai_budget",
         "velvet_bot.domains.ai_usage",
-        "velvet_bot.domains.vision_routing.models"
+        "velvet_bot.domains.vision_routing.models",
+        "velvet_bot.domains.vision_routing.profile_contract"
       ],
       "external_import_count": 6,
       "aiogram_imports": [],
@@ -22675,7 +22666,7 @@
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 3,
+      "any_count": 0,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
@@ -22686,7 +22677,7 @@
       "env_reads": [],
       "polling_values": [
         {
-          "line": 138,
+          "line": 161,
           "owner": "_analyze_with_attempts",
           "call": "asyncio.sleep",
           "values": [
@@ -22697,30 +22688,19 @@
         }
       ],
       "worker_registrations": [],
-      "violations": [
-        {
-          "id": "typing-any-usage:velvet_bot/domains/vision_routing/client.py:143bb3b5c3f17619",
-          "category": "typing-any-usage",
-          "path": "velvet_bot/domains/vision_routing/client.py",
-          "fingerprint": "143bb3b5c3f17619e03a9a3db6b0e6da857eed42cdba1d5bfdfec35ffa0ee83c",
-          "summary": "3 Any references",
-          "details": {
-            "count": 3
-          }
-        }
-      ]
+      "violations": []
     },
     {
       "path": "velvet_bot/domains/vision_routing/factory.py",
       "module": "velvet_bot.domains.vision_routing.factory",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 165,
-      "function_count": 3,
+      "loc": 204,
+      "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 69,
-      "branch_count": 1,
+      "max_function_length": 77,
+      "branch_count": 7,
       "internal_imports": [
         "velvet_bot.core.config",
         "velvet_bot.core.config.settings",
@@ -22729,6 +22709,7 @@
         "velvet_bot.domains.vision_routing.cache",
         "velvet_bot.domains.vision_routing.client",
         "velvet_bot.domains.vision_routing.models",
+        "velvet_bot.domains.vision_routing.profile_contract",
         "velvet_bot.domains.vision_routing.service"
       ],
       "external_import_count": 3,
@@ -22747,52 +22728,57 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 39,
+          "line": 33,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 57,
+          "line": 47,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 80,
+          "line": 66,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 86,
+          "line": 94,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 115,
+          "line": 125,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 127,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 146,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 152,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 175,
+          "owner": "_env_flag",
+          "call": "os.getenv"
+        },
+        {
+          "line": 113,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
           "line": 117,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 136,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 142,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 103,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 107,
           "owner": "_route_config",
           "call": "os.getenv"
         }
@@ -22886,12 +22872,12 @@
       "module": "velvet_bot.domains.vision_routing.models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 103,
+      "loc": 113,
       "function_count": 1,
-      "class_count": 5,
+      "class_count": 6,
       "handler_count": 0,
-      "max_function_length": 22,
-      "branch_count": 6,
+      "max_function_length": 24,
+      "branch_count": 7,
       "internal_imports": [
         "velvet_bot.core.config.settings",
         "velvet_bot.domains.ai_usage"
@@ -22916,21 +22902,56 @@
       "violations": []
     },
     {
+      "path": "velvet_bot/domains/vision_routing/profile_contract.py",
+      "module": "velvet_bot.domains.vision_routing.profile_contract",
+      "layer": "domain",
+      "target_package": "domain",
+      "loc": 322,
+      "function_count": 10,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 39,
+      "branch_count": 26,
+      "internal_imports": [
+        "velvet_bot.ai_vision",
+        "velvet_bot.domains.vision_routing.models"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/domains/vision_routing/service.py",
       "module": "velvet_bot.domains.vision_routing.service",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 314,
-      "function_count": 12,
+      "loc": 346,
+      "function_count": 13,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 153,
-      "branch_count": 16,
+      "max_function_length": 169,
+      "branch_count": 15,
       "internal_imports": [
         "velvet_bot.ai_vision",
         "velvet_bot.domains.vision_routing.cache",
         "velvet_bot.domains.vision_routing.client",
-        "velvet_bot.domains.vision_routing.models"
+        "velvet_bot.domains.vision_routing.models",
+        "velvet_bot.domains.vision_routing.profile_contract"
       ],
       "external_import_count": 4,
       "aiogram_imports": [],

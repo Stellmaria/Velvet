@@ -18,6 +18,7 @@ from velvet_bot.domains.ai_usage import (
 from velvet_bot.domains.vision_routing.cache import VisionAnalysisCacheRepository
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
 from velvet_bot.domains.vision_routing.models import VisionRoute, VisionRouteConfig
+from velvet_bot.domains.vision_routing.profile_contract import PROFILE_SCHEMA_VERSION
 from velvet_bot.domains.vision_routing.service import VisionCascadeRouter
 
 
@@ -28,10 +29,17 @@ def build_vision_cascade_router(
     ai_usage_service: AIUsageService,
 ) -> VisionCascadeRouter:
     executor: AIRequestExecutor = AIRequestExecutor(ai_usage_service)
+    prompt_version = _bounded_int(
+        os.getenv("AI_VISION_PROMPT_VERSION", "1"),
+        default=1,
+        minimum=1,
+        maximum=1_000_000,
+    )
     flash_config = _route_config(
         settings=settings,
         route=VisionRoute.FLASH,
         default_model=settings.ai_vision_model,
+        prompt_version=prompt_version,
     )
     flash = MeteredVisionClient(config=flash_config, executor=executor)
 
@@ -46,6 +54,7 @@ def build_vision_cascade_router(
                 settings=settings,
                 route=VisionRoute.PRO,
                 default_model=pro_model,
+                prompt_version=prompt_version,
             ),
             executor=executor,
         )
@@ -58,16 +67,21 @@ def build_vision_cascade_router(
         or settings.ai_vision_fallback_model
         or ""
     )
-    sensitive = (
-        MeteredVisionClient(
-            config=_route_config(
-                settings=settings,
-                route=VisionRoute.SENSITIVE,
-                default_model=sensitive_model,
-            ),
-            executor=executor,
+    sensitive_config = (
+        _route_config(
+            settings=settings,
+            route=VisionRoute.SENSITIVE,
+            default_model=sensitive_model,
+            prompt_version=prompt_version,
         )
         if sensitive_model
+        else None
+    )
+    if sensitive_config is not None:
+        _validate_sensitive_provider(sensitive_config)
+    sensitive = (
+        MeteredVisionClient(config=sensitive_config, executor=executor)
+        if sensitive_config is not None
         else None
     )
 
@@ -82,12 +96,7 @@ def build_vision_cascade_router(
             minimum=1,
             maximum=100,
         ),
-        prompt_version=_bounded_int(
-            os.getenv("AI_VISION_PROMPT_VERSION", "1"),
-            default=1,
-            minimum=1,
-            maximum=1_000_000,
-        ),
+        prompt_version=prompt_version,
         analysis_type="semantic-profile",
     )
 
@@ -97,6 +106,7 @@ def _route_config(
     settings: Settings,
     route: VisionRoute,
     default_model: str,
+    prompt_version: int = 1,
 ) -> VisionRouteConfig:
     prefix = f"AI_VISION_{route.value.upper()}"
     provider = (
@@ -145,7 +155,31 @@ def _route_config(
             maximum=5,
         ),
         pricing=pricing,
+        prompt_version=prompt_version,
+        schema_version=PROFILE_SCHEMA_VERSION,
     )
+
+
+def _validate_sensitive_provider(config: VisionRouteConfig) -> None:
+    if config.provider != "openai_compatible":
+        return
+    if _env_flag("AI_VISION_ALLOW_CLOUD_SENSITIVE", default=False):
+        return
+    raise RuntimeError(
+        "Cloud sensitive VL выключен. Для отдельного закрытого smoke-test задайте "
+        "AI_VISION_ALLOW_CLOUD_SENSITIVE=true."
+    )
+
+
+def _env_flag(name: str, *, default: bool) -> bool:
+    raw = os.getenv(name, "").strip().casefold()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} должен быть true/false, yes/no, on/off или 1/0.")
 
 
 def _bounded_int(
@@ -162,4 +196,9 @@ def _bounded_int(
     return max(minimum, min(parsed, maximum))
 
 
-__all__ = ("build_vision_cascade_router",)
+__all__ = (
+    "build_vision_cascade_router",
+    "_env_flag",
+    "_route_config",
+    "_validate_sensitive_provider",
+)

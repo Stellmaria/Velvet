@@ -4,16 +4,13 @@ import asyncio
 import base64
 import json
 import urllib.request
-from typing import Any, Mapping
+from typing import Mapping
 
 from velvet_bot.ai_vision import (
     VisionAnalysisError,
     VisionClient,
     VisionProviderUnavailable,
-    _ANALYSIS_PROMPT,
-    _PROFILE_SCHEMA,
     _extract_json_object,
-    normalize_ai_profile,
 )
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.domains.ai_usage import (
@@ -22,11 +19,18 @@ from velvet_bot.domains.ai_usage import (
     AIRequestExecutor,
 )
 from velvet_bot.domains.vision_routing.models import (
+    VisionAnalysisMode,
     VisionProviderAnalysis,
+    VisionRoute,
     VisionRouteConfig,
 )
+from velvet_bot.domains.vision_routing.profile_contract import (
+    normalize_routed_profile,
+    prompt_for_mode,
+    schema_for_mode,
+)
 
-_MAX_OUTPUT_TOKENS = 1200
+_MAX_OUTPUT_TOKENS = 1800
 
 
 class MeteredVisionClient(VisionClient):
@@ -48,6 +52,13 @@ class MeteredVisionClient(VisionClient):
             timeout_seconds=config.timeout_seconds,
         )
         self.route = config.route
+        self.mode = (
+            VisionAnalysisMode.SENSITIVE
+            if config.route is VisionRoute.SENSITIVE
+            else VisionAnalysisMode.STANDARD
+        )
+        self.prompt_version = config.prompt_version
+        self.schema_version = config.schema_version
         self.max_attempts = max(1, int(config.max_attempts))
         self._pricing = config.pricing
         self._executor = executor
@@ -61,9 +72,18 @@ class MeteredVisionClient(VisionClient):
         operation: str = "vision.semantic-profile",
         metadata: Mapping[str, object] | None = None,
     ) -> VisionProviderAnalysis:
-        estimated_input_tokens = _estimate_input_tokens(prepared)
+        prompt = prompt_for_mode(self.mode)
+        schema = schema_for_mode(self.mode)
+        estimated_input_tokens = _estimate_input_tokens(
+            prepared,
+            prompt=prompt,
+            schema=schema,
+        )
         context_metadata = {
             "route": self.route.value,
+            "analysis_mode": self.mode.value,
+            "schema_version": self.schema_version,
+            "prompt_version": self.prompt_version,
             "prepared_bytes": len(prepared),
             "max_output_tokens": _MAX_OUTPUT_TOKENS,
             "estimated_input_tokens": estimated_input_tokens,
@@ -116,6 +136,9 @@ class MeteredVisionClient(VisionClient):
                 actual_cost_rub=actual_cost,
                 metadata={
                     "route": self.route.value,
+                    "analysis_mode": self.mode.value,
+                    "schema_version": self.schema_version,
+                    "prompt_version": self.prompt_version,
                     "provider_reported_usage": analysis.usage_reported,
                     "attempt_limit": self.max_attempts,
                 },
@@ -158,7 +181,11 @@ class MeteredVisionClient(VisionClient):
                 f"{self.provider}:{self.model}: {provider_error}"
             )
         content = _extract_provider_content(payload, provider=self.provider)
-        profile = normalize_ai_profile(_extract_json_object(content))
+        profile = normalize_routed_profile(
+            _extract_json_object(content),
+            mode=self.mode,
+            prompt_version=self.prompt_version,
+        )
         input_tokens, output_tokens, usage_reported = _extract_usage(
             payload,
             provider=self.provider,
@@ -179,18 +206,20 @@ class MeteredVisionClient(VisionClient):
         root = self.base_url[:-3] if self.base_url.endswith("/v1") else self.base_url
         return f"{root}/v1/chat/completions"
 
-    def _request_body(self, image_base64: str) -> dict[str, Any]:
+    def _request_body(self, image_base64: str) -> dict[str, object]:
+        prompt = prompt_for_mode(self.mode)
+        schema = schema_for_mode(self.mode)
         if self.provider == "ollama":
             return {
                 "model": self.model,
                 "messages": [
                     {
                         "role": "user",
-                        "content": _ANALYSIS_PROMPT,
+                        "content": prompt,
                         "images": [image_base64],
                     }
                 ],
-                "format": _PROFILE_SCHEMA,
+                "format": schema,
                 "stream": False,
                 "think": False,
                 "options": {"temperature": 0},
@@ -201,7 +230,7 @@ class MeteredVisionClient(VisionClient):
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": _ANALYSIS_PROMPT},
+                        {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
                             "image_url": {
@@ -211,13 +240,24 @@ class MeteredVisionClient(VisionClient):
                     ],
                 }
             ],
-            "response_format": {"type": "json_object"},
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": f"velvet_vision_{self.mode.value}",
+                    "strict": True,
+                    "schema": schema,
+                },
+            },
             "temperature": 0,
             "max_tokens": _MAX_OUTPUT_TOKENS,
         }
 
 
-def _extract_provider_content(payload: Mapping[str, Any], *, provider: str) -> str:
+def _extract_provider_content(
+    payload: Mapping[str, object],
+    *,
+    provider: str,
+) -> str:
     if provider == "ollama":
         message = payload.get("message")
         content = message.get("content") if isinstance(message, dict) else None
@@ -250,7 +290,7 @@ def _extract_provider_content(payload: Mapping[str, Any], *, provider: str) -> s
 
 
 def _extract_usage(
-    payload: Mapping[str, Any],
+    payload: Mapping[str, object],
     *,
     provider: str,
 ) -> tuple[int, int, bool]:
@@ -279,8 +319,16 @@ def _non_negative_int(value: object) -> int:
         return 0
 
 
-def _estimate_input_tokens(prepared: bytes) -> int:
-    prompt_tokens = max(1, (len(_ANALYSIS_PROMPT) + 2) // 3)
+def _estimate_input_tokens(
+    prepared: bytes,
+    *,
+    prompt: str | None = None,
+    schema: Mapping[str, object] | None = None,
+) -> int:
+    resolved_prompt = prompt or prompt_for_mode(VisionAnalysisMode.STANDARD)
+    resolved_schema = schema or schema_for_mode(VisionAnalysisMode.STANDARD)
+    schema_text = json.dumps(resolved_schema, ensure_ascii=False, separators=(",", ":"))
+    prompt_tokens = max(1, (len(resolved_prompt) + len(schema_text) + 2) // 3)
     image_tokens = max(512, min(4096, (len(prepared) + 95) // 96))
     return prompt_tokens + image_tokens
 

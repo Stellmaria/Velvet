@@ -32,13 +32,19 @@ class _FakeExecutor:
 
 
 class MeteredVisionClientTests(unittest.IsolatedAsyncioTestCase):
-    def _client(self, executor: _FakeExecutor) -> MeteredVisionClient:
+    def _client(
+        self,
+        executor: _FakeExecutor,
+        *,
+        route: VisionRoute = VisionRoute.FLASH,
+        prompt_version: int = 1,
+    ) -> MeteredVisionClient:
         return MeteredVisionClient(
             config=VisionRouteConfig(
-                route=VisionRoute.FLASH,
+                route=route,
                 provider="openai_compatible",
                 base_url="https://example.invalid/v1",
-                model="flash-model",
+                model=f"{route.value}-model",
                 api_key="test-key",
                 timeout_seconds=30,
                 max_attempts=1,
@@ -46,6 +52,8 @@ class MeteredVisionClientTests(unittest.IsolatedAsyncioTestCase):
                     input_rub_per_million=Decimal("10"),
                     output_rub_per_million=Decimal("20"),
                 ),
+                prompt_version=prompt_version,
+                schema_version=1,
             ),
             executor=executor,  # type: ignore[arg-type]
         )
@@ -102,6 +110,35 @@ class MeteredVisionClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1500, result.input_tokens)
         self.assertEqual(250, result.output_tokens)
         self.assertEqual(Decimal("0.0200"), result.actual_cost_rub)
+
+    def test_sensitive_request_uses_separate_prompt_and_strict_schema(self) -> None:
+        client = self._client(
+            _FakeExecutor(),
+            route=VisionRoute.SENSITIVE,
+            prompt_version=7,
+        )
+
+        body = client._request_body("abc")
+
+        prompt = body["messages"][0]["content"][0]["text"]
+        response_format = body["response_format"]
+        schema = response_format["json_schema"]["schema"]
+        self.assertIn("route должен быть sensitive", prompt)
+        self.assertEqual("json_schema", response_format["type"])
+        self.assertTrue(response_format["json_schema"]["strict"])
+        self.assertEqual("sensitive", schema["properties"]["route"]["const"])
+        self.assertEqual(1800, body["max_tokens"])
+
+    def test_standard_request_cannot_return_sensitive_content_mode(self) -> None:
+        client = self._client(_FakeExecutor(), route=VisionRoute.FLASH)
+
+        schema = client._request_body("abc")["response_format"]["json_schema"]["schema"]
+
+        self.assertEqual("standard", schema["properties"]["route"]["const"])
+        self.assertNotIn(
+            "explicit_adult",
+            schema["properties"]["content_mode"]["enum"],
+        )
 
     def test_extracts_openai_and_ollama_usage(self) -> None:
         self.assertEqual(
