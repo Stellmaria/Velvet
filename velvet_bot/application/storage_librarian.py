@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 from datetime import UTC, datetime
 from typing import Protocol, cast
@@ -17,6 +18,7 @@ from velvet_bot.domains.telegram_storage.librarian_content import (
 from velvet_bot.domains.telegram_storage.librarian_models import (
     HermesRunResult,
     JsonValue,
+    LibrarianAnalysis,
     LibrarianObject,
     StorageLibrarianError,
     StorageLibrarianSettings,
@@ -25,6 +27,8 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
 from velvet_bot.domains.telegram_storage.librarian_repository import (
     StorageLibrarianRepository,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class StorageObjectLoader(Protocol):
@@ -44,6 +48,14 @@ class LibrarianRunClient(Protocol):
         session_id: str,
         instructions: str,
     ) -> HermesRunResult: ...
+
+
+class LibrarianReportPublisher(Protocol):
+    async def publish(
+        self,
+        item: LibrarianObject,
+        analysis: LibrarianAnalysis,
+    ) -> None: ...
 
 
 def _json_list(value: object) -> list[JsonValue]:
@@ -67,11 +79,13 @@ class StorageLibrarianService:
         settings: StorageLibrarianSettings,
         object_loader: StorageObjectLoader,
         run_client: LibrarianRunClient,
+        report_publisher: LibrarianReportPublisher | None = None,
     ) -> None:
         self.settings = settings
         self.repository = StorageLibrarianRepository(database)
         self.object_loader = object_loader
         self.run_client = run_client
+        self.report_publisher = report_publisher
         self.worker_id = f"storage-librarian:{os.getpid()}"
 
     async def process_once(self, *, auto_enqueue: bool = True) -> int:
@@ -119,6 +133,15 @@ class StorageLibrarianService:
                 source_excerpt=source_text[:12000],
                 run=run,
             )
+            if self.report_publisher is not None:
+                try:
+                    await self.report_publisher.publish(item, analysis)
+                except Exception as error:  # p2-approved-boundary: report-is-nonfatal
+                    logger.warning(
+                        "Storage Librarian report publication failed object_id=%s error=%s",
+                        item.object_id,
+                        redact_sensitive(str(error))[:1000],
+                    )
             return 1
         except UnsupportedStorageContent as error:
             await self.repository.skip(
@@ -175,6 +198,7 @@ class StorageLibrarianService:
 
 
 __all__ = (
+    "LibrarianReportPublisher",
     "LibrarianRunClient",
     "StorageLibrarianService",
     "StorageObjectLoader",
