@@ -1,0 +1,13 @@
+[Unit]
+Description=Reconcile Kael and Hermes coder entity files
+After=local-fs.target
+Before=velvet-compose.service hermes-coders.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/velvet/deploy/hermes-entities/reconcile.sh
+RemainAfterExit=yes
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
