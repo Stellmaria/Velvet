@@ -61,6 +61,8 @@ if len(key) < 24:
 updates = {
     "STORAGE_LIBRARIAN_HERMES_BASE_URL": "http://librarian-hermes:8642",
     "STORAGE_LIBRARIAN_HERMES_API_KEY": key,
+    "STORAGE_LIBRARIAN_ANALYZER_VERSION": "velvet-librarian:v2",
+    "STORAGE_LIBRARIAN_PUBLISH_REPORTS": "true",
 }
 result = []
 seen = set()
@@ -80,7 +82,7 @@ for name, value in updates.items():
         result.append(f"{name}={value}")
 path.write_text("\n".join(result).rstrip() + "\n", encoding="utf-8")
 os.chmod(path, 0o600)
-print("Velvet Librarian credentials prepared without printing secret values.")
+print("Velvet Librarian credentials and report settings prepared without printing secret values.")
 PY
 
 readarray -t resolved < <(python3 - "$VELVET_ENV_FILE" <<'PY'
@@ -199,5 +201,7 @@ fi
 printf '%s\n' \
   "Velvet Librarian profile installed." \
   "Dedicated API key configured." \
+  "Analyzer version set to velvet-librarian:v2." \
+  "Hermes Reports publication enabled." \
   "Bot-to-Librarian health verified." \
   "Automatic enqueue remains controlled by STORAGE_LIBRARIAN_AUTO_ENQUEUE."
