@@ -18,6 +18,8 @@ StorageKind = Literal[
     "codex",
     "releases",
     "rework",
+    "inbox",
+    "analysis",
 ]
 _STORAGE_KINDS: tuple[StorageKind, ...] = (
     "watermarks",
@@ -27,6 +29,8 @@ _STORAGE_KINDS: tuple[StorageKind, ...] = (
     "codex",
     "releases",
     "rework",
+    "inbox",
+    "analysis",
 )
 
 
@@ -44,6 +48,21 @@ def _bool_env(name: str, default: bool) -> bool:
 def _int_env(name: str, default: int, *, minimum: int, maximum: int) -> int:
     raw = os.getenv(name, "").strip()
     value = int(raw) if raw else default
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} должен быть от {minimum} до {maximum}.")
+    return value
+
+
+def _optional_int_env(
+    name: str,
+    *,
+    minimum: int,
+    maximum: int,
+) -> int | None:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return None
+    value = int(raw)
     if not minimum <= value <= maximum:
         raise ValueError(f"{name} должен быть от {minimum} до {maximum}.")
     return value
@@ -81,9 +100,21 @@ class StorageThreadMap:
     codex: int = 7
     releases: int = 13
     rework: int = 15
+    inbox: int | None = None
+    analysis: int | None = None
 
     def for_kind(self, kind: StorageKind) -> int:
-        return int(getattr(self, kind))
+        value = getattr(self, kind)
+        if value is None:
+            env_name = (
+                "STORAGE_THREAD_INBOX"
+                if kind == "inbox"
+                else "STORAGE_THREAD_ANALYSIS"
+            )
+            raise ValueError(
+                f"Для storage kind {kind} не настроена ветка Telegram: {env_name}."
+            )
+        return int(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +170,16 @@ class TelegramStorageSettings:
                 codex=_int_env("STORAGE_THREAD_CODEX", 7, minimum=1, maximum=2**31 - 1),
                 releases=_int_env("STORAGE_THREAD_RELEASES", 13, minimum=1, maximum=2**31 - 1),
                 rework=_int_env("STORAGE_THREAD_REWORK", 15, minimum=1, maximum=2**31 - 1),
+                inbox=_optional_int_env(
+                    "STORAGE_THREAD_INBOX",
+                    minimum=1,
+                    maximum=2**31 - 1,
+                ),
+                analysis=_optional_int_env(
+                    "STORAGE_THREAD_ANALYSIS",
+                    minimum=1,
+                    maximum=2**31 - 1,
+                ),
             ),
             project_dir=project_dir,
             data_dir=data_dir,
@@ -206,6 +247,8 @@ class TelegramStorageSettings:
             "codex": (self.staging_dir,),
             "releases": self.release_dirs,
             "rework": (self.staging_dir,),
+            "inbox": (self.staging_dir,),
+            "analysis": (self.staging_dir,),
         }
         return build_storage_deletion_policy(
             name=f"telegram-storage-{kind}",
