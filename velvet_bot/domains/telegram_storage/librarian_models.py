@@ -81,12 +81,25 @@ class StorageLibrarianSettings:
                 + ", ".join(sorted(forbidden))
             )
         enabled = _bool_env("STORAGE_LIBRARIAN_ENABLED", False)
-        base_url = os.getenv("HERMES_BASE_URL", "http://hermes:8642").strip().rstrip("/")
-        api_key = os.getenv("HERMES_API_KEY", "").strip() or None
+        base_url = os.getenv(
+            "STORAGE_LIBRARIAN_HERMES_BASE_URL",
+            os.getenv("HERMES_BASE_URL", "http://hermes:8642"),
+        ).strip().rstrip("/")
+        api_key = (
+            os.getenv(
+                "STORAGE_LIBRARIAN_HERMES_API_KEY",
+                os.getenv("HERMES_API_KEY", ""),
+            ).strip()
+            or None
+        )
         if enabled and not base_url:
-            raise ValueError("HERMES_BASE_URL обязателен для Storage Librarian.")
+            raise ValueError(
+                "STORAGE_LIBRARIAN_HERMES_BASE_URL обязателен для Storage Librarian."
+            )
         if enabled and (api_key is None or len(api_key) < 8):
-            raise ValueError("HERMES_API_KEY должен содержать минимум 8 символов.")
+            raise ValueError(
+                "STORAGE_LIBRARIAN_HERMES_API_KEY должен содержать минимум 8 символов."
+            )
         return cls(
             enabled=enabled,
             hermes_base_url=base_url,
@@ -136,9 +149,9 @@ class StorageLibrarianSettings:
             analyzer_version=(
                 os.getenv(
                     "STORAGE_LIBRARIAN_ANALYZER_VERSION",
-                    "hermes-librarian:v1",
+                    "velvet-librarian:v2",
                 ).strip()
-                or "hermes-librarian:v1"
+                or "velvet-librarian:v2"
             ),
             allowed_kinds=kinds,
         )
