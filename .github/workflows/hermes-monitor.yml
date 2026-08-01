@@ -1,0 +1,77 @@
+name: hermes monitor
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "deploy/hermes-monitor/**"
+      - "deploy/hermes-operator/AGENTS.kael.md"
+      - "deploy/systemd/hermes-operator-monitor.service"
+      - "deploy/systemd/hermes-monitor-gateway.service"
+      - "tests/test_hermes_monitor_contract.py"
+      - ".github/workflows/hermes-monitor.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "deploy/hermes-monitor/**"
+      - "deploy/hermes-operator/AGENTS.kael.md"
+      - "deploy/systemd/hermes-operator-monitor.service"
+      - "deploy/systemd/hermes-monitor-gateway.service"
+      - "tests/test_hermes_monitor_contract.py"
+      - ".github/workflows/hermes-monitor.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate Python, shell and contracts
+        run: |
+          set -Eeuo pipefail
+          python -m compileall -q deploy/hermes-monitor
+          bash -n deploy/hermes-monitor/install.sh
+          python -m unittest tests/test_hermes_monitor_contract.py -v
+
+      - name: Prepare fixed gateway environment
+        run: |
+          set -Eeuo pipefail
+          mkdir -p .ci/hermes-operator /tmp/hermes-operator-monitor
+          cat > .ci/hermes-operator/operator.env <<'EOF_ENV'
+          HERMES_OPS_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_OPS_MONITOR_TOKEN=ci_monitor_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_OPS_MONITOR_SOCKET=/tmp/hermes-operator-monitor/monitor.sock
+          HERMES_OPS_MONITOR_RUNTIME_DIR=/tmp/hermes-operator-monitor
+          HERMES_OPS_MONITOR_REQUEST_TIMEOUT_SECONDS=20
+          HERMES_OPS_SOCKET_GID=10001
+          HERMES_MONITOR_GATEWAY_HOST=0.0.0.0
+          HERMES_MONITOR_GATEWAY_PORT=8879
+          EOF_ENV
+          chmod 600 .ci/hermes-operator/operator.env
+
+      - name: Validate Docker Compose
+        run: |
+          set -Eeuo pipefail
+          HERMES_OPS_ENV_FILE="$PWD/.ci/hermes-operator/operator.env" \
+          HERMES_OPS_MONITOR_RUNTIME_DIR=/tmp/hermes-operator-monitor \
+          VELVET_BACKEND_NETWORK=velvet_backend \
+            docker compose -f deploy/hermes-monitor/compose.yaml config --quiet
+
+      - name: Build monitor gateway image
+        run: |
+          set -Eeuo pipefail
+          docker build \
+            --file deploy/hermes-monitor/Dockerfile \
+            --tag velvet-hermes-monitor-gateway:ci .
+          test "$(docker image inspect velvet-hermes-monitor-gateway:ci --format '{{.Config.User}}')" = "10001:10001"

@@ -1,0 +1,36 @@
+[Unit]
+Description=Read-only host metrics bridge for the trusted Velvet Hermes operator
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=velvet
+WorkingDirectory=/srv/velvet
+EnvironmentFile=/srv/hermes-operator-control/operator.env
+Environment=PYTHONUNBUFFERED=1
+Environment=HERMES_OPS_MONITOR_RUNTIME_DIR=/run/hermes-operator-monitor
+Environment=HERMES_OPS_MONITOR_SOCKET=/run/hermes-operator-monitor/monitor.sock
+ExecStart=/usr/bin/python3 /usr/local/libexec/velvet-hermes-operator-monitor.py
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+TimeoutStopSec=20
+RuntimeDirectory=hermes-operator-monitor
+RuntimeDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+ReadWritePaths=/run/hermes-operator-monitor
+
+[Install]
+WantedBy=multi-user.target

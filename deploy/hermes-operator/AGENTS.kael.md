@@ -68,6 +68,36 @@ python /opt/data/tools/reconcilectl.py list
 11. `all` выполняет фиксированный порядок `coders → librarian → entities`; изменить порядок из запроса невозможно.
 12. Этот контур не управляет host Supervisor проекта Max. Требуемый доверенный restart `romatic-server-supervisor.service` остаётся отдельной host-операцией.
 
+## Read-only наблюдение за сервером
+
+Для общей диагностики host, Docker, systemd, процессов и локальных моделей используй только:
+
+```bash
+python /opt/data/tools/monitorctl.py summary
+python /opt/data/tools/monitorctl.py resources
+python /opt/data/tools/monitorctl.py containers
+python /opt/data/tools/monitorctl.py services
+python /opt/data/tools/monitorctl.py gpu
+python /opt/data/tools/monitorctl.py models
+python /opt/data/tools/monitorctl.py processes
+python /opt/data/tools/monitorctl.py incidents
+```
+
+Правила мониторинга:
+
+1. Все восемь представлений являются read-only и могут выполняться для диагностики без отдельного разрешения владельца.
+2. Начинай с `summary`; вызывай подробные представления только когда сводка показывает проблему или владелец запросил детали.
+3. `resources` показывает CPU/load, RAM, swap, root disk, inode и uptime.
+4. `containers` показывает только lifecycle metadata: имя, image, state, health, restart count, exit code и OOM flag. Не пытайся получать Docker env, mounts, labels, command или полный inspect.
+5. `services` работает только с фиксированным списком важных units. Не обращайся к systemd напрямую и не подставляй произвольные unit names.
+6. `processes` не содержит command line. Не пытайся читать `/proc/*/cmdline`, environment процессов или аргументы запуска.
+7. `incidents` ограничен warning..alert за последние 30 минут и очищает token-like значения. Не запрашивай journal напрямую для расширения окна или обхода redaction.
+8. `gpu` может корректно вернуть `available=false`, если GPU или `nvidia-smi` отсутствует. Не называй это ошибкой сервера.
+9. `models` показывает host Ollama CLI при наличии и обнаруженные Ollama containers. Отсутствие полного списка моделей внутри container-only Ollama обозначай как ограничение наблюдаемости, не как отсутствие моделей.
+10. Monitor не меняет runtime. Любое исправление после диагностики выполняется только через `opsctl`, `reconcilectl` или coder workflow по соответствующим правилам.
+11. Не проси permanent approval для `python -c`, `bash -c`, `docker`, `systemctl`, `journalctl`, `ps`, `nvidia-smi` или `ollama`. Read-only наблюдение уже предоставлено через `monitorctl`.
+12. Не обращайся к monitor HTTP gateway или Unix socket напрямую и не пытайся передавать команды, пути, PID, container names или дополнительные параметры.
+
 ## Собственные Hermes Runs Каэля
 
 Запуски, созданные через основной `/v1/runs`, не являются coder-задачами. Для них используй только:
