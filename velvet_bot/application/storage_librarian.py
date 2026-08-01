@@ -5,9 +5,7 @@ import hashlib
 import json
 import os
 from datetime import UTC, datetime
-from typing import cast
-
-from aiogram import Bot
+from typing import Protocol, cast
 
 from velvet_bot.database import Database
 from velvet_bot.domains.telegram_storage.librarian_content import (
@@ -17,7 +15,9 @@ from velvet_bot.domains.telegram_storage.librarian_content import (
     redact_sensitive,
 )
 from velvet_bot.domains.telegram_storage.librarian_models import (
+    HermesRunResult,
     JsonValue,
+    LibrarianObject,
     StorageLibrarianError,
     StorageLibrarianSettings,
     UnsupportedStorageContent,
@@ -25,10 +25,25 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
 from velvet_bot.domains.telegram_storage.librarian_repository import (
     StorageLibrarianRepository,
 )
-from velvet_bot.infrastructure.ai.storage_librarian_hermes import HermesRunsClient
-from velvet_bot.infrastructure.telegram.storage_librarian_files import (
-    download_storage_object,
-)
+
+
+class StorageObjectLoader(Protocol):
+    async def download(
+        self,
+        item: LibrarianObject,
+        *,
+        max_bytes: int,
+    ) -> bytes: ...
+
+
+class LibrarianRunClient(Protocol):
+    async def run(
+        self,
+        *,
+        prompt: str,
+        session_id: str,
+        instructions: str,
+    ) -> HermesRunResult: ...
 
 
 def _json_list(value: object) -> list[JsonValue]:
@@ -48,14 +63,15 @@ class StorageLibrarianService:
     def __init__(
         self,
         *,
-        bot: Bot,
         database: Database,
-        settings: StorageLibrarianSettings | None = None,
+        settings: StorageLibrarianSettings,
+        object_loader: StorageObjectLoader,
+        run_client: LibrarianRunClient,
     ) -> None:
-        self.bot = bot
-        self.settings = settings or StorageLibrarianSettings.from_env()
+        self.settings = settings
         self.repository = StorageLibrarianRepository(database)
-        self.client = HermesRunsClient(self.settings)
+        self.object_loader = object_loader
+        self.run_client = run_client
         self.worker_id = f"storage-librarian:{os.getpid()}"
 
     async def process_once(self, *, auto_enqueue: bool = True) -> int:
@@ -74,8 +90,7 @@ class StorageLibrarianService:
                 raise UnsupportedStorageContent(
                     f"Категория {item.storage_kind} запрещена для Librarian."
                 )
-            source = await download_storage_object(
-                self.bot,
+            source = await self.object_loader.download(
                 item,
                 max_bytes=self.settings.max_object_bytes,
             )
@@ -84,7 +99,7 @@ class StorageLibrarianService:
                 source,
                 settings=self.settings,
             )
-            run = await self.client.run(
+            run = await self.run_client.run(
                 prompt=analysis_prompt(item, source_text),
                 session_id=(
                     f"velvet-storage-{item.object_id}-"
@@ -141,7 +156,7 @@ class StorageLibrarianService:
             )
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         question_hash = hashlib.sha256(question.encode("utf-8")).hexdigest()[:16]
-        run = await self.client.run(
+        run = await self.run_client.run(
             prompt=(
                 "Ответь на вопрос владельца Velvet только по приведённым индексированным "
                 "резюме. Не используй инструменты и не выдумывай отсутствующие факты. "
@@ -159,4 +174,8 @@ class StorageLibrarianService:
         return run.output[:12000]
 
 
-__all__ = ("StorageLibrarianService",)
+__all__ = (
+    "LibrarianRunClient",
+    "StorageLibrarianService",
+    "StorageObjectLoader",
+)
