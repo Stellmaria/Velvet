@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "working-tree",
+  "generated_from": "p1-package-architecture-baseline",
   "baseline_issue": "#460",
   "shared_private_access_sha256": "09eda473b2f3e223be6ec9ba8f43708a46dcabbc1f0f87fff32ae8ed7ef35af8",
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",

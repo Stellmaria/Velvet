@@ -77,7 +77,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_inventory_covers_the_complete_current_package(self) -> None:
         modules = self.inventory["modules"]
-        self.assertEqual(638, self.inventory["production_module_count"])
+        self.assertEqual(639, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
         self.assertEqual(138_918, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
@@ -148,12 +148,12 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_shared_private_and_duplicate_fingerprints_are_linked(self) -> None:
         shared = self.inventory["shared_contract_summary"]
-        self.assertEqual(631, shared["production_python_files"])
-        self.assertEqual(3_597, shared["function_count"])
-        self.assertEqual(182, shared["private_contract_access_count"])
+        self.assertEqual(639, shared["production_python_files"])
+        self.assertEqual(3_660, shared["function_count"])
+        self.assertEqual(186, shared["private_contract_access_count"])
         self.assertEqual(0, shared["blocking_private_contract_access_count"])
-        self.assertEqual(62, shared["exact_duplicate_group_count"])
-        self.assertEqual(97, shared["normalized_duplicate_group_count"])
+        self.assertEqual(64, shared["exact_duplicate_group_count"])
+        self.assertEqual(98, shared["normalized_duplicate_group_count"])
         self.assertEqual(9, shared["semantic_near_duplicate_group_count"])
         self.assertEqual(
             shared["private_access_sha256"],
@@ -180,7 +180,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         )
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
-        self.assertIn("Production modules: **638**", self.markdown)
+        self.assertIn("Production modules: **639**", self.markdown)
         self.assertIn("Production LOC: **138918**", self.markdown)
         self.assertIn("Startup installer stages: **28**", self.markdown)
         self.assertIn("Registered package violations: **549**", self.markdown)
