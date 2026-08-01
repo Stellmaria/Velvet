@@ -16,7 +16,7 @@ SPEC.loader.exec_module(runtime_smoke)
 
 
 class HermesCoderRuntimeSmokeTests(unittest.TestCase):
-    def test_probe_is_read_only_and_checks_push_permission(self) -> None:
+    def test_probe_is_non_mutating_and_checks_real_push_auth(self) -> None:
         for target in runtime_smoke.CODERS:
             with self.subTest(project=target.project):
                 script = runtime_smoke.github_probe_script(target)
@@ -24,9 +24,11 @@ class HermesCoderRuntimeSmokeTests(unittest.TestCase):
                 self.assertIn("gh api user", script)
                 self.assertIn(".permissions.push", script)
                 self.assertIn("gh auth git-credential", script)
-                self.assertNotIn("git push", script)
+                self.assertIn("git -C /workspace push --dry-run", script)
+                self.assertIn(f"hermes-auth-smoke-{target.project}", script)
                 self.assertNotIn("gh pr create", script)
                 self.assertNotIn("gh api --method", script)
+                self.assertNotIn("git -C /workspace push origin", script)
 
     def test_wait_for_gateway_retries_then_succeeds(self) -> None:
         calls: list[list[str]] = []
