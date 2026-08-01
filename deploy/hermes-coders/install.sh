@@ -25,6 +25,7 @@ for required in \
   "$SOURCE_DIR/SOUL.max.md" \
   "$SOURCE_DIR/ensure_runtime_config.py" \
   "$SOURCE_DIR/preflight.py" \
+  "$SOURCE_DIR/runtime_smoke.py" \
   "$OPERATOR_ENV" \
   "$UNIT_SOURCE"; do
   if [[ ! -f "$required" ]]; then
@@ -98,6 +99,7 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
         "TELEGRAM_BOT_TOKEN": existing.get("TELEGRAM_BOT_TOKEN", ""),
         "TELEGRAM_ALLOWED_USERS": existing.get("TELEGRAM_ALLOWED_USERS", ""),
         "GH_TOKEN": existing.get("GH_TOKEN", ""),
+        "API_SERVER_KEY": existing.get("API_SERVER_KEY", ""),
     }
     body = "\n".join(f"{key}={value}" for key, value in values.items()) + "\n"
     path.write_text(body, encoding="utf-8")
@@ -227,4 +229,5 @@ Hermes Coder infrastructure prepared.
 Затем:
   sudo env HERMES_CODERS_ROOT=$ROOT python3 $SOURCE_DIR/preflight.py
   sudo systemctl enable --now hermes-coders.service
+  sudo env HERMES_CODERS_ROOT=$ROOT python3 $SOURCE_DIR/runtime_smoke.py
 EOF

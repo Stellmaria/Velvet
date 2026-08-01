@@ -15,8 +15,10 @@ ExecStartPre=+/usr/bin/python3 /srv/velvet/deploy/hermes-coders/ensure_runtime_c
 ExecStartPre=+/usr/bin/python3 /srv/velvet/deploy/hermes-coders/preflight.py
 ExecStartPre=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml config --quiet
 ExecStart=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml up -d --build --remove-orphans
+ExecStartPost=/usr/bin/python3 /srv/velvet/deploy/hermes-coders/runtime_smoke.py
 ExecStop=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml stop --timeout 45
 ExecReload=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml up -d --build --remove-orphans
+ExecReload=/usr/bin/python3 /srv/velvet/deploy/hermes-coders/runtime_smoke.py
 TimeoutStartSec=0
 TimeoutStopSec=120
 
