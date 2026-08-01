@@ -2,7 +2,7 @@
 
 - Дата: 2026-08-02
 - ID: `storage-librarian-reports-20260802`
-- Линия/фаза: Telegram Storage Librarian reports и installer hardening
+- Линия/фаза: Hermes identities, Telegram Storage Librarian reports и installer hardening
 - Статус: `частично`
 - Ветка: `agent/storage-librarian-reports`
 - Базовый commit: `0ad3e39e0607c55dc06fe4bdbb90ca3fdcaa779a`
@@ -57,7 +57,9 @@
 - UID-проверка Каэля выполняется через `/command/s6-setuidgid hermes`;
 - статус `/storage_librarian` показывает состояние публикации;
 - добавлены contract и payload tests;
-- runbook обновлён.
+- runbook обновлён;
+- package architecture inventory синхронизирован штатным генератором;
+- временный write-workflow удалён из итоговой ветки.
 
 ### Миграции и совместимость
 
@@ -65,27 +67,30 @@ SQL-миграций нет. Существующие записи анализ�
 
 ### Проверки
 
-Ожидаются после открытия PR:
+На исходном кодовом head подтверждён зелёный bounded mypy. Первый tests-run ожидаемо остановился только из-за временного write-workflow, который затем был удалён автоматическим inventory-коммитом. Workflows на самом workflow-generated commit получили GitHub `action_required` без созданных jobs; этот commit запускает стандартный CI повторно от владельца.
+
+Ожидаются:
 
 - полный tests workflow;
-- mypy/type-check;
 - architecture inventory preflight;
+- повторный type-check;
+- project notes contract;
 - Docker Compose/build checks;
-- production manual report smoke-test.
+- production manual report smoke-test после merge.
 
 ### PR и commit
 
-- PR: ожидается;
-- проверенный head: ожидается;
+- PR: `https://github.com/Stellmaria/Velvet/pull/541`;
+- inventory head: `13e7373917a2b1d791be9085ee35424c1ffa55b5`;
+- проверенный финальный head: ожидается после повторного CI;
 - merge commit: ожидается после явного разрешения владельца.
 
 ### Незавершённое
 
-- синхронизация architecture inventory;
-- полный CI;
+- полный чистый CI на head без временного workflow;
 - merge;
 - production update и smoke-test темы `Hermes Reports`.
 
 ### Следующий шаг
 
-Синхронизировать generated inventory, открыть draft PR, устранить замечания CI и после merge выполнить server installer с повторным анализом небольшого диагностического объекта.
+Получить полностью зелёный CI. После отдельного разрешения владельца слить PR, обновить VPS, выполнить installers и повторно проанализировать небольшой диагностический объект `#2143`.
