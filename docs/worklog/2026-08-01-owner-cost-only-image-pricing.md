@@ -6,7 +6,7 @@
 - Статус: `завершено`
 - Ветка: `fix/owner-cost-only-and-image-pricing`
 - Базовый commit: `c920c8a2ba22d981820a47b54cba7d7c40826d91`
-- Финальный head до CI: `eef21f2ea7831188ec595a31858862f3bb788bcd`
+- Финальный head до CI: `0e6996787e51d0e02fc31972ddcb57674e2ba0c0`
 - PR: `#540`
 
 ## Перед началом
@@ -83,7 +83,7 @@ Production deployment, обновление контейнера и smoke-test �
 До финального CI успешно выполнены:
 
 - компиляция production-кода и тестов;
-- генерация и проверка package architecture inventory;
+- генерация и проверка package architecture inventory штатной командой без временной метки;
 - генерация и проверка Telegram navigation inventory;
 - генерация shared-contract inventory;
 - проверка project notes contract;
