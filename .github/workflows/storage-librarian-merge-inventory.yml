@@ -83,8 +83,8 @@ jobs:
           audit = audit_path.read_text(encoding="utf-8")
           layers = package["layer_counts"]
           audit_replacements = {
-              r"all \d+ production Python modules под `velvet_bot`;": (
-                  f"all {package['production_module_count']} production Python modules "
+              r"все \d+ production Python modules под `velvet_bot`;": (
+                  f"все {package['production_module_count']} production Python modules "
                   "под `velvet_bot`;"
               ),
               r"production modules: \*\*\d+\*\*;": (
