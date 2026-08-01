@@ -44,6 +44,7 @@ SERVICE.write_text(service, encoding="utf-8")
 TEST.write_text(
     '''from __future__ import annotations
 
+import logging
 import os
 import tempfile
 import unittest
@@ -94,17 +95,18 @@ class TelegramStorageKritaCleanupTests(unittest.TestCase):
             self.assertEqual(configured.resolve(), service.bridge.paths.root)
             self.assertFalse((project / "wrong-bridge").exists())
 
-    def test_missing_legacy_path_is_excluded_without_warning(self) -> None:
+    def test_missing_legacy_path_is_excluded_at_debug_level(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory).resolve()
             service = self._service(self._settings(project, project / "bridge"))
             missing = project / "old-windows-bridge" / "sources" / "stale.png"
 
-            with patch.object(storage_service.logger, "warning") as warning:
+            with patch.object(storage_service.logger, "log") as log:
                 safe = service._safe_bridge_paths((missing,))
 
             self.assertEqual((), safe)
-            warning.assert_not_called()
+            log.assert_called_once()
+            self.assertEqual(logging.DEBUG, log.call_args.args[0])
 
     def test_existing_external_path_remains_a_warning_and_is_not_deleted(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -113,11 +115,12 @@ class TelegramStorageKritaCleanupTests(unittest.TestCase):
             outside = project / "outside.png"
             outside.write_bytes(b"keep")
 
-            with patch.object(storage_service.logger, "warning") as warning:
+            with patch.object(storage_service.logger, "log") as log:
                 safe = service._safe_bridge_paths((outside,))
 
             self.assertEqual((), safe)
-            warning.assert_called_once()
+            log.assert_called_once()
+            self.assertEqual(logging.WARNING, log.call_args.args[0])
             self.assertTrue(outside.exists())
 
     def test_file_inside_configured_bridge_is_accepted(self) -> None:
