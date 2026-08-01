@@ -113,9 +113,9 @@ services:
         aliases:
           - postgres
 
-  hermes-coder-velvet:
+  hermes-chat-velvet:
     <<: *hermes-coder
-    image: velvet-hermes-coder-velvet:local
+    image: velvet-hermes-chat-velvet:local
     profiles: ["velvet"]
     env_file:
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/velvet.env
@@ -131,7 +131,7 @@ services:
       - velvet-db
       - agent-control
 
-  codex-coder-velvet:
+  hermes-coder-velvet:
     <<: *codex-runner
     image: velvet-codex-coder-velvet:local
     profiles: ["velvet"]
@@ -155,9 +155,9 @@ services:
         aliases:
           - postgres
 
-  hermes-coder-max:
+  hermes-chat-max:
     <<: *hermes-coder
-    image: velvet-hermes-coder-max:local
+    image: velvet-hermes-chat-max:local
     profiles: ["max"]
     env_file:
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/max.env
@@ -173,7 +173,7 @@ services:
       - max-db
       - agent-control
 
-  codex-coder-max:
+  hermes-coder-max:
     <<: *codex-runner
     image: velvet-codex-coder-max:local
     profiles: ["max"]
