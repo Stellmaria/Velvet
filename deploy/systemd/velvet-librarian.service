@@ -1,0 +1,19 @@
+[Unit]
+Description=Velvet Librarian internal Hermes runtime
+Requires=docker.service
+After=docker.service velvet-compose.service
+Wants=velvet-compose.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=velvet
+Group=velvet
+WorkingDirectory=/srv/velvet/deploy/hermes-librarian
+ExecStart=/usr/bin/docker compose --env-file /srv/velvet/.env.server -f /srv/velvet/deploy/hermes-librarian/compose.yaml up -d
+ExecStop=/usr/bin/docker compose --env-file /srv/velvet/.env.server -f /srv/velvet/deploy/hermes-librarian/compose.yaml stop
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

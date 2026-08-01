@@ -16,6 +16,7 @@ class HermesOperatorControlContractTests(unittest.TestCase):
         self.opsctl = (base / "opsctl.py").read_text(encoding="utf-8")
         self.installer = (base / "install.sh").read_text(encoding="utf-8")
         self.soul = (base / "SOUL.operator.md").read_text(encoding="utf-8")
+        self.agents = (base / "AGENTS.kael.md").read_text(encoding="utf-8")
         self.gateway_unit = (
             ROOT / "deploy/systemd/hermes-operator-control.service"
         ).read_text(encoding="utf-8")
@@ -109,9 +110,12 @@ class HermesOperatorControlContractTests(unittest.TestCase):
     def test_coders_remain_outside_operator_control(self) -> None:
         self.assertNotIn("hermes-supervisor-control", self.coders_compose)
         self.assertNotIn("hermes-operator-control/runtime", self.coders_compose)
-        self.assertIn("@velvet_private_coder_bot", self.soul)
-        self.assertIn("@romatic_max_coder_bot", self.soul)
-        self.assertIn("Не проси их запускать Docker", self.soul)
+        self.assertIn("Ты Каэль", self.soul)
+        self.assertNotIn("@velvet_private_coder_bot", self.soul)
+        self.assertNotIn("python /opt/data/tools/", self.soul)
+        self.assertIn("@velvet_private_coder_bot", self.agents)
+        self.assertIn("@romatic_max_coder_bot", self.agents)
+        self.assertIn("Не проси их запускать Docker", self.agents)
 
 
 if __name__ == "__main__":
