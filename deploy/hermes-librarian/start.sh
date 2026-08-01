@@ -30,10 +30,10 @@ if ! "${compose[@]}" exec -T ollama-librarian ollama show "$SOURCE_MODEL" >/dev/
   "${compose[@]}" exec -T ollama-librarian ollama pull "$SOURCE_MODEL"
 fi
 
-if ! "${compose[@]}" exec -T ollama-librarian ollama show "$LOCAL_MODEL" >/dev/null 2>&1; then
-  "${compose[@]}" exec -T ollama-librarian \
-    ollama create "$LOCAL_MODEL" -f /bootstrap/Modelfile
-fi
-
+# Recreate the local alias every time so Modelfile changes are applied even
+# when the persistent Ollama volume already contains an older alias.
+"${compose[@]}" exec -T ollama-librarian \
+  ollama create "$LOCAL_MODEL" -f /bootstrap/Modelfile
 "${compose[@]}" exec -T ollama-librarian ollama show "$LOCAL_MODEL" >/dev/null
-"${compose[@]}" up -d librarian-hermes
+
+"${compose[@]}" up -d --force-recreate librarian-hermes
