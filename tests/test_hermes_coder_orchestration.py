@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import ast
 import importlib.util
 import json
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -141,6 +144,70 @@ class CoderCtlTests(unittest.TestCase):
             records = json.loads(ledger_path.read_text(encoding="utf-8"))
             self.assertEqual("run_1", records[0]["run_id"])
             self.assertEqual("velvet", records[0]["project"])
+
+
+class OrchestrationDeploymentContractTests(unittest.TestCase):
+    def test_router_has_no_host_access_or_production_secrets(self) -> None:
+        compose = (ROOT / "deploy/hermes-operator/compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        router = compose.split("  hermes-coder-router:", 1)[1].split(
+            "\nnetworks:", 1
+        )[0]
+        self.assertIn('command: ["python", "/app/coder_router.py"]', router)
+        self.assertIn("read_only: true", router)
+        self.assertIn("agent-control", router)
+        self.assertIn("velvet-backend", router)
+        self.assertNotIn("volumes:", router)
+        self.assertNotIn("docker.sock", router)
+        self.assertNotIn("ports:", router)
+        self.assertNotIn("operator.env", router)
+
+    def test_coder_api_is_only_on_internal_control_network(self) -> None:
+        compose = (ROOT / "deploy/hermes-coders/compose.yaml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("API_SERVER_HOST: 0.0.0.0", compose)
+        self.assertIn("API_SERVER_CORS_ORIGINS: \"\"", compose)
+        self.assertNotIn("API_SERVER_KEY: hermes-coder-local-healthcheck-only", compose)
+        self.assertNotIn("ports:", compose)
+        self.assertIn("name: ${HERMES_AGENT_CONTROL_NETWORK:-hermes-agent-control}", compose)
+        velvet = compose.split("  hermes-coder-velvet:", 1)[1].split(
+            "\n  max-db-proxy:", 1
+        )[0]
+        maximum = compose.split("  hermes-coder-max:", 1)[1].split(
+            "\nnetworks:", 1
+        )[0]
+        self.assertIn("- agent-control", velvet)
+        self.assertIn("- agent-control", maximum)
+
+    def test_installer_generates_keys_without_printing_values(self) -> None:
+        source = (ROOT / "deploy/hermes-orchestration/install.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("secrets.token_urlsafe(48)", source)
+        self.assertIn('docker network create --internal "$AGENT_CONTROL_NETWORK"', source)
+        self.assertIn("Coder API and router credentials prepared without printing", source)
+        self.assertIn("chmod 0600", source)
+        self.assertNotIn("cat \"$CODER_ROUTER_ENV\"", source)
+        self.assertNotIn("echo \"$API_SERVER_KEY\"", source)
+
+    def test_python_and_bash_sources_parse(self) -> None:
+        for path in (
+            ROOT / "deploy/hermes-operator/coder_router.py",
+            ROOT / "deploy/hermes-operator/coderctl.py",
+        ):
+            ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        bash = shutil.which("bash")
+        if bash is None:
+            self.skipTest("bash is unavailable")
+        result = subprocess.run(
+            [bash, "-n", str(ROOT / "deploy/hermes-orchestration/install.sh")],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
 
 
 if __name__ == "__main__":
