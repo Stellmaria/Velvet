@@ -72,7 +72,10 @@
 - fallback не подставляет случайные последние записи и не принимает отрицательную фразу «ошибок нет» за инцидент;
 - добавлены contract tests и runbook;
 - открыт draft PR #544;
-- feature-ветка синхронизирована с текущим `main` commit `056ea79c3fa4dcb66d574e206fea4d5f6b14565a`, чтобы generated inventory и PR merge-check проверяли одну базу.
+- feature-ветка синхронизирована с текущим `main` commit `056ea79c3fa4dcb66d574e206fea4d5f6b14565a`;
+- package architecture inventory атомарно пересчитан с меткой `p1-package-architecture-baseline`;
+- inventory фиксирует 640 production-модулей и 139184 строк кода;
+- временный write-workflow удалён из итоговой ветки.
 
 ### Миграции и совместимость
 
@@ -80,22 +83,29 @@ SQL-миграций нет. Существующие анализы и очер
 
 ### Проверки
 
-Первый CI подтвердил:
+Подтверждено на промежуточных head:
 
 - bounded mypy: зелёный;
+- project notes contract: зелёный после приведения worklog к обязательному шаблону;
 - bash syntax и новые local-runtime contract tests выполняются;
-- морфологический fallback правильно выбрал `#2134`, а исходное ошибочное ожидание теста было исправлено;
-- обнаружен и исправляется drift package architecture inventory;
-- project notes contract потребовал полный обязательный шаблон этого worklog;
-- Docker workflow продолжает отдельную проверку Compose и images.
+- морфологический fallback правильно выбирает `#2134`;
+- запрос не трактует фразу «ошибок нет» как подтверждённый инцидент;
+- Docker Compose принимает отдельный Ollama runtime;
+- package architecture inventory синхронизирован штатным генератором на текущей базе `main`.
 
-Ожидаются повторно:
+На финальном пользовательском commit повторно ожидаются:
 
 - package architecture preflight;
 - все четыре unit-test shards;
+- bounded mypy;
 - project notes contract;
 - Docker Compose validation и полный Docker build;
-- production pull модели и smoke-test объектов `#2143`/`#2134`;
+- Krita smoke-test.
+
+После merge на production остаются:
+
+- pull модели и создание локального alias;
+- smoke-test объектов `#2143`/`#2134`;
 - проверка `docker stats`, swap, времени ответа и provider usage.
 
 ### PR и commit
@@ -104,13 +114,13 @@ SQL-миграций нет. Существующие анализы и очер
 - ветка: `agent/storage-librarian-local-qwen`;
 - исходный проверяемый head: `219b8737eda79b3e032c25887ace08db6032e895`;
 - синхронизированный с main head: `3259d1abd1895ac2864c8f1a201fda1a4331e787`;
-- финальный зелёный head: ожидается после синхронизации inventory и повторного CI;
+- inventory commit: `2af5cdc216833ca43945d6886ef1ebf976b336e6`;
+- финальный зелёный head: ожидается после повторного CI;
 - merge commit: ожидается только после отдельного разрешения владельца.
 
 ### Незавершённое
 
-- синхронизация package architecture inventory;
-- полностью зелёный CI;
+- полностью зелёный CI на обычном пользовательском commit;
 - перевод PR из draft и merge;
 - production deployment;
 - первый download модели;
@@ -118,4 +128,4 @@ SQL-миграций нет. Существующие анализы и очер
 
 ### Следующий шаг
 
-Пересчитать package architecture inventory штатным генератором на ветке, уже синхронизированной с `main`, получить зелёный CI, затем после отдельного разрешения владельца слить PR #544 и выполнить production smoke-test.
+Получить полностью зелёный CI. После отдельного разрешения владельца слить PR #544, обновить VPS и выполнить production smoke-test локальной модели.
