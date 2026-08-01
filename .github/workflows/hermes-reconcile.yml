@@ -1,0 +1,75 @@
+name: hermes reconcile
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "deploy/hermes-reconcile/**"
+      - "deploy/hermes-operator/AGENTS.kael.md"
+      - "deploy/systemd/hermes-operator-reconcile.service"
+      - "deploy/systemd/hermes-reconcile-gateway.service"
+      - "tests/test_hermes_reconcile_contract.py"
+      - ".github/workflows/hermes-reconcile.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "deploy/hermes-reconcile/**"
+      - "deploy/hermes-operator/AGENTS.kael.md"
+      - "deploy/systemd/hermes-operator-reconcile.service"
+      - "deploy/systemd/hermes-reconcile-gateway.service"
+      - "tests/test_hermes_reconcile_contract.py"
+      - ".github/workflows/hermes-reconcile.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate Python, shell and contracts
+        run: |
+          set -Eeuo pipefail
+          python -m compileall -q deploy/hermes-reconcile
+          bash -n deploy/hermes-reconcile/install.sh
+          python -m unittest tests/test_hermes_reconcile_contract.py -v
+
+      - name: Prepare fixed gateway environment
+        run: |
+          set -Eeuo pipefail
+          mkdir -p .ci/hermes-operator
+          cat > .ci/hermes-operator/operator.env <<'EOF'
+          HERMES_OPS_CLIENT_TOKEN=ci_client_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_OPS_RECONCILE_TOKEN=ci_reconcile_token_abcdefghijklmnopqrstuvwxyz
+          HERMES_OPS_RECONCILE_SOCKET=/run/hermes-operator-reconcile/reconcile.sock
+          HERMES_OPS_RECONCILE_REQUEST_TIMEOUT_SECONDS=30
+          HERMES_OPS_SOCKET_GID=10001
+          HERMES_RECONCILE_GATEWAY_HOST=0.0.0.0
+          HERMES_RECONCILE_GATEWAY_PORT=8878
+          EOF
+          chmod 600 .ci/hermes-operator/operator.env
+
+      - name: Validate Docker Compose
+        run: |
+          set -Eeuo pipefail
+          HERMES_OPS_ENV_FILE="$PWD/.ci/hermes-operator/operator.env" \
+          VELVET_BACKEND_NETWORK=velvet_backend \
+            docker compose -f deploy/hermes-reconcile/compose.yaml config --quiet
+
+      - name: Build reconcile gateway image
+        run: |
+          set -Eeuo pipefail
+          docker build \
+            --file deploy/hermes-reconcile/Dockerfile \
+            --tag velvet-hermes-reconcile-gateway:ci .
+          test "$(docker image inspect velvet-hermes-reconcile-gateway:ci --format '{{.Config.User}}')" = "10001:10001"
