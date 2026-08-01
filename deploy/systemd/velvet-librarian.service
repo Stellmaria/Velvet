@@ -1,5 +1,5 @@
 [Unit]
-Description=Velvet Librarian internal Hermes runtime
+Description=Velvet Librarian local Ollama and internal Hermes runtime
 Requires=docker.service
 After=docker.service velvet-compose.service
 Wants=velvet-compose.service
@@ -10,9 +10,9 @@ RemainAfterExit=yes
 User=velvet
 Group=velvet
 WorkingDirectory=/srv/velvet/deploy/hermes-librarian
-ExecStart=/usr/bin/docker compose --env-file /srv/velvet/.env.server -f /srv/velvet/deploy/hermes-librarian/compose.yaml up -d
+ExecStart=/usr/bin/bash /srv/velvet/deploy/hermes-librarian/start.sh
 ExecStop=/usr/bin/docker compose --env-file /srv/velvet/.env.server -f /srv/velvet/deploy/hermes-librarian/compose.yaml stop
-TimeoutStartSec=300
+TimeoutStartSec=1800
 TimeoutStopSec=120
 
 [Install]
