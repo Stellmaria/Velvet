@@ -240,7 +240,7 @@ class StorageLibrarianService:
         self.report_publisher = report_publisher
         self.worker_id = f"storage-librarian:{os.getpid()}"
 
-    async def process_once(self, *, auto_enqueue: bool = True) -> int:
+    async def process_once(self, *, auto_enqueue: bool = False) -> int:
         if not self.settings.enabled:
             return 0
         if auto_enqueue:
