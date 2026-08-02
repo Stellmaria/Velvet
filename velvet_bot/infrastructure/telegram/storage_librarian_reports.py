@@ -76,7 +76,7 @@ def build_storage_librarian_failure_report(
             "",
             escape(_short(safe_error or "Причина не указана.", 1200)),
             "",
-            "Автоматических restart/update/rollback не выполнялось.",
+            "Автоматический перезапуск, обновление или откат не выполнялись.",
             f"Проверка: <code>/storage_librarian</code>",
         )
     )
