@@ -42,6 +42,35 @@ def _env_enabled(name: str, default: bool = False) -> bool:
     return raw in {"1", "true", "yes", "on", "да"}
 
 
+def _env_int(
+    name: str,
+    default: int,
+    *,
+    minimum: int,
+    maximum: int,
+) -> int:
+    raw = os.getenv(name, "").strip()
+    value = int(raw) if raw else int(default)
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} должен быть от {minimum} до {maximum}.")
+    return value
+
+
+def _auto_allowed_kinds(settings: StorageLibrarianSettings) -> tuple[str, ...]:
+    raw = os.getenv(
+        "STORAGE_LIBRARIAN_AUTO_ALLOWED_KINDS",
+        "diagnostics,releases",
+    )
+    requested = tuple(
+        dict.fromkeys(
+            value.strip().casefold()
+            for value in raw.split(",")
+            if value.strip()
+        )
+    )
+    return tuple(kind for kind in requested if kind in settings.allowed_kinds)
+
+
 def _build_service(
     *,
     bot: Bot,
@@ -101,15 +130,33 @@ async def _librarian_scheduler_loop(
     bot: Bot,
     database: Database,
     settings: StorageLibrarianSettings,
+    min_object_id: int,
+    allowed_kinds: tuple[str, ...],
+    batch_size: int,
 ) -> None:
     service = _build_service(
         bot=bot,
         database=database,
         settings=settings,
     )
+    repository = StorageLibrarianRepository(database)
     while True:
         try:
-            processed = await service.process_once(auto_enqueue=True)
+            queued = await repository.enqueue_newer_than(
+                settings=settings,
+                min_object_id=min_object_id,
+                allowed_kinds=allowed_kinds,
+                limit=batch_size,
+            )
+            processed = await service.process_once(auto_enqueue=False)
+            if queued or processed:
+                logger.info(
+                    "Storage Librarian AFK cycle queued=%s processed=%s cutoff=%s kinds=%s",
+                    queued,
+                    processed,
+                    min_object_id,
+                    ",".join(allowed_kinds),
+                )
         except asyncio.CancelledError:
             raise
         except (
@@ -120,8 +167,7 @@ async def _librarian_scheduler_loop(
             ValueError,
         ) as error:
             logger.warning("Storage Librarian scheduler iteration failed: %s", error)
-            processed = 0
-        await asyncio.sleep(1 if processed else settings.scan_interval_seconds)
+        await asyncio.sleep(settings.scan_interval_seconds)
 
 
 async def start_storage_librarian(bot: Bot, database: Database) -> None:
@@ -139,11 +185,40 @@ async def start_storage_librarian(bot: Bot, database: Database) -> None:
     if not _env_enabled("STORAGE_LIBRARIAN_AUTO_ENQUEUE", False):
         logger.info("Storage Librarian is manual-only; background queue is disabled")
         return
+    try:
+        min_object_id = _env_int(
+            "STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID",
+            0,
+            minimum=0,
+            maximum=9_223_372_036_854_775_807,
+        )
+        batch_size = _env_int(
+            "STORAGE_LIBRARIAN_AUTO_BATCH_SIZE",
+            1,
+            minimum=1,
+            maximum=10,
+        )
+        allowed_kinds = _auto_allowed_kinds(settings)
+        if min_object_id <= 0:
+            raise ValueError(
+                "AFK-режим требует STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID > 0. "
+                "Используйте deploy/hermes-librarian/enable_afk.sh."
+            )
+        if not allowed_kinds:
+            raise ValueError(
+                "STORAGE_LIBRARIAN_AUTO_ALLOWED_KINDS не содержит разрешённых категорий."
+            )
+    except ValueError as error:
+        logger.error("Storage Librarian AFK configuration invalid: %s", error)
+        return
     _scheduler_task = asyncio.create_task(
         _librarian_scheduler_loop(
             bot=bot,
             database=database,
             settings=settings,
+            min_object_id=min_object_id,
+            allowed_kinds=allowed_kinds,
+            batch_size=batch_size,
         ),
         name="telegram-storage-librarian",
     )
@@ -169,6 +244,19 @@ async def handle_storage_librarian_status(
     try:
         settings = StorageLibrarianSettings.from_env()
         counts = await StorageLibrarianRepository(database).counts()
+        auto_min_object_id = _env_int(
+            "STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID",
+            0,
+            minimum=0,
+            maximum=9_223_372_036_854_775_807,
+        )
+        auto_batch_size = _env_int(
+            "STORAGE_LIBRARIAN_AUTO_BATCH_SIZE",
+            1,
+            minimum=1,
+            maximum=10,
+        )
+        auto_kinds = _auto_allowed_kinds(settings)
     except (ValueError, asyncpg.PostgresError) as error:
         await message.answer(
             "<b>Storage Librarian недоступен</b>\n\n" + escape(str(error))
@@ -183,7 +271,9 @@ async def handle_storage_librarian_status(
         f"Фоновая очередь: <b>{'включена' if auto_enqueue else 'выключена'}</b>",
         f"Публикация отчётов: <b>{'включена' if publish_reports else 'выключена'}</b>",
         f"Версия: <code>{escape(settings.analyzer_version)}</code>",
-        "Категории: <code>" + escape(", ".join(settings.allowed_kinds)) + "</code>",
+        "Категории ручного режима: <code>"
+        + escape(", ".join(settings.allowed_kinds))
+        + "</code>",
         "",
         f"В очереди: <b>{counts['queued']}</b>",
         f"В работе: <b>{counts['running']}</b>",
@@ -201,6 +291,18 @@ async def handle_storage_librarian_status(
                 "",
                 "Режим manual-first активен: старый архив не анализируется массово и "
                 "не расходует токены без ручной команды.",
+            )
+        )
+    elif settings.enabled:
+        lines.extend(
+            (
+                "",
+                "AFK new-only: <b>активен</b>",
+                f"Только Storage ID &gt; <code>{auto_min_object_id}</code>",
+                "Категории AFK: <code>" + escape(", ".join(auto_kinds)) + "</code>",
+                f"За цикл: <b>{auto_batch_size}</b>; интервал: "
+                f"<b>{settings.scan_interval_seconds} сек.</b>",
+                "Старый архив и объекты до cutoff автоматически не ставятся в очередь.",
             )
         )
     await message.answer("\n".join(lines))
