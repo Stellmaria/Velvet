@@ -1,0 +1,86 @@
+{
+  "$id": "https://velvet.local/schemas/task-handoff.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_criteria": {
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+    },
+    "allowed_actions": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "type": "array"
+    },
+    "context": {
+      "maxLength": 12000,
+      "type": "string"
+    },
+    "forbidden_actions": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+    },
+    "project": {
+      "enum": [
+        "velvet",
+        "max"
+      ],
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "owner-request",
+        "incident",
+        "maintenance"
+      ],
+      "type": "string"
+    },
+    "task": {
+      "maxLength": 30000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "task_id": {
+      "pattern": "^[a-f0-9]{32}$",
+      "type": "string"
+    },
+    "tests": {
+      "items": {
+        "maxLength": 500,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "type": "array"
+    }
+  },
+  "required": [
+    "task_id",
+    "source",
+    "project",
+    "task",
+    "context",
+    "acceptance_criteria",
+    "allowed_actions",
+    "forbidden_actions",
+    "tests"
+  ],
+  "title": "Kael to coder task handoff",
+  "type": "object"
+}

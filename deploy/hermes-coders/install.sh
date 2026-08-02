@@ -10,6 +10,8 @@ APP_USER="${HERMES_CODERS_APP_USER:-velvet}"
 APP_GROUP="${HERMES_CODERS_APP_GROUP:-velvet}"
 ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 SOURCE_DIR="${HERMES_CODERS_SOURCE_DIR:-/srv/velvet/deploy/hermes-coders}"
+BRAIN_SOURCE="${HERMES_BRAIN_SOURCE_DIR:-/srv/velvet/deploy/hermes-brain}"
+BRAIN_VAULT_MANIFEST="${HERMES_BRAIN_MANIFEST:-$BRAIN_SOURCE/../../brain-vault/manifest.json}"
 OPERATOR_ENV="${HERMES_OPERATOR_ENV:-/srv/velvet/.env.hermes}"
 VELVET_REPO="${HERMES_VELVET_REPO:-https://github.com/Stellmaria/Velvet.git}"
 MAX_REPO="${HERMES_MAX_REPO:-https://github.com/Stellmaria/romatic_club_bot_max.git}"
@@ -26,12 +28,25 @@ for required in \
   "$SOURCE_DIR/ensure_runtime_config.py" \
   "$SOURCE_DIR/preflight.py" \
   "$SOURCE_DIR/runtime_smoke.py" \
+  "$BRAIN_SOURCE/context_compiler.py" \
+  "$BRAIN_SOURCE/install_context_pack.py" \
+  "$BRAIN_SOURCE/verify_installed_context.py" \
+  "$BRAIN_VAULT_MANIFEST" \
   "$OPERATOR_ENV" \
   "$UNIT_SOURCE"; do
   if [[ ! -f "$required" ]]; then
     echo "Отсутствует обязательный файл: $required" >&2
     exit 2
   fi
+done
+
+pack_root="$(mktemp -d)"
+trap 'rm -rf -- "$pack_root"' EXIT
+python3 "$BRAIN_SOURCE/context_compiler.py" validate
+for entity in velvet-coder max-coder; do
+  python3 "$BRAIN_SOURCE/context_compiler.py" compile \
+    --entity "$entity" \
+    --output "$pack_root/$entity"
 done
 
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$ROOT"
@@ -162,6 +177,33 @@ done
 python3 "$SOURCE_DIR/ensure_runtime_config.py" \
   "$ROOT/data/velvet/config.yaml" \
   "$ROOT/data/max/config.yaml"
+
+for project in velvet max; do
+  entity="$project-coder"
+  python3 "$BRAIN_SOURCE/install_context_pack.py" \
+    --pack "$pack_root/$entity" \
+    --target "$ROOT/data/$project" \
+    --entity "$entity" \
+    --mode hermes
+  python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+    --target "$ROOT/data/$project" \
+    --entity "$entity" \
+    --mode hermes
+
+  # Codex homes are provisioned once by install-codex.sh. On subsequent fixed
+  # reconciles, refresh their controller-managed context before preflight.
+  if [[ -d "$ROOT/codex/$project" ]]; then
+    python3 "$BRAIN_SOURCE/install_context_pack.py" \
+      --pack "$pack_root/$entity" \
+      --target "$ROOT/codex/$project" \
+      --entity "$entity" \
+      --mode codex
+    python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+      --target "$ROOT/codex/$project" \
+      --entity "$entity" \
+      --mode codex
+  fi
+done
 
 cat > "$ROOT/data/velvet/.gitconfig" <<'EOF'
 [user]

@@ -26,6 +26,14 @@ runner = load_module(
     "hermes_codex_runner_test_module",
     ROOT / "deploy/hermes-coders/codex_runner.py",
 )
+OUTPUT_SCHEMA = ROOT / "brain-vault/schemas/codex-task-output.schema.json"
+
+
+def install_output_schema(home: Path) -> None:
+    (home / "output.schema.json").write_text(
+        OUTPUT_SCHEMA.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
 
 
 class CodexRoutingTests(unittest.TestCase):
@@ -76,6 +84,22 @@ class CodexRoutingTests(unittest.TestCase):
         self.assertEqual("[REDACTED]", value["CODEX_RUNNER_API_KEY"])
         self.assertNotIn("abcdefghijklmnop", value["message"])
 
+    def test_structured_output_is_validated_and_rendered_for_legacy_clients(self) -> None:
+        payload = {
+            "status": "completed",
+            "branch": "agent/test",
+            "pr": "https://github.com/Stellmaria/Velvet/pull/1",
+            "tests": ["python -m unittest: OK"],
+            "blocker": "",
+            "memory_candidates": [],
+        }
+        parsed = runner.parse_structured_output(json.dumps(payload))
+        rendered = runner.render_legacy_output(parsed)
+        self.assertIn("STATUS: completed", rendered)
+        self.assertIn("BRANCH: agent/test", rendered)
+        with self.assertRaises(ValueError):
+            runner.parse_structured_output('{"status":"completed"}')
+
 
 class RunStoreTests(unittest.TestCase):
     def test_store_round_trip_uses_private_file(self) -> None:
@@ -100,6 +124,7 @@ class CodexManagerContractTests(unittest.TestCase):
             workspace.mkdir()
             (workspace / ".git").mkdir()
             (home / "auth.json").write_text("{}", encoding="utf-8")
+            install_output_schema(home)
             env = {
                 "CODEX_RUNNER_API_KEY": "x" * 48,
                 "CODEX_HOME": str(home),
@@ -118,6 +143,7 @@ class CodexManagerContractTests(unittest.TestCase):
         self.assertEqual("gpt-5.6-terra", payload["default_model"])
         self.assertEqual(list(runner._DEFAULT_MODELS), payload["models"])
         self.assertEqual(1, payload["max_concurrency"])
+        self.assertTrue(payload["structured_output"])
 
     def test_submit_rejects_unknown_model_before_execution(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -128,6 +154,7 @@ class CodexManagerContractTests(unittest.TestCase):
             workspace.mkdir()
             (workspace / ".git").mkdir()
             (home / "auth.json").write_text("{}", encoding="utf-8")
+            install_output_schema(home)
             with patch.dict(
                 os.environ,
                 {

@@ -52,6 +52,7 @@ x-codex-runner: &codex-runner
   working_dir: /workspace
   user: "${HERMES_UID:-10000}:${HERMES_GID:-10000}"
   environment:
+    HOME: /opt/codex
     CODEX_HOME: /opt/codex
     CODEX_WORKSPACE: /workspace
     CODEX_RUN_ROOT: /opt/codex-runs

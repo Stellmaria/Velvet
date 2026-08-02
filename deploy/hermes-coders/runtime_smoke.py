@@ -177,12 +177,24 @@ def github_probe_script(target: CoderTarget) -> str:
 
 test -n "${{GH_TOKEN:-}}"
 test -r /opt/data/config.yaml
+test -r /opt/data/context-manifest.json
 python - <<'PYCONFIG'
+import hashlib
+import json
 from pathlib import Path
 
 text = Path('/opt/data/config.yaml').read_text(encoding='utf-8')
 if 'env_passthrough:' not in text or '- GH_TOKEN' not in text:
     raise SystemExit('runtime config does not pass GH_TOKEN to terminal')
+manifest = json.loads(Path('/opt/data/context-manifest.json').read_text(encoding='utf-8'))
+if manifest.get('entity_id') != '{target.project}-coder':
+    raise SystemExit('unexpected Hermes entity context')
+outputs = {{item['path']: item for item in manifest.get('outputs', [])}}
+for name in ('SOUL.md', 'AGENTS.md'):
+    path = Path('/opt/data') / name
+    record = outputs.get(name) or {{}}
+    if hashlib.sha256(path.read_bytes()).hexdigest() != record.get('sha256'):
+        raise SystemExit('Hermes context hash mismatch: ' + name)
 PYCONFIG
 
 gh api user --jq .login >/dev/null
@@ -227,6 +239,10 @@ def codex_probe_script(target: CoderTarget) -> str:
     return f"""set -eu
 
 test -s /opt/codex/auth.json
+test "$HOME" = "/opt/codex"
+test -r /opt/codex/AGENTS.md
+test -r /opt/codex/output.schema.json
+test -r /opt/codex/context-manifest.json
 mode="$(stat -c '%a' /opt/codex/auth.json)"
 test "$mode" = "600"
 codex --version | grep -F '{CODEX_VERSION}' >/dev/null
@@ -251,7 +267,28 @@ if payload.get('default_model') != 'gpt-5.6-terra':
     raise SystemExit('unexpected default model')
 if payload.get('models') != {models_json}:
     raise SystemExit('unexpected model set')
+if payload.get('structured_output') is not True:
+    raise SystemExit('structured output schema is not active')
 PYCAP
+
+python - <<'PYCONTEXT'
+import hashlib
+import json
+from pathlib import Path
+
+root = Path('/opt/codex')
+manifest = json.loads((root / 'context-manifest.json').read_text(encoding='utf-8'))
+if manifest.get('entity_id') != '{target.project}-coder':
+    raise SystemExit('unexpected Codex entity context')
+outputs = {{item['path']: item for item in manifest.get('outputs', [])}}
+for output_name, path in (
+    ('CODEX.AGENTS.md', root / 'AGENTS.md'),
+    ('output.schema.json', root / 'output.schema.json'),
+):
+    record = outputs.get(output_name) or {{}}
+    if hashlib.sha256(path.read_bytes()).hexdigest() != record.get('sha256'):
+        raise SystemExit('Codex context hash mismatch: ' + output_name)
+PYCONTEXT
 
 test -n "${{GH_TOKEN:-}}"
 gh api user --jq .login >/dev/null

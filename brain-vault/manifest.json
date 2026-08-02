@@ -1,0 +1,90 @@
+{
+  "brain_id": "velvet-brain",
+  "brain_version": 1,
+  "entities": {
+    "kael": {
+      "agents": [
+        "deploy/hermes-operator/AGENTS.kael.md",
+        "brain-vault/entities/kael.md",
+        "brain-vault/policies/context-lifecycle.md",
+        "brain-vault/policies/cache-policy.md",
+        "brain-vault/policies/memory-policy.md",
+        "brain-vault/policies/handoff-protocol.md",
+        "brain-vault/policies/access-matrix.md"
+      ],
+      "memory_seed": "brain-vault/memory/kael.seed.md",
+      "project": "server-control:velvet+romatic-club-max",
+      "runtime": "hermes-agent",
+      "skills": [
+        "brain-vault/skills/server-diagnostics/SKILL.md",
+        "brain-vault/skills/coder-pr-gate/SKILL.md",
+        "brain-vault/skills/hermes-reconcile/SKILL.md",
+        "brain-vault/skills/memory-curation/SKILL.md"
+      ],
+      "soul": "deploy/hermes-operator/SOUL.kael.md",
+      "user_seed": "brain-vault/memory/owner.seed.md"
+    },
+    "max-coder": {
+      "agents": [
+        "deploy/hermes-coders/AGENTS.max.md",
+        "brain-vault/entities/max-coder.md",
+        "brain-vault/projects/max.md",
+        "brain-vault/policies/context-lifecycle.md",
+        "brain-vault/policies/cache-policy.md",
+        "brain-vault/policies/memory-policy.md",
+        "brain-vault/policies/handoff-protocol.md",
+        "brain-vault/policies/access-matrix.md"
+      ],
+      "artifacts": {
+        "output.schema.json": "brain-vault/schemas/codex-task-output.schema.json"
+      },
+      "memory_seed": "brain-vault/memory/max-coder.seed.md",
+      "project": "Stellmaria/romatic_club_bot_max",
+      "runtime": "hermes-agent+openai-codex",
+      "skills": [
+        "brain-vault/skills/orchestrated-task/SKILL.md",
+        "brain-vault/skills/memory-candidate/SKILL.md"
+      ],
+      "soul": "deploy/hermes-coders/SOUL.max.md",
+      "user_seed": "brain-vault/memory/owner.seed.md"
+    },
+    "velvet-coder": {
+      "agents": [
+        "deploy/hermes-coders/AGENTS.velvet.md",
+        "brain-vault/entities/velvet-coder.md",
+        "brain-vault/projects/velvet.md",
+        "brain-vault/policies/context-lifecycle.md",
+        "brain-vault/policies/cache-policy.md",
+        "brain-vault/policies/memory-policy.md",
+        "brain-vault/policies/handoff-protocol.md",
+        "brain-vault/policies/access-matrix.md"
+      ],
+      "artifacts": {
+        "output.schema.json": "brain-vault/schemas/codex-task-output.schema.json"
+      },
+      "memory_seed": "brain-vault/memory/velvet-coder.seed.md",
+      "project": "Stellmaria/Velvet",
+      "runtime": "hermes-agent+openai-codex",
+      "skills": [
+        "brain-vault/skills/orchestrated-task/SKILL.md",
+        "brain-vault/skills/memory-candidate/SKILL.md"
+      ],
+      "soul": "deploy/hermes-coders/SOUL.velvet.md",
+      "user_seed": "brain-vault/memory/owner.seed.md"
+    },
+    "velvet-librarian": {
+      "agents": [
+        "deploy/hermes-librarian/AGENTS.md",
+        "brain-vault/entities/velvet-librarian.md",
+        "brain-vault/policies/context-lifecycle.md",
+        "brain-vault/policies/memory-policy.md",
+        "brain-vault/policies/access-matrix.md"
+      ],
+      "project": "Velvet Telegram Storage",
+      "runtime": "hermes-agent+local-qwen",
+      "skills": [],
+      "soul": "deploy/hermes-librarian/SOUL.md"
+    }
+  },
+  "schema_version": 1
+}

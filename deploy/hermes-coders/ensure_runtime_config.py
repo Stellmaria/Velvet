@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import os
 import stat
 import sys
@@ -57,6 +58,44 @@ def _find_mapping_key(
 
 def _normalize_scalar(value: str) -> str:
     return value.strip().strip('"').strip("'")
+
+
+def config_has_mapping_scalar(text: str, section_name: str, key: str, value: str) -> bool:
+    lines = text.splitlines()
+    section = _find_top_level_section(lines, section_name)
+    if section is None:
+        return False
+    start, end = section
+    key_index = _find_mapping_key(lines, start=start, end=end, name=key)
+    if key_index is None:
+        return False
+    suffix = _yaml_code(lines[key_index]).split(":", 1)[1]
+    return _normalize_scalar(suffix) == value
+
+
+def _ensure_mapping_scalar_lines(
+    lines: list[str],
+    *,
+    section_name: str,
+    key: str,
+    rendered_value: str,
+) -> bool:
+    section = _find_top_level_section(lines, section_name)
+    desired = f"  {key}: {rendered_value}"
+    if section is None:
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.extend((f"{section_name}:", desired))
+        return True
+    start, end = section
+    key_index = _find_mapping_key(lines, start=start, end=end, name=key)
+    if key_index is None:
+        lines.insert(end, desired)
+        return True
+    if _yaml_code(lines[key_index]).strip() == desired.strip():
+        return False
+    lines[key_index] = desired
+    return True
 
 
 def _inline_values(suffix: str) -> list[str] | None:
@@ -173,15 +212,69 @@ def ensure_env_passthrough(path: Path, variable: str = PASSTHROUGH_VARIABLE) -> 
     return True
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) < 2:
-        raise ConfigPatchError("Укажите хотя бы один runtime config.yaml")
+def ensure_runtime_contract(path: Path, *, profile: str) -> bool:
+    if profile not in {"coder", "kael"}:
+        raise ConfigPatchError(f"Неизвестный Hermes runtime profile: {profile}")
+    if not path.is_file():
+        raise ConfigPatchError(f"Отсутствует Hermes config: {path}")
 
-    for raw_path in argv[1:]:
+    original = path.read_text(encoding="utf-8")
+    lines = original.splitlines()
+    changed = False
+    changed |= _ensure_mapping_scalar_lines(
+        lines,
+        section_name="terminal",
+        key="cwd",
+        rendered_value="/workspace" if profile == "coder" else "/opt/data",
+    )
+    changed |= _ensure_mapping_scalar_lines(
+        lines,
+        section_name="compression",
+        key="enabled",
+        rendered_value="true",
+    )
+    changed |= _ensure_mapping_scalar_lines(
+        lines,
+        section_name="tool_loop_guardrails",
+        key="warnings_enabled",
+        rendered_value="true",
+    )
+    changed |= _ensure_mapping_scalar_lines(
+        lines,
+        section_name="tool_loop_guardrails",
+        key="hard_stop_enabled",
+        rendered_value="true",
+    )
+
+    updated = "\n".join(lines).rstrip() + "\n"
+    if updated != original:
+        mode = stat.S_IMODE(path.stat().st_mode)
+        path.write_text(updated, encoding="utf-8")
+        os.chmod(path, mode)
+        changed = True
+    if profile == "coder":
+        changed = ensure_env_passthrough(path) or changed
+    return changed
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Patch fixed Hermes runtime contracts")
+    parser.add_argument(
+        "--profile",
+        choices=("coder", "kael"),
+        default="coder",
+    )
+    parser.add_argument("paths", nargs="+")
+    return parser
+
+
+def main(argv: list[str]) -> int:
+    args = _parser().parse_args(argv[1:])
+    for raw_path in args.paths:
         path = Path(raw_path)
-        changed = ensure_env_passthrough(path)
+        changed = ensure_runtime_contract(path, profile=args.profile)
         state = "updated" if changed else "already configured"
-        print(f"Hermes runtime config {state}: {path}")
+        print(f"Hermes {args.profile} runtime config {state}: {path}")
     return 0
 
 

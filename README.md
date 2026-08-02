@@ -67,6 +67,14 @@ personal quality и video/animation notifications остаются extensions `#
 - контрольные суммы применённых SQL-миграций;
 - GitHub Actions на Python 3.13 и PostgreSQL 16.
 
+### Hermes Brain Vault
+
+Каэль, Velvet Coder, Макс и Velvet Librarian получают раздельные versioned
+context packs из Obsidian-compatible `brain-vault/`. SOUL, project rules,
+bounded memory, skills и structured handoff/output contracts компилируются
+детерминированно и проверяются по SHA-256. Архитектура и команды описаны в
+`deploy/hermes-brain/README.md`.
+
 ## Быстрый запуск на Windows
 
 ```powershell

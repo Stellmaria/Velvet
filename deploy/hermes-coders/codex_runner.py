@@ -144,6 +144,43 @@ def parse_jsonl_output(stdout: str) -> tuple[str, dict[str, int] | None, Any | N
     return redact_text(output), (usage or None), redact(events[-1]) if events else None
 
 
+def parse_structured_output(output: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(output)
+    except json.JSONDecodeError as error:
+        raise ValueError("Codex output не является schema-bound JSON") from error
+    expected = {"status", "branch", "pr", "tests", "blocker", "memory_candidates"}
+    if not isinstance(payload, dict) or set(payload) != expected:
+        raise ValueError("Codex output содержит неверный набор полей")
+    if payload.get("status") not in {"completed", "blocked", "failed"}:
+        raise ValueError("Codex output содержит неверный status")
+    for key in ("branch", "pr", "blocker"):
+        if not isinstance(payload.get(key), str):
+            raise ValueError(f"Codex output field {key} должен быть строкой")
+    tests = payload.get("tests")
+    if not isinstance(tests, list) or not all(isinstance(item, str) for item in tests):
+        raise ValueError("Codex output tests должен быть списком строк")
+    candidates = payload.get("memory_candidates")
+    if not isinstance(candidates, list) or not all(
+        isinstance(item, dict) for item in candidates
+    ):
+        raise ValueError("Codex output memory_candidates должен быть списком objects")
+    return redact(payload)
+
+
+def render_legacy_output(payload: dict[str, Any]) -> str:
+    tests = payload.get("tests") or []
+    return "\n".join(
+        (
+            f"STATUS: {payload['status']}",
+            f"BRANCH: {payload['branch'] or 'none'}",
+            f"PR: {payload['pr'] or 'none'}",
+            f"TESTS: {'; '.join(str(item) for item in tests) or 'none'}",
+            f"BLOCKER: {payload['blocker'] or 'none'}",
+        )
+    )
+
+
 class RunStore:
     def __init__(self, root: Path) -> None:
         self.root = root
@@ -202,6 +239,15 @@ class CodexManager:
             raise RuntimeError("CODEX_RUNNER_API_KEY отсутствует или короче 24 символов")
         self.codex_bin = os.environ.get("CODEX_BIN", "codex").strip() or "codex"
         self.codex_home = Path(os.environ.get("CODEX_HOME", "/opt/codex")).resolve()
+        self.output_schema = (self.codex_home / "output.schema.json").resolve()
+        if self.output_schema.parent != self.codex_home or not self.output_schema.is_file():
+            raise RuntimeError("CODEX_HOME не содержит output.schema.json")
+        try:
+            schema = json.loads(self.output_schema.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise RuntimeError("Codex output schema повреждена") from error
+        if not isinstance(schema, dict) or schema.get("type") != "object":
+            raise RuntimeError("Codex output schema имеет неверный формат")
         self.workspace = Path(os.environ.get("CODEX_WORKSPACE", "/workspace")).resolve()
         self.allowed_models = parse_models(os.environ.get("CODEX_ALLOWED_MODELS"))
         self.default_model = os.environ.get("CODEX_DEFAULT_MODEL", "gpt-5.6-terra").strip()
@@ -244,6 +290,7 @@ class CodexManager:
             "fallback": "model-capacity-only",
             "max_concurrency": 1,
             "workspace": str(self.workspace),
+            "structured_output": True,
         }
 
     def submit(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -349,13 +396,27 @@ class CodexManager:
                 stderr = str(result["stderr"])
                 output, usage, last_event = parse_jsonl_output(stdout)
                 if int(result["returncode"]) == 0:
+                    try:
+                        structured = parse_structured_output(output)
+                    except ValueError as error:
+                        self.store.update(
+                            run_id,
+                            status="failed",
+                            finished_at=utc_now(),
+                            model=model,
+                            attempted_models=attempts,
+                            error=str(error),
+                            last_event={"type": "invalid_structured_output", "model": model},
+                        )
+                        return
                     self.store.update(
                         run_id,
                         status="completed",
                         finished_at=utc_now(),
                         model=model,
                         attempted_models=attempts,
-                        output=output,
+                        output=render_legacy_output(structured),
+                        structured_output=structured,
                         usage=usage,
                         last_event=last_event or {"type": "completed", "model": model},
                     )
@@ -382,6 +443,8 @@ class CodexManager:
             model,
             "--sandbox",
             "workspace-write",
+            "--output-schema",
+            str(self.output_schema),
             "-",
         ]
         env = {**os.environ, "CODEX_HOME": str(self.codex_home)}

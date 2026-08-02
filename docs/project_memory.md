@@ -1,6 +1,6 @@
 # Память проекта Velvet
 
-Дата актуализации: 30 июля 2026 года.
+Дата актуализации: 2 августа 2026 года.
 
 Этот файл хранит долгосрочную карту проекта и принятые архитектурные решения. Фактическое состояние продукта находится в `docs/development_status.md`, измерения — в generated inventories, подробности отдельных работ — в `docs/worklog/`, заметные изменения — в `CHANGELOG.md`.
 
@@ -234,6 +234,30 @@ Package-wide shared inventory текущего baseline:
 
 Canonical helpers уже созданы, но transitional debt закрывается family-by-family по #419/#455/#457/#458/#459. Package gate отслеживает fingerprint shared-private baseline и не позволяет изменить его незаметно.
 
+## Hermes Brain и сущности
+
+Канонический cognitive control plane хранится в Obsidian-compatible
+`brain-vault/`, но не заменяет GitHub, runtime DB, task ledger или secrets
+store. Четыре сущности имеют отдельные manifest profiles: Каэль, Velvet Coder,
+Макс и Velvet Librarian.
+
+Действующие архитектурные решения:
+
+- Каэль является единственным control plane и маршрутизирует fixed handoff;
+- SOUL, AGENTS, shared context/cache/memory policies, bounded seeds и skills
+  компилируются детерминированно для одной сущности;
+- Codex получает global `$CODEX_HOME/AGENTS.md` из SOUL + project rules + memory,
+  а не неиспользуемые соседние Markdown-файлы;
+- Velvet и Max имеют отдельные CODEX_HOME/workspaces/skills/manifests;
+- Librarian остаётся local-only deny-all и только предлагает memory candidate;
+- долговременная запись проходит Kael review и coder PR;
+- `context-manifest.json`, preflight и smoke подтверждают role/project и SHA-256;
+- runtime memory seed никогда не перезаписывает живую memory.
+
+Код и CI не означают server rollout. Фактическая установка выполняется после
+merge через разрешённый `reconcilectl` и закрывается live context/auth/health
+smoke.
+
 # Открытые обязательства
 
 ## Кодовые P0/P1
@@ -254,6 +278,8 @@ Canonical helpers уже созданы, но transitional debt закрывае
 5. #412 — live provider routes, limits, credits и result contracts.
 6. #408 — encrypted offsite backup и independent restore.
 7. #438 — live compatibility retirement.
+8. Выполнить Hermes Brain reconcile после merge и подтвердить Kael/coder/
+   Librarian context manifests в живых контейнерах.
 
 # Стабилизационные ворота
 

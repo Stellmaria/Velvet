@@ -96,6 +96,25 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("auth.json", preflight)
         self.assertIn("требуется 0600", preflight)
 
+    def test_brain_context_is_compiled_installed_and_verified_per_project(self) -> None:
+        compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+        initial_installer = (ROOT / "install-codex.sh").read_text(encoding="utf-8")
+        reconcile_installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+        preflight = (ROOT / "preflight.py").read_text(encoding="utf-8")
+        runner = (ROOT / "codex_runner.py").read_text(encoding="utf-8")
+        self.assertIn("HOME: /opt/codex", compose)
+        for installer in (initial_installer, reconcile_installer):
+            self.assertIn("context_compiler.py", installer)
+            self.assertIn("install_context_pack.py", installer)
+            self.assertIn("verify_installed_context.py", installer)
+            self.assertIn("velvet-coder", installer)
+            self.assertIn("max-coder", installer)
+        self.assertIn('--mode hermes', reconcile_installer)
+        self.assertIn('--mode codex', reconcile_installer)
+        self.assertIn('mode="codex"', preflight)
+        self.assertIn('"--output-schema"', runner)
+        self.assertIn("structured_output", runner)
+
     def test_codex_shell_policy_excludes_unneeded_secrets(self) -> None:
         installer = (ROOT / "install-codex.sh").read_text(encoding="utf-8")
         for secret in (

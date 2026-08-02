@@ -77,11 +77,18 @@ def prepare(
     target_dir: Path,
     soul_source: Path,
     agents_source: Path,
+    context_manifest_source: Path,
 ) -> None:
     if not source_config.is_file():
         raise ProfileError(f"Отсутствует исходный Hermes config: {source_config}")
-    if not soul_source.is_file() or not agents_source.is_file():
-        raise ProfileError("Отсутствует SOUL.md или AGENTS.md Velvet Librarian.")
+    if (
+        not soul_source.is_file()
+        or not agents_source.is_file()
+        or not context_manifest_source.is_file()
+    ):
+        raise ProfileError(
+            "Отсутствует SOUL.md, AGENTS.md или context-manifest.json Velvet Librarian."
+        )
 
     decoded = yaml.safe_load(source_config.read_text(encoding="utf-8"))
     config = _mapping(decoded)
@@ -127,7 +134,12 @@ def prepare(
     compression = _mapping(config.get("compression"))
     for key in ("provider", "model", "base_url", "api_key"):
         compression.pop(key, None)
+    compression["enabled"] = True
     config["compression"] = compression
+    guardrails = _mapping(config.get("tool_loop_guardrails"))
+    guardrails["warnings_enabled"] = True
+    guardrails["hard_stop_enabled"] = True
+    config["tool_loop_guardrails"] = guardrails
 
     # Librarian never needs project checkout, terminal hooks, MCP or browser.
     terminal = _mapping(config.get("terminal"))
@@ -151,19 +163,22 @@ def prepare(
     )
     shutil.copyfile(soul_source, target_dir / "SOUL.md")
     shutil.copyfile(agents_source, target_dir / "AGENTS.md")
+    shutil.copyfile(context_manifest_source, target_dir / "context-manifest.json")
 
     for path in (
         target_config,
         target_dir / "SOUL.md",
         target_dir / "AGENTS.md",
+        target_dir / "context-manifest.json",
     ):
-        os.chmod(path, 0o640)
+        os.chmod(path, 0o600)
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 5:
+    if len(argv) != 6:
         raise ProfileError(
-            "usage: prepare_profile.py SOURCE_CONFIG TARGET_DIR SOUL_SOURCE AGENTS_SOURCE"
+            "usage: prepare_profile.py SOURCE_CONFIG TARGET_DIR SOUL_SOURCE "
+            "AGENTS_SOURCE CONTEXT_MANIFEST_SOURCE"
         )
     prepare(*(Path(item) for item in argv[1:]))
     print("Velvet Librarian profile prepared with local Ollama and all toolsets disabled.")

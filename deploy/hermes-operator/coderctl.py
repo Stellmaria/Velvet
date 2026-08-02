@@ -229,6 +229,10 @@ def _update_from_status(
     if status in TERMINAL_STATUSES:
         updated["finished_at"] = _utc_now()
         updated["output"] = payload.get("output") or payload.get("error")
+        updated["structured_output"] = payload.get("structured_output")
+        structured = payload.get("structured_output")
+        if isinstance(structured, dict):
+            updated["memory_candidates"] = structured.get("memory_candidates") or []
         updated["usage"] = payload.get("usage")
     ledger.upsert(updated)
     return {
@@ -261,7 +265,11 @@ def build_parser() -> argparse.ArgumentParser:
     submit = commands.add_parser("submit")
     submit.add_argument("project", choices=("velvet", "max"))
     submit.add_argument("--task", required=True)
-    submit.add_argument("--source", default="owner-request")
+    submit.add_argument(
+        "--source",
+        choices=("owner-request", "incident", "maintenance"),
+        default="owner-request",
+    )
 
     status = commands.add_parser("status")
     status.add_argument("reference")

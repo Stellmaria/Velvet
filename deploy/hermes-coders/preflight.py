@@ -6,7 +6,16 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from ensure_runtime_config import config_has_env_passthrough
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "hermes-brain"))
+
+from ensure_runtime_config import (  # noqa: E402
+    config_has_env_passthrough,
+    config_has_mapping_scalar,
+)
+from verify_installed_context import (  # noqa: E402
+    RuntimeContextError,
+    verify_installed,
+)
 
 
 ROOT = Path(os.environ.get("HERMES_CODERS_ROOT", "/srv/hermes-coders"))
@@ -109,7 +118,7 @@ def require_readable_file(path: Path) -> str:
         ) from exc
 
 
-def validate_data(path: Path) -> None:
+def validate_data(path: Path, *, entity: str) -> None:
     config = path / "config.yaml"
     soul = path / "SOUL.md"
     config_text = require_readable_file(config)
@@ -125,6 +134,18 @@ def validate_data(path: Path) -> None:
         raise PreflightError(
             f"В {config} не разрешён terminal.env_passthrough для GH_TOKEN"
         )
+    for section, key, value in (
+        ("terminal", "cwd", "/workspace"),
+        ("compression", "enabled", "true"),
+        ("tool_loop_guardrails", "warnings_enabled", "true"),
+        ("tool_loop_guardrails", "hard_stop_enabled", "true"),
+    ):
+        if not config_has_mapping_scalar(config_text, section, key, value):
+            raise PreflightError(f"В {config} отсутствует {section}.{key}={value}")
+    try:
+        verify_installed(path, entity=entity, mode="hermes")
+    except RuntimeContextError as error:
+        raise PreflightError(str(error)) from error
 
 
 def validate_api_key(path: Path, values: dict[str, str], name: str) -> str:
@@ -134,7 +155,7 @@ def validate_api_key(path: Path, values: dict[str, str], name: str) -> str:
     return key
 
 
-def validate_codex_home(path: Path) -> None:
+def validate_codex_home(path: Path, *, entity: str) -> None:
     if not path.is_dir():
         raise PreflightError(f"Отсутствует CODEX_HOME: {path}")
     config = path / "config.toml"
@@ -179,6 +200,10 @@ def validate_codex_home(path: Path) -> None:
     mode = stat.S_IMODE(auth.stat().st_mode)
     if mode & 0o077:
         raise PreflightError(f"Слишком широкие права на {auth}: {mode:04o}; требуется 0600")
+    try:
+        verify_installed(path, entity=entity, mode="codex")
+    except RuntimeContextError as error:
+        raise PreflightError(str(error)) from error
 
 
 def main() -> int:
@@ -239,10 +264,10 @@ def main() -> int:
         validate_workspace(workspace)
     validate_codex_workspace(ROOT / "workspaces" / "velvet-codex")
     validate_codex_workspace(ROOT / "workspaces" / "max-codex")
-    validate_data(ROOT / "data" / "velvet")
-    validate_data(ROOT / "data" / "max")
-    validate_codex_home(ROOT / "codex" / "velvet")
-    validate_codex_home(ROOT / "codex" / "max")
+    validate_data(ROOT / "data" / "velvet", entity="velvet-coder")
+    validate_data(ROOT / "data" / "max", entity="max-coder")
+    validate_codex_home(ROOT / "codex" / "velvet", entity="velvet-coder")
+    validate_codex_home(ROOT / "codex" / "max", entity="max-coder")
 
     print("Hermes Coder preflight: OK")
     print("- Hermes chat gateways: isolated")
@@ -254,6 +279,7 @@ def main() -> int:
     print("- Codex routing: luna -> terra -> sol")
     print("- Codex CLI minimum: 0.144.0; image pin: 0.144.4")
     print("- Codex sandbox: workspace-write + GitHub network")
+    print("- Velvet Brain manifests and context hashes: verified")
     print("- terminal passthrough: GH_TOKEN")
     return 0
 

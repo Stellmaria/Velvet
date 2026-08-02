@@ -58,10 +58,10 @@ class HermesEntitySeparationTests(unittest.TestCase):
                 self.assertIn(identity, soul)
                 self.assertNotIn("/workspace", soul)
                 self.assertNotIn("default_transaction_read_only", soul)
-                self.assertNotIn("STATUS: completed|blocked|failed", soul)
+                self.assertNotIn('"memory_candidates"', soul)
                 self.assertIn(repository, agents)
                 self.assertIn("/workspace", agents)
-                self.assertIn("STATUS: completed|blocked|failed", agents)
+                self.assertIn('"memory_candidates"', agents)
 
     def test_librarian_has_own_identity_and_machine_contract(self) -> None:
         soul = (ROOT / "deploy/hermes-librarian/SOUL.md").read_text(encoding="utf-8")
@@ -148,6 +148,10 @@ class HermesEntityDeploymentTests(unittest.TestCase):
         self.assertIn('workspace / ".hermes.md"', source)
         self.assertIn('workspace / "AGENTS.md"', source)
         self.assertIn('lines.append(".hermes.md")', source)
+        self.assertIn("context_compiler.py", source)
+        self.assertIn("install_context_pack.py", source)
+        self.assertIn("verify_installed_context.py", source)
+        self.assertIn("--profile kael", source)
 
     def test_runctl_targets_only_loopback_main_runs_api(self) -> None:
         runctl = load_module(

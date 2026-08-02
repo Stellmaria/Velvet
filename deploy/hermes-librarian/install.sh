@@ -12,6 +12,7 @@ HERMES_ENV_FILE="${HERMES_ENV_FILE:-$VELVET_APP_DIR/.env.hermes}"
 VELVET_COMPOSE_FILE="${VELVET_COMPOSE_FILE:-$VELVET_APP_DIR/docker-compose.server.yml}"
 SERVICE_USER="${HERMES_ORCHESTRATION_SERVICE_USER:-velvet}"
 SOURCE_DIR="$VELVET_APP_DIR/deploy/hermes-librarian"
+BRAIN_SOURCE="$VELVET_APP_DIR/deploy/hermes-brain"
 UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/velvet-librarian.service"
 UNIT_TARGET="/etc/systemd/system/velvet-librarian.service"
 
@@ -25,6 +26,8 @@ for path in \
   "$SOURCE_DIR/start.sh" \
   "$SOURCE_DIR/SOUL.md" \
   "$SOURCE_DIR/AGENTS.md" \
+  "$BRAIN_SOURCE/context_compiler.py" \
+  "$VELVET_APP_DIR/brain-vault/manifest.json" \
   "$UNIT_SOURCE"
 do
   if [[ ! -f "$path" ]]; then
@@ -32,6 +35,13 @@ do
     exit 2
   fi
 done
+
+pack_root="$(mktemp -d)"
+trap 'rm -rf -- "$pack_root"' EXIT
+python3 "$BRAIN_SOURCE/context_compiler.py" validate
+python3 "$BRAIN_SOURCE/context_compiler.py" compile \
+  --entity velvet-librarian \
+  --output "$pack_root/velvet-librarian"
 
 if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   echo "Не найден service user: $SERVICE_USER" >&2
@@ -136,13 +146,15 @@ docker run --rm \
   -e STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
   -v "$SOURCE_CONFIG:/source/config.yaml:ro" \
   -v "$SOURCE_DIR:/bootstrap:ro" \
+  -v "$pack_root/velvet-librarian:/brain:ro" \
   -v "$TARGET_DIR:/target" \
   "$HERMES_IMAGE" \
   /bootstrap/prepare_profile.py \
   /source/config.yaml \
   /target \
-  /bootstrap/SOUL.md \
-  /bootstrap/AGENTS.md
+  /brain/SOUL.md \
+  /brain/AGENTS.md \
+  /brain/context-manifest.json
 
 chown -R "$source_uid:$source_gid" "$TARGET_DIR"
 find "$TARGET_DIR" -type d -exec chmod 0750 {} +
@@ -155,9 +167,11 @@ docker run --rm -i \
   -e STORAGE_LIBRARIAN_LOCAL_MODEL="$LOCAL_MODEL" \
   -e STORAGE_LIBRARIAN_LOCAL_BASE_URL="$LOCAL_BASE_URL" \
   -e STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
-  -v "$TARGET_DIR/config.yaml:/profile/config.yaml:ro" \
+  -v "$TARGET_DIR:/profile:ro" \
   "$HERMES_IMAGE" \
   - <<'PY'
+import hashlib
+import json
 import os
 from pathlib import Path
 import yaml
@@ -176,6 +190,17 @@ assert model.get("provider") == "custom", model
 assert model.get("default") == os.environ["STORAGE_LIBRARIAN_LOCAL_MODEL"], model
 assert model.get("base_url") == os.environ["STORAGE_LIBRARIAN_LOCAL_BASE_URL"].rstrip("/"), model
 assert int(model.get("context_length") or 0) == int(os.environ["STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH"]), model
+assert (config.get("compression") or {}).get("enabled") is True, config.get("compression")
+guardrails = config.get("tool_loop_guardrails") or {}
+assert guardrails.get("warnings_enabled") is True, guardrails
+assert guardrails.get("hard_stop_enabled") is True, guardrails
+root = Path("/profile")
+manifest = json.loads((root / "context-manifest.json").read_text(encoding="utf-8"))
+assert manifest.get("entity_id") == "velvet-librarian", manifest
+outputs = {item["path"]: item for item in manifest.get("outputs", [])}
+for name in ("SOUL.md", "AGENTS.md"):
+    digest = hashlib.sha256((root / name).read_bytes()).hexdigest()
+    assert digest == outputs[name]["sha256"], name
 print("Velvet Librarian local-only deny-all contract: OK")
 PY
 

@@ -1,6 +1,6 @@
 # Актуальный аудит архитектуры Velvet
 
-Дата актуализации: 30 июля 2026 года.
+Дата актуализации: 2 августа 2026 года.
 
 Проверенный baseline `main` перед срезом: `d18ad4fd24b3dfa84d255148aee065b97b52ea9b`.
 
@@ -27,6 +27,12 @@
 Velvet имеет рабочие логические domain/application/persistence boundaries, закрытый private-pool debt, централизованный Telegram root Router и нулевой active legacy-handler layer. Package-wide inventory теперь блокирует новый незарегистрированный debt внутри существующих packages, где один root-count раньше бодро сообщал, что всё прекрасно, пока monkeypatch-граф разрастался этажом ниже.
 
 Целевая архитектура при этом ещё не достигнута. Главный correctness-risk остаётся в `velvet_bot/app` и media generation layers: startup собирается цепочкой side-effect installers, итоговые workers/controllers зависят от runtime assignments, а delivery распределена между canonical classes и временными hotfix/recovery layers.
+
+Hermes Brain добавлен как отдельный deployment/control-plane слой и не меняет
+domain/application/persistence boundaries `velvet_bot`. Его собственные границы:
+versioned per-entity context packs, SHA-256 verification, отдельные
+CODEX_HOME/workspaces, schema-bound handoff/output и deny-all Librarian. Code/CI
+готовность не закрывает server reconcile и live smoke.
 
 ## Воспроизводимый baseline
 

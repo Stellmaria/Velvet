@@ -1,9 +1,17 @@
 # Изолированные Hermes Coder для Velvet и Romatic Club Max
 
-Этот стек запускает два независимых Telegram-агента:
+Этот стек запускает два независимых chat gateway и два активных Codex runner:
 
-- `hermes-coder-velvet` работает только с `Stellmaria/Velvet`;
-- `hermes-coder-max` работает только с `Stellmaria/romatic_club_bot_max`.
+- `hermes-chat-velvet` и `hermes-coder-velvet` работают только с
+  `Stellmaria/Velvet`;
+- `hermes-chat-max` и `hermes-coder-max` работают только с
+  `Stellmaria/romatic_club_bot_max`.
+
+Каждый Codex runner имеет отдельные `$CODEX_HOME`, `$HOME`, workspace, auth и
+Brain context. Global `$CODEX_HOME/AGENTS.md` детерминированно объединяет SOUL,
+project contract, bounded memory и общие policies; project skills находятся в
+`$HOME/.agents/skills`. `context-manifest.json` и preflight защищают от
+перепутывания Velvet/Max.
 
 Они не монтируют production checkout, `.env`, Docker socket или PostgreSQL volume. Каждый coder получает отдельные:
 
@@ -30,11 +38,10 @@ Runs API слушает `8642` внутри контейнера, но host port
 
 ## Модели
 
-```text
-Основная:   gpt-5.4-mini
-Усиленная:  gpt-5.6-terra
-Резервная:  gpt-5.6-luna
-```
+Active Codex route: `luna` для малых задач, `terra` для обычной инженерной
+работы, `sol` для architecture/security. Fallback используется только при
+capacity/availability error. Legacy chat gateway сохраняет Byesu route из
+`config.yaml`.
 
 Telegram aliases:
 
@@ -91,10 +98,12 @@ Installer:
 2. клонирует два отдельных workspace;
 3. копирует только модельные ключи из `/srv/velvet/.env.hermes`;
 4. не копирует Telegram token и GitHub token оператора;
-5. устанавливает model routing, `SOUL.md` и Git credential helper;
-6. добавляет `GH_TOKEN` в `terminal.env_passthrough` обоих runtime config;
-7. собирает coder и DB-proxy images;
-8. устанавливает, но не запускает `hermes-coders.service`.
+5. компилирует отдельные Hermes/Codex Brain packs и Git credential helper;
+6. устанавливает Codex global AGENTS, scoped skills и output JSON schema;
+7. добавляет `GH_TOKEN`, bounded compression и loop circuit breaker в оба
+   Hermes runtime config;
+8. собирает coder и DB-proxy images;
+9. устанавливает, но не запускает `hermes-coders.service`.
 
 ## Заполнение отдельных токенов
 
@@ -126,7 +135,12 @@ sudo bash /srv/velvet/deploy/hermes-orchestration/install.sh
 
 ## Preflight и запуск
 
-Hermes может атомарно переписать runtime `config.yaml` под UID контейнера во время миграции схемы. Поэтому systemd перед каждым запуском идемпотентно восстанавливает только `terminal.env_passthrough: [GH_TOKEN]`, а затем читает runtime metadata с root-доступом. Compose-команды и gateway продолжают выполняться от пользователя `velvet`.
+Hermes может атомарно переписать runtime `config.yaml` под UID контейнера во
+время миграции схемы. Поэтому systemd перед каждым запуском идемпотентно
+восстанавливает `terminal.cwd`, `GH_TOKEN` passthrough, compression и loop
+guardrails. Затем preflight проверяет Brain hashes, role/project sentinels,
+Codex schema/skills и runtime metadata. Compose-команды и gateway продолжают
+выполняться от пользователя `velvet`.
 
 Ручная проверка выполняется в том же порядке:
 

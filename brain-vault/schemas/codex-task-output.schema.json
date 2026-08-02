@@ -1,0 +1,97 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "blocker": {
+      "maxLength": 4000,
+      "type": "string"
+    },
+    "branch": {
+      "maxLength": 255,
+      "type": "string"
+    },
+    "memory_candidates": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "evidence": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expires_at": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "fact": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "shared",
+              "server-control",
+              "project-velvet",
+              "project-max",
+              "velvet-storage"
+            ],
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "fact",
+          "scope",
+          "source",
+          "evidence",
+          "confidence",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "maxItems": 10,
+      "type": "array"
+    },
+    "pr": {
+      "maxLength": 500,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "blocked",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "tests": {
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 30,
+      "type": "array"
+    }
+  },
+  "required": [
+    "status",
+    "branch",
+    "pr",
+    "tests",
+    "blocker",
+    "memory_candidates"
+  ],
+  "title": "Codex orchestrated task result",
+  "type": "object"
+}

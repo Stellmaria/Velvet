@@ -34,7 +34,7 @@ class CanonicalDocsSyncTests(unittest.TestCase):
 
     def test_canonical_documents_are_dated_and_keep_release_contract(self) -> None:
         for document in (self.status, self.memory, self.audit):
-            self.assertIn("30 июля 2026 года", document)
+            self.assertIn("2 августа 2026 года", document)
             self.assertNotIn("Дата актуализации: 21 июля 2026 года", document)
 
         self.assertIn("Текущая стабильная версия: `1.3.0`.", self.status)
