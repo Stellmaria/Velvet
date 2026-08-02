@@ -146,6 +146,14 @@ class LibrarianReportPublisher(Protocol):
         analysis: LibrarianAnalysis,
     ) -> None: ...
 
+    async def publish_failure(
+        self,
+        *,
+        object_id: int,
+        item: LibrarianObject | None,
+        error: BaseException,
+    ) -> None: ...
+
 
 def _json_list(value: object) -> list[JsonValue]:
     if isinstance(value, list):
@@ -240,6 +248,7 @@ class StorageLibrarianService:
         job = await self.repository.claim_next(self.worker_id)
         if job is None:
             return 0
+        item: LibrarianObject | None = None
         try:
             item = await self.repository.load_object(job.storage_object_id)
             if item is None:
@@ -297,7 +306,20 @@ class StorageLibrarianService:
         except asyncio.CancelledError:
             raise
         except Exception as error:  # p2-approved-boundary: isolate-storage-librarian-job
-            await self.repository.fail(job, error)
+            terminal = await self.repository.fail(job, error)
+            if terminal and self.report_publisher is not None:
+                try:
+                    await self.report_publisher.publish_failure(
+                        object_id=job.storage_object_id,
+                        item=item,
+                        error=error,
+                    )
+                except Exception as publish_error:  # p2-approved-boundary: failure-report-is-nonfatal
+                    logger.warning(
+                        "Storage Librarian failure report publication failed object_id=%s error=%s",
+                        job.storage_object_id,
+                        redact_sensitive(str(publish_error))[:1000],
+                    )
             return 1
 
     async def answer(self, question: str) -> str:
