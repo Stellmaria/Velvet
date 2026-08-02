@@ -11,6 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "security_gate.py"
 SECURITY_WORKFLOW = ROOT / ".github" / "workflows" / "security.yml"
+PUBLISH_WORKFLOW = ROOT / ".github" / "workflows" / "publish-image.yml"
+DEPLOY_WORKFLOW = ROOT / ".github" / "workflows" / "deploy-production.yml"
+DEPLOY_SCRIPT = ROOT / "deploy" / "server" / "deploy.sh"
 FAKE_SECRET = ROOT / "tests" / "fixtures" / "security" / "fake-secret.txt"
 VULNERABLE_REQUIREMENTS = (
     ROOT / "tests" / "fixtures" / "security" / "vulnerable-requirements.txt"
@@ -91,9 +94,7 @@ class SecurityGateContractTests(unittest.TestCase):
     def test_vulnerable_fixture_is_isolated_and_audited(self) -> None:
         fixture = VULNERABLE_REQUIREMENTS.read_text(encoding="utf-8")
         workflow = SECURITY_WORKFLOW.read_text(encoding="utf-8")
-        production_inputs = "\n".join(
-            (ROOT / "requirements.txt").read_text(encoding="utf-8"),
-        )
+        production_inputs = (ROOT / "requirements.txt").read_text(encoding="utf-8")
         self.assertIn("urllib3==1.25.2", fixture)
         self.assertNotIn("urllib3==1.25.2", production_inputs)
         self.assertIn("pip-audit", workflow)
@@ -113,6 +114,32 @@ class SecurityGateContractTests(unittest.TestCase):
         self.assertGreaterEqual(source.count("retention-days:"), 3)
         self.assertNotIn("runtime/", source)
         self.assertNotIn("backups/", source)
+
+    def test_publish_scans_before_pushing_and_records_provenance(self) -> None:
+        source = PUBLISH_WORKFLOW.read_text(encoding="utf-8")
+        scan_index = source.index("Block high and critical findings before publish")
+        push_index = source.index('docker push "$tag"')
+        self.assertLess(scan_index, push_index)
+        self.assertIn("severity: CRITICAL,HIGH", source)
+        self.assertIn("org.opencontainers.image.revision=${GITHUB_SHA}", source)
+        self.assertIn("published-image-sbom.cdx.json", source)
+        self.assertIn("requirements_lock_sha256", source)
+        self.assertIn("packages: write", source)
+        self.assertNotIn("pull_request:", source)
+
+    def test_production_deploy_requires_digest_and_matching_revision(self) -> None:
+        workflow = DEPLOY_WORKFLOW.read_text(encoding="utf-8")
+        script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
+        digest_pattern = "ghcr\\.io/stellmaria/velvet@sha256:[0-9a-f]{64}"
+        self.assertIn("source_commit:", workflow)
+        self.assertIn("image_digest:", workflow)
+        self.assertIn("source_commit must equal the main commit", workflow)
+        self.assertIn(digest_pattern, workflow)
+        self.assertIn("VELVET_DEPLOY_IMAGE", workflow)
+        self.assertIn(digest_pattern, script)
+        self.assertIn("org.opencontainers.image.revision", script)
+        self.assertIn("Running image mismatch", script)
+        self.assertIn('docker pull "$IMAGE_OVERRIDE"', script)
 
 
 if __name__ == "__main__":
