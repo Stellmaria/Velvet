@@ -71,7 +71,7 @@ jobs:
               owner_help.write_text(source, encoding="utf-8")
           PY
 
-          python scripts/inventory_package_architecture_fast.py \
+          python scripts/inventory_package_architecture.py \
             --write \
             --label p1-package-architecture-baseline
           python - <<'PY'
@@ -124,7 +124,7 @@ jobs:
                   raise SystemExit(f"Package assertion not found: {pattern}")
           path.write_text(source, encoding="utf-8")
           PY
-          python scripts/inventory_package_architecture_fast.py \
+          python scripts/inventory_package_architecture.py \
             --check \
             --label p1-package-architecture-baseline
 
