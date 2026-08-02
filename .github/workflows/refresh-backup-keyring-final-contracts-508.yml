@@ -98,6 +98,28 @@ jobs:
               if count != 1:
                   raise SystemExit(f"Repository assertion not found: {pattern}")
           path.write_text(source, encoding="utf-8")
+
+          audit = Path("docs/ARCHITECTURE_AUDIT.md")
+          source = audit.read_text(encoding="utf-8")
+          audit_replacements = {
+              r"- repository modules: \*\*[0-9_ ]+\*\*;": (
+                  f'- repository modules: **{inventory["repository_module_count"]}**;'
+              ),
+              r"- domain repositories: \*\*[0-9_ ]+\*\*;": (
+                  f'- domain repositories: **{inventory["layout_counts"]["domain"]}**;'
+              ),
+          }
+          for pattern, replacement in audit_replacements.items():
+              source, count = re.subn(pattern, replacement, source, count=1)
+              if count != 1:
+                  raise SystemExit(f"Architecture audit count not found: {pattern}")
+          source = re.sub(
+              r"(domain modules и )[0-9_ ]+( repositories)",
+              rf'\g<1>{inventory["layout_counts"]["domain"]}\g<2>',
+              source,
+              count=1,
+          )
+          audit.write_text(source, encoding="utf-8")
           PY
           python scripts/inventory_repository_layout.py \
             --check \
@@ -116,6 +138,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- \
+            docs/ARCHITECTURE_AUDIT.md \
             docs/repository_layout_inventory.json \
             docs/repository_layout_inventory.md \
             tests/test_p3e_repository_layout_inventory.py \
