@@ -5,7 +5,7 @@
 - Линия/фаза: Telegram Storage Librarian, background rollout
 - Статус: `проверка`
 - Ветка: `feat/storage-librarian-afk-guardrails`
-- Базовый commit: `42522af0a19d67333e6a0c423af4d6589b201b44`
+- Базовый commit: `c54026f9f313607abc3e680ac1e5e5e05649972a`
 
 ## Перед началом
 
@@ -18,20 +18,22 @@
 - local Ollama и Librarian Hermes healthy;
 - `qwen3.5:9b-q4_K_M` установлен;
 - manual анализ работает;
-- простой `STORAGE_LIBRARIAN_AUTO_ENQUEUE=true` мог выбрать старые объекты.
+- простой `STORAGE_LIBRARIAN_AUTO_ENQUEUE=true` мог выбрать старые объекты;
+- AFK enqueue без отдельного claim-filter мог забрать старую ранее созданную job.
 
 ### Планируемый объём
 
 - cutoff по текущему максимальному Storage ID;
 - отдельные AFK-категории;
 - один объект за цикл;
+- cutoff и на enqueue, и на claim;
 - enable/disable scripts;
 - terminal failure report;
 - tests, runbook и CI.
 
 ### Критерии готовности
 
-- старые ID не ставятся в очередь;
+- старые ID не ставятся и не забираются из очереди AFK-worker;
 - AFK по умолчанию анализирует только diagnostics/releases;
 - manual commands сохраняются;
 - терминальные ошибки публикуются очищенно;
@@ -50,6 +52,8 @@
 
 - добавлен `enqueue_newer_than` с обязательным положительным cutoff;
 - existing jobs и analyses исключаются;
+- добавлен отдельный `StorageLibrarianAfkRepository`, который не может claim-ить `storage_object_id <= cutoff`;
+- AFK service использует cutoff-filtered repository, manual service остаётся unrestricted;
 - scheduler больше не вызывает bulk `enqueue_pending`;
 - `process_once` по умолчанию использует `auto_enqueue=False`;
 - scheduler ждёт полный scan interval после одной итерации;
@@ -61,7 +65,8 @@
 - Librarian не выполняет restart/update/rollback и не вызывает Каэля автоматически;
 - добавлены focused tests и AFK runbook;
 - открыт draft PR `#549`;
-- подготовлена атомарная синхронизация с текущим `main`, включая повторную генерацию пересекающихся architecture contracts.
+- конфликтовавшая история сохранена в `backup/storage-librarian-afk-guardrails-20260802`;
+- PR-ветка атомарно пересобрана от текущего `main` только из 11 продуктовых blob и снова стала mergeable.
 
 ### Миграции и совместимость
 
@@ -73,29 +78,23 @@ SQL-миграций нет. Existing tables, analyses и manual mode сохра
 
 - bounded mypy: зелёный;
 - project notes contract: зелёный;
-- AFK source tests дошли до выполнения;
-- Docker workflow принял существующий production Compose;
-- обнаружены и исправлены два локальных contract drift: буквальная проверка env mapping и ложное распознавание слова `update` как SQL вне persistence layer.
+- Docker workflow принял production Compose;
+- исправлены локальные contract drift и ложное распознавание слова `update` как SQL вне persistence layer.
 
-Generated contracts синхронизированы штатными генераторами:
-
-- package architecture: 641 production module, 139904 LOC, 548 зарегистрированных violations/exemptions;
-- P2 stability schema 78: 105 broad exception boundaries, все 105 approved, unresolved 0;
-- временный contents-write workflow удалил себя в том же bot commit.
-
-Ожидается синхронизация с Krita security commit текущего `main`, повторный пересчёт generated contracts и финальный чистый прогон preflight, всех test shards, mypy, notes и Docker build.
+Сейчас штатный генератор пересчитывает package architecture и P2 stability inventory по конечному дереву без временного workflow-файла. После bot commit требуется финальный обычный owner commit и полный чистый CI.
 
 ### PR и commit
 
 - ветка: `feat/storage-librarian-afk-guardrails`;
 - PR: `#549`;
-- generated inventory commit: `5f0412823cd83f49705375c867f9efe5b6d72e89`;
-- финальный зелёный head: ожидается после синхронизации с `main` и чистого CI;
+- clean product commit: `25817a4f03848e7222b692b33764c35af2800383`;
+- backup старой истории: `backup/storage-librarian-afk-guardrails-20260802`;
+- финальный зелёный head: ожидается после inventory sync и чистого CI;
 - merge: только после отдельного разрешения владельца.
 
 ### Незавершённое
 
-- синхронизация с текущим `main`;
+- generated inventory sync;
 - финальный чистый CI;
 - перевод PR из draft и merge;
 - production pull/install;
@@ -105,4 +104,4 @@ Generated contracts синхронизированы штатными генер
 
 ### Следующий шаг
 
-Завершить атомарный merge `main`, получить полностью зелёный CI, затем после разрешения слить PR и включить AFK new-only на production.
+Дождаться атомарного inventory commit, запустить чистый CI, затем после разрешения слить PR и включить AFK new-only на production.
