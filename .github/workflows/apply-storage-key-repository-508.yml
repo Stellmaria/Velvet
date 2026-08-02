@@ -1,9 +1,11 @@
 name: apply storage key repository 508
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - security/backup-keyring-508
+    paths:
+      - ".github/workflows/apply-storage-key-repository-508.yml"
 
 permissions:
   contents: write
@@ -14,7 +16,6 @@ concurrency:
 
 jobs:
   patch-and-verify:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
