@@ -59,36 +59,28 @@ jobs:
           source = path.read_text(encoding="utf-8")
           replacements = {
               r"self\.assertEqual\([0-9_]+, self\.inventory\[\"production_module_count\"\]\)": (
-                  f'self.assertEqual({inventory["production_module_count"]:_}, '
-                  'self.inventory["production_module_count"])'
+                  f'self.assertEqual({inventory["production_module_count"]:_}, self.inventory["production_module_count"])'
               ),
               r"self\.assertEqual\([0-9_]+, self\.inventory\[\"production_loc\"\]\)": (
-                  f'self.assertEqual({inventory["production_loc"]:_}, '
-                  'self.inventory["production_loc"])'
+                  f'self.assertEqual({inventory["production_loc"]:_}, self.inventory["production_loc"])'
               ),
               r"self\.assertEqual\([0-9_]+, self\.inventory\[\"root_module_count\"\]\)": (
-                  f'self.assertEqual({inventory["root_module_count"]:_}, '
-                  'self.inventory["root_module_count"])'
+                  f'self.assertEqual({inventory["root_module_count"]:_}, self.inventory["root_module_count"])'
               ),
               r"self\.assertEqual\([0-9_]+, self\.inventory\[\"router_count\"\]\)": (
-                  f'self.assertEqual({inventory["router_count"]:_}, '
-                  'self.inventory["router_count"])'
+                  f'self.assertEqual({inventory["router_count"]:_}, self.inventory["router_count"])'
               ),
               r"self\.assertEqual\([0-9_]+, self\.inventory\[\"repository_module_count\"\]\)": (
-                  f'self.assertEqual({inventory["repository_module_count"]:_}, '
-                  'self.inventory["repository_module_count"])'
+                  f'self.assertEqual({inventory["repository_module_count"]:_}, self.inventory["repository_module_count"])'
               ),
               r"self\.assertEqual\([0-9_]+, len\(self\.inventory\[\"installer_graph\"\]\)\)": (
-                  f'self.assertEqual({len(inventory["installer_graph"]):_}, '
-                  'len(self.inventory["installer_graph"]))'
+                  f'self.assertEqual({len(inventory["installer_graph"]):_}, len(self.inventory["installer_graph"]))'
               ),
               r'self\.assertIn\("Production modules: \*\*[0-9_]+\*\*", self\.markdown\)': (
-                  f'self.assertIn("Production modules: **{inventory["production_module_count"]}**", '
-                  'self.markdown)'
+                  f'self.assertIn("Production modules: **{inventory["production_module_count"]}**", self.markdown)'
               ),
               r'self\.assertIn\("Production LOC: \*\*[0-9_]+\*\*", self\.markdown\)': (
-                  f'self.assertIn("Production LOC: **{inventory["production_loc"]}**", '
-                  'self.markdown)'
+                  f'self.assertIn("Production LOC: **{inventory["production_loc"]}**", self.markdown)'
               ),
           }
           for pattern, replacement in replacements.items():
@@ -97,10 +89,15 @@ jobs:
                   raise SystemExit(f"Architecture assertion not found: {pattern}")
           path.write_text(source, encoding="utf-8")
           PY
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
           python scripts/inventory_package_architecture_fast.py \
             --check \
             --label p1-package-architecture-baseline
-          python -m unittest tests.test_package_architecture_inventory -v
+          python -m unittest \
+            tests.test_package_architecture_inventory \
+            tests.test_telegram_navigation_inventory -v
           python scripts/ci_preflight.py
           python -m unittest \
             tests.test_server_preflight.ServerPreflightTests.test_valid_first_boot_configuration_passes \
@@ -116,7 +113,8 @@ jobs:
             tests/test_server_preflight.py \
             tests/test_package_architecture_inventory.py \
             docs/package_architecture_inventory.json \
-            docs/package_architecture_inventory.md
+            docs/package_architecture_inventory.md \
+            docs/generated/telegram_navigation_inventory.md
           if git diff --cached --quiet; then
             echo "Canonical evidence is already current."
             exit 0
