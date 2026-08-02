@@ -82,11 +82,19 @@ jobs:
                   f'self.assertEqual({len(inventory["installer_graph"]):_}, '
                   'len(self.inventory["installer_graph"]))'
               ),
+              r'self\.assertIn\("Production modules: \*\*[0-9_]+\*\*", self\.markdown\)': (
+                  f'self.assertIn("Production modules: **{inventory["production_module_count"]}**", '
+                  'self.markdown)'
+              ),
+              r'self\.assertIn\("Production LOC: \*\*[0-9_]+\*\*", self\.markdown\)': (
+                  f'self.assertIn("Production LOC: **{inventory["production_loc"]}**", '
+                  'self.markdown)'
+              ),
           }
           for pattern, replacement in replacements.items():
               source, count = re.subn(pattern, replacement, source, count=1)
               if count != 1:
-                  raise SystemExit(f"Architecture counter assertion not found: {pattern}")
+                  raise SystemExit(f"Architecture assertion not found: {pattern}")
           path.write_text(source, encoding="utf-8")
           PY
           python scripts/inventory_package_architecture_fast.py \
