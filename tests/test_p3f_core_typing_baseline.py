@@ -113,18 +113,24 @@ class P3FTypingBaselineTests(unittest.TestCase):
 
     def test_type_check_workflow_uses_pinned_development_dependencies(self) -> None:
         workflow = Path(".github/workflows/type-check.yml").read_text(encoding="utf-8")
-        requirements = Path("requirements-dev.txt").read_text(encoding="utf-8")
+        requirements_input = Path("requirements-dev.txt").read_text(encoding="utf-8")
+        requirements_lock = Path("requirements-dev.lock").read_text(encoding="utf-8")
 
         self.assertIn(
             "astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b",
             workflow,
         )
         self.assertIn('version: "0.11.16"', workflow)
-        self.assertIn("uv pip install --system -r requirements-dev.txt", workflow)
+        self.assertIn("cache-dependency-glob: requirements-dev.lock", workflow)
+        self.assertIn(
+            "uv pip install --system --require-hashes -r requirements-dev.lock",
+            workflow,
+        )
         self.assertNotIn("pip install --upgrade pip", workflow)
         self.assertIn("python -m mypy", workflow)
-        self.assertIn("mypy==2.3.0", requirements)
-        self.assertIn("-r requirements.txt", requirements)
+        self.assertIn("mypy==2.3.0", requirements_input)
+        self.assertIn("mypy==2.3.0", requirements_lock)
+        self.assertIn("-r requirements.txt", requirements_input)
         self.assertIn("mypy-output.txt", workflow)
         self.assertIn("if: failure()", workflow)
 

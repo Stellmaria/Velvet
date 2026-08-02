@@ -101,7 +101,11 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn("Creating pre-deploy PostgreSQL dump", self.deploy)
         self.assertIn("deploy/server/verify-dump.sh", self.deploy)
         self.assertIn("scripts/server_smoke.py", self.deploy)
-        self.assertIn("build --pull bot supervisor-proxy", self.deploy)
+        self.assertIn('"${compose[@]}" build --pull supervisor-proxy', self.deploy)
+        self.assertIn('IMAGE_OVERRIDE="${VELVET_DEPLOY_IMAGE:-}"', self.deploy)
+        self.assertIn('docker pull "$IMAGE_OVERRIDE"', self.deploy)
+        self.assertIn("org.opencontainers.image.revision", self.deploy)
+        self.assertIn("Running image mismatch", self.deploy)
         self.assertIn("postgres supervisor-proxy bot", self.deploy)
         self.assertIn('${TMPDIR:-/tmp}/velvet-deploy.lock', self.deploy)
         self.assertIn(

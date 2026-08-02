@@ -1,0 +1,294 @@
+name: security supply chain
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  UV_VERSION: "0.11.16"
+
+jobs:
+  supply-chain-contract:
+    name: supply-chain-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: |
+            requirements.txt
+            requirements-dev.txt
+            requirements.lock
+            requirements-dev.lock
+
+      - name: Rebuild canonical dependency locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p generated-locks
+          uv pip compile requirements.txt \
+            --python-version 3.13 \
+            --generate-hashes \
+            --no-annotate \
+            --no-header \
+            --output-file generated-locks/requirements.lock
+          uv pip compile requirements-dev.txt \
+            --python-version 3.13 \
+            --generate-hashes \
+            --no-annotate \
+            --no-header \
+            --output-file generated-locks/requirements-dev.lock
+
+      - name: Upload generated lock evidence
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: generated-locks-${{ github.sha }}
+          path: generated-locks
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Verify immutable Actions and exception policy
+        run: |
+          python scripts/security_gate.py actions
+          python scripts/security_gate.py exceptions
+
+      - name: Verify committed locks match resolver output
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f requirements.lock
+          test -f requirements-dev.lock
+          cmp requirements.lock generated-locks/requirements.lock
+          cmp requirements-dev.lock generated-locks/requirements-dev.lock
+          python scripts/security_gate.py locks
+
+  static-security:
+    name: static-security
+    needs: supply-chain-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: requirements-dev.lock
+
+      - name: Install audited tooling from hash lock
+        run: uv pip install --system --require-hashes -r requirements-dev.lock
+
+      - name: Resolve changed security surface
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git fetch --no-tags origin "$BASE_REF"
+            git diff --name-only "origin/${BASE_REF}...HEAD" > changed-security-files.txt
+          elif [[ "$EVENT_NAME" == "push" && -n "$BEFORE_SHA" && ! "$BEFORE_SHA" =~ ^0+$ ]]; then
+            git diff --name-only "$BEFORE_SHA...HEAD" > changed-security-files.txt
+          else
+            git ls-files > changed-security-files.txt
+          fi
+          cat changed-security-files.txt
+
+      - name: Scan changed Python with Bandit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(grep -E '\.py$' changed-security-files.txt || true)
+          if (( ${#files[@]} )); then
+            bandit -q -lll -iii "${files[@]}"
+          else
+            echo "No changed Python files."
+          fi
+
+      - name: Scan changed shell with ShellCheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(grep -E '\.sh$' changed-security-files.txt || true)
+          if (( ${#files[@]} )); then
+            shellcheck "${files[@]}"
+          else
+            echo "No changed shell files."
+          fi
+
+      - name: Scan secrets and container boundaries
+        run: |
+          python scripts/security_gate.py secrets --paths-from changed-security-files.txt
+          python scripts/security_gate.py containers --paths-from changed-security-files.txt
+
+      - name: Audit production dependency graph
+        shell: bash
+        run: |
+          set -o pipefail
+          pip-audit \
+            --requirement requirements.lock \
+            --progress-spinner off \
+            --strict 2>&1 | tee security-audit-output.txt
+
+      - name: Prove vulnerable fixture is detected
+        shell: bash
+        run: |
+          set -euo pipefail
+          if pip-audit \
+            --requirement tests/fixtures/security/vulnerable-requirements.txt \
+            --progress-spinner off \
+            --strict >> security-audit-output.txt 2>&1; then
+            echo "Expected the intentionally vulnerable fixture to be rejected." >&2
+            exit 1
+          fi
+          if grep -Fq "urllib3==1.25.2" requirements.lock requirements-dev.lock; then
+            echo "Vulnerable fixture leaked into a production lock." >&2
+            exit 1
+          fi
+          echo "Intentional vulnerable fixture was detected and remains isolated."
+
+      - name: Upload scanner evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: security-audit-${{ github.sha }}
+          path: security-audit-output.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+  codeql:
+    name: codeql-${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - python
+          - actions
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        with:
+          category: /language:${{ matrix.language }}
+
+  image-security:
+    name: image-security
+    needs:
+      - supply-chain-contract
+      - static-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Build production image from committed lock
+        run: docker build --tag "velvet:${GITHUB_SHA}" .
+
+      - name: Block high and critical image findings
+        uses: aquasecurity/trivy-action@876cf04c63f65e9799bcf1043b584e72469c7143 # 0.35.0
+        with:
+          image-ref: velvet:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Generate CycloneDX image SBOM
+        uses: aquasecurity/trivy-action@876cf04c63f65e9799bcf1043b584e72469c7143 # 0.35.0
+        with:
+          image-ref: velvet:${{ github.sha }}
+          format: cyclonedx
+          output: image-sbom.cdx.json
+          exit-code: "0"
+
+      - name: Record digest and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_digest="$(docker image inspect "velvet:${GITHUB_SHA}" --format '{{.Id}}')"
+          lock_digest="$(sha256sum requirements.lock | awk '{print $1}')"
+          export IMAGE_DIGEST="$image_digest" LOCK_DIGEST="$lock_digest"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          metadata = {
+              "source_commit": os.environ["GITHUB_SHA"],
+              "image_digest": os.environ["IMAGE_DIGEST"],
+              "requirements_lock_sha256": os.environ["LOCK_DIGEST"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          }
+          Path("build-metadata.json").write_text(
+              json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          cat build-metadata.json
+
+      - name: Upload SBOM and provenance
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: image-security-${{ github.sha }}
+          path: |
+            image-sbom.cdx.json
+            build-metadata.json
+          if-no-files-found: error
+          retention-days: 14

@@ -20,6 +20,7 @@ on:
       - "tools/krita/**"
       - "vision_gateway/**"
       - "requirements.txt"
+      - "requirements.lock"
       - "requirements.vision-gateway.txt"
       - "main.py"
       - "velvet_bot/**"
@@ -53,6 +54,7 @@ on:
       - "tools/krita/**"
       - "vision_gateway/**"
       - "requirements.txt"
+      - "requirements.lock"
       - "requirements.vision-gateway.txt"
       - "main.py"
       - "velvet_bot/**"
@@ -67,13 +69,18 @@ on:
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Prepare minimal compose environment
         run: |

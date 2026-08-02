@@ -11,6 +11,7 @@ on:
       - "velvet_bot/backup_restore_drill.py"
       - "scripts/backup_restore_drill.py"
       - "tests/test_backup_restore_drill.py"
+      - "requirements.lock"
       - ".github/workflows/backup-restore-drill.yml"
   push:
     branches:
@@ -21,7 +22,11 @@ on:
       - "velvet_bot/backup_restore_drill.py"
       - "scripts/backup_restore_drill.py"
       - "tests/test_backup_restore_drill.py"
+      - "requirements.lock"
       - ".github/workflows/backup-restore-drill.yml"
+
+permissions:
+  contents: read
 
 jobs:
   restore-drill:
@@ -45,20 +50,27 @@ jobs:
       TEST_DATABASE_URL: postgresql://velvet:velvet_test_password@localhost:5432/velvet_restore_source
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
-          cache: pip
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: requirements.lock
 
       - name: Install dependencies and PostgreSQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          uv pip install --system --require-hashes -r requirements.lock
 
       - name: Run helper unit tests
         run: python -m unittest discover -s tests -p "test_backup_restore_drill.py" -v

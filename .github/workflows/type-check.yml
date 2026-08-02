@@ -19,10 +19,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
 
@@ -31,13 +33,11 @@ jobs:
         with:
           version: "0.11.16"
           enable-cache: true
-          cache-dependency-glob: |
-            requirements.txt
-            requirements-dev.txt
+          cache-dependency-glob: requirements-dev.lock
           cache-suffix: type-check
 
-      - name: Install development dependencies
-        run: uv pip install --system -r requirements-dev.txt
+      - name: Install development dependencies from hash lock
+        run: uv pip install --system --require-hashes -r requirements-dev.lock
 
       - name: Type-check bounded scope
         shell: bash
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload failed mypy output
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: mypy-output
           path: mypy-output.txt
