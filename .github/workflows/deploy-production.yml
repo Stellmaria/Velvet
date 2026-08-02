@@ -7,6 +7,14 @@ on:
         description: "Type DEPLOY to update the production server from main"
         required: true
         type: string
+      source_commit:
+        description: "Exact 40-character main commit recorded in build provenance"
+        required: true
+        type: string
+      image_digest:
+        description: "Verified GHCR image reference: ghcr.io/stellmaria/velvet@sha256:<64 hex>"
+        required: true
+        type: string
 
 concurrency:
   group: velvet-production
@@ -22,6 +30,28 @@ jobs:
     timeout-minutes: 30
     environment: production
     steps:
+      - name: Validate immutable deployment request
+        shell: bash
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          source_commit="${SOURCE_COMMIT,,}"
+          image_digest="${IMAGE_DIGEST,,}"
+          if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "source_commit must be an exact 40-character SHA" >&2
+            exit 2
+          fi
+          if [[ "$source_commit" != "${GITHUB_SHA,,}" ]]; then
+            echo "source_commit must equal the main commit executing this workflow" >&2
+            exit 2
+          fi
+          if [[ ! "$image_digest" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]; then
+            echo "image_digest must be the immutable Velvet GHCR reference" >&2
+            exit 2
+          fi
+
       - name: Validate required deployment secrets
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -47,18 +77,23 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Deploy verified main commit
+      - name: Deploy verified main commit and image digest
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
         run: |
           set -euo pipefail
           port="${DEPLOY_PORT:-22}"
           app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command \
+            "VELVET_APP_DIR=%q VELVET_DEPLOY_TARGET_SHA=%q VELVET_DEPLOY_IMAGE=%q bash %q" \
+            "$app_dir" "$SOURCE_COMMIT" "$IMAGE_DIGEST" "$app_dir/deploy/server/deploy.sh"
           ssh -p "$port" \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "VELVET_APP_DIR='$app_dir' bash '$app_dir/deploy/server/deploy.sh'"
+            "$remote_command"
