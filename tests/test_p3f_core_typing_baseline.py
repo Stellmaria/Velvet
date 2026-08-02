@@ -117,10 +117,11 @@ class P3FTypingBaselineTests(unittest.TestCase):
         requirements_lock = Path("requirements-dev.lock").read_text(encoding="utf-8")
 
         self.assertIn(
-            "astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b",
+            "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
             workflow,
         )
         self.assertIn('version: "0.11.16"', workflow)
+        self.assertIn("prune-cache: true", workflow)
         self.assertIn("cache-dependency-glob: requirements-dev.lock", workflow)
         self.assertIn(
             "uv pip install --system --require-hashes -r requirements-dev.lock",

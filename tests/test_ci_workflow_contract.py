@@ -46,7 +46,7 @@ class CiWorkflowContractTests(unittest.TestCase):
         source = WORKFLOW.read_text(encoding="utf-8")
         self.assertNotIn("pip install --upgrade pip", source)
         self.assertNotIn("cache: pip", source)
-        self.assertIn("astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b", source)
+        self.assertIn("astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9", source)
         self.assertIn('version: "0.11.16"', source)
         self.assertIn("cache-dependency-glob: requirements.lock", source)
         self.assertIn(
