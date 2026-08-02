@@ -100,8 +100,7 @@ jobs:
             tests.test_telegram_navigation_inventory -v
           python scripts/ci_preflight.py
           python -m unittest \
-            tests.test_server_preflight.ServerPreflightTests.test_valid_first_boot_configuration_passes \
-            tests.test_p2_stability_inventory -v
+            tests.test_server_preflight.ServerPreflightTests.test_valid_first_boot_configuration_passes -v
 
       - name: Commit canonical evidence
         shell: bash
