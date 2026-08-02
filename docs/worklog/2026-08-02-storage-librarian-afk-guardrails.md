@@ -3,7 +3,7 @@
 - Дата: 2026-08-02
 - ID: `storage-librarian-afk-guardrails-20260802`
 - Линия/фаза: Telegram Storage Librarian, background rollout
-- Статус: `частично`
+- Статус: `проверка`
 - Ветка: `feat/storage-librarian-afk-guardrails`
 - Базовый commit: `42522af0a19d67333e6a0c423af4d6589b201b44`
 
@@ -51,33 +51,56 @@
 - добавлен `enqueue_newer_than` с обязательным положительным cutoff;
 - existing jobs и analyses исключаются;
 - scheduler больше не вызывает bulk `enqueue_pending`;
+- `process_once` по умолчанию использует `auto_enqueue=False`;
 - scheduler ждёт полный scan interval после одной итерации;
 - добавлены `enable_afk.sh` и `disable_afk.sh`;
+- enable script фиксирует текущий `MAX(telegram_storage_objects.id)` до включения AFK;
 - статус показывает cutoff, AFK categories, batch и interval;
-- terminal failure публикуется в Hermes Reports;
-- добавлены focused tests и AFK runbook.
+- terminal failure публикуется в Hermes Reports после исчерпания retry;
+- failure report проходит redaction и не содержит raw source;
+- Librarian не выполняет restart/update/rollback и не вызывает Каэля автоматически;
+- добавлены focused tests и AFK runbook;
+- открыт draft PR `#549`.
 
 ### Миграции и совместимость
 
-SQL-миграций нет. Existing tables и manual mode сохраняются. AFK включается отдельным скриптом.
+SQL-миграций нет. Existing tables, analyses и manual mode сохраняются. AFK включается отдельным явным скриптом. Обычный installer не включает background queue автоматически.
 
 ### Проверки
 
-Ожидаются Python compile, bash syntax, focused tests, architecture preflight, type check, notes contract и Docker build.
+Первый CI подтвердил:
+
+- bounded mypy: зелёный;
+- project notes contract: зелёный;
+- AFK source tests дошли до выполнения;
+- Docker workflow принял существующий production Compose;
+- обнаружены и исправлены два локальных contract drift: буквальная проверка env mapping и ложное распознавание слова `update` как SQL вне persistence layer.
+
+Generated contracts синхронизированы штатными генераторами:
+
+- package architecture: 641 production module, 139904 LOC, 548 зарегистрированных violations/exemptions;
+- P2 stability schema 78: 105 broad exception boundaries, все 105 approved, unresolved 0;
+- временный contents-write workflow удалил себя в том же bot commit.
+
+Ожидается финальный чистый прогон preflight, всех test shards, mypy, notes и Docker build на head без временного workflow.
 
 ### PR и commit
 
 - ветка: `feat/storage-librarian-afk-guardrails`;
-- PR: ожидается после проверок;
+- PR: `#549`;
+- generated inventory commit: `5f0412823cd83f49705375c867f9efe5b6d72e89`;
+- финальный зелёный head: ожидается после чистого CI;
 - merge: только после отдельного разрешения владельца.
 
 ### Незавершённое
 
-- CI;
-- generated inventories при необходимости;
-- draft PR;
-- production rollout и live smoke.
+- финальный чистый CI;
+- перевод PR из draft и merge;
+- production pull/install;
+- включение AFK через safe cutoff script;
+- live smoke нового diagnostic/release объекта;
+- наблюдение CPU/RAM/swap.
 
 ### Следующий шаг
 
-Запустить focused checks, исправить фактические failures и открыть draft PR.
+Получить полностью зелёный CI на обычном owner commit, затем после разрешения слить PR и включить AFK new-only на production.
