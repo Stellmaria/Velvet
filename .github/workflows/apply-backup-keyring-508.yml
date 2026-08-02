@@ -1,0 +1,71 @@
+name: apply backup keyring 508
+
+on:
+  push:
+    branches:
+      - security/backup-keyring-508
+    paths:
+      - ".github/workflows/apply-backup-keyring-508.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-backup-keyring-508
+  cancel-in-progress: false
+
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: security/backup-keyring-508
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: requirements-dev.lock
+
+      - name: Apply bounded source patch
+        run: python scripts/apply_backup_keyring_508.py
+
+      - name: Install hash-locked test dependencies
+        run: uv pip install --system --require-hashes -r requirements-dev.lock
+
+      - name: Run focused contracts
+        run: |
+          python -m compileall -q scripts velvet_bot tests
+          python -m unittest \
+            tests/test_storage_encryption_keyring.py \
+            tests/test_telegram_storage_center.py \
+            tests/test_server_preflight.py -v
+          python scripts/security_gate.py all
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            .env.example \
+            .env.server.example \
+            scripts/server_preflight.py \
+            velvet_bot/domains/telegram_storage/files.py \
+            velvet_bot/domains/telegram_storage/models.py \
+            velvet_bot/domains/telegram_storage/service.py \
+            velvet_bot/presentation/telegram/storage_center.py \
+            tests/test_telegram_storage_center.py
+          git add -u -- scripts/apply_backup_keyring_508.py
+          git commit -m "security: integrate versioned backup keyring"
+          git push origin HEAD:security/backup-keyring-508
