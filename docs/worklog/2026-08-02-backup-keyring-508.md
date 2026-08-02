@@ -1,80 +1,70 @@
-# Worklog: независимый lifecycle ключей backup
+# Независимый lifecycle ключей backup
 
-Дата: 2026-08-02  
-Issue: #508  
-PR: #560
+- Дата: 2026-08-02
+- ID: VELVET-508
+- Линия/фаза: Линия A / Backup cryptography и recovery
+- Статус: `частично`
+- Ветка: `security/backup-keyring-508`
+- Базовый commit: `aa7684229c419da1c781e4bfaa2e9808372e32a2`
 
-## Цель
+## Перед началом
 
-Отделить долговременное шифрование backup от оперативных authentication tokens, добавить versioned key ID, historical keyring, совместимый restore старых объектов и проверяемую процедуру rotation/re-encryption.
+### Цель
 
-## Реализовано
+Закрыть issue #508: отделить долговременное шифрование backup от `BOT_TOKEN` и `SUPERVISOR_TOKEN`, добавить versioned key ID, active/historical keyring, совместимый legacy restore и проверяемую rotation/re-encryption процедуру.
 
-### Формат и keyring
+### Исходный контекст
 
-- Добавлен формат `VELVET-AESGCM2`.
-- Key ID хранится в authenticated header и не может быть незаметно изменён без отказа GCM verification.
-- Active key задаётся через `STORAGE_ENCRYPTION_ACTIVE_KEY_ID` и `STORAGE_ENCRYPTION_SECRET`.
-- Historical decrypt-only keys задаются JSON-объектом `STORAGE_ENCRYPTION_KEYRING`.
-- Legacy `VELVET-AESGCM1` поддерживается только через явно выбранный `STORAGE_ENCRYPTION_LEGACY_KEY_ID`.
-- `BOT_TOKEN` и `SUPERVISOR_TOKEN` удалены из encryption fallback path.
-- Keyring `repr` и owner-visible status содержат только IDs, без secrets или derived material.
+На базовом commit Telegram Storage использовал формат `VELVET-AESGCM1` без key ID. Если `STORAGE_ENCRYPTION_SECRET` отсутствовал, settings переходили к `SUPERVISOR_TOKEN`, затем к `BOT_TOKEN`. Ротация authentication token могла сделать старые backup недоступными, а metadata не позволяла определить нужное поколение ключа.
 
-### Atomic restore и re-encryption
+### Планируемый объём
 
-- Encrypt/decrypt пишут во временный файл в destination directory и выполняют atomic `os.replace` только после успешной финализации.
-- Повреждённый header, неизвестный key ID, неправильный key или повреждённый tag не создают частичный restore.
-- Существующий destination не удаляется при неуспешной расшифровке.
-- `reencrypt_file` расшифровывает старый объект, шифрует под active key, повторно расшифровывает candidate и сверяет plaintext SHA-256 до возврата результата.
-- Исходный encrypted object остаётся неизменным; удаление возможно только отдельным подтверждённым шагом после restore verification.
+- удалить authentication-token fallback;
+- добавить authenticated v2 header с key ID;
+- добавить active и historical keyring;
+- сохранить explicit legacy v1 restore;
+- сделать decrypt/re-encryption атомарными и проверяемыми;
+- добавить preflight и owner-visible availability check без утечки secrets;
+- добавить CLI, regression tests и lifecycle runbook;
+- пройти полный CI и слить PR.
 
-### Storage metadata и operator visibility
+### Критерии готовности
 
-- Новый backup manifest содержит `encryption_key_id` и `AES-256-GCM+scrypt:v2`.
-- Database storage object получает ту же encryption version и key ID в manifest metadata.
-- `/storage_keys` показывает active/available IDs, количество legacy объектов и номера backup без доступного decrypt key.
-- Команда и diagnostics не выводят key material.
-- Добавлен CLI `scripts/storage_backup_keys.py` с командами `inspect`, `check`, `decrypt`, `reencrypt`.
+- `BOT_TOKEN` и `SUPERVISOR_TOKEN` не участвуют в encryption key selection;
+- новые backup содержат authenticated key ID и metadata version v2;
+- historical и legacy keys расшифровывают старые поколения;
+- неизвестный key ID завершается понятной terminal ошибкой без secret leakage;
+- повреждённый header/tag не создаёт partial restore и не заменяет существующий destination;
+- re-encryption повторно расшифровывает candidate и сверяет plaintext SHA-256;
+- preflight отклоняет missing/invalid/reused keys;
+- focused и full CI зелёные, PR слит, issue закрыта.
 
-### Production validation
+### Риски и ограничения
 
-- Server preflight требует отдельный `STORAGE_ENCRYPTION_ACTIVE_KEY_ID` и dedicated secret.
-- Проверяются key ID format, JSON historical keyring, минимальная длина каждого key и наличие legacy ID в keyring.
-- Preflight блокирует совпадение любого backup key с `BOT_TOKEN` или `SUPERVISOR_TOKEN`.
-- `.env.example` и `.env.server.example` дополнены lifecycle-переменными без реального key material.
+Потерянный AES-GCM key восстановить невозможно. Legacy v1 не содержит key ID, поэтому выбор старого ключа допускается только через явный `STORAGE_ENCRYPTION_LEGACY_KEY_ID` после инвентаризации и test restore. Merge не должен автоматически удалять старые объекты или historical keys.
 
-### Runbook
+## После завершения
 
-`docs/BACKUP_KEY_LIFECYCLE.md` документирует:
+### Фактически сделано
 
-- independent auth/backup rotation;
-- escrow и offsite copy;
-- последствия потери key;
-- owner/local availability checks;
-- migration `VELVET-AESGCM1`;
-- disposable DB restore verification;
-- verified re-encryption;
-- порядок удаления старого object и retirement historical key.
+- добавлен `VELVET-AESGCM2` с authenticated key ID;
+- добавлен `StorageEncryptionKeyring` с active, historical и legacy IDs;
+- удалён fallback на auth tokens;
+- storage settings, migration service и metadata переведены на keyring/version v2;
+- encrypt/decrypt используют temporary destination и atomic replace;
+- re-encryption проверяет новый объект повторным decrypt и SHA-256;
+- добавлены `/storage_keys` и `scripts/storage_backup_keys.py` без вывода key material;
+- server preflight проверяет key IDs, historical JSON, длину keys и auth-token reuse;
+- env examples, focused tests и `docs/BACKUP_KEY_LIFECYCLE.md` обновлены;
+- одноразовый write-workflow удалён до финального CI.
 
-## Regression tests
+### Миграции и совместимость
 
-Покрыты:
+Миграции схемы БД не требуются: key ID сохраняется в существующем JSON manifest. Новые объекты используют v2. Старые v1 продолжают читаться только при наличии explicit legacy key ID. Historical keys остаются decrypt-only до завершения retention и подтверждённого restore/re-encryption каждого поколения.
 
-- отсутствие auth-token fallback;
-- независимость restore от ротации `BOT_TOKEN` и `SUPERVISOR_TOKEN`;
-- authenticated key ID без утечки secret;
-- historical key restore;
-- terminal unknown key ID;
-- legacy v1 restore через explicit legacy ID;
-- сохранение существующего destination при corrupted tag;
-- отсутствие partial files;
-- verified re-encryption;
-- preflight missing key ID и auth-secret reuse;
-- сохранение старого Telegram Storage contract.
+### Проверки
 
-## Проверки
-
-Focused integration workflow прошёл:
+Пройдены focused contracts:
 
 ```bash
 python -m compileall -q scripts velvet_bot tests
@@ -84,16 +74,16 @@ python -m unittest \
   tests/test_server_preflight.py -v
 ```
 
-Одноразовый write-workflow удалён до финального CI. Полный tests/type/security/Docker результат фиксируется в PR #560 перед merge.
+Type check зелёный. Финальные tests, security supply chain, Docker build и project notes повторно запускаются на чистом head без временного workflow.
 
-## Production migration после merge
+### PR и commit
 
-Merge не удаляет legacy keys и не запускает массовую re-encryption автоматически. На VPS требуется отдельное контролируемое окно:
+Draft PR: #560. Integration commit: `569d60eb2780d60baccbd1514d93f05faa651110`. Итоговый merge commit будет зафиксирован после зелёного CI.
 
-1. инвентаризировать существующие encrypted backup;
-2. определить legacy key поколения;
-3. добавить historical/legacy IDs без вывода secrets;
-4. выполнить `/storage_keys`;
-5. восстановить каждое поколение в disposable PostgreSQL;
-6. перешифровать критичные объекты под active key;
-7. удалить legacy object и key только после verified replacement и завершения retention.
+### Незавершённое
+
+Дождаться полного CI, устранить возможные static/security/test findings, обновить PR checklist, снять draft и выполнить squash merge с exact head SHA.
+
+### Следующий шаг
+
+Пройти финальные checks PR #560 и слить в `main`. Production key inventory, escrow, disposable restore и legacy re-encryption выполняются отдельным контролируемым rollout после merge по `docs/BACKUP_KEY_LIFECYCLE.md`.
