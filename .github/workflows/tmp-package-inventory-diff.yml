@@ -1,0 +1,31 @@
+name: temporary package inventory diff
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Generate and show inventory diff
+        run: |
+          python scripts/inventory_package_architecture_fast.py --write
+          git diff --stat -- docs/package_architecture_inventory.json docs/package_architecture_inventory.md
+          git diff -- docs/package_architecture_inventory.json docs/package_architecture_inventory.md
+      - name: Upload generated inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-architecture-inventory-merge
+          path: |
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+          if-no-files-found: error
+          retention-days: 1
