@@ -148,8 +148,8 @@ skills и выбранный проектный контекст Каэля, Vel
 ### PR и commit
 
 - ветка: `feat/hermes-brain-vault`;
-- PR: будет создан после локальной полной проверки;
-- проверенный head: будет зафиксирован перед push;
+- PR: `#566` — `Unify Hermes entities with an Obsidian Brain Vault`;
+- implementation commit на GitHub: `fb58679f7f4d14a3a733839dd577dc198197142f`;
 - merge: только после зелёных обязательных checks.
 
 ### Незавершённое
@@ -162,7 +162,6 @@ skills и выбранный проектный контекст Каэля, Vel
 
 ### Следующий шаг
 
-Завершить полный локальный CI, проверить полный diff и secrets, создать один PR,
-исправить замечания/checks и слить. После merge отдельным разрешённым rollout
-выполнить `reconcilectl all` и live verification manifests без раскрытия
-credentials.
+Дождаться обязательного GitHub CI и слить PR только при зелёном exact head.
+После merge отдельным разрешённым rollout выполнить `reconcilectl all` и live
+verification manifests без раскрытия credentials.
