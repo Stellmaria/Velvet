@@ -2,7 +2,7 @@
 
 ## Обязательный CI-контур
 
-`security supply chain` запускается для каждого pull request, каждого push в `main` и вручную. Контур не использует production-секреты и работает с `contents: read`; единственное write-разрешение выдано job CodeQL как `security-events: write`.
+`security supply chain` запускается для каждого pull request, каждого push в `main` и вручную. Контур не использует production-секреты и работает с `contents: read`; единственное write-разрешение в PR выдано job CodeQL как `security-events: write`.
 
 Проверки разделены на четыре независимых слоя:
 
@@ -74,24 +74,31 @@ CI проверяет изменённые файлы на private keys, GitHub/
 
 ## Артефакты и приватные данные
 
-Security-артефакты содержат только scanner output, generated locks, CycloneDX SBOM и `build-metadata.json`. Запрещено выгружать `.env`, runtime-каталоги, backup, пользовательские медиа, Telegram payloads и application logs. Retention ограничен 7 днями для диагностик и 14 днями для SBOM/provenance.
+Security-артефакты содержат только scanner output, generated locks, CycloneDX SBOM и JSON provenance. Запрещено выгружать `.env`, runtime-каталоги, backup, пользовательские медиа, Telegram payloads и application logs. Retention ограничен 7 днями для диагностик, 14 днями для PR SBOM/provenance и 30 днями для опубликованного production evidence.
 
 ## Проверенный production-образ
 
-`build-metadata.json` связывает:
+После merge workflow `publish verified image`:
 
-- точный source commit;
-- локальный OCI image digest (`sha256:...`);
-- SHA-256 `requirements.lock`;
-- URL workflow run.
+1. собирает `ghcr.io/stellmaria/velvet:<source commit>` из `requirements.lock`;
+2. записывает OCI label `org.opencontainers.image.revision=<source commit>`;
+3. блокирует High/Critical findings до публикации;
+4. создаёт CycloneDX SBOM;
+5. публикует просканированный образ в GHCR;
+6. сохраняет `published-image-metadata.json` с source commit, registry digest, SHA-256 lock-файла и URL workflow run.
 
-Перед production deploy оператор обязан:
+Production deploy запускается только вручную из `main` через `deploy production`. Обязательные параметры:
 
-1. скачать SBOM/provenance из успешного `image-security` job;
-2. проверить, что `source_commit` совпадает с одобренным commit в `main`;
-3. проверить SHA-256 локального `requirements.lock`;
-4. публиковать образ в registry без пересборки;
-5. развернуть образ только по registry digest (`image@sha256:...`), не по mutable tag;
-6. приложить digest и workflow run к release/deploy evidence.
+- `confirmation=DEPLOY`;
+- `source_commit` из `published-image-metadata.json`;
+- полный `image_digest` вида `ghcr.io/stellmaria/velvet@sha256:<64 hex>`.
 
-Пересборка после успешного scan создаёт другой артефакт и требует нового полного security run.
+Workflow отклоняет commit, не совпадающий с commit текущего `main`. Remote deploy дополнительно:
+
+1. pull-ит образ только по digest;
+2. сверяет OCI revision с target commit;
+3. запускает Compose без пересборки bot image;
+4. сверяет image ID запущенного контейнера с полученным digest image;
+5. выполняет существующий application smoke и rollback при ошибке.
+
+Mutable tags и пересборка bot image во время обычного production deploy запрещены. Локальная сборка остаётся только аварийным rollback fallback, когда verified digest явно не передан вне стандартного CD workflow.
