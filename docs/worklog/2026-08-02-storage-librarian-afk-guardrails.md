@@ -66,7 +66,9 @@
 - добавлены focused tests и AFK runbook;
 - открыт draft PR `#549`;
 - конфликтовавшая история сохранена в `backup/storage-librarian-afk-guardrails-20260802`;
-- PR-ветка атомарно пересобрана от текущего `main` только из 11 продуктовых blob и снова стала mergeable.
+- PR-ветка атомарно пересобрана от текущего `main` только из продуктовых blob и снова стала mergeable;
+- generated contracts рассчитаны на точном synthetic merge и применены self-cleaning job;
+- временные exporter/test workflow modifications удалены из конечной ветки.
 
 ### Миграции и совместимость
 
@@ -74,27 +76,31 @@ SQL-миграций нет. Existing tables, analyses и manual mode сохра
 
 ### Проверки
 
-Первый CI подтвердил:
+Подтверждено до финального чистого прогона:
 
-- bounded mypy: зелёный;
-- project notes contract: зелёный;
+- bounded mypy выполнялся успешно;
+- project notes contract выполнялся успешно на продуктовой ветке;
 - Docker workflow принял production Compose;
-- исправлены локальные contract drift и ложное распознавание слова `update` как SQL вне persistence layer.
+- focused AFK source tests выполняются;
+- ложное распознавание слова `update` как SQL вне persistence layer устранено;
+- package architecture inventory: 642 production modules, 140228 LOC, 548 registered violations/exemptions;
+- P2 stability schema 78: 105 broad boundaries, 105 approved, unresolved 0;
+- штатные `tests.yml` и `scripts/ci_preflight.py` восстановлены из `main`.
 
-Сейчас штатный генератор пересчитывает package architecture и P2 stability inventory по конечному дереву без временного workflow-файла. После bot commit требуется финальный обычный owner commit и полный чистый CI.
+Ожидается последний обычный прогон preflight, всех test shards, mypy, notes и Docker build на owner commit без временных CI-файлов.
 
 ### PR и commit
 
 - ветка: `feat/storage-librarian-afk-guardrails`;
 - PR: `#549`;
 - clean product commit: `25817a4f03848e7222b692b33764c35af2800383`;
+- generated contracts commit: `b9cf358c30f01da4799fc475e54cb03ad98dda61`;
 - backup старой истории: `backup/storage-librarian-afk-guardrails-20260802`;
-- финальный зелёный head: ожидается после inventory sync и чистого CI;
+- финальный зелёный head: ожидается после чистого CI;
 - merge: только после отдельного разрешения владельца.
 
 ### Незавершённое
 
-- generated inventory sync;
 - финальный чистый CI;
 - перевод PR из draft и merge;
 - production pull/install;
@@ -104,4 +110,4 @@ SQL-миграций нет. Existing tables, analyses и manual mode сохра
 
 ### Следующий шаг
 
-Дождаться атомарного inventory commit, запустить чистый CI, затем после разрешения слить PR и включить AFK new-only на production.
+Получить полностью зелёный CI, затем после разрешения слить PR и включить AFK new-only на production.
