@@ -4,8 +4,10 @@ import json
 import importlib.util
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +24,16 @@ LIBRARIAN_SPEC = importlib.util.spec_from_file_location(
 )
 assert LIBRARIAN_SPEC and LIBRARIAN_SPEC.loader
 librarian_profile = importlib.util.module_from_spec(LIBRARIAN_SPEC)
-LIBRARIAN_SPEC.loader.exec_module(librarian_profile)
+yaml_stub = types.ModuleType("yaml")
+yaml_stub.YAMLError = ValueError
+yaml_stub.safe_load = json.loads
+yaml_stub.safe_dump = lambda value, **_kwargs: json.dumps(  # noqa: E731
+    value,
+    ensure_ascii=False,
+    indent=2,
+) + "\n"
+with patch.dict(sys.modules, {"yaml": yaml_stub}):
+    LIBRARIAN_SPEC.loader.exec_module(librarian_profile)
 
 
 class BrainVaultCompilerTests(unittest.TestCase):
@@ -156,7 +167,9 @@ class BrainRuntimeInstallationTests(unittest.TestCase):
             target = root / "target"
             source_config = root / "config.yaml"
             source_config.write_text(
-                "model:\n  provider: custom\n  default: source-model\n",
+                json.dumps(
+                    {"model": {"provider": "custom", "default": "source-model"}}
+                ),
                 encoding="utf-8",
             )
             compiler.compile_entity(ROOT, "velvet-librarian", pack)
