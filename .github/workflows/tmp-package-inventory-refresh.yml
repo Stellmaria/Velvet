@@ -1,0 +1,43 @@
+name: temporary package inventory refresh
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Regenerate canonical architecture inventory
+        run: >-
+          python scripts/inventory_package_architecture_fast.py
+          --label p1-package-architecture-baseline
+          --write
+
+      - name: Commit refreshed inventory
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- docs/package_architecture_inventory.json docs/package_architecture_inventory.md
+          if git diff --cached --quiet; then
+            echo "Inventory is already current"
+            exit 0
+          fi
+          git commit -m "chore: refresh canonical package architecture inventory"
+          git push origin "HEAD:${HEAD_BRANCH}"
