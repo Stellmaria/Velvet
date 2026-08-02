@@ -339,7 +339,6 @@ def decrypt_file(
         os.replace(temporary, destination_path)
     except Exception:
         temporary.unlink(missing_ok=True)
-        destination_path.unlink(missing_ok=True)
         raise
     return destination_path
 
