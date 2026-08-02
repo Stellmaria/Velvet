@@ -6,44 +6,9 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  sync-workspace-audit:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout audit branch
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: audit/workspace-spec-430
-
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: '3.13'
-
-      - name: Synchronize and verify audit
-        run: |
-          set -euo pipefail
-          python scripts/_patch_workspace_docs_430.py
-          python scripts/audit_workspace_product.py --write
-          python scripts/audit_workspace_product.py --check
-          python -m unittest tests.test_workspace_product_gap_audit -v
-
-      - name: Commit synchronized documents
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- README.md docs/requirements/workspace_product.md docs/audits/workspace_product_gap_audit.md
-          if git diff --cached --quiet; then
-            echo "Workspace audit documents are already synchronized."
-            exit 0
-          fi
-          git commit -m "docs: synchronize canonical workspace status"
-          git push origin HEAD:audit/workspace-spec-430
-
   notes:
     runs-on: ubuntu-latest
     steps:
