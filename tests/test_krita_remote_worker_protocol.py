@@ -69,15 +69,47 @@ class KritaRemoteWorkerProtocolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "не менее 32"):
                 KritaRemoteSettings.from_env()
 
-    def test_remote_server_defaults_to_separate_port(self) -> None:
+    def test_remote_server_defaults_to_separate_port_and_loopback(self) -> None:
         environment = dict(os.environ)
         environment["KRITA_REMOTE_WORKER_ENABLED"] = "false"
         environment.pop("KRITA_REMOTE_PORT", None)
+        environment.pop("KRITA_REMOTE_BIND_HOST", None)
+        environment.pop("KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND", None)
         with patch.dict(os.environ, environment, clear=True):
             settings = KritaRemoteSettings.from_env()
 
         self.assertEqual(8766, settings.port)
+        self.assertEqual("127.0.0.1", settings.host)
+        self.assertTrue(settings.loopback_only)
         self.assertFalse(settings.enabled)
+
+    def test_remote_server_rejects_public_bind_without_override(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "KRITA_REMOTE_WORKER_ENABLED": "false",
+                "KRITA_REMOTE_BIND_HOST": "0.0.0.0",
+                "KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND": "false",
+            },
+            clear=False,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "loopback"):
+                KritaRemoteSettings.from_env()
+
+    def test_remote_server_allows_explicit_container_bind(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "KRITA_REMOTE_WORKER_ENABLED": "false",
+                "KRITA_REMOTE_BIND_HOST": "0.0.0.0",
+                "KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND": "true",
+            },
+            clear=False,
+        ):
+            settings = KritaRemoteSettings.from_env()
+
+        self.assertEqual("0.0.0.0", settings.host)
+        self.assertFalse(settings.loopback_only)
 
     def test_windows_worker_rejects_missing_token(self) -> None:
         environment = dict(os.environ)

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "production_python_files": 639,
-  "function_count": 3660,
+  "production_python_files": 641,
+  "function_count": 3685,
   "contracts": [
     {
       "family": "safe edit/send fallback",
@@ -2261,8 +2261,8 @@
           "path": "velvet_bot/presentation/telegram/storage_librarian.py",
           "module": "velvet_bot.presentation.telegram.storage_librarian",
           "name": "stop_storage_librarian",
-          "line": 143,
-          "end_line": 153
+          "line": 152,
+          "end_line": 162
         },
         {
           "path": "velvet_bot/presentation/telegram/storage_scheduler.py",
@@ -3253,8 +3253,8 @@
           "path": "velvet_bot/domains/vision_routing/factory.py",
           "module": "velvet_bot.domains.vision_routing.factory",
           "name": "_bounded_int",
-          "line": 151,
-          "end_line": 162
+          "line": 185,
+          "end_line": 196
         }
       ]
     },

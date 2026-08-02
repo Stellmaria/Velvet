@@ -297,8 +297,8 @@ Historical migrations, compatibility packages и dual-read `meow_*` FSM/transpor
 
 Воспроизводимый shared-contract срез после добавления закрытого pricing UI:
 
-- production Python files: **639**;
-- inventoried functions: **3660**;
+- production Python files: **641**;
+- inventoried functions: **3685**;
 - registered transitional private accesses: **186**;
 - blocking known private contracts: **0**;
 - целевая консолидация временных delivery/UI layers остаётся в **#457**.

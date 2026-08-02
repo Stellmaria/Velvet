@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import os
 import re
 import shutil
@@ -37,6 +38,7 @@ _SECRET_NAMES = {
     "KIE_API_KEY",
     "GRS_API_KEY",
     "HERMES_API_KEY",
+    "KRITA_REMOTE_WORKER_TOKEN",
     "OPENAI_API_KEY",
     "TELEGRAM_BOT_TOKEN",
     "GH_TOKEN",
@@ -103,6 +105,7 @@ def validate_server_environment(
     _validate_telegram(values, report)
     _validate_storage(values, report)
     _validate_safety_flags(values, report)
+    _validate_krita_remote(values, report)
     _validate_text_ai(values, report)
     _validate_vision_ai(values, report)
     _validate_kie(values, report)
@@ -231,6 +234,42 @@ def _validate_safety_flags(values: dict[str, str], report: ValidationReport) -> 
     ):
         if _decimal(values.get(name, "")) is None:
             report.error(f"{name} должен быть неотрицательным числом.")
+
+
+def _krita_bind_is_loopback(host: str) -> bool:
+    normalized = host.strip().strip("[]")
+    if normalized.casefold() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _validate_krita_remote(values: dict[str, str], report: ValidationReport) -> None:
+    enabled = _flag(values, "KRITA_REMOTE_WORKER_ENABLED")
+    host = values.get("KRITA_REMOTE_BIND_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    unsafe = _flag(values, "KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND")
+    token = values.get("KRITA_REMOTE_WORKER_TOKEN", "").strip()
+    if enabled and (not _configured(token) or len(token) < 32):
+        report.error(
+            "KRITA_REMOTE_WORKER_ENABLED требует отдельный "
+            "KRITA_REMOTE_WORKER_TOKEN длиной не менее 32 символов."
+        )
+    if _krita_bind_is_loopback(host):
+        if enabled:
+            report.passed("Krita Remote API ограничен loopback bind.")
+    elif not unsafe:
+        report.error(
+            "KRITA_REMOTE_BIND_HOST должен быть loopback. Публичный/wildcard bind "
+            "требует явный KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND=true и внешний "
+            "защищённый gateway."
+        )
+    else:
+        report.warn(
+            "Krita Remote API использует явный unsafe bind; проверьте loopback host "
+            "publish, private VPN либо mTLS gateway."
+        )
 
 
 def _validate_text_ai(values: dict[str, str], report: ValidationReport) -> None:

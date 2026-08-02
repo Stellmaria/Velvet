@@ -5,4 +5,8 @@ services:
     ports:
       - "127.0.0.1:${KRITA_REMOTE_HOST_PORT:-8766}:${KRITA_REMOTE_PORT:-8766}"
     environment:
+      # The process listens on the container interface only because Docker publishes
+      # the port exclusively on host loopback above. Runtime defaults remain loopback.
+      KRITA_REMOTE_BIND_HOST: 0.0.0.0
+      KRITA_REMOTE_ALLOW_UNSAFE_PUBLIC_BIND: "true"
       KRITA_BRIDGE_DIR: ${KRITA_BRIDGE_DIR:-/app/runtime/krita}

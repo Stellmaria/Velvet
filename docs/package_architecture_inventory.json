@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 641,
-  "production_loc": 139635,
+  "production_loc": 139891,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -80,8 +80,8 @@
     }
   ],
   "shared_contract_summary": {
-    "production_python_files": 639,
-    "function_count": 3660,
+    "production_python_files": 641,
+    "function_count": 3685,
     "private_contract_access_count": 186,
     "blocking_private_contract_access_count": 0,
     "exact_duplicate_group_count": 64,
@@ -7395,13 +7395,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/infrastructure/krita_remote_api.py:4a6ba55c5d0008ed",
+      "id": "typing-any-usage:velvet_bot/infrastructure/krita_remote_api.py:cf180706198a229d",
       "category": "typing-any-usage",
       "path": "velvet_bot/infrastructure/krita_remote_api.py",
-      "fingerprint": "4a6ba55c5d0008edf160747b532fea6b6da56c217e2436f0b99356ed3e2f33dd",
-      "summary": "11 Any references",
+      "fingerprint": "cf180706198a229dd5f384ad398f587f480e40d8c165ca140a3a84468e1e5e3c",
+      "summary": "12 Any references",
       "details": {
-        "count": 11
+        "count": 12
       }
     },
     {
@@ -25314,12 +25314,12 @@
       "module": "velvet_bot.infrastructure.krita_remote_api",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 487,
-      "function_count": 28,
-      "class_count": 4,
+      "loc": 743,
+      "function_count": 39,
+      "class_count": 5,
       "handler_count": 0,
       "max_function_length": 67,
-      "branch_count": 28,
+      "branch_count": 61,
       "internal_imports": [
         "velvet_bot.domains.watermark",
         "velvet_bot.domains.watermark.models",
@@ -25327,13 +25327,13 @@
         "velvet_bot.domains.watermark.service",
         "velvet_bot.infrastructure.krita_bridge"
       ],
-      "external_import_count": 10,
+      "external_import_count": 18,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 11,
+      "any_count": 12,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
@@ -25343,22 +25343,22 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 34,
+          "line": 121,
           "owner": "_env_int",
           "call": "os.getenv"
         },
         {
-          "line": 25,
-          "owner": "_env_bool",
-          "call": "os.getenv"
-        },
-        {
-          "line": 56,
+          "line": 163,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 64,
+          "line": 112,
+          "owner": "_env_bool",
+          "call": "os.getenv"
+        },
+        {
+          "line": 153,
           "owner": "from_env",
           "call": "os.getenv"
         }
@@ -25366,65 +25366,65 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 122,
+          "line": 256,
           "owner": "heartbeat",
           "call": "self._worker_id"
         },
         {
-          "line": 134,
+          "line": 268,
           "owner": "claim",
           "call": "self._worker_id"
         },
         {
-          "line": 123,
+          "line": 257,
           "owner": "heartbeat",
           "call": "self._remote_repository.heartbeat_worker"
         },
         {
-          "line": 136,
+          "line": 270,
           "owner": "claim",
           "call": "self._remote_repository.heartbeat_worker"
         },
         {
-          "line": 165,
+          "line": 299,
           "owner": "claim",
           "call": "self._remote_repository.heartbeat_worker"
         },
         {
-          "line": 239,
+          "line": 373,
           "owner": "heartbeat_job",
           "call": "self._remote_repository.heartbeat_worker"
         },
         {
-          "line": 296,
+          "line": 425,
           "owner": "accept_result",
           "call": "self._remote_repository.clear_worker_activity"
         },
         {
-          "line": 317,
+          "line": 446,
           "owner": "fail_job",
           "call": "self._remote_repository.clear_worker_activity"
         },
         {
-          "line": 323,
+          "line": 452,
           "owner": "_worker_id",
           "call": "_WORKER_ID.fullmatch"
         },
         {
-          "line": 477,
+          "line": 733,
           "owner": "_lease_headers",
           "call": "_WORKER_ID.fullmatch"
         }
       ],
       "violations": [
         {
-          "id": "typing-any-usage:velvet_bot/infrastructure/krita_remote_api.py:4a6ba55c5d0008ed",
+          "id": "typing-any-usage:velvet_bot/infrastructure/krita_remote_api.py:cf180706198a229d",
           "category": "typing-any-usage",
           "path": "velvet_bot/infrastructure/krita_remote_api.py",
-          "fingerprint": "4a6ba55c5d0008edf160747b532fea6b6da56c217e2436f0b99356ed3e2f33dd",
-          "summary": "11 Any references",
+          "fingerprint": "cf180706198a229dd5f384ad398f587f480e40d8c165ca140a3a84468e1e5e3c",
+          "summary": "12 Any references",
           "details": {
-            "count": 11
+            "count": 12
           }
         }
       ]
