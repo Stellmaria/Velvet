@@ -62,7 +62,7 @@ jobs:
             git reset --hard "refs/remotes/origin/${branch}"
             cp "$generated/requirements.lock" requirements.lock
             cp "$generated/requirements-dev.lock" requirements-dev.lock
-            if git diff --quiet -- requirements.lock requirements-dev.lock; then
+            if [[ -z "$(git status --porcelain -- requirements.lock requirements-dev.lock)" ]]; then
               echo "Canonical locks are already committed."
               exit 0
             fi
