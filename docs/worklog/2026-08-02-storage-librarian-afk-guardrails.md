@@ -68,7 +68,8 @@
 - конфликтовавшая история сохранена в `backup/storage-librarian-afk-guardrails-20260802`;
 - PR-ветка атомарно пересобрана от текущего `main` только из продуктовых blob и снова стала mergeable;
 - generated contracts рассчитаны на точном synthetic merge и применены self-cleaning job;
-- временные exporter/test workflow modifications удалены из конечной ветки.
+- временные exporter/test workflow modifications удалены из конечной ветки;
+- repository layout inventory пересчитан штатным генератором: 43 repository-модуля, 36 domain и 7 infrastructure.
 
 ### Миграции и совместимость
 
@@ -84,6 +85,8 @@ SQL-миграций нет. Existing tables, analyses и manual mode сохра
 - focused AFK source tests выполняются;
 - ложное распознавание слова `update` как SQL вне persistence layer устранено;
 - package architecture inventory: 642 production modules, 140228 LOC, 548 registered violations/exemptions;
+- repository layout inventory: 43 modules, 36 domain, 7 infrastructure;
+- Telegram navigation inventory: 642 Python files, 1053 buttons, 0 violations;
 - P2 stability schema 78: 105 broad boundaries, 105 approved, unresolved 0;
 - штатные `tests.yml` и `scripts/ci_preflight.py` восстановлены из `main`.
 
@@ -94,7 +97,8 @@ SQL-миграций нет. Existing tables, analyses и manual mode сохра
 - ветка: `feat/storage-librarian-afk-guardrails`;
 - PR: `#549`;
 - clean product commit: `25817a4f03848e7222b692b33764c35af2800383`;
-- generated contracts commit: `b9cf358c30f01da4799fc475e54cb03ad98dda61`;
+- generated package contracts commit: `b9cf358c30f01da4799fc475e54cb03ad98dda61`;
+- generated repository layout commit: `a5a8ab5381075cf8853889005ee3ec8ac1c00c78`;
 - backup старой истории: `backup/storage-librarian-afk-guardrails-20260802`;
 - финальный зелёный head: ожидается после чистого CI;
 - merge: только после отдельного разрешения владельца.
