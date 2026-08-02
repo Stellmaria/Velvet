@@ -21,8 +21,8 @@ def _require_private_readable(path: Path) -> None:
     if not path.is_file() or path.is_symlink():
         raise RuntimeContextError(f"Context file отсутствует или небезопасен: {path}")
     mode = stat.S_IMODE(path.stat().st_mode)
-    if mode & 0o022:
-        raise RuntimeContextError(f"Context file доступен для записи группе/всем: {path}")
+    if mode & 0o077:
+        raise RuntimeContextError(f"Context file доступен группе/всем: {path}")
 
 
 def _output_map(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:

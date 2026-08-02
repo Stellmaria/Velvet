@@ -100,6 +100,8 @@ skills и выбранный проектный контекст Каэля, Vel
   secret checks, 128 KB entity budget, cross-project validation и SHA-256
   manifests;
 - реализованы безопасная установка и проверка активных Hermes/Codex packs;
+- compiled и installed context закрыт owner-only режимами `0600/0700`, а
+  verifier отклоняет group/other access;
 - Codex global AGENTS теперь содержит SOUL, project rules и bounded memory,
   skills устанавливаются в отдельный HOME каждого проекта;
 - Codex runner использует `--output-schema`, сохраняет structured result и
@@ -134,7 +136,7 @@ skills и выбранный проектный контекст Каэля, Vel
   deploy/hermes-operator/coderctl.py` — OK;
 - `bash -n deploy/hermes-entities/reconcile.sh
   deploy/hermes-coders/install-codex.sh deploy/hermes-librarian/install.sh` — OK;
-- selected Hermes/Brain/runtime/orchestration/project-notes suite: 140 tests —
+- selected Hermes/Brain/runtime/orchestration/project-notes suite: 141 tests —
   OK;
 - Bandit (`-lll -iii`), repository secrets/container/actions/locks/exceptions
   gates, `pip-audit --strict` и bounded mypy (11 files) — OK;

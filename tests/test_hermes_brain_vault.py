@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import importlib.util
 import sys
+import stat
 import tempfile
 import types
 import unittest
@@ -69,6 +70,10 @@ class BrainVaultCompilerTests(unittest.TestCase):
             }
             self.assertEqual(first_files, second_files)
             compiler.verify_pack(first, expected_entity="kael")
+            self.assertEqual(0o700, stat.S_IMODE(first.stat().st_mode))
+            for path in first.rglob("*"):
+                expected_mode = 0o700 if path.is_dir() else 0o600
+                self.assertEqual(expected_mode, stat.S_IMODE(path.stat().st_mode))
 
     def test_codex_pack_combines_soul_rules_memory_and_schema(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -144,6 +149,27 @@ class BrainRuntimeInstallationTests(unittest.TestCase):
             installer.install_pack(pack, target, entity="kael", mode="hermes")
             runtime_verifier.verify_installed(target, entity="kael", mode="hermes")
             self.assertEqual("live memory\n", (target / "MEMORY.md").read_text(encoding="utf-8"))
+            for name in ("SOUL.md", "AGENTS.md", "context-manifest.json"):
+                self.assertEqual(
+                    0o600,
+                    stat.S_IMODE((target / name).stat().st_mode),
+                )
+
+    def test_installed_verifier_rejects_group_readable_context(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pack = root / "pack"
+            target = root / "target"
+            target.mkdir()
+            compiler.compile_entity(ROOT, "kael", pack)
+            installer.install_pack(pack, target, entity="kael", mode="hermes")
+            (target / "AGENTS.md").chmod(0o640)
+            with self.assertRaises(runtime_verifier.RuntimeContextError):
+                runtime_verifier.verify_installed(
+                    target,
+                    entity="kael",
+                    mode="hermes",
+                )
 
     def test_codex_install_activates_global_agents_and_scoped_skills(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

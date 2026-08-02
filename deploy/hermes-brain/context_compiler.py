@@ -298,7 +298,7 @@ def _read_source(
 def _write_private(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
-    os.chmod(path, 0o640)
+    os.chmod(path, 0o600)
 
 
 def _render_agents(entity_id: str, entity: dict[str, Any], sources: list[Source]) -> bytes:
@@ -413,7 +413,7 @@ def compile_entity(
         if not output.is_dir() or output.is_symlink() or any(output.iterdir()):
             raise BrainError(f"Compile output должен быть пустым каталогом: {output}")
     output.mkdir(parents=True, exist_ok=True)
-    os.chmod(output, 0o750)
+    os.chmod(output, 0o700)
 
     source_records: list[Source] = []
     soul: Source | None = None
@@ -479,6 +479,9 @@ def compile_entity(
             [output / "CODEX.AGENTS.md"],
             label="Codex",
         )
+
+    for directory in (output, *(path for path in output.rglob("*") if path.is_dir())):
+        os.chmod(directory, 0o700)
 
     generated = sorted(
         [path for path in output.rglob("*") if path.is_file()],

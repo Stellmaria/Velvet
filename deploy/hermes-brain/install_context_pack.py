@@ -43,9 +43,9 @@ def _atomic_copy(source: Path, target: Path, *, uid: int, gid: int, mode: int) -
 def _chown_tree(root: Path, uid: int, gid: int) -> None:
     for path in sorted(root.rglob("*"), reverse=True):
         os.chown(path, uid, gid)
-        os.chmod(path, 0o750 if path.is_dir() else 0o640)
+        os.chmod(path, 0o700 if path.is_dir() else 0o600)
     os.chown(root, uid, gid)
-    os.chmod(root, 0o750)
+    os.chmod(root, 0o700)
 
 
 def _load_managed_skills(path: Path) -> set[str]:
@@ -67,6 +67,9 @@ def _install_skills(source_root: Path, target_root: Path, *, uid: int, gid: int)
         if candidate.is_symlink():
             raise InstallError(f"Symlink запрещён в skill target: {candidate}")
     target_root.mkdir(parents=True, exist_ok=True)
+    if target_root.parent.name == ".agents":
+        os.chown(target_root.parent, uid, gid)
+        os.chmod(target_root.parent, 0o700)
     manifest_path = target_root / MANAGED_SKILLS
     previous = _load_managed_skills(manifest_path)
     current = (
@@ -95,7 +98,7 @@ def _install_skills(source_root: Path, target_root: Path, *, uid: int, gid: int)
         with os.fdopen(fd, "wb") as handle:
             handle.write(payload)
         os.chown(temporary, uid, gid)
-        os.chmod(temporary, 0o640)
+        os.chmod(temporary, 0o600)
         os.replace(temporary, manifest_path)
     finally:
         try:
@@ -103,7 +106,7 @@ def _install_skills(source_root: Path, target_root: Path, *, uid: int, gid: int)
         except FileNotFoundError:
             pass
     os.chown(target_root, uid, gid)
-    os.chmod(target_root, 0o750)
+    os.chmod(target_root, 0o700)
 
 
 def install_pack(pack: Path, target: Path, *, entity: str, mode: str) -> dict[str, object]:
@@ -116,8 +119,8 @@ def install_pack(pack: Path, target: Path, *, entity: str, mode: str) -> dict[st
     gid = target.stat().st_gid
 
     if mode == "hermes":
-        _atomic_copy(pack / "SOUL.md", target / "SOUL.md", uid=uid, gid=gid, mode=0o640)
-        _atomic_copy(pack / "AGENTS.md", target / "AGENTS.md", uid=uid, gid=gid, mode=0o640)
+        _atomic_copy(pack / "SOUL.md", target / "SOUL.md", uid=uid, gid=gid, mode=0o600)
+        _atomic_copy(pack / "AGENTS.md", target / "AGENTS.md", uid=uid, gid=gid, mode=0o600)
         for seed_name, runtime_name in (
             ("MEMORY.seed.md", "MEMORY.md"),
             ("USER.seed.md", "USER.md"),
@@ -127,7 +130,7 @@ def install_pack(pack: Path, target: Path, *, entity: str, mode: str) -> dict[st
             if source.is_file() and (
                 not destination.exists() or destination.stat().st_size == 0
             ):
-                _atomic_copy(source, destination, uid=uid, gid=gid, mode=0o640)
+                _atomic_copy(source, destination, uid=uid, gid=gid, mode=0o600)
         skills_target = target / "skills"
     else:
         _atomic_copy(
@@ -135,25 +138,25 @@ def install_pack(pack: Path, target: Path, *, entity: str, mode: str) -> dict[st
             target / "AGENTS.md",
             uid=uid,
             gid=gid,
-            mode=0o640,
+            mode=0o600,
         )
         _atomic_copy(
             pack / "output.schema.json",
             target / "output.schema.json",
             uid=uid,
             gid=gid,
-            mode=0o640,
+            mode=0o600,
         )
         brain = target / "brain"
         if brain.is_symlink():
             raise InstallError(f"Symlink запрещён в brain target: {brain}")
         brain.mkdir(parents=True, exist_ok=True)
         os.chown(brain, uid, gid)
-        os.chmod(brain, 0o750)
+        os.chmod(brain, 0o700)
         for name in ("SOUL.md", "MEMORY.seed.md", "USER.seed.md"):
             source = pack / name
             if source.is_file():
-                _atomic_copy(source, brain / name, uid=uid, gid=gid, mode=0o640)
+                _atomic_copy(source, brain / name, uid=uid, gid=gid, mode=0o600)
         skills_target = target / ".agents" / "skills"
 
     _install_skills(pack / "skills", skills_target, uid=uid, gid=gid)
@@ -162,7 +165,7 @@ def install_pack(pack: Path, target: Path, *, entity: str, mode: str) -> dict[st
         target / "context-manifest.json",
         uid=uid,
         gid=gid,
-        mode=0o640,
+        mode=0o600,
     )
     return manifest
 

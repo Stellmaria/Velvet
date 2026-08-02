@@ -171,7 +171,7 @@ def prepare(
         target_dir / "AGENTS.md",
         target_dir / "context-manifest.json",
     ):
-        os.chmod(path, 0o640)
+        os.chmod(path, 0o600)
 
 
 def main(argv: list[str]) -> int:
