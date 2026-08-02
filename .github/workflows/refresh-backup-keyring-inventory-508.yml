@@ -39,16 +39,13 @@ jobs:
           source = path.read_text(encoding="utf-8")
           old = '"BOT_TOKEN": "123456:test-bot-token",'
           new = '"BOT_TOKEN": "123456:test_bot_token_12345678",'
-          if old not in source:
+          if old in source:
+              path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          elif new not in source:
               raise SystemExit("Expected preflight token fixture was not found")
-          path.write_text(source.replace(old, new, 1), encoding="utf-8")
           PY
-          python scripts/inventory_package_architecture_fast.py \
-            --write \
-            --label VELVET-508
-          python scripts/inventory_package_architecture_fast.py \
-            --check \
-            --label VELVET-508
+          python scripts/inventory_package_architecture_fast.py --write
+          python scripts/inventory_package_architecture_fast.py --check
           python scripts/ci_preflight.py
           python -m unittest \
             tests.test_server_preflight.ServerPreflightTests.test_valid_first_boot_configuration_passes \
@@ -64,5 +61,9 @@ jobs:
             tests/test_server_preflight.py \
             docs/package_architecture_inventory.json \
             docs/package_architecture_inventory.md
+          if git diff --cached --quiet; then
+            echo "Canonical evidence is already current."
+            exit 0
+          fi
           git commit -m "docs: refresh backup keyring architecture inventory"
           git push origin HEAD:security/backup-keyring-508
