@@ -1,0 +1,63 @@
+name: lock bootstrap
+
+on:
+  push:
+    branches:
+      - security/supply-chain-gates-512
+    paths:
+      - "requirements.txt"
+      - "requirements-dev.txt"
+      - ".github/workflows/lock-bootstrap.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lock-bootstrap-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  commit-locks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: security/supply-chain-gates-512
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+
+      - name: Generate and commit canonical locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv pip compile requirements.txt \
+            --python-version 3.13 \
+            --generate-hashes \
+            --no-annotate \
+            --no-header \
+            --output-file requirements.lock
+          uv pip compile requirements-dev.txt \
+            --python-version 3.13 \
+            --generate-hashes \
+            --no-annotate \
+            --no-header \
+            --output-file requirements-dev.lock
+          if git diff --quiet -- requirements.lock requirements-dev.lock; then
+            echo "Canonical locks are already committed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add requirements.lock requirements-dev.lock
+          git commit -m "security: commit canonical dependency locks"
+          git push origin HEAD:security/supply-chain-gates-512
