@@ -100,6 +100,70 @@ class StorageLibrarianRepository:
             )
         return int(result.rsplit(" ", 1)[-1])
 
+    async def enqueue_newer_than(
+        self,
+        *,
+        settings: StorageLibrarianSettings,
+        min_object_id: int,
+        allowed_kinds: tuple[str, ...],
+        limit: int = 1,
+    ) -> int:
+        kinds = tuple(
+            kind
+            for kind in allowed_kinds
+            if kind in settings.allowed_kinds
+        )
+        if not kinds:
+            return 0
+        if int(min_object_id) <= 0:
+            raise ValueError(
+                "STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID должен быть больше нуля."
+            )
+        async with self._database.acquire() as connection:
+            result = await connection.execute(
+                """
+                INSERT INTO telegram_storage_analysis_jobs (
+                    storage_object_id, priority, max_attempts
+                )
+                SELECT
+                    o.id,
+                    CASE o.storage_kind
+                        WHEN 'diagnostics' THEN 90
+                        WHEN 'codex' THEN 80
+                        WHEN 'rework' THEN 70
+                        WHEN 'inbox' THEN 60
+                        WHEN 'exports' THEN 50
+                        WHEN 'releases' THEN 40
+                        ELSE 0
+                    END,
+                    $4::INTEGER
+                FROM telegram_storage_objects AS o
+                WHERE o.id > $1::BIGINT
+                  AND o.storage_kind = ANY($2::VARCHAR[])
+                  AND o.encrypted = FALSE
+                  AND o.size_bytes <= $3::BIGINT
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM telegram_storage_analysis_jobs AS job
+                      WHERE job.storage_object_id = o.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM telegram_storage_analysis AS analysis
+                      WHERE analysis.storage_object_id = o.id
+                  )
+                ORDER BY o.id
+                LIMIT $5::INTEGER
+                ON CONFLICT (storage_object_id) DO NOTHING
+                """,
+                int(min_object_id),
+                list(kinds),
+                settings.max_object_bytes,
+                settings.max_attempts,
+                max(1, min(int(limit), 10)),
+            )
+        return int(result.rsplit(" ", 1)[-1])
+
     async def enqueue_object(
         self,
         object_id: int,
@@ -363,7 +427,7 @@ class StorageLibrarianRepository:
                     safe_reason,
                 )
 
-    async def fail(self, job: LibrarianJob, error: BaseException) -> None:
+    async def fail(self, job: LibrarianJob, error: BaseException) -> bool:
         message = redact_sensitive(str(error))[:2000]
         terminal = job.attempts >= job.max_attempts
         delay_seconds = min(1800, 60 * (2 ** max(0, job.attempts - 1)))
@@ -392,6 +456,7 @@ class StorageLibrarianRepository:
                 delay_seconds,
                 message,
             )
+        return terminal
 
     async def counts(self) -> dict[str, int]:
         async with self._database.acquire() as connection:
@@ -411,6 +476,27 @@ class StorageLibrarianRepository:
         }
         result.update({str(row["status"]): int(row["count"]) for row in rows})
         return result
+
+    async def analysis_by_object_id(
+        self,
+        object_id: int,
+    ) -> dict[str, object] | None:
+        async with self._database.acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                SELECT a.storage_object_id, a.summary, a.tags, a.entities,
+                       a.action_items, a.sensitivity, a.confidence,
+                       a.analyzed_at, a.analyzer_version,
+                       o.storage_kind, o.logical_key, o.original_name
+                FROM telegram_storage_analysis AS a
+                JOIN telegram_storage_objects AS o
+                  ON o.id = a.storage_object_id
+                WHERE a.storage_object_id = $1::BIGINT
+                  AND a.status = 'completed'
+                """,
+                int(object_id),
+            )
+        return dict(row) if row is not None else None
 
     async def recent_analyses(
         self,
