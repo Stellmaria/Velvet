@@ -28,8 +28,12 @@ class WorkspaceRequirementsContractTests(unittest.TestCase):
         text = path.read_text(encoding="utf-8")
         self.assertIn("Статус: обязательное проектное требование", text)
         self.assertIn("## 15. Следующий этап", text)
-        self.assertIn("фильтрам каталога", text)
-        self.assertIn("ролям команды", text)
+        self.assertIn("workspace categories, universes, stories", text)
+        self.assertIn("workspace-scoped references, publications и analytics", text)
+        self.assertIn("owner/admin/editor/reviewer/viewer roles", text)
+        self.assertIn("docs/audits/workspace_product_gap_audit.md", text)
+        self.assertNotIn("фильтрам каталога", text)
+        self.assertNotIn("ролям команды", text)
 
     def test_character_directory_facade_exposes_workspace_scope(self) -> None:
         source = (ROOT / "velvet_bot/character_directory.py").read_text(
