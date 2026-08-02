@@ -19,7 +19,7 @@ def _valid_values(data_dir: str) -> dict[str, str]:
     password = "test_postgres_password_1234567890"
     return {
         "VELVET_DATA_DIR": data_dir,
-        "BOT_TOKEN": "123456:test-bot-token",
+        "BOT_TOKEN": "123456:test_bot_token_12345678",
         "DATABASE_URL": (
             "postgresql://velvet:test_postgres_password_1234567890@postgres:5432/velvet"
         ),

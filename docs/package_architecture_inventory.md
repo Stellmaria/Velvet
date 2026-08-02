@@ -1,8 +1,8 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **642**
-- Production LOC: **140228**
+- Production modules: **644**
+- Production LOC: **140661**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **43**
@@ -15,7 +15,7 @@
 - `application`: **21** modules
 - `composition`: **64** modules
 - `core`: **7** modules
-- `domain`: **181** modules
+- `domain`: **183** modules
 - `infrastructure`: **28** modules
 - `other`: **1** modules
 - `presentation`: **215** modules
@@ -99,7 +99,7 @@
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py`: 807 LOC, 11 functions, max function 333 lines, target `presentation`.
 - `velvet_bot/ai_vision.py`: 774 LOC, 24 functions, max function 77 lines, target `domains/<bounded-domain>`.
 - `velvet_bot/infrastructure/krita_remote_api.py`: 743 LOC, 39 functions, max function 67 lines, target `infrastructure`.
-- `velvet_bot/domains/telegram_storage/service.py`: 733 LOC, 23 functions, max function 109 lines, target `domain`.
+- `velvet_bot/domains/telegram_storage/service.py`: 736 LOC, 23 functions, max function 109 lines, target `domain`.
 
 ## Compatibility components
 
