@@ -5,7 +5,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,31 +18,30 @@ def replace_fingerprints() -> None:
     path = ROOT / "docs/package_architecture_exemptions.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     replacements = {
-        "foreign-assignment:velvet_bot/app/workers.py:": (
-            "foreign-assignment:velvet_bot/app/workers.py:15d6b7884adb804c5c22ee15"
+        "monolithic-function:velvet_bot/app/workers.py:e3aa9347de058ded": (
+            "monolithic-function:velvet_bot/app/workers.py:46cfefb833ab8a1c"
         ),
-        "monolithic-function:velvet_bot/domains/workspaces/qwen_repository.py:mark_ready:": (
-            "monolithic-function:velvet_bot/domains/workspaces/"
-            "qwen_repository.py:mark_ready:1d9ff837ba89b8e6cd1718d4"
+        "monolithic-module-loc:velvet_bot/domains/workspaces/qwen_repository.py:62967cda3b17f24a": (
+            "monolithic-module-loc:velvet_bot/domains/workspaces/"
+            "qwen_repository.py:ef2eb8fb292facec"
         ),
-        "monolithic-module-loc:velvet_bot/ai_quality.py:": (
-            "monolithic-module-loc:velvet_bot/ai_quality.py:8d49a9561071f8f9c433f397"
+        "type-ignore-usage:velvet_bot/ai_quality.py:909de76879801118": (
+            "type-ignore-usage:velvet_bot/ai_quality.py:f0c4d8f5c9c80363"
         ),
     }
     rows = data.get("exceptions", [])
     if not isinstance(rows, list):
         raise SystemExit("Architecture exemptions must contain a list")
-    for prefix, replacement in replacements.items():
-        matching = [
-            row
-            for row in rows
-            if isinstance(row, dict) and str(row.get("id", "")).startswith(prefix)
-        ]
-        if len(matching) != 1:
-            raise SystemExit(
-                f"Expected one architecture exemption for {prefix}, found {len(matching)}"
-            )
-        matching[0]["id"] = replacement
+    by_id = {
+        str(row.get("id", "")): row
+        for row in rows
+        if isinstance(row, dict)
+    }
+    for old, new in replacements.items():
+        if old in by_id:
+            by_id[old]["id"] = new
+        elif new not in by_id:
+            raise SystemExit(f"Architecture exemption not found: {old}")
     path.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
