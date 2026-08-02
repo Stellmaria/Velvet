@@ -5,6 +5,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from velvet_bot.domains.telegram_storage.librarian_afk_repository import (
+    StorageLibrarianAfkRepository,
+)
 from velvet_bot.domains.telegram_storage.librarian_models import (
     LibrarianObject,
     StorageLibrarianSettings,
@@ -67,12 +70,19 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         ):
             self.assertEqual(("diagnostics",), _auto_allowed_kinds(_settings()))
 
+    def test_afk_repository_rejects_missing_cutoff(self) -> None:
+        with self.assertRaises(ValueError):
+            StorageLibrarianAfkRepository(object(), min_object_id=0)  # type: ignore[arg-type]
+
     def test_afk_cutoff_and_scripts_fail_closed(self) -> None:
         presentation = (
             ROOT / "velvet_bot/presentation/telegram/storage_librarian.py"
         ).read_text(encoding="utf-8")
         repository = (
             ROOT / "velvet_bot/domains/telegram_storage/librarian_repository.py"
+        ).read_text(encoding="utf-8")
+        afk_repository = (
+            ROOT / "velvet_bot/domains/telegram_storage/librarian_afk_repository.py"
         ).read_text(encoding="utf-8")
         application = (
             ROOT / "velvet_bot/application/storage_librarian.py"
@@ -85,11 +95,14 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         )
 
         self.assertIn("STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID", presentation)
+        self.assertIn("StorageLibrarianAfkRepository", presentation)
+        self.assertIn("service.repository = repository", presentation)
         self.assertIn("enqueue_newer_than", presentation)
         self.assertIn("process_once(auto_enqueue=False)", presentation)
         self.assertIn("auto_enqueue: bool = False", application)
         self.assertIn("await asyncio.sleep(settings.scan_interval_seconds)", presentation)
         self.assertIn("o.id > $1::BIGINT", repository)
+        self.assertIn("storage_object_id > $2::BIGINT", afk_repository)
         self.assertIn("ON CONFLICT (storage_object_id) DO NOTHING", repository)
         self.assertIn("SELECT COALESCE(MAX(id), 0)", enable)
         self.assertIn('"STORAGE_LIBRARIAN_AUTO_ENQUEUE": "true"', enable)
