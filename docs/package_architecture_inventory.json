@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_from": "p1-package-architecture-baseline",
+  "generated_from": "working-tree",
   "production_module_count": 644,
-  "production_loc": 140832,
+  "production_loc": 140852,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -34056,12 +34056,12 @@
       "module": "velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 282,
+      "loc": 302,
       "function_count": 11,
       "class_count": 1,
       "handler_count": 0,
       "max_function_length": 59,
-      "branch_count": 25,
+      "branch_count": 29,
       "internal_imports": [
         "velvet_bot.core.config.kie",
         "velvet_bot.domains.auf_runtime",
@@ -34095,12 +34095,17 @@
           "call": "os.getenv"
         },
         {
-          "line": 58,
+          "line": 52,
           "owner": "_byesu_api_key",
           "call": "os.getenv"
         },
         {
-          "line": 57,
+          "line": 63,
+          "owner": "_byesu_api_key",
+          "call": "os.getenv"
+        },
+        {
+          "line": 62,
           "owner": "_byesu_api_key",
           "call": "os.getenv"
         }
