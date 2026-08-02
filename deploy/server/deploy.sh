@@ -149,6 +149,8 @@ fi
 
 echo "Creating pre-deploy PostgreSQL dump..."
 "${compose[@]}" up -d postgres
+# POSTGRES_USER and POSTGRES_DB must expand inside the container shell.
+# shellcheck disable=SC2016
 "${compose[@]}" exec -T postgres sh -ceu '
   pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc
 ' > "$backup_path"
