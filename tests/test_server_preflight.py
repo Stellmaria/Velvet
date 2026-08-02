@@ -16,20 +16,20 @@ from scripts.server_preflight import (
 
 
 def _valid_values(data_dir: str) -> dict[str, str]:
-    password = "postgres_password_1234567890"
+    password = "test_postgres_password_1234567890"
     return {
         "VELVET_DATA_DIR": data_dir,
-        "BOT_TOKEN": "123456:abcdefghijklmnopqrstuvwxyz_ABC123",
+        "BOT_TOKEN": "123456:test-bot-token",
         "DATABASE_URL": (
-            "postgresql://velvet:postgres_password_1234567890@postgres:5432/velvet"
+            "postgresql://velvet:test_postgres_password_1234567890@postgres:5432/velvet"
         ),
         "POSTGRES_DB": "velvet",
         "POSTGRES_USER": "velvet",
         "POSTGRES_PASSWORD": password,
         "ALLOWED_USER_IDS": "123456789",
         "STORAGE_ENCRYPTION_ACTIVE_KEY_ID": "backup-active",
-        "STORAGE_ENCRYPTION_SECRET": "storage_secret_12345678901234567890",
-        "SUPERVISOR_TOKEN": "supervisor_secret_1234567890123456",
+        "STORAGE_ENCRYPTION_SECRET": "test_storage_key_material_12345678901234567890",
+        "SUPERVISOR_TOKEN": "test_supervisor_token_1234567890123456",
         "SUPERVISOR_ALLOW_REMOTE": "false",
         "KRITA_WATERMARK_ENABLED": "false",
         "AI_BUDGET_ENABLED": "true",
@@ -188,7 +188,7 @@ class ServerPreflightTests(unittest.TestCase):
         self.assertEqual("velvet", values["POSTGRES_DB"])
 
     def test_cli_does_not_print_secret_values(self) -> None:
-        leaked_token = "999999:THIS_SECRET_MUST_NEVER_APPEAR_123"
+        leaked_token = "test_secret_value_that_must_never_appear_123"
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env.server"
             values = _valid_values(directory)
