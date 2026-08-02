@@ -70,6 +70,64 @@ jobs:
               source = source.replace(anchor, addition, 1)
               owner_help.write_text(source, encoding="utf-8")
           PY
+
+          python scripts/inventory_package_architecture_fast.py \
+            --write \
+            --label p1-package-architecture-baseline
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          inventory = json.loads(
+              Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8")
+          )
+          path = Path("tests/test_package_architecture_inventory.py")
+          source = path.read_text(encoding="utf-8")
+          replacements = {
+              r"self\.assertEqual\([0-9_]+, self\.inventory\[\"production_module_count\"\]\)": (
+                  f'self.assertEqual({inventory["production_module_count"]:_}, '
+                  'self.inventory["production_module_count"])'
+              ),
+              r"self\.assertEqual\([0-9_]+, self\.inventory\[\"production_loc\"\]\)": (
+                  f'self.assertEqual({inventory["production_loc"]:_}, '
+                  'self.inventory["production_loc"])'
+              ),
+              r"self\.assertEqual\([0-9_]+, self\.inventory\[\"root_module_count\"\]\)": (
+                  f'self.assertEqual({inventory["root_module_count"]:_}, '
+                  'self.inventory["root_module_count"])'
+              ),
+              r"self\.assertEqual\([0-9_]+, self\.inventory\[\"router_count\"\]\)": (
+                  f'self.assertEqual({inventory["router_count"]:_}, '
+                  'self.inventory["router_count"])'
+              ),
+              r"self\.assertEqual\([0-9_]+, self\.inventory\[\"repository_module_count\"\]\)": (
+                  f'self.assertEqual({inventory["repository_module_count"]:_}, '
+                  'self.inventory["repository_module_count"])'
+              ),
+              r"self\.assertEqual\([0-9_]+, len\(self\.inventory\[\"installer_graph\"\]\)\)": (
+                  f'self.assertEqual({len(inventory["installer_graph"]):_}, '
+                  'len(self.inventory["installer_graph"]))'
+              ),
+              r'self\.assertIn\("Production modules: \*\*[0-9_]+\*\*", self\.markdown\)': (
+                  f'self.assertIn("Production modules: **{inventory["production_module_count"]}**", '
+                  'self.markdown)'
+              ),
+              r'self\.assertIn\("Production LOC: \*\*[0-9_]+\*\*", self\.markdown\)': (
+                  f'self.assertIn("Production LOC: **{inventory["production_loc"]}**", '
+                  'self.markdown)'
+              ),
+          }
+          for pattern, replacement in replacements.items():
+              source, count = re.subn(pattern, replacement, source, count=1)
+              if count != 1:
+                  raise SystemExit(f"Package assertion not found: {pattern}")
+          path.write_text(source, encoding="utf-8")
+          PY
+          python scripts/inventory_package_architecture_fast.py \
+            --check \
+            --label p1-package-architecture-baseline
+
           python scripts/inventory_repository_layout.py \
             --write \
             --label p3e-repository-layout-complete
@@ -131,6 +189,7 @@ jobs:
             --check \
             --label p3e-repository-layout-complete
           python -m unittest \
+            tests.test_package_architecture_inventory \
             tests.test_p3e_repository_layout_inventory \
             tests.test_server_local_vision_contract \
             tests.test_owner_help \
@@ -146,8 +205,11 @@ jobs:
           git add -- \
             docs/ARCHITECTURE_AUDIT.md \
             docs/development_status.md \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
             docs/repository_layout_inventory.json \
             docs/repository_layout_inventory.md \
+            tests/test_package_architecture_inventory.py \
             tests/test_p3e_repository_layout_inventory.py \
             tests/test_server_local_vision_contract.py \
             velvet_bot/presentation/telegram/routers/core_operations_controllers/owner_help.py
