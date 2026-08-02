@@ -35,8 +35,10 @@ jobs:
           enable-cache: true
           cache-dependency-glob: requirements-dev.lock
 
-      - name: Apply bounded source patch
-        run: python scripts/apply_backup_keyring_508.py
+      - name: Narrow and apply bounded source patch
+        run: |
+          python scripts/fix_apply_backup_keyring_508.py
+          python scripts/apply_backup_keyring_508.py
 
       - name: Install hash-locked test dependencies
         run: uv pip install --system --require-hashes -r requirements-dev.lock
@@ -63,7 +65,10 @@ jobs:
             velvet_bot/domains/telegram_storage/models.py \
             velvet_bot/domains/telegram_storage/service.py \
             velvet_bot/presentation/telegram/storage_center.py \
+            tests/test_server_preflight.py \
             tests/test_telegram_storage_center.py
-          git add -u -- scripts/apply_backup_keyring_508.py
+          git add -u -- \
+            scripts/apply_backup_keyring_508.py \
+            scripts/fix_apply_backup_keyring_508.py
           git commit -m "security: integrate versioned backup keyring"
           git push origin HEAD:security/backup-keyring-508
