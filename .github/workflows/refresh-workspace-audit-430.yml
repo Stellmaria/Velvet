@@ -1,6 +1,9 @@
 name: refresh workspace audit 430
 
 on:
+  push:
+    branches:
+      - audit/workspace-spec-430
   pull_request:
     branches:
       - main
@@ -14,7 +17,7 @@ concurrency:
 
 jobs:
   refresh-and-verify:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
