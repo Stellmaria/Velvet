@@ -1,0 +1,20 @@
+services:
+  hermes-chat-velvet:
+    environment:
+      GIT_CONFIG_GLOBAL: /opt/data/.gitconfig
+
+  hermes-chat-max:
+    environment:
+      GIT_CONFIG_GLOBAL: /opt/data/.gitconfig
+
+  hermes-coder-velvet:
+    entrypoint:
+      - python
+      - /app/codex_routed_runner.py
+    command: []
+
+  hermes-coder-max:
+    entrypoint:
+      - python
+      - /app/codex_routed_runner.py
+    command: []
