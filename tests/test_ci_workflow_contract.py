@@ -48,8 +48,11 @@ class CiWorkflowContractTests(unittest.TestCase):
         self.assertNotIn("cache: pip", source)
         self.assertIn("astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b", source)
         self.assertIn('version: "0.11.16"', source)
-        self.assertIn("cache-dependency-glob: requirements.txt", source)
-        self.assertIn("uv pip install --system -r requirements.txt", source)
+        self.assertIn("cache-dependency-glob: requirements.lock", source)
+        self.assertIn(
+            "uv pip install --system --require-hashes -r requirements.lock",
+            source,
+        )
         self.assertGreaterEqual(source.count("if: failure()"), 2)
         self.assertNotIn("if: always()\n        uses: actions/upload-artifact", source)
 
