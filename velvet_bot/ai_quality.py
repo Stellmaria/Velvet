@@ -20,6 +20,7 @@ from velvet_bot.ai_vision import (
     _prepare_image,
 )
 from velvet_bot.database import Database
+from velvet_bot.domains.vision_routing.models import VisionAnalysisContract
 from velvet_bot.resilient_ai_vision import ResilientMediaAIVisionService
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,18 @@ def normalize_quality_report(payload: Any) -> dict[str, Any]:
         "uncertain_areas": uncertain,
         "checks": checks,
     }
+
+
+def build_quality_vision_contract() -> VisionAnalysisContract:
+    return VisionAnalysisContract(
+        name="personal_quality",
+        prompt=_QUALITY_PROMPT,
+        schema=_QUALITY_SCHEMA,
+        normalize=normalize_quality_report,
+        max_output_tokens=1700,
+        schema_version=_ANALYSIS_VERSION,
+        ollama_json_fallback=True,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -726,5 +739,6 @@ __all__ = (
     "AIQualityService",
     "AIQualitySummary",
     "QualityVisionClient",
+    "build_quality_vision_contract",
     "normalize_quality_report",
 )

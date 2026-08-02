@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **644**
-- Production LOC: **140662**
+- Production LOC: **140832**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **44**
@@ -92,14 +92,14 @@
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py`: 1041 LOC, 37 functions, max function 169 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_onboarding.py`: 1023 LOC, 31 functions, max function 222 lines, target `presentation`.
 - `velvet_bot/domains/workspaces/character_management.py`: 1013 LOC, 24 functions, max function 117 lines, target `domain`.
+- `velvet_bot/domains/workspaces/qwen_repository.py`: 909 LOC, 25 functions, max function 78 lines, target `domain`.
 - `velvet_bot/backup_service.py`: 900 LOC, 34 functions, max function 73 lines, target `application/<bounded-use-case>`.
-- `velvet_bot/domains/workspaces/qwen_repository.py`: 898 LOC, 25 functions, max function 78 lines, target `domain`.
 - `velvet_bot/media_sets.py`: 882 LOC, 20 functions, max function 115 lines, target `domains/<bounded-domain>`.
 - `velvet_bot/domains/media_generation/models.py`: 858 LOC, 38 functions, max function 111 lines, target `domain`.
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py`: 807 LOC, 11 functions, max function 333 lines, target `presentation`.
 - `velvet_bot/ai_vision.py`: 774 LOC, 24 functions, max function 77 lines, target `domains/<bounded-domain>`.
+- `velvet_bot/ai_quality.py`: 744 LOC, 23 functions, max function 82 lines, target `domains/<bounded-domain>`.
 - `velvet_bot/infrastructure/krita_remote_api.py`: 743 LOC, 39 functions, max function 67 lines, target `infrastructure`.
-- `velvet_bot/domains/telegram_storage/service.py`: 736 LOC, 23 functions, max function 109 lines, target `domain`.
 
 ## Compatibility components
 

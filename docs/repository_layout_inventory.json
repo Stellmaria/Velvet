@@ -662,15 +662,17 @@
       "layout": "domain",
       "domain": "workspaces",
       "production_consumer_count": 3,
-      "test_consumer_count": 0,
+      "test_consumer_count": 1,
       "package_export_count": 0,
-      "reference_count": 3,
+      "reference_count": 4,
       "production_consumers": [
         "velvet_bot/app/workers.py",
         "velvet_bot/presentation/telegram/workspace_qwen.py",
         "velvet_bot/services/workspace_qwen_quality.py"
       ],
-      "test_consumers": [],
+      "test_consumers": [
+        "tests/test_workspace_personal_quality_route.py"
+      ],
       "package_exports": []
     },
     {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
@@ -18,6 +19,33 @@ class VisionRoute(StrEnum):
 class VisionAnalysisMode(StrEnum):
     STANDARD = "standard"
     SENSITIVE = "sensitive"
+
+
+@dataclass(frozen=True, slots=True)
+class VisionAnalysisContract:
+    name: str
+    prompt: str
+    schema: Mapping[str, object]
+    normalize: Callable[[object], Mapping[str, object]]
+    max_output_tokens: int = 1800
+    schema_version: int = 1
+    ollama_json_fallback: bool = False
+
+    def __post_init__(self) -> None:
+        safe_name = self.name.strip()
+        if not safe_name or any(
+            not (character.isascii() and (character.isalnum() or character in {"_", "-"}))
+            for character in safe_name
+        ):
+            raise ValueError("Vision contract name должен быть безопасным ASCII identifier.")
+        if not self.prompt.strip():
+            raise ValueError("Vision contract prompt не может быть пустым.")
+        if not self.schema:
+            raise ValueError("Vision contract schema не может быть пустой.")
+        if self.max_output_tokens < 1:
+            raise ValueError("Vision contract max_output_tokens должен быть положительным.")
+        if self.schema_version < 1:
+            raise ValueError("Vision contract schema_version должен быть положительным.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +133,7 @@ class VisionCascadeResult:
 
 __all__ = (
     "CachedVisionAnalysis",
+    "VisionAnalysisContract",
     "VisionAnalysisMode",
     "VisionCascadeResult",
     "VisionProviderAnalysis",

@@ -19,6 +19,7 @@ from velvet_bot.domains.ai_usage import (
     AIRequestExecutor,
 )
 from velvet_bot.domains.vision_routing.models import (
+    VisionAnalysisContract,
     VisionAnalysisMode,
     VisionProviderAnalysis,
     VisionRoute,
@@ -43,6 +44,7 @@ class MeteredVisionClient(VisionClient):
         *,
         config: VisionRouteConfig,
         executor: AIRequestExecutor[VisionProviderAnalysis],
+        contract: VisionAnalysisContract | None = None,
     ) -> None:
         super().__init__(
             provider=config.provider,
@@ -62,6 +64,22 @@ class MeteredVisionClient(VisionClient):
         self.max_attempts = max(1, int(config.max_attempts))
         self._pricing = config.pricing
         self._executor = executor
+        self._contract = contract or VisionAnalysisContract(
+            name=f"semantic_{self.mode.value}",
+            prompt=prompt_for_mode(self.mode),
+            schema=schema_for_mode(self.mode),
+            normalize=lambda payload: normalize_routed_profile(
+                payload,
+                mode=self.mode,
+                prompt_version=self.prompt_version,
+            ),
+            max_output_tokens=_MAX_OUTPUT_TOKENS,
+            schema_version=self.schema_version,
+        )
+        if self._contract.schema_version != self.schema_version:
+            raise ValueError(
+                "Vision route schema_version должен совпадать с analysis contract."
+            )
 
     async def analyze_prepared(
         self,
@@ -72,8 +90,9 @@ class MeteredVisionClient(VisionClient):
         operation: str = "vision.semantic-profile",
         metadata: Mapping[str, object] | None = None,
     ) -> VisionProviderAnalysis:
-        prompt = prompt_for_mode(self.mode)
-        schema = schema_for_mode(self.mode)
+        prompt = self._contract.prompt
+        schema = self._contract.schema
+        max_output_tokens = self._contract.max_output_tokens
         estimated_input_tokens = _estimate_input_tokens(
             prepared,
             prompt=prompt,
@@ -84,8 +103,9 @@ class MeteredVisionClient(VisionClient):
             "analysis_mode": self.mode.value,
             "schema_version": self.schema_version,
             "prompt_version": self.prompt_version,
+            "analysis_contract": self._contract.name,
             "prepared_bytes": len(prepared),
-            "max_output_tokens": _MAX_OUTPUT_TOKENS,
+            "max_output_tokens": max_output_tokens,
             "estimated_input_tokens": estimated_input_tokens,
             **dict(metadata or {}),
         }
@@ -96,7 +116,7 @@ class MeteredVisionClient(VisionClient):
             operation=operation,
             estimated_cost_rub=self._pricing.cost(
                 input_tokens=estimated_input_tokens,
-                output_tokens=_MAX_OUTPUT_TOKENS,
+                output_tokens=max_output_tokens,
             ),
             user_id=user_id,
             chat_id=chat_id,
@@ -139,6 +159,7 @@ class MeteredVisionClient(VisionClient):
                     "analysis_mode": self.mode.value,
                     "schema_version": self.schema_version,
                     "prompt_version": self.prompt_version,
+                    "analysis_contract": self._contract.name,
                     "provider_reported_usage": analysis.usage_reported,
                     "attempt_limit": self.max_attempts,
                 },
@@ -165,40 +186,77 @@ class MeteredVisionClient(VisionClient):
 
     def _request_once(self, prepared: bytes) -> VisionProviderAnalysis:
         image_base64 = base64.b64encode(prepared).decode("ascii")
-        request = urllib.request.Request(
-            self._endpoint(),
-            data=json.dumps(
-                self._request_body(image_base64),
-                ensure_ascii=False,
-            ).encode("utf-8"),
-            headers=self._headers(),
-            method="POST",
+        schema_modes = (
+            (True, False)
+            if self.provider == "ollama" and self._contract.ollama_json_fallback
+            else (True,)
         )
-        payload = self._read_json(request, timeout=self.timeout_seconds)
-        provider_error = payload.get("error")
-        if provider_error:
+        errors: list[str] = []
+        for use_schema in schema_modes:
+            request = urllib.request.Request(
+                self._endpoint(),
+                data=json.dumps(
+                    self._request_body(image_base64, use_schema=use_schema),
+                    ensure_ascii=False,
+                ).encode("utf-8"),
+                headers=self._headers(),
+                method="POST",
+            )
+            payload = self._read_json(request, timeout=self.timeout_seconds)
+            provider_error = payload.get("error")
+            if provider_error:
+                raise VisionAnalysisError(
+                    f"{self.provider}:{self.model}: {provider_error}"
+                )
+            try:
+                profile = self._normalize_payload(payload)
+            except VisionAnalysisError as error:
+                errors.append(str(error))
+                if use_schema and len(schema_modes) > 1:
+                    continue
+                raise
+            input_tokens, output_tokens, usage_reported = _extract_usage(
+                payload,
+                provider=self.provider,
+            )
+            return VisionProviderAnalysis(
+                profile=profile,
+                provider=self.provider,
+                model=self.model,
+                route=self.route,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                usage_reported=usage_reported,
+            )
+        raise VisionAnalysisError(
+            f"{self.provider}:{self.model} не вернул {self._contract.name}: "
+            + " | ".join(errors)
+        )
+
+    def _normalize_payload(self, payload: Mapping[str, object]) -> Mapping[str, object]:
+        if self.provider == "ollama":
+            message = payload.get("message")
+            message = message if isinstance(message, dict) else {}
+            candidates = (
+                message.get("content"),
+                message.get("thinking"),
+                payload.get("response"),
+            )
+            errors: list[str] = []
+            for value in candidates:
+                text = str(value or "").strip()
+                if not text:
+                    continue
+                try:
+                    return dict(self._contract.normalize(_extract_json_object(text)))
+                except VisionAnalysisError as error:
+                    errors.append(str(error))
             raise VisionAnalysisError(
-                f"{self.provider}:{self.model}: {provider_error}"
+                "Ollama не вернула структурированный ответ"
+                + (": " + "; ".join(errors) if errors else ".")
             )
         content = _extract_provider_content(payload, provider=self.provider)
-        profile = normalize_routed_profile(
-            _extract_json_object(content),
-            mode=self.mode,
-            prompt_version=self.prompt_version,
-        )
-        input_tokens, output_tokens, usage_reported = _extract_usage(
-            payload,
-            provider=self.provider,
-        )
-        return VisionProviderAnalysis(
-            profile=profile,
-            provider=self.provider,
-            model=self.model,
-            route=self.route,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            usage_reported=usage_reported,
-        )
+        return dict(self._contract.normalize(_extract_json_object(content)))
 
     def _endpoint(self) -> str:
         if self.provider == "ollama":
@@ -206,9 +264,14 @@ class MeteredVisionClient(VisionClient):
         root = self.base_url[:-3] if self.base_url.endswith("/v1") else self.base_url
         return f"{root}/v1/chat/completions"
 
-    def _request_body(self, image_base64: str) -> dict[str, object]:
-        prompt = prompt_for_mode(self.mode)
-        schema = schema_for_mode(self.mode)
+    def _request_body(
+        self,
+        image_base64: str,
+        *,
+        use_schema: bool = True,
+    ) -> dict[str, object]:
+        prompt = self._contract.prompt
+        schema = self._contract.schema
         if self.provider == "ollama":
             return {
                 "model": self.model,
@@ -219,7 +282,7 @@ class MeteredVisionClient(VisionClient):
                         "images": [image_base64],
                     }
                 ],
-                "format": schema,
+                "format": schema if use_schema else "json",
                 "stream": False,
                 "think": False,
                 "options": {"temperature": 0},
@@ -243,13 +306,13 @@ class MeteredVisionClient(VisionClient):
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": f"velvet_vision_{self.mode.value}",
+                    "name": f"velvet_{self._contract.name}_{self.route.value}",
                     "strict": True,
                     "schema": schema,
                 },
             },
             "temperature": 0,
-            "max_tokens": _MAX_OUTPUT_TOKENS,
+            "max_tokens": self._contract.max_output_tokens,
         }
 
 

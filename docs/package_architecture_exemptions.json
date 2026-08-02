@@ -3385,7 +3385,7 @@
       "issue": "#455"
     },
     {
-      "id": "monolithic-function:velvet_bot/app/workers.py:e3aa9347de058ded",
+      "id": "monolithic-function:velvet_bot/app/workers.py:46cfefb833ab8a1c",
       "owner": "application-composition",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
@@ -3783,7 +3783,7 @@
       "issue": "#460"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/domains/workspaces/qwen_repository.py:62967cda3b17f24a",
+      "id": "monolithic-module-loc:velvet_bot/domains/workspaces/qwen_repository.py:ef2eb8fb292facec",
       "owner": "architecture-governance",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
@@ -5783,7 +5783,7 @@
       "issue": "#463"
     },
     {
-      "id": "type-ignore-usage:velvet_bot/ai_quality.py:909de76879801118",
+      "id": "type-ignore-usage:velvet_bot/ai_quality.py:f0c4d8f5c9c80363",
       "owner": "root-module-migration",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [

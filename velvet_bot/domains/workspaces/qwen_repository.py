@@ -404,32 +404,43 @@ class WorkspaceQwenRepository:
         *,
         workspace_id: int,
         media_id: int,
+        provider: str,
+        model: str,
         report: dict[str, Any],
     ) -> None:
         encoded = json.dumps(report, ensure_ascii=False)
         async with self._database.acquire() as connection:
             async with connection.transaction():
-                await connection.execute(
+                ready_media_id = await connection.fetchval(
                     """
                     UPDATE workspace_qwen_checks
                     SET status = 'ready',
-                        verdict = $3::VARCHAR,
-                        quality_score = $4::SMALLINT,
-                        confidence = $5::SMALLINT,
-                        report = $6::JSONB,
+                        provider = $3::VARCHAR,
+                        model = $4::VARCHAR,
+                        verdict = $5::VARCHAR,
+                        quality_score = $6::SMALLINT,
+                        confidence = $7::SMALLINT,
+                        report = $8::JSONB,
                         error_message = NULL,
                         analyzed_at = NOW(),
                         updated_at = NOW()
                     WHERE workspace_id = $1::BIGINT
                       AND media_id = $2::BIGINT
+                    RETURNING media_id
                     """,
                     int(workspace_id),
                     int(media_id),
+                    provider[:64],
+                    model[:160],
                     str(report["verdict"]),
                     int(report["quality_score"]),
                     int(report["confidence"]),
                     encoded,
                 )
+                if ready_media_id is None:
+                    raise ValueError(
+                        "Проверка качества не найдена в выбранном личном пространстве."
+                    )
                 changed = await connection.fetchval(
                     """
                     UPDATE media_rework_items
