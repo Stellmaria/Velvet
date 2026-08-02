@@ -12,19 +12,27 @@ jobs:
   notes:
     runs-on: ubuntu-latest
     steps:
+      - name: Skip worklog validation for Dependabot
+        if: github.actor == 'dependabot[bot]'
+        run: echo "Dependabot dependency updates do not require a project worklog."
+
       - name: Checkout
+        if: github.actor != 'dependabot[bot]'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
+        if: github.actor != 'dependabot[bot]'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.13'
 
       - name: Fetch base branch
+        if: github.actor != 'dependabot[bot]'
         run: git fetch --no-tags origin "${{ github.base_ref }}"
 
       - name: Validate project memory and worklog
+        if: github.actor != 'dependabot[bot]'
         run: python scripts/check_project_notes.py --base-ref "origin/${{ github.base_ref }}"
