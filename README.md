@@ -19,6 +19,18 @@ Velvet — Telegram-бот для архива персонажей, публи�
 - публичный архив с фильтрами, лайками, подписками и уведомлениями;
 - точные и визуальные дубли, ручное удаление и медиасеты.
 
+### Личные пространства
+
+- personal workspace создаётся только по grant Стэл и приватен по умолчанию;
+- taxonomy, characters, references, publications, analytics, team roles и media controls изолированы по `workspace_id`;
+- first-run wizard проверяет права Telegram-бота и сохраняет chat/topic destinations;
+- обязательный product contract: `docs/requirements/workspace_product.md`;
+- воспроизводимый status/gap audit: `docs/audits/workspace_product_gap_audit.md`.
+
+Live Telegram acceptance ведётся отдельно в `#561` и `#562`; provider-neutral
+personal quality и video/animation notifications остаются extensions `#563` и
+`#426`, а не скрытыми условиями готовности core workspace.
+
 ### Публикации и аналитика
 
 - проверка постов и Telegram-лимитов;
