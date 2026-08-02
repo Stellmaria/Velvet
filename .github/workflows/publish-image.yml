@@ -1,0 +1,122 @@
+name: publish verified image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Dockerfile"
+      - "requirements.txt"
+      - "requirements.lock"
+      - "main.py"
+      - "velvet_bot/**"
+      - "scripts/container_healthcheck.py"
+      - ".github/workflows/publish-image.yml"
+      - ".github/workflows/security.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-verified-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/stellmaria/velvet
+
+jobs:
+  build-scan-publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Build revision-labelled image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --tag "${IMAGE_REPOSITORY}:${GITHUB_SHA}" .
+
+      - name: Block high and critical findings before publish
+        uses: aquasecurity/trivy-action@876cf04c63f65e9799bcf1043b584e72469c7143 # 0.35.0
+        with:
+          image-ref: ghcr.io/stellmaria/velvet:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Generate CycloneDX SBOM before publish
+        uses: aquasecurity/trivy-action@876cf04c63f65e9799bcf1043b584e72469c7143 # 0.35.0
+        with:
+          image-ref: ghcr.io/stellmaria/velvet:${{ github.sha }}
+          format: cyclonedx
+          output: published-image-sbom.cdx.json
+          exit-code: "0"
+
+      - name: Authenticate to GHCR
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish scanned image and record immutable digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${IMAGE_REPOSITORY}:${GITHUB_SHA}"
+          docker push "$tag"
+          digest_ref="$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')"
+          if [[ ! "$digest_ref" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]; then
+            echo "Registry did not return an immutable Velvet digest: $digest_ref" >&2
+            exit 1
+          fi
+          revision="$(docker image inspect "$digest_ref" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+          if [[ "$revision" != "$GITHUB_SHA" ]]; then
+            echo "Published image revision mismatch: $revision" >&2
+            exit 1
+          fi
+          lock_digest="$(sha256sum requirements.lock | awk '{print $1}')"
+          export DIGEST_REF="$digest_ref" LOCK_DIGEST="$lock_digest"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          metadata = {
+              "source_commit": os.environ["GITHUB_SHA"],
+              "image_digest": os.environ["DIGEST_REF"],
+              "requirements_lock_sha256": os.environ["LOCK_DIGEST"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          }
+          Path("published-image-metadata.json").write_text(
+              json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          cat published-image-metadata.json
+          echo "### Published image" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Digest: \`$digest_ref\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload publish evidence
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: published-image-${{ github.sha }}
+          path: |
+            published-image-sbom.cdx.json
+            published-image-metadata.json
+          if-no-files-found: error
+          retention-days: 30
