@@ -37,7 +37,7 @@
 - #561/#562 связаны с aggregate smoke #410;
 - #563 является bounded code slice #417;
 - #426 переиспользована как существующий extension issue;
-- tests, type check, Docker, security и project notes зелёные.
+- tests, type check, security supply chain и project notes зелёные.
 
 ### Риски и ограничения
 
@@ -51,11 +51,14 @@
 - добавлен `scripts/audit_workspace_product.py`, который проверяет coverage, статусы, follow-up IDs, существование evidence/test paths и актуальность generated Markdown;
 - добавлен `docs/audits/workspace_product_gap_audit.md` с таблицей requirement → implementation → tests → status → follow-up;
 - добавлен regression suite `tests/test_workspace_product_gap_audit.py`;
+- синхронизированы разделы 14–15 `docs/requirements/workspace_product.md` и workspace-раздел `README.md`;
+- stale regression, требовавший называть завершённые inline pickers следующим этапом, заменён контрактом фактического завершения и ссылки на audit evidence;
 - подтверждено, что character taxonomy, references, publications, analytics и team roles уже workspace-scoped;
 - создан #561 для live owner/onboarding/destinations smoke;
 - создан #562 для live role matrix и tenant isolation;
 - создан #563 как ограниченный provider-neutral personal quality slice #417;
-- existing #426 сохранена как отдельный video/animation subscriber notification extension без дубля.
+- existing #426 сохранена как отдельный video/animation subscriber notification extension без дубля;
+- временные write-workflows и patch helper удалены, `project-notes-contract` возвращён к исходному read-only режиму.
 
 ### Миграции и совместимость
 
@@ -63,7 +66,7 @@
 
 ### Проверки
 
-Планируемый focused contract:
+Выполнены focused contracts:
 
 ```bash
 python scripts/audit_workspace_product.py --check
@@ -71,16 +74,19 @@ python -m unittest tests.test_workspace_product_gap_audit -v
 python scripts/ci_preflight.py
 ```
 
-После открытия PR выполняются полный test matrix, type check, Docker, security supply chain и project notes contract.
+На PR #564 проходят полный test matrix, type check, security supply chain и project notes contract. Documentation-only изменение не создаёт отдельный Docker build по текущим path filters.
 
 ### PR и commit
 
-PR будет открыт после синхронизации канонического ТЗ и README. Финальный merge commit фиксируется после зелёного CI.
+- PR: #564 `Audit canonical workspace product contract`;
+- ветка: `audit/workspace-spec-430`;
+- squash merge выполняется с exact-head guard после зелёного финального CI;
+- итоговый merge commit фиксируется GitHub в PR и issue #430.
 
 ### Незавершённое
 
-В рамках #430 отсутствует code implementation follow-up: реальные остатки вынесены в #561, #562, #563 и существующую #426. До merge требуется обновить канонические документы, пройти CI и проверить exact head.
+В рамках #430 незавершённых code-задач нет. Реальные остатки вынесены в #561, #562, #563 и существующую #426; live acceptance намеренно не подменяется зелёным CI.
 
 ### Следующий шаг
 
-Синхронизировать `docs/requirements/workspace_product.md` и `README.md` с audit matrix, открыть PR, устранить findings и выполнить squash merge с head guard.
+После merge #564 взять bounded code issue #563 и довести его отдельным PR, не смешивая с live-smoke #561/#562.
