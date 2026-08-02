@@ -348,49 +348,39 @@ owner
 
 ## 14. Текущий технический срез
 
-Реализовано:
+Реализованы и покрыты regression contracts:
 
-- выдача разрешения по Telegram ID;
-- отзыв разрешения;
-- ограничение количества пространств;
-- приватность новых архивов;
-- публичный системный `Velvet Anatomy`;
-- новый стартовый экран;
-- список публичных пространств;
-- выбор публичного workspace;
-- workspace scope для каталога и медиа;
-- отдельные разрешённые и включённые модули;
-- справка по каждому модулю;
-- собственные категории;
-- собственные вселенные;
-- собственные истории;
-- импорт КР;
-- PostgreSQL regression tests;
-- dump/restore проверка новой схемы;
-- type-check;
-- Docker build;
-- обновлённые архитектурные inventory-файлы.
+- grants и приватное создание personal workspace;
+- публичный выбор workspace и tenant-scoped archive callbacks;
+- allowed/enabled module policy и отдельная справка;
+- workspace categories, universes, stories и идемпотентный импорт КР;
+- inline character taxonomy pickers и primary story links;
+- workspace-scoped references, publications и analytics;
+- owner/admin/editor/reviewer/viewer roles и member dashboard;
+- first-run onboarding, Telegram admin-right checks, forum topics и destinations;
+- media batch UX, независимые download audience/variant, preserved original и rework visibility;
+- PostgreSQL isolation tests, restore drill, type check, Docker и generated inventories.
+
+Полная матрица evidence и tests хранится в
+`docs/audits/workspace_product_gap_audit.md` и проверяется
+`scripts/audit_workspace_product.py`.
 
 ---
 
 ## 15. Следующий этап
 
-Следующим срезом необходимо перевести старые экраны управления персонажами с глобальных захардкоженных списков на workspace-каталог.
+Первоначальный этап перевода character taxonomy, references, publications,
+analytics и team routes на workspace scope завершён. Он больше не является
+открытым backlog канонического ТЗ.
 
-Нужно подключить workspace taxonomy к:
+Актуальные follow-up разделены по типу:
 
-- созданию персонажа;
-- редактированию категории;
-- выбору вселенной;
-- выбору истории;
-- фильтрам каталога;
-- сохранению медиа;
-- референсам;
-- публикациям;
-- аналитике;
-- ролям команды.
+- `#561` — live owner/onboarding/destinations smoke, bounded slice `#410`;
+- `#562` — live role matrix и tenant callback isolation, bounded slice `#410`;
+- `#563` — provider-neutral personal quality, bounded code slice `#417`;
+- `#426` — video/animation subscriber notifications.
 
-До завершения этого этапа новые категории, вселенные и истории уже безопасно хранятся и управляются в `Моём пространстве`, но часть старых административных экранов системного архива продолжает использовать прежние константы.
+Зелёный CI подтверждает code contracts, но не закрывает live Telegram acceptance.
 
 ---
 

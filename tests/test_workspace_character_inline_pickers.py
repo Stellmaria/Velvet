@@ -48,13 +48,15 @@ class WorkspaceCharacterInlinePickerContractTests(unittest.TestCase):
         self.assertLessEqual(len(packed.encode("utf-8")), 64)
         self.assertNotIn("custom-universe-key", packed)
 
-    def test_canonical_requirements_name_inline_pickers_as_next_stage(self) -> None:
+    def test_canonical_requirements_record_inline_picker_completion(self) -> None:
         requirements = (
             ROOT / "docs/requirements/workspace_product.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("редактированию категории", requirements)
-        self.assertIn("выбору вселенной", requirements)
-        self.assertIn("выбору истории", requirements)
+        self.assertIn("inline character taxonomy pickers", requirements)
+        self.assertIn("Первоначальный этап перевода character taxonomy", requirements)
+        self.assertIn("завершён", requirements)
+        self.assertIn("docs/audits/workspace_product_gap_audit.md", requirements)
+        self.assertNotIn("редактированию категории", requirements)
 
 
 @unittest.skipUnless(

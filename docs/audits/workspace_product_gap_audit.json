@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "source": "docs/requirements/workspace_product.md",
+  "audited_at": "2026-08-02",
+  "issue": 430,
+  "requirements": [
+    {
+      "id": "WSP-01",
+      "section": 1,
+      "title": "Общая модель и tenant isolation",
+      "status": "verified",
+      "implementation": [
+        "migrations/901_workspaces.sql",
+        "velvet_bot/domains/workspaces/service.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_taxonomy_catalog.py"
+      ],
+      "notes": "Workspace scope применяется к персонажам, taxonomy, media и публичному просмотру.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-02",
+      "section": 2,
+      "title": "Creation grants",
+      "status": "verified",
+      "implementation": [
+        "migrations/903_workspace_product_access.sql",
+        "velvet_bot/domains/workspaces/product_service.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py"
+      ],
+      "notes": "Grant выдаёт global owner; прямое создание без grant блокируется.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-03",
+      "section": 3,
+      "title": "Экран /start",
+      "status": "verified",
+      "implementation": [
+        "velvet_bot/workspace_ui.py",
+        "velvet_bot/presentation/telegram/routers/workspaces.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_member_dashboard.py"
+      ],
+      "notes": "Публичные архивы, создание по grant, owner и team entry разделены.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-04",
+      "section": 4,
+      "title": "Приватность и публичность",
+      "status": "verified",
+      "implementation": [
+        "velvet_bot/domains/workspaces/product_service.py",
+        "velvet_bot/domains/public_archive/visibility.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_media_controls.py"
+      ],
+      "notes": "Personal workspace приватен по умолчанию; public_archive policy повторно проверяется.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-05",
+      "section": 5,
+      "title": "Выбор публичного workspace",
+      "status": "verified",
+      "implementation": [
+        "velvet_bot/public_catalog.py",
+        "velvet_bot/presentation/telegram/routers/public_archive"
+      ],
+      "tests": [
+        "tests/test_workspace_taxonomy_catalog.py",
+        "tests/test_workspace_product_access.py"
+      ],
+      "notes": "Каталог и material callbacks используют выбранный public workspace; private workspace не выбирается.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-06",
+      "section": 6,
+      "title": "Module policy is_allowed/is_enabled",
+      "status": "verified",
+      "implementation": [
+        "velvet_bot/domains/workspaces/product_service.py",
+        "velvet_bot/core/access/policy.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_member_dashboard.py"
+      ],
+      "notes": "Global owner ограничивает allowed; owner управляет enabled; handlers повторно проверяют policy.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-07",
+      "section": 7,
+      "title": "Справка по модулям",
+      "status": "verified",
+      "implementation": [
+        "velvet_bot/workspace_ui.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_guided_menu.py"
+      ],
+      "notes": "Все module keys имеют help text и отдельную кнопку.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-08",
+      "section": 8,
+      "title": "Собственные категории",
+      "status": "verified",
+      "implementation": [
+        "migrations/903_workspace_product_access.sql",
+        "velvet_bot/domains/workspaces/product_service.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_taxonomy_catalog.py"
+      ],
+      "notes": "Ключи уникальны внутри workspace и не конфликтуют между tenants.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-09",
+      "section": 9,
+      "title": "Собственные вселенные",
+      "status": "verified",
+      "implementation": [
+        "migrations/903_workspace_product_access.sql",
+        "velvet_bot/domains/workspaces/product_service.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_character_inline_pickers.py"
+      ],
+      "notes": "Universe catalog и requires_story workspace-scoped.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-10",
+      "section": 10,
+      "title": "Собственные истории",
+      "status": "verified",
+      "implementation": [
+        "migrations/903_workspace_product_access.sql",
+        "velvet_bot/domains/workspaces/character_management.py"
+      ],
+      "tests": [
+        "tests/test_workspace_taxonomy_catalog.py",
+        "tests/test_workspace_character_inline_pickers.py"
+      ],
+      "notes": "Story IDs, links и primary story проверяются внутри workspace.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-11",
+      "section": 11,
+      "title": "Шаблон вселенной КР",
+      "status": "verified",
+      "implementation": [
+        "velvet_bot/domains/workspaces/product_service.py"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py"
+      ],
+      "notes": "Импорт копирует template в personal workspace и идемпотентен.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-12",
+      "section": 12,
+      "title": "Управление пространством и onboarding",
+      "status": "verified_with_follow_up",
+      "implementation": [
+        "velvet_bot/presentation/telegram/routers/workspace_onboarding.py",
+        "velvet_bot/presentation/telegram/routers/workspace_guided_actions.py"
+      ],
+      "tests": [
+        "tests/test_workspace_onboarding.py",
+        "tests/test_workspace_onboarding_channel_bind.py",
+        "tests/test_workspace_guided_menu.py"
+      ],
+      "notes": "UI, channel/topic bindings и Telegram rights checks реализованы; требуется live Telegram acceptance.",
+      "follow_up": [
+        410,
+        561
+      ]
+    },
+    {
+      "id": "WSP-13",
+      "section": 13,
+      "title": "Роли и командный доступ",
+      "status": "verified_with_follow_up",
+      "implementation": [
+        "velvet_bot/domains/workspaces/team_service.py",
+        "velvet_bot/presentation/telegram/routers/workspace_member_home.py"
+      ],
+      "tests": [
+        "tests/test_workspace_team_watermark.py",
+        "tests/test_workspace_member_dashboard.py"
+      ],
+      "notes": "Owner/admin/editor/reviewer/viewer и member dashboard реализованы; требуется live role-matrix acceptance.",
+      "follow_up": [
+        410,
+        562
+      ]
+    },
+    {
+      "id": "WSP-14",
+      "section": 14,
+      "title": "Текущий технический срез",
+      "status": "verified",
+      "implementation": [
+        "docs/worklog/2026-07-21-workspace-access-start-modules-taxonomy.md",
+        "docs/worklog/2026-07-22-workspace-first-run-wizard.md"
+      ],
+      "tests": [
+        "tests/test_workspace_product_access.py",
+        "tests/test_workspace_taxonomy_catalog.py"
+      ],
+      "notes": "Первоначальный foundation-срез и последующие product slices присутствуют в main.",
+      "follow_up": []
+    },
+    {
+      "id": "WSP-15",
+      "section": 15,
+      "title": "Workspace wiring старых экранов",
+      "status": "verified_with_follow_up",
+      "implementation": [
+        "velvet_bot/presentation/telegram/routers/workspace_character_pickers.py",
+        "velvet_bot/domains/publication/validation_repository.py",
+        "velvet_bot/domains/workspaces/analytics_queries.py"
+      ],
+      "tests": [
+        "tests/test_workspace_character_inline_pickers.py",
+        "tests/test_workspace_reference_library.py",
+        "tests/test_workspace_publication_queues.py",
+        "tests/test_workspace_analytics.py"
+      ],
+      "notes": "Character taxonomy, references, publications и analytics переведены на workspace scope. Provider-neutral personal quality является отдельным расширением.",
+      "follow_up": [
+        417,
+        563
+      ]
+    },
+    {
+      "id": "WSP-16",
+      "section": 16,
+      "title": "Медиа и скачивание",
+      "status": "verified_with_follow_up",
+      "implementation": [
+        "velvet_bot/presentation/telegram/routers/workspace_owner_controls.py",
+        "velvet_bot/domains/public_archive/repository.py"
+      ],
+      "tests": [
+        "tests/test_workspace_media_controls.py"
+      ],
+      "notes": "Batch UX, download audience/variant, preserved original, personal likes и rework visibility покрыты. Video/animation subscriber notifications остаются расширением.",
+      "follow_up": [
+        426
+      ]
+    },
+    {
+      "id": "OPS-01",
+      "section": null,
+      "title": "Живая приемка обязательного workspace пути",
+      "status": "live_follow_up",
+      "implementation": [
+        "docs/worklog/2026-07-22-workspace-first-run-wizard.md",
+        "docs/worklog/2026-07-22-workspace-member-dashboard.md"
+      ],
+      "tests": [],
+      "notes": "CI не подтверждает реальные Telegram permissions, forum topics и поведение нескольких аккаунтов.",
+      "follow_up": [
+        410,
+        561,
+        562
+      ]
+    }
+  ]
+}
