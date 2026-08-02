@@ -17,7 +17,11 @@ from velvet_bot.domains.ai_usage import (
 )
 from velvet_bot.domains.vision_routing.cache import VisionAnalysisCacheRepository
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
-from velvet_bot.domains.vision_routing.models import VisionRoute, VisionRouteConfig
+from velvet_bot.domains.vision_routing.models import (
+    VisionAnalysisContract,
+    VisionRoute,
+    VisionRouteConfig,
+)
 from velvet_bot.domains.vision_routing.profile_contract import PROFILE_SCHEMA_VERSION
 from velvet_bot.domains.vision_routing.service import VisionCascadeRouter
 
@@ -27,21 +31,33 @@ def build_vision_cascade_router(
     settings: Settings,
     database: Database,
     ai_usage_service: AIUsageService,
+    contract: VisionAnalysisContract | None = None,
+    analysis_type: str = "semantic-profile",
+    prompt_version: int | None = None,
+    include_sensitive: bool = True,
 ) -> VisionCascadeRouter:
     executor: AIRequestExecutor = AIRequestExecutor(ai_usage_service)
-    prompt_version = _bounded_int(
-        os.getenv("AI_VISION_PROMPT_VERSION", "1"),
-        default=1,
-        minimum=1,
-        maximum=1_000_000,
+    resolved_prompt_version = (
+        max(1, int(prompt_version))
+        if prompt_version is not None
+        else _bounded_int(
+            os.getenv("AI_VISION_PROMPT_VERSION", "1"),
+            default=1,
+            minimum=1,
+            maximum=1_000_000,
+        )
     )
+    schema_version = contract.schema_version if contract is not None else PROFILE_SCHEMA_VERSION
     flash_config = _route_config(
         settings=settings,
         route=VisionRoute.FLASH,
         default_model=settings.ai_vision_model,
-        prompt_version=prompt_version,
+        prompt_version=resolved_prompt_version,
+        schema_version=schema_version,
     )
-    flash = MeteredVisionClient(config=flash_config, executor=executor)
+    flash = MeteredVisionClient(
+        config=flash_config, executor=executor, contract=contract
+    )
 
     pro_model = (
         os.getenv("AI_VISION_PRO_MODEL", "").strip()
@@ -54,9 +70,10 @@ def build_vision_cascade_router(
                 settings=settings,
                 route=VisionRoute.PRO,
                 default_model=pro_model,
-                prompt_version=prompt_version,
+                prompt_version=resolved_prompt_version,
             ),
             executor=executor,
+            contract=contract,
         )
         if pro_model
         else None
@@ -72,9 +89,9 @@ def build_vision_cascade_router(
             settings=settings,
             route=VisionRoute.SENSITIVE,
             default_model=sensitive_model,
-            prompt_version=prompt_version,
+            prompt_version=resolved_prompt_version,
         )
-        if sensitive_model
+        if include_sensitive and sensitive_model
         else None
     )
     if sensitive_config is not None:
@@ -96,7 +113,7 @@ def build_vision_cascade_router(
             minimum=1,
             maximum=100,
         ),
-        prompt_version=prompt_version,
+        prompt_version=resolved_prompt_version,
         analysis_type="semantic-profile",
     )
 
@@ -107,6 +124,7 @@ def _route_config(
     route: VisionRoute,
     default_model: str,
     prompt_version: int = 1,
+    schema_version: int = PROFILE_SCHEMA_VERSION,
 ) -> VisionRouteConfig:
     prefix = f"AI_VISION_{route.value.upper()}"
     provider = (
@@ -155,8 +173,8 @@ def _route_config(
             maximum=5,
         ),
         pricing=pricing,
-        prompt_version=prompt_version,
-        schema_version=PROFILE_SCHEMA_VERSION,
+        prompt_version=resolved_prompt_version,
+        schema_version=schema_version,
     )
 
 

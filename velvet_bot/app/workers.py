@@ -7,7 +7,10 @@ from typing import Awaitable, Callable
 
 from aiogram import Bot
 
-from velvet_bot.ai_quality import QualityVisionClient
+from velvet_bot.ai_quality import (
+    QualityVisionClient,
+    build_quality_vision_contract,
+)
 from velvet_bot.app.ai_vision_logging import run_ai_vision_once_with_terminal_skip_info
 from velvet_bot.app.public_notifications import build_public_notification_dispatcher
 from velvet_bot.app.publication import build_publication_service
@@ -240,16 +243,19 @@ def build_worker_manager(
             max_attempts=settings.ai_vision_max_attempts,
         )
         quality_service.set_cache_chat_id(cache_chat_id)
+        workspace_quality_router = build_vision_cascade_router(
+            settings=settings,
+            database=database,
+            ai_usage_service=active_usage_service,
+            contract=build_quality_vision_contract(),
+            analysis_type="personal-quality",
+            prompt_version=1,
+            include_sensitive=False,
+        )
         workspace_quality_service = WorkspaceQwenQualityService(
             bot=bot,
             repository=WorkspaceQwenRepository(database),
-            client=QualityVisionClient(
-                provider=settings.ai_vision_provider,
-                base_url=settings.ai_vision_base_url,
-                model=settings.ai_vision_model,
-                api_key=settings.ai_vision_api_key,
-                timeout_seconds=settings.ai_vision_timeout_seconds,
-            ),
+            client=workspace_quality_router,
             max_attempts=settings.ai_vision_max_attempts,
         )
         if _env_enabled("AI_VISION_QUEUE_ENABLED"):
@@ -296,7 +302,7 @@ def build_worker_manager(
         manager.register(
             PeriodicWorkerSpec(
                 name="workspace-qwen-quality",
-                description="Qwen-проверка личных пространств",
+                description="Provider-neutral проверка личных пространств",
                 interval_seconds=11,
                 runner=partial(
                     _run_ai_locked,

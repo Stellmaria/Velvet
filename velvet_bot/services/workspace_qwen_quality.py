@@ -12,9 +12,9 @@ from aiogram.exceptions import (
     TelegramNetworkError,
 )
 
-from velvet_bot.ai_quality import QualityVisionClient
 from velvet_bot.ai_vision import VisionAnalysisError, VisionProviderUnavailable
 from velvet_bot.calibrated_ai_quality import apply_calibration_to_report
+from velvet_bot.domains.vision_routing.service import VisionCascadeRouter
 from velvet_bot.domains.workspaces.qwen_repository import (
     WorkspaceQwenRepository,
     WorkspaceQwenTarget,
@@ -32,7 +32,7 @@ class WorkspaceQwenQualityService:
         *,
         bot: Bot,
         repository: WorkspaceQwenRepository,
-        client: QualityVisionClient,
+        client: VisionCascadeRouter,
         max_attempts: int = 3,
     ) -> None:
         self._bot = bot
@@ -52,10 +52,9 @@ class WorkspaceQwenQualityService:
         if not self._healthy and now - self._last_warning >= 300:
             self._last_warning = now
             logger.warning(
-                "Workspace Qwen service is unavailable provider=%s base_url=%s model=%s",
+                "Workspace personal quality route is unavailable provider=%s models=%s",
                 self._client.provider,
-                self._client.base_url,
-                self._client.model,
+                self._client.configured_models,
             )
         return self._healthy
 
@@ -122,22 +121,37 @@ class WorkspaceQwenQualityService:
             return 0
         try:
             source = await self._download_target(target)
-            raw_report = await self._client.analyze(source)
+            routed = await self._client.analyze(
+                source,
+                metadata={
+                    "surface": "personal-quality",
+                    "workspace_id": target.workspace_id,
+                    "media_id": target.media_id,
+                },
+            )
+            raw_report = dict(routed.profile)
             profile = await self._repository.calibration_profile(
                 workspace_id=target.workspace_id,
-                provider=self._client.provider,
-                model=self._client.model,
+                provider=routed.provider,
+                model=routed.model,
             )
             report = apply_calibration_to_report(raw_report, profile)
             await self._repository.mark_ready(
                 workspace_id=target.workspace_id,
                 media_id=target.media_id,
+                provider=routed.provider,
+                model=routed.model,
                 report=report,
             )
             logger.info(
-                "Workspace Qwen report ready workspace_id=%s media_id=%s verdict=%s score=%s",
+                "Workspace personal quality report ready workspace_id=%s media_id=%s "
+                "provider=%s model=%s route=%s cache_hit=%s verdict=%s score=%s",
                 target.workspace_id,
                 target.media_id,
+                routed.provider,
+                routed.model,
+                routed.route.value,
+                routed.cache_hit,
                 report.get("verdict"),
                 report.get("quality_score"),
             )

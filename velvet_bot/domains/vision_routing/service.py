@@ -40,6 +40,7 @@ class VisionCascadeRouter:
         confidence_threshold: int = 70,
         prompt_version: int = 1,
         analysis_type: str = "semantic-profile",
+        schema_version: int = PROFILE_SCHEMA_VERSION,
     ) -> None:
         self._flash = flash
         self._pro = pro
@@ -48,6 +49,7 @@ class VisionCascadeRouter:
         self.confidence_threshold = max(1, min(int(confidence_threshold), 100))
         self.prompt_version = max(1, int(prompt_version))
         self.analysis_type = analysis_type.strip()
+        self.schema_version = max(1, int(schema_version))
         if not self.analysis_type:
             raise ValueError("Vision analysis_type не может быть пустым.")
 
@@ -98,6 +100,7 @@ class VisionCascadeRouter:
                 cached,
                 mode=mode,
                 prompt_version=self.prompt_version,
+                schema_version=self.schema_version,
             )
 
         prepared = await asyncio.to_thread(_prepare_image, source)
@@ -106,7 +109,7 @@ class VisionCascadeRouter:
             "content_hash": content_hash,
             "analysis_type": analysis_type,
             "analysis_mode": mode.value,
-            "schema_version": PROFILE_SCHEMA_VERSION,
+            "schema_version": self.schema_version,
             "prompt_version": self.prompt_version,
             "adult_confirmed": mode is VisionAnalysisMode.SENSITIVE,
         }
@@ -132,7 +135,7 @@ class VisionCascadeRouter:
                 attempts=attempts,
                 metadata={
                     "analysis_mode": mode.value,
-                    "schema_version": PROFILE_SCHEMA_VERSION,
+                    "schema_version": self.schema_version,
                     "prompt_version": self.prompt_version,
                     "adult_confirmed": True,
                     "manual_review_required": confidence < self.confidence_threshold,
@@ -171,7 +174,7 @@ class VisionCascadeRouter:
                     attempts=attempts,
                     metadata={
                         "analysis_mode": mode.value,
-                        "schema_version": PROFILE_SCHEMA_VERSION,
+                        "schema_version": self.schema_version,
                         "prompt_version": self.prompt_version,
                         "confidence_threshold": self.confidence_threshold,
                         "pro_required": False,
@@ -217,7 +220,7 @@ class VisionCascadeRouter:
                     attempts=attempts,
                     metadata={
                         "analysis_mode": mode.value,
-                        "schema_version": PROFILE_SCHEMA_VERSION,
+                        "schema_version": self.schema_version,
                         "prompt_version": self.prompt_version,
                         "fallback_reason": "pro_error_use_flash",
                         "pro_error": str(error)[:500],
@@ -232,7 +235,7 @@ class VisionCascadeRouter:
             attempts=attempts,
             metadata={
                 "analysis_mode": mode.value,
-                "schema_version": PROFILE_SCHEMA_VERSION,
+                "schema_version": self.schema_version,
                 "prompt_version": self.prompt_version,
                 "fallback_reason": fallback_reason,
                 "confidence_threshold": self.confidence_threshold,
@@ -293,7 +296,7 @@ class VisionCascadeRouter:
         return result
 
     def _analysis_type(self, mode: VisionAnalysisMode) -> str:
-        return f"{self.analysis_type}:schema-{PROFILE_SCHEMA_VERSION}:{mode.value}"
+        return f"{self.analysis_type}:schema-{self.schema_version}:{mode.value}"
 
     def _cache_models(self, *, mode: VisionAnalysisMode) -> tuple[str, ...]:
         if mode is VisionAnalysisMode.SENSITIVE:
@@ -309,6 +312,7 @@ def _cached_result(
     *,
     mode: VisionAnalysisMode,
     prompt_version: int,
+    schema_version: int,
 ) -> VisionCascadeResult:
     return VisionCascadeResult(
         profile=dict(cached.profile),
@@ -325,7 +329,7 @@ def _cached_result(
         metadata={
             "cache_id": cached.cache_id,
             "analysis_mode": mode.value,
-            "schema_version": PROFILE_SCHEMA_VERSION,
+            "schema_version": schema_version,
             "prompt_version": prompt_version,
         },
     )
