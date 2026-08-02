@@ -16,6 +16,9 @@ from velvet_bot.domains.telegram_storage import (
     TelegramStorageSettings,
 )
 from velvet_bot.domains.telegram_storage.files import storage_message_link
+from velvet_bot.domains.telegram_storage.key_repository import (
+    TelegramStorageKeyRepository,
+)
 
 logger = logging.getLogger(__name__)
 _background_tasks: set[asyncio.Task] = set()
@@ -273,28 +276,16 @@ async def handle_storage_keys(
     database: Database,
 ) -> None:
     settings = TelegramStorageSettings.from_env()
-    async with database.acquire() as connection:
-        rows = await connection.fetch(
-            """
-            SELECT id, encryption_version,
-                   manifest ->> 'encryption_key_id' AS encryption_key_id
-            FROM telegram_storage_objects
-            WHERE storage_kind = 'backups'
-              AND encrypted = TRUE
-            ORDER BY id DESC
-            LIMIT 500
-            """
-        )
+    rows = await TelegramStorageKeyRepository(database).list_backup_key_references()
     missing: list[str] = []
     legacy = 0
     for row in rows:
-        key_id = row["encryption_key_id"]
+        key_id = row.encryption_key_id
         if key_id is None:
             legacy += 1
-        label = str(key_id) if key_id is not None else "<legacy-v1>"
-        selected = str(key_id) if key_id is not None else None
-        if not settings.encryption_keyring.has_key(selected):
-            missing.append(f"#{int(row['id'])}:{label}")
+        label = key_id if key_id is not None else "<legacy-v1>"
+        if not settings.encryption_keyring.has_key(key_id):
+            missing.append(f"#{row.object_id}:{label}")
 
     lines = [
         "<b>Backup key availability</b>",
