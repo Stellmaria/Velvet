@@ -392,6 +392,8 @@ class TelegramStorageMigrationService:
                         "schema_version": item.schema_version,
                         "source_sha256": source_digest,
                         "validation": item.validation,
+                        "encryption_key_id": self.settings.encryption_key_id,
+                        "encryption_version": "AES-256-GCM+scrypt:v2",
                         "packed_at": datetime.now(UTC).isoformat(),
                     },
                     ensure_ascii=False,
@@ -410,13 +412,13 @@ class TelegramStorageMigrationService:
                     encrypt_file,
                     zip_path,
                     encrypted_path,
-                    self.settings.encryption_secret,
+                    self.settings.encryption_keyring,
                 )
                 await asyncio.to_thread(
                     decrypt_file,
                     encrypted_path,
                     verify_path,
-                    self.settings.encryption_secret,
+                    self.settings.encryption_keyring,
                 )
                 if await asyncio.to_thread(sha256_file, verify_path) != zip_digest:
                     raise ValueError("Проверка расшифровки backup не совпала с исходным ZIP.")
@@ -441,12 +443,13 @@ class TelegramStorageMigrationService:
                         "schema_version": item.schema_version,
                         "source_sha256": source_digest,
                         "zip_sha256": zip_digest,
+                        "encryption_key_id": self.settings.encryption_key_id,
                     },
                 )
                 stored = await self.uploader.upload(
                     candidate,
                     manifest=candidate.metadata,
-                    encryption_version="AES-256-GCM+scrypt:v1",
+                    encryption_version="AES-256-GCM+scrypt:v2",
                 )
                 stored_object, deleted, freed, duplicate = stored
                 if duplicate:

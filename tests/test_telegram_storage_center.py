@@ -295,7 +295,7 @@ class TelegramStorageSourceContractTests(unittest.TestCase):
         self.assertIn('Command("storage_migrate")', controller)
         self.assertIn("router.startup.register(handle_storage_startup)", controller)
         self.assertIn("STORAGE_THREAD_WATERMARKS", Path(".env.example").read_text())
-        self.assertIn("AES-256-GCM+scrypt:v1", service)
+        self.assertIn("AES-256-GCM+scrypt:v2", service)
         self.assertNotIn("analytics_controllers.channel", service)
 
 

@@ -60,6 +60,12 @@ async def handle_storage_menu(
         "",
         f"Чат: <code>{settings.chat_id}</code>",
         (
+            "Backup keyring: "
+            f"active=<code>{escape(settings.encryption_key_id)}</code>, "
+            f"доступно={len(settings.encryption_keyring.key_ids)}, "
+            f"legacy-v1={'да' if settings.encryption_keyring.legacy_key_id else 'нет'}"
+        ),
+        (
             "Ветки: "
             f"watermarks={settings.threads.watermarks}, "
             f"backups={settings.threads.backups}, "
@@ -95,6 +101,7 @@ async def handle_storage_menu(
             "<code>/storage_migrate force</code> — принудительно досканировать ПК",
             "<code>/storage_find запрос</code> — поиск по ключу, имени или SHA",
             "<code>/storage_download ID</code> — получить файл или его части",
+            "<code>/storage_keys</code> — проверить доступность backup keys",
         )
     )
     await message.answer("\n".join(lines))
@@ -261,6 +268,59 @@ async def handle_storage_download(
         )
 
 
+async def handle_storage_keys(
+    message: Message,
+    database: Database,
+) -> None:
+    settings = TelegramStorageSettings.from_env()
+    async with database.acquire() as connection:
+        rows = await connection.fetch(
+            """
+            SELECT id, encryption_version,
+                   manifest ->> 'encryption_key_id' AS encryption_key_id
+            FROM telegram_storage_objects
+            WHERE storage_kind = 'backups'
+              AND encrypted = TRUE
+            ORDER BY id DESC
+            LIMIT 500
+            """
+        )
+    missing: list[str] = []
+    legacy = 0
+    for row in rows:
+        key_id = row["encryption_key_id"]
+        if key_id is None:
+            legacy += 1
+        label = str(key_id) if key_id is not None else "<legacy-v1>"
+        selected = str(key_id) if key_id is not None else None
+        if not settings.encryption_keyring.has_key(selected):
+            missing.append(f"#{int(row['id'])}:{label}")
+
+    lines = [
+        "<b>Backup key availability</b>",
+        "",
+        f"Active: <code>{escape(settings.encryption_key_id)}</code>",
+        "Доступные ID: "
+        + ", ".join(
+            f"<code>{escape(key_id)}</code>"
+            for key_id in settings.encryption_keyring.key_ids
+        ),
+        f"Encrypted backup objects: <b>{len(rows)}</b>",
+        f"Legacy v1 without header key ID: <b>{legacy}</b>",
+    ]
+    if missing:
+        lines.extend(
+            (
+                "",
+                f"Недоступно ключей для объектов: <b>{len(missing)}</b>",
+                "• " + "\n• ".join(escape(item) for item in missing[:20]),
+            )
+        )
+    else:
+        lines.extend(("", "Все известные backup имеют доступный decrypt key."))
+    await message.answer("\n".join(lines))
+
+
 async def handle_storage_startup(
     bot: Bot,
     database: Database,
@@ -304,6 +364,7 @@ def register_storage_center(router: Router) -> None:
     router.message.register(handle_storage_migrate, Command("storage_migrate"))
     router.message.register(handle_storage_find, Command("storage_find"))
     router.message.register(handle_storage_download, Command("storage_download"))
+    router.message.register(handle_storage_keys, Command("storage_keys"))
     router.startup.register(handle_storage_startup)
 
 

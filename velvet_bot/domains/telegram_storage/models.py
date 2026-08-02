@@ -9,6 +9,10 @@ from velvet_bot.domains.telegram_storage.deletion import (
     DeletionPolicy,
     build_storage_deletion_policy,
 )
+from velvet_bot.domains.telegram_storage.encryption import (
+    StorageEncryptionKeyring,
+    keyring_from_env,
+)
 
 StorageKind = Literal[
     "watermarks",
@@ -135,7 +139,15 @@ class TelegramStorageSettings:
     delete_after_upload: bool
     active_file_grace_seconds: int
     max_part_bytes: int
-    encryption_secret: str = field(repr=False)
+    encryption_keyring: StorageEncryptionKeyring = field(repr=False)
+
+    @property
+    def encryption_secret(self) -> str:
+        return self.encryption_keyring.active_secret
+
+    @property
+    def encryption_key_id(self) -> str:
+        return self.encryption_keyring.active_key_id
 
     @classmethod
     def from_env(cls) -> "TelegramStorageSettings":
@@ -146,15 +158,7 @@ class TelegramStorageSettings:
         )
         data_raw = os.getenv("VELVET_DATA_DIR", "").strip()
         data_dir = _path(data_raw, project_dir) if data_raw else None
-        secret = (
-            os.getenv("STORAGE_ENCRYPTION_SECRET", "").strip()
-            or os.getenv("SUPERVISOR_TOKEN", "").strip()
-            or os.getenv("BOT_TOKEN", "").strip()
-        )
-        if len(secret) < 24:
-            raise ValueError(
-                "Для шифрования backup задайте STORAGE_ENCRYPTION_SECRET минимум из 24 символов."
-            )
+        encryption_keyring = keyring_from_env()
         settings = cls(
             chat_id=_int_env(
                 "TELEGRAM_STORAGE_CHAT_ID",
@@ -225,7 +229,7 @@ class TelegramStorageSettings:
                 minimum=5 * 1024 * 1024,
                 maximum=49 * 1024 * 1024,
             ),
-            encryption_secret=secret,
+            encryption_keyring=encryption_keyring,
         )
         if settings.delete_after_upload:
             # Fail before migration starts if any configured deletion scope is empty

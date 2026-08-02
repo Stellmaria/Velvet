@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import json
 import os
 import re
 import shutil
@@ -27,6 +28,7 @@ _SECRET_NAMES = {
     "BOT_TOKEN",
     "POSTGRES_PASSWORD",
     "STORAGE_ENCRYPTION_SECRET",
+    "STORAGE_ENCRYPTION_KEYRING",
     "SUPERVISOR_TOKEN",
     "BYESU_API_KEY",
     "AI_TEXT_API_KEY",
@@ -126,6 +128,7 @@ def _validate_required_base(values: dict[str, str], report: ValidationReport) ->
         "POSTGRES_PASSWORD",
         "ALLOWED_USER_IDS",
         "STORAGE_ENCRYPTION_SECRET",
+        "STORAGE_ENCRYPTION_ACTIVE_KEY_ID",
         "SUPERVISOR_TOKEN",
         "VELVET_DATA_DIR",
     )
@@ -193,6 +196,64 @@ def _validate_telegram(values: dict[str, str], report: ValidationReport) -> None
 
 
 def _validate_storage(values: dict[str, str], report: ValidationReport) -> None:
+    active_key_id = values.get("STORAGE_ENCRYPTION_ACTIVE_KEY_ID", "").strip()
+    active_secret = values.get("STORAGE_ENCRYPTION_SECRET", "").strip()
+    legacy_key_id = values.get("STORAGE_ENCRYPTION_LEGACY_KEY_ID", "").strip()
+    key_id_pattern = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+    if active_key_id and not key_id_pattern.fullmatch(active_key_id):
+        report.error(
+            "STORAGE_ENCRYPTION_ACTIVE_KEY_ID должен содержать 1–64 безопасных символа."
+        )
+
+    configured_keys: dict[str, str] = {}
+    raw_keyring = values.get("STORAGE_ENCRYPTION_KEYRING", "").strip()
+    if raw_keyring:
+        try:
+            payload = json.loads(raw_keyring)
+        except json.JSONDecodeError:
+            report.error("STORAGE_ENCRYPTION_KEYRING должен быть JSON-объектом key_id:secret.")
+            payload = {}
+        if not isinstance(payload, dict):
+            report.error("STORAGE_ENCRYPTION_KEYRING должен быть JSON-объектом key_id:secret.")
+        else:
+            for key_id, secret in payload.items():
+                if not isinstance(key_id, str) or not isinstance(secret, str):
+                    report.error(
+                        "STORAGE_ENCRYPTION_KEYRING принимает только строковые key ID и secrets."
+                    )
+                    continue
+                if not key_id_pattern.fullmatch(key_id):
+                    report.error(f"Некорректный backup key ID: {key_id!r}.")
+                if len(secret) < 24:
+                    report.error(
+                        f"Historical backup key {key_id!r} должен содержать не менее 24 символов."
+                    )
+                configured_keys[key_id] = secret
+
+    if active_key_id:
+        configured_keys[active_key_id] = active_secret
+    if legacy_key_id and legacy_key_id not in configured_keys:
+        report.error(
+            "STORAGE_ENCRYPTION_LEGACY_KEY_ID должен присутствовать в active/historical keyring."
+        )
+    auth_secrets = {
+        values.get("BOT_TOKEN", "").strip(),
+        values.get("SUPERVISOR_TOKEN", "").strip(),
+    } - {""}
+    reused = sorted(
+        key_id for key_id, secret in configured_keys.items() if secret in auth_secrets
+    )
+    if reused:
+        report.error(
+            "Backup encryption keys не должны совпадать с BOT_TOKEN или SUPERVISOR_TOKEN: "
+            + ", ".join(reused)
+        )
+    if active_key_id and active_secret and not reused:
+        report.passed(
+            "Backup keyring настроен отдельно от authentication tokens; "
+            f"active={active_key_id}, keys={len(configured_keys)}."
+        )
+
     storage_chat = values.get("TELEGRAM_STORAGE_CHAT_ID", "").strip()
     thread_names = (
         "STORAGE_THREAD_WATERMARKS",

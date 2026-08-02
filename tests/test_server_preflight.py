@@ -27,6 +27,7 @@ def _valid_values(data_dir: str) -> dict[str, str]:
         "POSTGRES_USER": "velvet",
         "POSTGRES_PASSWORD": password,
         "ALLOWED_USER_IDS": "123456789",
+        "STORAGE_ENCRYPTION_ACTIVE_KEY_ID": "backup-active",
         "STORAGE_ENCRYPTION_SECRET": "storage_secret_12345678901234567890",
         "SUPERVISOR_TOKEN": "supervisor_secret_1234567890123456",
         "SUPERVISOR_ALLOW_REMOTE": "false",
