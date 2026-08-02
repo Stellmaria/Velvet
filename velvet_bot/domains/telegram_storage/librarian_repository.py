@@ -248,14 +248,6 @@ class StorageLibrarianRepository:
                     updated_at = NOW()
                 FROM picked
                 WHERE job.id = picked.id
-                UPDATE telegram_storage_analysis_jobs AS job
-                SET status = 'running',
-                    attempts = job.attempts + 1,
-                    locked_at = NOW(),
-                    worker_id = $1::TEXT,
-                    updated_at = NOW()
-                FROM picked
-                WHERE job.id = picked.id
                 RETURNING job.id, job.storage_object_id,
                           job.attempts, job.max_attempts
                 """,
