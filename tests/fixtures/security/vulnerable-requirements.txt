@@ -1,0 +1,2 @@
+# Intentionally vulnerable dependency used only to prove that pip-audit blocks findings.
+urllib3==1.25.2
