@@ -47,7 +47,9 @@ def build_vision_cascade_router(
             maximum=1_000_000,
         )
     )
-    schema_version = contract.schema_version if contract is not None else PROFILE_SCHEMA_VERSION
+    schema_version = (
+        contract.schema_version if contract is not None else PROFILE_SCHEMA_VERSION
+    )
     flash_config = _route_config(
         settings=settings,
         route=VisionRoute.FLASH,
@@ -56,7 +58,9 @@ def build_vision_cascade_router(
         schema_version=schema_version,
     )
     flash = MeteredVisionClient(
-        config=flash_config, executor=executor, contract=contract
+        config=flash_config,
+        executor=executor,
+        contract=contract,
     )
 
     pro_model = (
@@ -71,6 +75,7 @@ def build_vision_cascade_router(
                 route=VisionRoute.PRO,
                 default_model=pro_model,
                 prompt_version=resolved_prompt_version,
+                schema_version=schema_version,
             ),
             executor=executor,
             contract=contract,
@@ -90,6 +95,7 @@ def build_vision_cascade_router(
             route=VisionRoute.SENSITIVE,
             default_model=sensitive_model,
             prompt_version=resolved_prompt_version,
+            schema_version=schema_version,
         )
         if include_sensitive and sensitive_model
         else None
@@ -97,7 +103,11 @@ def build_vision_cascade_router(
     if sensitive_config is not None:
         _validate_sensitive_provider(sensitive_config)
     sensitive = (
-        MeteredVisionClient(config=sensitive_config, executor=executor)
+        MeteredVisionClient(
+            config=sensitive_config,
+            executor=executor,
+            contract=contract,
+        )
         if sensitive_config is not None
         else None
     )
@@ -114,7 +124,8 @@ def build_vision_cascade_router(
             maximum=100,
         ),
         prompt_version=resolved_prompt_version,
-        analysis_type="semantic-profile",
+        analysis_type=analysis_type,
+        schema_version=schema_version,
     )
 
 
@@ -173,7 +184,7 @@ def _route_config(
             maximum=5,
         ),
         pricing=pricing,
-        prompt_version=resolved_prompt_version,
+        prompt_version=prompt_version,
         schema_version=schema_version,
     )
 
