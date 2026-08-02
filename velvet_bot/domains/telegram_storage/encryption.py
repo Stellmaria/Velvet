@@ -237,6 +237,7 @@ def encrypt_file(
     encryptor.authenticate_additional_data(header)
 
     temporary = _temporary_destination(destination_path)
+    completed = False
     try:
         with source_path.open("rb") as input_stream, temporary.open("wb") as output_stream:
             output_stream.write(header)
@@ -247,9 +248,10 @@ def encrypt_file(
             output_stream.write(encryptor.finalize())
             output_stream.write(encryptor.tag)
         os.replace(temporary, destination_path)
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
+        completed = True
+    finally:
+        if not completed:
+            temporary.unlink(missing_ok=True)
     return destination_path
 
 
@@ -270,6 +272,7 @@ def encrypt_legacy_v1_file(
         modes.GCM(nonce),
     ).encryptor()
     temporary = _temporary_destination(destination_path)
+    completed = False
     try:
         with source_path.open("rb") as input_stream, temporary.open("wb") as output_stream:
             output_stream.write(_MAGIC_V1)
@@ -280,9 +283,10 @@ def encrypt_legacy_v1_file(
             output_stream.write(encryptor.finalize())
             output_stream.write(encryptor.tag)
         os.replace(temporary, destination_path)
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
+        completed = True
+    finally:
+        if not completed:
+            temporary.unlink(missing_ok=True)
     return destination_path
 
 
@@ -311,6 +315,7 @@ def decrypt_file(
 
     cipher, algorithms, modes, _ = _crypto_components()
     temporary = _temporary_destination(destination_path)
+    completed = False
     try:
         with source_path.open("rb") as input_stream:
             actual_header = input_stream.read(len(header.header_bytes))
@@ -337,9 +342,10 @@ def decrypt_file(
                     output_stream.write(decryptor.update(block))
                 output_stream.write(decryptor.finalize())
         os.replace(temporary, destination_path)
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
+        completed = True
+    finally:
+        if not completed:
+            temporary.unlink(missing_ok=True)
     return destination_path
 
 
