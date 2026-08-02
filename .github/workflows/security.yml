@@ -64,7 +64,7 @@ jobs:
             --output-file generated-locks/requirements-dev.lock
 
       - name: Upload generated lock evidence
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: generated-locks-${{ github.sha }}
           path: generated-locks
@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload scanner evidence
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: security-audit-${{ github.sha }}
           path: security-audit-output.txt
@@ -284,7 +284,7 @@ jobs:
           cat build-metadata.json
 
       - name: Upload SBOM and provenance
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: image-security-${{ github.sha }}
           path: |
