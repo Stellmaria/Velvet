@@ -14,6 +14,7 @@ COMPOSE_FILE="${VELVET_COMPOSE_FILE:-docker-compose.server.yml}"
 REMOTE="${VELVET_DEPLOY_REMOTE:-origin}"
 BRANCH="${VELVET_DEPLOY_BRANCH:-main}"
 TARGET_OVERRIDE="${VELVET_DEPLOY_TARGET_SHA:-}"
+IMAGE_OVERRIDE="${VELVET_DEPLOY_IMAGE:-}"
 HEALTH_ATTEMPTS="${VELVET_HEALTH_ATTEMPTS:-60}"
 HEALTH_INTERVAL="${VELVET_HEALTH_INTERVAL:-5}"
 START_HERMES="${VELVET_START_HERMES:-0}"
@@ -26,6 +27,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   echo "Missing $APP_DIR/$COMPOSE_FILE" >&2
+  exit 2
+fi
+if [[ -n "$IMAGE_OVERRIDE" && ! "$IMAGE_OVERRIDE" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]; then
+  echo "VELVET_DEPLOY_IMAGE must be an immutable Velvet GHCR digest" >&2
   exit 2
 fi
 
@@ -67,6 +72,9 @@ krita_server_enabled="${deployment_settings[1]}"
 docker_config="${DOCKER_CONFIG:-$data_dir/runtime/docker-config}"
 export DOCKER_CONFIG="$docker_config"
 export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"
+if [[ -n "$IMAGE_OVERRIDE" ]]; then
+  export VELVET_IMAGE="$IMAGE_OVERRIDE"
+fi
 compose=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
@@ -87,6 +95,11 @@ if [[ "$krita_server_enabled" == "1" ]]; then
   mkdir -p "$data_dir/runtime/krita"/{sources,requests,responses,outputs,previews,assets}
 fi
 previous_sha="$(git rev-parse HEAD)"
+previous_bot_container="$("${compose[@]}" ps -q bot 2>/dev/null || true)"
+previous_bot_image=""
+if [[ -n "$previous_bot_container" ]]; then
+  previous_bot_image="$(docker inspect --format '{{.Config.Image}}' "$previous_bot_container" 2>/dev/null || true)"
+fi
 backup_path="$data_dir/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
 deployment_started=0
 
@@ -95,7 +108,14 @@ rollback_code() {
   if [[ "$deployment_started" == "1" ]]; then
     echo "Deployment failed; rolling application code back to $previous_sha" >&2
     git reset --hard "$previous_sha" >&2 || true
-    "${compose[@]}" build bot supervisor-proxy >&2 || true
+    "${compose[@]}" build supervisor-proxy >&2 || true
+    if [[ -n "$previous_bot_image" ]]; then
+      export VELVET_IMAGE="$previous_bot_image"
+      docker pull "$previous_bot_image" >&2 || true
+    else
+      unset VELVET_IMAGE || true
+      "${compose[@]}" build bot >&2 || true
+    fi
     "${compose[@]}" up -d postgres supervisor-proxy bot >&2 || true
     if [[ "$krita_server_enabled" == "1" ]]; then
       "${compose[@]}" --profile watermark build krita >&2 || true
@@ -117,12 +137,12 @@ if [[ -n "$TARGET_OVERRIDE" ]]; then
     echo "Requested deployment target is not an ancestor of $REMOTE/$BRANCH: $target_sha" >&2
     exit 4
   fi
-  echo "Using verified rollback target $target_sha"
+  echo "Using verified deployment target $target_sha"
 else
   target_sha="$remote_sha"
 fi
 
-if [[ "$target_sha" == "$previous_sha" ]]; then
+if [[ "$target_sha" == "$previous_sha" && -z "$IMAGE_OVERRIDE" ]]; then
   echo "Velvet is already at $target_sha"
   exit 0
 fi
@@ -147,7 +167,25 @@ echo "Deploying $target_sha..."
 deployment_started=1
 git reset --hard "$target_sha"
 "${compose[@]}" pull postgres
-"${compose[@]}" build --pull bot supervisor-proxy
+"${compose[@]}" build --pull supervisor-proxy
+
+if [[ -n "$IMAGE_OVERRIDE" ]]; then
+  echo "Pulling verified application image $IMAGE_OVERRIDE..."
+  docker pull "$IMAGE_OVERRIDE"
+  image_revision="$(docker image inspect "$IMAGE_OVERRIDE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+  if [[ "${image_revision,,}" != "${target_sha,,}" ]]; then
+    echo "Image revision mismatch: expected $target_sha, got ${image_revision:-<missing>}" >&2
+    false
+  fi
+  pulled_id="$(docker image inspect "$IMAGE_OVERRIDE" --format '{{.Id}}')"
+  if [[ ! "$pulled_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    echo "Unable to resolve immutable application image ID" >&2
+    false
+  fi
+else
+  echo "No verified image digest supplied; building local rollback image."
+  "${compose[@]}" build --pull bot
+fi
 
 if [[ "$krita_server_enabled" == "1" ]]; then
   "${compose[@]}" --profile watermark build --pull krita
@@ -192,9 +230,20 @@ for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
         echo "Deployed SHA mismatch: expected $target_sha, got $deployed_sha" >&2
         false
       fi
+      if [[ -n "$IMAGE_OVERRIDE" ]]; then
+        running_image_id="$(docker inspect --format '{{.Image}}' "$container_id")"
+        expected_image_id="$(docker image inspect "$IMAGE_OVERRIDE" --format '{{.Id}}')"
+        if [[ "$running_image_id" != "$expected_image_id" ]]; then
+          echo "Running image mismatch: expected $expected_image_id, got $running_image_id" >&2
+          false
+        fi
+      fi
       deployment_started=0
       trap - ERR INT TERM
       echo "Velvet deployment succeeded: $deployed_sha"
+      if [[ -n "$IMAGE_OVERRIDE" ]]; then
+        echo "Verified application image: $IMAGE_OVERRIDE"
+      fi
       echo "Verified pre-deploy backup: $backup_path"
       "${compose[@]}" ps
       exit 0
