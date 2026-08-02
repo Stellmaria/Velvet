@@ -55,7 +55,7 @@ jobs:
       SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
     steps:
       - name: Checkout audit base
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -184,16 +184,21 @@ jobs:
 
       - name: Set up Python
         if: steps.plan.outputs.noop != 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
-          cache: pip
 
-      - name: Install dependencies
+      - name: Set up uv
         if: steps.plan.outputs.noop != 'true'
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: requirements.lock
+
+      - name: Install dependencies from hash lock
+        if: steps.plan.outputs.noop != 'true'
+        run: uv pip install --system --require-hashes -r requirements.lock
 
       - name: Run complete test suite
         if: steps.plan.outputs.noop != 'true'
@@ -248,7 +253,7 @@ jobs:
 
       - name: Upload maintenance evidence
         if: always() && steps.plan.outputs.noop != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: branch-maintenance-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
