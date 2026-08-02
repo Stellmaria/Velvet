@@ -14,6 +14,9 @@ from aiogram.types import Message
 
 from velvet_bot.application.storage_librarian import StorageLibrarianService
 from velvet_bot.database import Database
+from velvet_bot.domains.telegram_storage.librarian_afk_repository import (
+    StorageLibrarianAfkRepository,
+)
 from velvet_bot.domains.telegram_storage.librarian_models import (
     StorageLibrarianError,
     StorageLibrarianSettings,
@@ -139,7 +142,11 @@ async def _librarian_scheduler_loop(
         database=database,
         settings=settings,
     )
-    repository = StorageLibrarianRepository(database)
+    repository = StorageLibrarianAfkRepository(
+        database,
+        min_object_id=min_object_id,
+    )
+    service.repository = repository
     while True:
         try:
             queued = await repository.enqueue_newer_than(
