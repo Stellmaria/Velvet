@@ -5,7 +5,7 @@
 - Production LOC: **140228**
 - Root modules: **113**
 - Active Router imports: **84**
-- Repository modules: **42**
+- Repository modules: **43**
 - Startup installer stages: **28**
 - Registered package violations: **548**
 - Registered exemptions: **548**

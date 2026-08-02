@@ -84,7 +84,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
         self.assertEqual(0, self.inventory["router_duplicate_count"])
-        self.assertEqual(42, self.inventory["repository_module_count"])
+        self.assertEqual(43, self.inventory["repository_module_count"])
         self.assertEqual(28, len(self.inventory["installer_graph"]))
 
         self.assertEqual(
