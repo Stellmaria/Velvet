@@ -4,6 +4,12 @@ Velvet Librarian является отдельным Hermes runtime без Teleg
 
 Inference выполняется локально сервисом `ollama-librarian` на модели `qwen3.5:9b-q4_K_M`. Installer создаёт локальный alias `velvet-librarian-local:v1` с контекстом 65 536 токенов. Cloud fallback намеренно отсутствует: недоступность локальной модели должна дать явную ошибку, а не скрытый расход провайдерских токенов.
 
+SOUL и AGENTS собираются из `brain-vault/manifest.json`; installer проверяет
+SHA-256 перед запуском. Librarian по-прежнему не получает terminal, file, web,
+memory, skills или delegation tools. Он может вернуть schema-bound memory
+proposal, но не может записать его: проверку выполняет Каэль, versioned запись —
+Velvet Coder через PR.
+
 Установка:
 
 ```bash

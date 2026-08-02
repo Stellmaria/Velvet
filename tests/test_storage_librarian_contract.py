@@ -84,6 +84,8 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
         self.assertIn('threads.for_kind("analysis")', publisher)
         self.assertIn("STORAGE_LIBRARIAN_PUBLISH_REPORTS", installer)
         self.assertIn("velvet-librarian:qwen3.5-9b-local:v3", installer)
+        self.assertIn("context_compiler.py", installer)
+        self.assertIn("context-manifest.json", installer)
 
     def test_local_runtime_is_private_pinned_and_without_cloud_fallback(self) -> None:
         compose = (ROOT / "deploy/hermes-librarian/compose.yaml").read_text(
@@ -288,7 +290,7 @@ class StorageLibrarianPayloadTests(unittest.TestCase):
 
     def test_sensitive_values_are_redacted(self) -> None:
         value = redact_sensitive(
-            "BOT_TOKEN=123456789:abcdefghijklmnopqrstuvwxyzABCDE "
+            "BOT_TOKEN=123456789:" + "abcdefghijklmnopqrstuvwxyzABCDE "
             "DATABASE_URL=postgresql://velvet:secret@postgres:5432/velvet"
         )
         self.assertNotIn("abcdefghijklmnopqrstuvwxyz", value)

@@ -11,11 +11,15 @@ VELVET_ENV_FILE="${VELVET_ENV_FILE:-$VELVET_APP_DIR/.env.server}"
 CODERS_ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 OPERATOR_SOURCE="$VELVET_APP_DIR/deploy/hermes-operator"
 CODERS_SOURCE="$VELVET_APP_DIR/deploy/hermes-coders"
+BRAIN_SOURCE="$VELVET_APP_DIR/deploy/hermes-brain"
 
 for path in \
   "$VELVET_ENV_FILE" \
-  "$OPERATOR_SOURCE/SOUL.kael.md" \
-  "$OPERATOR_SOURCE/AGENTS.kael.md" \
+  "$BRAIN_SOURCE/context_compiler.py" \
+  "$BRAIN_SOURCE/install_context_pack.py" \
+  "$BRAIN_SOURCE/verify_installed_context.py" \
+  "$VELVET_APP_DIR/brain-vault/manifest.json" \
+  "$CODERS_SOURCE/ensure_runtime_config.py" \
   "$OPERATOR_SOURCE/coderctl.py" \
   "$OPERATOR_SOURCE/runctl.py" \
   "$CODERS_SOURCE/SOUL.velvet.md" \
@@ -49,6 +53,19 @@ if [[ ! -d "$hermes_data" ]]; then
   echo "Отсутствует data directory основного Hermes: $hermes_data" >&2
   exit 3
 fi
+if [[ ! -f "$hermes_data/config.yaml" ]]; then
+  echo "Отсутствует config основного Hermes: $hermes_data/config.yaml" >&2
+  exit 3
+fi
+
+pack_root="$(mktemp -d)"
+trap 'rm -rf -- "$pack_root"' EXIT
+python3 "$BRAIN_SOURCE/context_compiler.py" validate
+for entity in kael velvet-coder max-coder; do
+  python3 "$BRAIN_SOURCE/context_compiler.py" compile \
+    --entity "$entity" \
+    --output "$pack_root/$entity"
+done
 
 hermes_uid="$(stat -c '%u' "$hermes_data")"
 hermes_gid="$(stat -c '%g' "$hermes_data")"
@@ -57,12 +74,14 @@ install -d -m 0750 -o "$hermes_uid" -g "$hermes_gid" \
   "$hermes_data/tools" \
   "$hermes_data/orchestration"
 
-install -m 0640 -o "$hermes_uid" -g "$hermes_gid" \
-  "$OPERATOR_SOURCE/SOUL.kael.md" \
-  "$hermes_data/SOUL.md"
-install -m 0640 -o "$hermes_uid" -g "$hermes_gid" \
-  "$OPERATOR_SOURCE/AGENTS.kael.md" \
-  "$hermes_data/AGENTS.md"
+python3 "$BRAIN_SOURCE/install_context_pack.py" \
+  --pack "$pack_root/kael" \
+  --target "$hermes_data" \
+  --entity kael \
+  --mode hermes
+python3 "$CODERS_SOURCE/ensure_runtime_config.py" \
+  --profile kael \
+  "$hermes_data/config.yaml"
 install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \
   "$OPERATOR_SOURCE/coderctl.py" \
   "$hermes_data/tools/coderctl.py"
@@ -86,7 +105,36 @@ fi
 chown "$hermes_uid:$hermes_gid" "$ledger" "$lock"
 chmod 0600 "$ledger" "$lock"
 
-python3 - "$CODERS_ROOT" "$CODERS_SOURCE" <<'PY'
+for project in velvet max; do
+  entity="$project-coder"
+  python3 "$BRAIN_SOURCE/install_context_pack.py" \
+    --pack "$pack_root/$entity" \
+    --target "$CODERS_ROOT/data/$project" \
+    --entity "$entity" \
+    --mode hermes
+  if [[ -d "$CODERS_ROOT/codex/$project" ]]; then
+    python3 "$BRAIN_SOURCE/install_context_pack.py" \
+      --pack "$pack_root/$entity" \
+      --target "$CODERS_ROOT/codex/$project" \
+      --entity "$entity" \
+      --mode codex
+    python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+      --target "$CODERS_ROOT/codex/$project" \
+      --entity "$entity" \
+      --mode codex
+  fi
+  python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+    --target "$CODERS_ROOT/data/$project" \
+    --entity "$entity" \
+    --mode hermes
+done
+
+python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+  --target "$hermes_data" \
+  --entity kael \
+  --mode hermes
+
+python3 - "$CODERS_ROOT" "$pack_root" <<'PY'
 from __future__ import annotations
 
 import os
@@ -94,7 +142,7 @@ import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
-source = Path(sys.argv[2])
+packs = Path(sys.argv[2])
 
 for project in ("velvet", "max"):
     data = root / "data" / project
@@ -104,15 +152,8 @@ for project in ("velvet", "max"):
     if not (workspace / ".git").is_dir():
         raise SystemExit(f"Отсутствует отдельный coder checkout: {workspace}")
 
-    uid = data.stat().st_uid
-    gid = data.stat().st_gid
-    soul = source / f"SOUL.{project}.md"
-    contract = source / f"AGENTS.{project}.md"
-
-    target_soul = data / "SOUL.md"
-    target_soul.write_text(soul.read_text(encoding="utf-8"), encoding="utf-8")
-    os.chown(target_soul, uid, gid)
-    os.chmod(target_soul, 0o640)
+    entity = f"{project}-coder"
+    contract = packs / entity / "AGENTS.md"
 
     sections: list[str] = []
     repository_agents = workspace / "AGENTS.md"
@@ -139,9 +180,11 @@ for project in ("velvet", "max"):
         exclude.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
     os.chown(exclude, workspace_uid, workspace_gid)
 
-print("Kael and coder entity files reconciled.")
+print("Kael and isolated coder Brain context packs reconciled.")
 PY
 
 printf 'Kael entity: %s/SOUL.md\n' "$hermes_data"
 printf 'Kael operations: %s/AGENTS.md\n' "$hermes_data"
 printf 'Coder contexts: %s/workspaces/{velvet,max}/.hermes.md\n' "$CODERS_ROOT"
+printf 'Brain manifests: %s/context-manifest.json and %s/{data,codex}/{velvet,max}/context-manifest.json\n' \
+  "$hermes_data" "$CODERS_ROOT"

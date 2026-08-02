@@ -10,6 +10,8 @@ APP_USER="${HERMES_CODERS_APP_USER:-velvet}"
 APP_GROUP="${HERMES_CODERS_APP_GROUP:-velvet}"
 ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 SOURCE_DIR="${HERMES_CODERS_SOURCE_DIR:-/srv/velvet/deploy/hermes-coders}"
+BRAIN_SOURCE="${HERMES_BRAIN_SOURCE_DIR:-/srv/velvet/deploy/hermes-brain}"
+BRAIN_VAULT_MANIFEST="${HERMES_BRAIN_MANIFEST:-$BRAIN_SOURCE/../../brain-vault/manifest.json}"
 VELVET_REPO="${HERMES_VELVET_REPO:-https://github.com/Stellmaria/Velvet.git}"
 MAX_REPO="${HERMES_MAX_REPO:-https://github.com/Stellmaria/romatic_club_bot_max.git}"
 HERMES_UID_VALUE="${HERMES_UID:-10000}"
@@ -20,6 +22,10 @@ for required in \
   "$SOURCE_DIR/Dockerfile.coder" \
   "$SOURCE_DIR/codex_runner.py" \
   "$SOURCE_DIR/codex-login.sh" \
+  "$BRAIN_SOURCE/context_compiler.py" \
+  "$BRAIN_SOURCE/install_context_pack.py" \
+  "$BRAIN_SOURCE/verify_installed_context.py" \
+  "$BRAIN_VAULT_MANIFEST" \
   "$ROOT/secrets/velvet.env" \
   "$ROOT/secrets/max.env"; do
   if [[ ! -f "$required" ]]; then
@@ -27,6 +33,16 @@ for required in \
     exit 2
   fi
 done
+
+pack_root="$(mktemp -d)"
+trap 'rm -rf -- "$pack_root"' EXIT
+python3 "$BRAIN_SOURCE/context_compiler.py" validate
+python3 "$BRAIN_SOURCE/context_compiler.py" compile \
+  --entity velvet-coder \
+  --output "$pack_root/velvet-coder"
+python3 "$BRAIN_SOURCE/context_compiler.py" compile \
+  --entity max-coder \
+  --output "$pack_root/max-coder"
 
 install -d -o "$HERMES_UID_VALUE" -g "$APP_GROUP" -m 0750 \
   "$ROOT/codex" \
@@ -164,6 +180,18 @@ tool_suggest = false
 EOF
   chown "$HERMES_UID_VALUE:$HERMES_GID_VALUE" "$codex_home/config.toml"
   chmod 0600 "$codex_home/config.toml"
+done
+
+for project in velvet max; do
+  python3 "$BRAIN_SOURCE/install_context_pack.py" \
+    --pack "$pack_root/$project-coder" \
+    --target "$ROOT/codex/$project" \
+    --entity "$project-coder" \
+    --mode codex
+  python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+    --target "$ROOT/codex/$project" \
+    --entity "$project-coder" \
+    --mode codex
 done
 
 chmod 0600 "$ROOT/secrets/velvet.env" "$ROOT/secrets/max.env"

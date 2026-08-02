@@ -195,6 +195,9 @@ jobs:
           bash -n deploy/server/wait-compose-health.sh
           bash -n deploy/krita-server/entrypoint.sh
           bash -n deploy/hermes-coders/install.sh
+          bash -n deploy/hermes-coders/install-codex.sh
+          bash -n deploy/hermes-entities/reconcile.sh
+          bash -n deploy/hermes-librarian/install.sh
           bash -n deploy/hermes-orchestration/install.sh
           bash -n scripts/vision_runtime_entrypoint.sh
           bash -n scripts/vision_model_loader.sh
@@ -205,7 +208,14 @@ jobs:
             scripts/benchmark_vision_gateway.py \
             vision_gateway/app.py \
             deploy/hermes-coders/db_proxy.py \
+            deploy/hermes-coders/codex_runner.py \
+            deploy/hermes-coders/ensure_runtime_config.py \
             deploy/hermes-coders/preflight.py \
+            deploy/hermes-coders/runtime_smoke.py \
+            deploy/hermes-brain/context_compiler.py \
+            deploy/hermes-brain/install_context_pack.py \
+            deploy/hermes-brain/verify_installed_context.py \
+            deploy/hermes-librarian/prepare_profile.py \
             deploy/hermes-operator/coder_router.py \
             deploy/hermes-operator/coderctl.py \
             deploy/hermes-orchestration/prepare_router_env.py

@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Hermes Brain и entity orchestration
+
+- Добавлен Obsidian-compatible Brain Vault для Каэля, Velvet Coder, Макса и
+  Velvet Librarian с раздельными SOUL/project/memory/skills profiles.
+- Context packs собираются детерминированно, проверяются по SHA-256 и
+  устанавливаются без перезаписи живой runtime memory.
+- Active Codex получает global AGENTS и scoped skills; task handoff и результат
+  переведены на JSON schema с memory candidates.
+- Каэль и gateway profiles закрепляют cwd, context compression и hard-stop loop
+  guardrails; Librarian сохраняет local-only deny-all boundary.
+
 ### Ауф: генерации, экономика и пользователи
 
 - Добавлены canonical photo/video flows, queue lifecycle, wallet, charging, reconciliation и user portal.

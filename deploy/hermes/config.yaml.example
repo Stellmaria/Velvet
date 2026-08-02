@@ -8,6 +8,17 @@ model:
 # контейнера, а не на хостовой системе.
 terminal:
   backend: local
+  cwd: /opt/data
+
+# Сжатие сохраняет bounded short-term state вместо бесконечного роста prompt.
+compression:
+  enabled: true
+
+# Gateway работает автономно, поэтому повторяющийся failing tool loop должен
+# завершаться circuit breaker, а не исчерпывать iteration/token budget.
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true
 
 # Любые команды, меняющие Git, зависимости, миграции или deployment,
 # подтверждаются владельцем до выполнения.

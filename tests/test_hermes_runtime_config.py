@@ -102,6 +102,50 @@ class HermesRuntimeConfigTests(unittest.TestCase):
         with self.assertRaises(MODULE.ConfigPatchError):
             MODULE.ensure_env_passthrough(path)
 
+    def test_coder_profile_adds_context_and_gateway_guardrails(self) -> None:
+        path = self.write_config("model:\n  default: gpt-5.4-mini\n")
+
+        first = MODULE.ensure_runtime_contract(path, profile="coder")
+        text = path.read_text(encoding="utf-8")
+        second = MODULE.ensure_runtime_contract(path, profile="coder")
+
+        self.assertTrue(first)
+        self.assertFalse(second)
+        self.assertTrue(
+            MODULE.config_has_mapping_scalar(text, "terminal", "cwd", "/workspace")
+        )
+        self.assertTrue(
+            MODULE.config_has_mapping_scalar(text, "compression", "enabled", "true")
+        )
+        self.assertTrue(
+            MODULE.config_has_mapping_scalar(
+                text,
+                "tool_loop_guardrails",
+                "hard_stop_enabled",
+                "true",
+            )
+        )
+        self.assertTrue(MODULE.config_has_env_passthrough(text, "GH_TOKEN"))
+
+    def test_kael_profile_uses_data_cwd_without_github_passthrough(self) -> None:
+        path = self.write_config("terminal:\n  backend: local\n")
+
+        MODULE.ensure_runtime_contract(path, profile="kael")
+        text = path.read_text(encoding="utf-8")
+
+        self.assertTrue(
+            MODULE.config_has_mapping_scalar(text, "terminal", "cwd", "/opt/data")
+        )
+        self.assertFalse(MODULE.config_has_env_passthrough(text, "GH_TOKEN"))
+        self.assertTrue(
+            MODULE.config_has_mapping_scalar(
+                text,
+                "tool_loop_guardrails",
+                "warnings_enabled",
+                "true",
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

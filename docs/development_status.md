@@ -1,10 +1,10 @@
 # Текущий статус разработки Velvet
 
-Дата актуализации: 30 июля 2026 года.
+Дата актуализации: 2 августа 2026 года.
 
 Текущая стабильная версия: `1.3.0`.
 
-Актуальный `main` на момент начала среза: `d18ad4fd24b3dfa84d255148aee065b97b52ea9b`.
+Актуальный `main` на момент начала среза: `a564e0c05d0f8ddef82f8346d13cd14a5eaa0113`.
 
 ## Назначение
 
@@ -153,6 +153,25 @@ Package inventory фиксирует для каждого stage origin module �
 
 PR #450/#456 считаются временной stabilization, а не целевой delivery architecture. #460 закрывает измерение и CI-контроль, но не подменяет burn-down перечисленных задач.
 
+## Hermes Brain: готовность к rollout
+
+В feature branch реализованы:
+
+- Obsidian-compatible Vault с entity registry, access matrix и политиками
+  context window, compression, cache, short/long memory и handoff;
+- deterministic compiler, SHA-256 manifest и installed-context verifier;
+- отдельные Hermes/Codex packs для Каэля, Velvet Coder и Макса;
+- compiled deny-all profile Velvet Librarian;
+- Codex global AGENTS, scoped skills и strict JSON output schema;
+- structured task handoff, legacy-compatible summary и memory candidates в
+  orchestration ledger;
+- fixed runtime config для cwd, compression и autonomous loop circuit breaker;
+- preflight/live smoke контракты, которые ловят перепутанный entity/project или
+  изменённый context file.
+
+Не завершено живой средой: server reconcile/restart и post-rollout smoke. До
+этого capability имеет статус «готово в коде», а не «установлено в production».
+
 ## Эксплуатационные обязательства
 
 Не закрыты одним CI:
@@ -165,6 +184,7 @@ PR #450/#456 считаются временной stabilization, а не цел
 6. #408 — encrypted offsite backup и независимый restore drill.
 7. #438 — live retirement dual-read `meow_*` compatibility.
 8. AI duration/error/provider/model/cost-unit metrics.
+9. Hermes Brain reconcile и live проверка context manifests всех сущностей.
 
 ## Документация и контроль
 

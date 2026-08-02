@@ -64,9 +64,30 @@ class CoderRouterTests(unittest.TestCase):
             source="incident",
         )
         self.assertIn("Stellmaria/Velvet", prompt)
-        self.assertIn("Не сливай его", prompt)
-        self.assertIn("restart/update/rollback", prompt)
-        self.assertIn("STATUS: completed|blocked|failed", prompt)
+        self.assertIn("merge, deployment, restart, update or rollback", prompt)
+        self.assertIn("memory_candidates", prompt)
+        self.assertIn("output schema", prompt)
+        handoff = router_mod.build_task_handoff(
+            target,
+            task_id="a" * 32,
+            task="Исправить обработку ошибки",
+            source="incident",
+        )
+        self.assertEqual("velvet", handoff["project"])
+        self.assertEqual(
+            {
+                "task_id",
+                "source",
+                "project",
+                "task",
+                "context",
+                "acceptance_criteria",
+                "allowed_actions",
+                "forbidden_actions",
+                "tests",
+            },
+            set(handoff),
+        )
 
     def test_submit_accepts_only_fixed_payload(self) -> None:
         router = router_mod.CoderRouter()
@@ -199,6 +220,37 @@ class CoderCtlTests(unittest.TestCase):
             records = json.loads(ledger_path.read_text(encoding="utf-8"))
             self.assertEqual("run_1", records[0]["run_id"])
             self.assertEqual("velvet", records[0]["project"])
+
+    def test_terminal_status_persists_structured_result_and_memory_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = coderctl.Ledger(Path(directory) / "tasks.json")
+            record = {
+                "task_id": "a" * 32,
+                "project": "velvet",
+                "run_id": "run_1",
+                "created_at": "1",
+            }
+            ledger.upsert(record)
+            structured = {
+                "status": "completed",
+                "branch": "agent/test",
+                "pr": "https://example.invalid/pr/1",
+                "tests": ["ok"],
+                "blocker": "",
+                "memory_candidates": [{"fact": "stable"}],
+            }
+            coderctl._update_from_status(
+                ledger,
+                record,
+                {
+                    "status": "completed",
+                    "output": "STATUS: completed",
+                    "structured_output": structured,
+                },
+            )
+            saved = ledger.find("a" * 32)
+        self.assertEqual(structured, saved["structured_output"])
+        self.assertEqual([{"fact": "stable"}], saved["memory_candidates"])
 
     def test_pr_command_uses_fixed_project_and_number(self) -> None:
         with patch.object(
