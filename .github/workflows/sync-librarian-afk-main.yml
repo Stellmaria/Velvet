@@ -1,4 +1,4 @@
-name: sync librarian afk branch with main
+name: sync librarian afk merge inventories
 
 on:
   push:
@@ -20,34 +20,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Merge current main
+      - name: Generate from exact PR merge tree
         run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git fetch origin main
-          set +e
-          git merge --no-commit --no-ff origin/main
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            git checkout --ours -- \
-              docs/package_architecture_exemptions.json \
-              docs/package_architecture_inventory.json \
-              docs/package_architecture_inventory.md \
-              tests/test_package_architecture_inventory.py
-            git add -- \
-              docs/package_architecture_exemptions.json \
-              docs/package_architecture_inventory.json \
-              docs/package_architecture_inventory.md \
-              tests/test_package_architecture_inventory.py
-          fi
-          unresolved="$(git diff --name-only --diff-filter=U)"
-          if [ -n "$unresolved" ]; then
-            printf 'Unresolved merge paths:\n%s\n' "$unresolved" >&2
-            exit 1
-          fi
-      - name: Regenerate combined contracts
-        run: |
+          git fetch origin +refs/pull/549/merge:refs/remotes/origin/pr-549-merge
+          git worktree add --detach /tmp/velvet-pr-merge refs/remotes/origin/pr-549-merge
+          cd /tmp/velvet-pr-merge
           python scripts/inventory_package_architecture.py \
             --write \
             --bootstrap-exemptions \
@@ -90,9 +67,20 @@ jobs:
           python scripts/inventory_package_architecture.py \
             --check \
             --label p1-package-architecture-baseline
-      - name: Commit merge without temporary workflow
+      - name: Copy generated contracts to feature branch
+        run: |
+          cp /tmp/velvet-pr-merge/docs/package_architecture_inventory.json docs/
+          cp /tmp/velvet-pr-merge/docs/package_architecture_inventory.md docs/
+          cp /tmp/velvet-pr-merge/docs/package_architecture_exemptions.json docs/
+          cp /tmp/velvet-pr-merge/docs/p2_stability_inventory.json docs/
+          cp /tmp/velvet-pr-merge/docs/p2_stability_inventory.md docs/
+          cp /tmp/velvet-pr-merge/tests/test_package_architecture_inventory.py tests/
+          git worktree remove --force /tmp/velvet-pr-merge
+      - name: Commit contracts without temporary workflow
         run: |
           rm .github/workflows/sync-librarian-afk-main.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -- \
             docs/package_architecture_inventory.json \
             docs/package_architecture_inventory.md \
@@ -101,5 +89,5 @@ jobs:
             docs/p2_stability_inventory.md \
             tests/test_package_architecture_inventory.py \
             .github/workflows/sync-librarian-afk-main.yml
-          git commit -m 'Merge main into Librarian AFK guardrails'
+          git diff --cached --quiet || git commit -m 'chore: sync AFK PR merge inventories'
           git push origin HEAD:feat/storage-librarian-afk-guardrails
