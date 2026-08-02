@@ -160,7 +160,7 @@ def build_worker_manager(
         if active_usage_service is None:
             active_usage_service = build_ai_usage_service(database=database)
         kie_client = KieClient(
-            api_key=active_kie_settings.api_key,
+            api_key=(active_kie_settings.api_key),
             models=active_kie_settings.models,
             base_url=active_kie_settings.base_url,
             file_upload_base_url=active_kie_settings.file_upload_base_url,
@@ -237,7 +237,7 @@ def build_worker_manager(
                 provider=settings.ai_vision_provider,
                 base_url=settings.ai_vision_base_url,
                 model=settings.ai_vision_model,
-                api_key=settings.ai_vision_api_key,
+                api_key=(settings.ai_vision_api_key),
                 timeout_seconds=settings.ai_vision_timeout_seconds,
             ),
             max_attempts=settings.ai_vision_max_attempts,
