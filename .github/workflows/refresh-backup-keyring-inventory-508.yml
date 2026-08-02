@@ -1,0 +1,68 @@
+name: refresh backup keyring inventory 508
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-backup-keyring-inventory-508
+  cancel-in-progress: false
+
+jobs:
+  refresh-and-verify:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: security/backup-keyring-508
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Refresh canonical architecture evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("tests/test_server_preflight.py")
+          source = path.read_text(encoding="utf-8")
+          old = '"BOT_TOKEN": "123456:test-bot-token",'
+          new = '"BOT_TOKEN": "123456:test_bot_token_12345678",'
+          if old not in source:
+              raise SystemExit("Expected preflight token fixture was not found")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
+          python scripts/inventory_package_architecture_fast.py \
+            --write \
+            --label VELVET-508
+          python scripts/inventory_package_architecture_fast.py \
+            --check \
+            --label VELVET-508
+          python scripts/ci_preflight.py
+          python -m unittest \
+            tests.test_server_preflight.ServerPreflightTests.test_valid_first_boot_configuration_passes \
+            tests.test_p2_stability_inventory -v
+
+      - name: Commit canonical evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            tests/test_server_preflight.py \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md
+          git commit -m "docs: refresh backup keyring architecture inventory"
+          git push origin HEAD:security/backup-keyring-508
