@@ -14,7 +14,7 @@ LOCK_FILES = (ROOT / "requirements.lock", ROOT / "requirements-dev.lock")
 EXCEPTIONS_FILE = ROOT / ".github" / "security-exceptions.json"
 
 ACTION_USE_RE = re.compile(
-    r"^\s*uses:\s*(?P<value>[^#\s]+)(?:\s+#\s*(?P<comment>.+))?\s*$"
+    r"^\s*(?:-\s*)?uses:\s*(?P<value>[^#\s]+)(?:\s+#\s*(?P<comment>.+))?\s*$"
 )
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 HASH_RE = re.compile(r"--hash=sha256:[0-9a-f]{64}\b")
