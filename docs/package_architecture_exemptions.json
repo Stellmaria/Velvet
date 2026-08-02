@@ -7018,7 +7018,7 @@
       "issue": "#460"
     },
     {
-      "id": "typing-any-usage:velvet_bot/infrastructure/krita_remote_api.py:4a6ba55c5d0008ed",
+      "id": "typing-any-usage:velvet_bot/infrastructure/krita_remote_api.py:cf180706198a229d",
       "owner": "architecture-governance",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [

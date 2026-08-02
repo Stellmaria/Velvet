@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **641**
-- Production LOC: **139904**
+- Production LOC: **140160**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **42**
@@ -98,8 +98,8 @@
 - `velvet_bot/domains/media_generation/models.py`: 858 LOC, 38 functions, max function 111 lines, target `domain`.
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py`: 807 LOC, 11 functions, max function 333 lines, target `presentation`.
 - `velvet_bot/ai_vision.py`: 774 LOC, 24 functions, max function 77 lines, target `domains/<bounded-domain>`.
+- `velvet_bot/infrastructure/krita_remote_api.py`: 743 LOC, 39 functions, max function 67 lines, target `infrastructure`.
 - `velvet_bot/domains/telegram_storage/service.py`: 733 LOC, 23 functions, max function 109 lines, target `domain`.
-- `velvet_bot/ai_quality.py`: 730 LOC, 22 functions, max function 82 lines, target `domains/<bounded-domain>`.
 
 ## Compatibility components
 
