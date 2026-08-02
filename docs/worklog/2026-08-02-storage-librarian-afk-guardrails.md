@@ -60,7 +60,8 @@
 - failure report проходит redaction и не содержит raw source;
 - Librarian не выполняет restart/update/rollback и не вызывает Каэля автоматически;
 - добавлены focused tests и AFK runbook;
-- открыт draft PR `#549`.
+- открыт draft PR `#549`;
+- подготовлена атомарная синхронизация с текущим `main`, включая повторную генерацию пересекающихся architecture contracts.
 
 ### Миграции и совместимость
 
@@ -82,18 +83,19 @@ Generated contracts синхронизированы штатными генер
 - P2 stability schema 78: 105 broad exception boundaries, все 105 approved, unresolved 0;
 - временный contents-write workflow удалил себя в том же bot commit.
 
-Ожидается финальный чистый прогон preflight, всех test shards, mypy, notes и Docker build на head без временного workflow.
+Ожидается синхронизация с Krita security commit текущего `main`, повторный пересчёт generated contracts и финальный чистый прогон preflight, всех test shards, mypy, notes и Docker build.
 
 ### PR и commit
 
 - ветка: `feat/storage-librarian-afk-guardrails`;
 - PR: `#549`;
 - generated inventory commit: `5f0412823cd83f49705375c867f9efe5b6d72e89`;
-- финальный зелёный head: ожидается после чистого CI;
+- финальный зелёный head: ожидается после синхронизации с `main` и чистого CI;
 - merge: только после отдельного разрешения владельца.
 
 ### Незавершённое
 
+- синхронизация с текущим `main`;
 - финальный чистый CI;
 - перевод PR из draft и merge;
 - production pull/install;
@@ -103,4 +105,4 @@ Generated contracts синхронизированы штатными генер
 
 ### Следующий шаг
 
-Получить полностью зелёный CI на обычном owner commit, затем после разрешения слить PR и включить AFK new-only на production.
+Завершить атомарный merge `main`, получить полностью зелёный CI, затем после разрешения слить PR и включить AFK new-only на production.
