@@ -80,17 +80,18 @@ Runs API, router payload и модельная маршрутизация не �
 
 ### PR и commit
 
+- PR: #570 `Закрепить production runtime Hermes coder`;
 - ветка: `fix/hermes-coder-runtime-reconcile`;
-- PR создаётся после публикации изменений и проверки CI.
+- изменения опубликованы шестью узкими commits через GitHub contents API.
 
 ### Незавершённое
 
 - дождаться полного CI;
-- слить PR;
+- слить PR #570;
 - обновить `/srv/velvet`;
 - переустановить `hermes-coders.service` из репозитория;
 - убрать временный production Compose override после контрольного smoke.
 
 ### Следующий шаг
 
-Создать draft PR, проверить CI, затем выполнить контролируемую миграцию production на repository-managed runtime contract.
+Проверить CI draft PR #570, затем выполнить контролируемую миграцию production на repository-managed runtime contract.
