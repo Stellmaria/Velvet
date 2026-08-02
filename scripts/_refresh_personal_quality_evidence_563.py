@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,19 +17,37 @@ def run(*args: str) -> None:
 
 def replace_fingerprints() -> None:
     path = ROOT / "docs/package_architecture_exemptions.json"
-    source = path.read_text(encoding="utf-8")
+    data = json.loads(path.read_text(encoding="utf-8"))
     replacements = {
-        "4f52db8d5367fb3cdb408bee": "15d6b7884adb804c5c22ee15",
-        "804e6a704c139b0ba76e7d5a": "1d9ff837ba89b8e6cd1718d4",
-        "acf4148a4acee2735ee14e26": "8d49a9561071f8f9c433f397",
+        "foreign-assignment:velvet_bot/app/workers.py:": (
+            "foreign-assignment:velvet_bot/app/workers.py:15d6b7884adb804c5c22ee15"
+        ),
+        "monolithic-function:velvet_bot/domains/workspaces/qwen_repository.py:mark_ready:": (
+            "monolithic-function:velvet_bot/domains/workspaces/"
+            "qwen_repository.py:mark_ready:1d9ff837ba89b8e6cd1718d4"
+        ),
+        "monolithic-module-loc:velvet_bot/ai_quality.py:": (
+            "monolithic-module-loc:velvet_bot/ai_quality.py:8d49a9561071f8f9c433f397"
+        ),
     }
-    for old, new in replacements.items():
-        if old not in source:
-            if new in source:
-                continue
-            raise SystemExit(f"Architecture exemption fingerprint not found: {old}")
-        source = source.replace(old, new)
-    path.write_text(source, encoding="utf-8")
+    rows = data.get("exceptions", [])
+    if not isinstance(rows, list):
+        raise SystemExit("Architecture exemptions must contain a list")
+    for prefix, replacement in replacements.items():
+        matching = [
+            row
+            for row in rows
+            if isinstance(row, dict) and str(row.get("id", "")).startswith(prefix)
+        ]
+        if len(matching) != 1:
+            raise SystemExit(
+                f"Expected one architecture exemption for {prefix}, found {len(matching)}"
+            )
+        matching[0]["id"] = replacement
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def replace_once(source: str, pattern: str, replacement: str, *, label: str) -> str:
