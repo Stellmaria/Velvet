@@ -5,16 +5,16 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from velvet_bot.domains.telegram_storage.librarian_models import LibrarianObject
+from velvet_bot.domains.telegram_storage.librarian_models import (
+    LibrarianObject,
+    StorageLibrarianSettings,
+)
 from velvet_bot.infrastructure.telegram.storage_librarian_reports import (
     build_storage_librarian_failure_report,
 )
 from velvet_bot.presentation.telegram.storage_librarian import (
     _auto_allowed_kinds,
     _env_int,
-)
-from velvet_bot.domains.telegram_storage.librarian_models import (
-    StorageLibrarianSettings,
 )
 
 
@@ -74,6 +74,9 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         repository = (
             ROOT / "velvet_bot/domains/telegram_storage/librarian_repository.py"
         ).read_text(encoding="utf-8")
+        application = (
+            ROOT / "velvet_bot/application/storage_librarian.py"
+        ).read_text(encoding="utf-8")
         enable = (ROOT / "deploy/hermes-librarian/enable_afk.sh").read_text(
             encoding="utf-8"
         )
@@ -84,11 +87,12 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         self.assertIn("STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID", presentation)
         self.assertIn("enqueue_newer_than", presentation)
         self.assertIn("process_once(auto_enqueue=False)", presentation)
+        self.assertIn("auto_enqueue: bool = False", application)
         self.assertIn("await asyncio.sleep(settings.scan_interval_seconds)", presentation)
         self.assertIn("o.id > $1::BIGINT", repository)
         self.assertIn("ON CONFLICT (storage_object_id) DO NOTHING", repository)
         self.assertIn("SELECT COALESCE(MAX(id), 0)", enable)
-        self.assertIn("STORAGE_LIBRARIAN_AUTO_ENQUEUE=true", enable)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_ENQUEUE": "true"', enable)
         self.assertIn("STORAGE_LIBRARIAN_AUTO_ENQUEUE=false", disable)
         self.assertNotIn("enqueue_pending(settings=settings)", presentation)
 
@@ -113,7 +117,7 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         self.assertIn("Storage ID: <code>2201</code>", report)
         self.assertIn("[REDACTED]", report)
         self.assertNotIn("super-secret-value", report)
-        self.assertIn("restart/update/rollback не выполнялось", report)
+        self.assertIn("перезапуск, обновление или откат не выполнялись", report)
 
 
 if __name__ == "__main__":
