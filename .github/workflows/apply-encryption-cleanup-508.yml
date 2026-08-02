@@ -1,0 +1,193 @@
+name: apply encryption cleanup 508
+
+on:
+  push:
+    branches:
+      - security/backup-keyring-508
+    paths:
+      - ".github/workflows/apply-encryption-cleanup-508.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: security/backup-keyring-508
+
+      - name: Replace broad cleanup handlers with finally
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/domains/telegram_storage/encryption.py")
+          source = path.read_text(encoding="utf-8")
+          replacements = (
+              (
+                  '''    temporary = _temporary_destination(destination_path)
+    try:
+        with source_path.open("rb") as input_stream, temporary.open("wb") as output_stream:
+            output_stream.write(header)
+            output_stream.write(salt)
+            output_stream.write(nonce)
+            for block in iter(lambda: input_stream.read(_CHUNK_BYTES), b""):
+                output_stream.write(encryptor.update(block))
+            output_stream.write(encryptor.finalize())
+            output_stream.write(encryptor.tag)
+        os.replace(temporary, destination_path)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+''',
+                  '''    temporary = _temporary_destination(destination_path)
+    completed = False
+    try:
+        with source_path.open("rb") as input_stream, temporary.open("wb") as output_stream:
+            output_stream.write(header)
+            output_stream.write(salt)
+            output_stream.write(nonce)
+            for block in iter(lambda: input_stream.read(_CHUNK_BYTES), b""):
+                output_stream.write(encryptor.update(block))
+            output_stream.write(encryptor.finalize())
+            output_stream.write(encryptor.tag)
+        os.replace(temporary, destination_path)
+        completed = True
+    finally:
+        if not completed:
+            temporary.unlink(missing_ok=True)
+''',
+              ),
+              (
+                  '''    temporary = _temporary_destination(destination_path)
+    try:
+        with source_path.open("rb") as input_stream, temporary.open("wb") as output_stream:
+            output_stream.write(_MAGIC_V1)
+            output_stream.write(salt)
+            output_stream.write(nonce)
+            for block in iter(lambda: input_stream.read(_CHUNK_BYTES), b""):
+                output_stream.write(encryptor.update(block))
+            output_stream.write(encryptor.finalize())
+            output_stream.write(encryptor.tag)
+        os.replace(temporary, destination_path)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+''',
+                  '''    temporary = _temporary_destination(destination_path)
+    completed = False
+    try:
+        with source_path.open("rb") as input_stream, temporary.open("wb") as output_stream:
+            output_stream.write(_MAGIC_V1)
+            output_stream.write(salt)
+            output_stream.write(nonce)
+            for block in iter(lambda: input_stream.read(_CHUNK_BYTES), b""):
+                output_stream.write(encryptor.update(block))
+            output_stream.write(encryptor.finalize())
+            output_stream.write(encryptor.tag)
+        os.replace(temporary, destination_path)
+        completed = True
+    finally:
+        if not completed:
+            temporary.unlink(missing_ok=True)
+''',
+              ),
+              (
+                  '''    temporary = _temporary_destination(destination_path)
+    try:
+        with source_path.open("rb") as input_stream:
+            actual_header = input_stream.read(len(header.header_bytes))
+            if actual_header != header.header_bytes:
+                raise ValueError("Encrypted backup header изменился во время чтения.")
+            salt = input_stream.read(_SALT_BYTES)
+            nonce = input_stream.read(_NONCE_BYTES)
+            input_stream.seek(-_TAG_BYTES, os.SEEK_END)
+            tag = input_stream.read(_TAG_BYTES)
+            input_stream.seek(header_size)
+            remaining = size - header_size - _TAG_BYTES
+            decryptor = cipher(
+                algorithms.AES(_derive_key(secret, salt)),
+                modes.GCM(nonce, tag),
+            ).decryptor()
+            if header.version == 2:
+                decryptor.authenticate_additional_data(header.header_bytes)
+            with temporary.open("wb") as output_stream:
+                while remaining > 0:
+                    block = input_stream.read(min(_CHUNK_BYTES, remaining))
+                    if not block:
+                        raise ValueError("Зашифрованный файл оборван.")
+                    remaining -= len(block)
+                    output_stream.write(decryptor.update(block))
+                output_stream.write(decryptor.finalize())
+        os.replace(temporary, destination_path)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+''',
+                  '''    temporary = _temporary_destination(destination_path)
+    completed = False
+    try:
+        with source_path.open("rb") as input_stream:
+            actual_header = input_stream.read(len(header.header_bytes))
+            if actual_header != header.header_bytes:
+                raise ValueError("Encrypted backup header изменился во время чтения.")
+            salt = input_stream.read(_SALT_BYTES)
+            nonce = input_stream.read(_NONCE_BYTES)
+            input_stream.seek(-_TAG_BYTES, os.SEEK_END)
+            tag = input_stream.read(_TAG_BYTES)
+            input_stream.seek(header_size)
+            remaining = size - header_size - _TAG_BYTES
+            decryptor = cipher(
+                algorithms.AES(_derive_key(secret, salt)),
+                modes.GCM(nonce, tag),
+            ).decryptor()
+            if header.version == 2:
+                decryptor.authenticate_additional_data(header.header_bytes)
+            with temporary.open("wb") as output_stream:
+                while remaining > 0:
+                    block = input_stream.read(min(_CHUNK_BYTES, remaining))
+                    if not block:
+                        raise ValueError("Зашифрованный файл оборван.")
+                    remaining -= len(block)
+                    output_stream.write(decryptor.update(block))
+                output_stream.write(decryptor.finalize())
+        os.replace(temporary, destination_path)
+        completed = True
+    finally:
+        if not completed:
+            temporary.unlink(missing_ok=True)
+''',
+              ),
+          )
+          for old, new in replacements:
+              if old not in source:
+                  raise SystemExit("Expected encryption cleanup block not found")
+              source = source.replace(old, new, 1)
+          path.write_text(source, encoding="utf-8")
+          PY
+
+      - name: Verify crypto and stability contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q velvet_bot tests scripts
+          python scripts/ci_preflight.py
+          python -m unittest \
+            tests/test_storage_encryption_keyring.py \
+            tests/test_p2_stability_inventory.py -v
+
+      - name: Commit cleanup boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- velvet_bot/domains/telegram_storage/encryption.py
+          git commit -m "refactor: clean encrypted files without broad exceptions"
+          git push origin HEAD:security/backup-keyring-508
