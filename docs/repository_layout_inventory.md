@@ -4,13 +4,13 @@
 
 ## Сводка
 
-- repository-модулей: **43**;
-- внутри доменов: **36**;
+- repository-модулей: **44**;
+- внутри доменов: **37**;
 - в `velvet_bot/repositories`: **0**;
 - корневых `*_repository.py`: **0**;
 - infrastructure repositories: **7**;
 - прочих repository paths: **0**;
-- repository-модулей с production consumers: **40**;
+- repository-модулей с production consumers: **41**;
 - repository-модулей с package exports: **28**;
 - repository-модулей без runtime consumers: **3**;
 - repository-модулей без любых references: **0**;
@@ -61,6 +61,7 @@
 - `velvet_bot.domains.references.repository` · domain `references`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.stories.repository` · domain `stories`: production 1, tests 0, exports 1, refs 2.
 - `velvet_bot.domains.telegram_storage.backup_repository` · domain `telegram_storage`: production 0, tests 1, exports 1, refs 2.
+- `velvet_bot.domains.telegram_storage.key_repository` · domain `telegram_storage`: production 1, tests 0, exports 0, refs 1.
 - `velvet_bot.domains.telegram_storage.librarian_afk_repository` · domain `telegram_storage`: production 1, tests 1, exports 0, refs 2.
 - `velvet_bot.domains.telegram_storage.librarian_repository` · domain `telegram_storage`: production 3, tests 0, exports 0, refs 3.
 - `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 0, exports 1, refs 4.

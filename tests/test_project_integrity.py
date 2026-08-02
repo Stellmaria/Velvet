@@ -72,6 +72,7 @@ PANEL_COMMANDS = {
     "characters",
     "storage",
     "storage_center",
+    "storage_keys",
     "storage_librarian",
     "storage_digest",
     "supervisor",

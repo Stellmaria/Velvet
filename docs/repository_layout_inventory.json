@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-complete",
-  "repository_module_count": 43,
+  "repository_module_count": 44,
   "layout_counts": {
-    "domain": 36,
+    "domain": 37,
     "infrastructure": 7
   },
   "root_module_count": 113,
@@ -14,7 +14,7 @@
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 40,
+  "repository_modules_with_production_consumers": 41,
   "repository_modules_with_package_exports": 28,
   "repository_modules_without_runtime_consumers": 3,
   "repository_modules_without_references": 0,
@@ -543,6 +543,21 @@
       "package_exports": [
         "velvet_bot/domains/telegram_storage/__init__.py"
       ]
+    },
+    {
+      "module": "velvet_bot.domains.telegram_storage.key_repository",
+      "path": "velvet_bot/domains/telegram_storage/key_repository.py",
+      "layout": "domain",
+      "domain": "telegram_storage",
+      "production_consumer_count": 1,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 1,
+      "production_consumers": [
+        "velvet_bot/presentation/telegram/storage_center.py"
+      ],
+      "test_consumers": [],
+      "package_exports": []
     },
     {
       "module": "velvet_bot.domains.telegram_storage.librarian_afk_repository",

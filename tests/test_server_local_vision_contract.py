@@ -9,7 +9,7 @@ from scripts.server_preflight import validate_server_environment
 def _values(data_dir: str) -> dict[str, str]:
     return {
         "VELVET_DATA_DIR": data_dir,
-        "BOT_TOKEN": "123456:abcdefghijklmnopqrstuvwxyz_ABC123",
+        "BOT_TOKEN": "123456:test_bot_token_12345678",
         "DATABASE_URL": (
             "postgresql://velvet:postgres_password_1234567890@postgres:5432/velvet"
         ),
@@ -18,6 +18,7 @@ def _values(data_dir: str) -> dict[str, str]:
         "POSTGRES_PASSWORD": "postgres_password_1234567890",
         "ALLOWED_USER_IDS": "123456789",
         "STORAGE_ENCRYPTION_SECRET": "storage_secret_12345678901234567890",
+        "STORAGE_ENCRYPTION_ACTIVE_KEY_ID": "test-active-v2",
         "SUPERVISOR_TOKEN": "supervisor_secret_1234567890123456",
         "SUPERVISOR_ALLOW_REMOTE": "false",
         "KRITA_WATERMARK_ENABLED": "false",

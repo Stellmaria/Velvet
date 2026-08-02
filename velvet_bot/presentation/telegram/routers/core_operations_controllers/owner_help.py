@@ -205,6 +205,7 @@ OWNER_COMMAND_GROUPS: tuple[
         (
             ("storage", "открыть Telegram Storage Center"),
             ("storage_center", "алиас Telegram Storage Center"),
+            ("storage_keys", "показать active и historical key IDs без key material"),
             ("storage_migrate", "запустить перенос локальных файлов"),
             ("storage_find", "найти объект в Telegram Storage"),
             ("storage_download", "скачать объект Storage по ID"),

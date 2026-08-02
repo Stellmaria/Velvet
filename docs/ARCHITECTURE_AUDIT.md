@@ -80,8 +80,8 @@ Exemptions распределены между owner issues #455/#457/#458/#459/
 
 По `docs/repository_layout_inventory.*`:
 
-- repository modules: **42**;
-- domain repositories: **35**;
+- repository modules: **44**;
+- domain repositories: **37**;
 - infrastructure PostgreSQL adapters: **7**;
 - central repositories: **0**;
 - root repositories: **0**;
@@ -181,7 +181,7 @@ velvet_bot/
   app/                         bootstrap и 63 composition modules/installers
   application/                 21 transport-neutral use-case modules
   core/                        7 config/access/base contract modules
-  domains/                     179 domain modules и 35 repositories
+  domains/                     179 domain modules и 37 repositories
   infrastructure/              27 PostgreSQL/provider/Telegram/filesystem adapters
   presentation/                215 Telegram presentation modules
   services/                    8 integration/application service modules
