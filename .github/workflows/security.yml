@@ -241,7 +241,7 @@ jobs:
         run: docker build --tag "velvet:${GITHUB_SHA}" .
 
       - name: Block high and critical image findings
-        uses: aquasecurity/trivy-action@876cf04c63f65e9799bcf1043b584e72469c7143 # 0.35.0
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # 0.35.0
         with:
           image-ref: velvet:${{ github.sha }}
           format: table
@@ -250,7 +250,7 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Generate CycloneDX image SBOM
-        uses: aquasecurity/trivy-action@876cf04c63f65e9799bcf1043b584e72469c7143 # 0.35.0
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # 0.35.0
         with:
           image-ref: velvet:${{ github.sha }}
           format: cyclonedx
