@@ -98,8 +98,8 @@ Windows-, staging-, provider- и offsite-проверки перечислены
 - root modules `velvet_bot/*.py`: **113**;
 - активные Router imports в четырёх bundles: **84**;
 - runtime compatibility components: **8**;
-- repository modules: **42**;
-- domain repositories: **35**;
+- repository modules: **44**;
+- domain repositories: **37**;
 - infrastructure PostgreSQL adapters: **7**;
 - startup installer stages: **28**;
 - registered package architecture fingerprints: **546**;

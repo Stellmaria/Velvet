@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 644,
-  "production_loc": 140661,
+  "production_loc": 140662,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -20,7 +20,7 @@
   "root_unclassified_count": 0,
   "router_count": 84,
   "router_duplicate_count": 0,
-  "repository_module_count": 43,
+  "repository_module_count": 44,
   "runtime_compatibility_components": [
     {
       "component": "ai-quality-schema",
@@ -30387,7 +30387,7 @@
       "module": "velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_help",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 276,
+      "loc": 277,
       "function_count": 2,
       "class_count": 0,
       "handler_count": 0,

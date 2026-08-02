@@ -167,8 +167,8 @@ class P3ERepositoryLayoutInventoryTests(unittest.TestCase):
     def test_repository_layout_migration_is_complete(self) -> None:
         inventory = build_inventory(label=LABEL)
 
-        self.assertEqual(43, inventory["repository_module_count"])
-        self.assertEqual(36, inventory["layout_counts"]["domain"])
+        self.assertEqual(44, inventory["repository_module_count"])
+        self.assertEqual(37, inventory["layout_counts"]["domain"])
         self.assertEqual(7, inventory["layout_counts"]["infrastructure"])
         self.assertEqual(0, inventory["layout_counts"].get("central", 0))
         self.assertEqual(0, inventory["layout_counts"].get("root", 0))
