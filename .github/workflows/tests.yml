@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -18,76 +18,6 @@ env:
   CI_TEST_SHARDS: "4"
 
 jobs:
-  sync-afk-repository-layout:
-    name: sync-afk-repository-layout
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 549
-    runs-on: ubuntu-latest
-    timeout-minutes: 4
-    steps:
-      - name: Checkout feature branch
-        uses: actions/checkout@v4
-        with:
-          ref: feat/storage-librarian-afk-guardrails
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Generate repository layout and synchronize contracts
-        run: |
-          python scripts/inventory_repository_layout.py \
-            --write \
-            --label p3e-repository-layout-complete
-          python - <<'PY'
-          from pathlib import Path
-
-          test_path = Path('tests/test_p3e_repository_layout_inventory.py')
-          text = test_path.read_text(encoding='utf-8')
-          replacements = {
-              'self.assertEqual(42, inventory["repository_module_count"])':
-                  'self.assertEqual(43, inventory["repository_module_count"])',
-              'self.assertEqual(35, inventory["layout_counts"]["domain"])':
-                  'self.assertEqual(36, inventory["layout_counts"]["domain"])',
-          }
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f'missing expected contract: {old}')
-              text = text.replace(old, new, 1)
-          test_path.write_text(text, encoding='utf-8')
-
-          worklog_path = Path(
-              'docs/worklog/2026-08-02-storage-librarian-afk-guardrails.md'
-          )
-          worklog = worklog_path.read_text(encoding='utf-8')
-          old_status = '- Статус: `проверка`'
-          if old_status not in worklog:
-              raise SystemExit('expected worklog status marker is missing')
-          worklog_path.write_text(
-              worklog.replace(old_status, '- Статус: `частично`', 1),
-              encoding='utf-8',
-          )
-          PY
-          python scripts/inventory_repository_layout.py \
-            --check \
-            --label p3e-repository-layout-complete
-
-      - name: Restore standard workflow and commit
-        run: |
-          git fetch origin main
-          git checkout origin/main -- .github/workflows/tests.yml
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -- \
-            .github/workflows/tests.yml \
-            docs/repository_layout_inventory.json \
-            docs/repository_layout_inventory.md \
-            docs/worklog/2026-08-02-storage-librarian-afk-guardrails.md \
-            tests/test_p3e_repository_layout_inventory.py
-          git commit -m 'chore: sync Librarian AFK repository inventory'
-          git push origin HEAD:feat/storage-librarian-afk-guardrails
-
   preflight:
     name: preflight
     runs-on: ubuntu-latest

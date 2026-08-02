@@ -3,7 +3,7 @@
 - Дата: 2026-08-02
 - ID: `storage-librarian-afk-guardrails-20260802`
 - Линия/фаза: Telegram Storage Librarian, background rollout
-- Статус: `проверка`
+- Статус: `частично`
 - Ветка: `feat/storage-librarian-afk-guardrails`
 - Базовый commit: `c54026f9f313607abc3e680ac1e5e5e05649972a`
 
