@@ -89,9 +89,9 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             "codex_first_runner.py",
             "codex_first_safe_runner.py",
             "codex_provider_chain_runner.py",
-            "compose.runtime.yaml",
         ):
             self.assertEqual(2, unit.count(source), source)
+        self.assertEqual(6, unit.count("compose.runtime.yaml"))
 
     def test_runtime_source_guard_rejects_private_bind_mount(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
