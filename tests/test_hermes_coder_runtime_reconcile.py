@@ -36,7 +36,7 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertEqual(2, source.count("GIT_CONFIG_GLOBAL: /opt/data/.gitconfig"))
-        self.assertEqual(2, source.count("- /app/codex_routed_runner.py"))
+        self.assertEqual(2, source.count("- /app/codex_first_safe_runner.py"))
         self.assertEqual(2, source.count("command: []"))
         self.assertNotIn("/init", source)
 

@@ -43,7 +43,8 @@
       "runtime": "hermes-agent+openai-codex",
       "skills": [
         "brain-vault/skills/orchestrated-task/SKILL.md",
-        "brain-vault/skills/memory-candidate/SKILL.md"
+        "brain-vault/skills/memory-candidate/SKILL.md",
+        "brain-vault/skills/codex-first/SKILL.md"
       ],
       "soul": "deploy/hermes-coders/SOUL.max.md",
       "user_seed": "brain-vault/memory/owner.seed.md"
@@ -67,7 +68,8 @@
       "runtime": "hermes-agent+openai-codex",
       "skills": [
         "brain-vault/skills/orchestrated-task/SKILL.md",
-        "brain-vault/skills/memory-candidate/SKILL.md"
+        "brain-vault/skills/memory-candidate/SKILL.md",
+        "brain-vault/skills/codex-first/SKILL.md"
       ],
       "soul": "deploy/hermes-coders/SOUL.velvet.md",
       "user_seed": "brain-vault/memory/owner.seed.md"

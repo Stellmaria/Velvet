@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import time
+import uuid
+import urllib.error
+import urllib.request
+from typing import Any
+
+_TERMINAL = frozenset({"completed", "failed", "cancelled"})
+_SECRET = re.compile(
+    r"(?i)(authorization\s*:\s*bearer\s+|"
+    r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)"
+    r"[^\s,;]+"
+)
+
+
+class DelegateError(RuntimeError):
+    pass
+
+
+def redact_text(value: str) -> str:
+    return _SECRET.sub(r"\1[REDACTED]", value)
+
+
+def _required_env(name: str, *, minimum: int = 1) -> str:
+    value = os.environ.get(name, "").strip()
+    if len(value) < minimum:
+        raise DelegateError(f"{name} отсутствует или короче {minimum} символов")
+    return value
+
+
+def build_payload(
+    task: str,
+    *,
+    project: str,
+    model: str | None,
+) -> dict[str, Any]:
+    clean = task.strip()
+    if not clean:
+        raise DelegateError("Задача пуста")
+    if len(clean) > 30_000:
+        raise DelegateError("Задача превышает 30000 символов")
+    payload: dict[str, Any] = {
+        "input": clean,
+        "session_id": f"telegram-{project}-{uuid.uuid4().hex}",
+        "instructions": (
+            f"Ты Codex-first coder проекта {project}. Работай только в текущем "
+            "repository и верни schema-bound JSON. Не merge и не deploy."
+        ),
+    }
+    if model:
+        payload["model"] = model
+    return payload
+
+
+class RunnerClient:
+    def __init__(self) -> None:
+        self.base_url = _required_env("HERMES_CODEX_DELEGATE_URL").rstrip("/")
+        self.token = _required_env("CODEX_RUNNER_API_KEY", minimum=24)
+        self.project = _required_env("HERMES_CODEX_DELEGATE_PROJECT")
+        self.timeout_seconds = max(
+            30,
+            int(os.environ.get("HERMES_CODEX_DELEGATE_TIMEOUT_SECONDS", "7200")),
+        )
+        self.poll_seconds = max(
+            1.0,
+            float(os.environ.get("HERMES_CODEX_DELEGATE_POLL_SECONDS", "3")),
+        )
+
+    def request(
+        self,
+        method: str,
+        path: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        data = None
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+        }
+        if payload is not None:
+            data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(
+            f"{self.base_url}{path}",
+            data=data,
+            headers=headers,
+            method=method,
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                raw = response.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as error:
+            details = error.read().decode("utf-8", errors="replace")[-2000:]
+            raise DelegateError(
+                f"Runner HTTP {error.code}: {redact_text(details)}"
+            ) from error
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            raise DelegateError(
+                f"Runner недоступен: {type(error).__name__}"
+            ) from error
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise DelegateError("Runner вернул повреждённый JSON") from error
+        if not isinstance(result, dict):
+            raise DelegateError("Runner вернул неожиданный тип ответа")
+        return result
+
+    def run(self, task: str, *, model: str | None = None) -> dict[str, Any]:
+        submitted = self.request(
+            "POST",
+            "/v1/runs",
+            build_payload(task, project=self.project, model=model),
+        )
+        run_id = submitted.get("run_id")
+        if not isinstance(run_id, str) or not run_id:
+            raise DelegateError("Runner не вернул run_id")
+        deadline = time.monotonic() + self.timeout_seconds
+        while time.monotonic() < deadline:
+            record = self.request("GET", f"/v1/runs/{run_id}")
+            if record.get("status") in _TERMINAL:
+                return record
+            time.sleep(self.poll_seconds)
+        raise DelegateError(
+            f"Run {run_id} не завершился за {self.timeout_seconds} секунд"
+        )
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Delegate one Telegram coder task to Codex-first runner"
+    )
+    parser.add_argument(
+        "--model",
+        choices=("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"),
+    )
+    return parser
+
+
+def main(argv: list[str]) -> int:
+    args = _parser().parse_args(argv[1:])
+    task = sys.stdin.read()
+    client = RunnerClient()
+    result = client.run(task, model=args.model)
+    public = {
+        key: result.get(key)
+        for key in (
+            "run_id",
+            "status",
+            "model",
+            "requested_route",
+            "actual_route",
+            "attempted_routes",
+            "fallback_reason",
+            "mutation_started",
+            "output",
+            "structured_output",
+            "error",
+        )
+        if key in result
+    }
+    print(json.dumps(public, ensure_ascii=False, indent=2))
+    return 0 if result.get("status") == "completed" else 3
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv))
+    except DelegateError as error:
+        print(f"Codex delegation failed: {error}", file=sys.stderr)
+        raise SystemExit(2)
