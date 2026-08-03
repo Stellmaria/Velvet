@@ -13,6 +13,18 @@ import urllib.request
 from typing import Any
 
 _TERMINAL = frozenset({"completed", "failed", "cancelled"})
+_TASK_TYPES = (
+    "read_only",
+    "docs",
+    "code",
+    "architecture",
+    "security",
+    "migration",
+    "incident",
+)
+_TIERS = ("small", "standard", "complex", "high_risk")
+_RISKS = ("low", "medium", "high", "critical")
+_MUTATION_POLICIES = ("read_only", "workspace_pr")
 _SECRET = re.compile(
     r"(?i)(authorization\s*:\s*bearer\s+|"
     r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)"
@@ -40,12 +52,20 @@ def build_payload(
     *,
     project: str,
     model: str | None,
+    task_type: str | None = None,
+    requested_tier: str | None = None,
+    risk: str | None = None,
+    mutation_policy: str | None = None,
 ) -> dict[str, Any]:
     clean = task.strip()
     if not clean:
         raise DelegateError("Задача пуста")
     if len(clean) > 30_000:
         raise DelegateError("Задача превышает 30000 символов")
+    if task_type == "read_only" and mutation_policy not in {None, "read_only"}:
+        raise DelegateError(
+            "read_only task_type требует mutation_policy=read_only"
+        )
     payload: dict[str, Any] = {
         "input": clean,
         "session_id": f"telegram-{project}-{uuid.uuid4().hex}",
@@ -54,8 +74,14 @@ def build_payload(
             "repository и верни schema-bound JSON. Не merge и не deploy."
         ),
     }
-    if model:
-        payload["model"] = model
+    optional = {
+        "model": model,
+        "task_type": task_type,
+        "requested_tier": requested_tier,
+        "risk": risk,
+        "mutation_policy": mutation_policy,
+    }
+    payload.update({key: value for key, value in optional.items() if value is not None})
     return payload
 
 
@@ -113,11 +139,28 @@ class RunnerClient:
             raise DelegateError("Runner вернул неожиданный тип ответа")
         return result
 
-    def run(self, task: str, *, model: str | None = None) -> dict[str, Any]:
+    def run(
+        self,
+        task: str,
+        *,
+        model: str | None = None,
+        task_type: str | None = None,
+        requested_tier: str | None = None,
+        risk: str | None = None,
+        mutation_policy: str | None = None,
+    ) -> dict[str, Any]:
         submitted = self.request(
             "POST",
             "/v1/runs",
-            build_payload(task, project=self.project, model=model),
+            build_payload(
+                task,
+                project=self.project,
+                model=model,
+                task_type=task_type,
+                requested_tier=requested_tier,
+                risk=risk,
+                mutation_policy=mutation_policy,
+            ),
         )
         run_id = submitted.get("run_id")
         if not isinstance(run_id, str) or not run_id:
@@ -135,12 +178,16 @@ class RunnerClient:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Delegate one Telegram coder task to Codex-first runner"
+        description="Delegate one Telegram coder task to tier-aware Codex-first runner"
     )
     parser.add_argument(
         "--model",
         choices=("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"),
     )
+    parser.add_argument("--task-type", choices=_TASK_TYPES)
+    parser.add_argument("--tier", choices=_TIERS)
+    parser.add_argument("--risk", choices=_RISKS)
+    parser.add_argument("--mutation-policy", choices=_MUTATION_POLICIES)
     return parser
 
 
@@ -148,18 +195,39 @@ def main(argv: list[str]) -> int:
     args = _parser().parse_args(argv[1:])
     task = sys.stdin.read()
     client = RunnerClient()
-    result = client.run(task, model=args.model)
+    result = client.run(
+        task,
+        model=args.model,
+        task_type=args.task_type,
+        requested_tier=args.tier,
+        risk=args.risk,
+        mutation_policy=args.mutation_policy,
+    )
     public = {
         key: result.get(key)
         for key in (
             "run_id",
             "status",
             "model",
+            "task_type",
+            "requested_tier",
+            "risk",
+            "mutation_policy",
+            "selected_primary_model",
+            "selected_primary_route",
+            "selected_provider_route",
             "requested_route",
             "actual_route",
+            "attempted_models",
             "attempted_routes",
             "fallback_reason",
+            "provider_degraded",
+            "degraded_execution",
+            "review_required",
             "mutation_started",
+            "primary_output_started",
+            "provider_output_started",
+            "live_production_mutation",
             "output",
             "structured_output",
             "error",
