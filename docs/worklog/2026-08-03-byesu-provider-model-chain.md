@@ -74,7 +74,17 @@
 - `python3 -m py_compile` для изменённых Python-файлов: PASS;
 - targeted provider-chain tests: PASS;
 - router lifecycle contract tests: PASS;
-- совокупно локально: 10 tests, PASS.
+- совокупно локально: 10 tests, PASS;
+- GitHub type check первого head: PASS;
+- project notes первого head выявил отсутствующие обязательные разделы; worklog исправлен.
+
+### PR и commit
+
+- Draft PR: #574 `Восстановить Byesu model chain и lifecycle coder-router`;
+- ветка: `fix/byesu-provider-model-chain`;
+- базовый production/main commit: `798e959b1f0cde636df0d97c3438f20de831b427`;
+- актуальный head хранится в PR #574 и обновляется отдельными проверочными commits;
+- merge и deployment не выполнялись, production не менялся.
 
 ### Незавершённое
 
@@ -87,3 +97,7 @@
 ### Rollback
 
 Вернуть singular `CODEX_PROVIDER_FALLBACK_MODEL=gpt-5.6-terra`, предыдущий entrypoint и удалить lifecycle dependency/smoke router unit. Production rollback должен выполняться только отдельной разрешённой операцией.
+
+### Следующий шаг
+
+Дождаться зелёного CI на PR #574 и выполнить code review. После отдельного разрешения на merge обновить production, установить systemd units, перезапустить только Hermes coder runtime и проверить обе capabilities, `coderctl.py health all` и безопасный Telegram handoff без merge/deploy со стороны агента.
