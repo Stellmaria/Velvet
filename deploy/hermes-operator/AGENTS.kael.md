@@ -111,12 +111,40 @@ python /opt/data/tools/runctl.py stop <run_id>
 
 ## Оркестрация coder-агентов
 
+До каждого `submit` независимо определи и сохрани:
+
+- `project`: `velvet` или `max`;
+- `task_type`: `general`, `code`, `read_only`, `documentation` или `incident`;
+- `complexity`: `small`, `standard` или `complex`;
+- `risk`: `low`, `medium`, `high` или `critical`;
+- `mutation_policy`: `read_only`, `workspace_write` или `isolated_pr_only`;
+- `requested_tier`: `small`, `standard`, `complex` или `high_risk`.
+
+Не определяй риск только длиной prompt или одним ключевым словом. Учитывай поверхность изменений, production-влияние, данные, обратимость и число сервисов. После выбора не понижай tier и не проси router классифицировать его повторно.
+
 Для постановки и контроля coder-задач используй только:
 
 ```bash
 python /opt/data/tools/coderctl.py health all
-python /opt/data/tools/coderctl.py submit velvet --source owner-request --task "<задача>"
-python /opt/data/tools/coderctl.py submit max --source owner-request --task "<задача>"
+
+python /opt/data/tools/coderctl.py submit velvet \
+  --source owner-request \
+  --task-type read_only \
+  --complexity small \
+  --risk low \
+  --mutation-policy read_only \
+  --tier small \
+  --task "<задача без изменений>"
+
+python /opt/data/tools/coderctl.py submit max \
+  --source owner-request \
+  --task-type code \
+  --complexity standard \
+  --risk medium \
+  --mutation-policy workspace_write \
+  --tier standard \
+  --task "<задача с веткой, тестами и PR>"
+
 python /opt/data/tools/coderctl.py status <task_id-or-run_id>
 python /opt/data/tools/coderctl.py wait <task_id-or-run_id>
 python /opt/data/tools/coderctl.py list --limit 20
@@ -125,16 +153,21 @@ python /opt/data/tools/coderctl.py pr velvet <pr-number>
 python /opt/data/tools/coderctl.py pr max <pr-number>
 ```
 
+Для automatic incident используй `task_type=incident`, `complexity=complex`, `risk=high`, `mutation_policy=isolated_pr_only`, `requested_tier=high_risk`.
+
 Правила оркестрации:
 
 1. Маршрутизируй Velvet только в `@velvet_private_coder_bot`, а Max только в `@romatic_max_coder_bot`.
 2. Перед отправкой собери минимальную безопасную диагностику через `status` и `logs`; не включай токены, `.env`, дампы, персональные данные и нерелевантные логи.
-3. После `submit` сразу сообщи владельцу project, task_id и run_id, затем отслеживай задачу до `completed`, `failed` или `cancelled`.
+3. После `submit` сразу сообщи владельцу project, task_id, run_id, requested tier и selected primary model, затем отслеживай задачу до `completed`, `failed` или `cancelled`.
 4. Coder может создать ветку, commit и pull request, но не имеет права merge, deployment, restart, update или rollback.
-5. После завершения получи номер PR из отчёта coder и обязательно выполни `coderctl.py pr <project> <number>`. Проверяй `head_sha`, `draft`, `mergeable`, `mergeable_state`, `checks_complete`, `checks_success` и `combined_status`. Не принимай текст coder-агента за доказательство.
-6. Если PR остаётся draft, имеет конфликты, незавершённые или красные checks либо неизвестный mergeable state, не объявляй его готовым и не вызывай update.
-7. Если PR готов, сообщи владельцу результат, тесты, риски и ссылку. Merge и production update выполняются только после явного разрешения владельца.
-8. После разрешённого update повторяй runtime status до терминального результата и отправь финальный отчёт в текущий Telegram-чат.
-9. При автоматическом инциденте разрешено без дополнительного подтверждения отправить coder-агенту только очищенную диагностику и подготовку PR. Любое изменение production всё равно требует явного подтверждения.
-10. Не обращайся к API coder-контейнеров или GitHub напрямую и не читай их `API_SERVER_KEY`/`GH_TOKEN`. Используй только `coderctl.py`.
-11. Журнал `/opt/data/orchestration/tasks.json` является источником истины для coder-задач; не удаляй и не редактируй его вручную.
+5. После завершения проверь в ledger `task_type`, `requested_tier`, `risk`, `selected_primary_model`, `selected_provider_route`, `attempted_models`, `attempted_routes`, `actual_route`, `fallback_reason` и `mutation_started`.
+6. Получи номер PR из отчёта coder и обязательно выполни `coderctl.py pr <project> <number>`. Проверяй `head_sha`, `draft`, `mergeable`, `mergeable_state`, `checks_complete`, `checks_success` и `combined_status`. Не принимай текст coder-агента за доказательство.
+7. Если PR остаётся draft, имеет конфликты, незавершённые или красные checks либо неизвестный mergeable state, не объявляй его готовым и не вызывай update.
+8. Для `complex` и `high_risk` основной route должен выбрать Sol. Если Sol недоступна и использована degraded Terra, требуй `review_required=true`, isolated workspace, один PR и независимую проверку. Production privileges отсутствуют.
+9. Если `mutation_started=true` либо зафиксирован execution event, не повторяй задачу автоматически другой моделью.
+10. Если PR готов, сообщи владельцу результат, тесты, route evidence, риски и ссылку. Merge и production update выполняются только после явного разрешения владельца.
+11. После разрешённого update повторяй runtime status до терминального результата и отправь финальный отчёт в текущий Telegram-чат.
+12. При автоматическом инциденте разрешено без дополнительного подтверждения отправить coder-агенту только очищенную диагностику и подготовку PR. Любое изменение production всё равно требует явного подтверждения.
+13. Не обращайся к API coder-контейнеров или GitHub напрямую и не читай их `API_SERVER_KEY`/`GH_TOKEN`. Используй только `coderctl.py`.
+14. Журнал `/opt/data/orchestration/tasks.json` является источником истины для coder-задач; не удаляй и не редактируй его вручную.
