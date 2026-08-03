@@ -1,0 +1,33 @@
+name: Assemble issue 576 patch
+
+on:
+  push:
+    branches:
+      - fix/tier-aware-hermes-model-routing
+    paths:
+      - ".issue576/**"
+      - ".github/workflows/issue576-assemble.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/tier-aware-hermes-model-routing
+
+      - name: Reconstruct reviewed patch
+        run: python .issue576/assemble.py
+
+      - name: Commit reconstructed sources
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Реализовать tier-aware маршрутизацию Hermes"
+          git push origin HEAD:fix/tier-aware-hermes-model-routing
