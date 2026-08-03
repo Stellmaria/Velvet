@@ -24,9 +24,9 @@ source_guard = load_module(
     "hermes_runtime_source_guard_test_module",
     ROOT / "deploy/hermes-coders/runtime_source_guard.py",
 )
-provider_smoke = load_module(
-    "hermes_provider_chain_smoke_test_module",
-    ROOT / "deploy/hermes-coders/provider_chain_smoke.py",
+tier_smoke = load_module(
+    "hermes_tier_provider_smoke_test_module",
+    ROOT / "deploy/hermes-coders/tier_provider_smoke.py",
 )
 
 
@@ -53,19 +53,20 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             router,
         )
 
-    def test_router_smoke_checks_both_projects_without_printing_token(self) -> None:
+    def test_router_smoke_checks_tier_parity_without_printing_token(self) -> None:
         source = (ROOT / "deploy/hermes-orchestration/router_smoke.py").read_text(
             encoding="utf-8"
         )
         ast.parse(source)
-        self.assertIn('for project in ("velvet", "max")', source)
-        self.assertIn("/v1/coders/{project}/capabilities", source)
+        self.assertIn("/v1/coders/velvet/capabilities", source)
+        self.assertIn("/v1/coders/max/capabilities", source)
+        self.assertIn("routes_by_tier", source)
+        self.assertIn("VELVET_MAX_PARITY_OK", source)
         self.assertIn("HERMES_CODER_ROUTER_CLIENT_TOKEN", source)
         self.assertNotIn("print(token", source)
         self.assertNotIn("print(os.environ", source)
-        self.assertIn('"docker", "compose", "-f", "compose.yaml"', source)
 
-    def test_runtime_configures_full_provider_chain_for_both_projects(self) -> None:
+    def test_runtime_configures_same_provider_catalog_for_both_projects(self) -> None:
         source = (ROOT / "deploy/hermes-coders/compose.runtime.yaml").read_text(
             encoding="utf-8"
         )
@@ -74,24 +75,27 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             "gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna"
         )
         self.assertEqual(2, source.count(expected))
-        self.assertEqual(4, source.count("/app/codex_provider_chain_runner.py"))
+        self.assertEqual(2, source.count("/app/codex_provider_chain_runner.py"))
+        self.assertEqual(4, source.count("/app/codex_tier_runner.py"))
+        self.assertIn("Actual order is selected from immutable requested_tier", source)
         self.assertNotIn("CODEX_PROVIDER_FALLBACK_MODEL:", source)
 
-    def test_systemd_normalizes_and_verifies_bind_mount_permissions(self) -> None:
+    def test_systemd_runs_runtime_and_tier_provider_smokes(self) -> None:
         unit = (ROOT / "deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
         self.assertEqual(2, unit.count("/usr/bin/chmod 0644"))
         self.assertEqual(2, unit.count("runtime_source_guard.py"))
-        self.assertEqual(2, unit.count("provider_chain_smoke.py"))
+        self.assertEqual(4, unit.count("tier_provider_smoke.py"))
+        self.assertEqual(2, unit.count("runtime_smoke.py"))
         for source in (
             "codex_delegate.py",
             "codex_first_runner.py",
             "codex_first_safe_runner.py",
             "codex_provider_chain_runner.py",
+            "codex_tier_runner.py",
         ):
             self.assertEqual(2, unit.count(source), source)
-        self.assertEqual(6, unit.count("compose.runtime.yaml"))
 
     def test_runtime_source_guard_rejects_private_bind_mount(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -105,34 +109,55 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             with self.assertRaises(source_guard.RuntimeSourceError):
                 source_guard.validate_runtime_sources(root)
 
-    def test_provider_chain_smoke_validates_safe_public_contract(self) -> None:
-        payload = {
+    def test_tier_provider_smoke_accepts_mini_or_fail_closed(self) -> None:
+        capabilities = {
             "routing": {
-                "primary_route": "codex_subscription",
+                "downgrade_allowed": False,
+                "mutation_audit": {
+                    "successful_runs": True,
+                    "read_only_fail_closed": True,
+                },
                 "provider_fallback": {
                     "enabled": True,
-                    "route": "byesu_provider",
-                    "model": "gpt-5.4-mini",
-                    "models": [
-                        "gpt-5.4-mini",
-                        "gpt-5.6-terra",
-                        "gpt-5.6-luna",
-                    ],
-                    "credential_groups": [
-                        {
-                            "name": "byesu-coder",
-                            "models": ["gpt-5.4-mini", "gpt-5.6-terra"],
-                        },
-                        {"name": "byesu-gpt-pro", "models": ["gpt-5.6-luna"]},
-                    ],
+                    "routes_by_tier": dict(tier_smoke._EXPECTED_ROUTES),
                     "after_mutation": False,
+                    "after_execution_event": False,
+                    "model_access_failure": "fail_closed",
                 },
             }
         }
-        provider_smoke.validate_capabilities("velvet", payload)
-        payload["routing"]["provider_fallback"]["after_mutation"] = True
-        with self.assertRaises(provider_smoke.ProviderChainSmokeError):
-            provider_smoke.validate_capabilities("velvet", payload)
+        payload = {
+            "capabilities": capabilities,
+            "availability": {
+                "byesu-coder": {
+                    "configured": True,
+                    "models": {
+                        "gpt-5.4-mini": False,
+                        "gpt-5.6-terra": True,
+                    },
+                },
+                "byesu-gpt-pro": {
+                    "configured": True,
+                    "models": {"gpt-5.6-luna": True},
+                },
+            },
+        }
+        self.assertEqual(
+            "MINI_UNAVAILABLE_FAIL_CLOSED",
+            tier_smoke.validate_payload("velvet", payload),
+        )
+        payload["availability"]["byesu-coder"]["models"]["gpt-5.4-mini"] = True
+        self.assertEqual(
+            "MINI_AVAILABLE",
+            tier_smoke.validate_payload("velvet", payload),
+        )
+        capabilities["routing"]["provider_fallback"]["after_mutation"] = True
+        with self.assertRaises(tier_smoke.TierProviderSmokeError):
+            tier_smoke.validate_payload("velvet", payload)
+        capabilities["routing"]["provider_fallback"]["after_mutation"] = False
+        capabilities["routing"]["mutation_audit"]["read_only_fail_closed"] = False
+        with self.assertRaises(tier_smoke.TierProviderSmokeError):
+            tier_smoke.validate_payload("velvet", payload)
 
 
 if __name__ == "__main__":

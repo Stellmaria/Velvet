@@ -18,29 +18,33 @@ services:
   hermes-coder-velvet:
     entrypoint:
       - python
-      - /app/codex_provider_chain_runner.py
+      - /app/codex_tier_runner.py
     command: []
     environment:
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
+      # Catalog only. Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-    # Base fail-closed policy remains in /app/codex_first_safe_runner.py.
+    # Mutation, read-only and execution-event fail-closed guards remain mandatory.
     volumes:
       - ./codex_first_runner.py:/app/codex_first_runner.py:ro
       - ./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
+      - ./codex_tier_runner.py:/app/codex_tier_runner.py:ro
 
   hermes-coder-max:
     entrypoint:
       - python
-      - /app/codex_provider_chain_runner.py
+      - /app/codex_tier_runner.py
     command: []
     environment:
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
+      # Same catalog and routing policy as Velvet.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-    # Base fail-closed policy remains in /app/codex_first_safe_runner.py.
+    # Mutation, read-only and execution-event fail-closed guards remain mandatory.
     volumes:
       - ./codex_first_runner.py:/app/codex_first_runner.py:ro
       - ./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
+      - ./codex_tier_runner.py:/app/codex_tier_runner.py:ro

@@ -11,6 +11,7 @@ RUNTIME_SOURCES = (
     "codex_first_runner.py",
     "codex_first_safe_runner.py",
     "codex_provider_chain_runner.py",
+    "codex_tier_runner.py",
     "compose.runtime.yaml",
 )
 

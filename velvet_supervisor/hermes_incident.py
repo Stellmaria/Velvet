@@ -271,10 +271,13 @@ class HermesIncidentClient:
             "запрашивай секреты. Сначала классифицируй причину и проверь безопасную "
             "диагностику. Если это вероятный дефект кода, поставь изолированному Velvet "
             "coder задачу через `python /opt/data/tools/coderctl.py submit velvet "
-            "--source automatic-incident --task <очищенная задача>`, дождись результата "
-            "через coderctl wait и проверь созданный PR и CI. Не выполняй merge, update, "
-            "restart, rollback или изменение production. Если данных недостаточно, не "
-            "создавай задачу и явно укажи, что требуется от владельца.\n\n"
+            "--source incident --task-type incident --complexity complex --risk high "
+            "--mutation-policy isolated_pr_only --tier high_risk "
+            "--task <очищенная задача>`, дождись результата через coderctl wait и "
+            "проверь сохранённый requested_tier, actual_route, созданный PR и CI. "
+            "Не выполняй merge, update, restart, rollback или изменение production. "
+            "Если данных недостаточно, не создавай задачу и явно укажи, что требуется "
+            "от владельца.\n\n"
             f"service: {incident.service}\n"
             f"reason: {sanitized_reason}\n"
             f"exit_code: {incident.exit_code}\n"
@@ -290,8 +293,9 @@ class HermesIncidentClient:
             "session_id": f"velvet-incident-{incident.fingerprint()[:16]}",
             "instructions": (
                 "Ты главный аварийный оператор Velvet. Верни краткий диагноз, риск, "
-                "task_id/run_id coder-задачи, PR и тесты либо точный blocker. Итог будет "
-                "автоматически отправлен владельцу в Telegram."
+                "task_id/run_id coder-задачи, requested_tier, actual_route, PR и тесты "
+                "либо точный blocker. Итог будет автоматически отправлен владельцу "
+                "в Telegram."
             ),
         }
 

@@ -17,6 +17,27 @@ from pathlib import Path
 from typing import Any
 
 TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
+TIERS = ("small", "standard", "complex", "high_risk")
+TASK_TYPES = ("general", "code", "read_only", "documentation", "incident")
+COMPLEXITIES = ("small", "standard", "complex")
+RISKS = ("low", "medium", "high", "critical")
+MUTATION_POLICIES = ("read_only", "workspace_write", "isolated_pr_only")
+_ROUTING_FIELDS = (
+    "task_type",
+    "complexity",
+    "risk",
+    "mutation_policy",
+    "requested_tier",
+    "selected_primary_model",
+    "selected_provider_route",
+    "attempted_models",
+    "attempted_routes",
+    "actual_route",
+    "fallback_reason",
+    "mutation_started",
+    "review_required",
+    "degraded_provider_route",
+)
 _PROJECTS = {
     "velvet": ("Stellmaria/Velvet", "@velvet_private_coder_bot"),
     "max": ("Stellmaria/romatic_club_bot_max", "@romatic_max_coder_bot"),
@@ -26,7 +47,8 @@ _SECRET_TEXT_PATTERNS = (
     re.compile(r"(?i)(authorization\s*:\s*bearer\s+)[^\s,;]+"),
     re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{8,}"),
     re.compile(
-        r"(?i)([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)[^\s,;]+"
+        r"(?i)([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*"
+        r"\s*[=:]\s*)[^\s,;]+"
     ),
     re.compile(r"\b\d{8,12}:[A-Za-z0-9_-]{20,}\b"),
 )
@@ -120,7 +142,9 @@ class Ledger:
                     break
             else:
                 records.append(record)
-            records.sort(key=lambda item: str(item.get("created_at", "")), reverse=True)
+            records.sort(
+                key=lambda item: str(item.get("created_at", "")), reverse=True
+            )
             self._write_unlocked(records)
 
     def find(self, reference: str) -> dict[str, Any] | None:
@@ -175,7 +199,9 @@ class RouterClient:
             f"{self.base_url}{path}", data=data, headers=headers, method=method
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            with urllib.request.urlopen(
+                request, timeout=self.timeout_seconds
+            ) as response:
                 raw = response.read().decode("utf-8", errors="replace")
         except urllib.error.HTTPError as error:
             details = error.read().decode("utf-8", errors="replace")[:2000]
@@ -198,12 +224,31 @@ class RouterClient:
         return self.request("GET", f"/v1/coders/{project}/capabilities")
 
     def submit(
-        self, project: str, *, task_id: str, task: str, source: str
+        self,
+        project: str,
+        *,
+        task_id: str,
+        task: str,
+        source: str,
+        task_type: str,
+        complexity: str,
+        risk: str,
+        mutation_policy: str,
+        requested_tier: str,
     ) -> dict[str, Any]:
         return self.request(
             "POST",
             f"/v1/coders/{project}/runs",
-            {"task_id": task_id, "task": task, "source": source},
+            {
+                "task_id": task_id,
+                "task": task,
+                "source": source,
+                "task_type": task_type,
+                "complexity": complexity,
+                "risk": risk,
+                "mutation_policy": mutation_policy,
+                "requested_tier": requested_tier,
+            },
         )
 
     def status(self, project: str, run_id: str) -> dict[str, Any]:
@@ -217,7 +262,9 @@ class RouterClient:
 
 
 def _update_from_status(
-    ledger: Ledger, record: dict[str, Any], payload: dict[str, Any]
+    ledger: Ledger,
+    record: dict[str, Any],
+    payload: dict[str, Any],
 ) -> dict[str, Any]:
     status = str(payload.get("status", "unknown"))
     updated = {
@@ -226,6 +273,9 @@ def _update_from_status(
         "updated_at": _utc_now(),
         "last_event": payload.get("last_event"),
     }
+    for field in _ROUTING_FIELDS:
+        if field in payload:
+            updated[field] = payload.get(field)
     if status in TERMINAL_STATUSES:
         updated["finished_at"] = _utc_now()
         updated["output"] = payload.get("output") or payload.get("error")
@@ -248,7 +298,7 @@ def _print(payload: Any) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Управление изолированными Hermes coder-задачами."
+        description="Tier-aware управление изолированными Hermes coder-задачами."
     )
     parser.add_argument(
         "--ledger",
@@ -269,6 +319,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--source",
         choices=("owner-request", "incident", "maintenance"),
         default="owner-request",
+    )
+    submit.add_argument("--task-type", choices=TASK_TYPES, required=True)
+    submit.add_argument("--complexity", choices=COMPLEXITIES, required=True)
+    submit.add_argument("--risk", choices=RISKS, required=True)
+    submit.add_argument(
+        "--mutation-policy", choices=MUTATION_POLICIES, required=True
+    )
+    submit.add_argument(
+        "--tier", dest="requested_tier", choices=TIERS, required=True
     )
 
     status = commands.add_parser("status")
@@ -313,11 +372,19 @@ def main(argv: list[str] | None = None) -> int:
             if len(clean_task) > 24_000:
                 raise CoderApiError("Текст задачи превышает 24000 символов.")
             task_id = uuid.uuid4().hex
+            routing = {
+                "task_type": args.task_type,
+                "complexity": args.complexity,
+                "risk": args.risk,
+                "mutation_policy": args.mutation_policy,
+                "requested_tier": args.requested_tier,
+            }
             response = client.submit(
                 args.project,
                 task_id=task_id,
                 task=clean_task,
                 source=_redact_text(args.source)[:128],
+                **routing,
             )
             run_id = response.get("run_id")
             if not isinstance(run_id, str) or not run_id:
@@ -332,6 +399,14 @@ def main(argv: list[str] | None = None) -> int:
                 "run_id": run_id,
                 "source": _redact_text(args.source)[:128],
                 "task": clean_task,
+                **routing,
+                "selected_primary_model": response.get("selected_primary_model"),
+                "selected_provider_route": response.get("selected_provider_route"),
+                "attempted_models": response.get("attempted_models") or [],
+                "attempted_routes": response.get("attempted_routes") or [],
+                "actual_route": response.get("actual_route"),
+                "fallback_reason": response.get("fallback_reason"),
+                "mutation_started": bool(response.get("mutation_started")),
                 "status": str(response.get("status", "started")),
                 "created_at": now,
                 "updated_at": now,
@@ -378,10 +453,10 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _update_from_status(
                     ledger, record, client.status(project, run_id)
                 )
-                status = str(payload.get("status", "unknown"))
-                if status in TERMINAL_STATUSES:
+                status_value = str(payload.get("status", "unknown"))
+                if status_value in TERMINAL_STATUSES:
                     _print(payload)
-                    return 0 if status == "completed" else 2
+                    return 0 if status_value == "completed" else 2
                 if time.monotonic() >= deadline:
                     raise CoderApiError(
                         f"Ожидание run {run_id} превысило {args.wait_timeout} секунд."

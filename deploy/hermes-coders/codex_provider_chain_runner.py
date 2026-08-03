@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -12,14 +13,17 @@ from pathlib import Path
 from typing import Any
 
 from codex_first_runner import (
-    CodexFirstManager,
     Handler,
     ThreadingHTTPServer,
     env_bool,
     provider_fallback_reason,
 )
 from codex_first_safe_runner import SafeCodexFirstManager, primary_execution_started
-from codex_routed_runner import RoutedCodexManager
+from codex_routed_runner import (
+    RoutedCodexManager,
+    primary_model_order,
+    provider_route_for,
+)
 from codex_runner import redact_text, utc_now
 
 
@@ -47,13 +51,17 @@ _DEFAULT_PROVIDER_MODELS = (
     "gpt-5.6-luna",
 )
 _KEY_SCOPED_FAILURES = frozenset({"subscription_limit", "subscription_auth"})
+_MODEL_ACCESS_FAILURE = re.compile(
+    r"(?i)(model.{0,60}(?:not found|disabled|not entitled|permission denied|"
+    r"access denied|does not exist)|unknown model|unsupported model)"
+)
 
 
 def parse_provider_models(
     plural: str | None,
     singular: str | None,
 ) -> tuple[str, ...]:
-    """Parse the Byesu chain independently from the Codex model allowlist."""
+    """Parse the configured provider catalog, never a global retry chain."""
 
     raw = (plural or "").strip()
     if raw:
@@ -73,12 +81,17 @@ def parse_provider_models(
     return tuple(models)
 
 
+def provider_failure_reason(output: str) -> str | None:
+    if _MODEL_ACCESS_FAILURE.search(output):
+        return "model_access_denied"
+    return provider_fallback_reason(output)
+
+
 class ProviderChainManager(SafeCodexFirstManager):
-    """Codex subscription first, then a fail-closed multi-model Byesu chain."""
+    """Tier-aware Codex first, then a fail-closed Byesu route."""
 
     def __init__(self) -> None:
-        # Do not call CodexFirstManager.__init__: its provider model is restricted
-        # by the Codex Luna/Terra/Sol allowlist and it prepares only one home.
+        # The single-provider parent cannot represent a tier route catalog.
         RoutedCodexManager.__init__(self)
         self._execution_lock = threading.RLock()
         self.primary_route = "codex_subscription"
@@ -147,10 +160,18 @@ class ProviderChainManager(SafeCodexFirstManager):
                 "provider_fallback": {
                     "enabled": self.provider_enabled,
                     "route": self.provider_route,
-                    "model": self.provider_model,
-                    "models": list(self.provider_models),
+                    "catalog": list(self.provider_models),
+                    "routes_by_tier": {
+                        "small_general": list(provider_route_for("small", "general")),
+                        "small_code": list(provider_route_for("small", "code")),
+                        "standard": list(provider_route_for("standard", "code")),
+                        "complex": list(provider_route_for("complex", "code")),
+                        "high_risk": list(provider_route_for("high_risk", "code")),
+                    },
                     "credential_groups": groups,
                     "after_mutation": False,
+                    "after_execution_event": False,
+                    "model_access_failure": "fail_closed",
                     "cooldown_seconds": self.cooldown_seconds,
                 },
             },
@@ -271,7 +292,9 @@ tool_suggest = false
             "cancelled": bool(self.store.read(run_id).get("stop_requested")),
             "execution_started": False,
         }
-        if int(result["returncode"]) != 0 and primary_execution_started(result["stdout"]):
+        if int(result["returncode"]) != 0 and primary_execution_started(
+            str(result["stdout"])
+        ):
             self._provider_output_started = True
             self.store.update(
                 run_id,
@@ -292,6 +315,39 @@ tool_suggest = false
             )
         return result
 
+    def _finish_failed(
+        self,
+        run_id: str,
+        *,
+        models: list[str],
+        routes: list[str],
+        errors: list[str],
+        reason: str | None,
+        baseline: str,
+        event_type: str,
+        actual_route: str | None,
+    ) -> None:
+        mutated = self._fingerprint() != baseline
+        self.store.update(
+            run_id,
+            status="failed",
+            finished_at=utc_now(),
+            attempted_models=models,
+            attempted_routes=routes,
+            actual_route=actual_route,
+            fallback_reason=reason,
+            mutation_started=mutated,
+            error="\n".join(errors)[-12_000:],
+            last_event={
+                "type": event_type,
+                "reason": reason,
+                "mutation_started": mutated,
+                "execution_started": (
+                    self._primary_output_started or self._provider_output_started
+                ),
+            },
+        )
+
     def _execute(
         self,
         run_id: str,
@@ -303,34 +359,173 @@ tool_suggest = false
             self._run_baseline = None
             self._primary_output_started = False
             self._provider_output_started = False
-            enabled = self.provider_enabled
-            self.provider_enabled = False
-            try:
-                CodexFirstManager._execute(
-                    self, run_id, prompt, instructions, selected_model
-                )
-            finally:
-                self.provider_enabled = enabled
-
             record = self.store.read(run_id)
-            if record.get("status") in {"completed", "cancelled"}:
-                return
-            reason = record.get("fallback_reason")
-            baseline = self._run_baseline
-            mutated = bool(record.get("mutation_started"))
-            if baseline is not None:
-                mutated = mutated or self._fingerprint() != baseline
-            if not enabled or not reason or mutated or self._primary_output_started:
+            if record.get("stop_requested"):
+                self.store.update(
+                    run_id,
+                    status="cancelled",
+                    finished_at=utc_now(),
+                    requested_route=self.primary_route,
+                    attempted_routes=[],
+                )
                 return
 
+            requested_tier = str(record.get("requested_tier") or "standard")
+            task_type = str(record.get("task_type") or "code")
+            baseline = self._fingerprint()
             combined = prompt if not instructions else f"{instructions}\n\n{prompt}"
-            models = list(record.get("attempted_models") or [])
-            routes = list(record.get("attempted_routes") or [])
-            errors = [str(record.get("error") or "").strip()]
-            errors = [item for item in errors if item]
-            failed_groups: set[str] = set()
+            models: list[str] = []
+            routes: list[str] = []
+            errors: list[str] = []
+            reason: str | None = None
+            self.store.update(
+                run_id,
+                status="running",
+                started_at=utc_now(),
+                requested_route=self.primary_route,
+                actual_route=None,
+                attempted_routes=[],
+                fallback_reason=None,
+                mutation_started=False,
+            )
 
-            for model in self.provider_models:
+            if self._cooling_down():
+                reason = "subscription_cooldown"
+                errors.append("Codex subscription route is in cooldown")
+            else:
+                primary_models = tuple(
+                    model
+                    for model in primary_model_order(selected_model, requested_tier)
+                    if model in self.allowed_models
+                )
+                for model in primary_models:
+                    models.append(model)
+                    routes.append(f"{self.primary_route}:{model}")
+                    self.store.update(
+                        run_id,
+                        model=model,
+                        attempted_models=models,
+                        attempted_routes=routes,
+                        actual_route=self.primary_route,
+                        last_event={
+                            "type": "model_started",
+                            "model": model,
+                            "requested_tier": requested_tier,
+                        },
+                    )
+                    result = self._run_once(run_id, model, combined)
+                    if result["cancelled"]:
+                        self.store.update(
+                            run_id,
+                            status="cancelled",
+                            finished_at=utc_now(),
+                            attempted_models=models,
+                            attempted_routes=routes,
+                            actual_route=self.primary_route,
+                        )
+                        return
+                    if int(result["returncode"]) == 0:
+                        self._success(
+                            run_id,
+                            model,
+                            models,
+                            routes,
+                            self.primary_route,
+                            None,
+                            str(result["stdout"]),
+                        )
+                        return
+
+                    raw = f"{result['stdout']}\n{result['stderr']}"
+                    details = redact_text(
+                        str(result["stderr"] or result["stdout"]).strip()[-4000:]
+                    )
+                    errors.append(f"{self.primary_route}/{model}: {details}")
+                    candidate = provider_fallback_reason(raw)
+                    mutated = self._fingerprint() != baseline
+                    execution_started = self._primary_output_started
+                    self.store.update(
+                        run_id,
+                        mutation_started=mutated,
+                        fallback_reason=candidate,
+                        last_event={
+                            "type": "primary_model_failed",
+                            "model": model,
+                            "reason": candidate,
+                            "mutation_started": mutated,
+                            "execution_started": execution_started,
+                        },
+                    )
+                    if mutated or execution_started:
+                        reason = candidate
+                        break
+                    if candidate in _KEY_SCOPED_FAILURES:
+                        reason = candidate
+                        self._open_cooldown()
+                        break
+                    if candidate == "codex_capacity":
+                        reason = candidate
+                        continue
+                    reason = candidate
+                    break
+
+            mutated = self._fingerprint() != baseline
+            if (
+                not self.provider_enabled
+                or not reason
+                or mutated
+                or self._primary_output_started
+            ):
+                self._finish_failed(
+                    run_id,
+                    models=models,
+                    routes=routes,
+                    errors=errors,
+                    reason=reason,
+                    baseline=baseline,
+                    event_type=(
+                        "provider_fallback_blocked"
+                        if reason and (mutated or self._primary_output_started)
+                        else "failed"
+                    ),
+                    actual_route=(self.primary_route if routes else None),
+                )
+                return
+
+            requested_route = provider_route_for(requested_tier, task_type)
+            if not requested_route or requested_route[0] not in self.provider_models:
+                errors.append(
+                    "Required provider route is unavailable; fail closed before model downgrade"
+                )
+                self._finish_failed(
+                    run_id,
+                    models=models,
+                    routes=routes,
+                    errors=errors,
+                    reason="provider_route_unavailable",
+                    baseline=baseline,
+                    event_type="provider_route_unavailable",
+                    actual_route=self.primary_route,
+                )
+                return
+            route_models = tuple(
+                model for model in requested_route if model in self.provider_models
+            )
+            if requested_tier in {"complex", "high_risk"}:
+                combined = (
+                    "DEGRADED COMPLEX ROUTE: work only in the isolated workspace; "
+                    "prepare code, tests and one PR; never merge, deploy, restart, "
+                    "rollback, read production .env, use Docker socket or systemd. "
+                    "Independent review is mandatory.\n\n" + combined
+                )
+                self.store.update(
+                    run_id,
+                    review_required=True,
+                    degraded_provider_route=True,
+                )
+
+            failed_groups: set[str] = set()
+            for model in route_models:
                 spec = _PROVIDER_CATALOG[model]
                 if spec.credential_group in failed_groups:
                     continue
@@ -348,6 +543,7 @@ tool_suggest = false
                         "reason": reason,
                         "model": model,
                         "credential_group": spec.credential_group,
+                        "requested_tier": requested_tier,
                     },
                 )
                 result = self._provider_run(run_id, combined, model)
@@ -378,8 +574,8 @@ tool_suggest = false
                     str(result["stderr"] or result["stdout"]).strip()[-4000:]
                 )
                 errors.append(f"{self.provider_route}/{model}: {details}")
-                retry_reason = provider_fallback_reason(raw)
-                mutated = baseline is not None and self._fingerprint() != baseline
+                retry_reason = provider_failure_reason(raw)
+                mutated = self._fingerprint() != baseline
                 execution_started = bool(result.get("execution_started"))
                 self.store.update(
                     run_id,
@@ -399,23 +595,19 @@ tool_suggest = false
                     continue
                 if retry_reason == "codex_capacity":
                     continue
+                # Permanent model access/entitlement errors fail closed. This keeps
+                # an unverified Mini from silently becoming a Terra run.
                 break
 
-            mutated = baseline is not None and self._fingerprint() != baseline
-            self.store.update(
+            self._finish_failed(
                 run_id,
-                status="failed",
-                finished_at=utc_now(),
-                attempted_models=models,
-                attempted_routes=routes,
+                models=models,
+                routes=routes,
+                errors=errors,
+                reason=reason,
+                baseline=baseline,
+                event_type="provider_fallback_failed",
                 actual_route=self.provider_route,
-                fallback_reason=reason,
-                mutation_started=mutated,
-                error="\n".join(errors)[-12000:],
-                last_event={
-                    "type": "provider_fallback_failed",
-                    "mutation_started": mutated,
-                },
             )
 
 
@@ -428,8 +620,8 @@ def main() -> int:
     server = ThreadingHTTPServer((host, port), Handler)
     server.manager = manager  # type: ignore[attr-defined]
     print(
-        f"Velvet provider-chain runner listening on {host}:{port}; "
-        f"default={manager.default_model}; provider_models={manager.provider_models}",
+        f"Velvet tier-aware provider runner listening on {host}:{port}; "
+        f"default={manager.default_model}; provider_catalog={manager.provider_models}",
         flush=True,
     )
     try:

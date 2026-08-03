@@ -11,7 +11,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -36,17 +35,27 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertEqual(2, source.count("GIT_CONFIG_GLOBAL: /opt/data/.gitconfig"))
-        self.assertEqual(2, source.count("- /app/codex_provider_chain_runner.py"))
+        self.assertEqual(2, source.count("- /app/codex_tier_runner.py"))
         self.assertEqual(
             2,
             source.count(
                 "./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro"
             ),
         )
+        self.assertEqual(
+            2,
+            source.count(
+                "./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro"
+            ),
+        )
+        self.assertEqual(
+            2,
+            source.count("./codex_tier_runner.py:/app/codex_tier_runner.py:ro"),
+        )
         self.assertEqual(2, source.count("command: []"))
         self.assertNotIn("/init", source)
 
-    def test_systemd_uses_override_reconcile_and_smoke(self) -> None:
+    def test_systemd_uses_override_reconcile_and_tier_smoke(self) -> None:
         source = (ROOT / "deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
@@ -62,8 +71,9 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
         self.assertLess(source.index(reconcile_line), source.index("preflight.py"))
         self.assertIn("ExecStartPost=/usr/bin/python3", source)
         self.assertIn("runtime_smoke.py", source)
-        self.assertIn("provider_chain_smoke.py", source)
+        self.assertIn("tier_provider_smoke.py", source)
         self.assertIn("runtime_source_guard.py", source)
+        self.assertEqual(2, source.count("codex_tier_runner.py"))
 
     def test_reconcile_source_is_fixed_scope_and_parses(self) -> None:
         path = ROOT / "deploy/hermes-coders/reconcile_workspaces.py"
