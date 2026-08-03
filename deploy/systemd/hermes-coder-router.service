@@ -3,6 +3,7 @@ Description=Isolated router between the main Hermes operator and coder agents
 Requires=docker.service hermes-operator-control.service hermes-coders.service
 After=docker.service hermes-operator-control.service hermes-coders.service network-online.target
 Wants=network-online.target
+PartOf=hermes-coders.service
 
 [Service]
 Type=oneshot
@@ -17,7 +18,9 @@ Environment=COMPOSE_BAKE=false
 ExecStartPre=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/prepare_router_env.py /srv/hermes-coders/secrets/velvet.env /srv/hermes-coders/secrets/max.env /srv/hermes-operator-control/coders.env
 ExecStartPre=/usr/bin/docker compose -f compose.yaml config --quiet
 ExecStart=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
+ExecStartPost=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/router_smoke.py
 ExecReload=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
+ExecReload=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/router_smoke.py
 ExecStop=/usr/bin/docker compose -f compose.yaml stop hermes-coder-router
 TimeoutStartSec=900
 TimeoutStopSec=60
