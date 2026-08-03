@@ -1,35 +1,66 @@
-# Tier-aware маршрутизация моделей Каэля и coder-агентов
+# Сессия: tier-aware маршрутизация моделей Каэля и coder-агентов
 
-Дата: 2026-08-03
-Issue: #576
-Base production SHA: `ef5fc03c03b110652ce2ea79b12a37b2d0b9b3db`
+- Дата: 2026-08-03
+- ID: 2026-08-03-tier-aware-hermes-model-routing
+- Линия/фаза: Hermes coder orchestration / model routing
+- Статус: частично
+- Ветка: fix/tier-aware-hermes-model-routing
+- Базовый commit: ef5fc03c03b110652ce2ea79b12a37b2d0b9b3db
 
-## Причина
+## Перед началом
 
-Production rollout PR #574/#575 технически восстановил Codex-first runtime, Byesu credentials, router lifecycle и smoke. Но provider runner использовал одну общую последовательность:
+### Цель
 
-```text
-gpt-5.4-mini -> gpt-5.6-terra -> gpt-5.6-luna
-```
+Закрепить для Каэля и изолированных coder-агентов явную маршрутизацию по типу задачи, сложности и риску. Сохранить Codex subscription первым маршрутом, использовать Byesu только как fail-closed fallback и запретить бессмысленное расходование дорогих моделей или downgrade ниже выбранного tier.
 
-для любой задачи. Это нарушало целевую политику стоимости и качества:
+### Исходный контекст
 
-- `standard` и `complex` начинались с Mini;
+Production rollout PR #574/#575 восстановил Codex-first runtime, Byesu credentials, router lifecycle и server smoke. При этом provider runner применял одну общую последовательность `gpt-5.4-mini -> gpt-5.6-terra -> gpt-5.6-luna` к любой задаче.
+
+Это приводило к четырём проблемам:
+
+- standard и complex задачи начинались с Mini;
 - после Terra был возможен downgrade на Luna;
 - выбранная сложность не сохранялась явно в run ledger;
-- Каэль и router не передавали `task_type`, `requested_tier`, `risk`, `mutation_policy`;
-- capabilities не показывали routes по tier.
+- Каэль и router не передавали `task_type`, `requested_tier`, `risk`, `mutation_policy`.
 
-Фактический read-only `/v1/models` probe production Byesu-ключами показал одинаково для Velvet и Max:
+Read-only `/v1/models` probe production Byesu-ключами подтвердил одинаково для Velvet и Max: coder credential видит Terra, GPT Pro credential видит Luna, Sol не видна. Доступность Mini требуется подтвердить отдельным live probe перед rollout.
 
-- coder key видит `gpt-5.6-terra`;
-- GPT Pro key видит `gpt-5.6-luna`;
-- `gpt-5.6-sol` не видна;
-- Mini остаётся первым дешёвым coder route и при model-unavailable/capacity может перейти на Terra.
+### Планируемый объём
 
-## Каноническая политика
+- ввести tiers `small`, `standard`, `complex`, `high_risk`;
+- разделить `task_type`, `requested_tier`, `risk` и `mutation_policy`;
+- передавать выбранную политику через `coderctl -> coder-router -> Runs API`;
+- построить primary/provider routes по tier;
+- запретить under-tier запросы и downgrade `Terra -> Luna`;
+- сохранить selected/attempted/actual routes и degradation в ledger;
+- обновить capabilities, smoke, tests, SOUL, AGENTS, skills и README;
+- не менять production до полного CI, отдельного разрешения владельца и controlled rollout.
 
-### Primary Codex subscription
+### Критерии готовности
+
+- small, standard, complex и high_risk получают предсказуемые primary routes;
+- provider fallback зависит от tier и task type;
+- standard provider route использует только Terra;
+- complex/high_risk fallback на Terra помечается `degraded_execution=true` и `review_required=true`;
+- mutation или tool execution блокируют автоматический retry;
+- ни одна модель не получает live production privileges;
+- одинаковые contracts и tests действуют для Velvet и Max;
+- полный required CI проходит на актуальном main.
+
+### Риски и ограничения
+
+- Sol недоступна production Byesu token groups, поэтому complex/high_risk provider fallback не равен primary Sol по мощности;
+- Mini ещё не подтверждена отдельным production probe;
+- эвристика по тексту остаётся compatibility path, канонический orchestration обязан передавать structured metadata явно;
+- merge, deployment, restart, rollback и production update не входят в этот PR и требуют отдельного разрешения;
+- при любом failed smoke controlled rollout обязан выполнить rollback.
+
+## После завершения
+
+### Фактически сделано
+
+Каноническая primary policy:
 
 ```text
 small      -> Luna -> Terra только при capacity
@@ -38,7 +69,7 @@ complex    -> Sol -> Terra как degraded route
 high_risk  -> Sol -> Terra как degraded route
 ```
 
-### Byesu
+Каноническая Byesu policy:
 
 ```text
 small general/read-only -> Luna -> Terra
@@ -47,100 +78,56 @@ standard                 -> Terra
 complex/high_risk        -> Terra, degraded=true, review_required=true
 ```
 
-Provider route не имеет права понижать `Terra -> Luna` после выбора standard/complex tier.
+В `codex_routed_runner.py` добавлена структурированная `TaskClassification`. Explicit metadata имеет приоритет над эвристиками; under-tier комбинации task type, risk, tier и model отклоняются. `read_only` отделён от сложности, но task type `read_only` не может получить workspace mutation.
 
-### Граница прав
+В `codex_provider_chain_runner.py` provider catalog отделён от route order. Primary и provider routes строятся по tier/task type; ledger сохраняет task type, tier, risk, mutation policy, selected primary/provider routes, attempted routes, actual route, degradation и review requirement. Mutation/tool execution по-прежнему блокируют automatic retry.
 
-Любая модель может:
+В `coder_router.py` добавлены фиксированные routing fields, schema-bound handoff и forwarding metadata в Runs API. В `coderctl.py` добавлены `--task-type`, `--tier`, `--risk`, `--mutation-policy`; conservative defaults равны `code/standard/medium/workspace_pr`.
 
-- читать и менять файлы только в isolated `/workspace`;
-- создать одну ветку;
-- запустить тесты;
-- сделать commit/push;
-- открыть один PR.
+В `codex_delegate.py` direct Telegram coder path принимает те же routing fields и возвращает безопасный публичный отчёт без secrets.
 
-Никакая модель, включая Sol, не может:
+SOUL, AGENTS, brain-vault skills и orchestration README закрепляют модельную политику и границу прав: Mini, Luna, Terra и Sol могут менять код только в isolated workspace, запускать тесты, создавать branch/commit/push/PR. Ни одна модель не может самостоятельно делать merge, deploy, restart, rollback, менять production checkout, использовать Docker socket/systemd или читать production secrets.
 
-- merge;
-- менять production checkout;
-- делать deploy/restart/rollback;
-- обращаться к Docker socket или systemd;
-- читать production `.env` и secrets.
+### Миграции и совместимость
 
-Terra может менять production-код в ветке и PR. Запрет относится к live production, а не к исходному коду.
+Изменения базы данных отсутствуют. Runs API расширен optional routing fields; старые клиенты получают conservative standard route. Existing project isolation, token separation, read-only DB proxies и fail-closed mutation guard сохраняются.
 
-## Реализация
+Production runtime этим PR не изменяется. После merge потребуется controlled update coder/router runtime и entity reconcile Каэля.
 
-- `codex_routed_runner.py`
-  - введена структурированная `TaskClassification`;
-  - explicit metadata имеет приоритет над эвристиками;
-  - поддержаны tiers `small`, `standard`, `complex`, `high_risk`;
-  - under-tier комбинации task type/risk/model отклоняются;
-  - `read_only` отделён от сложности: high-risk review может быть read-only,
-    но task type `read_only` не может получить workspace mutation;
-  - capabilities публикуют tier mapping и запрет live mutation.
-
-- `codex_provider_chain_runner.py`
-  - provider catalog отделён от route order;
-  - primary и provider routes строятся по tier/task type;
-  - run ledger сохраняет task type, tier, risk, mutation policy, selected primary/provider routes, actual route, degradation и review requirement;
-  - standard provider route использует только Terra;
-  - complex/high-risk provider route использует Terra как degraded isolated-workspace path;
-  - mutation/tool execution по-прежнему блокируют automatic retry;
-  - read-only run, изменивший workspace, отклоняется;
-  - capabilities безопасно публикуют `routes_by_tier` без env key и secret values.
-
-- `coder_router.py`
-  - принимает только фиксированные routing fields;
-  - сохраняет metadata в schema-bound handoff;
-  - передаёт metadata в Runs API;
-  - старые клиенты получают conservative fallback, неизвестный code default идёт на standard.
-
-- `coderctl.py`
-  - добавлены `--task-type`, `--tier`, `--risk`, `--mutation-policy`;
-  - defaults: `code/standard/medium/workspace_pr`;
-  - under-tier запрос отклоняется до вызова router;
-  - metadata и фактические routes сохраняются в orchestration ledger.
-
-- `codex_delegate.py`
-  - direct Telegram coder path принимает те же optional routing fields;
-  - публичный отчёт показывает tier, selected/actual routes, degradation и
-    safety flags без secrets.
-
-- SOUL/AGENTS/README
-  - закреплены права моделей и запрет самостоятельного live rollout;
-  - закреплена обязанность Каэля выбирать tier до делегирования;
-  - coder-контракты запрещают повторную классификацию и downgrade после handoff.
-
-## Проверки
+### Проверки
 
 Локально до публикации:
 
 - Python compile изменённых runner/router/coderctl/smoke: PASS;
-- focused provider routing unit tests: PASS;
-- focused router/coderctl/ledger tests: PASS;
+- focused provider routing tests: 12 PASS;
+- focused router/coderctl tests: 16 PASS;
 - under-tier и model/tier mismatch rejection: PASS;
-- small code capacity: Mini -> Terra, без Luna;
-- standard/complex provider: Terra only;
+- small code capacity route `Mini -> Terra`, без Luna: PASS;
+- standard/complex provider route Terra only: PASS;
 - credential-group auth skip: PASS;
 - capabilities secret boundary: PASS;
 - live production mutation flags: false.
 
-GitHub CI должен дополнительно выполнить полный test, type, Docker и security workflows.
+GitHub CI на актуальном head запущен. Project notes contract первоначально выявил неправильный формат worklog; файл приведён к обязательному шаблону этой правкой.
 
-## Rollout
+### PR и commit
 
-Production не менять до:
+- Issue: #576;
+- PR: #577 `Закрепить tier-aware маршрутизацию моделей Каэля и coder-агентов`;
+- ветка: `fix/tier-aware-hermes-model-routing`;
+- актуальная база PR: `d18ac30325ce4e435510135e6eecafdc82a594e8`;
+- production SHA до merge: `ef5fc03c03b110652ce2ea79b12a37b2d0b9b3db`.
 
-1. merge approved PR на точный SHA;
-2. зелёного полного CI;
-3. backup runtime/systemd;
-4. controlled fast-forward rollout;
-5. `runtime_smoke.py`;
-6. tier-aware `provider_chain_smoke.py`;
-7. `router_smoke.py`;
-8. `coderctl.py health all`;
-9. read-only Telegram handoff с проверкой `requested_tier`, `selected_primary_route`, `selected_provider_route`, `actual_route`;
-10. отдельного controlled fallback smoke без Git/file mutation.
+### Незавершённое
 
-Rollback возвращает предыдущий SHA и согласованный backup runtime/systemd.
+- дождаться полного tests/type/Docker/security/branch-protection CI;
+- исправить обнаруженные CI failures, если они появятся;
+- подтвердить Mini отдельным read-only production `/v1/models` probe;
+- после полного зелёного CI получить отдельное разрешение владельца на merge;
+- после merge подготовить backup и controlled rollout;
+- выполнить runtime, tier-aware provider, router, coderctl и Telegram smoke;
+- обновить QA runbook фактическим rollout SHA и результатами.
+
+### Следующий шаг
+
+Повторно запустить required CI на исправленном worklog, устранить все failures и не менять production до полного зелёного набора проверок и отдельного controlled rollout.
