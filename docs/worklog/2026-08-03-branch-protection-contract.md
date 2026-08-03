@@ -3,7 +3,7 @@
 - Дата: 2026-08-03
 - ID: 2026-08-03-branch-protection-contract
 - Линия/фаза: CI / repository governance
-- Статус: готово к merge
+- Статус: частично
 - Ветка: ci/branch-protection-contract
 - Базовый commit: ef5fc03c03b110652ce2ea79b12a37b2d0b9b3db
 
@@ -33,6 +33,13 @@
 - обычные PR не блокируются отсутствующим path-filtered workflow;
 - контракт branch protection проходит после настройки правила.
 
+### Риски и ограничения
+
+- настройка classic branch protection выполняется владельцем репозитория через GitHub Settings;
+- GitHub может отображать checks с префиксом workflow, хотя required context остаётся именем job;
+- условный Docker gate ожидает job `build` до сорока минут и завершает PR ошибкой при неуспешной сборке;
+- после изменения базы PR все required checks должны пройти повторно на актуальном head.
+
 ## После завершения
 
 ### Фактически сделано
@@ -61,6 +68,12 @@ Runtime-код, база данных и пользовательские сце
 - PR: #571 `ci: закрепить контракт защиты main`;
 - ветка: `ci/branch-protection-contract`;
 - актуальная база: `ef5fc03c03b110652ce2ea79b12a37b2d0b9b3db`.
+
+### Незавершённое
+
+- дождаться полного CI на актуальном head;
+- выполнить squash merge PR #571;
+- после merge убедиться, что branch protection contract проходит на следующих pull request.
 
 ### Следующий шаг
 
