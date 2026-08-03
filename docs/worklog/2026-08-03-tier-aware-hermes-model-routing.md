@@ -5,6 +5,7 @@
 - Линия/фаза: Hermes orchestration / coder runtime
 - Статус: частично
 - Issue: #576
+- PR: #578
 - Ветка: `fix/issue-576-tier-aware-routing`
 - Базовый commit: `d18ac30325ce4e435510135e6eecafdc82a594e8`
 
@@ -84,26 +85,25 @@ Database migrations отсутствуют. Изменение затрагив�
 
 ### Проверки
 
-Локальные contract tests добавлены для routing matrix, explicit directives, credential-group skip, capacity retry, no-downgrade, mutation/execution retry block, capabilities redaction, ledger persistence и Velvet/Max parity. Полный GitHub CI должен подтвердить syntax, typing, tests, Docker build, security и project notes на PR.
+Contract tests добавлены для routing matrix, explicit directives, credential-group skip, capacity retry, no-downgrade, mutation/execution retry block, capabilities redaction, ledger persistence и Velvet/Max parity. Полный GitHub CI подтверждает syntax, typing, tests, Docker build, security и project notes на PR.
 
 Production проверки после отдельного approved rollout:
 
 - `runtime_smoke.py`;
 - `tier_provider_smoke.py`;
-- `router_smoke.py`;
+- `deploy/hermes-orchestration/router_smoke.py`;
 - `coderctl.py health all`;
 - read-only Telegram handoff с requested tier и actual route.
 
 ### PR и commit
 
 - Issue: #576;
+- PR: #578 `feat: закрепить tier-aware маршрутизацию coder-агентов`;
 - ветка: `fix/issue-576-tier-aware-routing`;
-- PR будет создан после завершения repository-side contract review;
 - production SHA появится только после squash merge.
 
 ### Незавершённое
 
-- открыть PR;
 - дождаться полного required CI;
 - исправить обнаруженные CI regression;
 - выполнить независимую проверку diff;
@@ -112,4 +112,4 @@ Production проверки после отдельного approved rollout:
 
 ### Следующий шаг
 
-Открыть draft PR, получить полный CI, устранить failures и перевести PR в ready только после проверки всех acceptance contracts.
+Дождаться полного CI на PR #578, устранить failures и выполнить squash merge только после всех required checks.
