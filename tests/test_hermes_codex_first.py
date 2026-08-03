@@ -68,8 +68,12 @@ class CodexFirstPolicyTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         install_stubs()
         cls.module = load_module(
-            "codex_first_runner_test_module",
+            "codex_first_runner",
             ROOT / "deploy/hermes-coders/codex_first_runner.py",
+        )
+        cls.safe_module = load_module(
+            "codex_first_safe_runner_test_module",
+            ROOT / "deploy/hermes-coders/codex_first_safe_runner.py",
         )
 
     def test_fallback_reason_is_infrastructure_only(self) -> None:
@@ -126,7 +130,41 @@ class CodexFirstPolicyTests(unittest.TestCase):
             source.index('if candidate in {"subscription_limit", "subscription_auth"}'),
         )
 
-    def test_safe_wrapper_blocks_retry_after_primary_events(self) -> None:
+    def test_lifecycle_jsonl_does_not_block_provider_fallback(self) -> None:
+        stdout = "\n".join(
+            (
+                json.dumps({"type": "thread.started", "thread_id": "abc"}),
+                json.dumps({"type": "turn.started"}),
+                json.dumps(
+                    {
+                        "type": "item.completed",
+                        "item": {"type": "agent_message", "text": "working"},
+                    }
+                ),
+            )
+        )
+        self.assertFalse(self.safe_module.primary_execution_started(stdout))
+
+    def test_tool_and_file_events_block_automatic_retry(self) -> None:
+        for item_type in (
+            "command_execution",
+            "file_change",
+            "mcp_tool_call",
+            "collab_tool_call",
+            "custom_execution",
+        ):
+            with self.subTest(item_type=item_type):
+                stdout = json.dumps(
+                    {
+                        "type": "item.started",
+                        "item": {"type": item_type},
+                    }
+                )
+                self.assertTrue(
+                    self.safe_module.primary_execution_started(stdout)
+                )
+
+    def test_safe_wrapper_records_fail_closed_route_state(self) -> None:
         source = (
             ROOT / "deploy/hermes-coders/codex_first_safe_runner.py"
         ).read_text(encoding="utf-8")
