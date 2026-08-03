@@ -108,6 +108,13 @@ def validate_payload(project: str, payload: dict[str, Any]) -> str:
         raise TierProviderSmokeError(f"{project}: routing missing")
     if routing.get("downgrade_allowed") is not False:
         raise TierProviderSmokeError(f"{project}: downgrade is not explicitly blocked")
+    audit = routing.get("mutation_audit")
+    if not isinstance(audit, dict):
+        raise TierProviderSmokeError(f"{project}: mutation audit missing")
+    if audit.get("successful_runs") is not True:
+        raise TierProviderSmokeError(f"{project}: successful mutations are not audited")
+    if audit.get("read_only_fail_closed") is not True:
+        raise TierProviderSmokeError(f"{project}: read-only mutation does not fail closed")
     fallback = routing.get("provider_fallback")
     if not isinstance(fallback, dict):
         raise TierProviderSmokeError(f"{project}: provider fallback missing")
@@ -178,7 +185,7 @@ def main() -> int:
         outcomes.append(mini_state)
         print(
             f"{project}: TIER_ROUTES_OK, TERRA_OK, LUNA_OK, {mini_state}, "
-            "NO_DOWNGRADE_OK, RETRY_GUARDS_OK"
+            "NO_DOWNGRADE_OK, RETRY_GUARDS_OK, MUTATION_AUDIT_OK"
         )
     if len(set(outcomes)) != 1:
         raise TierProviderSmokeError(
