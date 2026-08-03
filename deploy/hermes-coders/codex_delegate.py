@@ -7,12 +7,17 @@ import os
 import re
 import sys
 import time
-import uuid
 import urllib.error
 import urllib.request
+import uuid
 from typing import Any
 
 _TERMINAL = frozenset({"completed", "failed", "cancelled"})
+_TIERS = ("small", "standard", "complex", "high_risk")
+_TASK_TYPES = ("general", "code", "read_only", "documentation", "incident")
+_COMPLEXITIES = ("small", "standard", "complex")
+_RISKS = ("low", "medium", "high", "critical")
+_MUTATION_POLICIES = ("read_only", "workspace_write", "isolated_pr_only")
 _SECRET = re.compile(
     r"(?i)(authorization\s*:\s*bearer\s+|"
     r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)"
@@ -40,6 +45,11 @@ def build_payload(
     *,
     project: str,
     model: str | None,
+    task_type: str,
+    complexity: str,
+    risk: str,
+    mutation_policy: str,
+    requested_tier: str,
 ) -> dict[str, Any]:
     clean = task.strip()
     if not clean:
@@ -50,9 +60,15 @@ def build_payload(
         "input": clean,
         "session_id": f"telegram-{project}-{uuid.uuid4().hex}",
         "instructions": (
-            f"Ты Codex-first coder проекта {project}. Работай только в текущем "
-            "repository и верни schema-bound JSON. Не merge и не deploy."
+            f"Ты Codex-first coder проекта {project}. Сохрани requested tier, "
+            "работай только в текущем repository и верни schema-bound JSON. "
+            "Не merge, не deploy и не меняй production."
         ),
+        "task_type": task_type,
+        "complexity": complexity,
+        "risk": risk,
+        "mutation_policy": mutation_policy,
+        "requested_tier": requested_tier,
     }
     if model:
         payload["model"] = model
@@ -113,11 +129,11 @@ class RunnerClient:
             raise DelegateError("Runner вернул неожиданный тип ответа")
         return result
 
-    def run(self, task: str, *, model: str | None = None) -> dict[str, Any]:
+    def run(self, task: str, **routing: Any) -> dict[str, Any]:
         submitted = self.request(
             "POST",
             "/v1/runs",
-            build_payload(task, project=self.project, model=model),
+            build_payload(task, project=self.project, **routing),
         )
         run_id = submitted.get("run_id")
         if not isinstance(run_id, str) or not run_id:
@@ -135,12 +151,19 @@ class RunnerClient:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Delegate one Telegram coder task to Codex-first runner"
+        description="Delegate one tier-aware Telegram coder task"
     )
     parser.add_argument(
         "--model",
         choices=("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"),
     )
+    parser.add_argument("--task-type", choices=_TASK_TYPES, required=True)
+    parser.add_argument("--complexity", choices=_COMPLEXITIES, required=True)
+    parser.add_argument("--risk", choices=_RISKS, required=True)
+    parser.add_argument(
+        "--mutation-policy", choices=_MUTATION_POLICIES, required=True
+    )
+    parser.add_argument("--tier", choices=_TIERS, required=True)
     return parser
 
 
@@ -148,18 +171,36 @@ def main(argv: list[str]) -> int:
     args = _parser().parse_args(argv[1:])
     task = sys.stdin.read()
     client = RunnerClient()
-    result = client.run(task, model=args.model)
+    result = client.run(
+        task,
+        model=args.model,
+        task_type=args.task_type,
+        complexity=args.complexity,
+        risk=args.risk,
+        mutation_policy=args.mutation_policy,
+        requested_tier=args.tier,
+    )
     public = {
         key: result.get(key)
         for key in (
             "run_id",
             "status",
+            "task_type",
+            "complexity",
+            "risk",
+            "mutation_policy",
+            "requested_tier",
+            "selected_primary_model",
+            "selected_provider_route",
             "model",
             "requested_route",
             "actual_route",
+            "attempted_models",
             "attempted_routes",
             "fallback_reason",
             "mutation_started",
+            "review_required",
+            "degraded_provider_route",
             "output",
             "structured_output",
             "error",
