@@ -35,12 +35,22 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertEqual(2, source.count("GIT_CONFIG_GLOBAL: /opt/data/.gitconfig"))
-        self.assertEqual(2, source.count("- /app/codex_provider_chain_runner.py"))
+        self.assertEqual(2, source.count("- /app/codex_tier_runner.py"))
         self.assertEqual(
             2,
             source.count(
                 "./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro"
             ),
+        )
+        self.assertEqual(
+            2,
+            source.count(
+                "./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro"
+            ),
+        )
+        self.assertEqual(
+            2,
+            source.count("./codex_tier_runner.py:/app/codex_tier_runner.py:ro"),
         )
         self.assertEqual(2, source.count("command: []"))
         self.assertNotIn("/init", source)
@@ -63,6 +73,7 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
         self.assertIn("runtime_smoke.py", source)
         self.assertIn("tier_provider_smoke.py", source)
         self.assertIn("runtime_source_guard.py", source)
+        self.assertEqual(2, source.count("codex_tier_runner.py"))
 
     def test_reconcile_source_is_fixed_scope_and_parses(self) -> None:
         path = ROOT / "deploy/hermes-coders/reconcile_workspaces.py"
