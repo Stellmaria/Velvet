@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -10,9 +11,48 @@ from codex_first_runner import (
     ThreadingHTTPServer,
 )
 
+_EXECUTION_ITEM_TYPES = frozenset(
+    {
+        "command_execution",
+        "file_change",
+        "mcp_tool_call",
+        "collab_tool_call",
+        "dynamic_tool_call",
+    }
+)
+
+
+def primary_execution_started(stdout: str) -> bool:
+    """Return true only after Codex emitted an actual tool/file execution item.
+
+    Lifecycle events such as thread.started and turn.started are intentionally
+    ignored so a quota/auth failure before tool execution can still use the
+    bounded provider fallback.
+    """
+
+    for raw in stdout.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        item = event.get("item")
+        if not isinstance(item, dict):
+            continue
+        item_type = str(item.get("type") or "").strip().casefold()
+        if item_type in _EXECUTION_ITEM_TYPES:
+            return True
+        if item_type.endswith("_tool_call") or item_type.endswith("_execution"):
+            return True
+    return False
+
 
 class SafeCodexFirstManager(CodexFirstManager):
-    """Fail closed when a primary Codex process emitted execution events."""
+    """Fail closed after primary Codex tool execution, not lifecycle output."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -38,13 +78,14 @@ class SafeCodexFirstManager(CodexFirstManager):
 
     def _run_once(self, run_id: str, model: str, prompt: str) -> dict[str, Any]:
         result = super()._run_once(run_id, model, prompt)
-        if int(result.get("returncode", 1)) != 0 and str(result.get("stdout", "")).strip():
+        stdout = str(result.get("stdout", ""))
+        if int(result.get("returncode", 1)) != 0 and primary_execution_started(stdout):
             self._primary_output_started = True
             self.store.update(
                 run_id,
                 primary_output_started=True,
                 last_event={
-                    "type": "primary_output_started",
+                    "type": "primary_execution_started",
                     "model": model,
                     "automatic_retry": False,
                 },
@@ -53,8 +94,8 @@ class SafeCodexFirstManager(CodexFirstManager):
                 **result,
                 "stdout": "",
                 "stderr": (
-                    "Primary Codex emitted execution events; automatic model and "
-                    "provider fallback are blocked."
+                    "Primary Codex emitted tool execution events; automatic model "
+                    "and provider fallback are blocked."
                 ),
             }
         return result
