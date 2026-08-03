@@ -166,7 +166,7 @@ class CodexModelRoutingTests(unittest.TestCase):
         self.assertEqual(
             "gpt-5.6-luna",
             routing.select_model(
-                "Исправь опечатку в README",
+                "Опечатка в README",
                 default="gpt-5.6-terra",
                 allowed=ALLOWED,
             ),
