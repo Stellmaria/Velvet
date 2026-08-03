@@ -277,7 +277,7 @@ def main() -> int:
     print("- Runs API keys: distinct")
     print("- PostgreSQL identities: read-only")
     print("- Codex routing: luna -> terra -> sol")
-    print("- Codex CLI minimum: 0.144.0; image pin: 0.144.4")
+    print("- Codex CLI minimum: 0.144.0; image pin: 0.144.1")
     print("- Codex sandbox: workspace-write + GitHub network")
     print("- Velvet Brain manifests and context hashes: verified")
     print("- terminal passthrough: GH_TOKEN")
