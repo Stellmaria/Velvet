@@ -1,10 +1,33 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
+import os
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+source_guard = load_module(
+    "hermes_runtime_source_guard_test_module",
+    ROOT / "deploy/hermes-coders/runtime_source_guard.py",
+)
+provider_smoke = load_module(
+    "hermes_provider_chain_smoke_test_module",
+    ROOT / "deploy/hermes-coders/provider_chain_smoke.py",
+)
 
 
 class HermesRouterRecoveryContractTests(unittest.TestCase):
@@ -53,6 +76,63 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
         self.assertEqual(2, source.count(expected))
         self.assertEqual(4, source.count("/app/codex_provider_chain_runner.py"))
         self.assertNotIn("CODEX_PROVIDER_FALLBACK_MODEL:", source)
+
+    def test_systemd_normalizes_and_verifies_bind_mount_permissions(self) -> None:
+        unit = (ROOT / "deploy/systemd/hermes-coders.service").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual(2, unit.count("/usr/bin/chmod 0644"))
+        self.assertEqual(2, unit.count("runtime_source_guard.py"))
+        self.assertEqual(2, unit.count("provider_chain_smoke.py"))
+        for source in (
+            "codex_delegate.py",
+            "codex_first_runner.py",
+            "codex_first_safe_runner.py",
+            "codex_provider_chain_runner.py",
+            "compose.runtime.yaml",
+        ):
+            self.assertEqual(2, unit.count(source), source)
+
+    def test_runtime_source_guard_rejects_private_bind_mount(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in source_guard.RUNTIME_SOURCES:
+                path = root / name
+                path.write_text("test\n", encoding="utf-8")
+                os.chmod(path, 0o644)
+            source_guard.validate_runtime_sources(root)
+            os.chmod(root / source_guard.RUNTIME_SOURCES[0], 0o600)
+            with self.assertRaises(source_guard.RuntimeSourceError):
+                source_guard.validate_runtime_sources(root)
+
+    def test_provider_chain_smoke_validates_safe_public_contract(self) -> None:
+        payload = {
+            "routing": {
+                "primary_route": "codex_subscription",
+                "provider_fallback": {
+                    "enabled": True,
+                    "route": "byesu_provider",
+                    "model": "gpt-5.4-mini",
+                    "models": [
+                        "gpt-5.4-mini",
+                        "gpt-5.6-terra",
+                        "gpt-5.6-luna",
+                    ],
+                    "credential_groups": [
+                        {
+                            "name": "byesu-coder",
+                            "models": ["gpt-5.4-mini", "gpt-5.6-terra"],
+                        },
+                        {"name": "byesu-gpt-pro", "models": ["gpt-5.6-luna"]},
+                    ],
+                    "after_mutation": False,
+                },
+            }
+        }
+        provider_smoke.validate_capabilities("velvet", payload)
+        payload["routing"]["provider_fallback"]["after_mutation"] = True
+        with self.assertRaises(provider_smoke.ProviderChainSmokeError):
+            provider_smoke.validate_capabilities("velvet", payload)
 
 
 if __name__ == "__main__":
