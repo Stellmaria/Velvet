@@ -2,19 +2,39 @@ services:
   hermes-chat-velvet:
     environment:
       GIT_CONFIG_GLOBAL: /opt/data/.gitconfig
+      HERMES_CODEX_DELEGATE_URL: http://hermes-coder-velvet:8642
+      HERMES_CODEX_DELEGATE_PROJECT: velvet
+    volumes:
+      - ./codex_delegate.py:/app/codex_delegate.py:ro
 
   hermes-chat-max:
     environment:
       GIT_CONFIG_GLOBAL: /opt/data/.gitconfig
+      HERMES_CODEX_DELEGATE_URL: http://hermes-coder-max:8642
+      HERMES_CODEX_DELEGATE_PROJECT: max
+    volumes:
+      - ./codex_delegate.py:/app/codex_delegate.py:ro
 
   hermes-coder-velvet:
     entrypoint:
       - python
-      - /app/codex_routed_runner.py
+      - /app/codex_first_runner.py
     command: []
+    environment:
+      CODEX_PROVIDER_FALLBACK_ENABLED: "true"
+      CODEX_PROVIDER_FALLBACK_MODEL: gpt-5.6-terra
+      CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
+    volumes:
+      - ./codex_first_runner.py:/app/codex_first_runner.py:ro
 
   hermes-coder-max:
     entrypoint:
       - python
-      - /app/codex_routed_runner.py
+      - /app/codex_first_runner.py
     command: []
+    environment:
+      CODEX_PROVIDER_FALLBACK_ENABLED: "true"
+      CODEX_PROVIDER_FALLBACK_MODEL: gpt-5.6-terra
+      CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
+    volumes:
+      - ./codex_first_runner.py:/app/codex_first_runner.py:ro
