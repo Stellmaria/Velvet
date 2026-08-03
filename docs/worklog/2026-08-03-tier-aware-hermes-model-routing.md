@@ -3,7 +3,7 @@
 - Дата: 2026-08-03
 - ID: 2026-08-03-tier-aware-hermes-model-routing
 - Линия/фаза: Hermes orchestration / coder runtime
-- Статус: частично
+- Статус: готово к финальному CI
 - Issue: #576
 - PR: #578
 - Ветка: `fix/issue-576-tier-aware-routing`
@@ -37,7 +37,7 @@ Production coder runtime, router, capabilities и health checks работали
 - расширить run и orchestration ledger;
 - публиковать безопасную `routes_by_tier`;
 - синхронизировать Velvet и Max;
-- обновить SOUL, CODEX/README, smokes и contract tests.
+- обновить SOUL, AGENTS, skills, CODEX/README, smokes и contract tests.
 
 ### Критерии готовности
 
@@ -51,6 +51,7 @@ Production coder runtime, router, capabilities и health checks работали
 - mutation/tool execution блокирует automatic retry;
 - capabilities и ledger не раскрывают secrets;
 - Velvet и Max имеют одинаковую политику;
+- direct Telegram delegation и automatic incident используют тот же явный contract;
 - полный CI и required checks проходят;
 - production не изменяется до merge и отдельного controlled rollout.
 
@@ -73,19 +74,24 @@ Production coder runtime, router, capabilities и health checks работали
 - capacity, auth и quota обрабатываются отдельно;
 - retries после Git/file mutation и execution events запрещены;
 - `coderctl.py`, tier router и Telegram delegate передают и сохраняют routing metadata;
+- automatic incident закреплён как `incident / complex / high / isolated_pr_only / high_risk`;
 - capabilities публикуют безопасную `routes_by_tier`;
 - complex/high-risk Terra route помечается degraded и review-required;
 - одинаковая runtime policy подключена для Velvet и Max;
 - добавлены tier provider и router production smokes;
-- обновлены SOUL Каэля, Velvet Coder, Max Coder и canonical документация.
+- синхронизированы canonical `SOUL.kael.md`, compatibility SOUL, AGENTS Каэля, direct-coder skill и coder PR gate;
+- обновлены SOUL Velvet Coder, Max Coder и canonical документация;
+- добавлены contracts для routing matrix, caller compatibility и документационной политики.
 
 ### Миграции и совместимость
 
-Database migrations отсутствуют. Изменение затрагивает Hermes orchestration API contract: `coderctl submit` теперь требует явные `--task-type`, `--complexity`, `--risk`, `--mutation-policy` и `--tier`. Legacy `provider_chain_smoke.py` сохранён как compatibility entrypoint к новому tier smoke.
+Database migrations отсутствуют. Изменение затрагивает Hermes orchestration API contract: `coderctl submit` теперь требует явные `--task-type`, `--complexity`, `--risk`, `--mutation-policy` и `--tier`. Direct Telegram delegate требует тот же набор аргументов. Legacy `provider_chain_smoke.py` сохранён как compatibility entrypoint к новому tier smoke.
 
 ### Проверки
 
-Contract tests добавлены для routing matrix, explicit directives, credential-group skip, capacity retry, no-downgrade, mutation/execution retry block, capabilities redaction, ledger persistence и Velvet/Max parity. Полный GitHub CI подтверждает syntax, typing, tests, Docker build, security и project notes на PR.
+Добавлены contract tests для routing matrix, explicit directives, credential-group skip, capacity retry, no-downgrade, mutation/execution retry block, capabilities redaction, ledger persistence, direct delegation, automatic incident и Velvet/Max parity.
+
+Первый CI выявил устаревшее ожидание количества bind-mount safe runner; contract приведён к фактическому compose. Во время независимого review также обнаружены и исправлены старые неявные вызовы `coderctl` и `codex_delegate` в SOUL/AGENTS/skills и incident prompt. После этих исправлений требуется полный финальный GitHub CI.
 
 Production проверки после отдельного approved rollout:
 
@@ -100,16 +106,15 @@ Production проверки после отдельного approved rollout:
 - Issue: #576;
 - PR: #578 `feat: закрепить tier-aware маршрутизацию coder-агентов`;
 - ветка: `fix/issue-576-tier-aware-routing`;
-- production SHA появится только после squash merge.
+- merge SHA появится только после squash merge.
 
 ### Незавершённое
 
-- дождаться полного required CI;
-- исправить обнаруженные CI regression;
-- выполнить независимую проверку diff;
+- дождаться полного required CI на итоговом head;
+- исправить возможные оставшиеся CI regression;
 - слить только полностью зелёный PR;
 - controlled production rollout оставить отдельной разрешённой операцией.
 
 ### Следующий шаг
 
-Дождаться полного CI на PR #578, устранить failures и выполнить squash merge только после всех required checks.
+Запустить полный CI на итоговом head PR #578 и выполнить squash merge только после всех required checks.
