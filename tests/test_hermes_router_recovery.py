@@ -65,7 +65,7 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
         self.assertNotIn("print(os.environ", source)
         self.assertIn('"docker", "compose", "-f", "compose.yaml"', source)
 
-    def test_runtime_configures_full_provider_chain_for_both_projects(self) -> None:
+    def test_runtime_configures_provider_catalog_for_both_projects(self) -> None:
         source = (ROOT / "deploy/hermes-coders/compose.runtime.yaml").read_text(
             encoding="utf-8"
         )
@@ -105,14 +105,19 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             with self.assertRaises(source_guard.RuntimeSourceError):
                 source_guard.validate_runtime_sources(root)
 
-    def test_provider_chain_smoke_validates_safe_public_contract(self) -> None:
+    def test_provider_routing_smoke_validates_safe_public_contract(self) -> None:
         payload = {
             "routing": {
                 "primary_route": "codex_subscription",
+                "primary_routes_by_tier": {
+                    "small": ["gpt-5.6-luna", "gpt-5.6-terra"],
+                    "standard": ["gpt-5.6-terra"],
+                    "complex": ["gpt-5.6-sol", "gpt-5.6-terra"],
+                    "high_risk": ["gpt-5.6-sol", "gpt-5.6-terra"],
+                },
                 "provider_fallback": {
                     "enabled": True,
                     "route": "byesu_provider",
-                    "model": "gpt-5.4-mini",
                     "models": [
                         "gpt-5.4-mini",
                         "gpt-5.6-terra",
@@ -125,12 +130,42 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
                         },
                         {"name": "byesu-gpt-pro", "models": ["gpt-5.6-luna"]},
                     ],
+                    "routes_by_tier": {
+                        "small_general": {
+                            "models": ["gpt-5.6-luna", "gpt-5.6-terra"],
+                            "degraded": False,
+                            "review_required": False,
+                        },
+                        "small_code": {
+                            "models": ["gpt-5.4-mini", "gpt-5.6-terra"],
+                            "degraded": False,
+                            "review_required": False,
+                        },
+                        "standard": {
+                            "models": ["gpt-5.6-terra"],
+                            "degraded": False,
+                            "review_required": False,
+                        },
+                        "complex": {
+                            "models": ["gpt-5.6-terra"],
+                            "degraded": True,
+                            "review_required": True,
+                        },
+                        "high_risk": {
+                            "models": ["gpt-5.6-terra"],
+                            "degraded": True,
+                            "review_required": True,
+                        },
+                    },
                     "after_mutation": False,
+                    "after_tool_execution": False,
+                    "downgrade_allowed": False,
+                    "live_production_mutation": False,
                 },
             }
         }
         provider_smoke.validate_capabilities("velvet", payload)
-        payload["routing"]["provider_fallback"]["after_mutation"] = True
+        payload["routing"]["provider_fallback"]["downgrade_allowed"] = True
         with self.assertRaises(provider_smoke.ProviderChainSmokeError):
             provider_smoke.validate_capabilities("velvet", payload)
 

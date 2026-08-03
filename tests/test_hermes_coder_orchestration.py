@@ -55,31 +55,42 @@ class CoderRouterTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
 
-    def test_prompt_scopes_repository_and_forbids_deploy(self) -> None:
+    def test_prompt_scopes_repository_routing_and_forbids_deploy(self) -> None:
         target = router_mod.load_targets()["velvet"]
+        routing = router_mod.RoutingMetadata(
+            task_type="security",
+            requested_tier="high_risk",
+            risk="critical",
+            mutation_policy="workspace_pr",
+        )
         prompt = router_mod.build_task_prompt(
             target,
             task_id="a" * 32,
             task="Исправить обработку ошибки",
             source="incident",
+            routing=routing,
         )
         self.assertIn("Stellmaria/Velvet", prompt)
         self.assertIn("merge, deployment, restart, update or rollback", prompt)
         self.assertIn("memory_candidates", prompt)
         self.assertIn("output schema", prompt)
+        self.assertIn('"requested_tier": "high_risk"', prompt)
         handoff = router_mod.build_task_handoff(
             target,
             task_id="a" * 32,
             task="Исправить обработку ошибки",
             source="incident",
+            routing=routing,
         )
         self.assertEqual("velvet", handoff["project"])
+        self.assertFalse(handoff["routing"]["live_production_mutation"])
         self.assertEqual(
             {
                 "task_id",
                 "source",
                 "project",
                 "task",
+                "routing",
                 "context",
                 "acceptance_criteria",
                 "allowed_actions",
@@ -88,6 +99,62 @@ class CoderRouterTests(unittest.TestCase):
             },
             set(handoff),
         )
+
+    def test_resolve_routing_prefers_explicit_fields_and_safe_defaults(self) -> None:
+        explicit = router_mod.resolve_routing(
+            "короткий текст",
+            "owner-request",
+            task_type="architecture",
+            requested_tier="complex",
+            risk="high",
+            mutation_policy="workspace_pr",
+        )
+        fallback = router_mod.resolve_routing(
+            "Исправить обычный баг",
+            "owner-request",
+        )
+        incident = router_mod.resolve_routing(
+            "собрать логи",
+            "incident",
+        )
+        self.assertEqual("complex", explicit.requested_tier)
+        self.assertEqual(("code", "standard"), (
+            fallback.task_type,
+            fallback.requested_tier,
+        ))
+        self.assertEqual(("incident", "complex"), (
+            incident.task_type,
+            incident.requested_tier,
+        ))
+
+    def test_resolve_routing_rejects_under_tier_but_allows_read_only_security_review(self) -> None:
+        with self.assertRaises(router_mod.RouterError):
+            router_mod.resolve_routing(
+                "security change",
+                "owner-request",
+                task_type="security",
+                requested_tier="standard",
+                risk="critical",
+                mutation_policy="workspace_pr",
+            )
+        review = router_mod.resolve_routing(
+            "security review без изменений",
+            "owner-request",
+            task_type="security",
+            requested_tier="high_risk",
+            risk="critical",
+            mutation_policy="read_only",
+        )
+        self.assertEqual("read_only", review.mutation_policy)
+        with self.assertRaises(router_mod.RouterError):
+            router_mod.resolve_routing(
+                "проверить статус",
+                "owner-request",
+                task_type="read_only",
+                requested_tier="small",
+                risk="low",
+                mutation_policy="workspace_pr",
+            )
 
     def test_submit_accepts_only_fixed_payload(self) -> None:
         router = router_mod.CoderRouter()
@@ -102,7 +169,7 @@ class CoderRouterTests(unittest.TestCase):
                 },
             )
 
-    def test_submit_forwards_only_runs_contract(self) -> None:
+    def test_submit_forwards_runs_contract_and_explicit_routing(self) -> None:
         router = router_mod.CoderRouter()
         with patch.object(
             router,
@@ -115,13 +182,21 @@ class CoderRouterTests(unittest.TestCase):
                     "task_id": "b" * 32,
                     "task": "Исправить тест",
                     "source": "owner-request",
+                    "task_type": "code",
+                    "requested_tier": "small",
+                    "risk": "low",
+                    "mutation_policy": "workspace_pr",
                 },
             )
         self.assertEqual("run_abc", result["run_id"])
+        self.assertEqual("small", result["requested_tier"])
         args = upstream.call_args.args
         self.assertEqual("POST", args[1])
         self.assertEqual("/v1/runs", args[2])
         self.assertEqual("orchestration-max-" + "b" * 32, args[3]["session_id"])
+        self.assertEqual("small", args[3]["requested_tier"])
+        self.assertEqual("code", args[3]["task_type"])
+        self.assertNotIn("model", args[3])
 
     def test_authentication_uses_constant_time_comparison(self) -> None:
         router = router_mod.CoderRouter()
@@ -198,14 +273,14 @@ class CoderCtlTests(unittest.TestCase):
         self.assertEqual(1, len(records))
         self.assertEqual("completed", records[0]["status"])
 
-    def test_submit_records_router_run(self) -> None:
+    def test_submit_records_explicit_router_tier(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             ledger_path = Path(directory) / "tasks.json"
             with patch.object(
                 coderctl.RouterClient,
                 "submit",
                 return_value={"run_id": "run_1", "status": "started"},
-            ):
+            ) as submit:
                 code = coderctl.main(
                     [
                         "--ledger",
@@ -214,14 +289,68 @@ class CoderCtlTests(unittest.TestCase):
                         "velvet",
                         "--task",
                         "Исправить тест",
+                        "--task-type",
+                        "code",
+                        "--tier",
+                        "small",
+                        "--risk",
+                        "low",
                     ]
                 )
             self.assertEqual(0, code)
             records = json.loads(ledger_path.read_text(encoding="utf-8"))
             self.assertEqual("run_1", records[0]["run_id"])
             self.assertEqual("velvet", records[0]["project"])
+            self.assertEqual("small", records[0]["requested_tier"])
+            self.assertFalse(records[0]["live_production_mutation"])
+            self.assertEqual("small", submit.call_args.kwargs["requested_tier"])
 
-    def test_terminal_status_persists_structured_result_and_memory_candidates(self) -> None:
+    def test_submit_defaults_to_standard_instead_of_under_routing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            ledger_path = Path(directory) / "tasks.json"
+            with patch.object(
+                coderctl.RouterClient,
+                "submit",
+                return_value={"run_id": "run_2", "status": "started"},
+            ) as submit:
+                code = coderctl.main(
+                    [
+                        "--ledger",
+                        str(ledger_path),
+                        "submit",
+                        "max",
+                        "--task",
+                        "Исправить неизвестную задачу",
+                    ]
+                )
+        self.assertEqual(0, code)
+        self.assertEqual("standard", submit.call_args.kwargs["requested_tier"])
+        self.assertEqual("code", submit.call_args.kwargs["task_type"])
+
+    def test_submit_rejects_under_tier_before_router_call(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            ledger_path = Path(directory) / "tasks.json"
+            with patch.object(coderctl.RouterClient, "submit") as submit:
+                code = coderctl.main(
+                    [
+                        "--ledger",
+                        str(ledger_path),
+                        "submit",
+                        "velvet",
+                        "--task",
+                        "security change",
+                        "--task-type",
+                        "security",
+                        "--tier",
+                        "standard",
+                        "--risk",
+                        "critical",
+                    ]
+                )
+        self.assertEqual(2, code)
+        submit.assert_not_called()
+
+    def test_terminal_status_persists_routing_and_structured_result(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             ledger = coderctl.Ledger(Path(directory) / "tasks.json")
             record = {
@@ -246,11 +375,18 @@ class CoderCtlTests(unittest.TestCase):
                     "status": "completed",
                     "output": "STATUS: completed",
                     "structured_output": structured,
+                    "task_type": "code",
+                    "requested_tier": "standard",
+                    "selected_primary_model": "gpt-5.6-terra",
+                    "actual_route": "codex_subscription",
+                    "live_production_mutation": False,
                 },
             )
             saved = ledger.find("a" * 32)
         self.assertEqual(structured, saved["structured_output"])
         self.assertEqual([{"fact": "stable"}], saved["memory_candidates"])
+        self.assertEqual("standard", saved["requested_tier"])
+        self.assertEqual("gpt-5.6-terra", saved["selected_primary_model"])
 
     def test_pr_command_uses_fixed_project_and_number(self) -> None:
         with patch.object(
@@ -291,6 +427,40 @@ class PrepareRouterEnvTests(unittest.TestCase):
 
 
 class OrchestrationDeploymentContractTests(unittest.TestCase):
+    def test_kael_contract_requires_explicit_tier_and_keeps_live_prod_boundary(self) -> None:
+        agents = (ROOT / "deploy/hermes-operator/AGENTS.kael.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("--task-type code", agents)
+        self.assertIn("--tier standard", agents)
+        self.assertIn("--risk medium", agents)
+        self.assertIn("--mutation-policy workspace_pr", agents)
+        self.assertIn("Terra → Luna", agents)
+        self.assertIn("не получают прямого доступа к live production", agents)
+
+    def test_brain_skills_preserve_tier_and_pr_gate(self) -> None:
+        orchestrated = (
+            ROOT / "brain-vault/skills/orchestrated-task/SKILL.md"
+        ).read_text(encoding="utf-8")
+        gate = (ROOT / "brain-vault/skills/coder-pr-gate/SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("requested_tier", orchestrated)
+        self.assertIn("mutation_policy=read_only", orchestrated)
+        self.assertIn("degraded_execution", orchestrated)
+        self.assertIn("selected_provider_route", gate)
+        self.assertIn("production update", gate)
+
+    def test_coder_contracts_preserve_tier_and_live_prod_boundary(self) -> None:
+        for name in ("AGENTS.velvet.md", "AGENTS.max.md"):
+            source = (ROOT / "deploy/hermes-coders" / name).read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("requested_tier", source)
+            self.assertIn("Terra → Luna", source)
+            self.assertIn("изолированной ветке и PR", source)
+            self.assertIn("live production", source)
+
     def test_router_has_no_host_access_or_production_secrets(self) -> None:
         compose = (ROOT / "deploy/hermes-orchestration/compose.yaml").read_text(
             encoding="utf-8"
@@ -333,7 +503,7 @@ class OrchestrationDeploymentContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("API_SERVER_HOST: 0.0.0.0", compose)
-        self.assertIn("API_SERVER_CORS_ORIGINS: \"\"", compose)
+        self.assertIn('API_SERVER_CORS_ORIGINS: ""', compose)
         self.assertNotIn("API_SERVER_KEY: hermes-coder-local-healthcheck-only", compose)
         self.assertNotIn("ports:", compose)
         self.assertIn("name: ${HERMES_AGENT_CONTROL_NETWORK:-hermes-agent-control}", compose)
@@ -355,8 +525,8 @@ class OrchestrationDeploymentContractTests(unittest.TestCase):
         self.assertIn("Orchestration credentials prepared without printing", source)
         self.assertIn("chmod 0600", source)
         self.assertIn("coderctl.py health all", source)
-        self.assertNotIn("cat \"$CODER_ROUTER_ENV\"", source)
-        self.assertNotIn("echo \"$API_SERVER_KEY\"", source)
+        self.assertNotIn('cat "$CODER_ROUTER_ENV"', source)
+        self.assertNotIn('echo "$API_SERVER_KEY"', source)
 
     def test_python_and_bash_sources_parse(self) -> None:
         for path in (

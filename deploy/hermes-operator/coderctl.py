@@ -21,6 +21,11 @@ _PROJECTS = {
     "velvet": ("Stellmaria/Velvet", "@velvet_private_coder_bot"),
     "max": ("Stellmaria/romatic_club_bot_max", "@romatic_max_coder_bot"),
 }
+_TASK_TYPES = ("read_only", "docs", "code", "architecture", "security", "migration", "incident")
+_TIERS = ("small", "standard", "complex", "high_risk")
+_RISKS = ("low", "medium", "high", "critical")
+_MUTATION_POLICIES = ("read_only", "workspace_pr")
+_TIER_RANK = {"small": 0, "standard": 1, "complex": 2, "high_risk": 3}
 _SECRET_KEY = re.compile(r"(?i)(token|secret|password|api[_-]?key|authorization)")
 _SECRET_TEXT_PATTERNS = (
     re.compile(r"(?i)(authorization\s*:\s*bearer\s+)[^\s,;]+"),
@@ -198,12 +203,29 @@ class RouterClient:
         return self.request("GET", f"/v1/coders/{project}/capabilities")
 
     def submit(
-        self, project: str, *, task_id: str, task: str, source: str
+        self,
+        project: str,
+        *,
+        task_id: str,
+        task: str,
+        source: str,
+        task_type: str,
+        requested_tier: str,
+        risk: str,
+        mutation_policy: str,
     ) -> dict[str, Any]:
         return self.request(
             "POST",
             f"/v1/coders/{project}/runs",
-            {"task_id": task_id, "task": task, "source": source},
+            {
+                "task_id": task_id,
+                "task": task,
+                "source": source,
+                "task_type": task_type,
+                "requested_tier": requested_tier,
+                "risk": risk,
+                "mutation_policy": mutation_policy,
+            },
         )
 
     def status(self, project: str, run_id: str) -> dict[str, Any]:
@@ -217,7 +239,9 @@ class RouterClient:
 
 
 def _update_from_status(
-    ledger: Ledger, record: dict[str, Any], payload: dict[str, Any]
+    ledger: Ledger,
+    record: dict[str, Any],
+    payload: dict[str, Any],
 ) -> dict[str, Any]:
     status = str(payload.get("status", "unknown"))
     updated = {
@@ -226,6 +250,23 @@ def _update_from_status(
         "updated_at": _utc_now(),
         "last_event": payload.get("last_event"),
     }
+    for field in (
+        "task_type",
+        "requested_tier",
+        "risk",
+        "mutation_policy",
+        "selected_primary_model",
+        "selected_primary_route",
+        "selected_provider_route",
+        "actual_route",
+        "attempted_routes",
+        "fallback_reason",
+        "review_required",
+        "degraded_execution",
+        "live_production_mutation",
+    ):
+        if field in payload:
+            updated[field] = payload.get(field)
     if status in TERMINAL_STATUSES:
         updated["finished_at"] = _utc_now()
         updated["output"] = payload.get("output") or payload.get("error")
@@ -270,6 +311,30 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("owner-request", "incident", "maintenance"),
         default="owner-request",
     )
+    submit.add_argument(
+        "--task-type",
+        choices=_TASK_TYPES,
+        default="code",
+        help="Явный тип задачи. По умолчанию безопасный coder-type code.",
+    )
+    submit.add_argument(
+        "--tier",
+        dest="requested_tier",
+        choices=_TIERS,
+        default="standard",
+        help="small, standard, complex или high_risk.",
+    )
+    submit.add_argument(
+        "--risk",
+        choices=_RISKS,
+        default="medium",
+    )
+    submit.add_argument(
+        "--mutation-policy",
+        choices=_MUTATION_POLICIES,
+        default="workspace_pr",
+        help="read_only или изменения только в isolated workspace с PR.",
+    )
 
     status = commands.add_parser("status")
     status.add_argument("reference")
@@ -312,12 +377,43 @@ def main(argv: list[str] | None = None) -> int:
                 raise CoderApiError("Текст задачи пуст.")
             if len(clean_task) > 24_000:
                 raise CoderApiError("Текст задачи превышает 24000 символов.")
+            minimum_by_risk = {
+                "low": "small",
+                "medium": "standard",
+                "high": "complex",
+                "critical": "high_risk",
+            }[args.risk]
+            minimum_by_type = {
+                "read_only": "small",
+                "docs": "small",
+                "code": "small",
+                "architecture": "complex",
+                "incident": "complex",
+                "security": "high_risk",
+                "migration": "high_risk",
+            }[args.task_type]
+            minimum_tier = max(
+                (minimum_by_risk, minimum_by_type), key=_TIER_RANK.__getitem__
+            )
+            if _TIER_RANK[args.requested_tier] < _TIER_RANK[minimum_tier]:
+                raise CoderApiError(
+                    f"tier {args.requested_tier} ниже минимального {minimum_tier} "
+                    f"для task_type={args.task_type}, risk={args.risk}."
+                )
+            if args.task_type == "read_only" and args.mutation_policy != "read_only":
+                raise CoderApiError(
+                    "read_only task_type требует mutation_policy=read_only."
+                )
             task_id = uuid.uuid4().hex
             response = client.submit(
                 args.project,
                 task_id=task_id,
                 task=clean_task,
                 source=_redact_text(args.source)[:128],
+                task_type=args.task_type,
+                requested_tier=args.requested_tier,
+                risk=args.risk,
+                mutation_policy=args.mutation_policy,
             )
             run_id = response.get("run_id")
             if not isinstance(run_id, str) or not run_id:
@@ -332,6 +428,11 @@ def main(argv: list[str] | None = None) -> int:
                 "run_id": run_id,
                 "source": _redact_text(args.source)[:128],
                 "task": clean_task,
+                "task_type": args.task_type,
+                "requested_tier": args.requested_tier,
+                "risk": args.risk,
+                "mutation_policy": args.mutation_policy,
+                "live_production_mutation": False,
                 "status": str(response.get("status", "started")),
                 "created_at": now,
                 "updated_at": now,
