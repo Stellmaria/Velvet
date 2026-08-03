@@ -25,7 +25,7 @@ POLL_INTERVAL_SECONDS = max(
     1.0,
     float(os.environ.get("HERMES_CODERS_SMOKE_POLL_SECONDS", "3")),
 )
-CODEX_VERSION = "0.144.4"
+CODEX_VERSION = "0.144.1"
 CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
 
 

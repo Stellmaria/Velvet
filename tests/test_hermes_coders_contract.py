@@ -74,7 +74,7 @@ class HermesCodersContractTests(unittest.TestCase):
 
     def test_codex_cli_is_pinned_and_digest_verified(self) -> None:
         source = (ROOT / "Dockerfile.coder").read_text(encoding="utf-8")
-        self.assertIn("ARG CODEX_VERSION=0.144.4", source)
+        self.assertIn("ARG CODEX_VERSION=0.144.1", source)
         self.assertIn("openai/codex/releases/tags/rust-v${CODEX_VERSION}", source)
         self.assertIn("sha256sum -c -", source)
         self.assertIn("bubblewrap", source)
@@ -142,7 +142,7 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("hermes-chat-velvet", source)
         self.assertIn("hermes-coder-velvet", source)
         self.assertIn("codex login status", source)
-        self.assertIn("0.144.4", source)
+        self.assertIn("0.144.1", source)
         self.assertIn("gpt-5.6-luna", source)
         self.assertIn("gpt-5.6-terra", source)
         self.assertIn("gpt-5.6-sol", source)
