@@ -1,112 +1,138 @@
 # Codex GPT-5.6 для Hermes coder
 
-Этот слой переводит задания главного Hermes с Byesu-backed coder gateway на локальный OpenAI Codex CLI, авторизованный через ChatGPT-план владельца.
-
-## Архитектура
+Этот слой передаёт задачи Каэля двум изолированным coder runtime:
 
 ```text
-@VelvetHermesBot
-  -> hermes-coder-router
-    -> hermes-coder-velvet  (Codex CLI, Stellmaria/Velvet)
-    -> hermes-coder-max     (Codex CLI, Stellmaria/romatic_club_bot_max)
-
-@velvet_private_coder_bot -> hermes-chat-velvet (старый Hermes/Byesu chat)
-@romatic_max_coder_bot    -> hermes-chat-max    (старый Hermes/Byesu chat)
+Каэль
+  -> coderctl.py
+    -> hermes-coder-router
+      -> hermes-coder-velvet  (Stellmaria/Velvet)
+      -> hermes-coder-max     (Stellmaria/romatic_club_bot_max)
 ```
 
-Codex runners не получают production Docker socket, systemd, production checkout или прямой доступ к production PostgreSQL networks. Каждый проект имеет отдельные:
+Codex runners не получают production Docker socket, systemd, production checkout, production `.env` или прямой доступ к production PostgreSQL networks. Каждый проект имеет отдельные workspace, `CODEX_HOME`, Runs API key, journal и GitHub token.
 
-- Git workspace;
-- `CODEX_HOME` и `auth.json`;
-- Runs API key;
-- run journal;
-- GitHub token;
-- контейнер и resource limits.
+## Канонический routing contract
 
-## Модели и маршрутизация
+Каэль до делегирования явно определяет:
 
-```text
-Мелкая правка, README, документация, переименование -> gpt-5.6-luna
-Обычная разработка и исправление багов              -> gpt-5.6-terra
-Архитектура, миграции, security, большой рефактор   -> gpt-5.6-sol
+- `project`;
+- `task_type`;
+- `complexity`;
+- `risk`;
+- `mutation_policy`;
+- `requested_tier`.
+
+Значения передаются через `coderctl -> tier_router -> coder runner` без повторной классификации после fallback.
+
+### Codex subscription
+
+| Tier | Primary model | Допустимое infrastructure-only повышение |
+|---|---|---|
+| `small` | `gpt-5.6-luna` | Terra, затем Sol |
+| `standard` | `gpt-5.6-terra` | Sol |
+| `complex` | `gpt-5.6-sol` | нет |
+| `high_risk` | `gpt-5.6-sol` | нет |
+
+`Terra -> Luna` запрещён. Модель нельзя выбрать ниже модели, требуемой tier.
+
+### Byesu provider route
+
+| Tier/task type | Route |
+|---|---|
+| `small` general/read-only/docs | Luna, затем Terra только при capacity |
+| `small` code | Mini, затем Terra только при capacity |
+| `standard` | Terra |
+| `complex` / `high_risk` | Terra как degraded route |
+
+Для complex/high-risk Terra может только подготовить изменения, тесты и один PR в изолированном workspace. Ledger отмечает `review_required=true` и `degraded_provider_route=true`. Live production mutation запрещена.
+
+`CODEX_PROVIDER_FALLBACK_MODELS` является каталогом моделей, а не общей цепочкой. Если production key не имеет доступа к Mini, permanent model-access error завершает small-code run fail-closed. Автоматическое продолжение на Terra допускается только для classified capacity failure.
+
+## Политика повторов
+
+Автоматическая смена модели разрешена только для классифицированных infrastructure failures:
+
+- capacity / temporary unavailable;
+- subscription auth;
+- subscription quota.
+
+Auth или quota блокирует всю credential group. Обычная ошибка задачи, теста или кода не запускает следующую модель.
+
+После любого из событий автоматический повтор другой моделью запрещён:
+
+- Git/file mutation;
+- command execution;
+- MCP/collaboration/dynamic tool call;
+- иной execution event.
+
+## Runs API и ledger
+
+Tier-aware `POST /v1/runs` принимает:
+
+```json
+{
+  "input": "...",
+  "session_id": "...",
+  "task_type": "code",
+  "complexity": "standard",
+  "risk": "medium",
+  "mutation_policy": "workspace_write",
+  "requested_tier": "standard"
+}
 ```
 
-Явный выбор в тексте задачи имеет приоритет:
+Runner и orchestration ledger сохраняют:
 
-```text
-/model luna
-/model terra
-/model sol
-```
+- `task_type`;
+- `requested_tier`;
+- `risk`;
+- `selected_primary_model`;
+- `selected_provider_route`;
+- `attempted_models`;
+- `attempted_routes`;
+- `actual_route`;
+- `fallback_reason`;
+- `mutation_started`.
 
-Также поддерживаются формы `модель: луна`, `модель: терра` и `модель: сол`.
+`GET /v1/capabilities` публикует безопасную `routes_by_tier`. Имена env keys, tokens и secret values не публикуются.
 
-При model/rate/capacity error действует резервная цепочка:
+## Граница прав моделей
 
-```text
-Terra -> Sol -> Luna
-Luna  -> Terra -> Sol
-Sol   -> Terra -> Luna
-```
+Любая модель, включая Sol, может только:
 
-Разрешены только:
+- работать в изолированном workspace;
+- читать и менять файлы репозитория;
+- запускать тесты и static checks;
+- создать ветку, commit, push и один PR.
 
-```text
-gpt-5.6-luna
-gpt-5.6-terra
-gpt-5.6-sol
-```
+Ни одна модель не может самостоятельно:
 
-Codex CLI закреплён на `0.144.4`. Образ скачивает официальный release asset и проверяет опубликованный SHA-256 digest до установки.
+- merge;
+- изменить production checkout;
+- выполнить deploy, restart или rollback;
+- использовать Docker socket или systemd;
+- читать production `.env`.
 
-## Подготовка на VPS
+## Подготовка и авторизация
 
-После обновления `/srv/velvet` на commit с этим изменением:
+После merge и обновления production checkout:
 
 ```bash
 cd /srv/velvet
 sudo bash deploy/hermes-coders/install-codex.sh
-```
-
-Installer:
-
-1. создаёт `/srv/hermes-coders/codex/{velvet,max}`;
-2. создаёт отдельные `/srv/hermes-coders/workspaces/{velvet-codex,max-codex}`;
-3. создаёт отдельные журналы `/srv/hermes-coders/codex-runs/{velvet,max}`;
-4. добавляет разные `CODEX_RUNNER_API_KEY` без вывода значений;
-5. записывает безопасный `config.toml`;
-6. собирает Codex runner images;
-7. не запускает runners до интерактивной авторизации.
-
-## Авторизация
-
-Каждый профиль нужно авторизовать отдельно:
-
-```bash
 sudo bash deploy/hermes-coders/codex-login.sh velvet
 sudo bash deploy/hermes-coders/codex-login.sh max
 ```
 
-Команда использует:
+`auth.json` каждого проекта хранится отдельно с режимом `0600`. Его нельзя печатать, копировать в репозиторий или передавать между проектами.
 
-```text
-codex login --device-auth
-```
+## Controlled rollout
 
-Codex покажет URL и одноразовый код. Откройте URL в браузере, войдите в ChatGPT и подтвердите код. Значение `auth.json` нельзя печатать, копировать в репозиторий или передавать между проектами.
-
-После входа должны существовать:
-
-```text
-/srv/hermes-coders/codex/velvet/auth.json
-/srv/hermes-coders/codex/max/auth.json
-```
-
-Оба файла должны иметь режим `0600`.
-
-## Проверка и запуск
+Rollout выполняется только на точный approved SHA после backup и с готовым rollback:
 
 ```bash
+cd /srv/velvet
 sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
   python3 deploy/hermes-coders/preflight.py
 
@@ -115,45 +141,23 @@ sudo systemctl restart hermes-coder-router.service
 
 sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
   python3 deploy/hermes-coders/runtime_smoke.py
+sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
+  python3 deploy/hermes-coders/tier_provider_smoke.py
+sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
+  python3 deploy/hermes-coders/router_smoke.py
 ```
 
-Ожидаемый итог smoke:
+Дополнительно из основного Hermes:
 
-```text
-CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, PUSH_OK
+```bash
+python /opt/data/tools/coderctl.py health all
 ```
 
-## Поведение Runs API
-
-Runner сохраняет совместимость с существующим router:
-
-```text
-GET  /health
-GET  /v1/capabilities
-POST /v1/runs
-GET  /v1/runs/{run_id}
-POST /v1/runs/{run_id}/stop
-```
-
-Одновременно выполняется только одна задача на проект. Остальные runs ждут в очереди внутри процесса. Статус и очищенный вывод сохраняются атомарно в JSON-файлах с режимом `0600`.
-
-## Безопасность окружения
-
-Codex работает в `workspace-write`; GitHub network включён внутри изолированного coder-контейнера. Apps, plugins и tool suggestions выключены.
-
-Codex shell не получает:
-
-- `API_SERVER_KEY`;
-- Byesu model keys;
-- `CODEX_RUNNER_API_KEY`;
-- database URL/password;
-- Telegram bot token.
-
-`GH_TOKEN` намеренно доступен Codex shell, поскольку coder должен создать ветку, push и pull request. Fine-grained token по-прежнему должен быть ограничен одним репозиторием.
+Read-only Telegram handoff должен показывать `requested_tier`, `selected_primary_model`, `actual_route` и отсутствие production privileges.
 
 ## Откат
 
-Остановка Codex backend без удаления данных:
+Остановить coder backend без удаления данных:
 
 ```bash
 cd /srv/velvet/deploy/hermes-coders
@@ -162,4 +166,4 @@ HERMES_CODERS_ROOT=/srv/hermes-coders \
   hermes-coder-velvet hermes-coder-max
 ```
 
-Не удалять каталоги `codex`, `codex-runs` и `workspaces/*-codex`, пока не подтверждён полный отказ от этой схемы.
+Затем вернуть production checkout к сохранённому approved SHA и повторить штатный installer. Каталоги `codex`, `codex-runs` и `workspaces/*-codex` до подтверждённого rollback не удалять.
