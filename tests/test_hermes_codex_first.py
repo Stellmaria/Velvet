@@ -186,7 +186,7 @@ class DirectCoderContractTests(unittest.TestCase):
             ROOT / "deploy/hermes-coders/compose.runtime.yaml"
         ).read_text(encoding="utf-8")
         self.assertEqual(2, source.count("/app/codex_first_runner.py"))
-        self.assertEqual(4, source.count("/app/codex_first_safe_runner.py"))
+        self.assertEqual(2, source.count("/app/codex_first_safe_runner.py"))
         self.assertEqual(2, source.count("/app/codex_delegate.py"))
         self.assertIn(
             "HERMES_CODEX_DELEGATE_URL: http://hermes-coder-velvet:8642",
