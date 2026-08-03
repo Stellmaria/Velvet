@@ -18,7 +18,7 @@ services:
   hermes-coder-velvet:
     entrypoint:
       - python
-      - /app/codex_first_runner.py
+      - /app/codex_first_safe_runner.py
     command: []
     environment:
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
@@ -26,11 +26,12 @@ services:
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
     volumes:
       - ./codex_first_runner.py:/app/codex_first_runner.py:ro
+      - ./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro
 
   hermes-coder-max:
     entrypoint:
       - python
-      - /app/codex_first_runner.py
+      - /app/codex_first_safe_runner.py
     command: []
     environment:
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
@@ -38,3 +39,4 @@ services:
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
     volumes:
       - ./codex_first_runner.py:/app/codex_first_runner.py:ro
+      - ./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro
