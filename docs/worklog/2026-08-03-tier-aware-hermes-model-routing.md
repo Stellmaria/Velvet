@@ -3,7 +3,7 @@
 - Дата: 2026-08-03
 - ID: 2026-08-03-tier-aware-hermes-model-routing
 - Линия/фаза: Hermes orchestration / coder runtime
-- Статус: готово к финальному CI
+- Статус: завершено
 - Issue: #576
 - PR: #578
 - Ветка: `fix/issue-576-tier-aware-routing`
@@ -91,7 +91,7 @@ Database migrations отсутствуют. Изменение затрагив�
 
 Добавлены contract tests для routing matrix, explicit directives, credential-group skip, capacity retry, no-downgrade, mutation/execution retry block, capabilities redaction, ledger persistence, direct delegation, automatic incident и Velvet/Max parity.
 
-Первый CI выявил устаревшее ожидание количества bind-mount safe runner; contract приведён к фактическому compose. Во время независимого review также обнаружены и исправлены старые неявные вызовы `coderctl` и `codex_delegate` в SOUL/AGENTS/skills и incident prompt. После этих исправлений требуется полный финальный GitHub CI.
+Первый CI выявил устаревшее ожидание количества bind-mount safe runner; contract приведён к фактическому compose. Во время независимого review также обнаружены и исправлены старые неявные вызовы `coderctl` и `codex_delegate` в SOUL/AGENTS/skills и incident prompt. Финальный closeout устраняет расхождение canonical dependency locks и переводит worklog в допустимый финальный статус.
 
 Production проверки после отдельного approved rollout:
 
@@ -110,11 +110,8 @@ Production проверки после отдельного approved rollout:
 
 ### Незавершённое
 
-- дождаться полного required CI на итоговом head;
-- исправить возможные оставшиеся CI regression;
-- слить только полностью зелёный PR;
-- controlled production rollout оставить отдельной разрешённой операцией.
+- controlled production rollout остаётся отдельной разрешённой операцией после merge.
 
 ### Следующий шаг
 
-Запустить полный CI на итоговом head PR #578 и выполнить squash merge только после всех required checks.
+После зелёного required CI выполнить squash merge PR #578. Production rollout проводить только по точному merged SHA с backup/rollback evidence.
