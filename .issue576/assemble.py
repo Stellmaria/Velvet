@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_DIR = ROOT / ".issue576"
 EXPECTED_SHA256 = "ca866f59988c82037a56f68a7c5b52a4d53e3ee6b32928d2d27493691a351a08"
+WORKLOG = "docs/worklog/2026-08-03-tier-aware-hermes-model-routing.md"
 ALLOWED = {
     "deploy/hermes-coders/codex_provider_chain_runner.py",
     "deploy/hermes-operator/coder_router.py",
@@ -17,7 +18,7 @@ ALLOWED = {
     "tests/test_hermes_codex_provider_chain.py",
     "tests/test_hermes_coder_orchestration.py",
     "tests/test_hermes_router_recovery.py",
-    "docs/worklog/2026-08-03-tier-aware-hermes-model-routing.md",
+    WORKLOG,
 }
 
 
@@ -59,7 +60,13 @@ def main() -> int:
             if source is None:
                 raise SystemExit(f"Cannot read bundle member: {member.name}")
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(source.read())
+            data = source.read()
+            if member.name == WORKLOG:
+                text = data.decode("utf-8")
+                data = ("\n".join(line.rstrip() for line in text.splitlines()) + "\n").encode(
+                    "utf-8"
+                )
+            target.write_bytes(data)
 
     shutil.rmtree(BUNDLE_DIR)
     print("Issue 576 reviewed source bundle reconstructed.")
