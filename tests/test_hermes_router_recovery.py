@@ -75,7 +75,8 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             "gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna"
         )
         self.assertEqual(2, source.count(expected))
-        self.assertEqual(4, source.count("/app/codex_provider_chain_runner.py"))
+        self.assertEqual(2, source.count("/app/codex_provider_chain_runner.py"))
+        self.assertEqual(4, source.count("/app/codex_tier_runner.py"))
         self.assertIn("Actual order is selected from immutable requested_tier", source)
         self.assertNotIn("CODEX_PROVIDER_FALLBACK_MODEL:", source)
 
@@ -92,6 +93,7 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             "codex_first_runner.py",
             "codex_first_safe_runner.py",
             "codex_provider_chain_runner.py",
+            "codex_tier_runner.py",
         ):
             self.assertEqual(2, unit.count(source), source)
 
@@ -111,6 +113,10 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
         capabilities = {
             "routing": {
                 "downgrade_allowed": False,
+                "mutation_audit": {
+                    "successful_runs": True,
+                    "read_only_fail_closed": True,
+                },
                 "provider_fallback": {
                     "enabled": True,
                     "routes_by_tier": dict(tier_smoke._EXPECTED_ROUTES),
@@ -146,6 +152,10 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             tier_smoke.validate_payload("velvet", payload),
         )
         capabilities["routing"]["provider_fallback"]["after_mutation"] = True
+        with self.assertRaises(tier_smoke.TierProviderSmokeError):
+            tier_smoke.validate_payload("velvet", payload)
+        capabilities["routing"]["provider_fallback"]["after_mutation"] = False
+        capabilities["routing"]["mutation_audit"]["read_only_fail_closed"] = False
         with self.assertRaises(tier_smoke.TierProviderSmokeError):
             tier_smoke.validate_payload("velvet", payload)
 
