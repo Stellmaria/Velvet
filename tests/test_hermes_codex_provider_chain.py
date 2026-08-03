@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import os
 import sys
 import tempfile
-import threading
-import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -23,109 +20,155 @@ def load_module(name: str, path: Path):
     return module
 
 
-class FakeStore:
-    def __init__(self) -> None:
-        self.record = {"stop_requested": False}
+base = load_module("codex_runner", ROOT / "deploy/hermes-coders/codex_runner.py")
+routed = load_module(
+    "codex_routed_runner",
+    ROOT / "deploy/hermes-coders/codex_routed_runner.py",
+)
+first = load_module(
+    "codex_first_runner",
+    ROOT / "deploy/hermes-coders/codex_first_runner.py",
+)
+safe = load_module(
+    "codex_first_safe_runner",
+    ROOT / "deploy/hermes-coders/codex_first_safe_runner.py",
+)
+provider = load_module(
+    "codex_provider_chain_runner_test",
+    ROOT / "deploy/hermes-coders/codex_provider_chain_runner.py",
+)
 
-    def read(self, run_id: str):
-        return dict(self.record)
 
-    def update(self, run_id: str, **values):
-        self.record.update(values)
+def failed(message: str, *, execution_started: bool = False):
+    return {
+        "returncode": 1,
+        "stdout": "",
+        "stderr": message,
+        "cancelled": False,
+        "execution_started": execution_started,
+    }
 
 
-def install_stubs(root: Path) -> None:
-    base = types.ModuleType("codex_runner")
-    base.redact_text = lambda value: value
-    base.utc_now = lambda: "2026-08-03T00:00:00+00:00"
-    sys.modules["codex_runner"] = base
+def succeeded():
+    return {
+        "returncode": 0,
+        "stdout": "{}",
+        "stderr": "",
+        "cancelled": False,
+        "execution_started": False,
+    }
 
-    class FakeRouted:
-        def __init__(self):
-            self.codex_bin = "codex"
-            self.codex_home = root / "codex"
-            self.codex_home.mkdir(parents=True, exist_ok=True)
-            (self.codex_home / "AGENTS.md").write_text("agents\n", encoding="utf-8")
-            (self.codex_home / "output.schema.json").write_text("{}\n", encoding="utf-8")
-            self.workspace = root / "workspace"
-            self.workspace.mkdir(parents=True, exist_ok=True)
-            self.allowed_models = (
-                "gpt-5.6-luna",
-                "gpt-5.6-terra",
-                "gpt-5.6-sol",
-            )
-            self.default_model = "gpt-5.6-terra"
-            self.timeout_seconds = 60
-            self._process_lock = threading.RLock()
-            self._processes = {}
-            self._execution_lock = threading.Lock()
-            self.store = FakeStore()
 
-        def capabilities(self):
-            return {"routing": {"default": self.default_model}}
+class ProviderChainTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        root = Path(self.temp.name)
+        codex_home = root / "codex"
+        codex_home.mkdir()
+        (codex_home / "AGENTS.md").write_text("agents\n", encoding="utf-8")
+        (codex_home / "output.schema.json").write_text(
+            '{"type":"object"}\n', encoding="utf-8"
+        )
+        (codex_home / "auth.json").write_text("{}\n", encoding="utf-8")
+        workspace = root / "workspace"
+        (workspace / ".git").mkdir(parents=True)
+        self.env = {
+            "CODEX_RUNNER_API_KEY": "r" * 48,
+            "CODEX_HOME": str(codex_home),
+            "CODEX_WORKSPACE": str(workspace),
+            "CODEX_RUN_ROOT": str(root / "runs"),
+            "CODEX_ALLOWED_MODELS": "gpt-5.6-luna,gpt-5.6-terra,gpt-5.6-sol",
+            "CODEX_DEFAULT_MODEL": "gpt-5.6-terra",
+            "CODEX_PROVIDER_FALLBACK_ENABLED": "true",
+            "CODEX_PROVIDER_FALLBACK_MODELS": (
+                "gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna"
+            ),
+            "BYESU_HERMES_CODEX_API_KEY": "a" * 48,
+            "BYESU_HERMES_GPT_PRO_API_KEY": "b" * 48,
+        }
+        self.patch = patch.dict(os.environ, self.env, clear=False)
+        self.patch.start()
 
-    routed = types.ModuleType("codex_routed_runner")
-    routed.RoutedCodexManager = FakeRouted
-    sys.modules["codex_routed_runner"] = routed
+    def tearDown(self) -> None:
+        self.patch.stop()
+        self.temp.cleanup()
 
-    def env_bool(name: str, default: bool = False) -> bool:
-        raw = os.environ.get(name)
-        return default if raw is None else raw.strip().casefold() in {"1", "true", "yes", "on"}
+    def manager(self):
+        manager = provider.ProviderChainManager()
+        manager._fingerprint = lambda: "stable"
+        manager._cooling_down = lambda: False
+        manager._open_cooldown = lambda: None
+        return manager
 
-    def reason(output: str):
-        lowered = output.casefold()
-        if any(item in lowered for item in ("usage limit", "quota", "429", "rate limit")):
-            return "subscription_limit"
-        if any(item in lowered for item in ("authentication", "401", "403", "token expired")):
-            return "subscription_auth"
-        if any(item in lowered for item in ("capacity", "temporarily unavailable", "503")):
-            return "codex_capacity"
-        return None
+    def seed(
+        self,
+        manager,
+        *,
+        tier: str,
+        task_type: str,
+        selected_model: str,
+    ) -> None:
+        manager.store.write(
+            {
+                "run_id": "a" * 32,
+                "status": "queued",
+                "stop_requested": False,
+                "requested_tier": tier,
+                "task_type": task_type,
+                "complexity": "complex" if tier in {"complex", "high_risk"} else tier,
+                "risk": "high" if tier == "high_risk" else "medium",
+                "mutation_policy": (
+                    "isolated_pr_only"
+                    if tier in {"complex", "high_risk"}
+                    else "workspace_write"
+                ),
+                "selected_primary_model": selected_model,
+                "selected_provider_route": routed.provider_route_name(tier, task_type),
+                "attempted_models": [],
+                "attempted_routes": [],
+                "mutation_started": False,
+            }
+        )
 
-    class FakeCodexFirst(FakeRouted):
-        def _execute(self, run_id, prompt, instructions, selected_model):
-            self.store.update(
-                run_id,
-                status="failed",
-                attempted_models=[selected_model],
-                attempted_routes=[f"codex_subscription:{selected_model}"],
-                actual_route="codex_subscription",
-                fallback_reason="subscription_limit",
-                mutation_started=False,
-                error="codex subscription usage limit",
-            )
+    def execute(
+        self,
+        *,
+        tier: str,
+        task_type: str,
+        selected_model: str,
+        primary_results: dict[str, dict],
+        provider_results: dict[str, dict],
+        mutate_on: str | None = None,
+    ):
+        manager = self.manager()
+        self.seed(
+            manager,
+            tier=tier,
+            task_type=task_type,
+            selected_model=selected_model,
+        )
+        attempts: list[tuple[str, str]] = []
+        state = {"fingerprint": "stable"}
+        manager._fingerprint = lambda: state["fingerprint"]
 
-    first = types.ModuleType("codex_first_runner")
-    first.CodexFirstManager = FakeCodexFirst
-    first.Handler = object
-    first.ThreadingHTTPServer = object
-    first.env_bool = env_bool
-    first.provider_fallback_reason = reason
-    sys.modules["codex_first_runner"] = first
+        def primary_run(run_id, model, prompt):
+            attempts.append(("primary", model))
+            result = primary_results[model]
+            if mutate_on == f"primary:{model}":
+                state["fingerprint"] = "changed"
+            if result.get("execution_started"):
+                manager._primary_output_started = True
+            return result
 
-    def execution_started(stdout: str) -> bool:
-        for raw in stdout.splitlines():
-            try:
-                event = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
-            item = event.get("item") if isinstance(event, dict) else None
-            kind = str(item.get("type") or "") if isinstance(item, dict) else ""
-            if kind in {"command_execution", "file_change", "mcp_tool_call"}:
-                return True
-            if kind.endswith("_tool_call") or kind.endswith("_execution"):
-                return True
-        return False
+        def provider_run(run_id, prompt, model):
+            attempts.append(("provider", model))
+            result = provider_results[model]
+            if mutate_on == f"provider:{model}":
+                state["fingerprint"] = "changed"
+            return result
 
-    class FakeSafe(FakeCodexFirst):
-        def _fingerprint(self):
-            value = "stable"
-            if getattr(self, "_run_baseline", None) is None:
-                self._run_baseline = value
-            return value
-
-        def _success(self, run_id, model, models, routes, route, reason, stdout):
-            self.store.update(
+        def success(run_id, model, models, routes, route, reason, stdout):
+            manager.store.update(
                 run_id,
                 status="completed",
                 model=model,
@@ -135,136 +178,174 @@ def install_stubs(root: Path) -> None:
                 fallback_reason=reason,
             )
 
-    safe = types.ModuleType("codex_first_safe_runner")
-    safe.SafeCodexFirstManager = FakeSafe
-    safe.primary_execution_started = execution_started
-    sys.modules["codex_first_safe_runner"] = safe
+        manager._run_once = primary_run
+        manager._provider_run = provider_run
+        manager._success = success
+        manager._execute("a" * 32, "task", "", selected_model)
+        return manager.store.read("a" * 32), attempts
 
-
-class ProviderChainTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.temp = tempfile.TemporaryDirectory()
-        install_stubs(Path(cls.temp.name))
-        cls.module = load_module(
-            "codex_provider_chain_runner_test",
-            ROOT / "deploy/hermes-coders/codex_provider_chain_runner.py",
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls.temp.cleanup()
-
-    def test_default_legacy_and_strict_allowlist(self) -> None:
+    def test_catalog_parser_is_strict(self) -> None:
         self.assertEqual(
             ("gpt-5.4-mini", "gpt-5.6-terra", "gpt-5.6-luna"),
-            self.module.parse_provider_models(None, None),
+            provider.parse_provider_models(None, None),
         )
-        self.assertEqual(
-            ("gpt-5.6-terra",),
-            self.module.parse_provider_models("", "gpt-5.6-terra"),
-        )
-        for raw in ("gpt-5.6-sol", "gpt-5.4-mini,gpt-5.4-mini", "gpt-5.4-mini,"):
-            with self.subTest(raw=raw), self.assertRaises(RuntimeError):
-                self.module.parse_provider_models(raw, None)
-
-    def _manager(self):
-        env = {
-            "CODEX_PROVIDER_FALLBACK_ENABLED": "true",
-            "CODEX_PROVIDER_FALLBACK_MODELS": "gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna",
-            "BYESU_HERMES_CODEX_API_KEY": "a" * 48,
-            "BYESU_HERMES_GPT_PRO_API_KEY": "b" * 48,
-        }
-        with patch.dict(os.environ, env, clear=False):
-            return self.module.ProviderChainManager()
-
-    def test_homes_use_two_credentials_without_secret_values(self) -> None:
-        manager = self._manager()
-        configs = {
-            model: (home / "config.toml").read_text(encoding="utf-8")
-            for model, home in manager.provider_homes.items()
-        }
-        self.assertIn('env_key = "BYESU_HERMES_CODEX_API_KEY"', configs["gpt-5.4-mini"])
-        self.assertIn('env_key = "BYESU_HERMES_CODEX_API_KEY"', configs["gpt-5.6-terra"])
-        self.assertIn('env_key = "BYESU_HERMES_GPT_PRO_API_KEY"', configs["gpt-5.6-luna"])
-        joined = "\n".join(configs.values())
-        self.assertNotIn("a" * 48, joined)
-        self.assertNotIn("b" * 48, joined)
-        self.assertNotIn('"GH_TOKEN"', joined)
-
-    def test_capabilities_expose_order_and_safe_groups(self) -> None:
-        fallback = self._manager().capabilities()["routing"]["provider_fallback"]
-        self.assertEqual("gpt-5.4-mini", fallback["model"])
-        self.assertEqual(
-            ["gpt-5.4-mini", "gpt-5.6-terra", "gpt-5.6-luna"],
-            fallback["models"],
-        )
-        self.assertEqual(
-            [
-                {"name": "byesu-coder", "models": ["gpt-5.4-mini", "gpt-5.6-terra"]},
-                {"name": "byesu-gpt-pro", "models": ["gpt-5.6-luna"]},
-            ],
-            fallback["credential_groups"],
-        )
-        self.assertNotIn("env_key", str(fallback))
-
-    def _execute(self, results):
-        manager = self._manager()
-        attempts = []
-
-        def provider_run(run_id, prompt, model):
-            attempts.append(model)
-            return results[model]
-
-        manager._provider_run = provider_run
-        manager._execute("run", "task", "", "gpt-5.6-terra")
-        return manager, attempts
-
-    def test_capacity_walks_full_chain(self) -> None:
-        fail = {"returncode": 1, "stdout": "", "stderr": "capacity", "cancelled": False, "execution_started": False}
-        success = {"returncode": 0, "stdout": "{}", "stderr": "", "cancelled": False, "execution_started": False}
-        manager, attempts = self._execute({
-            "gpt-5.4-mini": fail,
-            "gpt-5.6-terra": fail,
-            "gpt-5.6-luna": success,
-        })
-        self.assertEqual(["gpt-5.4-mini", "gpt-5.6-terra", "gpt-5.6-luna"], attempts)
-        self.assertEqual("completed", manager.store.record["status"])
-
-    def test_auth_skips_same_credential_group(self) -> None:
-        auth = {"returncode": 1, "stdout": "", "stderr": "401 authentication failed", "cancelled": False, "execution_started": False}
-        success = {"returncode": 0, "stdout": "{}", "stderr": "", "cancelled": False, "execution_started": False}
-        manager, attempts = self._execute({
-            "gpt-5.4-mini": auth,
-            "gpt-5.6-terra": success,
-            "gpt-5.6-luna": success,
-        })
-        self.assertEqual(["gpt-5.4-mini", "gpt-5.6-luna"], attempts)
-        self.assertEqual("completed", manager.store.record["status"])
-
-    def test_ordinary_error_and_execution_event_stop_chain(self) -> None:
-        for result in (
-            {"returncode": 1, "stdout": "", "stderr": "pytest assertion failed", "cancelled": False, "execution_started": False},
-            {"returncode": 1, "stdout": "", "stderr": "blocked", "cancelled": False, "execution_started": True},
+        for value in (
+            "gpt-5.6-sol",
+            "gpt-5.4-mini,gpt-5.4-mini",
+            "gpt-5.4-mini,",
         ):
-            with self.subTest(result=result):
-                manager, attempts = self._execute({
-                    "gpt-5.4-mini": result,
-                    "gpt-5.6-terra": result,
-                    "gpt-5.6-luna": result,
-                })
-                self.assertEqual(["gpt-5.4-mini"], attempts)
-                self.assertEqual("failed", manager.store.record["status"])
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                provider.parse_provider_models(value, None)
 
-    def test_source_keeps_mutation_and_execution_guards(self) -> None:
-        source = (ROOT / "deploy/hermes-coders/codex_provider_chain_runner.py").read_text(
-            encoding="utf-8"
+    def test_capabilities_publish_routes_without_secret_names(self) -> None:
+        payload = self.manager().capabilities()
+        fallback = payload["routing"]["provider_fallback"]
+        self.assertEqual(
+            ["gpt-5.4-mini", "gpt-5.6-terra"],
+            fallback["routes_by_tier"]["small_code"],
         )
-        self.assertIn("self._fingerprint() != baseline", source)
-        self.assertIn("primary_execution_started", source)
-        self.assertIn('"execution_started": True', source)
-        self.assertIn('"BYESU_HERMES_CODEX_API_KEY"', source)
-        self.assertIn('"BYESU_HERMES_GPT_PRO_API_KEY"', source)
+        self.assertEqual(
+            ["gpt-5.6-terra"], fallback["routes_by_tier"]["high_risk"]
+        )
+        serialized = str(fallback)
+        self.assertNotIn("env_key", serialized)
+        self.assertNotIn("API_KEY", serialized)
+        self.assertEqual("fail_closed", fallback["model_access_failure"])
+
+    def test_small_general_uses_provider_luna(self) -> None:
+        record, attempts = self.execute(
+            tier="small",
+            task_type="general",
+            selected_model="gpt-5.6-luna",
+            primary_results={
+                "gpt-5.6-luna": failed("401 authentication failed")
+            },
+            provider_results={"gpt-5.6-luna": succeeded()},
+        )
+        self.assertEqual(
+            [("primary", "gpt-5.6-luna"), ("provider", "gpt-5.6-luna")],
+            attempts,
+        )
+        self.assertEqual("completed", record["status"])
+
+    def test_small_code_capacity_retries_mini_then_terra(self) -> None:
+        primary_capacity = {
+            model: failed("503 capacity")
+            for model in ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
+        }
+        record, attempts = self.execute(
+            tier="small",
+            task_type="code",
+            selected_model="gpt-5.6-luna",
+            primary_results=primary_capacity,
+            provider_results={
+                "gpt-5.4-mini": failed("temporarily unavailable capacity"),
+                "gpt-5.6-terra": succeeded(),
+            },
+        )
+        provider_attempts = [model for route, model in attempts if route == "provider"]
+        self.assertEqual(["gpt-5.4-mini", "gpt-5.6-terra"], provider_attempts)
+        self.assertEqual("gpt-5.6-terra", record["model"])
+        self.assertNotIn("gpt-5.6-luna", provider_attempts)
+
+    def test_standard_provider_route_never_downgrades_to_luna(self) -> None:
+        record, attempts = self.execute(
+            tier="standard",
+            task_type="code",
+            selected_model="gpt-5.6-terra",
+            primary_results={
+                "gpt-5.6-terra": failed("503 capacity"),
+                "gpt-5.6-sol": failed("503 capacity"),
+            },
+            provider_results={"gpt-5.6-terra": succeeded()},
+        )
+        self.assertEqual("completed", record["status"])
+        self.assertEqual(
+            ["gpt-5.6-terra"],
+            [model for route, model in attempts if route == "provider"],
+        )
+        self.assertNotIn("gpt-5.6-luna", record["attempted_models"])
+
+    def test_sol_unavailable_uses_review_required_terra_route(self) -> None:
+        record, attempts = self.execute(
+            tier="high_risk",
+            task_type="code",
+            selected_model="gpt-5.6-sol",
+            primary_results={"gpt-5.6-sol": failed("503 model unavailable")},
+            provider_results={"gpt-5.6-terra": succeeded()},
+        )
+        self.assertEqual(
+            [("primary", "gpt-5.6-sol"), ("provider", "gpt-5.6-terra")],
+            attempts,
+        )
+        self.assertTrue(record["review_required"])
+        self.assertTrue(record["degraded_provider_route"])
+        self.assertEqual("completed", record["status"])
+
+    def test_auth_blocks_entire_credential_group(self) -> None:
+        primary_capacity = {
+            model: failed("503 capacity")
+            for model in ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
+        }
+        record, attempts = self.execute(
+            tier="small",
+            task_type="code",
+            selected_model="gpt-5.6-luna",
+            primary_results=primary_capacity,
+            provider_results={
+                "gpt-5.4-mini": failed("401 authentication failed"),
+                "gpt-5.6-terra": succeeded(),
+            },
+        )
+        self.assertEqual(
+            ["gpt-5.4-mini"],
+            [model for route, model in attempts if route == "provider"],
+        )
+        self.assertEqual("failed", record["status"])
+
+    def test_permanent_mini_access_failure_fails_closed(self) -> None:
+        primary_capacity = {
+            model: failed("503 capacity")
+            for model in ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
+        }
+        record, attempts = self.execute(
+            tier="small",
+            task_type="code",
+            selected_model="gpt-5.6-luna",
+            primary_results=primary_capacity,
+            provider_results={
+                "gpt-5.4-mini": failed("model not found; not entitled"),
+                "gpt-5.6-terra": succeeded(),
+            },
+        )
+        self.assertEqual(
+            ["gpt-5.4-mini"],
+            [model for route, model in attempts if route == "provider"],
+        )
+        self.assertEqual("failed", record["status"])
+
+    def test_mutation_or_execution_event_blocks_cross_model_retry(self) -> None:
+        for mutation, execution in ((True, False), (False, True)):
+            with self.subTest(mutation=mutation, execution=execution):
+                record, attempts = self.execute(
+                    tier="standard",
+                    task_type="code",
+                    selected_model="gpt-5.6-terra",
+                    primary_results={
+                        "gpt-5.6-terra": failed(
+                            "503 capacity", execution_started=execution
+                        ),
+                        "gpt-5.6-sol": failed("503 capacity"),
+                    },
+                    provider_results={"gpt-5.6-terra": succeeded()},
+                    mutate_on=("primary:gpt-5.6-terra" if mutation else None),
+                )
+                self.assertEqual(
+                    [("primary", "gpt-5.6-terra")],
+                    attempts,
+                )
+                self.assertEqual("failed", record["status"])
+                self.assertEqual(mutation, bool(record["mutation_started"]))
 
 
 if __name__ == "__main__":
