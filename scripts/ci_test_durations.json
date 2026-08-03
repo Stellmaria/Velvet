@@ -1,0 +1,11 @@
+{
+  "tests/test_ai_task_queue_repository_integration.py": 1.8,
+  "tests/test_archive_product_scope.py": 1.7,
+  "tests/test_handler_alias_consumer_inventory.py": 4.9,
+  "tests/test_image_preview.py": 3.4,
+  "tests/test_owner_menu_compat.py": 5.0,
+  "tests/test_p3e_repository_layout_inventory.py": 7.7,
+  "tests/test_phase18m_private_pool_inventory.py": 3.2,
+  "tests/test_project_integrity.py": 7.1,
+  "tests/test_root_module_inventory.py": 2.5
+}
