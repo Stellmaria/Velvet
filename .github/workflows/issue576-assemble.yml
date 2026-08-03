@@ -7,12 +7,19 @@ on:
     paths:
       - ".issue576/**"
       - ".github/workflows/issue576-assemble.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".issue576/**"
+      - ".github/workflows/issue576-assemble.yml"
 
 permissions:
   contents: write
 
 jobs:
   assemble:
+    if: github.head_ref == 'fix/tier-aware-hermes-model-routing' || github.ref_name == 'fix/tier-aware-hermes-model-routing'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
