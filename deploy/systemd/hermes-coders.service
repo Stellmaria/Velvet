@@ -11,6 +11,7 @@ User=velvet
 Group=velvet
 WorkingDirectory=/srv/velvet/deploy/hermes-coders
 Environment=HERMES_CODERS_ROOT=/srv/hermes-coders
+ExecStartPre=+/usr/bin/chmod 0644 /srv/velvet/deploy/hermes-coders/codex_delegate.py /srv/velvet/deploy/hermes-coders/codex_first_runner.py /srv/velvet/deploy/hermes-coders/codex_first_safe_runner.py /srv/velvet/deploy/hermes-coders/codex_provider_chain_runner.py /srv/velvet/deploy/hermes-coders/compose.runtime.yaml
 ExecStartPre=+/usr/bin/python3 /srv/velvet/deploy/hermes-coders/ensure_runtime_config.py /srv/hermes-coders/data/velvet/config.yaml /srv/hermes-coders/data/max/config.yaml
 ExecStartPre=+/usr/bin/python3 /srv/velvet/deploy/hermes-coders/reconcile_workspaces.py
 ExecStartPre=+/usr/bin/python3 /srv/velvet/deploy/hermes-coders/preflight.py
@@ -18,6 +19,7 @@ ExecStartPre=/usr/bin/docker compose --profile velvet --profile max -f compose.y
 ExecStart=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml -f compose.runtime.yaml up -d --build --remove-orphans
 ExecStartPost=/usr/bin/python3 /srv/velvet/deploy/hermes-coders/runtime_smoke.py
 ExecStop=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml -f compose.runtime.yaml stop --timeout 45
+ExecReload=+/usr/bin/chmod 0644 /srv/velvet/deploy/hermes-coders/codex_delegate.py /srv/velvet/deploy/hermes-coders/codex_first_runner.py /srv/velvet/deploy/hermes-coders/codex_first_safe_runner.py /srv/velvet/deploy/hermes-coders/codex_provider_chain_runner.py /srv/velvet/deploy/hermes-coders/compose.runtime.yaml
 ExecReload=/usr/bin/docker compose --profile velvet --profile max -f compose.yaml -f compose.runtime.yaml up -d --build --remove-orphans
 ExecReload=/usr/bin/python3 /srv/velvet/deploy/hermes-coders/runtime_smoke.py
 TimeoutStartSec=0
