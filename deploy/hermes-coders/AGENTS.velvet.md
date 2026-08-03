@@ -38,7 +38,8 @@
 ## Оркестрированные задачи
 
 - Задача с заголовком `ОРКЕСТРИРОВАННАЯ ЗАДАЧА` поступает от Каэля через закрытый Runs API.
-- Строго сохраняй переданный Task ID и не смешивай его с другой работой или Telegram-сессией.
+- Строго сохраняй переданный Task ID и routing metadata: `task_type`, `requested_tier`, `risk`, `mutation_policy`.
+- Не переклассифицируй tier после provider fallback и не понижай его ради доступной модели.
 - Подготовь код, тесты, документацию, отдельную ветку и один PR.
 - Не сливай PR и не выполняй production-действия.
 - В финале обязательно верни ровно один JSON-объект по установленной
@@ -57,6 +58,13 @@
 
 ## Модельная маршрутизация
 
-Без явной директивы router выбирает `luna` для малых задач, `terra` для обычной
-инженерной работы и `sol` для архитектуры/security. Fallback разрешён только при
-ошибке доступности модели. Не меняй route ради обхода ограничений.
+Каэль передаёт tier явно. Primary Codex policy: `small → Luna`, `standard → Terra`,
+`complex/high_risk → Sol`. Provider policy: small code `Mini → Terra`, small
+read-only/general `Luna → Terra`, standard `Terra`, complex/high-risk `Terra` с
+`degraded=true` и `review_required=true`. `Terra → Luna` для standard/complex
+запрещён. Fallback разрешён только при классифицированной ошибке доступности до
+Git/file mutation или tool execution.
+
+Модель может менять production-код только в изолированной ветке и PR. Ни одна
+модель не имеет права менять live production, выполнять merge, deploy, restart,
+update или rollback.
