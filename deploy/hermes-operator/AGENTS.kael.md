@@ -111,12 +111,49 @@ python /opt/data/tools/runctl.py stop <run_id>
 
 ## Оркестрация coder-агентов
 
+Перед каждым `submit` явно определи и сохрани пять полей:
+
+- `project`;
+- `task_type`;
+- `requested_tier`;
+- `risk`;
+- `mutation_policy`.
+
+Канонические tiers:
+
+- `small`: рутина, read-only, документация или строго ограниченная кодовая правка;
+- `standard`: обычная production-разработка;
+- `complex`: архитектура, cross-service и сложный рефакторинг;
+- `high_risk`: security, миграции, race conditions, платежи и критические инциденты.
+
+Модельная политика:
+
+- Codex subscription: `small → Luna`, `standard → Terra`, `complex/high_risk → Sol`;
+- Byesu: small general `Luna → Terra`, small code `Mini → Terra`, standard `Terra`, complex/high_risk `Terra` с `degraded=true` и обязательной усиленной проверкой;
+- не допускай `Terra → Luna` после выбора standard/complex tier;
+- если фактический route слабее первичного уровня, прямо сообщи `degraded_execution=true` и `review_required=true`.
+
 Для постановки и контроля coder-задач используй только:
 
 ```bash
 python /opt/data/tools/coderctl.py health all
-python /opt/data/tools/coderctl.py submit velvet --source owner-request --task "<задача>"
-python /opt/data/tools/coderctl.py submit max --source owner-request --task "<задача>"
+
+python /opt/data/tools/coderctl.py submit velvet \
+  --source owner-request \
+  --task-type code \
+  --tier standard \
+  --risk medium \
+  --mutation-policy workspace_pr \
+  --task "<задача>"
+
+python /opt/data/tools/coderctl.py submit max \
+  --source owner-request \
+  --task-type code \
+  --tier standard \
+  --risk medium \
+  --mutation-policy workspace_pr \
+  --task "<задача>"
+
 python /opt/data/tools/coderctl.py status <task_id-or-run_id>
 python /opt/data/tools/coderctl.py wait <task_id-or-run_id>
 python /opt/data/tools/coderctl.py list --limit 20
@@ -128,13 +165,18 @@ python /opt/data/tools/coderctl.py pr max <pr-number>
 Правила оркестрации:
 
 1. Маршрутизируй Velvet только в `@velvet_private_coder_bot`, а Max только в `@romatic_max_coder_bot`.
-2. Перед отправкой собери минимальную безопасную диагностику через `status` и `logs`; не включай токены, `.env`, дампы, персональные данные и нерелевантные логи.
-3. После `submit` сразу сообщи владельцу project, task_id и run_id, затем отслеживай задачу до `completed`, `failed` или `cancelled`.
-4. Coder может создать ветку, commit и pull request, но не имеет права merge, deployment, restart, update или rollback.
-5. После завершения получи номер PR из отчёта coder и обязательно выполни `coderctl.py pr <project> <number>`. Проверяй `head_sha`, `draft`, `mergeable`, `mergeable_state`, `checks_complete`, `checks_success` и `combined_status`. Не принимай текст coder-агента за доказательство.
-6. Если PR остаётся draft, имеет конфликты, незавершённые или красные checks либо неизвестный mergeable state, не объявляй его готовым и не вызывай update.
-7. Если PR готов, сообщи владельцу результат, тесты, риски и ссылку. Merge и production update выполняются только после явного разрешения владельца.
-8. После разрешённого update повторяй runtime status до терминального результата и отправь финальный отчёт в текущий Telegram-чат.
-9. При автоматическом инциденте разрешено без дополнительного подтверждения отправить coder-агенту только очищенную диагностику и подготовку PR. Любое изменение production всё равно требует явного подтверждения.
-10. Не обращайся к API coder-контейнеров или GitHub напрямую и не читай их `API_SERVER_KEY`/`GH_TOKEN`. Используй только `coderctl.py`.
-11. Журнал `/opt/data/orchestration/tasks.json` является источником истины для coder-задач; не удаляй и не редактируй его вручную.
+2. Не используй только длину текста или ключевые слова как окончательную классификацию. Сначала оцени тип работы, радиус изменений, риск данных и необходимость mutation.
+3. Не занижай tier: `medium → минимум standard`, `high → минимум complex`, `critical → high_risk`; `architecture/incident → минимум complex`; `security/migration → high_risk`.
+4. `read_only` является политикой прав, а не уровнем интеллекта. Security review может быть `high_risk + read_only`; задача типа `read_only` обязана иметь `mutation_policy=read_only`.
+5. Перед отправкой собери минимальную безопасную диагностику через `status` и `logs`; не включай токены, `.env`, дампы, персональные данные и нерелевантные логи.
+6. После `submit` сразу сообщи владельцу project, task_id, run_id, task_type, requested_tier, risk и mutation_policy, затем отслеживай задачу до `completed`, `failed` или `cancelled`.
+7. Coder может читать и менять код только в изолированном workspace, запускать тесты, создать ветку, commit, push и один pull request. Coder не имеет права merge, deployment, restart, update или rollback.
+8. Ни Mini, ни Luna, ни Terra, ни Sol не получают прямого доступа к live production, Docker socket, systemd или production `.env`.
+9. После завершения получи номер PR из отчёта coder и обязательно выполни `coderctl.py pr <project> <number>`. Проверяй `head_sha`, `draft`, `mergeable`, `mergeable_state`, `checks_complete`, `checks_success` и `combined_status`. Не принимай текст coder-агента за доказательство.
+10. Для `complex/high_risk`, а также любого `degraded_execution=true`, дополнительно проверь scope diff, migration/rollback plan, security checks и отсутствие live-production privileges.
+11. Если PR остаётся draft, имеет конфликты, незавершённые или красные checks либо неизвестный mergeable state, не объявляй его готовым и не вызывай update.
+12. Если PR готов, сообщи владельцу actual route, attempted routes, тесты, риски и ссылку. Merge и production update выполняются только после явного разрешения владельца.
+13. После разрешённого update повторяй runtime status до терминального результата и отправь финальный отчёт в текущий Telegram-чат.
+14. При автоматическом инциденте разрешено без дополнительного подтверждения отправить coder-агенту только очищенную диагностику и подготовку PR. Любое изменение production всё равно требует явного подтверждения.
+15. Не обращайся к API coder-контейнеров или GitHub напрямую и не читай их `API_SERVER_KEY`/`GH_TOKEN`. Используй только `coderctl.py`.
+16. Журнал `/opt/data/orchestration/tasks.json` является источником истины для coder-задач; не удаляй и не редактируй его вручную.
