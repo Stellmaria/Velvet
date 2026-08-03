@@ -44,7 +44,7 @@ Security workflow последовательно запускал supply-chain c
 - Docker cache может отсутствовать на первом прогоне или быть недоступен для записи, поэтому экспорт cache настроен как необязательный;
 - ежедневный полный scan остаётся необходимым для обнаружения новых CVE без изменений dependency files.
 
-## После реализации
+## После завершения
 
 ### Фактически сделано
 
@@ -57,15 +57,28 @@ Security workflow последовательно запускал supply-chain c
 - bounded mypy запускает тяжёлые шаги только при изменении своей области;
 - project notes использует `fetch-depth: 2`, системный Python, прямой base SHA и отмену устаревших запусков.
 
-### Проверки до публикации PR
+### Миграции и совместимость
+
+Схемы данных, production runtime, Docker Compose, application API и required check names не меняются. Изменяется только способ выбора тяжёлых шагов внутри существующих GitHub Actions jobs. Scheduled security run добавлен как дополнительная полная проверка.
+
+### Проверки
 
 - `python -m py_compile scripts/ci_changed_surfaces.py tests/test_ci_changed_surfaces.py` — успешно;
 - `python -m unittest tests/test_ci_changed_surfaces.py -v` — 10 тестов успешно;
-- изменённые workflow YAML разобраны локальным YAML parser — успешно.
+- изменённые workflow YAML разобраны локальным YAML parser — успешно;
+- первый `project notes contract` выявил отсутствующие обязательные разделы этой записи; структура исправлена текущим коммитом;
+- остальные GitHub Actions проверки выполняются в PR #580.
+
+### PR и commit
+
+- PR: #580;
+- ветка: `agent/ci-nontest-fastpath-20260804`;
+- базовый commit: `ebcfc943410a700a356f98c413b13512e4d3e13c`;
+- merge выполняется только после полного зелёного CI.
 
 ### Незавершённое
 
-- создать PR;
+- подтвердить повторный успешный project notes run;
 - проверить полный GitHub Actions CI;
 - исправить возможные несовместимости GitHub runner, Buildx cache или выражений workflow;
 - после зелёного CI слить PR в `main`.
@@ -73,3 +86,7 @@ Security workflow последовательно запускал supply-chain c
 ### Rollback
 
 Вернуть прежние версии `.github/workflows/security.yml`, `.github/workflows/type-check.yml` и `.github/workflows/project-notes-contract.yml`, удалить `scripts/ci_changed_surfaces.py` и `tests/test_ci_changed_surfaces.py`.
+
+### Следующий шаг
+
+Дождаться полного результата CI для текущего head PR #580, исправить подтверждённые ошибки и выполнить squash merge в `main` после прохождения всех required checks.
