@@ -9,7 +9,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 SHARD_SCRIPT = ROOT / "scripts" / "ci_test_shard.py"
+DURATION_HINTS = ROOT / "scripts" / "ci_test_durations.json"
 PREFLIGHT_SCRIPT = ROOT / "scripts" / "ci_preflight.py"
+
+
+def load_shard_module():
+    spec = importlib.util.spec_from_file_location("ci_test_shard", SHARD_SCRIPT)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("could not load CI shard script")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class CiWorkflowContractTests(unittest.TestCase):
@@ -21,7 +31,7 @@ class CiWorkflowContractTests(unittest.TestCase):
 
     def test_workflow_runs_four_parallel_database_shards(self) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("CI_TEST_SHARDS: \"4\"", source)
+        self.assertIn('CI_TEST_SHARDS: "4"', source)
         self.assertIn("shard: [0, 1, 2, 3]", source)
         self.assertIn("name: test-shard-${{ matrix.shard }}", source)
         self.assertIn("sudo systemctl start postgresql.service", source)
@@ -57,21 +67,50 @@ class CiWorkflowContractTests(unittest.TestCase):
         self.assertNotIn("if: always()\n        uses: actions/upload-artifact", source)
 
     def test_shard_partition_covers_every_parallel_test_once(self) -> None:
-        spec = importlib.util.spec_from_file_location("ci_test_shard", SHARD_SCRIPT)
-        self.assertIsNotNone(spec)
-        self.assertIsNotNone(spec.loader if spec is not None else None)
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
+        module = load_shard_module()
         files = module.discover_test_files()
-        partitions = module.partition_test_files(files, total=4)
+        hints = module.load_duration_hints()
+        partitions = module.partition_test_files(
+            files,
+            total=4,
+            duration_hints=hints,
+        )
         assigned = [path for partition in partitions for path in partition]
 
         self.assertTrue(files)
         self.assertTrue(all(partition for partition in partitions))
         self.assertEqual(Counter(files), Counter(assigned))
         self.assertTrue(module.PREFLIGHT_TESTS.isdisjoint(files))
+
+    def test_duration_hints_are_current_positive_test_files(self) -> None:
+        module = load_shard_module()
+        files = set(module.discover_test_files())
+        hints = module.load_duration_hints(DURATION_HINTS)
+
+        self.assertTrue(hints)
+        self.assertFalse(set(hints) - files)
+        self.assertTrue(all(seconds > 0 for seconds in hints.values()))
+
+    def test_four_heaviest_measured_files_land_on_distinct_shards(self) -> None:
+        module = load_shard_module()
+        hints = module.load_duration_hints()
+        partitions = module.partition_test_files(
+            module.discover_test_files(),
+            total=4,
+            duration_hints=hints,
+        )
+        shard_by_file = {
+            path: index
+            for index, partition in enumerate(partitions)
+            for path in partition
+        }
+        heaviest = sorted(
+            hints,
+            key=lambda path: (-hints[path], path.as_posix()),
+        )[:4]
+
+        self.assertEqual(4, len(heaviest))
+        self.assertEqual(4, len({shard_by_file[path] for path in heaviest}))
 
 
 if __name__ == "__main__":
