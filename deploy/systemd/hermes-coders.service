@@ -2,7 +2,7 @@
 Description=Isolated Hermes Coder gateways for Velvet and Romatic Club Max
 Requires=docker.service
 After=docker.service network-online.target velvet-compose.service romaticclub-compose.service
-Wants=network-online.target
+Wants=network-online.target hermes-coder-router.service
 
 [Service]
 Type=oneshot
