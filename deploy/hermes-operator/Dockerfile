@@ -6,6 +6,7 @@ RUN addgroup -g 10001 app \
 WORKDIR /app
 COPY --chmod=0555 deploy/hermes-operator/gateway.py /app/gateway.py
 COPY --chmod=0555 deploy/hermes-operator/coder_router.py /app/coder_router.py
+COPY --chmod=0555 deploy/hermes-operator/tier_router.py /app/tier_router.py
 
 USER 10001:10001
 CMD ["python", "/app/gateway.py"]
