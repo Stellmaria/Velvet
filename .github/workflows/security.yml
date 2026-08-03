@@ -2,6 +2,8 @@ name: security supply chain
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * *"
   pull_request:
   push:
     branches:
@@ -27,14 +29,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
 
+      - name: Resolve changed CI surfaces
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python scripts/ci_changed_surfaces.py \
+            --event-name "$EVENT_NAME" \
+            --base-sha "$BASE_SHA" \
+            --before-sha "$BEFORE_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+
       - name: Set up Python
+        if: steps.changes.outputs.supply_chain == 'true'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
       - name: Set up uv
+        if: steps.changes.outputs.supply_chain == 'true'
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           version: ${{ env.UV_VERSION }}
@@ -46,6 +65,7 @@ jobs:
             requirements-dev.lock
 
       - name: Rebuild canonical dependency locks
+        if: steps.changes.outputs.supply_chain == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -64,6 +84,7 @@ jobs:
             --output-file generated-locks/requirements-dev.lock
 
       - name: Upload generated lock evidence
+        if: steps.changes.outputs.supply_chain == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: generated-locks-${{ github.sha }}
@@ -72,11 +93,13 @@ jobs:
           retention-days: 7
 
       - name: Verify immutable Actions and exception policy
+        if: steps.changes.outputs.supply_chain == 'true'
         run: |
           python scripts/security_gate.py actions
           python scripts/security_gate.py exceptions
 
       - name: Verify committed locks match resolver output
+        if: steps.changes.outputs.supply_chain == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -86,24 +109,44 @@ jobs:
           cmp requirements-dev.lock generated-locks/requirements-dev.lock
           python scripts/security_gate.py locks
 
+      - name: Skip unchanged supply-chain surface
+        if: steps.changes.outputs.supply_chain != 'true'
+        run: echo "No dependency, workflow, or security-contract changes."
+
   static-security:
     name: static-security
-    needs: supply-chain-contract
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
-      - name: Checkout full history
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 2
           persist-credentials: false
 
+      - name: Resolve changed security surface
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python scripts/ci_changed_surfaces.py \
+            --event-name "$EVENT_NAME" \
+            --base-sha "$BASE_SHA" \
+            --before-sha "$BEFORE_SHA" \
+            --github-output "$GITHUB_OUTPUT" \
+            --changed-files changed-security-files.txt
+
       - name: Set up Python
+        if: steps.changes.outputs.static_tools == 'true' || steps.changes.outputs.dependency_audit == 'true'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
       - name: Set up uv
+        if: steps.changes.outputs.static_tools == 'true' || steps.changes.outputs.dependency_audit == 'true'
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           version: ${{ env.UV_VERSION }}
@@ -111,27 +154,11 @@ jobs:
           cache-dependency-glob: requirements-dev.lock
 
       - name: Install audited tooling from hash lock
+        if: steps.changes.outputs.static_tools == 'true' || steps.changes.outputs.dependency_audit == 'true'
         run: uv pip install --system --require-hashes -r requirements-dev.lock
 
-      - name: Resolve changed security surface
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            git fetch --no-tags origin "$BASE_REF"
-            git diff --name-only "origin/${BASE_REF}...HEAD" > changed-security-files.txt
-          elif [[ "$EVENT_NAME" == "push" && -n "$BEFORE_SHA" && ! "$BEFORE_SHA" =~ ^0+$ ]]; then
-            git diff --name-only "$BEFORE_SHA...HEAD" > changed-security-files.txt
-          else
-            git ls-files > changed-security-files.txt
-          fi
-          cat changed-security-files.txt
-
       - name: Scan changed Python with Bandit
+        if: steps.changes.outputs.static_tools == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -143,6 +170,7 @@ jobs:
           fi
 
       - name: Scan changed shell with ShellCheck
+        if: steps.changes.outputs.static_tools == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -159,6 +187,7 @@ jobs:
           python scripts/security_gate.py containers --paths-from changed-security-files.txt
 
       - name: Audit production dependency graph
+        if: steps.changes.outputs.dependency_audit == 'true'
         shell: bash
         run: |
           set -o pipefail
@@ -168,6 +197,7 @@ jobs:
             --strict 2>&1 | tee security-audit-output.txt
 
       - name: Prove vulnerable fixture is detected
+        if: steps.changes.outputs.dependency_audit == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -185,7 +215,7 @@ jobs:
           echo "Intentional vulnerable fixture was detected and remains isolated."
 
       - name: Upload scanner evidence
-        if: always()
+        if: always() && steps.changes.outputs.dependency_audit == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: security-audit-${{ github.sha }}
@@ -210,9 +240,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
 
+      - name: Resolve changed CodeQL surface
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python scripts/ci_changed_surfaces.py \
+            --event-name "$EVENT_NAME" \
+            --base-sha "$BASE_SHA" \
+            --before-sha "$BEFORE_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+
       - name: Initialize CodeQL
+        if: >-
+          (matrix.language == 'python' && steps.changes.outputs.codeql_python == 'true') ||
+          (matrix.language == 'actions' && steps.changes.outputs.codeql_actions == 'true')
         uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
         with:
           languages: ${{ matrix.language }}
@@ -220,27 +268,66 @@ jobs:
           queries: security-extended
 
       - name: Analyze
+        if: >-
+          (matrix.language == 'python' && steps.changes.outputs.codeql_python == 'true') ||
+          (matrix.language == 'actions' && steps.changes.outputs.codeql_actions == 'true')
         uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
         with:
           category: /language:${{ matrix.language }}
 
+      - name: Skip unchanged CodeQL surface
+        if: >-
+          (matrix.language == 'python' && steps.changes.outputs.codeql_python != 'true') ||
+          (matrix.language == 'actions' && steps.changes.outputs.codeql_actions != 'true')
+        run: echo "No changed ${{ matrix.language }} CodeQL surface."
+
   image-security:
     name: image-security
-    needs:
-      - supply-chain-contract
-      - static-security
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
 
+      - name: Resolve changed image surface
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python scripts/ci_changed_surfaces.py \
+            --event-name "$EVENT_NAME" \
+            --base-sha "$BASE_SHA" \
+            --before-sha "$BEFORE_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Set up cached Docker builder
+        if: steps.changes.outputs.image == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create --name velvet-security --driver docker-container --use
+          docker buildx inspect --bootstrap
+
       - name: Build production image from committed lock
-        run: docker build --tag "velvet:${GITHUB_SHA}" .
+        if: steps.changes.outputs.image == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --load \
+            --cache-from type=gha,scope=velvet-production-image \
+            --cache-to type=gha,mode=max,scope=velvet-production-image,ignore-error=true \
+            --tag "velvet:${GITHUB_SHA}" \
+            .
 
       - name: Block high and critical image findings
+        if: steps.changes.outputs.image == 'true'
         uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # 0.35.0
         with:
           image-ref: velvet:${{ github.sha }}
@@ -250,6 +337,7 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Generate CycloneDX image SBOM
+        if: steps.changes.outputs.image == 'true'
         uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # 0.35.0
         with:
           image-ref: velvet:${{ github.sha }}
@@ -258,6 +346,7 @@ jobs:
           exit-code: "0"
 
       - name: Record digest and provenance
+        if: steps.changes.outputs.image == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -284,6 +373,7 @@ jobs:
           cat build-metadata.json
 
       - name: Upload SBOM and provenance
+        if: steps.changes.outputs.image == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: image-security-${{ github.sha }}
@@ -292,3 +382,7 @@ jobs:
             build-metadata.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Skip unchanged production image surface
+        if: steps.changes.outputs.image != 'true'
+        run: echo "No production image inputs changed."
