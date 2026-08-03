@@ -10,6 +10,10 @@ permissions:
   contents: read
   checks: read
 
+concurrency:
+  group: branch-protection-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   docker-build-contract:
     name: docker-build-contract
@@ -28,7 +32,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
           BEFORE_SHA: ${{ github.event.before }}
-          GH_SHA: ${{ github.sha }}
+          GH_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
