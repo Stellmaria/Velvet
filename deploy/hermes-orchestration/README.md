@@ -1,64 +1,123 @@
 # Hermes Coder Orchestration
 
-Этот слой связывает главный `@VelvetHermesBot` с двумя изолированными coder-агентами:
+Этот слой связывает Каэля с двумя изолированными coder-агентами:
 
 - Velvet → `@velvet_private_coder_bot` → `Stellmaria/Velvet`;
 - Max → `@romatic_max_coder_bot` → `Stellmaria/romatic_club_bot_max`.
 
-Главный Hermes получает возможность поставить задачу, сохранить её в журнале, опрашивать статус, дождаться результата и затем независимо проверить созданный pull request и CI. Coder-агенты по-прежнему не получают Docker socket, systemd, production checkout, production `.env` или право управлять runtime.
+Coder-агенты не получают Docker socket, systemd, production checkout, production `.env` или право управлять runtime.
 
 ## Архитектура
 
 ```text
-@VelvetHermesBot
+Каэль
   └─ coderctl.py
-      └─ hermes-coder-router:8878
+      └─ tier_router.py:8878
           ├─ hermes-coder-velvet:8642
           └─ hermes-coder-max:8642
 ```
 
-- `coderctl.py` использует отдельный client token и хранит журнал в `/opt/data/orchestration/tasks.json`.
-- `hermes-coder-router` принимает только фиксированные проекты и маршруты Runs API.
-- Router не монтирует Docker socket, production checkout, `.env` или host filesystem.
-- API coder-агентов доступен только во внутренней Docker-сети `hermes-agent-control`, без опубликованных портов.
-- У каждого coder отдельный `API_SERVER_KEY`; ключи не передаются главному Hermes.
+`coderctl.py` хранит ledger в `/opt/data/orchestration/tasks.json`. Router принимает только фиксированные проекты и schema-bound metadata. API coder-агентов доступен только во внутренней сети `hermes-agent-control`.
 
-## Разрешённый цикл
+## Обязательная классификация до submit
 
-1. Главный Hermes получает запрос владельца или очищенный аварийный инцидент.
-2. Собирает read-only `status` и `logs` через `opsctl.py`.
-3. Передаёт минимальную очищенную задачу соответствующему coder через `coderctl.py`.
-4. Coder создаёт отдельную ветку, вносит исправление, запускает тесты, делает push и создаёт один PR.
-5. Главный Hermes ждёт terminal status и проверяет PR, diff, CI и конфликты независимо от отчёта coder.
-6. Владелец получает Telegram-отчёт с task/run/PR/tests/blocker.
-7. Merge, update, restart и rollback остаются запрещены без явного разрешения владельца.
+Каэль обязан определить независимо друг от друга:
 
-## Команды главного Hermes
+- `task_type`: `general`, `code`, `read_only`, `documentation`, `incident`;
+- `complexity`: `small`, `standard`, `complex`;
+- `risk`: `low`, `medium`, `high`, `critical`;
+- `mutation_policy`: `read_only`, `workspace_write`, `isolated_pr_only`;
+- `requested_tier`: `small`, `standard`, `complex`, `high_risk`.
+
+Risk нельзя определять только длиной prompt или набором ключевых слов. Router валидирует согласованность, но не понижает и не переклассифицирует выбранный tier.
+
+## Команды
+
+Пример read-only small task:
+
+```bash
+python /opt/data/tools/coderctl.py submit velvet \
+  --source owner-request \
+  --task-type read_only \
+  --complexity small \
+  --risk low \
+  --mutation-policy read_only \
+  --tier small \
+  --task "Проверь статус и подготовь краткую сводку без изменений"
+```
+
+Пример standard code task:
+
+```bash
+python /opt/data/tools/coderctl.py submit max \
+  --source owner-request \
+  --task-type code \
+  --complexity standard \
+  --risk medium \
+  --mutation-policy workspace_write \
+  --tier standard \
+  --task "Исправь дефект, добавь regression test и открой PR"
+```
+
+Пример high-risk task:
+
+```bash
+python /opt/data/tools/coderctl.py submit velvet \
+  --source owner-request \
+  --task-type code \
+  --complexity complex \
+  --risk high \
+  --mutation-policy isolated_pr_only \
+  --tier high_risk \
+  --task "Подготовь security migration только в изолированном workspace"
+```
+
+Контроль:
 
 ```bash
 python /opt/data/tools/coderctl.py health all
-python /opt/data/tools/coderctl.py submit velvet --source owner-request --task "<задача>"
-python /opt/data/tools/coderctl.py submit max --source owner-request --task "<задача>"
 python /opt/data/tools/coderctl.py status <task_id-or-run_id>
 python /opt/data/tools/coderctl.py wait <task_id-or-run_id>
 python /opt/data/tools/coderctl.py list --limit 20
 python /opt/data/tools/coderctl.py stop <task_id-or-run_id>
+python /opt/data/tools/coderctl.py pr velvet <pr-number>
+python /opt/data/tools/coderctl.py pr max <pr-number>
 ```
 
-## Предварительные условия
+## Ledger contract
 
-До установки должны работать:
+Каждая запись сохраняет как минимум:
 
-- `hermes-operator-control.service`;
-- основной контейнер Hermes;
-- оба coder-контейнера и их read-only DB proxies;
-- отдельные Telegram и GitHub credentials coder-агентов;
-- `/srv/hermes-operator-control/operator.env`;
-- `/srv/hermes-coders/secrets/velvet.env` и `max.env` с режимом `0600`.
+```text
+task_type
+requested_tier
+risk
+selected_primary_model
+selected_provider_route
+attempted_models
+attempted_routes
+actual_route
+fallback_reason
+mutation_started
+```
+
+Статус и wait обновляют эти поля из coder runner. Redaction скрывает token, secret, password, API key и Authorization values.
+
+## Разрешённый цикл
+
+1. Каэль получает запрос или очищенный incident.
+2. Выполняет только необходимую read-only диагностику.
+3. Выбирает project, task type, complexity, risk, mutation policy и tier.
+4. `coderctl` сохраняет metadata и передаёт их в tier router.
+5. Coder работает только в своём workspace, создаёт ветку, тесты и один PR.
+6. Каэль ждёт terminal status и независимо проверяет ledger, diff, PR и CI.
+7. Merge, production update, restart и rollback требуют отдельного явного разрешения владельца.
+
+Для complex/high-risk Sol является primary model. Если Sol недоступна, provider Terra разрешена только как degraded isolated-PR route. Такой run обязан вернуть `review_required=true`; production privileges у него отсутствуют.
 
 ## Установка
 
-После merge и обновления `/srv/velvet`:
+До установки должны существовать отдельные coder secrets, operator credentials, internal network и production checkout на approved SHA.
 
 ```bash
 cd /srv/velvet
@@ -67,67 +126,45 @@ sudo bash deploy/hermes-orchestration/install.sh
 
 Installer:
 
-1. создаёт internal-сеть `hermes-agent-control`;
-2. генерирует разные `API_SERVER_KEY` для coder-агентов, если они ещё не заданы;
-3. создаёт `/srv/hermes-operator-control/coders.env` с режимом `0600`;
-4. устанавливает `coderctl.py`, managed SOUL и журнал задач в data основного Hermes;
-5. обновляет SOUL обоих coder-агентов;
-6. выполняет coder preflight;
-7. пересоздаёт только coder/router-контейнеры и перезапускает основной Hermes;
-8. проверяет health router и выводит состояния стеков.
+1. подготавливает distinct credentials без печати значений;
+2. устанавливает tier-aware `coderctl.py` и managed SOUL;
+3. собирает coder и router images;
+4. запускает preflight;
+5. проверяет capabilities обоих проектов.
 
-Секретные значения не печатаются.
-
-## Проверка
-
-На сервере:
+## Проверка после controlled rollout
 
 ```bash
 cd /srv/velvet
-
-docker compose \
-  --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile agent \
-  exec -T hermes \
-  python /opt/data/tools/coderctl.py health all
+sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
+  python3 deploy/hermes-coders/runtime_smoke.py
+sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
+  python3 deploy/hermes-coders/tier_provider_smoke.py
+sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
+  python3 deploy/hermes-coders/router_smoke.py
 ```
 
-Ожидаются успешные capabilities для `velvet` и `max`.
-
-Проверка журналирования без ручного чтения token-файлов:
+Затем внутри основного Hermes:
 
 ```bash
-docker compose \
-  --env-file .env.server \
-  -f docker-compose.server.yml \
-  --profile agent \
-  exec -T hermes \
-  python /opt/data/tools/coderctl.py list --limit 5
+python /opt/data/tools/coderctl.py health all
+python /opt/data/tools/coderctl.py list --limit 5
 ```
 
-## Автоматические инциденты Velvet
+Capabilities должны содержать безопасную `routes_by_tier` без env key names и secret values. Read-only Telegram handoff должен показывать requested tier и actual route.
 
-Автоматическая передача повторных падений включается только серверными переменными:
+## Автоматические инциденты
 
-```env
-HERMES_INCIDENT_ENABLED=true
-HERMES_BASE_URL=http://hermes:8642
-HERMES_API_KEY=<тот же внутренний ключ, что API_SERVER_KEY основного Hermes>
-```
+Incident watcher может автоматически передать только очищенную диагностику и подготовку PR. Для incident задаётся как минимум `task_type=incident`; при production/security поверхности используется `risk=high`, `mutation_policy=isolated_pr_only`, `requested_tier=high_risk`.
 
-После включения Supervisor отправляет главному Hermes очищенный пакет инцидента. Hermes может подготовить coder-задачу и PR, но не может самостоятельно слить его или изменить production. После terminal status Supervisor отправляет результат в настроенный Telegram log/owner chat.
-
-Max поддерживает ручную маршрутизацию через главный Hermes. Автоматический watcher Max требует отдельного связанного изменения в репозитории `Stellmaria/romatic_club_bot_max`.
+Автоматический merge или изменение production запрещены.
 
 ## Аварийная остановка
 
-Остановка router без удаления данных:
-
 ```bash
-cd /srv/velvet/deploy/hermes-operator
+cd /srv/velvet/deploy/hermes-orchestration
 HERMES_CODER_ROUTER_ENV_FILE=/srv/hermes-operator-control/coders.env \
   docker compose -f compose.yaml stop hermes-coder-router
 ```
 
-Журнал, workspaces, coder data и secrets не удалять. Не использовать `down -v`.
+Ledger, workspaces, coder data и secrets не удалять. `down -v` не использовать.
