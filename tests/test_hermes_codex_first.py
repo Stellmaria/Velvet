@@ -126,13 +126,29 @@ class CodexFirstPolicyTests(unittest.TestCase):
             source.index('if candidate in {"subscription_limit", "subscription_auth"}'),
         )
 
+    def test_safe_wrapper_blocks_retry_after_primary_events(self) -> None:
+        source = (
+            ROOT / "deploy/hermes-coders/codex_first_safe_runner.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("primary_output_started=True", source)
+        self.assertIn('"automatic_retry": False', source)
+        self.assertIn(
+            "Provider fallback blocked after primary execution events.",
+            source,
+        )
+        self.assertIn(
+            "mutation_started=super()._fingerprint() != baseline",
+            source,
+        )
+
 
 class DirectCoderContractTests(unittest.TestCase):
     def test_runtime_override_wires_both_projects(self) -> None:
         source = (
             ROOT / "deploy/hermes-coders/compose.runtime.yaml"
         ).read_text(encoding="utf-8")
-        self.assertEqual(4, source.count("/app/codex_first_runner.py"))
+        self.assertEqual(2, source.count("/app/codex_first_runner.py"))
+        self.assertEqual(4, source.count("/app/codex_first_safe_runner.py"))
         self.assertEqual(2, source.count("/app/codex_delegate.py"))
         self.assertIn(
             "HERMES_CODEX_DELEGATE_URL: http://hermes-coder-velvet:8642",
