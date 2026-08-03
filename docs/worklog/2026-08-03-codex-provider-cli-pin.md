@@ -3,7 +3,7 @@
 - Дата: 2026-08-03
 - ID: 2026-08-03-codex-provider-cli-pin
 - Линия/фаза: server operations / Codex-first provider fallback
-- Статус: подготовлено к проверке
+- Статус: частично
 - Ветка: fix/codex-provider-cli-pin
 - Базовый commit: 9106a71226140cb2ef2787635f3376e695b7bd81
 
@@ -61,23 +61,24 @@ Pin является временной совместимой мерой до �
 
 ### Проверки
 
-- Python compile;
-- focused Hermes coder contracts;
-- полный GitHub CI;
+- Python compile: PASS;
+- focused Hermes coder contracts: 27 PASS;
+- полный GitHub CI: выполняется;
 - после merge требуется live capabilities smoke;
 - provider route проверяется только в чистом test workspace.
 
 ### PR и commit
 
-PR и итоговый commit заполняются после публикации ветки.
+- PR: #573;
+- текущий head до исправления worklog: f23cfd2f62d832daff6fa2fa28d80c37ff87aedc;
+- итоговый merge commit будет зафиксирован после merge.
 
 ### Незавершённое
 
-- открыть draft PR;
 - дождаться полного CI;
 - слить hotfix;
 - выполнить контролируемый server rollout с проверенного merge SHA.
 
 ### Следующий шаг
 
-Опубликовать ветку, открыть draft PR и дождаться зелёных обязательных checks.
+Дождаться зелёных обязательных checks, перевести PR в ready и выполнить squash merge.
