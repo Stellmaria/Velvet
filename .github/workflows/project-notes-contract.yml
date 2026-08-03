@@ -8,9 +8,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   notes:
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
       - name: Skip worklog validation for Dependabot
         if: github.actor == 'dependabot[bot]'
@@ -20,19 +25,11 @@ jobs:
         if: github.actor != 'dependabot[bot]'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 2
           persist-credentials: false
-
-      - name: Set up Python
-        if: github.actor != 'dependabot[bot]'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.13'
-
-      - name: Fetch base branch
-        if: github.actor != 'dependabot[bot]'
-        run: git fetch --no-tags origin "${{ github.base_ref }}"
 
       - name: Validate project memory and worklog
         if: github.actor != 'dependabot[bot]'
-        run: python scripts/check_project_notes.py --base-ref "origin/${{ github.base_ref }}"
+        run: >-
+          python scripts/check_project_notes.py
+          --base-ref "${{ github.event.pull_request.base.sha }}"
