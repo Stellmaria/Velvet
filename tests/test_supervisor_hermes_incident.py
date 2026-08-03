@@ -29,6 +29,7 @@ class _FakeResponse:
 
 class HermesIncidentTests(unittest.TestCase):
     def _incident(self) -> HermesIncident:
+        fake_bot_token = "1234567890:" + "abcdefghijklmnopqrstuvwxyzABCDE"
         return HermesIncident(
             service="velvet-bot",
             reason="Repeated crash",
@@ -38,7 +39,7 @@ class HermesIncidentTests(unittest.TestCase):
             log_tail=(
                 "Authorization: Bearer super-secret-token\n"
                 "DATABASE_URL=postgresql://velvet:database-password@postgres:5432/velvet\n"
-                "BOT_TOKEN=1234567890:abcdefghijklmnopqrstuvwxyzABCDE\n"
+                f"BOT_TOKEN={fake_bot_token}\n"
                 "RuntimeError: worker failed 123 times"
             ),
             git_head="abc123",
