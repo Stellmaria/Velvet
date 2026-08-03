@@ -163,6 +163,24 @@ def classify_task(
     risk_directive = _match(_RISK_DIRECTIVE, clean)
     mutation_directive = _match(_MUTATION_DIRECTIVE, clean)
     small_code = bool(_SMALL_CODE.search(clean))
+    structured_policy = any(
+        value is not None
+        for value in (task_type, requested_tier, risk, mutation_policy)
+    )
+    directive_policy = any(
+        value is not None
+        for value in (
+            type_directive,
+            tier_directive,
+            risk_directive,
+            mutation_directive,
+        )
+    )
+    legacy_model_override = (
+        explicit_model is not None
+        and not structured_policy
+        and not directive_policy
+    )
 
     resolved_type = _validate(task_type or type_directive, _TASK_TYPES, "task_type")
     if resolved_type is None:
@@ -210,9 +228,19 @@ def classify_task(
         )
 
     if explicit_model is not None:
-        if tier_was_explicit and resolved_tier not in _TIERS_BY_MODEL[explicit_model]:
+        if legacy_model_override:
+            if explicit_model == "gpt-5.6-luna":
+                resolved_tier = "small"
+                resolved_risk = "low"
+            elif explicit_model == "gpt-5.6-terra":
+                resolved_tier = "standard"
+            else:
+                resolved_tier = (
+                    "high_risk" if minimum_tier == "high_risk" else "complex"
+                )
+        elif tier_was_explicit and resolved_tier not in _TIERS_BY_MODEL[explicit_model]:
             raise ValueError("model не соответствует requested_tier")
-        if not tier_was_explicit:
+        elif not tier_was_explicit:
             model_tiers = _TIERS_BY_MODEL[explicit_model]
             if minimum_tier == "high_risk" and "high_risk" in model_tiers:
                 resolved_tier = "high_risk"
@@ -326,7 +354,9 @@ class RoutedCodexManager(CodexManager):
         }
         base_payload["model"] = classification.model
         record = super().submit(base_payload)
-        run_id = str(record["run_id"])
+        run_id = record.get("run_id")
+        if not isinstance(run_id, str) or not run_id:
+            return record
         return self.store.update(
             run_id,
             task_type=classification.task_type,
