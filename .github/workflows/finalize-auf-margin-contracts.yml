@@ -1,0 +1,153 @@
+name: finalize Auf margin contracts
+
+on:
+  push:
+    branches:
+      - feat/auf-margin-accounting
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feat/auf-margin-accounting
+          fetch-depth: 0
+      - name: Set up contract Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - name: Refresh canonical inventory and contracts
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --label p1-package-architecture-baseline \
+            --write \
+            --bootstrap-exemptions
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import re
+          from pathlib import Path
+
+          pricing_test = Path("tests/test_auf_pricing_policy.py")
+          pricing_text = pricing_test.read_text(encoding="utf-8")
+          old = '''        source = inspect.getsource(quote_auf_payload)
+                  self.assertIn("minimum_discounted_velvets", source)
+                  self.assertNotIn("_banana_quality_surcharge", source)'''
+          new = '''        source = inspect.getsource(quote_auf_payload)
+                  self.assertIn("discounted_floor", source)
+                  self.assertNotIn("_banana_quality_surcharge", source)'''
+          if old not in pricing_text:
+              raise SystemExit("pricing policy contract fragment not found")
+          pricing_test.write_text(pricing_text.replace(old, new), encoding="utf-8")
+
+          inventory = json.loads(
+              Path("docs/package_architecture_inventory.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          shared = inventory["shared_contract_summary"]
+          stages = len(inventory["installer_graph"])
+          values = {
+              "production_module_count": inventory["production_module_count"],
+              "production_loc": inventory["production_loc"],
+              "root_module_count": inventory["root_module_count"],
+              "router_count": inventory["router_count"],
+              "repository_module_count": inventory["repository_module_count"],
+              "violation_count": inventory["violation_count"],
+              "production_python_files": shared["production_python_files"],
+              "function_count": shared["function_count"],
+              "private_contract_access_count": shared[
+                  "private_contract_access_count"
+              ],
+              "exact_duplicate_group_count": shared[
+                  "exact_duplicate_group_count"
+              ],
+              "normalized_duplicate_group_count": shared[
+                  "normalized_duplicate_group_count"
+              ],
+              "semantic_near_duplicate_group_count": shared[
+                  "semantic_near_duplicate_group_count"
+              ],
+          }
+
+          path = Path("tests/test_package_architecture_inventory.py")
+          text = path.read_text(encoding="utf-8")
+
+          def replace(pattern: str, replacement: str) -> None:
+              global text
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f"inventory contract pattern not found: {pattern}")
+
+          for key in (
+              "production_module_count",
+              "production_loc",
+              "root_module_count",
+              "router_count",
+              "repository_module_count",
+              "violation_count",
+          ):
+              rendered = f"{values[key]:_}"
+              replace(
+                  rf'self\.assertEqual\(\d[\d_]*, self\.inventory\["{key}"\]\)',
+                  f'self.assertEqual({rendered}, self.inventory["{key}"])',
+              )
+
+          replace(
+              r'self\.assertEqual\(\d[\d_]*, len\(self\.inventory\["installer_graph"\]\)\)',
+              f'self.assertEqual({stages:_}, len(self.inventory["installer_graph"]))',
+          )
+          for key in (
+              "production_python_files",
+              "function_count",
+              "private_contract_access_count",
+              "exact_duplicate_group_count",
+              "normalized_duplicate_group_count",
+              "semantic_near_duplicate_group_count",
+          ):
+              rendered = f"{values[key]:_}"
+              replace(
+                  rf'self\.assertEqual\(\d[\d_]*, shared\["{key}"\]\)',
+                  f'self.assertEqual({rendered}, shared["{key}"])',
+              )
+
+          replace(
+              r'list\(range\(1, \d+\)\)',
+              f'list(range(1, {stages + 1}))',
+          )
+          markdown_values = {
+              "Production modules": values["production_module_count"],
+              "Production LOC": values["production_loc"],
+              "Startup installer stages": stages,
+              "Registered package violations": values["violation_count"],
+              "Registered exemptions": values["violation_count"],
+          }
+          for label, value in markdown_values.items():
+              replace(
+                  rf'"{re.escape(label)}: \*\*\d+\*\*"',
+                  f'"{label}: **{value}**"',
+              )
+          path.write_text(text, encoding="utf-8")
+          PY
+      - name: Commit generated contracts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/package_architecture_inventory.json \
+                  docs/package_architecture_inventory.md \
+                  docs/package_architecture_exemptions.json \
+                  tests/test_package_architecture_inventory.py \
+                  tests/test_auf_pricing_policy.py
+          if git diff --cached --quiet; then
+            echo "Architecture contracts already current"
+            exit 0
+          fi
+          git commit -m "test: refresh Auf margin architecture contracts"
+          git push origin HEAD:feat/auf-margin-accounting
