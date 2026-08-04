@@ -326,10 +326,21 @@ findmnt -n -o OPTIONS /workspace-base | grep -E '(^|,)ro(,|$)' >/dev/null
 probe="/opt/codex-runs/smoke-{target.project}-$$"
 trap 'rm -rf -- "$probe"' EXIT
 rm -rf -- "$probe"
-git clone --no-hardlinks --no-checkout /workspace-base "$probe" >/dev/null
-head="$(git -C /workspace-base rev-parse HEAD)"
-git -C "$probe" checkout --detach --force "$head" >/dev/null
-git -C "$probe" remote set-url origin "$remote"
+default_branch="$(
+  GIT_TERMINAL_PROMPT=0 git ls-remote --symref "$remote" HEAD \
+    | sed -n 's#^ref: refs/heads/\([^[:space:]]*\)[[:space:]]*HEAD$#\1#p' \
+    | head -n 1
+)"
+test -n "$default_branch"
+git check-ref-format --branch "$default_branch" >/dev/null
+GIT_TERMINAL_PROMPT=0 git clone \
+  --filter=blob:none \
+  --no-checkout \
+  --single-branch \
+  --branch "$default_branch" \
+  "$remote" "$probe" >/dev/null
+source_ref="origin/$default_branch"
+git -C "$probe" checkout --detach --force "$source_ref" >/dev/null
 git -C "$probe" push --dry-run origin \
   HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
 
@@ -355,6 +366,10 @@ awk '$1 == "CapEff:" && $2 == "0000000000000000" {{ok=1}} END {{exit !ok}}' /pro
 awk '$1 == "Seccomp:" && $2 == "2" {{ok=1}} END {{exit !ok}}' /proc/1/status
 grep -F 'hermes-codex-bwrap' /proc/1/attr/current >/dev/null
 findmnt -n -o OPTIONS / | grep -E '(^|,)ro(,|$)' >/dev/null
+if ps -eo stat= | grep -Eq '^Z'; then
+  echo "coder container contains zombie processes" >&2
+  exit 42
+fi
 """
 
 
@@ -421,7 +436,8 @@ def main() -> int:
         verify_codex_access(target)
         print(
             f"Hermes/Codex smoke: {target.project} -> {target.repository}: "
-            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, BASE_RO_OK, RUN_RW_OK, PUSH_OK"
+            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, BASE_RO_OK, "
+            "RUN_RW_OK, PUSH_OK, NO_ZOMBIES"
         )
     verify_main_cryptography()
     print(f"Main Hermes dependency: cryptography=={CRYPTOGRAPHY_VERSION}: OK")
