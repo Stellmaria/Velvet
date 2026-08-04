@@ -37,38 +37,18 @@ jobs:
 
           path = Path('velvet_bot/domains/auf_wallet/pricing.py')
           text = path.read_text(encoding='utf-8')
-          old = '''    quality_surcharge_raw = (
-              row.get("quality_surcharge_velvets", 0)
-              if hasattr(row, "get")
-              else 0
-          )
-          quality_surcharge_velvets = max(0, int(quality_surcharge_raw or 0))
-          standard_minimum_raw = (
-              row.get("minimum_velvets", 1)
-              if hasattr(row, "get")
-              else 1
-          )
-          standard_minimum_velvets = max(1, int(standard_minimum_raw or 1))
-          discounted_minimum_raw = (
-              row.get("minimum_discounted_velvets")
-              if hasattr(row, "get")
-              else None
-          )
-          discounted_minimum_velvets = (
-              max(1, int(discounted_minimum_raw))
-              if discounted_minimum_raw is not None
-              else None
-          )
-          '''
-          new = '''    (
+          start_marker = '    quality_surcharge_raw = ('
+          end_marker = '\n\n    settings = await connection.fetchrow('
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('Could not locate inline price-floor block.')
+          replacement = '''    (
               quality_surcharge_velvets,
               standard_minimum_velvets,
               discounted_minimum_velvets,
-          ) = _price_floors(row)
-          '''
-          if old not in text:
-              raise SystemExit('Expected inline price-floor block was not found.')
-          text = text.replace(old, new, 1)
+          ) = _price_floors(row)'''
+          text = text[:start] + replacement + text[end:]
 
           marker = '\n\nasync def _load_user_markup_policy('
           helper = '''
