@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `pr-587-auf-pricing-rub-usd`
+- Generated from: `p1-package-architecture-baseline`
 - Production modules: **646**
 - Production LOC: **141664**
 - Root modules: **113**
