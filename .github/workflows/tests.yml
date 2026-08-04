@@ -55,25 +55,33 @@ jobs:
 
           pricing_path = Path("velvet_bot/domains/auf_wallet/pricing.py")
           source = pricing_path.read_text(encoding="utf-8")
-          old = '''        async with self._database.acquire() as connection:
-              minimum_markup = await connection.fetchval(
-                  """
-                  SELECT minimum_user_markup_percent
-                  FROM auf_economy_settings
-                  WHERE singleton_id = 1
-                  """
-              )
-              if minimum_markup is None:
-                  raise RuntimeError("Настройки экономики Ауф не инициализированы.")
-              minimum_normalized = _validate_markup_percent(Decimal(minimum_markup))
-          '''
-          new = '''        async with self._database.acquire() as connection:
-              current_policy = await _load_user_markup_policy(connection, int(user_id))
-              minimum_normalized = current_policy.minimum_user_markup_percent
-          '''
-          if source.count(old) != 1:
-              raise SystemExit("expected unique set_user_markup SQL block")
-          pricing_path.write_text(source.replace(old, new), encoding="utf-8")
+          start_marker = (
+              "        async with self._database.acquire() as connection:\n"
+              "            minimum_markup = await connection.fetchval("
+          )
+          end_marker = (
+              "            minimum_normalized = "
+              "_validate_markup_percent(Decimal(minimum_markup))\n"
+          )
+          start = source.find(start_marker)
+          if start < 0:
+              raise SystemExit("set_user_markup start marker not found")
+          end = source.find(end_marker, start)
+          if end < 0:
+              raise SystemExit("set_user_markup end marker not found")
+          end += len(end_marker)
+          replacement = (
+              "        async with self._database.acquire() as connection:\n"
+              "            current_policy = await _load_user_markup_policy(\n"
+              "                connection, int(user_id)\n"
+              "            )\n"
+              "            minimum_normalized = "
+              "current_policy.minimum_user_markup_percent\n"
+          )
+          pricing_path.write_text(
+              source[:start] + replacement + source[end:],
+              encoding="utf-8",
+          )
 
           inventory_path = Path("docs/package_architecture_inventory.json")
           current_inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
