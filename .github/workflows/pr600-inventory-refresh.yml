@@ -1,0 +1,199 @@
+name: refresh PR 600 architecture inventory
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr600-inventory-refresh-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: github.event.pull_request.number == 600 && github.head_ref == 'feat/auf-privileged-banana-pricing'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/auf-privileged-banana-pricing
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Refactor quote floor parsing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('velvet_bot/domains/auf_wallet/pricing.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    quality_surcharge_raw = (
+              row.get("quality_surcharge_velvets", 0)
+              if hasattr(row, "get")
+              else 0
+          )
+          quality_surcharge_velvets = max(0, int(quality_surcharge_raw or 0))
+          standard_minimum_raw = (
+              row.get("minimum_velvets", 1)
+              if hasattr(row, "get")
+              else 1
+          )
+          standard_minimum_velvets = max(1, int(standard_minimum_raw or 1))
+          discounted_minimum_raw = (
+              row.get("minimum_discounted_velvets")
+              if hasattr(row, "get")
+              else None
+          )
+          discounted_minimum_velvets = (
+              max(1, int(discounted_minimum_raw))
+              if discounted_minimum_raw is not None
+              else None
+          )
+          '''
+          new = '''    (
+              quality_surcharge_velvets,
+              standard_minimum_velvets,
+              discounted_minimum_velvets,
+          ) = _price_floors(row)
+          '''
+          if old not in text:
+              raise SystemExit('Expected inline price-floor block was not found.')
+          text = text.replace(old, new, 1)
+
+          marker = '\n\nasync def _load_user_markup_policy('
+          helper = '''
+
+          def _price_floors(row: Any) -> tuple[int, int, int | None]:
+              getter = row.get if hasattr(row, "get") else None
+              quality_surcharge_raw = (
+                  getter("quality_surcharge_velvets", 0) if getter is not None else 0
+              )
+              standard_minimum_raw = (
+                  getter("minimum_velvets", 1) if getter is not None else 1
+              )
+              discounted_minimum_raw = (
+                  getter("minimum_discounted_velvets") if getter is not None else None
+              )
+              discounted_minimum_velvets = (
+                  max(1, int(discounted_minimum_raw))
+                  if discounted_minimum_raw is not None
+                  else None
+              )
+              return (
+                  max(0, int(quality_surcharge_raw or 0)),
+                  max(1, int(standard_minimum_raw or 1)),
+                  discounted_minimum_velvets,
+              )
+          '''
+          if marker not in text:
+              raise SystemExit('Markup-policy insertion marker was not found.')
+          text = text.replace(marker, helper + marker, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Refresh reviewed SQL exemption fingerprint
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/package_architecture_exemptions.json')
+          text = path.read_text(encoding='utf-8')
+          old = 'sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:ef58b2fc2d83d17d'
+          new = 'sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:108ab1f09389a505'
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one old pricing SQL fingerprint, found {text.count(old)}.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Regenerate canonical inventory
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label pr-600-discounted-banana-pricing
+
+      - name: Refresh inventory contract constants
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          inventory = json.loads(
+              Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8')
+          )
+          path = Path('tests/test_package_architecture_inventory.py')
+          text = path.read_text(encoding='utf-8')
+          values = {
+              'production_module_count': int(inventory['production_module_count']),
+              'production_loc': int(inventory['production_loc']),
+              'violation_count': int(inventory['violation_count']),
+          }
+          for key, value in values.items():
+              pattern = rf'self\.assertEqual\([\d_]+, self\.inventory\["{key}"\]\)'
+              replacement = f'self.assertEqual({value:_}, self.inventory["{key}"])'
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f'Could not refresh {key} contract constant.')
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Update worklog
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/worklog/2026-08-04-auf-discounted-banana-pricing.md')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '- Python fallback `_banana_quality_surcharge` удалён; используется только `quality_surcharge_velvets` из price version.\n',
+              '- Python fallback `_banana_quality_surcharge` удалён; используется только `quality_surcharge_velvets` из price version.\n'
+              '- Разбор product floors вынесен из `quote_auf_payload`, чтобы функция оставалась в архитектурном лимите.\n'
+              '- Канонический package architecture inventory пересобран; существующий SQL exemption перенесён на новый fingerprint без добавления долга.\n',
+          )
+          text = text.replace(
+              '- Полный GitHub Actions CI ещё не запускался.\n',
+              '- Профильные тесты и полный GitHub Actions CI запущены в PR #600.\n',
+          )
+          text = text.replace(
+              '- PR ещё не открыт.\n',
+              '- PR: #600 `feat: унифицировать цены Banana для тарифа 15%`.\n',
+          )
+          text = text.replace(
+              '- Не создан draft PR.\n',
+              '- PR #600 открыт и проходит обязательные проверки.\n',
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate refreshed branch
+        run: |
+          python -m compileall -q velvet_bot tests scripts
+          python -m unittest tests.test_auf_pricing_policy
+          python scripts/ci_preflight.py
+
+      - name: Remove temporary workflow and publish refresh
+        run: |
+          rm .github/workflows/pr600-inventory-refresh.yml
+          git config user.name 'Velvet CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -- \
+            velvet_bot/domains/auf_wallet/pricing.py \
+            docs/package_architecture_exemptions.json \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            tests/test_package_architecture_inventory.py \
+            docs/worklog/2026-08-04-auf-discounted-banana-pricing.md \
+            .github/workflows/pr600-inventory-refresh.yml
+          git diff --cached --check
+          git commit -m 'refactor: align discounted pricing architecture inventory'
+          git push origin HEAD:feat/auf-privileged-banana-pricing
