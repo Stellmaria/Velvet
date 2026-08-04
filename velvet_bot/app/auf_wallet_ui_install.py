@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import importlib
 
-from velvet_bot.presentation.telegram.routers.workspace_auf_wallet import (
-    handle_auf_wallet_action,
-)
+from velvet_bot.app.auf_wallet_currency_ui import handle_auf_wallet_action
 
 _INSTALLED = False
 
@@ -52,7 +50,9 @@ def install_auf_wallet_ui() -> None:
             database,
             ai_usage_service,
             ai_task_queue_service,
-            auf_runtime_service, auf_wallet_service, auf_purchase_service,
+            auf_runtime_service,
+            auf_wallet_service,
+            auf_purchase_service,
         )
 
     controller.handle_scoped_auf_action = handle_scoped_auf_action_with_wallet
