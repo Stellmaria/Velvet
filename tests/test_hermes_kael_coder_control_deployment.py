@@ -41,7 +41,17 @@ class KaelCoderControlDeploymentTests(unittest.TestCase):
         self.assertIn("shell=False", self.plugin)
         self.assertNotIn("shell=True", self.plugin)
         self.assertNotIn("os.system", self.plugin)
+        self.assertIn('CODERCTL_PATH = "/opt/data/tools/coderctl.py"', self.plugin)
+        self.assertNotIn("KAEL_CODERCTL_PATH", self.plugin)
         self.assertIn('"production_privileges": False', self.plugin)
+
+    def test_plugin_is_exposed_in_telegram_toolset(self) -> None:
+        self.assertIn('TELEGRAM_TOOLSET = "hermes-telegram"', self.plugin)
+        self.assertIn("toolset=TELEGRAM_TOOLSET", self.plugin)
+        self.assertIn(
+            'self.assertEqual(MODULE.TELEGRAM_TOOLSET, context.tools[0]["toolset"])',
+            self.plugin_tests,
+        )
 
     def test_operator_installer_places_and_enables_user_plugin(self) -> None:
         for marker in (
