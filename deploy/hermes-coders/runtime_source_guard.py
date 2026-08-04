@@ -12,6 +12,9 @@ RUNTIME_SOURCES = (
     "codex_first_safe_runner.py",
     "codex_provider_chain_runner.py",
     "codex_tier_runner.py",
+    "codex_launcher_runner.py",
+    "sandbox_launcher_client.py",
+    "sandbox_preflight.py",
     "compose.runtime.yaml",
 )
 
