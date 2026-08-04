@@ -3,10 +3,10 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import sys
-import subprocess
-import tempfile
 import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -74,7 +74,10 @@ class Issue581ContractTests(unittest.TestCase):
             "https://github.com/moby/profiles/blob/main/seccomp/default.json",
             seccomp["_baseProfile"],
         )
-        added = next(rule for rule in seccomp["syscalls"] if rule.get("comment") == "Hermes bwrap additions")
+        added = next(
+            rule for rule in seccomp["syscalls"]
+            if rule.get("comment") == "Hermes bwrap additions"
+        )
         self.assertEqual(
             {"mount", "umount2", "pivot_root", "unshare"},
             set(added["names"]),
@@ -104,18 +107,26 @@ class Issue581ContractTests(unittest.TestCase):
             )
         self.assertEqual(0, result.returncode, result.stderr)
 
-    def test_apparmor_profile_has_bwrap_mount_and_project_exec_rules(self) -> None:
+    def test_apparmor_profile_separates_base_and_run_mounts(self) -> None:
         profile = ROOT / "deploy/hermes-coders/security/apparmor-hermes-codex-bwrap"
         source = profile.read_text(encoding="utf-8")
         for rule in (
-            "rslave", "mount options=(rw, bind) / -> /",
+            "rslave",
+            "mount options=(rw, bind) / -> /",
             "mount options=(ro, remount, bind) / -> /",
             "mount options=(rw, rbind) /dev -> /dev",
-            "mount options=(rw, bind) /workspace -> /workspace",
-            "fstype=proc", "pivot_root",
-            "/usr/bin/git ix", "/usr/local/bin/** ix",
+            "mount options=(ro, bind) /workspace-base -> /workspace-base",
+            "mount options=(rw, bind) /opt/codex-runs/** -> /opt/codex-runs/**",
+            "/workspace-base/** r",
+            "/opt/codex-runs/** rwk",
+            "deny /workspace/** rwklx",
+            "fstype=proc",
+            "pivot_root",
+            "/usr/bin/git ix",
+            "/usr/local/bin/** ix",
         ):
             self.assertIn(rule, source)
+        self.assertNotIn("/workspace/** rwk,", source)
         parser = shutil.which("apparmor_parser")
         if parser:
             with tempfile.TemporaryDirectory() as cache:
@@ -126,24 +137,25 @@ class Issue581ContractTests(unittest.TestCase):
                 )
             self.assertEqual(0, result.returncode, result.stderr)
 
-    def test_orchestration_installer_closes_token_context_and_restart_lifecycle(self) -> None:
+    def test_orchestration_installer_is_atomic_and_uses_canonical_coder_reconcile(self) -> None:
         source = (ROOT / "deploy/hermes-orchestration/install.sh").read_text(encoding="utf-8")
         self.assertIn('set_value(velvet_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN"', source)
         self.assertIn('set_value(max_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN"', source)
-        self.assertIn("compose.runtime.yaml", source)
-        self.assertIn("compose.security.yaml", source)
-        self.assertNotIn('$CODERS_SOURCE/SOUL.$project.md" "$data_dir/SOUL.md"', source)
+        self.assertIn('"$CODERS_SOURCE/install.sh"', source)
+        self.assertIn("HERMES_CONTROL_OPERATOR_ENV", source)
+        self.assertIn("--entity kael", source)
+        self.assertIn("--target \"$hermes_data\"", source)
+        self.assertIn("--mode hermes", source)
+        self.assertNotIn("SOUL.operator.md", source)
+        self.assertNotIn("BEGIN MANAGED HERMES OPERATOR CONTROL", source)
+        self.assertNotIn('python3 "$CODERS_SOURCE/preflight.py"', source)
+        self.assertNotIn("chmod 0640 \"$hermes_data/SOUL.md\"", source)
         verify = source.rfind("verify_installed_context.py")
         self.assertGreater(verify, source.rfind("install_context_pack.py"))
-        self.assertNotIn('relative="${managed_file#', source)
         context_installer = (ROOT / "deploy/hermes-brain/install_context_pack.py").read_text()
         self.assertIn("mode=0o600", context_installer)
-        for unit in (
-            "systemctl restart hermes-coders.service",
-            "systemctl restart hermes-coder-router.service",
-            "systemctl restart velvet-hermes-incident-monitor.service",
-        ):
-            self.assertIn(unit, source)
+        self.assertIn("systemctl restart hermes-coder-router.service", source)
+        self.assertIn("systemctl restart velvet-hermes-incident-monitor.service", source)
 
     def test_lifecycle_uses_all_layers_and_restarts_oneshot(self) -> None:
         unit = (ROOT / "deploy/systemd/hermes-coders.service").read_text()
@@ -158,28 +170,44 @@ class Issue581ContractTests(unittest.TestCase):
         self.assertIn("-p ExecMainStatus --value", installer)
         self.assertNotIn("enable --now hermes-coders.service", installer)
 
-    def test_both_runners_use_canonical_entrypoint_and_sandbox_smoke(self) -> None:
+    def test_runners_use_read_only_base_and_disposable_clone(self) -> None:
         runtime = (ROOT / "deploy/hermes-coders/compose.runtime.yaml").read_text()
+        compose = (ROOT / "deploy/hermes-coders/compose.yaml").read_text()
         self.assertEqual(2, runtime.count("- /app/codex_tier_runner.py"))
+        self.assertEqual(2, compose.count(":/workspace-base:ro"))
+        self.assertNotIn("workspace=/workspace", (ROOT / "deploy/hermes-operator/tier_router.py").read_text())
+
         smoke = (ROOT / "deploy/hermes-coders/runtime_smoke.py").read_text()
         for marker in (
             "unshare --user --map-root-user true",
-            "unshare --user --map-root-user --mount true", "bwrap --unshare-user",
-            "fingerprint_before", "hermes-codex-bwrap", "Seccomp", "NoNewPrivs",
-            'CRYPTOGRAPHY_VERSION = "50.0.0"', "docker-compose.server.yml",
-            '"hermes", "python"', "--ro-bind / / --dev-bind /dev /dev",
+            "unshare --user --map-root-user --mount true",
+            "bwrap --unshare-user",
+            "fingerprint_before",
+            "hermes-codex-bwrap",
+            "Seccomp",
+            "NoNewPrivs",
+            'CRYPTOGRAPHY_VERSION = "50.0.0"',
+            "docker-compose.server.yml",
+            '"hermes", "python"',
+            "--ro-bind /workspace-base /workspace-base",
+            '--bind "$probe" "$probe"',
         ):
             self.assertIn(marker, smoke)
+
         tier_runner = (ROOT / "deploy/hermes-coders/codex_tier_runner.py").read_text()
         for marker in (
-            '"remote", "show", "origin"', "default_branch",
-            '"worktree", "add", "--detach"',
-            "CODEX_ISOLATED_WORKTREE_ROOT",
+            '"clone"',
+            '"--no-hardlinks"',
+            "CODEX_ISOLATED_WORKSPACE_ROOT",
+            "baseline_head",
+            "final_head",
+            "refs_changed",
+            "base_workspace_changed",
             "isolated_workspace_cleanup_failed",
         ):
             self.assertIn(marker, tier_runner)
-        self.assertIn("def _worktree_git", tier_runner)
-        self.assertNotIn("def _git(self, *args", tier_runner)
+        self.assertNotIn('"worktree", "add"', tier_runner)
+        self.assertNotIn("CODEX_ISOLATED_WORKTREE_ROOT", tier_runner)
         self.assertNotIn('"origin/main"', tier_runner)
 
 
