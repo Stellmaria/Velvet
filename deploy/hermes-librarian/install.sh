@@ -144,8 +144,6 @@ source_uid="$(stat -c '%u' "$VELVET_DATA_DIR/hermes")"
 source_gid="$(stat -c '%g' "$VELVET_DATA_DIR/hermes")"
 install -d -m 0750 -o "$source_uid" -g "$source_gid" "$TARGET_DIR"
 
-# Use the pinned Hermes image so profile YAML is parsed by the same runtime
-# dependency set that will later load it. No network is available during prep.
 docker run --rm \
   --network none \
   --entrypoint python \
@@ -168,7 +166,6 @@ chown -R "$source_uid:$source_gid" "$TARGET_DIR"
 find "$TARGET_DIR" -type d -exec chmod 0750 {} +
 find "$TARGET_DIR" -type f -exec chmod 0640 {} +
 
-# Validate the exact deny-all and local-only profile with the same image and parser.
 docker run --rm -i \
   --network none \
   --entrypoint python \
@@ -265,6 +262,65 @@ runuser -u "$SERVICE_USER" -- \
   docker compose --env-file "$VELVET_ENV_FILE" -f "$SOURCE_DIR/compose.yaml" \
     exec -T ollama-librarian ollama show "$VISION_MODEL" >/dev/null
 
+ollama_smoke=false
+for _ in $(seq 1 3); do
+  if runuser -u "$SERVICE_USER" -- bash -ceu "
+    cd '$VELVET_APP_DIR'
+    docker compose --env-file '$VELVET_ENV_FILE' -f '$VELVET_COMPOSE_FILE' \
+      exec -T bot python - <<'PY'
+import json
+import os
+import urllib.request
+
+schema = {
+    'type': 'object',
+    'additionalProperties': False,
+    'required': ['status'],
+    'properties': {'status': {'type': 'string', 'enum': ['ok']}},
+}
+payload = {
+    'model': os.environ['STORAGE_LIBRARIAN_TEXT_MODEL'],
+    'stream': False,
+    'think': False,
+    'keep_alive': 0,
+    'format': schema,
+    'messages': [{'role': 'user', 'content': 'Верни только JSON со значением status=ok.'}],
+    'options': {'num_ctx': 2048, 'num_predict': 16, 'temperature': 0},
+}
+request = urllib.request.Request(
+    os.environ['STORAGE_LIBRARIAN_OLLAMA_BASE_URL'].rstrip('/') + '/api/chat',
+    data=json.dumps(payload).encode('utf-8'),
+    headers={'Content-Type': 'application/json'},
+    method='POST',
+)
+timeout = max(30, min(int(os.environ.get('STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS', '180')), 300))
+with urllib.request.urlopen(request, timeout=timeout) as response:
+    result = json.load(response)
+assert result.get('done') is True, result.get('done')
+assert result.get('done_reason') == 'stop', result.get('done_reason')
+message = result.get('message')
+assert isinstance(message, dict), type(message).__name__
+content = message.get('content')
+assert isinstance(content, str) and content.strip(), 'missing content'
+decoded = json.loads(content)
+assert decoded == {'status': 'ok'}, decoded
+PY
+  " >/dev/null 2>&1; then
+    ollama_smoke=true
+    break
+  fi
+  sleep 5
+done
+
+if [[ "$ollama_smoke" != "true" ]]; then
+  systemctl --no-pager --full status velvet-librarian.service >&2 || true
+  runuser -u "$SERVICE_USER" -- \
+    docker compose --env-file "$VELVET_ENV_FILE" -f "$SOURCE_DIR/compose.yaml" \
+      logs --tail=160 ollama-librarian librarian-hermes >&2 || true
+  echo "Bot-to-Ollama structured analysis smoke не прошёл." >&2
+  exit 5
+fi
+
 printf '%s\n' \
   "Velvet Librarian profile installed." \
   "Dedicated API key configured." \
@@ -272,5 +328,6 @@ printf '%s\n' \
   "Vision alias prepared; image support remains incomplete until image bytes are supplied." \
   "Analyzer version set to velvet-librarian:qwen3-4b-text:v4." \
   "Hermes Reports publication enabled." \
-  "Bot-to-Librarian health verified." \
+  "Bot-to-Hermes health verified." \
+  "Bot-to-Ollama structured analysis smoke verified." \
   "Automatic enqueue remains controlled by STORAGE_LIBRARIAN_AUTO_ENQUEUE."
