@@ -409,17 +409,9 @@ def verify_codex_access(
 
 def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
     command = [
-        "docker",
-        "compose",
-        "--env-file",
-        "/srv/velvet/.env.server",
-        "-f",
-        "/srv/velvet/docker-compose.server.yml",
-        "exec",
-        "-T",
-        "hermes",
-        "python",
-        "-c",
+        "docker", "compose", "--env-file", "/srv/velvet/.env.server",
+        "-f", "/srv/velvet/docker-compose.server.yml",
+        "exec", "-T", "hermes", "python", "-c",
         "import importlib.metadata as m; print(m.version('cryptography'))",
     ]
     result = run_checked(command, timeout_seconds=30, runner=runner)
@@ -455,6 +447,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (SmokeError, OSError, ValueError) as error:
-        print(f"Hermes/Codex runtime smoke failed: {error}", file=sys.stderr)
-        raise SystemExit(1)
+    except SmokeError as exc:
+        print(f"Hermes Coder runtime smoke failed: {exc}", file=sys.stderr)
+        raise SystemExit(2)
