@@ -3,7 +3,7 @@
 - Дата: 2026-08-05
 - ID: `error-center-html-limit`
 - Линия/фаза: Production stabilization / Error Center
-- Статус: `implemented_by_coder`
+- Статус: `завершено`
 - Issue: `#624`
 - Ветка: `fix/error-center-html-limit`
 - Базовый commit: `73f7ef51d51f10cb2c8cd5181c9da74465864207`
