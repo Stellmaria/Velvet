@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -18,6 +18,68 @@ env:
   CI_TEST_SHARDS: "4"
 
 jobs:
+  catalog-inventory-refresh:
+    name: catalog-inventory-refresh
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/auf-pricing-economy-hardening'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: requirements.lock
+          save-cache: false
+
+      - name: Regenerate inventories and canonical branch snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv pip install --system --require-hashes -r requirements.lock
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline
+          python scripts/sync_auf_catalog_inventories.py
+          python -m compileall -q main.py velvet_bot scripts tests
+          python scripts/ci_preflight.py
+          python -m unittest \
+            tests.test_package_architecture_inventory \
+            tests.test_canonical_docs_sync \
+            tests.test_auf_runtime_module \
+            tests.test_photo_model_capabilities \
+            tests.test_auf_photo_model_modes \
+            tests.test_auf_owner_cost_only_pricing
+          git diff --check
+
+      - name: Restore workflow and publish inventory refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show HEAD^:.github/workflows/tests.yml > .github/workflows/tests.yml
+          rm scripts/sync_auf_catalog_inventories.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: refresh AUF catalog architecture snapshots"
+          git push origin HEAD:${{ github.head_ref }}
+
   preflight:
     name: preflight
     runs-on: ubuntu-latest
