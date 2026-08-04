@@ -19,11 +19,13 @@ class AufProvider(StrEnum):
         if self is self.GRS:
             return ("nano_banana_2", "nano_banana_pro")
         return (
-            "seedream_5_pro", "qwen2_image_edit",
-            "wan_27_image", "flux_2_pro_image",
+            "seedream_5_pro",
+            "wan_27_image",
+            "wan_27_image_pro",
             "grok_imagine_video",
             "grok_imagine_video_15",
-            "seedance_15_pro_video", "wan_26_image_to_video",
+            "seedance_15_pro_video",
+            "wan_26_image_to_video",
         )
 
 

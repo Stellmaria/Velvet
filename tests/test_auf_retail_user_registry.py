@@ -33,17 +33,20 @@ class _PriceConnection:
             return self.row
         if "FROM auf_economy_settings" in query:
             return {
-                "retail_auf_usd": Decimal("0.03"),
+                "retail_auf_usd": Decimal("0.04309777"),
                 "billing_usd_to_rub": Decimal("80"),
                 "billing_usd_to_byn": Decimal("3"),
-                "retail_markup_percent": Decimal("30"),
+                "retail_markup_percent": Decimal("42.86"),
+                "quote_rub_per_vl": Decimal("4"),
+                "operational_cost_buffer_percent": Decimal("5"),
+                "minimum_user_markup_percent": Decimal("15"),
             }
         raise AssertionError(query)
 
     async def fetchval(self, query: str, *args):
         self.calls += 1
         if "FROM auf_package_prices" in query:
-            return Decimal("2")
+            raise AssertionError("Generation quotes must not depend on package prices")
         raise AssertionError(query)
 
 
@@ -79,6 +82,8 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
                 "pricing_basis": "fixed",
                 "unit_cost_usd": Decimal("0.02"),
                 "extra_reference_cost_usd": Decimal("0"),
+                "quality_surcharge_velvets": 1,
+                "minimum_velvets": 2,
             }
         )
         quote = await quote_auf_payload(
@@ -86,11 +91,11 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             self._payload(model="nano_banana_2", resolution="2K"),
         )
         self.assertEqual(Decimal("0.02"), quote.provider_cost_usd)
-        self.assertEqual(Decimal("0.026"), quote.target_retail_usd)
+        self.assertEqual(Decimal("0.03000060"), quote.target_retail_usd)
         self.assertEqual(20_000, quote.quoted_units)
         self.assertEqual(Decimal("2.0000"), quote.quoted_auf)
-        self.assertEqual(Decimal("0.05"), quote.minimum_revenue_usd)
-        self.assertEqual(3, connection.calls)
+        self.assertEqual(Decimal("0.1"), quote.minimum_revenue_usd)
+        self.assertEqual(2, connection.calls)
 
     async def test_seconds_and_references_are_priced_before_whole_rounding(self) -> None:
         connection = _PriceConnection(
@@ -104,6 +109,8 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
                 "pricing_basis": "per_second",
                 "unit_cost_usd": Decimal("0.035"),
                 "extra_reference_cost_usd": Decimal("0.005"),
+                "quality_surcharge_velvets": 0,
+                "minimum_velvets": 1,
             }
         )
         quote = await quote_auf_payload(
@@ -117,8 +124,8 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
         self.assertEqual(Decimal("0.185"), quote.provider_cost_usd)
-        self.assertEqual(Decimal("0.2405"), quote.target_retail_usd)
-        self.assertEqual(100_000, quote.quoted_units)
+        self.assertEqual(Decimal("0.27750555"), quote.target_retail_usd)
+        self.assertEqual(60_000, quote.quoted_units)
         self.assertEqual(0, quote.quoted_units % 10_000)
 
     async def test_owner_breakdown_contains_only_provider_cost_in_three_currencies(self) -> None:
@@ -133,6 +140,8 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
                 "pricing_basis": "fixed",
                 "unit_cost_usd": Decimal("0.02"),
                 "extra_reference_cost_usd": Decimal("0"),
+                "quality_surcharge_velvets": 0,
+                "minimum_velvets": 1,
             }
         )
         quote = await quote_auf_payload(

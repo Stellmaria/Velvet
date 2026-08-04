@@ -32,9 +32,13 @@ class CloudMigrationContractTests(unittest.TestCase):
         self.assertIn("byesu_api_key", normalized)
         self.assertIn("ai_text_provider=openai_compatible", normalized)
         self.assertIn("ai_vision_provider=openai_compatible", normalized)
-        # Cloud Kie model IDs such as qwen2/image-edit are legitimate and must not
-        # be confused with the removed local Qwen/Ollama runtime.
-        self.assertIn("kie_qwen2_image_edit_model=qwen2/image-edit", normalized)
+        self.assertIn("kie_wan_27_image_model=wan/2-7-image", normalized)
+        self.assertIn(
+            "kie_wan_27_image_pro_model=wan/2-7-image-pro",
+            normalized,
+        )
+        self.assertNotIn("kie_qwen2_image_edit_model", normalized)
+        self.assertNotIn("kie_flux_2_pro_image_model", normalized)
 
     def test_secret_files_are_excluded_from_git_and_docker_context(self) -> None:
         gitignore = Path(".gitignore").read_text(encoding="utf-8")
