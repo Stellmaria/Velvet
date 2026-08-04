@@ -17,12 +17,13 @@ class AufMarginPackageContractTests(unittest.TestCase):
         self.assertIn("(20,    100.00", migration)
         self.assertIn("package_auf = 40", migration)
 
-    def test_global_markup_is_common_for_all_users(self) -> None:
+    def test_global_markup_is_default_and_individual_overrides_survive(self) -> None:
         migration = Path(
             "migrations/z029_auf_margin30_packages.sql"
         ).read_text(encoding="utf-8")
         self.assertIn("retail_markup_percent = 42.8600", migration)
-        self.assertIn("DELETE FROM auf_user_markup_overrides", migration)
+        self.assertNotIn("DELETE FROM auf_user_markup_overrides", migration)
+        self.assertIn("Individual user overrides remain intact", migration)
 
     def test_cheapest_package_preserves_thirty_percent_margin_floor(self) -> None:
         prices = {
