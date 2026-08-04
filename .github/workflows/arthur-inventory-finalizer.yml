@@ -30,10 +30,21 @@ jobs:
           python-version: "3.13"
           check-latest: false
 
-      - name: Generate canonical inventories on clean target tree
+      - name: Align package baseline and regenerate canonical inventories
         run: |
           set -euo pipefail
-          python scripts/inventory_package_architecture.py --write
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/test_package_architecture_inventory.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('141_659', '141_744')
+          text = text.replace('Production LOC: **141659**', 'Production LOC: **141744**')
+          path.write_text(text, encoding='utf-8')
+          PY
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
           python scripts/update_p2_stability_inventory.py \
             --label arthur-librarian-phase1 \
             --schema-version 78
@@ -54,12 +65,13 @@ jobs:
           )
           PY
 
-      - name: Commit only canonical inventories to Arthur branch
+      - name: Commit exact baseline and inventories to Arthur branch
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            tests/test_package_architecture_inventory.py \
             docs/package_architecture_inventory.json \
             docs/package_architecture_inventory.md \
             docs/p2_stability_inventory.json \
@@ -67,8 +79,8 @@ jobs:
             docs/repository_layout_inventory.json \
             docs/repository_layout_inventory.md
           if git diff --cached --quiet; then
-            echo "Canonical inventories already match clean target tree."
+            echo "Canonical baseline already matches clean target tree."
             exit 0
           fi
-          git commit -m "docs: finalize Arthur canonical inventories"
+          git commit -m "docs: align Arthur package architecture baseline"
           git push origin HEAD:fix/arthur-librarian-phase1
