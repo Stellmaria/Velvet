@@ -230,13 +230,15 @@ class StorageLibrarianService:
         database: Database,
         settings: StorageLibrarianSettings,
         object_loader: StorageObjectLoader,
-        run_client: LibrarianRunClient,
+        analysis_client: LibrarianRunClient,
+        answer_client: LibrarianRunClient,
         report_publisher: LibrarianReportPublisher | None = None,
     ) -> None:
         self.settings = settings
         self.repository = StorageLibrarianRepository(database)
         self.object_loader = object_loader
-        self.run_client = run_client
+        self.analysis_client = analysis_client
+        self.answer_client = answer_client
         self.report_publisher = report_publisher
         self.worker_id = f"storage-librarian:{os.getpid()}"
 
@@ -266,7 +268,7 @@ class StorageLibrarianService:
                 source,
                 settings=self.settings,
             )
-            run = await self.run_client.run(
+            run = await self.analysis_client.run(
                 prompt=analysis_prompt(item, source_text),
                 session_id=(
                     f"velvet-storage-{item.object_id}-"
@@ -348,7 +350,7 @@ class StorageLibrarianService:
             )
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         question_hash = hashlib.sha256(question.encode("utf-8")).hexdigest()[:16]
-        run = await self.run_client.run(
+        run = await self.answer_client.run(
             prompt=(
                 "Ответь на вопрос владельца Velvet только по приведённым индексированным "
                 "резюме. Сравни источники, явно отличай единичный сбой от повторяющейся "

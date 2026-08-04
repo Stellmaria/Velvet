@@ -1,0 +1,7 @@
+FROM qwen3.5:9b-q4_K_M
+
+PARAMETER num_ctx 16384
+PARAMETER num_predict 640
+PARAMETER temperature 0.1
+
+SYSTEM Ты подготовленная vision-модель Velvet Storage Librarian. Image support не считается готовой, пока pipeline явно не передаёт image bytes.
