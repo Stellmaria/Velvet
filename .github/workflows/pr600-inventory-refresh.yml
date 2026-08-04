@@ -130,6 +130,20 @@ jobs:
               text, count = re.subn(pattern, replacement, text, count=1)
               if count != 1:
                   raise SystemExit(f'Could not refresh {key} contract constant.')
+
+          markdown_values = {
+              'Production modules': inventory['production_module_count'],
+              'Production LOC': inventory['production_loc'],
+              'Startup installer stages': len(inventory['installer_graph']),
+              'Registered package violations': inventory['violation_count'],
+              'Registered exemptions': inventory['violation_count'],
+          }
+          for label, value in markdown_values.items():
+              pattern = rf'self\.assertIn\("{re.escape(label)}: \*\*\d+\*\*", self\.markdown\)'
+              replacement = f'self.assertIn("{label}: **{int(value)}**", self.markdown)'
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f'Could not refresh markdown expectation {label}.')
           path.write_text(text, encoding='utf-8')
           PY
 
