@@ -300,16 +300,13 @@ async def quote_auf_payload(
         if user_markup_override is not None
         else global_markup_percent
     )
-    uses_discounted_floor = (
+    minimum_velvets = standard_minimum_velvets
+    if (
         user_markup_override is not None
         and markup_percent == minimum_user_markup_percent
         and discounted_minimum_velvets is not None
-    )
-    minimum_velvets = (
-        discounted_minimum_velvets
-        if uses_discounted_floor
-        else standard_minimum_velvets
-    )
+    ):
+        minimum_velvets = discounted_minimum_velvets
 
     operational_multiplier = (
         Decimal("1")
