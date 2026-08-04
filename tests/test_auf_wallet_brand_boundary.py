@@ -50,7 +50,7 @@ class AufWalletBrandBoundaryTests(unittest.TestCase):
         dispatcher = _read("velvet_bot/app/dispatcher.py")
         installer = _read("velvet_bot/app/auf_wallet_ui_install.py")
         self.assertIn("from velvet_bot.domains.auf_wallet", dispatcher)
-        self.assertIn("workspace_auf_wallet", installer)
+        self.assertIn("auf_wallet_currency_ui", installer)
         self.assertNotIn("meow_wallet_service", installer)
         self.assertNotIn("meow_purchase_service", installer)
 
