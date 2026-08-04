@@ -51,11 +51,17 @@ if [[ "$ready" != "true" ]]; then
   exit 1
 fi
 
-"${compose[@]}" exec -T ollama-librarian ollama pull "$TEXT_SOURCE_MODEL"
-"${compose[@]}" exec -T ollama-librarian ollama pull "$VISION_SOURCE_MODEL"
+if ! "${compose[@]}" exec -T ollama-librarian \
+  ollama show "$TEXT_SOURCE_MODEL" >/dev/null 2>&1; then
+  "${compose[@]}" exec -T ollama-librarian ollama pull "$TEXT_SOURCE_MODEL"
+fi
+if ! "${compose[@]}" exec -T ollama-librarian \
+  ollama show "$VISION_SOURCE_MODEL" >/dev/null 2>&1; then
+  "${compose[@]}" exec -T ollama-librarian ollama pull "$VISION_SOURCE_MODEL"
+fi
 
-# Recreate the local alias every time so Modelfile changes are applied even
-# when the persistent Ollama volume already contains an older alias.
+# Recreate aliases so Modelfile changes are applied without deleting the
+# persistent volume. Source pulls are skipped when the model is already local.
 "${compose[@]}" exec -T ollama-librarian \
   ollama create "$TEXT_MODEL" -f /bootstrap/Modelfile.text
 "${compose[@]}" exec -T ollama-librarian \

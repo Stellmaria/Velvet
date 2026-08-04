@@ -582,15 +582,17 @@
       "layout": "domain",
       "domain": "telegram_storage",
       "production_consumer_count": 3,
-      "test_consumer_count": 0,
+      "test_consumer_count": 1,
       "package_export_count": 0,
-      "reference_count": 3,
+      "reference_count": 4,
       "production_consumers": [
         "velvet_bot/application/storage_librarian.py",
         "velvet_bot/domains/telegram_storage/librarian_afk_repository.py",
         "velvet_bot/presentation/telegram/storage_librarian.py"
       ],
-      "test_consumers": [],
+      "test_consumers": [
+        "tests/test_storage_librarian_phase1_hardening.py"
+      ],
       "package_exports": []
     },
     {

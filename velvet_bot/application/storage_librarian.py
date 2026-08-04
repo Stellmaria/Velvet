@@ -23,6 +23,7 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
     LibrarianObject,
     StorageLibrarianError,
     StorageLibrarianSettings,
+    TerminalStorageLibrarianError,
     UnsupportedStorageContent,
 )
 from velvet_bot.domains.telegram_storage.librarian_repository import (
@@ -254,7 +255,9 @@ class StorageLibrarianService:
         try:
             item = await self.repository.load_object(job.storage_object_id)
             if item is None:
-                raise StorageLibrarianError("Storage object исчез до анализа.")
+                raise TerminalStorageLibrarianError(
+                    "Storage object исчез до анализа."
+                )
             if item.storage_kind not in self.settings.allowed_kinds:
                 raise UnsupportedStorageContent(
                     f"Категория {item.storage_kind} запрещена для Librarian."
@@ -277,7 +280,8 @@ class StorageLibrarianService:
                 instructions=(
                     "Ты библиотекарь закрытого Telegram Storage Velvet. Анализируй "
                     "только предоставленный текст, не вызывай инструменты и возвращай "
-                    "строгий JSON без Markdown."
+                    "строгий JSON без Markdown. Естественный язык ответа — русский; "
+                    "технические идентификаторы не переводи."
                 ),
             )
             analysis = parse_librarian_analysis(run.output)
@@ -304,6 +308,23 @@ class StorageLibrarianService:
                 settings=self.settings,
                 reason=str(error),
             )
+            return 1
+        except TerminalStorageLibrarianError as error:
+            terminal = await self.repository.fail(job, error, terminal=True)
+            if terminal and self.report_publisher is not None:
+                try:
+                    await self.report_publisher.publish_failure(
+                        object_id=job.storage_object_id,
+                        item=item,
+                        error=error,
+                    )
+                except Exception as publish_error:  # p2-approved-boundary: failure-report-is-nonfatal
+                    logger.warning(
+                        "Storage Librarian terminal failure publication failed "
+                        "object_id=%s error=%s",
+                        job.storage_object_id,
+                        redact_sensitive(str(publish_error))[:1000],
+                    )
             return 1
         except asyncio.CancelledError:
             raise

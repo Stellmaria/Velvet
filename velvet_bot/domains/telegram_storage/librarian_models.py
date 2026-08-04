@@ -20,10 +20,14 @@ PROTECTED_KINDS = frozenset({"backups", "analysis", "watermarks"})
 
 
 class StorageLibrarianError(RuntimeError):
-    pass
+    """Retryable Storage Librarian failure by default."""
 
 
-class UnsupportedStorageContent(StorageLibrarianError):
+class TerminalStorageLibrarianError(StorageLibrarianError):
+    """Deterministic failure that must not be retried unchanged."""
+
+
+class UnsupportedStorageContent(TerminalStorageLibrarianError):
     pass
 
 
@@ -249,6 +253,7 @@ class HermesRunResult:
     run_id: str
     output: str
     usage: JsonObject
+    analyzer: str = "hermes"
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,5 +279,6 @@ __all__ = (
     "PROTECTED_KINDS",
     "StorageLibrarianError",
     "StorageLibrarianSettings",
+    "TerminalStorageLibrarianError",
     "UnsupportedStorageContent",
 )
