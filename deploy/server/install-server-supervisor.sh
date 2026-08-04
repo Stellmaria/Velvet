@@ -15,6 +15,7 @@ SERVER_UNIT_SOURCE="$APP_DIR/deploy/systemd/velvet-server-supervisor.service"
 SERVER_UNIT_TARGET="/etc/systemd/system/velvet-server-supervisor.service"
 COMPOSE_UNIT_SOURCE="$APP_DIR/deploy/systemd/velvet-compose.service"
 COMPOSE_UNIT_TARGET="/etc/systemd/system/velvet-compose.service"
+DEPLOY_LOCK="${VELVET_DEPLOY_LOCK:-${TMPDIR:-/tmp}/velvet-deploy.lock}"
 
 cd "$APP_DIR"
 for path in "$ENV_FILE" "$COMPOSE_FILE" "$SERVER_UNIT_SOURCE" "$COMPOSE_UNIT_SOURCE"; do
@@ -23,6 +24,18 @@ for path in "$ENV_FILE" "$COMPOSE_FILE" "$SERVER_UNIT_SOURCE" "$COMPOSE_UNIT_SOU
     exit 2
   fi
 done
+
+if [[ -e "$DEPLOY_LOCK" && ! -f "$DEPLOY_LOCK" ]]; then
+  echo "Refusing unexpected Velvet deploy lock path: $DEPLOY_LOCK" >&2
+  exit 3
+fi
+exec 9>"$DEPLOY_LOCK"
+if ! flock -n 9; then
+  echo "Another Velvet deployment or Supervisor installation is already running." >&2
+  exit 75
+fi
+chown velvet:velvet "$DEPLOY_LOCK"
+chmod 0600 "$DEPLOY_LOCK"
 
 if ! getent group "$CLIENT_GROUP" >/dev/null; then
   groupadd --system "$CLIENT_GROUP"
