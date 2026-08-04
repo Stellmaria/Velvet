@@ -254,15 +254,24 @@ class KaelCoderControlTests(unittest.TestCase):
                 )
                 self.assertEqual("block", result["action"])
 
-    def test_control_plane_files_are_immutable_to_model_tools(self) -> None:
+    def test_control_plane_and_process_secrets_are_immutable(self) -> None:
         blocked = (
             "/opt/data/config.yaml",
+            "/opt/data/AGENTS.md",
+            "/opt/data/SOUL.md",
+            "/opt/data/context-manifest.json",
             "/opt/data/.hermes-ops-client-token",
+            "/opt/data/.gitconfig",
             "/opt/data/tools/coderctl.py",
             "/opt/data/plugins/kael-coder-control/__init__.py",
+            "/opt/data/hooks/policy/handler.py",
             "/opt/data/orchestration/tasks.json",
             "/opt/data/audit/kael-coder-control.jsonl",
+            "/opt/data/processes.json",
             "/opt/data/provider-secret.txt",
+            "/proc/self/environ",
+            "/run/secrets/provider-key",
+            "/root/.ssh/id_ed25519",
         )
         for path in blocked:
             for tool_name in ("read_file", "write_file", "patch"):
@@ -276,7 +285,7 @@ class KaelCoderControlTests(unittest.TestCase):
         self.assertIsNone(
             MODULE._on_pre_tool_call(
                 tool_name="read_file",
-                args={"path": "/opt/data/AGENTS.md"},
+                args={"path": "/opt/data/uploads/note.txt"},
             )
         )
 
