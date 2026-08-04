@@ -183,6 +183,8 @@ if [[ "$healthy" != "true" ]]; then
   exit 5
 fi
 
+# Expansion is intentionally deferred to the shell running inside Hermes.
+# shellcheck disable=SC2016
 runuser -u "$SERVICE_USER" -- \
   docker compose --env-file "$VELVET_ENV_FILE" -f "$VELVET_COMPOSE_FILE" \
     --profile agent exec -T hermes \
