@@ -16,7 +16,7 @@ from velvet_bot.domains.telegram_storage.librarian_repository import (
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Final regression coverage after synchronizing Phase 1 with current main.
+# Final merge-gate regression coverage on the current main baseline.
 
 
 class _Transaction:
