@@ -325,10 +325,10 @@ class StorageLibrarianRepository:
                         raw_response, error_message, analyzed_at, updated_at
                     )
                     VALUES (
-                        $1::BIGINT, 'hermes', $2::TEXT, 'completed',
-                        $3::TEXT, $4::JSONB, $5::JSONB, $6::JSONB, $7::TEXT,
-                        $8::VARCHAR, $9::SMALLINT, $10::TEXT, $11::JSONB,
-                        $12::JSONB, NULL, NOW(), NOW()
+                        $1::BIGINT, $2::TEXT, $3::TEXT, 'completed',
+                        $4::TEXT, $5::JSONB, $6::JSONB, $7::JSONB, $8::TEXT,
+                        $9::VARCHAR, $10::SMALLINT, $11::TEXT, $12::JSONB,
+                        $13::JSONB, NULL, NOW(), NOW()
                     )
                     ON CONFLICT (storage_object_id) DO UPDATE
                     SET analyzer = EXCLUDED.analyzer,
@@ -349,6 +349,7 @@ class StorageLibrarianRepository:
                         updated_at = NOW()
                     """,
                     job.storage_object_id,
+                    run.analyzer,
                     settings.analyzer_version,
                     analysis.summary,
                     json.dumps(analysis.tags, ensure_ascii=False),
@@ -395,7 +396,7 @@ class StorageLibrarianRepository:
                         analyzed_at, updated_at
                     )
                     VALUES (
-                        $1::BIGINT, 'hermes', $2::TEXT, 'skipped',
+                        $1::BIGINT, 'storage-librarian', $2::TEXT, 'skipped',
                         '', 'restricted', $3::TEXT, NOW(), NOW()
                     )
                     ON CONFLICT (storage_object_id) DO UPDATE
@@ -427,9 +428,15 @@ class StorageLibrarianRepository:
                     safe_reason,
                 )
 
-    async def fail(self, job: LibrarianJob, error: BaseException) -> bool:
+    async def fail(
+        self,
+        job: LibrarianJob,
+        error: BaseException,
+        *,
+        terminal: bool = False,
+    ) -> bool:
         message = redact_sensitive(str(error))[:2000]
-        terminal = job.attempts >= job.max_attempts
+        is_terminal = terminal or job.attempts >= job.max_attempts
         delay_seconds = min(1800, 60 * (2 ** max(0, job.attempts - 1)))
         async with self._database.acquire() as connection:
             await connection.execute(
@@ -452,11 +459,11 @@ class StorageLibrarianRepository:
                 WHERE id = $1::BIGINT
                 """,
                 job.job_id,
-                "failed" if terminal else "queued",
+                "failed" if is_terminal else "queued",
                 delay_seconds,
                 message,
             )
-        return terminal
+        return is_terminal
 
     async def counts(self) -> dict[str, int]:
         async with self._database.acquire() as connection:

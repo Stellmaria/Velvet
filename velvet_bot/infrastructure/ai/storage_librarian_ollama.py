@@ -13,6 +13,7 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
     JsonObject,
     StorageLibrarianError,
     StorageLibrarianSettings,
+    TerminalStorageLibrarianError,
 )
 
 STORAGE_LIBRARIAN_ANALYSIS_SCHEMA: JsonObject = {
@@ -94,60 +95,85 @@ class _SessionProtocol(Protocol):
     ) -> AsyncContextManager[_ResponseProtocol]: ...
 
 
+def _terminal(message: str) -> TerminalStorageLibrarianError:
+    return TerminalStorageLibrarianError(message)
+
+
 def _require_string(value: object, path: str) -> str:
     if not isinstance(value, str):
-        raise StorageLibrarianError(f"Ollama schema mismatch: {path} должен быть string.")
+        raise _terminal(f"Ollama schema mismatch: {path} должен быть string.")
     return value
 
 
 def _validate_analysis(value: object) -> JsonObject:
     if not isinstance(value, dict):
-        raise StorageLibrarianError("Ollama schema mismatch: ответ должен быть object.")
+        raise _terminal("Ollama schema mismatch: ответ должен быть object.")
     required = {
         "summary", "tags", "entities", "action_items", "sensitivity", "confidence"
     }
     if set(value) != required:
-        raise StorageLibrarianError("Ollama schema mismatch: неверный набор полей.")
+        raise _terminal("Ollama schema mismatch: неверный набор полей.")
     _require_string(value["summary"], "summary")
     tags = value["tags"]
     if not isinstance(tags, list) or len(tags) > 6:
-        raise StorageLibrarianError("Ollama schema mismatch: tags должен содержать до 6 элементов.")
+        raise _terminal("Ollama schema mismatch: tags должен содержать до 6 элементов.")
     for tag in tags:
         _require_string(tag, "tags[]")
     entities = value["entities"]
     if not isinstance(entities, list) or len(entities) > 6:
-        raise StorageLibrarianError("Ollama schema mismatch: entities должен содержать до 6 элементов.")
+        raise _terminal("Ollama schema mismatch: entities должен содержать до 6 элементов.")
     for entity in entities:
         if not isinstance(entity, dict) or set(entity) != {"name", "type"}:
-            raise StorageLibrarianError("Ollama schema mismatch: неверная entity.")
+            raise _terminal("Ollama schema mismatch: неверная entity.")
         _require_string(entity["name"], "entities[].name")
         _require_string(entity["type"], "entities[].type")
     actions = value["action_items"]
     if not isinstance(actions, list) or len(actions) > 6:
-        raise StorageLibrarianError("Ollama schema mismatch: action_items должен содержать до 6 элементов.")
+        raise _terminal(
+            "Ollama schema mismatch: action_items должен содержать до 6 элементов."
+        )
     for action in actions:
         if not isinstance(action, dict) or set(action) != {"text", "priority"}:
-            raise StorageLibrarianError("Ollama schema mismatch: неверный action_item.")
+            raise _terminal("Ollama schema mismatch: неверный action_item.")
         _require_string(action["text"], "action_items[].text")
         priority = action["priority"]
         if not isinstance(priority, str) or priority not in {"low", "medium", "high"}:
-            raise StorageLibrarianError("Ollama schema mismatch: неверный priority.")
+            raise _terminal("Ollama schema mismatch: неверный priority.")
     sensitivity = value["sensitivity"]
     if not isinstance(sensitivity, str) or sensitivity not in {
         "normal", "sensitive", "restricted"
     }:
-        raise StorageLibrarianError("Ollama schema mismatch: неверный sensitivity.")
+        raise _terminal("Ollama schema mismatch: неверный sensitivity.")
     confidence = value["confidence"]
-    if isinstance(confidence, bool) or not isinstance(confidence, int) or not 0 <= confidence <= 100:
-        raise StorageLibrarianError("Ollama schema mismatch: confidence должен быть integer 0..100.")
+    if (
+        isinstance(confidence, bool)
+        or not isinstance(confidence, int)
+        or not 0 <= confidence <= 100
+    ):
+        raise _terminal("Ollama schema mismatch: confidence должен быть integer 0..100.")
     return cast(JsonObject, value)
 
 
 def _usage_count(payload: dict[object, object], name: str) -> int:
     value = payload.get(name, 0)
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise StorageLibrarianError(f"Ollama analysis usage field {name} is invalid.")
+        raise _terminal(f"Ollama analysis usage field {name} is invalid.")
     return value
+
+
+def _max_prompt_chars(settings: StorageLibrarianSettings) -> int:
+    # Russian and mixed diagnostic text can tokenize densely. Reserve output,
+    # system/schema overhead and then use a conservative two chars per token.
+    available_tokens = (
+        settings.text_context_length
+        - settings.text_max_output_tokens
+        - 1024
+    )
+    if available_tokens < 512:
+        raise _terminal(
+            "Ollama analysis configuration leaves insufficient input context."
+        )
+    return available_tokens * 2
 
 
 class OllamaStorageAnalysisClient:
@@ -170,6 +196,15 @@ class OllamaStorageAnalysisClient:
         session_id: str,
         instructions: str,
     ) -> HermesRunResult:
+        prompt_chars = len(prompt) + len(instructions) + 512
+        max_prompt_chars = _max_prompt_chars(self._settings)
+        if prompt_chars > max_prompt_chars:
+            raise _terminal(
+                "Ollama analysis input exceeds the bounded text context: "
+                f"chars={prompt_chars}, limit={max_prompt_chars}. "
+                "Chunking is not implemented; silent truncation is forbidden."
+            )
+
         request: dict[str, object] = {
             "model": self._settings.text_model,
             "stream": False,
@@ -198,13 +233,16 @@ class OllamaStorageAnalysisClient:
                     json=request,
                 ) as response:
                     if response.status < 200 or response.status >= 300:
-                        raise StorageLibrarianError(
-                            f"Ollama analysis HTTP {response.status}."
+                        error_type = (
+                            StorageLibrarianError
+                            if response.status in {408, 429} or response.status >= 500
+                            else TerminalStorageLibrarianError
                         )
+                        raise error_type(f"Ollama analysis HTTP {response.status}.")
                     try:
                         payload = await response.json(content_type=None)
                     except (json.JSONDecodeError, ValueError, TypeError) as error:
-                        raise StorageLibrarianError(
+                        raise _terminal(
                             "Ollama analysis вернул malformed HTTP JSON."
                         ) from error
         except StorageLibrarianError:
@@ -217,15 +255,22 @@ class OllamaStorageAnalysisClient:
             ) from error
 
         if not isinstance(payload, dict):
-            raise StorageLibrarianError("Ollama analysis вернул malformed response.")
+            raise _terminal("Ollama analysis вернул malformed response.")
+        if payload.get("done") is not True or payload.get("done_reason") != "stop":
+            reason = payload.get("done_reason")
+            safe_reason = reason if isinstance(reason, str) else type(reason).__name__
+            raise _terminal(
+                "Ollama analysis did not complete normally: "
+                f"done_reason={safe_reason}."
+            )
         message = payload.get("message")
         content = message.get("content") if isinstance(message, dict) else None
         if not isinstance(content, str) or not content.strip():
-            raise StorageLibrarianError("Ollama analysis не вернул message.content.")
+            raise _terminal("Ollama analysis не вернул message.content.")
         try:
             decoded: object = json.loads(content)
         except json.JSONDecodeError as error:
-            raise StorageLibrarianError("Ollama analysis вернул invalid JSON content.") from error
+            raise _terminal("Ollama analysis вернул invalid JSON content.") from error
         analysis = _validate_analysis(decoded)
         fingerprint = hashlib.sha256(
             f"{session_id}\0{self._settings.text_model}".encode("utf-8")
@@ -238,7 +283,11 @@ class OllamaStorageAnalysisClient:
             run_id=f"ollama-storage-{fingerprint}",
             output=json.dumps(analysis, ensure_ascii=False, separators=(",", ":")),
             usage=usage,
+            analyzer="ollama",
         )
 
 
-__all__ = ("OllamaStorageAnalysisClient", "STORAGE_LIBRARIAN_ANALYSIS_SCHEMA")
+__all__ = (
+    "OllamaStorageAnalysisClient",
+    "STORAGE_LIBRARIAN_ANALYSIS_SCHEMA",
+)

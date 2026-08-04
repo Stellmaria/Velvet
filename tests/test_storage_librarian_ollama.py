@@ -13,12 +13,14 @@ from unittest.mock import AsyncMock, patch
 import aiohttp
 
 from velvet_bot.application.storage_librarian import StorageLibrarianService
+from velvet_bot.domains.telegram_storage.librarian_content import analysis_prompt
 from velvet_bot.domains.telegram_storage.librarian_models import (
     HermesRunResult,
     LibrarianJob,
     LibrarianObject,
     StorageLibrarianError,
     StorageLibrarianSettings,
+    TerminalStorageLibrarianError,
 )
 from velvet_bot.infrastructure.ai.storage_librarian_ollama import (
     STORAGE_LIBRARIAN_ANALYSIS_SCHEMA,
@@ -39,6 +41,22 @@ def _valid_analysis() -> dict[str, object]:
         "sensitivity": "normal",
         "confidence": 92,
     }
+
+
+def _ollama_payload(
+    *,
+    content: str | None = None,
+    done: bool = True,
+    done_reason: str = "stop",
+    **extra: object,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "done": done,
+        "done_reason": done_reason,
+        "message": {"content": content if content is not None else json.dumps(_valid_analysis())},
+    }
+    payload.update(extra)
+    return payload
 
 
 class _Response:
@@ -121,18 +139,23 @@ class StorageLibrarianSettingsRegressionTests(unittest.TestCase):
 
 
 class OllamaStorageAnalysisClientTests(unittest.IsolatedAsyncioTestCase):
-    async def _run(self, response: _Response | BaseException):
+    async def _run(
+        self,
+        response: _Response | BaseException,
+        *,
+        prompt: str = "short diagnostic",
+    ):
         session = _Session(response)
         client = OllamaStorageAnalysisClient(_settings(), session_factory=lambda **_: session)
-        result = await client.run(prompt="short diagnostic", session_id="storage-7", instructions="strict")
+        result = await client.run(
+            prompt=prompt,
+            session_id="storage-7",
+            instructions="strict",
+        )
         return result, session
 
     async def test_request_is_bounded_non_thinking_and_strict(self) -> None:
-        payload = {
-            "message": {"content": json.dumps(_valid_analysis())},
-            "prompt_eval_count": 28,
-            "eval_count": 61,
-        }
+        payload = _ollama_payload(prompt_eval_count=28, eval_count=61)
         result, session = await self._run(_Response(payload=payload))
         request = session.request
         assert request is not None
@@ -156,17 +179,37 @@ class OllamaStorageAnalysisClientTests(unittest.IsolatedAsyncioTestCase):
             body["options"],
         )
         self.assertTrue(result.run_id.startswith("ollama-storage-"))
+        self.assertEqual("ollama", result.analyzer)
         self.assertEqual(28, result.usage["prompt_tokens"])
         self.assertNotIn("short diagnostic", result.run_id)
 
     async def test_valid_response_maps_and_diagnostic_confidence_is_meaningful(self) -> None:
-        result, _ = await self._run(
-            _Response(payload={"message": {"content": json.dumps(_valid_analysis())}})
-        )
+        result, _ = await self._run(_Response(payload=_ollama_payload()))
         decoded = json.loads(result.output)
         self.assertIn("timeout", decoded["summary"])
         self.assertTrue(decoded["tags"])
         self.assertGreater(decoded["confidence"], 0)
+
+    async def test_non_stop_completion_is_terminal(self) -> None:
+        with self.assertRaisesRegex(TerminalStorageLibrarianError, "done_reason=length"):
+            await self._run(_Response(payload=_ollama_payload(done_reason="length")))
+
+    async def test_missing_done_flag_is_terminal(self) -> None:
+        payload = _ollama_payload()
+        payload.pop("done")
+        with self.assertRaisesRegex(TerminalStorageLibrarianError, "did not complete"):
+            await self._run(_Response(payload=payload))
+
+    async def test_oversized_prompt_fails_closed_before_http(self) -> None:
+        session = _Session(_Response(payload=_ollama_payload()))
+        client = OllamaStorageAnalysisClient(_settings(), session_factory=lambda **_: session)
+        with self.assertRaisesRegex(TerminalStorageLibrarianError, "silent truncation"):
+            await client.run(
+                prompt="я" * 20000,
+                session_id="storage-large",
+                instructions="strict",
+            )
+        self.assertIsNone(session.request)
 
     async def test_timeout_and_network_errors_are_controlled(self) -> None:
         for error in (asyncio.TimeoutError(), aiohttp.ClientConnectionError("offline")):
@@ -178,42 +221,63 @@ class OllamaStorageAnalysisClientTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(StorageLibrarianError, "HTTP 503") as raised:
             await self._run(_Response(status=503, payload={"secret": "must-not-leak"}))
         self.assertNotIn("must-not-leak", str(raised.exception))
+        with self.assertRaises(TerminalStorageLibrarianError):
+            await self._run(_Response(status=400, payload={}))
 
-    async def test_invalid_json_and_incomplete_schema_are_controlled(self) -> None:
+    async def test_invalid_json_and_incomplete_schema_are_terminal(self) -> None:
         cases = (
-            {"message": {"content": "not json"}},
-            {"message": {"content": json.dumps({"summary": "only"})}},
-            {"message": {}},
+            _ollama_payload(content="not json"),
+            _ollama_payload(content=json.dumps({"summary": "only"})),
+            {"done": True, "done_reason": "stop", "message": {}},
         )
         for payload in cases:
             with self.subTest(payload=payload):
-                with self.assertRaises(StorageLibrarianError):
+                with self.assertRaises(TerminalStorageLibrarianError):
                     await self._run(_Response(payload=payload))
 
     async def test_unhashable_enum_values_are_controlled_schema_errors(self) -> None:
-        for field, invalid in (("sensitivity", {}), ("action_items", [{"text": "x", "priority": []}])):
+        for field, invalid in (
+            ("sensitivity", {}),
+            ("action_items", [{"text": "x", "priority": []}]),
+        ):
             analysis = _valid_analysis()
             analysis[field] = invalid
             with self.subTest(field=field):
-                with self.assertRaisesRegex(StorageLibrarianError, "schema mismatch"):
+                with self.assertRaisesRegex(TerminalStorageLibrarianError, "schema mismatch"):
                     await self._run(
-                        _Response(payload={"message": {"content": json.dumps(analysis)}})
+                        _Response(payload=_ollama_payload(content=json.dumps(analysis)))
                     )
 
-    async def test_malformed_usage_is_a_controlled_error(self) -> None:
-        with self.assertRaisesRegex(StorageLibrarianError, "usage"):
+    async def test_malformed_usage_is_a_terminal_error(self) -> None:
+        with self.assertRaisesRegex(TerminalStorageLibrarianError, "usage"):
             await self._run(
-                _Response(
-                    payload={
-                        "message": {"content": json.dumps(_valid_analysis())},
-                        "prompt_eval_count": "not-an-integer",
-                    }
-                )
+                _Response(payload=_ollama_payload(prompt_eval_count="not-an-integer"))
             )
 
 
+class StorageLibrarianPromptTests(unittest.TestCase):
+    def test_prompt_requires_russian_and_does_not_anchor_confidence_to_zero(self) -> None:
+        item = LibrarianObject(
+            7,
+            "diagnostics",
+            "diag:7",
+            "short.log",
+            "text/plain",
+            8,
+            "a" * 64,
+            False,
+            {},
+            (),
+        )
+        prompt = analysis_prompt(item, "status=ok")
+        self.assertIn("пиши по-русски", prompt)
+        self.assertIn("уверенность в выводах", prompt)
+        self.assertIn("технические имена", prompt)
+        self.assertNotIn('"confidence": 0', prompt)
+
+
 class StorageLibrarianStartScriptTests(unittest.TestCase):
-    def test_start_script_honors_alias_overrides_from_env_file(self) -> None:
+    def test_start_script_honors_aliases_and_skips_existing_source_pulls(self) -> None:
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory(dir=root.parent) as directory:
             temp = Path(directory)
@@ -250,6 +314,7 @@ class StorageLibrarianStartScriptTests(unittest.TestCase):
         self.assertIn("ollama create vision:override", commands)
         self.assertIn("ollama show text:override", commands)
         self.assertIn("ollama show vision:override", commands)
+        self.assertNotIn("ollama pull", commands)
 
 
 class StorageLibrarianClientSplitTests(unittest.IsolatedAsyncioTestCase):
@@ -260,6 +325,7 @@ class StorageLibrarianClientSplitTests(unittest.IsolatedAsyncioTestCase):
                     run_id="ollama-storage-safe",
                     output=json.dumps(_valid_analysis()),
                     usage={},
+                    analyzer="ollama",
                 )
             )
         )
@@ -279,34 +345,81 @@ class StorageLibrarianClientSplitTests(unittest.IsolatedAsyncioTestCase):
             claim_next=AsyncMock(return_value=LibrarianJob(1, 7, 0, 3)),
             load_object=AsyncMock(
                 return_value=LibrarianObject(
-                    7, "diagnostics", "diag:7", "short.log", "text/plain", 8,
-                    "a" * 64, False, {}, (),
+                    7,
+                    "diagnostics",
+                    "diag:7",
+                    "short.log",
+                    "text/plain",
+                    8,
+                    "a" * 64,
+                    False,
+                    {},
+                    (),
                 )
             ),
             complete=AsyncMock(),
             skip=AsyncMock(),
             fail=AsyncMock(),
             search_analyses=AsyncMock(
-                return_value=[{
-                    "storage_object_id": 7,
-                    "storage_kind": "diagnostics",
-                    "logical_key": "diag:7",
-                    "original_name": "short.log",
-                    "summary": "timeout",
-                    "tags": [],
-                    "entities": [],
-                    "action_items": [],
-                    "analyzed_at": "2026-08-04T00:00:00Z",
-                }]
+                return_value=[
+                    {
+                        "storage_object_id": 7,
+                        "storage_kind": "diagnostics",
+                        "logical_key": "diag:7",
+                        "original_name": "short.log",
+                        "summary": "timeout",
+                        "tags": [],
+                        "entities": [],
+                        "action_items": [],
+                        "analyzed_at": "2026-08-04T00:00:00Z",
+                    }
+                ]
             ),
         )
-        service.settings = SimpleNamespace(**{**service.settings.__dict__, "enabled": True}) if hasattr(service.settings, "__dict__") else service.settings
         object.__setattr__(service.settings, "enabled", True)
 
         self.assertEqual(1, await service.process_once())
         self.assertEqual("Ответ", await service.answer("Что сломалось?"))
         analysis_client.run.assert_awaited_once()
         answer_client.run.assert_awaited_once()
+
+    async def test_terminal_analysis_error_is_not_retried(self) -> None:
+        analysis_client = SimpleNamespace(
+            run=AsyncMock(side_effect=TerminalStorageLibrarianError("invalid schema"))
+        )
+        service = StorageLibrarianService(
+            database=object(),  # type: ignore[arg-type]
+            settings=_settings(),
+            object_loader=SimpleNamespace(download=AsyncMock(return_value=b"x")),
+            analysis_client=analysis_client,
+            answer_client=SimpleNamespace(run=AsyncMock()),
+        )
+        service.repository = SimpleNamespace(
+            enqueue_pending=AsyncMock(),
+            claim_next=AsyncMock(return_value=LibrarianJob(1, 7, 1, 3)),
+            load_object=AsyncMock(
+                return_value=LibrarianObject(
+                    7,
+                    "diagnostics",
+                    "diag:7",
+                    "short.log",
+                    "text/plain",
+                    1,
+                    "a" * 64,
+                    False,
+                    {},
+                    (),
+                )
+            ),
+            complete=AsyncMock(),
+            skip=AsyncMock(),
+            fail=AsyncMock(return_value=True),
+        )
+        object.__setattr__(service.settings, "enabled", True)
+
+        self.assertEqual(1, await service.process_once())
+        service.repository.fail.assert_awaited_once()
+        self.assertTrue(service.repository.fail.await_args.kwargs["terminal"])
 
 
 if __name__ == "__main__":

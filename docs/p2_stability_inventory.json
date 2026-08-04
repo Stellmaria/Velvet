@@ -1,9 +1,9 @@
 {
   "schema_version": 78,
-  "generated_from_commit": "storage-librarian-afk-guardrails",
-  "broad_exception_total": 105,
+  "generated_from_commit": "arthur-librarian-phase1",
+  "broad_exception_total": 106,
   "broad_exception_files": 60,
-  "broad_exception_approved": 105,
+  "broad_exception_approved": 106,
   "broad_exception_unresolved": 0,
   "broad_exception_unresolved_files": 0,
   "callback_total": 132,
@@ -24,7 +24,7 @@
     {
       "path": "velvet_bot/ai_quality.py",
       "function": "process_once",
-      "line": 703,
+      "line": 716,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-claimed-ai-quality"
@@ -168,7 +168,7 @@
     {
       "path": "velvet_bot/application/storage_librarian.py",
       "function": "process_once",
-      "line": 292,
+      "line": 298,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "report-is-nonfatal"
@@ -176,7 +176,15 @@
     {
       "path": "velvet_bot/application/storage_librarian.py",
       "function": "process_once",
-      "line": 308,
+      "line": 321,
+      "handler_module": false,
+      "classification": "approved_boundary",
+      "reason": "failure-report-is-nonfatal"
+    },
+    {
+      "path": "velvet_bot/application/storage_librarian.py",
+      "function": "process_once",
+      "line": 331,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-storage-librarian-job"
@@ -184,7 +192,7 @@
     {
       "path": "velvet_bot/application/storage_librarian.py",
       "function": "process_once",
-      "line": 317,
+      "line": 340,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "failure-report-is-nonfatal"
@@ -320,7 +328,7 @@
     {
       "path": "velvet_bot/domains/telegram_storage/service.py",
       "function": "_migrate_backups",
-      "line": 463,
+      "line": 466,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-storage-operation"
@@ -328,7 +336,7 @@
     {
       "path": "velvet_bot/domains/telegram_storage/service.py",
       "function": "_migrate_codex",
-      "line": 610,
+      "line": 613,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-storage-operation"
@@ -712,7 +720,7 @@
     {
       "path": "velvet_bot/presentation/telegram/storage_center.py",
       "function": "_run_manual_migration",
-      "line": 127,
+      "line": 137,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-storage-operation"
@@ -720,7 +728,7 @@
     {
       "path": "velvet_bot/presentation/telegram/storage_center.py",
       "function": "handle_storage_startup.runner",
-      "line": 294,
+      "line": 345,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-storage-operation"
@@ -824,7 +832,7 @@
     {
       "path": "velvet_bot/services/workspace_qwen_quality.py",
       "function": "_download_target",
-      "line": 107,
+      "line": 106,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "workspace-qwen-file-fallback"
@@ -832,7 +840,7 @@
     {
       "path": "velvet_bot/services/workspace_qwen_quality.py",
       "function": "process_once",
-      "line": 156,
+      "line": 170,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "compensate-workspace-qwen-check"

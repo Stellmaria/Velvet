@@ -4,8 +4,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **105** в **60** файлах;
-- approved boundaries: **105**;
+- raw broad exceptions: **106** в **60** файлах;
+- approved boundaries: **106**;
 - unresolved broad exceptions: **0** в **0** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
@@ -15,7 +15,7 @@ AST-инвентаризация широких исключений и callback
 ## Approved broad boundaries
 
 - `velvet_bot/ai_job_runtime.py:55` `create`: compensate-created-ai-job.
-- `velvet_bot/ai_quality.py:703` `process_once`: compensate-claimed-ai-quality.
+- `velvet_bot/ai_quality.py:716` `process_once`: compensate-claimed-ai-quality.
 - `velvet_bot/ai_vision.py:743` `process_once`: compensate-claimed-ai-profile.
 - `velvet_bot/app/bootstrap.py:90` `_close_application_resources`: isolate-worker-shutdown.
 - `velvet_bot/app/bootstrap.py:96` `_close_application_resources`: best-effort-shutdown-audit.
@@ -33,9 +33,10 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/application/media_delivery_deliver.py:453` `_compensate_claim`: preserve-lease-recovery-on-compensation-failure.
 - `velvet_bot/application/media_delivery_resolve.py:122` `execute`: compensate-claimed-result-resolution.
 - `velvet_bot/application/media_delivery_resolve.py:172` `_finish_claim`: preserve-resolution-lease-recovery.
-- `velvet_bot/application/storage_librarian.py:292` `process_once`: report-is-nonfatal.
-- `velvet_bot/application/storage_librarian.py:308` `process_once`: isolate-storage-librarian-job.
-- `velvet_bot/application/storage_librarian.py:317` `process_once`: failure-report-is-nonfatal.
+- `velvet_bot/application/storage_librarian.py:298` `process_once`: report-is-nonfatal.
+- `velvet_bot/application/storage_librarian.py:321` `process_once`: failure-report-is-nonfatal.
+- `velvet_bot/application/storage_librarian.py:331` `process_once`: isolate-storage-librarian-job.
+- `velvet_bot/application/storage_librarian.py:340` `process_once`: failure-report-is-nonfatal.
 - `velvet_bot/audit.py:56` `send`: isolate-telegram-audit-sink.
 - `velvet_bot/backup_runtime.py:163` `_create_dump_file`: cleanup-invalid-backup-artifacts.
 - `velvet_bot/backup_service.py:529` `create_backup`: compensate-running-backup.
@@ -52,8 +53,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/domains/telegram_storage/service.py:114` `run`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:166` `_upload_candidate`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:282` `_migrate_watermarks`: isolate-telegram-storage-operation.
-- `velvet_bot/domains/telegram_storage/service.py:463` `_migrate_backups`: isolate-telegram-storage-operation.
-- `velvet_bot/domains/telegram_storage/service.py:610` `_migrate_codex`: isolate-telegram-storage-operation.
+- `velvet_bot/domains/telegram_storage/service.py:466` `_migrate_backups`: isolate-telegram-storage-operation.
+- `velvet_bot/domains/telegram_storage/service.py:613` `_migrate_codex`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/uploader.py:229` `upload`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/workspaces/character_topics.py:135` `ensure_character_archive_topic`: cleanup-orphan-character-topic.
 - `velvet_bot/domains/workspaces/watermark_assets.py:226` `store`: cleanup-new-logo-after-db-failure.
@@ -101,8 +102,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/presentation/telegram/routers/workspace_analytics.py:132` `_ingest`: report-workspace-analytics-ingest-failure.
 - `velvet_bot/presentation/telegram/routers/workspace_publications.py:460` `_handle_workspace_publication_callback`: report-workspace-publication-failure.
 - `velvet_bot/presentation/telegram/routers/workspace_reference_library.py:1170` `_compare_workspace_reference_result`: report-workspace-reference-comparison.
-- `velvet_bot/presentation/telegram/storage_center.py:127` `_run_manual_migration`: isolate-telegram-storage-operation.
-- `velvet_bot/presentation/telegram/storage_center.py:294` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
+- `velvet_bot/presentation/telegram/storage_center.py:137` `_run_manual_migration`: isolate-telegram-storage-operation.
+- `velvet_bot/presentation/telegram/storage_center.py:345` `handle_storage_startup.runner`: isolate-telegram-storage-operation.
 - `velvet_bot/presentation/telegram/workspace_qwen.py:1105` `handle_workspace_qwen_prompt_image`: workspace-qwen-prompt-result.
 - `velvet_bot/presentation/telegram/workspace_qwen.py:1190` `handle_workspace_qwen_visual_image`: workspace-qwen-visual.
 - `velvet_bot/public_archive_display.py:144` `build_viewer_input_media`: fallback-viewer-edit-preview.
@@ -115,8 +116,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/media_save.py:261` `_place_in_topic`: isolate-media-topic-delivery.
 - `velvet_bot/services/system_health.py:126` `check`: isolate-database-health-probe.
 - `velvet_bot/services/system_health.py:138` `check`: isolate-telegram-health-probe.
-- `velvet_bot/services/workspace_qwen_quality.py:107` `_download_target`: workspace-qwen-file-fallback.
-- `velvet_bot/services/workspace_qwen_quality.py:156` `process_once`: compensate-workspace-qwen-check.
+- `velvet_bot/services/workspace_qwen_quality.py:106` `_download_target`: workspace-qwen-file-fallback.
+- `velvet_bot/services/workspace_qwen_quality.py:170` `process_once`: compensate-workspace-qwen-check.
 - `velvet_bot/workers/manager.py:222` `_execute_once`: isolate-worker-iteration-failure.
 - `velvet_bot/workers/manager.py:267` `_run_periodic`: isolate-worker-loop-failure.
 

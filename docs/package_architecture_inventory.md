@@ -1,8 +1,8 @@
 # Package-wide architecture inventory
 
-- Generated from: `p1-package-architecture-baseline`
+- Generated from: `arthur-librarian-phase1`
 - Production modules: **646**
-- Production LOC: **141659**
+- Production LOC: **141744**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **44**
