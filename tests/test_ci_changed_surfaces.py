@@ -11,6 +11,7 @@ SCRIPT = ROOT / "scripts" / "ci_changed_surfaces.py"
 SECURITY_WORKFLOW = ROOT / ".github" / "workflows" / "security.yml"
 TYPE_WORKFLOW = ROOT / ".github" / "workflows" / "type-check.yml"
 NOTES_WORKFLOW = ROOT / ".github" / "workflows" / "project-notes-contract.yml"
+DOCKER_WORKFLOW = ROOT / ".github" / "workflows" / "docker-build.yml"
 
 
 def load_module():
@@ -23,6 +24,13 @@ def load_module():
 
 
 MODULE = load_module()
+DOCKER_IMAGE_SURFACES = {
+    "docker_velvet",
+    "docker_supervisor",
+    "docker_vision",
+    "docker_krita",
+    "docker_hermes",
+}
 
 
 class CiChangedSurfacesTests(unittest.TestCase):
@@ -57,6 +65,41 @@ class CiChangedSurfacesTests(unittest.TestCase):
         self.assertTrue(outputs["supply_chain"])
         self.assertTrue(outputs["dependency_audit"])
         self.assertTrue(outputs["image"])
+        self.assertTrue(outputs["docker_velvet"])
+        self.assertTrue(outputs["docker_any"])
+
+    def test_hermes_change_builds_only_hermes_images(self) -> None:
+        outputs = MODULE.classify_paths(
+            ["deploy/hermes-operator/plugins/kael-coder-control/__init__.py"]
+        )
+        self.assertTrue(outputs["docker_hermes"])
+        self.assertTrue(outputs["docker_any"])
+        self.assertFalse(outputs["docker_krita"])
+        self.assertFalse(outputs["docker_vision"])
+        self.assertFalse(outputs["docker_velvet"])
+        self.assertFalse(outputs["docker_supervisor"])
+
+    def test_krita_change_builds_only_krita_image(self) -> None:
+        outputs = MODULE.classify_paths(
+            ["tools/krita/velvet_logo/velvet_logo.py"]
+        )
+        self.assertTrue(outputs["docker_krita"])
+        self.assertTrue(outputs["docker_any"])
+        for name in DOCKER_IMAGE_SURFACES - {"docker_krita"}:
+            self.assertFalse(outputs[name], name)
+
+    def test_shared_docker_input_builds_every_image(self) -> None:
+        outputs = MODULE.classify_paths([".dockerignore"])
+        self.assertTrue(outputs["docker_any"])
+        for name in DOCKER_IMAGE_SURFACES:
+            self.assertTrue(outputs[name], name)
+
+    def test_docker_workflow_change_selects_ci_contract_not_images(self) -> None:
+        outputs = MODULE.classify_paths([".github/workflows/docker-build.yml"])
+        self.assertTrue(outputs["docker_ci"])
+        self.assertFalse(outputs["docker_any"])
+        for name in DOCKER_IMAGE_SURFACES:
+            self.assertFalse(outputs[name], name)
 
     def test_full_scan_enables_every_surface(self) -> None:
         outputs = MODULE.classify_paths([], full_scan=True)
@@ -97,6 +140,19 @@ class CiChangedSurfacesTests(unittest.TestCase):
         self.assertNotIn("fetch-depth: 0", source)
         self.assertNotIn("actions/setup-python", source)
         self.assertNotIn("git fetch", source)
+
+    def test_docker_workflow_builds_only_changed_surfaces_with_cache(self) -> None:
+        source = DOCKER_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("Resolve changed Docker surfaces", source)
+        self.assertIn("steps.changes.outputs.docker_velvet == 'true'", source)
+        self.assertIn("steps.changes.outputs.docker_supervisor == 'true'", source)
+        self.assertIn("steps.changes.outputs.docker_vision == 'true'", source)
+        self.assertIn("steps.changes.outputs.docker_krita == 'true'", source)
+        self.assertIn("steps.changes.outputs.docker_hermes == 'true'", source)
+        self.assertIn("--cache-from type=gha,scope=velvet-krita", source)
+        self.assertIn("--cache-to type=gha,mode=max,scope=velvet-krita", source)
+        self.assertIn("Skip unchanged Krita image", source)
+        self.assertIn("Skip unchanged Hermes images", source)
 
 
 if __name__ == "__main__":
