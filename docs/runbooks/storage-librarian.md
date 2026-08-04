@@ -11,7 +11,8 @@ Velvet bot
   ├─ владеет Telegram Storage и file_id
   ├─ проверяет multipart/SHA256
   ├─ очищает чувствительные строки
-  ├─ отправляет bounded text во внутренний Runs API
+  ├─ отправляет bounded text напрямую в private Ollama /api/chat
+  ├─ использует Hermes Runs API только для /storage_ask
   └─ публикует готовое резюме в Hermes Reports
 
 Velvet Librarian Hermes
@@ -24,9 +25,8 @@ Velvet Librarian Hermes
 
 Ollama Librarian
   ├─ только внутренняя сеть velvet_backend
-  ├─ qwen3.5:9b-q4_K_M
-  ├─ alias velvet-librarian-local:v1
-  ├─ context 65536
+  ├─ text: qwen3:4b-instruct → velvet-librarian-text:v1, context 8192
+  ├─ vision: qwen3.5:9b-q4_K_M → velvet-librarian-vision:v1, context 16384
   └─ отдельный persistent Docker volume
 ```
 
@@ -71,23 +71,27 @@ STORAGE_LIBRARIAN_HERMES_API_KEY=<отдельный ключ, не ключ К�
 STORAGE_LIBRARIAN_HERMES_MEMORY_LIMIT=2g
 STORAGE_LIBRARIAN_HERMES_CPU_LIMIT=1.0
 
-STORAGE_LIBRARIAN_LOCAL_MODEL=velvet-librarian-local:v1
-STORAGE_LIBRARIAN_LOCAL_BASE_URL=http://ollama-librarian:11434/v1
-STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH=65536
+STORAGE_LIBRARIAN_OLLAMA_BASE_URL=http://ollama-librarian:11434
+STORAGE_LIBRARIAN_TEXT_MODEL=velvet-librarian-text:v1
+STORAGE_LIBRARIAN_VISION_MODEL=velvet-librarian-vision:v1
+STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH=8192
+STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS=384
+STORAGE_LIBRARIAN_VISION_CONTEXT_LENGTH=16384
+STORAGE_LIBRARIAN_VISION_MAX_OUTPUT_TOKENS=640
 STORAGE_LIBRARIAN_OLLAMA_IMAGE=ollama/ollama:0.32.3
 STORAGE_LIBRARIAN_OLLAMA_MEMORY_LIMIT=14g
 STORAGE_LIBRARIAN_OLLAMA_CPU_LIMIT=6.0
-STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE=30m
+STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE=5m
 STORAGE_LIBRARIAN_OLLAMA_VOLUME=velvet_librarian_ollama
 
 STORAGE_LIBRARIAN_ENABLED=false
 STORAGE_LIBRARIAN_AUTO_ENQUEUE=false
 STORAGE_LIBRARIAN_PUBLISH_REPORTS=true
 STORAGE_LIBRARIAN_ALLOWED_KINDS=diagnostics,exports,codex,releases,rework,inbox
-STORAGE_LIBRARIAN_ANALYZER_VERSION=velvet-librarian:qwen3.5-9b-local:v3
+STORAGE_LIBRARIAN_ANALYZER_VERSION=velvet-librarian:qwen3-4b-text:v4
 STORAGE_LIBRARIAN_SCAN_INTERVAL_SECONDS=300
 STORAGE_LIBRARIAN_POLL_INTERVAL_SECONDS=2
-STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=900
+STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=180
 STORAGE_LIBRARIAN_MAX_OBJECT_BYTES=12582912
 STORAGE_LIBRARIAN_MAX_TEXT_CHARS=120000
 STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES=40
@@ -115,8 +119,8 @@ sudo bash deploy/hermes-librarian/install.sh
 
 1. подготавливает local-only Hermes profile;
 2. запускает `ollama-librarian` без host port;
-3. скачивает `qwen3.5:9b-q4_K_M` размером около 6,6 ГБ;
-4. создаёт `velvet-librarian-local:v1` с контекстом 65 536;
+3. скачивает `qwen3:4b-instruct` и `qwen3.5:9b-q4_K_M`;
+4. пересоздаёт aliases `velvet-librarian-text:v1` и `velvet-librarian-vision:v1`;
 5. запускает `librarian-hermes`;
 6. пересоздаёт основной bot;
 7. проверяет bot → Librarian health.
@@ -129,7 +133,7 @@ Installer также:
 - устанавливает отдельные `SOUL.md` и `AGENTS.md`;
 - задаёт пустой API tool whitelist и глобальный deny-list;
 - удаляет все cloud fallback providers из профиля;
-- устанавливает версию `velvet-librarian:qwen3.5-9b-local:v3`;
+- устанавливает версию `velvet-librarian:qwen3-4b-text:v4`;
 - включает публикацию в Hermes Reports;
 - сохраняет `STORAGE_LIBRARIAN_AUTO_ENQUEUE` под отдельным ручным контролем.
 
@@ -162,7 +166,13 @@ sudo docker compose \
   --env-file .env.server \
   -f deploy/hermes-librarian/compose.yaml \
   exec -T ollama-librarian \
-  ollama show velvet-librarian-local:v1
+  ollama show velvet-librarian-text:v1
+
+sudo docker compose \
+  --env-file .env.server \
+  -f deploy/hermes-librarian/compose.yaml \
+  exec -T ollama-librarian \
+  ollama show velvet-librarian-vision:v1
 ```
 
 Проверка отсутствия публичного порта:
@@ -201,7 +211,7 @@ sudo docker compose \
 2. удаляет служебные слова;
 3. нормализует распространённые русские и английские окончания;
 4. ранжирует summary, tags, entities, action items и имя объекта;
-5. передаёт до восьми релевантных источников локальной модели.
+5. передаёт до восьми релевантных источников Hermes answer client.
 
 Поэтому запрос `какие ошибки и предупреждения повторялись?` способен сопоставить форму `ошибки` с `ошибкой`/`ошибок`. Случайные последние записи без совпадений не подставляются.
 
@@ -224,7 +234,7 @@ STORAGE_LIBRARIAN_PUBLISH_REPORTS=true
 - `/storage_ask вопрос` — ответ по проанализированному индексу;
 - `/storage_download ID` — получить исходный объект.
 
-Для smoke-test выбрать небольшой TXT, JSON или log. Не выбирать backup, encrypted object, изображение, видео или большой ZIP. После успешного анализа в теме `Hermes Reports` должно появиться сообщение с Storage ID, резюме, тегами и действиями.
+Для smoke-test выбрать небольшой TXT, JSON или log. Не выбирать backup, encrypted object, изображение, видео или большой ZIP. Vision alias подготовлен только для будущего pipeline: image support не завершена, пока приложение не передаёт image bytes. После успешного анализа в теме `Hermes Reports` должно появиться сообщение с Storage ID, резюме, тегами и действиями.
 
 Автоматическую очередь включать только после проверки качества и длительности локального анализа:
 
@@ -245,7 +255,7 @@ sudo docker compose \
   exec -T ollama-librarian ollama ps
 ```
 
-Если система начинает использовать swap во время коротких логов, снизить контекст или перейти на `qwen3.5:4b`. Для текущего VPS с 23 ГБ RAM и 8 vCPU целевой вариант — 9B Q4.
+Если система начинает использовать swap во время коротких логов, не включать массовую очередь и проверить фактические `num_ctx`, время и число одновременно загруженных aliases.
 
 ## Backup
 
@@ -254,7 +264,7 @@ sudo docker compose \
 ## Ограничения
 
 - CPU-only inference медленнее облачного, особенно на больших объектах;
-- PDF, изображения, видео, RAR и TAR не анализируются;
+- PDF, изображения, видео, RAR и TAR не анализируются; наличие vision alias само по себе image support не добавляет;
 - Inbox поддержан как storage kind, но отдельный UX ручной загрузки остаётся следующим срезом;
 - публикация отчёта не является отдельным Storage object и не запускает рекурсивный анализ;
 - mass auto-enqueue запрещён до smoke-test качества и нагрузки.

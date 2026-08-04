@@ -22,7 +22,8 @@ for path in \
   "$VELVET_COMPOSE_FILE" \
   "$SOURCE_DIR/compose.yaml" \
   "$SOURCE_DIR/prepare_profile.py" \
-  "$SOURCE_DIR/Modelfile" \
+  "$SOURCE_DIR/Modelfile.text" \
+  "$SOURCE_DIR/Modelfile.vision" \
   "$SOURCE_DIR/start.sh" \
   "$SOURCE_DIR/SOUL.md" \
   "$SOURCE_DIR/AGENTS.md" \
@@ -73,12 +74,17 @@ if len(key) < 24:
 updates = {
     "STORAGE_LIBRARIAN_HERMES_BASE_URL": "http://librarian-hermes:8642",
     "STORAGE_LIBRARIAN_HERMES_API_KEY": key,
-    "STORAGE_LIBRARIAN_ANALYZER_VERSION": "velvet-librarian:qwen3.5-9b-local:v3",
+    "STORAGE_LIBRARIAN_ANALYZER_VERSION": "velvet-librarian:qwen3-4b-text:v4",
     "STORAGE_LIBRARIAN_PUBLISH_REPORTS": "true",
-    "STORAGE_LIBRARIAN_LOCAL_MODEL": "velvet-librarian-local:v1",
-    "STORAGE_LIBRARIAN_LOCAL_BASE_URL": "http://ollama-librarian:11434/v1",
-    "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH": "65536",
-    "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS": "900",
+    "STORAGE_LIBRARIAN_OLLAMA_BASE_URL": "http://ollama-librarian:11434",
+    "STORAGE_LIBRARIAN_TEXT_MODEL": "velvet-librarian-text:v1",
+    "STORAGE_LIBRARIAN_VISION_MODEL": "velvet-librarian-vision:v1",
+    "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH": "8192",
+    "STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS": "384",
+    "STORAGE_LIBRARIAN_VISION_CONTEXT_LENGTH": "16384",
+    "STORAGE_LIBRARIAN_VISION_MAX_OUTPUT_TOKENS": "640",
+    "STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE": "5m",
+    "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS": "180",
 }
 result = []
 seen = set()
@@ -114,16 +120,18 @@ for raw in Path(sys.argv[1]).read_text(encoding="utf-8-sig").splitlines():
     values[key.strip()] = value.strip().strip('"').strip("'")
 print(values.get("VELVET_DATA_DIR", "/srv/velvet/data"))
 print(values.get("HERMES_IMAGE", "nousresearch/hermes-agent@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a"))
-print(values.get("STORAGE_LIBRARIAN_LOCAL_MODEL", "velvet-librarian-local:v1"))
-print(values.get("STORAGE_LIBRARIAN_LOCAL_BASE_URL", "http://ollama-librarian:11434/v1"))
-print(values.get("STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH", "65536"))
+print(values.get("STORAGE_LIBRARIAN_TEXT_MODEL", "velvet-librarian-text:v1"))
+print(values.get("STORAGE_LIBRARIAN_VISION_MODEL", "velvet-librarian-vision:v1"))
+print(values.get("STORAGE_LIBRARIAN_OLLAMA_BASE_URL", "http://ollama-librarian:11434") + "/v1")
+print(values.get("STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH", "8192"))
 PY
 )
 VELVET_DATA_DIR="${resolved[0]}"
 HERMES_IMAGE="${resolved[1]}"
-LOCAL_MODEL="${resolved[2]}"
-LOCAL_BASE_URL="${resolved[3]}"
-LOCAL_CONTEXT_LENGTH="${resolved[4]}"
+TEXT_MODEL="${resolved[2]}"
+VISION_MODEL="${resolved[3]}"
+LOCAL_BASE_URL="${resolved[4]}"
+LOCAL_CONTEXT_LENGTH="${resolved[5]}"
 SOURCE_CONFIG="$VELVET_DATA_DIR/hermes/config.yaml"
 TARGET_DIR="$VELVET_DATA_DIR/hermes-librarian"
 
@@ -141,9 +149,9 @@ install -d -m 0750 -o "$source_uid" -g "$source_gid" "$TARGET_DIR"
 docker run --rm \
   --network none \
   --entrypoint python \
-  -e STORAGE_LIBRARIAN_LOCAL_MODEL="$LOCAL_MODEL" \
-  -e STORAGE_LIBRARIAN_LOCAL_BASE_URL="$LOCAL_BASE_URL" \
-  -e STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
+  -e STORAGE_LIBRARIAN_TEXT_MODEL="$TEXT_MODEL" \
+  -e STORAGE_LIBRARIAN_OLLAMA_BASE_URL="${LOCAL_BASE_URL%/v1}" \
+  -e STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
   -v "$SOURCE_CONFIG:/source/config.yaml:ro" \
   -v "$SOURCE_DIR:/bootstrap:ro" \
   -v "$pack_root/velvet-librarian:/brain:ro" \
@@ -164,9 +172,9 @@ find "$TARGET_DIR" -type f -exec chmod 0640 {} +
 docker run --rm -i \
   --network none \
   --entrypoint python \
-  -e STORAGE_LIBRARIAN_LOCAL_MODEL="$LOCAL_MODEL" \
-  -e STORAGE_LIBRARIAN_LOCAL_BASE_URL="$LOCAL_BASE_URL" \
-  -e STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
+  -e STORAGE_LIBRARIAN_TEXT_MODEL="$TEXT_MODEL" \
+  -e STORAGE_LIBRARIAN_OLLAMA_BASE_URL="${LOCAL_BASE_URL%/v1}" \
+  -e STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH="$LOCAL_CONTEXT_LENGTH" \
   -v "$TARGET_DIR:/profile:ro" \
   "$HERMES_IMAGE" \
   - <<'PY'
@@ -187,9 +195,10 @@ assert required.issubset(disabled), sorted(required - disabled)
 assert config.get("mcp_servers") == {}, config.get("mcp_servers")
 assert config.get("fallback_providers") == [], config.get("fallback_providers")
 assert model.get("provider") == "custom", model
-assert model.get("default") == os.environ["STORAGE_LIBRARIAN_LOCAL_MODEL"], model
-assert model.get("base_url") == os.environ["STORAGE_LIBRARIAN_LOCAL_BASE_URL"].rstrip("/"), model
-assert int(model.get("context_length") or 0) == int(os.environ["STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH"]), model
+assert model.get("default") == os.environ["STORAGE_LIBRARIAN_TEXT_MODEL"], model
+expected_base_url = os.environ["STORAGE_LIBRARIAN_OLLAMA_BASE_URL"].rstrip("/") + "/v1"
+assert model.get("base_url") == expected_base_url, model
+assert int(model.get("context_length") or 0) == int(os.environ["STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH"]), model
 assert (config.get("compression") or {}).get("enabled") is True, config.get("compression")
 guardrails = config.get("tool_loop_guardrails") or {}
 assert guardrails.get("warnings_enabled") is True, guardrails
@@ -251,13 +260,17 @@ fi
 
 runuser -u "$SERVICE_USER" -- \
   docker compose --env-file "$VELVET_ENV_FILE" -f "$SOURCE_DIR/compose.yaml" \
-    exec -T ollama-librarian ollama show "$LOCAL_MODEL" >/dev/null
+    exec -T ollama-librarian ollama show "$TEXT_MODEL" >/dev/null
+runuser -u "$SERVICE_USER" -- \
+  docker compose --env-file "$VELVET_ENV_FILE" -f "$SOURCE_DIR/compose.yaml" \
+    exec -T ollama-librarian ollama show "$VISION_MODEL" >/dev/null
 
 printf '%s\n' \
   "Velvet Librarian profile installed." \
   "Dedicated API key configured." \
-  "Local model configured: $LOCAL_MODEL." \
-  "Analyzer version set to velvet-librarian:qwen3.5-9b-local:v3." \
+  "Text model configured: $TEXT_MODEL." \
+  "Vision alias prepared; image support remains incomplete until image bytes are supplied." \
+  "Analyzer version set to velvet-librarian:qwen3-4b-text:v4." \
   "Hermes Reports publication enabled." \
   "Bot-to-Librarian health verified." \
   "Automatic enqueue remains controlled by STORAGE_LIBRARIAN_AUTO_ENQUEUE."

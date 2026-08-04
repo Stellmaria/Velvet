@@ -83,7 +83,7 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
         self.assertIn("TelegramStorageLibrarianReportPublisher", presentation)
         self.assertIn('threads.for_kind("analysis")', publisher)
         self.assertIn("STORAGE_LIBRARIAN_PUBLISH_REPORTS", installer)
-        self.assertIn("velvet-librarian:qwen3.5-9b-local:v3", installer)
+        self.assertIn("velvet-librarian:qwen3-4b-text:v4", installer)
         self.assertIn("context_compiler.py", installer)
         self.assertIn("context-manifest.json", installer)
 
@@ -97,7 +97,13 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
         start = (ROOT / "deploy/hermes-librarian/start.sh").read_text(
             encoding="utf-8"
         )
-        modelfile = (ROOT / "deploy/hermes-librarian/Modelfile").read_text(
+        installer = (ROOT / "deploy/hermes-librarian/install.sh").read_text(
+            encoding="utf-8"
+        )
+        text_modelfile = (ROOT / "deploy/hermes-librarian/Modelfile.text").read_text(
+            encoding="utf-8"
+        )
+        vision_modelfile = (ROOT / "deploy/hermes-librarian/Modelfile.vision").read_text(
             encoding="utf-8"
         )
         self.assertIn("ollama/ollama:0.32.3", compose)
@@ -107,8 +113,23 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
         self.assertIn('"provider": "custom"', profile)
         self.assertIn('config["fallback_providers"] = []', profile)
         self.assertIn("ollama pull", start)
-        self.assertIn("qwen3.5:9b-q4_K_M", modelfile)
-        self.assertIn("PARAMETER num_ctx 65536", modelfile)
+        self.assertIn("qwen3:4b-instruct", text_modelfile)
+        self.assertIn("PARAMETER num_ctx 8192", text_modelfile)
+        self.assertIn("PARAMETER num_predict 384", text_modelfile)
+        self.assertIn("PARAMETER temperature 0", text_modelfile)
+        self.assertIn("qwen3.5:9b-q4_K_M", vision_modelfile)
+        self.assertIn("PARAMETER num_ctx 16384", vision_modelfile)
+        self.assertIn("PARAMETER num_predict 640", vision_modelfile)
+        self.assertIn("velvet-librarian-text:v1", start)
+        self.assertIn("velvet-librarian-vision:v1", start)
+        self.assertGreaterEqual(start.count("ollama pull"), 2)
+        self.assertGreaterEqual(start.count("ollama create"), 2)
+        self.assertGreaterEqual(start.count("ollama show"), 2)
+        self.assertIn('values.get(', start)
+        self.assertIn('"STORAGE_LIBRARIAN_TEXT_MODEL"', start)
+        self.assertIn('"STORAGE_LIBRARIAN_VISION_MODEL"', start)
+        self.assertNotIn('os.environ["STORAGE_LIBRARIAN_LOCAL_MODEL"]', installer)
+        self.assertNotIn('os.environ["STORAGE_LIBRARIAN_LOCAL_BASE_URL"]', installer)
 
     def test_kael_installer_checks_runtime_user_not_root_exec(self) -> None:
         installer = (
@@ -160,10 +181,10 @@ class StorageLibrarianSettingsTests(unittest.TestCase):
         self.assertNotIn("backups", settings.allowed_kinds)
         self.assertNotIn("watermarks", settings.allowed_kinds)
         self.assertEqual(
-            "velvet-librarian:qwen3.5-9b-local:v3",
+            "velvet-librarian:qwen3-4b-text:v4",
             settings.analyzer_version,
         )
-        self.assertEqual(900, settings.run_timeout_seconds)
+        self.assertEqual(180, settings.run_timeout_seconds)
 
     def test_protected_storage_kinds_are_rejected(self) -> None:
         with patch.dict(

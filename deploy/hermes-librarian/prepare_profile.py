@@ -41,9 +41,9 @@ DISABLED_TOOLSETS = (
     "web",
     "yuanbao",
 )
-DEFAULT_LOCAL_MODEL = "velvet-librarian-local:v1"
-DEFAULT_LOCAL_BASE_URL = "http://ollama-librarian:11434/v1"
-DEFAULT_LOCAL_CONTEXT_LENGTH = 65536
+DEFAULT_LOCAL_MODEL = "velvet-librarian-text:v1"
+DEFAULT_LOCAL_BASE_URL = "http://ollama-librarian:11434"
+DEFAULT_LOCAL_CONTEXT_LENGTH = 8192
 
 
 class ProfileError(RuntimeError):
@@ -56,18 +56,18 @@ def _mapping(value: object) -> dict[str, Any]:
 
 def _local_context_length() -> int:
     raw = os.getenv(
-        "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH",
+        "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH",
         str(DEFAULT_LOCAL_CONTEXT_LENGTH),
     ).strip()
     try:
         value = int(raw)
     except ValueError as error:
         raise ProfileError(
-            "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH должен быть целым числом."
+            "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH должен быть целым числом."
         ) from error
-    if not 65536 <= value <= 262144:
+    if not 2048 <= value <= 65536:
         raise ProfileError(
-            "STORAGE_LIBRARIAN_LOCAL_CONTEXT_LENGTH должен быть от 65536 до 262144."
+            "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH должен быть от 2048 до 65536."
         )
     return value
 
@@ -102,16 +102,17 @@ def prepare(
     config["agent"] = agent
 
     local_model = (
-        os.getenv("STORAGE_LIBRARIAN_LOCAL_MODEL", DEFAULT_LOCAL_MODEL).strip()
+        os.getenv("STORAGE_LIBRARIAN_TEXT_MODEL", DEFAULT_LOCAL_MODEL).strip()
         or DEFAULT_LOCAL_MODEL
     )
-    local_base_url = (
+    ollama_base_url = (
         os.getenv(
-            "STORAGE_LIBRARIAN_LOCAL_BASE_URL",
+            "STORAGE_LIBRARIAN_OLLAMA_BASE_URL",
             DEFAULT_LOCAL_BASE_URL,
         ).strip().rstrip("/")
         or DEFAULT_LOCAL_BASE_URL
     )
+    local_base_url = ollama_base_url + "/v1"
 
     # Librarian uses only the private Ollama endpoint. Cloud fallbacks and
     # inherited auxiliary cloud routes are deliberately removed so a local

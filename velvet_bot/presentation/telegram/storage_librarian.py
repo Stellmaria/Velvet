@@ -26,6 +26,9 @@ from velvet_bot.domains.telegram_storage.librarian_repository import (
     StorageLibrarianRepository,
 )
 from velvet_bot.infrastructure.ai.storage_librarian_hermes import HermesRunsClient
+from velvet_bot.infrastructure.ai.storage_librarian_ollama import (
+    OllamaStorageAnalysisClient,
+)
 from velvet_bot.infrastructure.telegram.storage_librarian_files import (
     TelegramStorageObjectLoader,
 )
@@ -85,7 +88,8 @@ def _build_service(
         database=database,
         settings=settings,
         object_loader=TelegramStorageObjectLoader(bot),
-        run_client=HermesRunsClient(settings),
+        analysis_client=OllamaStorageAnalysisClient(settings),
+        answer_client=HermesRunsClient(settings),
         report_publisher=(
             TelegramStorageLibrarianReportPublisher(bot)
             if publish_reports

@@ -60,6 +60,14 @@ class StorageLibrarianSettings:
     max_attempts: int
     analyzer_version: str
     allowed_kinds: tuple[str, ...]
+    ollama_base_url: str = "http://ollama-librarian:11434"
+    text_model: str = "velvet-librarian-text:v1"
+    vision_model: str = "velvet-librarian-vision:v1"
+    text_context_length: int = 8192
+    text_max_output_tokens: int = 384
+    vision_context_length: int = 16384
+    vision_max_output_tokens: int = 640
+    ollama_keep_alive: str = "5m"
 
     @classmethod
     def from_env(cls) -> "StorageLibrarianSettings":
@@ -118,7 +126,7 @@ class StorageLibrarianSettings:
             ),
             run_timeout_seconds=_int_env(
                 "STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS",
-                900,
+                180,
                 minimum=30,
                 maximum=1800,
             ),
@@ -149,11 +157,60 @@ class StorageLibrarianSettings:
             analyzer_version=(
                 os.getenv(
                     "STORAGE_LIBRARIAN_ANALYZER_VERSION",
-                    "velvet-librarian:qwen3.5-9b-local:v3",
+                    "velvet-librarian:qwen3-4b-text:v4",
                 ).strip()
-                or "velvet-librarian:qwen3.5-9b-local:v3"
+                or "velvet-librarian:qwen3-4b-text:v4"
             ),
             allowed_kinds=kinds,
+            ollama_base_url=(
+                os.getenv(
+                    "STORAGE_LIBRARIAN_OLLAMA_BASE_URL",
+                    "http://ollama-librarian:11434",
+                ).strip().rstrip("/")
+                or "http://ollama-librarian:11434"
+            ),
+            text_model=(
+                os.getenv(
+                    "STORAGE_LIBRARIAN_TEXT_MODEL",
+                    "velvet-librarian-text:v1",
+                ).strip()
+                or "velvet-librarian-text:v1"
+            ),
+            vision_model=(
+                os.getenv(
+                    "STORAGE_LIBRARIAN_VISION_MODEL",
+                    "velvet-librarian-vision:v1",
+                ).strip()
+                or "velvet-librarian-vision:v1"
+            ),
+            text_context_length=_int_env(
+                "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH",
+                8192,
+                minimum=2048,
+                maximum=65536,
+            ),
+            text_max_output_tokens=_int_env(
+                "STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS",
+                384,
+                minimum=64,
+                maximum=4096,
+            ),
+            vision_context_length=_int_env(
+                "STORAGE_LIBRARIAN_VISION_CONTEXT_LENGTH",
+                16384,
+                minimum=4096,
+                maximum=65536,
+            ),
+            vision_max_output_tokens=_int_env(
+                "STORAGE_LIBRARIAN_VISION_MAX_OUTPUT_TOKENS",
+                640,
+                minimum=64,
+                maximum=4096,
+            ),
+            ollama_keep_alive=(
+                os.getenv("STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE", "5m").strip()
+                or "5m"
+            ),
         )
 
 
