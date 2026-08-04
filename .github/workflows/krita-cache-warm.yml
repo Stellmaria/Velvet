@@ -1,0 +1,79 @@
+name: warm Krita build cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1,4"
+  push:
+    branches:
+      - main
+    paths:
+      - "Dockerfile.krita-server"
+      - ".dockerignore"
+      - "deploy/krita-server/**"
+      - "tools/krita/**"
+      - "scripts/krita_server_healthcheck.py"
+      - ".github/workflows/krita-cache-warm.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: krita-cache-warm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify cacheable Dockerfile layout
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path("Dockerfile.krita-server").read_text(encoding="utf-8")
+          install = source.index("apt-get install")
+          first_copy = source.index("COPY ")
+          if install >= first_copy:
+              raise SystemExit(
+                  "Krita system packages must remain before repository COPY layers"
+              )
+          print("Krita system package layer precedes repository COPY layers.")
+          PY
+
+      - name: Set up cached Docker builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create \
+            --name "velvet-krita-cache-${GITHUB_RUN_ID}" \
+            --driver docker-container \
+            --use
+          docker buildx inspect --bootstrap
+
+      - name: Warm default-branch Krita cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --load \
+            --file Dockerfile.krita-server \
+            --cache-from type=gha,scope=velvet-krita \
+            --cache-to type=gha,mode=max,scope=velvet-krita \
+            --tag velvet-krita-server:cache-warm \
+            .
+
+      - name: Verify warmed image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker image inspect velvet-krita-server:cache-warm >/dev/null
+          docker run --rm --entrypoint /bin/sh velvet-krita-server:cache-warm \
+            -lc 'command -v krita >/dev/null && command -v python3 >/dev/null'
