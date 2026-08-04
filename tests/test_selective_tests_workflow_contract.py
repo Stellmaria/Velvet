@@ -40,6 +40,20 @@ class SelectiveTestsWorkflowContractTests(unittest.TestCase):
         self.assertIn('patterns.append("test_krita_*.py")', targeted)
         self.assertIn('"test_*workflow_contract.py"', targeted)
 
+    def test_targeted_contracts_install_locked_dependencies(self) -> None:
+        targeted = self.source.split("  targeted-contracts:", 1)[1].split(
+            "  test-shards:", 1
+        )[0]
+        self.assertIn("name: Set up uv", targeted)
+        self.assertIn("version: \"0.11.16\"", targeted)
+        self.assertIn("cache-dependency-glob: requirements.lock", targeted)
+        self.assertIn("save-cache: false", targeted)
+        self.assertIn("name: Install dependencies from hash lock", targeted)
+        self.assertIn(
+            "uv pip install --system --require-hashes -r requirements.lock",
+            targeted,
+        )
+
     def test_selector_uses_current_base_ref_and_exact_pr_head(self) -> None:
         self.assertIn("name: resolve-test-surfaces", self.source)
         self.assertIn("BASE_REF: ${{ github.base_ref }}", self.source)
