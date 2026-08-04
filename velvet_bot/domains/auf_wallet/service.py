@@ -18,7 +18,7 @@ from .models import (
 from .package_pricing import active_package_prices
 from .store import AufWalletRepository
 
-AUF_PACKAGES = (40, 100, 250, 500, 1_000, 2_500)
+AUF_PACKAGES = (20, 100, 250, 500, 1_000, 2_500)
 
 
 @dataclass(frozen=True, slots=True)
