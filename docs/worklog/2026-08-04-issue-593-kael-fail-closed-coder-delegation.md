@@ -1,14 +1,11 @@
 # Issue #593: fail-closed coder delegation для Каэля
 
-Статус: частично
-
-Рабочая сессия: `issue-593-2026-08-04`
-
-Линия: hotfix/эксплуатационная надёжность вне продуктовых фаз.
-
-Базовый commit: `e2eef3ec61147259ead1848cb7d6f21834d3ce66`.
-
-Ветка: `fix/593-fail-closed-kael-coder-delegation`.
+- Дата: 2026-08-04
+- ID: `issue-593-2026-08-04`
+- Линия/фаза: hotfix/эксплуатационная надёжность вне продуктовых фаз
+- Статус: `частично`
+- Ветка: `fix/593-fail-closed-kael-coder-delegation`
+- Базовый commit: `e2eef3ec61147259ead1848cb7d6f21834d3ce66`
 
 ## Перед началом
 
@@ -75,13 +72,17 @@
 - `search_files`, general code execution, direct Git/GitHub tools и coder workspace paths блокируются;
 - non-coder `delegate_task` сохраняется;
 - runtime config patcher идемпотентно добавляет `kael-coder-control` в `plugins.enabled`, не удаляя другие plugins;
-- entities reconcile устанавливает plugin и audit directory с ограниченными правами.
+- operator installer и entities reconcile устанавливают plugin и audit directory с ограниченными правами;
+- AGENTS Каэля переведён с terminal submit на typed `coder_delegate`;
+- открыт draft PR #596.
 
 ### Изменённые контракты
 
 - `deploy/hermes-operator/plugins/kael-coder-control/*`;
 - `deploy/hermes-coders/ensure_runtime_config.py`;
 - `deploy/hermes-entities/reconcile.sh`;
+- `deploy/hermes-operator/install.sh`;
+- `deploy/hermes-operator/AGENTS.kael.md`;
 - Hermes runtime `plugins.enabled` для profile `kael`.
 
 ### Миграции и совместимость
@@ -98,22 +99,21 @@ python3 -m unittest tests.test_hermes_kael_coder_control -v
 Ran 13 tests ... OK
 ```
 
-После формирования PR требуется полный CI и повторный запуск обновлённых runtime-config/deployment contract tests.
+После формирования PR добавлены runtime-config, deployment contract и shell syntax tests. Полный CI PR #596 ещё требуется.
 
 ### PR и commit
 
-PR: будет добавлен после завершения branch wiring.
+PR: #596 `Fail-closed Kael coder delegation`.
 
-Commits: история feature branch.
+Commit: текущий head feature branch; итоговый SHA фиксируется после CI-fix цикла.
 
 ### Незавершённое
 
-- CI ещё не выполнен;
-- operator installer wiring и документационный contract ещё завершаются;
+- CI ещё не завершён;
 - production plugin не установлен;
 - Telegram read-only Velvet/Max smoke, router POST и terminal ledger не проверены;
 - rollback smoke не выполнен.
 
-### Следующий конкретный шаг
+### Следующий шаг
 
-Завершить repository wiring, открыть draft PR, исправить CI, провести review. После merge выполнить только entities/operator reconcile для основного Hermes, пересоздать только `velvet-hermes-1` при необходимости и провести fail-closed Telegram canary без mutation.
+Проверить и исправить CI PR #596, провести review и перевести PR из draft после завершения обязательных проверок. После merge выполнить только entities/operator reconcile для основного Hermes, пересоздать только `velvet-hermes-1` при необходимости и провести fail-closed Telegram canary без mutation.
