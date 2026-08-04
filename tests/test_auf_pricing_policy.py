@@ -280,7 +280,7 @@ class AufPricingPolicyContractTests(unittest.TestCase):
 
     def test_generation_pricing_has_one_database_source_for_banana_surcharge(self) -> None:
         source = inspect.getsource(quote_auf_payload)
-        self.assertIn("minimum_discounted_velvets", source)
+        self.assertIn("discounted_floor", source)
         self.assertNotIn("_banana_quality_surcharge", source)
 
     def test_public_package_ladder_stays_between_100_and_999_rubles(self) -> None:
