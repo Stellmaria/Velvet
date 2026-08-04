@@ -42,7 +42,7 @@
 
 Изменение не затрагивает PostgreSQL schema, fingerprinting, redaction, acknowledgement storage, callback data или маршрутизацию сообщений. Production rollout требует пересборки только `bot`.
 
-## После реализации
+## После завершения
 
 ### Фактически сделано
 
