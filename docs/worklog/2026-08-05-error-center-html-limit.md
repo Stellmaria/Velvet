@@ -21,19 +21,21 @@
 - `return text[:4090]` для карточки инцидента;
 - `text="\n".join(lines)[:4090]` для owner digest.
 
+Telegram ограничивает сообщение 4096 символами после разбора entities. Существующий renderer уже ограничивал plain-text traceback до добавления `<pre>` и owner digest до пяти summary по 180 символов, поэтому дополнительный срез готового HTML не обеспечивал лимит, а только мог разрушить синтаксис.
+
 ### Планируемый объём
 
-- ограничивать динамический текст по длине экранированного представления до добавления HTML-тегов;
-- сохранять хвост traceback;
-- гарантировать закрытые `<code>` и `<pre>`;
-- применить единый контракт к incident и owner digest;
-- добавить regression-тесты максимальной длины, специальных символов и acknowledgement.
+- удалить произвольные срезы уже собранного HTML;
+- сохранить существующий plain-text budget и хвост traceback;
+- проверить закрытые `<code>`/`<pre>` и escaped entities;
+- проверить incident acknowledgement и owner digest;
+- не менять storage, fingerprinting, redaction или callbacks.
 
 ### Критерии готовности
 
 - готовый HTML не режется произвольным slice;
-- результат не превышает безопасный Telegram budget 4090 символов;
-- динамические данные экранированы;
+- parsed message text не превышает лимит Telegram;
+- динамические данные остаются экранированными;
 - длинный traceback сохраняет полезный хвост;
 - XML-совместимая проверка подтверждает закрытые теги и entities;
 - focused tests и полный required CI зелёные.
@@ -46,12 +48,12 @@
 
 ### Фактически сделано
 
-- добавлен `_escape_limited()`, вычисляющий допустимый prefix или tail по длине уже экранированного текста;
-- `_render_incident()` теперь заранее резервирует HTML-обёртки и acknowledgement metadata;
-- summary получает bounded prefix, traceback получает bounded tail;
-- owner digest распределяет доступный budget между пятью последними инцидентами;
-- произвольные срезы готового HTML удалены;
-- добавлены тесты на `<`, `>`, `&`, кавычки, Unicode, длинные summary/traceback и пять длинных digest rows.
+- удалён `[:4090]` из `_render_incident()`;
+- удалён `[:4090]` из текста owner digest;
+- сохранён существующий расчёт budget до HTML-обёртки и сохранение хвоста traceback;
+- добавлена XML-проверка HTML с `<`, `>`, `&`, кавычками и Unicode;
+- добавлена проверка parsed message length, acknowledgement и пяти длинных digest rows;
+- production-код изменён ровно в двух выражениях без новых функций, ветвлений и архитектурных зависимостей.
 
 ### Миграции и совместимость
 
@@ -60,19 +62,18 @@
 ### Проверки
 
 - `tests/test_error_center.py` расширен focused regression-тестами;
-- XML parser используется как независимая проверка закрытых тегов и entities;
+- XML parser проверяет закрытые теги и entities;
 - полный required CI запускается на PR.
 
 ### PR и commit
 
-PR и итоговый merge SHA фиксируются после создания PR и прохождения required checks.
+PR: `#628`. Итоговый merge SHA фиксируется после прохождения required checks и отдельного разрешения владельца на merge.
 
 ### Незавершённое
 
-- package architecture inventory может потребовать штатной регенерации из-за изменения LOC/AST метрик;
 - production rollout и `/test_error_alert` выполняются отдельно после merge;
 - synthetic long-message smoke остаётся rollout-only проверкой.
 
 ### Следующий шаг
 
-Создать PR, получить полный зелёный CI, затем принять отдельное решение о merge и controlled rollout только `bot`.
+Получить полный зелёный CI, затем запросить отдельное решение о merge и controlled rollout только `bot`.
