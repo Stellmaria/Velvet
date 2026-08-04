@@ -70,7 +70,7 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
         ):
             self.assertEqual("sk-balance", _byesu_api_key())
 
-    def test_byesu_balance_uses_documented_billing_response(self) -> None:
+    def test_byesu_balance_uses_key_hard_limit_response(self) -> None:
         with (
             patch.dict(
                 os.environ,
@@ -80,7 +80,7 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
             patch(
                 "velvet_bot.presentation.telegram.routers."
                 "workspace_auf_provider_balances._read_json",
-                return_value={"balance_usd": "12.3456"},
+                return_value={"hard_limit_usd": "12.3456"},
             ),
         ):
             balance = asyncio.run(_fetch_byesu_balance())
@@ -88,6 +88,33 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
         self.assertEqual("12.3456", str(balance.value))
         self.assertEqual("$", balance.unit)
         self.assertIsNone(balance.error)
+
+    def test_byesu_balance_keeps_legacy_balance_field_fallback(self) -> None:
+        with (
+            patch.dict(
+                os.environ,
+                {"BYESU_BALANCE_API_KEY": "sk-test"},
+                clear=True,
+            ),
+            patch(
+                "velvet_bot.presentation.telegram.routers."
+                "workspace_auf_provider_balances._read_json",
+                return_value={"balance_usd": "7.5"},
+            ),
+        ):
+            balance = asyncio.run(_fetch_byesu_balance())
+
+        self.assertEqual("7.5", str(balance.value))
+        self.assertIsNone(balance.error)
+
+    def test_byesu_label_describes_key_limit_not_account_balance(self) -> None:
+        source = (
+            ROOT
+            / "velvet_bot/presentation/telegram/routers/"
+            "workspace_auf_provider_balances.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Byesu · доступно по ключу", source)
+        self.assertNotIn("Byesu · баланс аккаунта", source)
 
     def test_byesu_http_401_is_reported_as_rejected_key(self) -> None:
         error = urllib.error.HTTPError(

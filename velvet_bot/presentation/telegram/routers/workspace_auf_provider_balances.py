@@ -88,7 +88,7 @@ def _read_json(
         if error.code == 401:
             message = "ключ Byesu отклонён"
         elif error.code == 403:
-            message = "доступ к балансу Byesu запрещён"
+            message = "доступ к лимиту Byesu запрещён"
         elif error.code == 429:
             message = "Byesu временно ограничил запросы"
         else:
@@ -97,12 +97,12 @@ def _read_json(
     except (urllib.error.URLError, TimeoutError) as error:
         raise RuntimeError("сеть Byesu недоступна") from error
     except json.JSONDecodeError as error:
-        raise RuntimeError("Byesu вернул неизвестный формат баланса") from error
+        raise RuntimeError("Byesu вернул неизвестный формат лимита") from error
 
     if not isinstance(payload, Mapping):
-        raise RuntimeError("Byesu вернул неизвестный формат баланса")
+        raise RuntimeError("Byesu вернул неизвестный формат лимита")
     if payload.get("error"):
-        raise RuntimeError("Byesu отклонил запрос баланса")
+        raise RuntimeError("Byesu отклонил запрос лимита")
     return payload
 
 
@@ -121,13 +121,15 @@ async def _fetch_byesu_balance() -> ProviderBalance:
             timeout=_PROVIDER_TIMEOUT_SECONDS + 1,
         )
     except TimeoutError:
-        return ProviderBalance(None, "$", "запрос баланса превысил время ожидания")
+        return ProviderBalance(None, "$", "запрос лимита превысил время ожидания")
     except RuntimeError as error:
         return ProviderBalance(None, "$", str(error))
 
-    value = _decimal(payload.get("balance_usd"))
+    value = _decimal(payload.get("hard_limit_usd"))
     if value is None:
-        return ProviderBalance(None, "$", "провайдер не вернул остаток баланса")
+        value = _decimal(payload.get("balance_usd"))
+    if value is None:
+        return ProviderBalance(None, "$", "провайдер не вернул доступный лимит")
     return ProviderBalance(value, "$")
 
 
@@ -274,7 +276,7 @@ async def handle_auf_provider_balances(
             "<b>Внешние провайдеры</b>",
             _provider_line("Kie.ai", kie_balance),
             _provider_line("GRS AI", grs_balance),
-            _provider_line("Byesu · баланс аккаунта", byesu_balance),
+            _provider_line("Byesu · доступно по ключу", byesu_balance),
             "",
             "<b>Внутренний кошелёк Velvet</b>",
             f"• Доступно: <b>{format_auf_units(wallet.available_units)}</b>",
