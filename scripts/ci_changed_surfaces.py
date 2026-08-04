@@ -67,7 +67,7 @@ DOCKER_CI_PATTERNS = (
     ".github/workflows/branch-protection-contract.yml",
     "scripts/ci_changed_surfaces.py",
     "tests/test_ci_changed_surfaces.py",
-    "tests/test_docker_build_concurrency.py",
+    "tests/test_docker_build_workflow_contract.py",
 )
 
 SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
@@ -180,22 +180,53 @@ def _ensure_commit(sha: str) -> None:
     )
 
 
+def _resolve_pull_request_base(*, base_sha: str, base_ref: str) -> str:
+    if base_sha and base_sha != ZERO_SHA:
+        _ensure_commit(base_sha)
+        return base_sha
+    if not base_ref:
+        return ""
+
+    remote_ref = f"refs/remotes/origin/{base_ref}"
+    subprocess.run(
+        (
+            "git",
+            "fetch",
+            "--no-tags",
+            "--depth=1",
+            "origin",
+            f"{base_ref}:{remote_ref}",
+        ),
+        check=True,
+    )
+    return _git("merge-base", "HEAD", remote_ref).strip()
+
+
 def resolve_changed_files(
     *,
     event_name: str,
     base_sha: str,
     before_sha: str,
+    base_ref: str = "",
 ) -> tuple[tuple[str, ...], bool]:
     """Return changed repository paths and whether a conservative full scan is needed."""
 
     if event_name in FULL_SCAN_EVENTS:
         return tuple(sorted(_git("ls-files").splitlines())), True
 
-    compare_sha = base_sha if event_name == "pull_request" else before_sha
+    if event_name == "pull_request":
+        compare_sha = _resolve_pull_request_base(
+            base_sha=base_sha,
+            base_ref=base_ref,
+        )
+    else:
+        compare_sha = before_sha
+        if compare_sha and compare_sha != ZERO_SHA:
+            _ensure_commit(compare_sha)
+
     if not compare_sha or compare_sha == ZERO_SHA:
         return tuple(sorted(_git("ls-files").splitlines())), True
 
-    _ensure_commit(compare_sha)
     changed = tuple(
         sorted(
             line
@@ -234,6 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event-name", required=True)
     parser.add_argument("--base-sha", default="")
+    parser.add_argument("--base-ref", default="")
     parser.add_argument("--before-sha", default="")
     parser.add_argument("--github-output", type=Path, required=True)
     parser.add_argument("--changed-files", type=Path)
@@ -245,6 +277,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     paths, full_scan = resolve_changed_files(
         event_name=args.event_name,
         base_sha=args.base_sha,
+        base_ref=args.base_ref,
         before_sha=args.before_sha,
     )
     if args.changed_files is not None:
