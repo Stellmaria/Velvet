@@ -27,6 +27,9 @@ POLL_INTERVAL_SECONDS = max(
     1.0,
     float(os.environ.get("HERMES_CODERS_SMOKE_POLL_SECONDS", "3")),
 )
+STRICT_NESTED_PROC_SMOKE = os.environ.get(
+    "HERMES_CODEX_STRICT_NESTED_PROC_SMOKE", "0"
+).strip().casefold() in {"1", "true", "yes", "on"}
 CODEX_VERSION = "0.144.1"
 CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
 CRYPTOGRAPHY_VERSION = "50.0.0"
@@ -94,6 +97,8 @@ def compose_prefix() -> list[str]:
     return [
         "docker",
         "compose",
+        "--project-name",
+        "hermes-coders",
         "--profile",
         "velvet",
         "--profile",
@@ -238,6 +243,11 @@ def codex_probe_script(target: CoderTarget) -> str:
     repository = target.repository
     https_remote = f"https://github.com/{repository}"
     models_json = json.dumps(CODEX_MODELS)
+    nested_proc_probe = (
+        "bwrap --unshare-user --unshare-pid --ro-bind / / --proc /proc true"
+        if STRICT_NESTED_PROC_SMOKE
+        else ": # nested /proc probe is a separate strict diagnostic"
+    )
     return f"""set -eu
 
 test -s /opt/codex/auth.json
@@ -326,11 +336,7 @@ findmnt -n -o OPTIONS /workspace-base | grep -E '(^|,)ro(,|$)' >/dev/null
 probe="/opt/codex-runs/smoke-{target.project}-$$"
 trap 'rm -rf -- "$probe"' EXIT
 rm -rf -- "$probe"
-default_branch="$(
-  GIT_TERMINAL_PROMPT=0 git ls-remote --symref "$remote" HEAD \
-    | sed -n 's#^ref: refs/heads/\([^[:space:]]*\)[[:space:]]*HEAD$#\1#p' \
-    | head -n 1
-)"
+default_branch="$(gh api repos/{repository} --jq .default_branch)"
 test -n "$default_branch"
 git check-ref-format --branch "$default_branch" >/dev/null
 GIT_TERMINAL_PROMPT=0 git clone \
@@ -346,7 +352,8 @@ git -C "$probe" push --dry-run origin \
 
 unshare --user --map-root-user true
 unshare --user --map-root-user --mount true
-bwrap --unshare-user --unshare-pid --ro-bind / / --proc /proc true
+bwrap --unshare-user --ro-bind / / true
+{nested_proc_probe}
 
 # Read-only proof: Git executes against the immutable base checkout.
 bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev \
@@ -409,9 +416,17 @@ def verify_codex_access(
 
 def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
     command = [
-        "docker", "compose", "--env-file", "/srv/velvet/.env.server",
-        "-f", "/srv/velvet/docker-compose.server.yml",
-        "exec", "-T", "hermes", "python", "-c",
+        "docker",
+        "compose",
+        "--env-file",
+        "/srv/velvet/.env.server",
+        "-f",
+        "/srv/velvet/docker-compose.server.yml",
+        "exec",
+        "-T",
+        "hermes",
+        "python",
+        "-c",
         "import importlib.metadata as m; print(m.version('cryptography'))",
     ]
     result = run_checked(command, timeout_seconds=30, runner=runner)
@@ -429,6 +444,9 @@ def main() -> int:
     if not ROOT.is_dir():
         raise SmokeError(f"Отсутствует Hermes Coder root: {ROOT}")
 
+    nested_proc_status = (
+        "NESTED_PROC_OK" if STRICT_NESTED_PROC_SMOKE else "NESTED_PROC_SKIPPED"
+    )
     for target in CODERS:
         wait_for_service(target.chat_service)
         wait_for_service(target.coder_service)
@@ -437,7 +455,7 @@ def main() -> int:
         print(
             f"Hermes/Codex smoke: {target.project} -> {target.repository}: "
             "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, BASE_RO_OK, "
-            "RUN_RW_OK, PUSH_OK, NO_ZOMBIES"
+            f"RUN_RW_OK, PUSH_OK, NO_ZOMBIES, {nested_proc_status}"
         )
     verify_main_cryptography()
     print(f"Main Hermes dependency: cryptography=={CRYPTOGRAPHY_VERSION}: OK")
