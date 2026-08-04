@@ -21,6 +21,8 @@ CONTROL_ENV="$CONTROL_ROOT/operator.env"
 CONTROL_NETWORK="${HERMES_SUPERVISOR_NETWORK:-hermes-supervisor-control}"
 VELVET_BACKEND_NETWORK="${VELVET_BACKEND_NETWORK:-velvet_backend}"
 SOURCE_DIR="$VELVET_APP_DIR/deploy/hermes-operator"
+RUNTIME_CONFIG_PATCHER="$VELVET_APP_DIR/deploy/hermes-coders/ensure_runtime_config.py"
+KAEL_CODER_PLUGIN_SOURCE="$SOURCE_DIR/plugins/kael-coder-control"
 GATEWAY_UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/hermes-operator-control.service"
 GATEWAY_UNIT_TARGET="/etc/systemd/system/hermes-operator-control.service"
 HOST_UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/hermes-operator-host.service"
@@ -36,6 +38,9 @@ for path in \
   "$SOURCE_DIR/host_start.py" \
   "$SOURCE_DIR/opsctl.py" \
   "$SOURCE_DIR/SOUL.operator.md" \
+  "$RUNTIME_CONFIG_PATCHER" \
+  "$KAEL_CODER_PLUGIN_SOURCE/plugin.yaml" \
+  "$KAEL_CODER_PLUGIN_SOURCE/__init__.py" \
   "$GATEWAY_UNIT_SOURCE" \
   "$HOST_UNIT_SOURCE"; do
   if [[ ! -f "$path" ]]; then
@@ -183,8 +188,27 @@ PY
 )"
 hermes_data="$velvet_data_dir/hermes"
 install -d -m 0750 "$hermes_data" "$hermes_data/tools"
+if [[ ! -f "$hermes_data/config.yaml" ]]; then
+  echo "Отсутствует config основного Hermes: $hermes_data/config.yaml" >&2
+  exit 2
+fi
 hermes_uid="$(stat -c '%u' "$hermes_data")"
 hermes_gid="$(stat -c '%g' "$hermes_data")"
+kael_plugin_target="$hermes_data/plugins/kael-coder-control"
+install -d -m 0750 -o "$hermes_uid" -g "$hermes_gid" \
+  "$hermes_data/plugins" \
+  "$kael_plugin_target"
+install -d -m 0700 -o "$hermes_uid" -g "$hermes_gid" \
+  "$hermes_data/audit"
+install -m 0640 -o "$hermes_uid" -g "$hermes_gid" \
+  "$KAEL_CODER_PLUGIN_SOURCE/plugin.yaml" \
+  "$kael_plugin_target/plugin.yaml"
+install -m 0640 -o "$hermes_uid" -g "$hermes_gid" \
+  "$KAEL_CODER_PLUGIN_SOURCE/__init__.py" \
+  "$kael_plugin_target/__init__.py"
+python3 "$RUNTIME_CONFIG_PATCHER" \
+  --profile kael \
+  "$hermes_data/config.yaml"
 install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \
   "$SOURCE_DIR/opsctl.py" "$hermes_data/tools/opsctl.py"
 
@@ -319,5 +343,6 @@ systemctl --no-pager --full status hermes-operator-control.service
 echo
 printf '%s\n' \
   "Hermes operator control installed." \
+  "Kael coder control plugin installed at $kael_plugin_target." \
   "@VelvetHermesBot: status/logs/start/restart/update/rollback через /opt/data/tools/opsctl.py." \
   "Coder bots remain isolated from Docker, systemd, production env and this control gateway."
