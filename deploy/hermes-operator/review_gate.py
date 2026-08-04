@@ -108,7 +108,7 @@ class TrustedCheck:
         return (
             self.source == "github-check-run"
             and self.status == "completed"
-            and self.conclusion in {"success", "neutral", "skipped"}
+            and self.conclusion == "success"
         )
 
 

@@ -44,6 +44,7 @@ def ledger(**overrides: object) -> dict[str, object]:
         "workspace_source_ref": "origin/main",
         "baseline_head": "1" * 40,
         "final_head": "2" * 40,
+        "final_branch": "issue/584",
         "head_changed": True,
         "branch_changed": True,
         "refs_changed": True,
@@ -213,6 +214,20 @@ class ReadinessBehaviorTests(unittest.TestCase):
         )
         self.assertEqual(review.ReviewStatus.CHANGES_REQUESTED, decision.status)
 
+    def test_skipped_or_neutral_check_cannot_prove_integration(self) -> None:
+        for conclusion in ("skipped", "neutral"):
+            with self.subTest(conclusion=conclusion):
+                decision = review.evaluate_review(
+                    request(
+                        integration_results=(
+                            review.TrustedCheck(
+                                "hermes-integration", "completed", conclusion
+                            ),
+                        )
+                    )
+                )
+                self.assertEqual(review.ReviewStatus.CHANGES_REQUESTED, decision.status)
+
     def test_second_fix_iteration_escalates_and_preserves_existing_pr(self) -> None:
         decision = review.evaluate_review(
             request(findings=("new blocker",), review_fix_iterations=2)
@@ -232,6 +247,53 @@ class ReadinessBehaviorTests(unittest.TestCase):
 
 
 class IdentityAndContextIntegrationTests(unittest.TestCase):
+    def test_complex_or_high_risk_always_uses_enhanced_review(self) -> None:
+        for record in (
+            {"requested_tier": "complex"},
+            {"complexity": "complex"},
+            {"risk": "high"},
+            {"risk": "critical"},
+        ):
+            self.assertTrue(coderctl.requires_enhanced_review(record))
+        self.assertFalse(
+            coderctl.requires_enhanced_review(
+                {"requested_tier": "standard", "complexity": "standard", "risk": "low"}
+            )
+        )
+
+    def test_pr_evidence_must_match_task_head_branch_base_and_repository(self) -> None:
+        record = {
+            **ledger(),
+            "repository": "Stellmaria/Velvet",
+        }
+        matching = {
+            "head_sha": "2" * 40,
+            "head_ref": "issue/584",
+            "base_ref": "main",
+            "repository": "Stellmaria/Velvet",
+        }
+        self.assertEqual((), coderctl.pr_evidence_findings(record, matching))
+        for field in matching:
+            mismatched = {**matching, field: "wrong"}
+            self.assertTrue(coderctl.pr_evidence_findings(record, mismatched))
+
+    def test_review_fix_counter_is_monotonic_and_bounded(self) -> None:
+        self.assertEqual(0, coderctl.next_review_fix_iteration({}))
+        self.assertEqual(
+            1,
+            coderctl.next_review_fix_iteration(
+                {"review_status": "changes_requested", "review_fix_iterations": 0}
+            ),
+        )
+        self.assertEqual(
+            2,
+            coderctl.next_review_fix_iteration(
+                {"review_status": "changes_requested", "review_fix_iterations": 2}
+            ),
+        )
+        with self.assertRaises(coderctl.CoderApiError):
+            coderctl.next_review_fix_iteration({"review_fix_iterations": "0"})
+
     def test_direct_and_delegated_handoffs_keep_one_identity_and_no_static_workspace(self) -> None:
         for project, expected in (("velvet", "Велвет"), ("max", "Макс")):
             target = router.load_targets()[project]
@@ -336,14 +398,27 @@ class IdentityAndContextIntegrationTests(unittest.TestCase):
                     "task_id": "e" * 32,
                     "run_id": "run-584",
                     "project": "velvet",
+                    "repository": "Stellmaria/Velvet",
                     "requested_tier": "high_risk",
+                    "complexity": "complex",
+                    "risk": "high",
                     "created_at": "2026-08-04T00:00:00+00:00",
                 }
             )
-            status_payload = {"status": "completed", **ledger()}
+            status_payload = {
+                "status": "completed",
+                "structured_output": {
+                    "status": "completed",
+                    "blocker": "",
+                    "memory_candidates": [],
+                },
+                **ledger(),
+            }
             pull_payload = {
+                "repository": "Stellmaria/Velvet",
                 "head_sha": "2" * 40,
                 "head_ref": "issue/584",
+                "base_ref": "main",
                 "checks_success": True,
                 "checks": [
                     {
@@ -382,6 +457,30 @@ class IdentityAndContextIntegrationTests(unittest.TestCase):
             saved = store.find("e" * 32)
             assert saved is not None
             self.assertEqual("review_approved", saved["stage"])
+
+    def test_blocked_structured_output_is_never_promoted_to_implemented(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = coderctl.Ledger(Path(directory) / "tasks.json")
+            original = {
+                "task_id": "f" * 32,
+                "run_id": "blocked-run",
+                "project": "velvet",
+            }
+            store.upsert(original)
+            coderctl._update_from_status(
+                store,
+                original,
+                {
+                    "status": "completed",
+                    "structured_output": {
+                        "status": "blocked",
+                        "blocker": "cannot implement",
+                    },
+                },
+            )
+            saved = store.find("f" * 32)
+            assert saved is not None
+            self.assertEqual("review_changes_requested", saved["readiness_stage"])
 
     def test_compile_install_verify_preserves_hashes_and_private_permissions(self) -> None:
         brain = ROOT / "deploy/hermes-brain"

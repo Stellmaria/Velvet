@@ -50,6 +50,7 @@ _ROUTING_FIELDS = (
     "workspace_source_ref",
     "baseline_head",
     "final_head",
+    "final_branch",
     "head_changed",
     "branch_changed",
     "refs_changed",
@@ -298,8 +299,24 @@ def _update_from_status(
         if field in payload:
             updated[field] = payload.get(field)
     if status in TERMINAL_STATUSES:
-        if status == "completed":
+        structured_status = (
+            str(payload["structured_output"].get("status", ""))
+            if isinstance(payload.get("structured_output"), dict)
+            else ""
+        )
+        structured_blocker = (
+            str(payload["structured_output"].get("blocker", ""))
+            if isinstance(payload.get("structured_output"), dict)
+            else ""
+        )
+        if (
+            status == "completed"
+            and structured_status in {"completed", "implemented_by_coder"}
+            and not structured_blocker
+        ):
             updated["readiness_stage"] = ReadinessStage.IMPLEMENTED_BY_CODER
+        elif status == "completed":
+            updated["readiness_stage"] = ReadinessStage.REVIEW_CHANGES_REQUESTED
         updated["finished_at"] = _utc_now()
         updated["output"] = payload.get("output") or payload.get("error")
         updated["structured_output"] = payload.get("structured_output")
@@ -317,6 +334,39 @@ def _update_from_status(
 
 def _print(payload: Any) -> None:
     print(json.dumps(redact(payload), ensure_ascii=False, indent=2, sort_keys=True))
+
+
+def requires_enhanced_review(record: dict[str, Any]) -> bool:
+    return (
+        record.get("requested_tier") in {"complex", "high_risk"}
+        or record.get("complexity") == "complex"
+        or record.get("risk") in {"high", "critical"}
+    )
+
+
+def next_review_fix_iteration(record: dict[str, Any]) -> int:
+    stored = record.get("review_fix_iterations", 0)
+    if type(stored) is not int or not 0 <= stored <= 2:
+        raise CoderApiError("Invalid review_fix_iterations in trusted ledger.")
+    return min(2, stored + (1 if record.get("review_status") == "changes_requested" else 0))
+
+
+def pr_evidence_findings(
+    record: dict[str, Any], pull: dict[str, Any]
+) -> tuple[str, ...]:
+    expected = {
+        "head_sha": str(record.get("final_head", "")),
+        "head_ref": str(record.get("final_branch", "")),
+        "base_ref": str(record.get("workspace_source_ref", "")).removeprefix("origin/"),
+        "repository": str(record.get("repository", "")),
+    }
+    labels = {
+        "head_sha": "PR head SHA differs from ledger final_head",
+        "head_ref": "PR head ref differs from ledger final_branch",
+        "base_ref": "PR base ref differs from ledger workspace source ref",
+        "repository": "PR repository differs from task repository",
+    }
+    return tuple(labels[field] for field, value in expected.items() if pull.get(field) != value)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -382,7 +432,6 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--protocol-changed", action="store_true")
     review.add_argument("--finding", action="append", default=[])
     review.add_argument("--rollout-only", action="append", default=[])
-    review.add_argument("--fix-iterations", type=int, choices=(0, 1, 2), default=0)
     return parser
 
 
@@ -474,6 +523,20 @@ def main(argv: list[str] | None = None) -> int:
                 raise CoderApiError("Ledger record disappeared during review refresh.")
             record = refreshed
             pull = client.pull_request(project, args.pr)
+            proposed_contract = {
+                "required_files": sorted(set(args.required_file)),
+                "required_integration_checks": sorted(set(args.integration_check)),
+                "protocol_changed": bool(args.protocol_changed),
+            }
+            stored_contract = record.get("review_contract")
+            if stored_contract is not None and stored_contract != proposed_contract:
+                raise CoderApiError(
+                    "Review contract differs from the matrix already persisted in ledger."
+                )
+            if stored_contract is None:
+                record = {**record, "review_contract": proposed_contract}
+                ledger.upsert(record)
+            fix_iterations = next_review_fix_iteration(record)
             checks = tuple(
                 TrustedCheck(
                     name=str(item.get("name", "")),
@@ -483,21 +546,23 @@ def main(argv: list[str] | None = None) -> int:
                 for item in pull.get("checks", [])
                 if isinstance(item, dict)
             )
+            pr_findings = list(args.finding)
+            pr_findings.extend(pr_evidence_findings(record, pull))
             decision = evaluate_review(
                 ReviewRequest(
                     coder_stage=str(record.get("readiness_stage", "")),
                     ci_green=pull.get("checks_success") is True,
-                    high_risk=record.get("requested_tier") == "high_risk",
+                    high_risk=requires_enhanced_review(record),
                     changed_files=frozenset(
                         str(item) for item in pull.get("files", [])
                     ),
                     required_files=frozenset(args.required_file),
-                    findings=tuple(args.finding),
+                    findings=tuple(pr_findings),
                     rollout_only_checks=tuple(args.rollout_only),
                     protocol_changed=args.protocol_changed,
                     integration_results=checks,
                     required_integration_checks=tuple(args.integration_check),
-                    review_fix_iterations=args.fix_iterations,
+                    review_fix_iterations=fix_iterations,
                     ledger=record,
                     github_mutation_observed=bool(
                         pull.get("head_sha") or pull.get("head_ref")
@@ -518,11 +583,18 @@ def main(argv: list[str] | None = None) -> int:
                 "recommended_next_action": decision.recommended_next_action,
                 "evidence_conflict": decision.evidence_conflict,
                 "delegate_fix": decision.delegate_fix,
-                "review_fix_iterations": args.fix_iterations,
+                "review_fix_iterations": fix_iterations,
                 "reviewed_pr": args.pr,
                 "reviewed_head": pull.get("head_sha"),
             }
-            ledger.upsert({**record, **payload, "updated_at": _utc_now()})
+            ledger.upsert(
+                {
+                    **record,
+                    **payload,
+                    "review_status": decision.status,
+                    "updated_at": _utc_now(),
+                }
+            )
             _print(payload)
             return 0 if str(decision.status) == "approved" else 2
 

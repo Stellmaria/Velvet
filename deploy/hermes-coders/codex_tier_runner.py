@@ -304,6 +304,7 @@ class AuditedTierProviderManager(ProviderChainManager):
         evidence = {
             "baseline_head": isolated_before.get("head") if isolated_before else None,
             "final_head": isolated_after["head"],
+            "final_branch": isolated_after["branch"],
             "head_changed": bool(isolated_delta.get("head_changed")),
             "branch_changed": bool(isolated_delta.get("branch_changed")),
             "refs_changed": bool(isolated_delta.get("refs_changed")),
