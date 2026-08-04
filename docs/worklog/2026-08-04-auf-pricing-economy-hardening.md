@@ -77,6 +77,7 @@
 - Проверка Wan Image 2K при индивидуальных 15%.
 - PostgreSQL-интеграционные проверки каталога и списаний.
 - Полный GitHub Actions CI запущен на точном PR head.
+- Канонический architecture inventory пересобирается тем же Python 3.13, что использует preflight.
 
 ### PR и commit
 
