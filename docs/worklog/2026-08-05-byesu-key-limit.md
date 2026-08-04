@@ -84,5 +84,5 @@ Production-проверка с действующим `BYESU_BALANCE_API_KEY` в
 
 ### Ссылки
 
-- PR: будет добавлен после создания.
+- PR: `#623`.
 - Production endpoint: `/dashboard/billing/subscription`.
