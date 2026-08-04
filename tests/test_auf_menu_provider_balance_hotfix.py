@@ -70,7 +70,14 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
         ):
             self.assertEqual("sk-balance", _byesu_api_key())
 
-    def test_byesu_balance_uses_key_hard_limit_response(self) -> None:
+    def test_byesu_balance_calculates_remaining_key_quota(self) -> None:
+        def response(url: str, **_: object) -> dict[str, str]:
+            if url.endswith("/subscription"):
+                return {"hard_limit_usd": "10.001866"}
+            if url.endswith("/usage"):
+                return {"total_usage": "54.1548"}
+            self.fail(f"unexpected Byesu URL: {url}")
+
         with (
             patch.dict(
                 os.environ,
@@ -80,16 +87,28 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
             patch(
                 "velvet_bot.presentation.telegram.routers."
                 "workspace_auf_provider_balances._read_json",
-                return_value={"hard_limit_usd": "12.3456"},
-            ),
+                side_effect=response,
+            ) as read_json,
         ):
             balance = asyncio.run(_fetch_byesu_balance())
 
-        self.assertEqual("12.3456", str(balance.value))
+        self.assertEqual("9.46", str(balance.value))
         self.assertEqual("$", balance.unit)
         self.assertIsNone(balance.error)
+        self.assertEqual(
+            {
+                "https://byesu.com/dashboard/billing/subscription",
+                "https://byesu.com/dashboard/billing/usage",
+            },
+            {item.args[0] for item in read_json.call_args_list},
+        )
 
-    def test_byesu_balance_keeps_legacy_balance_field_fallback(self) -> None:
+    def test_byesu_balance_clamps_exhausted_key_quota_to_zero(self) -> None:
+        def response(url: str, **_: object) -> dict[str, str]:
+            if url.endswith("/subscription"):
+                return {"hard_limit_usd": "1"}
+            return {"total_usage": "150"}
+
         with (
             patch.dict(
                 os.environ,
@@ -99,21 +118,22 @@ class AufMenuProviderBalanceHotfixTests(unittest.TestCase):
             patch(
                 "velvet_bot.presentation.telegram.routers."
                 "workspace_auf_provider_balances._read_json",
-                return_value={"balance_usd": "7.5"},
+                side_effect=response,
             ),
         ):
             balance = asyncio.run(_fetch_byesu_balance())
 
-        self.assertEqual("7.5", str(balance.value))
+        self.assertEqual("0.00", str(balance.value))
         self.assertIsNone(balance.error)
 
-    def test_byesu_label_describes_key_limit_not_account_balance(self) -> None:
+    def test_byesu_label_describes_remaining_key_quota(self) -> None:
         source = (
             ROOT
             / "velvet_bot/presentation/telegram/routers/"
             "workspace_auf_provider_balances.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("Byesu · доступно по ключу", source)
+        self.assertIn("Byesu · остаток квоты ключа", source)
+        self.assertNotIn("Byesu · доступно по ключу", source)
         self.assertNotIn("Byesu · баланс аккаунта", source)
 
     def test_byesu_http_401_is_reported_as_rejected_key(self) -> None:
