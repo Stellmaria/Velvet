@@ -429,7 +429,7 @@ async def handle_auf_wallet_action(
         callback,
         workspace_id=workspace_id,
         wallet_service=auf_wallet_service,
-        purchase_service=purchase_service,
+        purchase_service=auf_purchase_service,
         currency=selected_currency,
         answer_callback=alert is None,
     )
