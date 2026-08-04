@@ -29,6 +29,7 @@ fi
 for required in \
   "$REPO_ROOT/.git" \
   "$SOURCE_DIR/install.sh" \
+  "$SOURCE_DIR/ensure_idle.py" \
   "$SOURCE_DIR/compose.yaml" \
   "$SOURCE_DIR/compose.runtime.yaml" \
   "$SOURCE_DIR/compose.security.yaml" \
@@ -58,6 +59,7 @@ if [[ "$REMOTE_MAIN" != "$TARGET_SHA" ]]; then
   echo "Target is no longer current main: $TARGET_SHA != $REMOTE_MAIN" >&2
   exit 2
 fi
+HERMES_CODERS_ROOT="$ROOT" python3 "$SOURCE_DIR/ensure_idle.py"
 
 install -d -o root -g root -m 0750 "$ROLLBACK_ROOT"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -74,6 +76,7 @@ ARTIFACT_PATHS=(
   /etc/apparmor.d/hermes-codex-runner
   /etc/apparmor.d/hermes-codex-run
   /srv/hermes-coders/launcher.env
+  /srv/hermes-coders/launcher-secrets.env
 )
 backup_path() {
   local path="$1"
@@ -105,14 +108,20 @@ printf '%s\n' "$PREVIOUS_COMPOSE_DIR" > "$BACKUP_DIR/previous-compose-dir.txt"
 
 PREVIOUS_VELVET_IMAGE=""
 PREVIOUS_MAX_IMAGE=""
+PREVIOUS_USED_OVERRIDE=0
 if docker inspect "$VELVET_CONTAINER" >/dev/null 2>&1; then
   PREVIOUS_VELVET_IMAGE="$(docker inspect "$VELVET_CONTAINER" --format '{{.Image}}')"
+  previous_security="$(docker inspect "$VELVET_CONTAINER" --format '{{json .HostConfig.SecurityOpt}}')"
+  if grep -Eq 'unconfined|apparmor=velvet-codex-bwrap' <<<"$previous_security"; then
+    PREVIOUS_USED_OVERRIDE=1
+  fi
 fi
 if docker inspect "$MAX_CONTAINER" >/dev/null 2>&1; then
   PREVIOUS_MAX_IMAGE="$(docker inspect "$MAX_CONTAINER" --format '{{.Image}}')"
 fi
 printf '%s\n' "$PREVIOUS_VELVET_IMAGE" > "$BACKUP_DIR/velvet-image.txt"
 printf '%s\n' "$PREVIOUS_MAX_IMAGE" > "$BACKUP_DIR/max-image.txt"
+printf '%s\n' "$PREVIOUS_USED_OVERRIDE" > "$BACKUP_DIR/previous-used-override.txt"
 
 restore_artifacts() {
   local path
@@ -147,6 +156,7 @@ rollback() {
   systemctl stop hermes-sandbox-launcher.service hermes-sandbox-launcher.socket || true
   if [[ -f /etc/systemd/system/hermes-sandbox-launcher.socket ]]; then
     systemctl enable --now hermes-sandbox-launcher.socket || true
+    systemctl restart hermes-sandbox-launcher.service || true
   fi
   if [[ -n "$PREVIOUS_COMPOSE_DIR" && -d "$PREVIOUS_COMPOSE_DIR" ]]; then
     rollback_compose=(
@@ -158,9 +168,9 @@ rollback() {
       -f compose.runtime.yaml
       -f compose.security.yaml
     )
-    # Compatibility override is permitted only in rollback of the previously
-    # running production contract. Canonical activation above never uses it.
-    if [[ -f "$OVERRIDE_FILE" ]]; then
+    # Compatibility override is permitted only when the previous live container
+    # proves that the compatibility contract was actually active.
+    if [[ "$PREVIOUS_USED_OVERRIDE" == 1 && -f "$OVERRIDE_FILE" ]]; then
       rollback_compose+=( -f "$OVERRIDE_FILE" )
     fi
     (
@@ -186,11 +196,18 @@ test "$(systemctl show hermes-coders.service -p SubState --value)" = exited
 test "$(systemctl show hermes-coders.service -p ExecMainStatus --value)" = 0
 
 expected_runner_sha="$(sha256sum "$SOURCE_DIR/codex_launcher_runner.py" | awk '{print $1}')"
-for container in "$VELVET_CONTAINER" "$MAX_CONTAINER"; do
+pinned_velvet_image="$(sed -n 's/^HERMES_SANDBOX_VELVET_IMAGE=//p' "$ROOT/launcher.env")"
+pinned_max_image="$(sed -n 's/^HERMES_SANDBOX_MAX_IMAGE=//p' "$ROOT/launcher.env")"
+for tuple in \
+  "$VELVET_CONTAINER:$pinned_velvet_image" \
+  "$MAX_CONTAINER:$pinned_max_image"; do
+  container="${tuple%%:*}"
+  pinned_image="${tuple#*:}"
   test "$(docker inspect "$container" --format '{{.State.Status}}')" = running
   test "$(docker inspect "$container" --format '{{.State.Health.Status}}')" = healthy
   test "$(docker inspect "$container" --format '{{.RestartCount}}')" -eq 0
   test "$(docker inspect "$container" --format '{{json .HostConfig.Init}}')" = true
+  test "$(docker inspect "$container" --format '{{.Image}}')" = "$pinned_image"
   security="$(docker inspect "$container" --format '{{json .HostConfig.SecurityOpt}}')"
   grep -F 'apparmor=hermes-codex-runner' <<<"$security" >/dev/null
   if grep -Eq 'unconfined|seccomp=unconfined' <<<"$security"; then
@@ -206,13 +223,10 @@ done
 PYTHONPATH="$SOURCE_DIR" python3 - <<'PY'
 from sandbox_launcher_client import SandboxLauncherClient
 
-client = SandboxLauncherClient()
-ping = client.ping()
+ping = SandboxLauncherClient().ping()
 assert ping.get('backend') == 'host-docker-launcher'
 assert ping.get('nested_bwrap') is False
-for project in ('velvet', 'max'):
-    result = client.probe(project)
-    assert int(result.get('returncode', 1)) == 0, result.get('stderr')
+assert ping.get('project_auth') is True
 PY
 
 host_zombies="$(ps -eo stat= | awk '$1 ~ /^Z/ {count++} END {print count+0}')"
