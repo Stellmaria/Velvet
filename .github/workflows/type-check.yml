@@ -18,10 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
+      - name: Checkout exact change head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Resolve changed mypy surface
@@ -30,11 +31,13 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.base_ref }}
           BEFORE_SHA: ${{ github.event.before }}
         run: |
           python scripts/ci_changed_surfaces.py \
             --event-name "$EVENT_NAME" \
             --base-sha "$BASE_SHA" \
+            --base-ref "$BASE_REF" \
             --before-sha "$BEFORE_SHA" \
             --github-output "$GITHUB_OUTPUT"
 

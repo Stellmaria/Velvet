@@ -70,6 +70,52 @@ DOCKER_CI_PATTERNS = (
     "tests/test_docker_build_workflow_contract.py",
 )
 
+TEST_DOCS_PATTERNS = (
+    "docs/**",
+    "*.md",
+    "**/*.md",
+    "LICENSE",
+    "LICENSE.*",
+)
+
+TEST_CI_PATTERNS = (
+    ".github/workflows/**",
+    ".github/actions/**",
+    "scripts/ci_*.py",
+    "scripts/check_project_notes.py",
+    "scripts/security_gate.py",
+    "tests/test_ci_*.py",
+    "tests/test_*workflow_contract.py",
+    "tests/test_security_gate_contract.py",
+    "tests/test_project_notes*.py",
+)
+
+TEST_HERMES_PATTERNS = (
+    ".env.hermes.example",
+    "brain-vault/skills/hermes-*/**",
+    "deploy/hermes-*/**",
+    "tests/test_hermes_*.py",
+)
+
+TEST_KRITA_PATTERNS = (
+    "Dockerfile.krita-server",
+    ".github/workflows/krita-cache-warm.yml",
+    "deploy/krita-server/**",
+    "deploy/server/install-krita-server.sh",
+    "deploy/server/krita-smoke.sh",
+    "deploy/server/wait-compose-health.sh",
+    "tools/krita/**",
+    "scripts/krita_server_healthcheck.py",
+    "tests/test_krita_*.py",
+)
+
+TEST_FAST_PATH_PATTERNS = (
+    TEST_DOCS_PATTERNS
+    + TEST_CI_PATTERNS
+    + TEST_HERMES_PATTERNS
+    + TEST_KRITA_PATTERNS
+)
+
 SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
     "supply_chain": (
         ".github/workflows/**",
@@ -116,8 +162,6 @@ SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
         "velvet_bot/**",
         "scripts/container_healthcheck.py",
         ".github/workflows/security.yml",
-        "scripts/ci_changed_surfaces.py",
-        "tests/test_ci_changed_surfaces.py",
     ),
     "mypy": (
         "mypy.ini",
@@ -135,6 +179,12 @@ SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
         "velvet_bot/domains/archive/models.py",
         "velvet_bot/domains/archive/preview_models.py",
     ),
+    "tests_ci": TEST_CI_PATTERNS,
+    "tests_hermes": TEST_HERMES_PATTERNS,
+    "tests_krita": TEST_KRITA_PATTERNS,
+    "tests_docs_only": TEST_DOCS_PATTERNS,
+    "tests_targeted": TEST_CI_PATTERNS + TEST_HERMES_PATTERNS + TEST_KRITA_PATTERNS,
+    "tests_full": (),
     "docker_velvet": DOCKER_VELVET_PATTERNS,
     "docker_supervisor": DOCKER_SUPERVISOR_PATTERNS,
     "docker_vision": DOCKER_VISION_PATTERNS,
@@ -250,10 +300,19 @@ def classify_paths(
 ) -> dict[str, bool]:
     if full_scan:
         return {name: True for name in SURFACE_PATTERNS}
-    return {
+
+    outputs = {
         name: any(matches_any(path, patterns) for path in paths)
         for name, patterns in SURFACE_PATTERNS.items()
+        if name != "tests_full"
     }
+    outputs["tests_docs_only"] = bool(paths) and all(
+        matches_any(path, TEST_DOCS_PATTERNS) for path in paths
+    )
+    outputs["tests_full"] = not paths or any(
+        not matches_any(path, TEST_FAST_PATH_PATTERNS) for path in paths
+    )
+    return outputs
 
 
 def write_outputs(path: Path, outputs: dict[str, bool], *, full_scan: bool) -> None:
