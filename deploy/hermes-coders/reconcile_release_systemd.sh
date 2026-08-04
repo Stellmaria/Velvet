@@ -13,6 +13,8 @@ ROUTER_UNIT=hermes-coder-router.service
 SYSTEMD_DIR=/etc/systemd/system
 LEGACY_DROPIN="$SYSTEMD_DIR/$CODER_UNIT.d/20-bwrap-runtime.conf"
 LEGACY_OVERRIDE="$HERMES_ROOT/compose.bwrap.override.yaml"
+VELVET_CONTAINER=hermes-coders-hermes-coder-velvet-1
+MAX_CONTAINER=hermes-coders-hermes-coder-max-1
 
 release_dir="$(readlink -f "$RELEASE_LINK")"
 case "$release_dir" in
@@ -64,6 +66,28 @@ for unit_file in "$unit_source_dir/$CODER_UNIT" "$unit_source_dir/$ROUTER_UNIT";
   fi
 done
 
+for container in "$VELVET_CONTAINER" "$MAX_CONTAINER"; do
+  test "$(docker inspect "$container" --format '{{.State.Status}}')" = running
+  test "$(docker inspect "$container" --format '{{.State.Health.Status}}')" = healthy
+  test "$(docker inspect "$container" --format '{{.RestartCount}}')" -eq 0
+done
+
+previous_velvet_source="$(
+  docker inspect "$VELVET_CONTAINER" \
+    --format '{{range .Mounts}}{{if eq .Destination "/app/codex_tier_runner.py"}}{{.Source}}{{end}}{{end}}'
+)"
+previous_max_source="$(
+  docker inspect "$MAX_CONTAINER" \
+    --format '{{range .Mounts}}{{if eq .Destination "/app/codex_tier_runner.py"}}{{.Source}}{{end}}{{end}}'
+)"
+test -n "$previous_velvet_source"
+test -n "$previous_max_source"
+previous_compose_dir="$(dirname "$previous_velvet_source")"
+test "$previous_compose_dir" = "$(dirname "$previous_max_source")"
+for compose_file in compose.yaml compose.runtime.yaml compose.security.yaml; do
+  test -f "$previous_compose_dir/$compose_file"
+done
+
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 backup_dir="/var/backups/hermes-coders-systemd/$stamp-$release_sha"
 install -d -o root -g root -m 0700 "$backup_dir"
@@ -81,10 +105,40 @@ backup_if_present "$SYSTEMD_DIR/$ROUTER_UNIT" "$ROUTER_UNIT"
 backup_if_present "$LEGACY_DROPIN" 20-bwrap-runtime.conf
 backup_if_present "$LEGACY_OVERRIDE" compose.bwrap.override.yaml
 
+restore_previous_containers() {
+  local compose_args=(
+    --project-name hermes-coders
+    --profile velvet
+    --profile max
+    -f compose.yaml
+    -f compose.runtime.yaml
+    -f compose.security.yaml
+  )
+
+  if [[ ! -e "$LEGACY_OVERRIDE" ]] \
+      && [[ -f "$backup_dir/compose.bwrap.override.yaml" ]]; then
+    cp -a -- "$backup_dir/compose.bwrap.override.yaml" "$LEGACY_OVERRIDE"
+  fi
+  if [[ -f "$LEGACY_OVERRIDE" ]]; then
+    compose_args+=( -f "$LEGACY_OVERRIDE" )
+  fi
+
+  (
+    cd "$previous_compose_dir"
+    HERMES_CODERS_ROOT="$HERMES_ROOT" \
+    HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
+      docker compose "${compose_args[@]}" up -d \
+        --no-deps --no-build --force-recreate \
+        hermes-coder-velvet hermes-coder-max
+  )
+}
+
 rollback_units() {
   local status="$?"
   trap - ERR INT TERM
-  echo "Systemd reconciliation failed; restoring unit files from $backup_dir" >&2
+  echo "Systemd reconciliation failed; restoring previous runtime and units from $backup_dir" >&2
+
+  restore_previous_containers >&2 || true
 
   if [[ -f "$backup_dir/$CODER_UNIT" ]]; then
     install -o root -g root -m 0644 "$backup_dir/$CODER_UNIT" "$SYSTEMD_DIR/$CODER_UNIT"
@@ -100,6 +154,8 @@ rollback_units() {
     install -d -o root -g root -m 0755 "$(dirname "$LEGACY_DROPIN")"
     install -o root -g root -m 0644 \
       "$backup_dir/20-bwrap-runtime.conf" "$LEGACY_DROPIN"
+  else
+    rm -f -- "$LEGACY_DROPIN"
   fi
 
   systemctl daemon-reload || true
@@ -156,9 +212,7 @@ HERMES_CODERS_ROOT="$HERMES_ROOT" \
 HERMES_CODER_ROUTER_ENV_FILE=/srv/hermes-operator-control/coders.env \
   python3 "$router_dir/router_smoke.py"
 
-for container in \
-  hermes-coders-hermes-coder-velvet-1 \
-  hermes-coders-hermes-coder-max-1; do
+for container in "$VELVET_CONTAINER" "$MAX_CONTAINER"; do
   test "$(docker inspect "$container" --format '{{.State.Status}}')" = running
   test "$(docker inspect "$container" --format '{{.State.Health.Status}}')" = healthy
   test "$(docker inspect "$container" --format '{{.RestartCount}}')" -eq 0
