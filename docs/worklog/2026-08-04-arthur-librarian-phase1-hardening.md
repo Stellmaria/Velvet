@@ -3,7 +3,7 @@
 - Дата: 2026-08-04
 - ID: `arthur-librarian-phase1-20260804`
 - Линия/фаза: Telegram Storage Librarian, production safety hardening
-- Статус: `частично`
+- Статус: `merge-ready`
 - Ветка: `fix/arthur-librarian-phase1`
 - Базовый commit: `2827fb7aba72c0447f16ddf05383745a9276e9bd`
 - Связанное issue: `#586`
@@ -43,7 +43,7 @@
 
 ### Риски и ограничения
 
-Chunking в этой фазе не реализуется: большие документы завершаются явной terminal error до отдельного bounded chunking design. Vision image-byte pipeline и отдельный Telegram bot Артур относятся к следующим фазам issue #586. Production deploy и merge в этой сессии не выполняются.
+Chunking в этой фазе не реализуется: большие документы завершаются явной terminal error до отдельного bounded chunking design. Vision image-byte pipeline и отдельный Telegram bot Артур относятся к следующим фазам issue #586. Production rollout в этой сессии не выполняется автоматически.
 
 ## После завершения
 
@@ -72,16 +72,17 @@ SQL migration не требуется: поле `analyzer` уже являетс
 - локальный isolated focused suite: 22 tests, OK;
 - `python -m py_compile` для изменённых Python-файлов: OK;
 - `bash -n` для `start.sh` и `install.sh`: OK;
-- полный repository CI выполняется в draft PR #610.
+- GitHub CI на head `f890bea5e2c080b3fb35bca291927efbc1cbaad0`: tests, preflight, all shards, mypy, project notes, Docker, branch protection, Bandit, ShellCheck, CodeQL, image security и supply chain — OK;
+- независимый финальный review: новых блокеров не выявлено;
+- PR #610 переведён из draft в ready-for-review.
 
 ### PR и commit
 
-Ветка `fix/arthur-librarian-phase1`; draft PR `#610` пересобран от актуального `main`.
+Ветка `fix/arthur-librarian-phase1`; PR `#610` готов к merge после свежего required-check run на текущем head.
 
 ### Незавершённое
 
-- обязательный GitHub CI и независимый review;
-- production smoke Storage #2168;
+- production rollout и smoke Storage #2168;
 - bounded chunking больших документов;
 - отдельный Telegram bot Артур;
 - image-byte vision pipeline;
@@ -89,4 +90,4 @@ SQL migration не требуется: поле `analyzer` уже являетс
 
 ### Следующий шаг
 
-После зелёного CI и независимого review разрешить merge отдельным решением владельца. Затем выполнить канонический rollout через `opsctl`/`reconcilectl`, сохранить `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` и провести один manual text smoke.
+После повторного зелёного required-check run выполнить merge PR #610. Затем выполнить канонический rollout через `opsctl`/`reconcilectl`, сохранить `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` и провести один manual text smoke.
