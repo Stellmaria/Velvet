@@ -6,16 +6,17 @@ on:
       - fix-byesu-key-balance
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   regenerate:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Regenerate package architecture inventory
         run: >-
@@ -23,12 +24,18 @@ jobs:
           --write
           --label p1-package-architecture-baseline
 
-      - name: Upload generated inventory
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: package-architecture-inventory
-          path: |
-            docs/package_architecture_inventory.json
+      - name: Commit generated inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- \
+            docs/package_architecture_inventory.json \
             docs/package_architecture_inventory.md
-          if-no-files-found: error
-          retention-days: 1
+          if git diff --cached --quiet; then
+            echo "Inventory is already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: refresh package architecture inventory"
+          git push origin HEAD:fix-byesu-key-balance
