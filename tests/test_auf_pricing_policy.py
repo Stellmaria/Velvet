@@ -22,6 +22,7 @@ class _Connection:
         override: Decimal | None = None,
         quality_surcharge: int = 1,
         minimum_velvets: int = 2,
+        minimum_discounted_velvets: int | None = None,
     ) -> None:
         self.model_alias = model_alias
         self.resolution = resolution
@@ -29,6 +30,7 @@ class _Connection:
         self.override = override
         self.quality_surcharge = quality_surcharge
         self.minimum_velvets = minimum_velvets
+        self.minimum_discounted_velvets = minimum_discounted_velvets
 
     async def fetchrow(self, query: str, *args):
         if "FROM auf_price_versions" in query:
@@ -44,6 +46,7 @@ class _Connection:
                 "extra_reference_cost_usd": Decimal("0"),
                 "quality_surcharge_velvets": self.quality_surcharge,
                 "minimum_velvets": self.minimum_velvets,
+                "minimum_discounted_velvets": self.minimum_discounted_velvets,
             }
         if "FROM auf_economy_settings" in query:
             return {
@@ -95,6 +98,7 @@ class AufIndividualPricingPolicyTests(unittest.IsolatedAsyncioTestCase):
                 override=Decimal("0"),
                 quality_surcharge=1,
                 minimum_velvets=2,
+                minimum_discounted_velvets=2,
             ),
             self._payload(),
         )
@@ -102,7 +106,7 @@ class AufIndividualPricingPolicyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(Decimal("15.00"), quote.markup_percent)
         self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
 
-    async def test_banana_pro_has_premium_sku_floor(self) -> None:
+    async def test_banana_pro_has_premium_sku_floor_for_standard_users(self) -> None:
         quote = await quote_auf_payload(
             _Connection(
                 model_alias="nano_banana_pro",
@@ -111,11 +115,62 @@ class AufIndividualPricingPolicyTests(unittest.IsolatedAsyncioTestCase):
                 override=None,
                 quality_surcharge=2,
                 minimum_velvets=4,
+                minimum_discounted_velvets=3,
             ),
             self._payload(model="nano_banana_pro", resolution="4K"),
         )
         self.assertEqual(4 * AUF_SCALE, quote.quoted_units)
         self.assertEqual(4, quote.minimum_velvets)
+
+    async def test_minimum_markup_gives_both_banana_models_same_ladder(self) -> None:
+        resolutions = (
+            ("1K", 0, 1),
+            ("2K", 1, 2),
+            ("4K", 2, 3),
+        )
+        standard_floors = {
+            "nano_banana_2": {"1K": 1, "2K": 2, "4K": 3},
+            "nano_banana_pro": {"1K": 2, "2K": 3, "4K": 4},
+        }
+        provider_costs = {
+            "nano_banana_2": Decimal("0.02"),
+            "nano_banana_pro": Decimal("0.03"),
+        }
+
+        for model_alias in ("nano_banana_2", "nano_banana_pro"):
+            for resolution, surcharge, expected_velvets in resolutions:
+                with self.subTest(model_alias=model_alias, resolution=resolution):
+                    quote = await quote_auf_payload(
+                        _Connection(
+                            model_alias=model_alias,
+                            resolution=resolution,
+                            unit_cost_usd=provider_costs[model_alias],
+                            override=Decimal("15"),
+                            quality_surcharge=surcharge,
+                            minimum_velvets=standard_floors[model_alias][resolution],
+                            minimum_discounted_velvets=expected_velvets,
+                        ),
+                        self._payload(model=model_alias, resolution=resolution),
+                    )
+                    self.assertEqual(expected_velvets * AUF_SCALE, quote.quoted_units)
+                    self.assertEqual(expected_velvets, quote.minimum_velvets)
+
+    async def test_markup_above_minimum_keeps_standard_banana_pro_floor(self) -> None:
+        quote = await quote_auf_payload(
+            _Connection(
+                model_alias="nano_banana_pro",
+                resolution="1K",
+                unit_cost_usd=Decimal("0.03"),
+                override=Decimal("20"),
+                quality_surcharge=0,
+                minimum_velvets=2,
+                minimum_discounted_velvets=1,
+            ),
+            self._payload(model="nano_banana_pro", resolution="1K"),
+        )
+        self.assertEqual(Decimal("20.00"), quote.markup_percent)
+        self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
+        self.assertEqual(2, quote.minimum_velvets)
 
     async def test_individual_price_preserves_wan_quality_tier(self) -> None:
         quote = await quote_auf_payload(
@@ -151,6 +206,9 @@ class AufPricingPolicyContractTests(unittest.TestCase):
         hardening_migration = Path(
             "migrations/z031_auf_pricing_economy_hardening.sql"
         ).read_text(encoding="utf-8")
+        discounted_migration = Path(
+            "migrations/z032_auf_discounted_banana_floors.sql"
+        ).read_text(encoding="utf-8")
         self.assertIn("auf_user_markup_overrides", quality_migration)
         self.assertIn("WHEN '2K' THEN 1", quality_migration)
         self.assertIn("WHEN '4K' THEN 2", quality_migration)
@@ -160,6 +218,24 @@ class AufPricingPolicyContractTests(unittest.TestCase):
         self.assertIn("minimum_velvets", hardening_migration)
         self.assertIn("model_alias = 'nano_banana_pro'", hardening_migration)
         self.assertNotIn("DELETE FROM auf_user_markup_overrides", hardening_migration)
+        self.assertIn("minimum_discounted_velvets", discounted_migration)
+        self.assertIn("'nano_banana_2', 'nano_banana_pro'", discounted_migration)
+        self.assertIn("WHEN '1K' THEN 1", discounted_migration)
+        self.assertIn("WHEN '2K' THEN 2", discounted_migration)
+        self.assertIn("WHEN '4K' THEN 3", discounted_migration)
+
+    def test_generation_pricing_has_one_database_source_for_banana_surcharge(self) -> None:
+        source = inspect.getsource(quote_auf_payload)
+        self.assertIn("minimum_discounted_velvets", source)
+        self.assertNotIn("_banana_quality_surcharge", source)
+
+    def test_public_package_ladder_stays_between_100_and_999_rubles(self) -> None:
+        package_migration = Path(
+            "migrations/z030_auf_package_ladder_to_250.sql"
+        ).read_text(encoding="utf-8")
+        for price in ("100.00", "239.00", "339.00", "429.00", "619.00", "999.00"):
+            self.assertIn(price, package_migration)
+        self.assertIn("largest public package; capped at 250 VL", package_migration)
 
     def test_model_first_is_wrapped_by_approved_pricing_policy(self) -> None:
         stages = composition._FEATURE_STAGE_NAMES

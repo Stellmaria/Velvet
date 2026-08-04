@@ -192,7 +192,8 @@ async def quote_auf_payload(
         """
         SELECT id, version_key, provider, model_alias, resolution, audio,
                pricing_basis, unit_cost_usd, extra_reference_cost_usd,
-               quality_surcharge_velvets, minimum_velvets
+               quality_surcharge_velvets, minimum_velvets,
+               minimum_discounted_velvets
         FROM auf_price_versions
         WHERE model_alias = $1::VARCHAR
           AND operation = 'media.generate'
@@ -227,21 +228,11 @@ async def quote_auf_payload(
     extra_reference_cost = Decimal(row["extra_reference_cost_usd"])
     if extra_reference_cost > 0 and reference_count > 1:
         provider_cost += extra_reference_cost * Decimal(reference_count - 1)
-    quality_surcharge_raw = (
-        row.get("quality_surcharge_velvets", 0)
-        if hasattr(row, "get")
-        else 0
-    )
-    quality_surcharge_velvets = max(
-        max(0, int(quality_surcharge_raw or 0)),
-        _banana_quality_surcharge(model_alias, resolution),
-    )
-    minimum_velvets_raw = (
-        row.get("minimum_velvets", 1)
-        if hasattr(row, "get")
-        else 1
-    )
-    minimum_velvets = max(1, int(minimum_velvets_raw or 1))
+    (
+    quality_surcharge_velvets,
+    standard_minimum_velvets,
+    discounted_minimum_velvets,
+) = _price_floors(row)
 
     settings = await connection.fetchrow(
         """
@@ -292,6 +283,13 @@ async def quote_auf_payload(
         if user_markup_override is not None
         else global_markup_percent
     )
+    minimum_velvets = standard_minimum_velvets
+    if (
+        user_markup_override is not None
+        and markup_percent == minimum_user_markup_percent
+        and discounted_minimum_velvets is not None
+    ):
+        minimum_velvets = discounted_minimum_velvets
 
     operational_multiplier = (
         Decimal("1")
@@ -337,6 +335,29 @@ async def quote_auf_payload(
         billing_usd_to_rub=usd_to_rub,
         billing_usd_to_byn=usd_to_byn,
         quoted_units=quoted_units,
+    )
+
+
+def _price_floors(row: Any) -> tuple[int, int, int | None]:
+    getter = row.get if hasattr(row, "get") else None
+    quality_surcharge_raw = (
+        getter("quality_surcharge_velvets", 0) if getter is not None else 0
+    )
+    standard_minimum_raw = (
+        getter("minimum_velvets", 1) if getter is not None else 1
+    )
+    discounted_minimum_raw = (
+        getter("minimum_discounted_velvets") if getter is not None else None
+    )
+    discounted_minimum_velvets = (
+        max(1, int(discounted_minimum_raw))
+        if discounted_minimum_raw is not None
+        else None
+    )
+    return (
+        max(0, int(quality_surcharge_raw or 0)),
+        max(1, int(standard_minimum_raw or 1)),
+        discounted_minimum_velvets,
     )
 
 
@@ -391,16 +412,6 @@ def _money_triplet(usd: Decimal, quote: AufPriceQuote) -> str:
     rub = usd * quote.billing_usd_to_rub
     byn = usd * quote.billing_usd_to_byn
     return f"<b>${usd:.4f}</b> · <b>{rub:.2f} ₽ РФ</b> · <b>{byn:.2f} Br</b>"
-
-
-def _banana_quality_surcharge(model_alias: str, resolution: str) -> int:
-    if not _is_banana_model(model_alias):
-        return 0
-    return {"2K": 1, "4K": 2}.get(resolution.strip().upper(), 0)
-
-
-def _is_banana_model(model_alias: str) -> bool:
-    return model_alias in {"nano_banana_2", "nano_banana_pro"}
 
 
 def _validate_markup_percent(value: Decimal) -> Decimal:
