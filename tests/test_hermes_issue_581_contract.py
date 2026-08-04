@@ -175,6 +175,7 @@ class Issue581ContractTests(unittest.TestCase):
         compose = (ROOT / "deploy/hermes-coders/compose.yaml").read_text()
         self.assertEqual(2, runtime.count("- /app/codex_tier_runner.py"))
         self.assertEqual(2, compose.count(":/workspace-base:ro"))
+        self.assertIn("init: true", compose)
         self.assertNotIn("workspace=/workspace", (ROOT / "deploy/hermes-operator/tier_router.py").read_text())
 
         smoke = (ROOT / "deploy/hermes-coders/runtime_smoke.py").read_text()
@@ -188,24 +189,31 @@ class Issue581ContractTests(unittest.TestCase):
             "NoNewPrivs",
             'CRYPTOGRAPHY_VERSION = "50.0.0"',
             "docker-compose.server.yml",
-            '"hermes", "python"',
+            '"hermes",',
             "--ro-bind /workspace-base /workspace-base",
             '--bind "$probe" "$probe"',
+            "--filter=blob:none",
+            "--single-branch",
+            "coder container contains zombie processes",
         ):
             self.assertIn(marker, smoke)
+        self.assertNotIn("git clone --no-hardlinks", smoke)
 
         tier_runner = (ROOT / "deploy/hermes-coders/codex_tier_runner.py").read_text()
         for marker in (
             '"clone"',
-            '"--no-hardlinks"',
+            '"--filter=blob:none"',
+            '"--single-branch"',
             "CODEX_ISOLATED_WORKSPACE_ROOT",
             "baseline_head",
             "final_head",
             "refs_changed",
             "base_workspace_changed",
             "isolated_workspace_cleanup_failed",
+            "workspace_preparation_failed",
         ):
             self.assertIn(marker, tier_runner)
+        self.assertNotIn('"--no-hardlinks"', tier_runner)
         self.assertNotIn('"worktree", "add"', tier_runner)
         self.assertNotIn("CODEX_ISOLATED_WORKTREE_ROOT", tier_runner)
         self.assertNotIn('"origin/main"', tier_runner)
