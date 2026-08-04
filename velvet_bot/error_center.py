@@ -41,6 +41,8 @@ _SECRET_ASSIGNMENT_RE = re.compile(
 )
 _DYNAMIC_NUMBER_RE = re.compile(r"\b\d+\b")
 _HEX_RE = re.compile(r"0x[0-9a-f]+", re.IGNORECASE)
+_TELEGRAM_TEXT_LIMIT = 4090
+_ELLIPSIS = "…"
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +93,33 @@ def _fingerprint(logger_name: str, severity: str, summary: str, exc_name: str) -
     normalized = _DYNAMIC_NUMBER_RE.sub("<n>", normalized)
     raw = f"{logger_name}|{severity}|{exc_name}|{normalized}".encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+def _escape_limited(value: object, limit: int, *, keep_tail: bool = False) -> str:
+    safe_limit = max(0, int(limit))
+    if safe_limit == 0:
+        return ""
+    text = str(value)
+    escaped = escape(text)
+    if len(escaped) <= safe_limit:
+        return escaped
+    if safe_limit <= len(_ELLIPSIS):
+        return _ELLIPSIS[:safe_limit]
+
+    budget = safe_limit - len(_ELLIPSIS)
+    low = 0
+    high = len(text)
+    while low < high:
+        middle = (low + high + 1) // 2
+        candidate = text[-middle:] if keep_tail else text[:middle]
+        if len(escape(candidate)) <= budget:
+            low = middle
+        else:
+            high = middle - 1
+
+    chunk = text[-low:] if keep_tail and low else text[:low]
+    escaped_chunk = escape(chunk)
+    return f"{_ELLIPSIS}{escaped_chunk}" if keep_tail else f"{escaped_chunk}{_ELLIPSIS}"
 
 
 def capture_log_record(record: logging.LogRecord) -> CapturedLog:
@@ -492,31 +521,101 @@ class ErrorIncidentCenter:
 
     def _render_incident(self, incident: ErrorIncident) -> str:
         emoji = _LEVEL_EMOJI.get(incident.severity, "❗")
-        lines = [
+        severity = _escape_limited(incident.severity, 64)
+        logger_name = _escape_limited(incident.logger_name, 600)
+        header = [
             f"<b>{emoji} Ошибка #{incident.id}</b>",
-            f"<b>Уровень:</b> <code>{escape(incident.severity)}</code>",
-            f"<b>Модуль:</b> <code>{escape(incident.logger_name)}</code>",
+            f"<b>Уровень:</b> <code>{severity}</code>",
+            f"<b>Модуль:</b> <code>{logger_name}</code>",
             f"<b>Повторов:</b> <code>{incident.occurrence_count}</code>",
             f"<b>Впервые:</b> <code>{self._format_time(incident.first_seen_at)}</code>",
             f"<b>Последний раз:</b> <code>{self._format_time(incident.last_seen_at)}</code>",
-            "",
-            f"<b>Сообщение:</b>\n<code>{escape(incident.summary)}</code>",
         ]
-        if incident.details:
-            reserved = len("\n".join(lines)) + 160
-            details = incident.details[-max(300, 3900 - reserved):]
-            lines.extend(["", f"<b>Traceback:</b>\n<pre>{escape(details)}</pre>"])
+        acknowledged: list[str] = []
         if incident.acknowledged_at is not None:
-            lines.extend(
-                [
-                    "",
-                    "<b>✅ Отмечено просмотренным</b>",
-                    f"<b>Кем:</b> <code>{incident.acknowledged_by or '—'}</code>",
-                    f"<b>Когда:</b> <code>{self._format_time(incident.acknowledged_at)}</code>",
-                ]
+            acknowledged = [
+                "",
+                "<b>✅ Отмечено просмотренным</b>",
+                f"<b>Кем:</b> <code>{incident.acknowledged_by or '—'}</code>",
+                f"<b>Когда:</b> <code>{self._format_time(incident.acknowledged_at)}</code>",
+            ]
+
+        summary_prefix = "\n\n<b>Сообщение:</b>\n<code>"
+        summary_suffix = "</code>"
+        details_prefix = "\n\n<b>Traceback:</b>\n<pre>" if incident.details else ""
+        details_suffix = "</pre>" if incident.details else ""
+        acknowledged_text = "\n".join(acknowledged)
+        fixed = (
+            "\n".join(header)
+            + summary_prefix
+            + summary_suffix
+            + details_prefix
+            + details_suffix
+            + (f"\n{acknowledged_text}" if acknowledged_text else "")
+        )
+        available = max(0, _TELEGRAM_TEXT_LIMIT - len(fixed))
+        if incident.details:
+            summary_budget = min(900, available // 3)
+            details_budget = available - summary_budget
+        else:
+            summary_budget = available
+            details_budget = 0
+
+        text = (
+            "\n".join(header)
+            + summary_prefix
+            + _escape_limited(incident.summary, summary_budget)
+            + summary_suffix
+        )
+        if incident.details:
+            text += (
+                details_prefix
+                + _escape_limited(incident.details, details_budget, keep_tail=True)
+                + details_suffix
             )
-        text = "\n".join(lines)
-        return text[:4090]
+        if acknowledged_text:
+            text += f"\n{acknowledged_text}"
+        return text
+
+    @staticmethod
+    def _render_owner_digest(
+        counts: dict[str, int],
+        incidents: tuple[ErrorIncident, ...],
+    ) -> str:
+        header = [
+            "<b>🚨 В лог-чате есть непросмотренные ошибки</b>",
+            "",
+            f"Всего: <b>{counts['total']}</b>",
+            f"Критических: <b>{counts['critical']}</b>",
+            f"Ошибок: <b>{counts['errors']}</b>",
+            f"Предупреждений: <b>{counts['warnings']}</b>",
+        ]
+        footer = [
+            "",
+            "Откройте лог-чат и нажмите под ошибкой «Прочитано / беру в работу».",
+        ]
+        recent = incidents[:5]
+        if not recent:
+            return "\n".join(header + footer)
+
+        heading = ["", "<b>Последние:</b>"]
+        static_text = "\n".join(header + heading + footer)
+        available = max(
+            0,
+            _TELEGRAM_TEXT_LIMIT - len(static_text) - len(recent),
+        )
+        line_budget = available // len(recent)
+        rendered: list[str] = []
+        for incident in recent:
+            severity = _escape_limited(incident.severity, 48)
+            prefix = f"• #{incident.id} {severity} · "
+            suffix = f" · ×{incident.occurrence_count}"
+            summary_budget = max(0, line_budget - len(prefix) - len(suffix))
+            summary = incident.summary.replace("\n", " ")
+            rendered.append(
+                prefix + _escape_limited(summary, summary_budget) + suffix
+            )
+        return "\n".join(header + heading + rendered + footer)
 
     async def _publish_to_log_chat(self, incident: ErrorIncident) -> None:
         if self._log_chat_id is None:
@@ -561,28 +660,7 @@ class ErrorIncidentCenter:
         if not await self._repository.digest_due(cooldown_seconds=cooldown_seconds):
             return 0
         incidents = await self._repository.unacknowledged(limit=5)
-        lines = [
-            "<b>🚨 В лог-чате есть непросмотренные ошибки</b>",
-            "",
-            f"Всего: <b>{counts['total']}</b>",
-            f"Критических: <b>{counts['critical']}</b>",
-            f"Ошибок: <b>{counts['errors']}</b>",
-            f"Предупреждений: <b>{counts['warnings']}</b>",
-        ]
-        if incidents:
-            lines.extend(["", "<b>Последние:</b>"])
-            for incident in incidents:
-                summary = incident.summary.replace("\n", " ")[:180]
-                lines.append(
-                    f"• #{incident.id} {escape(incident.severity)} · "
-                    f"{escape(summary)} · ×{incident.occurrence_count}"
-                )
-        lines.extend(
-            [
-                "",
-                "Откройте лог-чат и нажмите под ошибкой «Прочитано / беру в работу».",
-            ]
-        )
+        text = self._render_owner_digest(counts, incidents)
         markup = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -598,7 +676,7 @@ class ErrorIncidentCenter:
             try:
                 await self._bot.send_message(
                     chat_id=owner_id,
-                    text="\n".join(lines)[:4090],
+                    text=text,
                     reply_markup=markup,
                     disable_web_page_preview=True,
                 )
