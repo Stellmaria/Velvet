@@ -141,3 +141,9 @@ Commit: текущий head feature branch; итоговый SHA фиксиру�
 ### Следующий шаг
 
 Дождаться полного зелёного CI PR #596 и провести итоговый review. PR остаётся draft. После отдельного разрешения на ready/merge и после merge выполнить только entities/operator reconcile для основного Hermes, пересоздать только `velvet-hermes-1` при необходимости и провести fail-closed Telegram canary без mutation.
+
+## Финальный merge gate
+
+- Ветка синхронизирована с актуальным `main` commit `ca860bdf038c4bb70583069aeab7ee3ecda6d152` перед финальным CI.
+- Одноразовый sync workflow удалён из итогового дерева.
+- Единственный конфликт `tests/test_ci_changed_surfaces.py` объединён fail-closed: сохранены Docker surface tests PR #596 и exact-base contract из актуального `main`.
