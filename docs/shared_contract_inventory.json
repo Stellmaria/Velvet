@@ -7647,7 +7647,7 @@
           "module": "velvet_bot.domains.auf_runtime.models",
           "name": "model_aliases",
           "line": 18,
-          "end_line": 27
+          "end_line": 29
         },
         {
           "path": "velvet_bot/domains/auf_runtime/queue.py",
