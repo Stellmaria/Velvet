@@ -58,7 +58,7 @@ profile hermes-codex-bwrap flags=(attach_disconnected,mediate_deleted) {
   /lib64/** mr,
 
   /opt/codex/** rwk,
-  /opt/codex-runs/** rwk,
+  /opt/codex-runs/** rwkix,
   /workspace-base/ r,
   /workspace-base/** r,
   /tmp/** rwk,
