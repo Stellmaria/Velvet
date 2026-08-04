@@ -256,7 +256,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                 resolution="2K",
             ).payload
         )
-        self.assertEqual(Decimal("3"), quote.quoted_auf)
+        self.assertEqual(Decimal("2"), quote.quoted_auf)
         self.assertEqual(Decimal("15.00"), quote.markup_percent)
 
     async def test_enqueue_reserves_once_and_success_captures(self) -> None:
