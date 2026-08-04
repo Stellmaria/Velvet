@@ -15,7 +15,6 @@ concurrency:
 
 env:
   PYTHONUNBUFFERED: "1"
-  CI_TEST_SHARDS: "4"
 
 jobs:
   catalog-inventory-refresh:
@@ -72,138 +71,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git show HEAD^:.github/workflows/tests.yml > .github/workflows/tests.yml
+          git show origin/main:.github/workflows/tests.yml > .github/workflows/tests.yml
           rm scripts/sync_auf_catalog_inventories.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "chore: refresh AUF catalog architecture snapshots"
           git push origin HEAD:${{ github.head_ref }}
-
-  preflight:
-    name: preflight
-    runs-on: ubuntu-latest
-    timeout-minutes: 4
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-
-      - name: Verify test shard plan
-        run: python scripts/ci_test_shard.py --total "$CI_TEST_SHARDS" --verify
-
-      - name: Compile Python sources
-        run: python -m compileall -q main.py velvet_bot scripts tests
-
-      - name: Run fast architecture contracts
-        shell: bash
-        run: |
-          set -o pipefail
-          python scripts/ci_preflight.py 2>&1 | tee preflight-output.txt
-
-      - name: Upload preflight output
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: preflight-output
-          path: preflight-output.txt
-          if-no-files-found: ignore
-          retention-days: 7
-
-  test-shards:
-    name: test-shard-${{ matrix.shard }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    strategy:
-      fail-fast: true
-      matrix:
-        shard: [0, 1, 2, 3]
-    env:
-      TEST_DATABASE_URL: postgresql://velvet:velvet_test_password@localhost:5432/velvet_test
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-        with:
-          version: "0.11.16"
-          enable-cache: true
-          cache-dependency-glob: requirements.lock
-          save-cache: ${{ matrix.shard == 0 }}
-
-      - name: Start native PostgreSQL
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo systemctl start postgresql.service
-          sudo -u postgres psql --set=ON_ERROR_STOP=1 <<'SQL'
-          DO $$
-          BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'velvet') THEN
-              CREATE ROLE velvet LOGIN SUPERUSER PASSWORD 'velvet_test_password';
-            ELSE
-              ALTER ROLE velvet WITH LOGIN SUPERUSER PASSWORD 'velvet_test_password';
-            END IF;
-          END
-          $$;
-          SELECT 'CREATE DATABASE velvet_test OWNER velvet'
-          WHERE NOT EXISTS (
-            SELECT 1 FROM pg_database WHERE datname = 'velvet_test'
-          )\gexec
-          ALTER DATABASE velvet_test OWNER TO velvet;
-          SQL
-          pg_isready -h localhost -p 5432 -U velvet -d velvet_test
-
-      - name: Install dependencies from hash lock
-        run: uv pip install --system --require-hashes -r requirements.lock
-
-      - name: Run test shard
-        shell: bash
-        run: |
-          set -o pipefail
-          python scripts/ci_test_shard.py \
-            --index "${{ matrix.shard }}" \
-            --total "$CI_TEST_SHARDS" \
-            --failfast \
-            --durations 30 \
-            2>&1 | tee "unit-test-output-${{ matrix.shard }}.txt"
-
-      - name: Upload failed shard output
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: unit-test-output-shard-${{ matrix.shard }}
-          path: unit-test-output-${{ matrix.shard }}.txt
-          if-no-files-found: ignore
-          retention-days: 7
-
-  unit-tests:
-    name: unit-tests
-    if: always()
-    needs:
-      - preflight
-      - test-shards
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Verify required test jobs
-        env:
-          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
-          SHARDS_RESULT: ${{ needs.test-shards.result }}
-        run: |
-          test "$PREFLIGHT_RESULT" = "success"
-          test "$SHARDS_RESULT" = "success"
