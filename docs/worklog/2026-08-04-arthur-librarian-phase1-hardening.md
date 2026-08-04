@@ -3,7 +3,7 @@
 - Дата: 2026-08-04
 - ID: `arthur-librarian-phase1-20260804`
 - Линия/фаза: Telegram Storage Librarian, production safety hardening
-- Статус: `merge-ready`
+- Статус: `завершено`
 - Ветка: `fix/arthur-librarian-phase1`
 - Базовый commit: `2827fb7aba72c0447f16ddf05383745a9276e9bd`
 - Связанное issue: `#586`
@@ -58,9 +58,8 @@ Chunking в этой фазе не реализуется: большие док
 - start script скачивает только отсутствующие source models;
 - installer выполняет structured bot-to-Ollama smoke;
 - добавлены regression tests для всех перечисленных контрактов;
-- канонические package/P2 inventory перегенерированы: production LOC 141744, architecture violations 548, approved broad boundaries 106 из 106;
+- package/P2/repository-layout inventories и architecture exemptions пересобраны после синхронизации с актуальным `main`;
 - package inventory записан с канонической меткой `p1-package-architecture-baseline`, которую использует CI;
-- package baseline test обновлён на production LOC 141744;
 - repository-layout inventory обновлён для нового test consumer `tests/test_storage_librarian_phase1_hardening.py`.
 
 ### Миграции и совместимость
@@ -72,13 +71,14 @@ SQL migration не требуется: поле `analyzer` уже являетс
 - локальный isolated focused suite: 22 tests, OK;
 - `python -m py_compile` для изменённых Python-файлов: OK;
 - `bash -n` для `start.sh` и `install.sh`: OK;
-- GitHub CI на head `f890bea5e2c080b3fb35bca291927efbc1cbaad0`: tests, preflight, all shards, mypy, project notes, Docker, branch protection, Bandit, ShellCheck, CodeQL, image security и supply chain — OK;
+- GitHub CI до синхронизации с `main`: tests, preflight, all shards, mypy, project notes, Docker, branch protection, Bandit, ShellCheck, CodeQL, image security и supply chain — OK;
+- актуальный `main` объединён в ветку; package architecture contract после пересборки baseline — OK;
 - независимый финальный review: новых блокеров не выявлено;
 - PR #610 переведён из draft в ready-for-review.
 
 ### PR и commit
 
-Ветка `fix/arthur-librarian-phase1`; PR `#610` готов к merge после свежего required-check run на текущем head.
+Ветка `fix/arthur-librarian-phase1`; PR `#610` готов к merge после свежего required-check run на финальном head.
 
 ### Незавершённое
 
