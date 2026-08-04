@@ -81,18 +81,24 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
-      - name: Refresh reviewed SQL exemption fingerprint
+      - name: Refresh reviewed architecture exemption fingerprints
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path('docs/package_architecture_exemptions.json')
           text = path.read_text(encoding='utf-8')
-          old = 'sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:ef58b2fc2d83d17d'
-          new = 'sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:108ab1f09389a505'
-          if text.count(old) != 1:
-              raise SystemExit(f'Expected one old pricing SQL fingerprint, found {text.count(old)}.')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          replacements = {
+              'sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:ef58b2fc2d83d17d':
+                  'sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:108ab1f09389a505',
+              'typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:a90fff492f411429':
+                  'typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:143bb3b5c3f17619',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected one reviewed fingerprint {old}, found {text.count(old)}.')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Regenerate canonical inventory
@@ -138,7 +144,7 @@ jobs:
               '- Python fallback `_banana_quality_surcharge` удалён; используется только `quality_surcharge_velvets` из price version.\n',
               '- Python fallback `_banana_quality_surcharge` удалён; используется только `quality_surcharge_velvets` из price version.\n'
               '- Разбор product floors вынесен из `quote_auf_payload`, чтобы функция оставалась в архитектурном лимите.\n'
-              '- Канонический package architecture inventory пересобран; существующий SQL exemption перенесён на новый fingerprint без добавления долга.\n',
+              '- Канонический package architecture inventory пересобран; существующие SQL и typing exemptions перенесены на новые fingerprints без добавления долга.\n',
           )
           text = text.replace(
               '- Полный GitHub Actions CI ещё не запускался.\n',
