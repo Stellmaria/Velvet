@@ -34,7 +34,7 @@ class KaelCoderControlDeploymentTests(unittest.TestCase):
         self.assertIn("- pre_tool_call", self.manifest)
         self.assertIn("- post_tool_call", self.manifest)
 
-    def test_plugin_uses_argv_without_shell_interpolation(self) -> None:
+    def test_plugin_uses_fixed_argv_without_shell_interpolation(self) -> None:
         tree = ast.parse(self.plugin)
         self.assertIsNotNone(tree)
         self.assertIn("subprocess.run(", self.plugin)
@@ -52,6 +52,21 @@ class KaelCoderControlDeploymentTests(unittest.TestCase):
             'self.assertEqual(MODULE.TELEGRAM_TOOLSET, context.tools[0]["toolset"])',
             self.plugin_tests,
         )
+
+    def test_plugin_protects_its_control_plane_from_file_tools(self) -> None:
+        for marker in (
+            '"/opt/data/config.yaml"',
+            '"/opt/data/.hermes-ops-client-token"',
+            '"/opt/data/tools"',
+            '"/opt/data/plugins"',
+            '"/opt/data/orchestration"',
+            '"/opt/data/audit"',
+            "_references_protected_control_path",
+            "O_NOFOLLOW",
+        ):
+            self.assertIn(marker, self.plugin)
+        self.assertIn("test_control_plane_files_are_immutable_to_model_tools", self.plugin_tests)
+        self.assertIn("test_audit_refuses_symlink_target", self.plugin_tests)
 
     def test_operator_installer_places_and_enables_user_plugin(self) -> None:
         for marker in (
