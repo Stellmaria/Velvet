@@ -6,9 +6,18 @@ import re
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
-_COMPOSE = ("docker", "compose", "-f", "compose.yaml")
+_SOURCE_DIR = Path(__file__).resolve().parent
+_COMPOSE = (
+    "docker",
+    "compose",
+    "--project-name",
+    "hermes-coder-orchestration",
+    "-f",
+    str(_SOURCE_DIR / "compose.yaml"),
+)
 _SECRET = re.compile(
     r"(?i)(authorization\s*:\s*bearer\s+|"
     r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)"

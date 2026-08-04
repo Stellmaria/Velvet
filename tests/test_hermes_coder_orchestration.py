@@ -425,7 +425,16 @@ class OrchestrationDeploymentContractTests(unittest.TestCase):
         )
         self.assertIn("hermes-coders.service", unit)
         self.assertIn("hermes-operator-control.service", unit)
-        self.assertIn("WorkingDirectory=/srv/velvet/deploy/hermes-orchestration", unit)
+        self.assertIn(
+            "WorkingDirectory=/srv/hermes-coders/releases/"
+            "current-hermes-coders/deploy/hermes-orchestration",
+            unit,
+        )
+        self.assertNotIn(
+            "WorkingDirectory=/srv/velvet/deploy/hermes-orchestration",
+            unit,
+        )
+        self.assertEqual(2, unit.count("--no-build"))
         self.assertIn("prepare_router_env.py", unit)
         self.assertIn("User=velvet", unit)
         self.assertNotIn("User=root", unit)
