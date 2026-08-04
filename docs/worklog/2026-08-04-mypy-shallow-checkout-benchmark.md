@@ -56,7 +56,8 @@
 - классификатор предпочитает exact `pull_request.base.sha` и не требует истории
   для вычисления merge-base;
 - fallback определения base branch сохранён;
-- добавлены workflow contract и тест выбора exact event base SHA.
+- добавлены workflow contract и тесты приоритета event SHA и fallback ветки;
+- устаревший Docker contract приведён к той же модели base resolution.
 
 ### Миграции и совместимость
 
@@ -71,7 +72,9 @@
 
 - первый shallow run выявил зависимость старого алгоритма от `merge-base`;
 - алгоритм исправлен на детерминированный diff exact base SHA против HEAD;
-- contract test проверяет shallow checkout, exact fetch и приоритет event SHA;
+- повторный targeted run выявил устаревший base-resolution contract;
+- contract tests теперь проверяют shallow checkout, exact fetch, приоритет event
+  SHA и fallback по имени ветки;
 - полный required CI повторно запускается на актуальном head PR `#608`;
 - после merge запланирован отдельный docs-only контрольный PR.
 
@@ -81,7 +84,8 @@
 - актуальная база: `6aa4f49ae27725e1bdc26de52c94fedeb5562d47`;
 - workflow commit после синхронизации: `5c74acfc528df2acba8587842c2bfcbec7ed7c78`;
 - exact-SHA classifier commit: `34fe14ba3b24b8336bca68acab954e5ec7655cdd`;
-- classifier contract commit: `8950ca9654b0ebad3d4da8f53b41e702f58f22f0`.
+- classifier contract commit: `8950ca9654b0ebad3d4da8f53b41e702f58f22f0`;
+- обновление Docker base-resolution contract: `8517e1b471d7828cbdf039d586121ceff0ca54b0`.
 
 ### Незавершённое
 
