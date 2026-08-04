@@ -3,21 +3,33 @@
 profile hermes-codex-bwrap flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
   userns,
+
+  # Bubblewrap mount propagation and root setup.
   mount options=(rw, rslave) -> /,
   mount options=(rw, rprivate) -> /,
   mount options=(rw, bind) / -> /,
   mount options=(rw, bind) / -> /**,
   mount options=(ro, remount, bind) / -> /,
   mount options=(ro, remount, bind) /** -> /**,
-  mount options=(rw, bind) /dev -> /dev,
-  mount options=(rw, rbind) /dev -> /dev,
-  mount options=(rw, bind) /workspace -> /workspace,
-  mount options=(rw, bind) /workspace/** -> /workspace/**,
   mount fstype=proc -> /proc/,
   umount /**,
   pivot_root,
+
+  # Device tree and immutable repository source.
+  mount options=(rw, bind) /dev -> /dev,
+  mount options=(rw, rbind) /dev -> /dev,
+  mount options=(ro, bind) /workspace-base -> /workspace-base,
+  mount options=(ro, remount, bind) /workspace-base -> /workspace-base,
+  mount options=(ro, bind) /workspace-base/** -> /workspace-base/**,
+  mount options=(ro, remount, bind) /workspace-base/** -> /workspace-base/**,
+
+  # Only disposable per-run clones are writable task checkouts.
+  mount options=(rw, bind) /opt/codex-runs/** -> /opt/codex-runs/**,
+  mount options=(ro, remount, bind) /opt/codex-runs/** -> /opt/codex-runs/**,
+
   network inet stream,
   network inet6 stream,
+
   / r,
   /** r,
   /bin/sh ix,
@@ -44,10 +56,14 @@ profile hermes-codex-bwrap flags=(attach_disconnected,mediate_deleted) {
   /usr/** mr,
   /lib/** mr,
   /lib64/** mr,
+
   /opt/codex/** rwk,
   /opt/codex-runs/** rwk,
-  /workspace/** rwk,
+  /workspace-base/ r,
+  /workspace-base/** r,
   /tmp/** rwk,
+
+  deny /workspace/** rwklx,
   deny /var/run/docker.sock rw,
   deny /run/docker.sock rw,
   deny /proc/sys/** w,
