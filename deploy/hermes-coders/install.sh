@@ -13,6 +13,7 @@ SOURCE_DIR="${HERMES_CODERS_SOURCE_DIR:-/srv/velvet/deploy/hermes-coders}"
 BRAIN_SOURCE="${HERMES_BRAIN_SOURCE_DIR:-/srv/velvet/deploy/hermes-brain}"
 BRAIN_VAULT_MANIFEST="${HERMES_BRAIN_MANIFEST:-$BRAIN_SOURCE/../../brain-vault/manifest.json}"
 OPERATOR_ENV="${HERMES_OPERATOR_ENV:-/srv/velvet/.env.hermes}"
+CONTROL_OPERATOR_ENV="${HERMES_CONTROL_OPERATOR_ENV:-/srv/hermes-operator-control/operator.env}"
 VELVET_REPO="${HERMES_VELVET_REPO:-https://github.com/Stellmaria/Velvet.git}"
 MAX_REPO="${HERMES_MAX_REPO:-https://github.com/Stellmaria/romatic_club_bot_max.git}"
 HERMES_UID_VALUE="${HERMES_UID:-10000}"
@@ -39,6 +40,7 @@ for required in \
   "$BRAIN_SOURCE/verify_installed_context.py" \
   "$BRAIN_VAULT_MANIFEST" \
   "$OPERATOR_ENV" \
+  "$CONTROL_OPERATOR_ENV" \
   "$UNIT_SOURCE"; do
   if [[ ! -f "$required" ]]; then
     echo "Отсутствует обязательный файл: $required" >&2
@@ -85,7 +87,7 @@ clone_workspace() {
 clone_workspace "$VELVET_REPO" "$ROOT/workspaces/velvet"
 clone_workspace "$MAX_REPO" "$ROOT/workspaces/max"
 
-python3 - "$OPERATOR_ENV" "$ROOT/secrets/velvet.env" "$ROOT/secrets/max.env" <<'PY'
+python3 - "$OPERATOR_ENV" "$CONTROL_OPERATOR_ENV" "$ROOT/secrets/velvet.env" "$ROOT/secrets/max.env" <<'PY'
 from __future__ import annotations
 
 import os
@@ -132,6 +134,7 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
 
 
 source = parse_env(Path(sys.argv[1]))
+operator = parse_env(Path(sys.argv[2]))
 coder_key = source.get("BYESU_HERMES_CODEX_API_KEY", "")
 pro_key = (
     source.get("BYESU_HERMES_GPT_PRO_API_KEY", "")
@@ -142,11 +145,11 @@ pro_key = (
 model_values = {
     "BYESU_HERMES_CODEX_API_KEY": coder_key,
     "BYESU_HERMES_GPT_PRO_API_KEY": pro_key,
-    "HERMES_CODER_ROUTER_CLIENT_TOKEN": source.get(
-        "HERMES_CODER_ROUTER_CLIENT_TOKEN", ""
-    ),
+    "HERMES_CODER_ROUTER_CLIENT_TOKEN": operator.get("HERMES_OPS_CLIENT_TOKEN", ""),
 }
-for target in map(Path, sys.argv[2:]):
+if len(model_values["HERMES_CODER_ROUTER_CLIENT_TOKEN"]) < 24:
+    raise SystemExit("Canonical coder router client token отсутствует или слишком короткий")
+for target in map(Path, sys.argv[3:]):
     write_env(target, model_values)
 
 if coder_key:

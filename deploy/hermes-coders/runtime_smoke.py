@@ -310,7 +310,7 @@ fingerprint_before="$(git -C /workspace status --porcelain=v1 --untracked-files=
 unshare --user --map-root-user true
 unshare --user --map-root-user --mount true
 bwrap --unshare-user --unshare-pid --ro-bind / / --proc /proc true
-bwrap --unshare-user --ro-bind /workspace /workspace \
+bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev --bind /workspace /workspace \
   git -C /workspace status --short >/dev/null
 fingerprint_after="$(git -C /workspace status --porcelain=v1 --untracked-files=all | sha256sum)"
 test "$fingerprint_before" = "$fingerprint_after"
@@ -358,8 +358,9 @@ def verify_codex_access(
 
 def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
     command = [
-        "docker", "compose", "-f", "/srv/velvet/docker-compose.yml",
-        "exec", "-T", "bot", "python", "-c",
+        "docker", "compose", "--env-file", "/srv/velvet/.env.server",
+        "-f", "/srv/velvet/docker-compose.server.yml",
+        "exec", "-T", "hermes", "python", "-c",
         "import importlib.metadata as m; print(m.version('cryptography'))",
     ]
     result = run_checked(command, timeout_seconds=30, runner=runner)

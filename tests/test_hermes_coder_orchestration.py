@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -160,6 +161,46 @@ class CoderRouterTests(unittest.TestCase):
                 f"orchestration-{project}-{payload['task_id']}",
                 forwarded["session_id"],
             )
+
+    def test_direct_client_http_handler_router_preserves_routing_to_upstream(self) -> None:
+        delegate = load_module(
+            "hermes_direct_delegate_integration",
+            ROOT / "deploy/hermes-coders/codex_delegate.py",
+        )
+        router = tier_router.TierAwareCoderRouter()
+        server = router_mod.ThreadingHTTPServer(("127.0.0.1", 0), router_mod.Handler)
+        server.router = router
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        routing = self.routing(
+            complexity="complex", risk="high",
+            mutation_policy="isolated_pr_only", requested_tier="high_risk",
+        )
+        try:
+            thread.start()
+            with patch.object(
+                router, "upstream", return_value={"run_id": "run_direct", "status": "queued"}
+            ) as upstream, patch.dict(
+                os.environ,
+                {
+                    "HERMES_CODEX_DELEGATE_URL": f"http://127.0.0.1:{server.server_port}",
+                    "HERMES_CODER_ROUTER_CLIENT_TOKEN": "c" * 48,
+                    "HERMES_CODEX_DELEGATE_PROJECT": "velvet",
+                },
+            ):
+                client = delegate.RunnerClient()
+                payload = delegate.build_payload(
+                    "Fix routing", project="velvet", model=None, **routing
+                )
+                response = client.request("POST", "/v1/coders/velvet/runs", payload)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+        self.assertEqual("run_direct", response["run_id"])
+        forwarded = upstream.call_args.args[3]
+        for key, value in routing.items():
+            self.assertEqual(value, forwarded[key])
+            self.assertIn(f'"{key}": "{value}"', forwarded["input"])
 
     def test_authentication_uses_constant_time_comparison(self) -> None:
         router = tier_router.TierAwareCoderRouter()

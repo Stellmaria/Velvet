@@ -4,6 +4,9 @@ import importlib.util
 import json
 import os
 import sys
+import subprocess
+import tempfile
+import shutil
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -62,13 +65,76 @@ class Issue581ContractTests(unittest.TestCase):
         self.assertNotIn("hermes-chat-", layer)
         self.assertEqual(2, layer.count("apparmor=hermes-codex-bwrap"))
         self.assertEqual(2, layer.count("seccomp=./security/seccomp-bwrap.json"))
+        self.assertNotIn("no-new-privileges", layer)
         seccomp = json.loads(
             (ROOT / "deploy/hermes-coders/security/seccomp-bwrap.json").read_text()
         )
         self.assertEqual("SCMP_ACT_ERRNO", seccomp["defaultAction"])
-        allowed = set(seccomp["syscalls"][0]["names"])
-        self.assertTrue({"clone", "unshare", "mount", "umount2"} <= allowed)
-        self.assertNotIn("ptrace", allowed)
+        self.assertEqual(
+            "https://github.com/moby/profiles/blob/main/seccomp/default.json",
+            seccomp["_baseProfile"],
+        )
+        added = next(rule for rule in seccomp["syscalls"] if rule.get("comment") == "Hermes bwrap additions")
+        self.assertEqual(
+            {"mount", "umount2", "pivot_root", "unshare"},
+            set(added["names"]),
+        )
+        clone = next(
+            rule for rule in seccomp["syscalls"]
+            if rule.get("comment") == "Hermes bwrap user namespace clone"
+        )
+        self.assertEqual("SCMP_CMP_MASKED_EQ", clone["args"][0]["op"])
+        self.assertEqual(268435456, clone["args"][0]["valueTwo"])
+
+    def test_three_layer_compose_config_is_valid(self) -> None:
+        if subprocess.run(["docker", "compose", "version"], capture_output=True).returncode:
+            self.skipTest("docker compose CLI unavailable")
+        source = ROOT / "deploy/hermes-coders"
+        with tempfile.TemporaryDirectory() as directory:
+            env = os.environ | {"HERMES_CODERS_ROOT": directory}
+            result = subprocess.run(
+                ["docker", "compose", "--profile", "velvet", "--profile", "max",
+                 "-f", "compose.yaml", "-f", "compose.runtime.yaml",
+                 "-f", "compose.security.yaml", "config", "--quiet"],
+                cwd=source, env=env, capture_output=True, text=True,
+            )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_apparmor_profile_has_bwrap_mount_and_project_exec_rules(self) -> None:
+        profile = ROOT / "deploy/hermes-coders/security/apparmor-hermes-codex-bwrap"
+        source = profile.read_text(encoding="utf-8")
+        for rule in (
+            "rslave", "mount options=(rw, bind) / -> /",
+            "mount options=(ro, remount, bind) / -> /",
+            "mount options=(rw, rbind) /dev -> /dev",
+            "mount options=(rw, bind) /workspace -> /workspace",
+            "fstype=proc", "pivot_root",
+            "/usr/bin/git ix", "/usr/local/bin/** ix",
+        ):
+            self.assertIn(rule, source)
+        parser = shutil.which("apparmor_parser")
+        if parser:
+            result = subprocess.run([parser, "-Q", str(profile)], capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_orchestration_installer_closes_token_context_and_restart_lifecycle(self) -> None:
+        source = (ROOT / "deploy/hermes-orchestration/install.sh").read_text(encoding="utf-8")
+        self.assertIn('set_value(velvet_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN"', source)
+        self.assertIn('set_value(max_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN"', source)
+        self.assertIn("compose.runtime.yaml", source)
+        self.assertIn("compose.security.yaml", source)
+        self.assertNotIn('$CODERS_SOURCE/SOUL.$project.md" "$data_dir/SOUL.md"', source)
+        verify = source.rfind("verify_installed_context.py")
+        self.assertGreater(verify, source.rfind("install_context_pack.py"))
+        self.assertNotIn('relative="${managed_file#', source)
+        context_installer = (ROOT / "deploy/hermes-brain/install_context_pack.py").read_text()
+        self.assertIn("mode=0o600", context_installer)
+        for unit in (
+            "systemctl restart hermes-coders.service",
+            "systemctl restart hermes-coder-router.service",
+            "systemctl restart velvet-hermes-incident-monitor.service",
+        ):
+            self.assertIn(unit, source)
 
     def test_lifecycle_uses_all_layers_and_restarts_oneshot(self) -> None:
         unit = (ROOT / "deploy/systemd/hermes-coders.service").read_text()
@@ -91,12 +157,13 @@ class Issue581ContractTests(unittest.TestCase):
             "unshare --user --map-root-user true",
             "unshare --user --map-root-user --mount true", "bwrap --unshare-user",
             "fingerprint_before", "hermes-codex-bwrap", "Seccomp", "NoNewPrivs",
-            'CRYPTOGRAPHY_VERSION = "50.0.0"',
+            'CRYPTOGRAPHY_VERSION = "50.0.0"', "docker-compose.server.yml",
+            '"hermes", "python"', "--ro-bind / / --dev-bind /dev /dev",
         ):
             self.assertIn(marker, smoke)
         tier_runner = (ROOT / "deploy/hermes-coders/codex_tier_runner.py").read_text()
         for marker in (
-            '"fetch", "--prune", "origin", "main"',
+            '"remote", "show", "origin"', "default_branch",
             '"worktree", "add", "--detach"',
             "CODEX_ISOLATED_WORKTREE_ROOT",
             "isolated_workspace_cleanup_failed",
@@ -104,6 +171,7 @@ class Issue581ContractTests(unittest.TestCase):
             self.assertIn(marker, tier_runner)
         self.assertIn("def _worktree_git", tier_runner)
         self.assertNotIn("def _git(self, *args", tier_runner)
+        self.assertNotIn('"origin/main"', tier_runner)
 
 
 if __name__ == "__main__":

@@ -91,6 +91,33 @@ Docker socket/production volumes и запрет production privileges.
 Нужен отдельный approved live rollout с четырьмя Telegram paths. Временный
 production workaround этим PR не удаляется.
 
+### Blocking review 4849528520 — исправление 4 августа 2026
+
+- direct payload теперь проходит integration path
+  `codex_delegate -> HTTP Handler -> TierAwareCoderRouter -> mocked upstream` и
+  сохраняет все пять routing-полей до runner;
+- security overlay больше не дублирует `no-new-privileges`; реальный Compose
+  v2.39.1 render трёх layers проходит `config --quiet`;
+- единственный router client token выводится из `HERMES_OPS_CLIENT_TOKEN`,
+  записывается без печати значения в router env и оба direct coder env;
+- orchestration installer использует runtime/security layers, устанавливает
+  manifest-managed coder context с режимом `0600`, не перезаписывает coder
+  `SOUL.md` после manifest и выполняет verify после последней записи;
+- lifecycle явно перезапускает coder, router и incident oneshot units;
+- cryptography probe использует `.env.server`, canonical server Compose и
+  service `hermes`; bwrap probe реально исполняет Git с доступным root tree;
+- seccomp заменён актуальной Docker-default основой с минимальными bwrap
+  additions; AppArmor дополнен mount propagation/proc/bind и project-tool exec;
+- isolated worktree получает и валидирует default branch из remote metadata,
+  без hardcoded `origin/main`.
+
+Проверки review-среза: focused Hermes — 60 tests OK; полный релевантный Hermes
+suite без импортирующего отсутствующий в runner `asyncpg` entity-contract —
+165 tests OK, 1 environment skip; `compileall`, `bash -n`, JSON parse,
+`git diff --check` — OK; standalone Docker Compose v2.39.1 three-layer
+`config --quiet` — OK. Docker daemon, AppArmor parser/audit и live container
+smoke недоступны в isolated coder contract и остаются rollout-only проверками.
+
 ### Следующий шаг
 
 После owner review слить PR #582; затем отдельным разрешённым rollout выполнить

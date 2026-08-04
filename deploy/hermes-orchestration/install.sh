@@ -13,6 +13,8 @@ HERMES_ENV_FILE="${HERMES_ENV_FILE:-$VELVET_APP_DIR/.env.hermes}"
 SERVICE_USER="${HERMES_ORCHESTRATION_SERVICE_USER:-velvet}"
 CODERS_ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 CODERS_SOURCE="$VELVET_APP_DIR/deploy/hermes-coders"
+BRAIN_SOURCE="$VELVET_APP_DIR/deploy/hermes-brain"
+BRAIN_MANIFEST="$VELVET_APP_DIR/brain-vault/manifest.json"
 OPERATOR_SOURCE="$VELVET_APP_DIR/deploy/hermes-operator"
 ORCHESTRATION_SOURCE="$VELVET_APP_DIR/deploy/hermes-orchestration"
 CONTROL_ROOT="${HERMES_OPERATOR_CONTROL_ROOT:-/srv/hermes-operator-control}"
@@ -30,10 +32,14 @@ required=(
   "$VELVET_COMPOSE_FILE"
   "$HERMES_ENV_FILE"
   "$CODERS_SOURCE/compose.yaml"
-  "$CODERS_SOURCE/SOUL.velvet.md"
-  "$CODERS_SOURCE/SOUL.max.md"
+  "$CODERS_SOURCE/compose.runtime.yaml"
+  "$CODERS_SOURCE/compose.security.yaml"
   "$CODERS_SOURCE/ensure_runtime_config.py"
   "$CODERS_SOURCE/preflight.py"
+  "$BRAIN_SOURCE/context_compiler.py"
+  "$BRAIN_SOURCE/install_context_pack.py"
+  "$BRAIN_SOURCE/verify_installed_context.py"
+  "$BRAIN_MANIFEST"
   "$OPERATOR_SOURCE/coder_router.py"
   "$OPERATOR_SOURCE/coderctl.py"
   "$OPERATOR_SOURCE/SOUL.operator.md"
@@ -118,6 +124,16 @@ def ensure_key(path: Path) -> dict[str, str]:
     return values
 
 
+def set_value(path: Path, name: str, value: str) -> None:
+    values = parse_env(path)
+    values[name] = value
+    path.write_text(
+        "\n".join(f"{key}={item}" for key, item in values.items()) + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(path, 0o600)
+
+
 velvet_path, max_path, operator_path, router_path, hermes_path, server_path, incident_path = map(
     Path, sys.argv[1:]
 )
@@ -141,6 +157,8 @@ operator = parse_env(operator_path)
 client_token = operator.get("HERMES_OPS_CLIENT_TOKEN", "")
 if len(client_token) < 24:
     raise SystemExit("HERMES_OPS_CLIENT_TOKEN отсутствует или слишком короткий")
+set_value(velvet_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN", client_token)
+set_value(max_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN", client_token)
 router_values = {
     "HERMES_CODER_ROUTER_CLIENT_TOKEN": client_token,
     "HERMES_CODER_VELVET_TOKEN": velvet["API_SERVER_KEY"],
@@ -207,6 +225,21 @@ python3 \
   "$CODERS_ROOT/data/max/config.yaml"
 env HERMES_CODERS_ROOT="$CODERS_ROOT" python3 "$CODERS_SOURCE/preflight.py"
 
+pack_root="$(mktemp -d)"
+trap 'rm -rf -- "$pack_root"' EXIT
+python3 "$BRAIN_SOURCE/context_compiler.py" validate
+for project in velvet max; do
+  entity="$project-coder"
+  python3 "$BRAIN_SOURCE/context_compiler.py" compile \
+    --entity "$entity" --output "$pack_root/$entity"
+  data_dir="$CODERS_ROOT/data/$project"
+  python3 "$BRAIN_SOURCE/install_context_pack.py" \
+    --pack "$pack_root/$entity" --target "$data_dir" --entity "$entity" --mode hermes
+  chown -R "$(stat -c '%u' "$data_dir"):$(stat -c '%g' "$data_dir")" "$data_dir"
+  python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+    --target "$data_dir" --entity "$entity" --mode hermes
+done
+
 velvet_data_dir="$(python3 - "$VELVET_ENV_FILE" <<'PY'
 from pathlib import Path
 import sys
@@ -251,28 +284,19 @@ PY
 chown "$hermes_uid:$hermes_gid" "$hermes_data/SOUL.md"
 chmod 0640 "$hermes_data/SOUL.md"
 
-for project in velvet max; do
-  data_dir="$CODERS_ROOT/data/$project"
-  if [[ ! -d "$data_dir" ]]; then
-    echo "Отсутствует coder data directory: $data_dir" >&2
-    exit 4
-  fi
-  install -m 0640 \
-    -o "$(stat -c '%u' "$data_dir")" \
-    -g "$(stat -c '%g' "$data_dir")" \
-    "$CODERS_SOURCE/SOUL.$project.md" "$data_dir/SOUL.md"
-done
-
-runuser -u "$SERVICE_USER" -- env \
-  HERMES_CODERS_ROOT="$CODERS_ROOT" \
+runuser -u "$SERVICE_USER" -- env HERMES_CODERS_ROOT="$CODERS_ROOT" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
-  docker compose --profile velvet --profile max -f "$CODERS_SOURCE/compose.yaml" \
-  up -d --build --force-recreate
+  docker compose --profile velvet --profile max \
+  -f "$CODERS_SOURCE/compose.yaml" -f "$CODERS_SOURCE/compose.runtime.yaml" \
+  -f "$CODERS_SOURCE/compose.security.yaml" config --quiet
 
 install -m 0644 "$ROUTER_UNIT_SOURCE" "$ROUTER_UNIT_TARGET"
 install -m 0644 "$INCIDENT_UNIT_SOURCE" "$INCIDENT_UNIT_TARGET"
 systemctl daemon-reload
-systemctl enable --now hermes-coder-router.service
+systemctl enable hermes-coders.service hermes-coder-router.service \
+  velvet-hermes-incident-monitor.service
+systemctl restart hermes-coders.service
+systemctl restart hermes-coder-router.service
 
 runuser -u "$SERVICE_USER" -- bash -ceu "
   cd '$VELVET_APP_DIR'
@@ -327,7 +351,7 @@ if [[ "$coder_health_ok" != "true" ]]; then
   exit 6
 fi
 
-systemctl enable --now velvet-hermes-incident-monitor.service
+systemctl restart velvet-hermes-incident-monitor.service
 if ! systemctl is-active --quiet velvet-hermes-incident-monitor.service; then
   systemctl --no-pager --full status velvet-hermes-incident-monitor.service >&2 || true
   exit 7
@@ -338,7 +362,9 @@ systemctl --no-pager --full status velvet-hermes-incident-monitor.service
 runuser -u "$SERVICE_USER" -- env \
   HERMES_CODERS_ROOT="$CODERS_ROOT" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
-  docker compose --profile velvet --profile max -f "$CODERS_SOURCE/compose.yaml" ps
+  docker compose --profile velvet --profile max \
+  -f "$CODERS_SOURCE/compose.yaml" -f "$CODERS_SOURCE/compose.runtime.yaml" \
+  -f "$CODERS_SOURCE/compose.security.yaml" ps
 runuser -u "$SERVICE_USER" -- env \
   HERMES_CODER_ROUTER_ENV_FILE="$CODER_ROUTER_ENV" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \

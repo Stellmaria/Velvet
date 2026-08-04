@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -44,10 +45,27 @@ class AuditedTierProviderManager(ProviderChainManager):
         target = (self._worktree_root / run_id).resolve()
         if target.parent != self._worktree_root:
             raise RuntimeError("unsafe isolated worktree path")
-        self._worktree_git("fetch", "--prune", "origin", "main")
+        result = subprocess.run(
+            ["git", "remote", "show", "origin"], cwd=self._base_workspace,
+            check=False, capture_output=True, text=True, timeout=120,
+        )
+        match = re.search(r"^\s*HEAD branch:\s*([^\s]+)\s*$", result.stdout, re.MULTILINE)
+        default_branch = match.group(1) if result.returncode == 0 and match else ""
+        valid_ref = subprocess.run(
+            ["git", "check-ref-format", "--branch", default_branch],
+            cwd=self._base_workspace, check=False, capture_output=True, text=True,
+            timeout=10,
+        )
+        if (
+            not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,254}", default_branch)
+            or valid_ref.returncode != 0
+        ):
+            raise RuntimeError("origin did not report a safe default branch")
+        self._worktree_git("fetch", "--prune", "origin", default_branch)
+        base_ref = f"origin/{default_branch}"
         try:
             self._worktree_git(
-                "worktree", "add", "--detach", str(target), "origin/main"
+                "worktree", "add", "--detach", str(target), base_ref
             )
         except RuntimeError:
             if target.parent == self._worktree_root and target.exists():
