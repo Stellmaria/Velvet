@@ -129,6 +129,9 @@ class AufMarginAccountingContractTests(unittest.TestCase):
         debits = Path("migrations/z034_auf_revenue_lot_debits.sql").read_text(
             encoding="utf-8"
         )
+        settlement_fix = Path(
+            "migrations/z035_auf_settlement_basis_quality_fix.sql"
+        ).read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE IF NOT EXISTS auf_revenue_lots", accounting)
         self.assertIn("allocate_auf_charge_revenue", accounting)
         self.assertIn("CREATE TABLE IF NOT EXISTS auf_generation_pnl", accounting)
@@ -137,6 +140,9 @@ class AufMarginAccountingContractTests(unittest.TestCase):
         self.assertIn("auf_wallet_debit_lot_allocations", debits)
         self.assertIn("consume_auf_wallet_debit_revenue", debits)
         self.assertIn("'manual_debit', 'adjustment'", debits)
+        self.assertIn("allocation.basis_quality", settlement_fix)
+        self.assertIn("resolved_basis_quality", settlement_fix)
+        self.assertNotIn("COUNT(DISTINCT basis_quality)", settlement_fix)
 
     def test_charge_snapshot_contains_auditable_pricing_fields(self) -> None:
         source = inspect.getsource(_reserve_charge)
