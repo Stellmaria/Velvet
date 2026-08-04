@@ -9,7 +9,7 @@ import re
 import shlex
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -66,24 +66,54 @@ CODER_DELEGATE_SCHEMA = {
 }
 
 _INTERPRETERS = frozenset(
-    {"python", "python3", "/usr/bin/python3", "/usr/local/bin/python3", sys.executable}
+    {
+        "python",
+        "python3",
+        "/usr/bin/python3",
+        "/usr/local/bin/python3",
+        sys.executable,
+    }
 )
 _SHELL_META_PATTERN = re.compile(r"[\n\r;&|><`$()]")
 _GITHUB_TOOL_PATTERN = re.compile(r"(^|_)(git|github|gh)(_|$)", re.IGNORECASE)
 
 _MONITOR_ACTIONS = frozenset(
-    {"summary", "resources", "containers", "services", "gpu", "models", "processes", "incidents"}
+    {
+        "summary",
+        "resources",
+        "containers",
+        "services",
+        "gpu",
+        "models",
+        "processes",
+        "incidents",
+    }
 )
-_OPS_ACTIONS = frozenset({"status", "logs", "start", "restart", "update", "rollback"})
+_OPS_ACTIONS = frozenset(
+    {"status", "logs", "start", "restart", "update", "rollback"}
+)
 _RECONCILE_ACTIONS = frozenset({"submit", "status", "wait", "list"})
 _RECONCILE_TARGETS = frozenset({"coders", "entities", "librarian", "all"})
 _RUN_ACTIONS = frozenset({"status", "stop"})
-_CODER_CONTROL_ACTIONS = frozenset({"health", "status", "wait", "list", "stop", "pr"})
+_CODER_CONTROL_ACTIONS = frozenset(
+    {"health", "status", "wait", "list", "stop", "pr"}
+)
 
 _FILE_TOOLS = frozenset(
-    {"read_file", "write_file", "patch", "edit_file", "replace_file", "list_directory", "find_files"}
+    {
+        "read_file",
+        "write_file",
+        "patch",
+        "edit_file",
+        "replace_file",
+        "delete_file",
+        "list_directory",
+        "find_files",
+    }
 )
-_CODE_EXECUTION_TOOLS = frozenset({"execute_code", "python", "python_repl", "shell_exec"})
+_CODE_EXECUTION_TOOLS = frozenset(
+    {"execute_code", "python", "python_repl", "shell_exec"}
+)
 _REPOSITORY_ROOTS = tuple(
     Path(value)
     for value in (
@@ -93,7 +123,29 @@ _REPOSITORY_ROOTS = tuple(
         "/srv/romatic_club_bot_max",
     )
 )
+_PROTECTED_CONTROL_PATHS = tuple(
+    Path(value)
+    for value in (
+        "/opt/data/config.yaml",
+        "/opt/data/.env",
+        "/opt/data/auth.json",
+        "/opt/data/.hermes-ops-client-token",
+        "/opt/data/tools",
+        "/opt/data/plugins",
+        "/opt/data/orchestration",
+        "/opt/data/audit",
+    )
+)
 _REPOSITORY_MARKERS = tuple(str(path).lower() for path in _REPOSITORY_ROOTS)
+_CONTROL_MARKERS = tuple(str(path).lower() for path in _PROTECTED_CONTROL_PATHS)
+_SENSITIVE_DATA_NAMES = frozenset(
+    {
+        "auth.json",
+        "credentials.json",
+        "secrets.json",
+        ".hermes-ops-client-token",
+    }
+)
 
 _BLOCK_MESSAGE = (
     "BLOCKED by Kael coder policy: repository and code work must use "
@@ -112,7 +164,10 @@ def _utc_now() -> str:
 
 def _audit_path() -> Path:
     return Path(
-        os.getenv("KAEL_CODER_AUDIT_PATH", "/opt/data/audit/kael-coder-control.jsonl")
+        os.getenv(
+            "KAEL_CODER_AUDIT_PATH",
+            "/opt/data/audit/kael-coder-control.jsonl",
+        )
     )
 
 
@@ -127,7 +182,9 @@ def _audit(event: str, **fields: Any) -> None:
             safe_fields[key] = value
         elif isinstance(value, (list, tuple)):
             safe_fields[key] = [
-                item for item in value if isinstance(item, (str, int, float, bool))
+                item
+                for item in value
+                if isinstance(item, (str, int, float, bool))
             ][:32]
 
     encoded = (
@@ -183,7 +240,9 @@ def _error_result(
 
 
 def _validate_choice(
-    args: Mapping[str, Any], field: str, choices: tuple[str, ...]
+    args: Mapping[str, Any],
+    field: str,
+    choices: tuple[str, ...],
 ) -> str:
     value = args.get(field)
     if not isinstance(value, str) or value not in choices:
@@ -201,10 +260,13 @@ def _validate_delegate_args(raw_args: Any) -> dict[str, str]:
     missing = _REQUIRED_FIELDS - set(raw_args)
     if unknown:
         raise CoderControlError(
-            "Unknown fields: " + ", ".join(sorted(str(item) for item in unknown))
+            "Unknown fields: "
+            + ", ".join(sorted(str(item) for item in unknown))
         )
     if missing:
-        raise CoderControlError("Missing fields: " + ", ".join(sorted(missing)))
+        raise CoderControlError(
+            "Missing fields: " + ", ".join(sorted(missing))
+        )
 
     task = raw_args.get("task")
     if not isinstance(task, str):
@@ -218,12 +280,22 @@ def _validate_delegate_args(raw_args: Any) -> dict[str, str]:
     return {
         "project": _validate_choice(raw_args, "project", PROJECTS),
         "task_type": _validate_choice(raw_args, "task_type", TASK_TYPES),
-        "complexity": _validate_choice(raw_args, "complexity", COMPLEXITIES),
+        "complexity": _validate_choice(
+            raw_args,
+            "complexity",
+            COMPLEXITIES,
+        ),
         "risk": _validate_choice(raw_args, "risk", RISKS),
         "mutation_policy": _validate_choice(
-            raw_args, "mutation_policy", MUTATION_POLICIES
+            raw_args,
+            "mutation_policy",
+            MUTATION_POLICIES,
         ),
-        "requested_tier": _validate_choice(raw_args, "requested_tier", TIERS),
+        "requested_tier": _validate_choice(
+            raw_args,
+            "requested_tier",
+            TIERS,
+        ),
         "task": task,
     }
 
@@ -410,11 +482,17 @@ def _terminal_allowed(command: Any) -> bool:
     if script.endswith("/monitorctl.py"):
         return argv[0] in _MONITOR_ACTIONS
     if script.endswith("/opsctl.py"):
-        return len(argv) >= 2 and argv[0] in PROJECTS and argv[1] in _OPS_ACTIONS
+        return (
+            len(argv) >= 2
+            and argv[0] in PROJECTS
+            and argv[1] in _OPS_ACTIONS
+        )
     if script.endswith("/reconcilectl.py"):
         if argv[0] not in _RECONCILE_ACTIONS:
             return False
-        return argv[0] != "submit" or (len(argv) >= 2 and argv[1] in _RECONCILE_TARGETS)
+        return argv[0] != "submit" or (
+            len(argv) >= 2 and argv[1] in _RECONCILE_TARGETS
+        )
     if script.endswith("/runctl.py"):
         return argv[0] in _RUN_ACTIONS
     if script == CODERCTL_PATH:
@@ -422,7 +500,7 @@ def _terminal_allowed(command: Any) -> bool:
     return False
 
 
-def _iter_strings(value: Any):
+def _iter_strings(value: Any) -> Iterator[str]:
     if isinstance(value, str):
         yield value
     elif isinstance(value, Mapping):
@@ -433,26 +511,62 @@ def _iter_strings(value: Any):
             yield from _iter_strings(item)
 
 
+def _resolve_candidate(raw: str) -> Path | None:
+    if not raw or "\n" in raw or len(raw) > 4096:
+        return None
+    try:
+        candidate = Path(raw).expanduser()
+        if not candidate.is_absolute():
+            candidate = Path("/opt/data") / candidate
+        return candidate.resolve(strict=False)
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+
+def _is_within(candidate: Path, root: Path) -> bool:
+    try:
+        candidate.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
 def _references_repository(args: Mapping[str, Any]) -> bool:
     for raw in _iter_strings(args):
         lowered = raw.lower()
         if any(marker in lowered for marker in _REPOSITORY_MARKERS):
             return True
-        if not raw or "\n" in raw or len(raw) > 4096:
+        resolved = _resolve_candidate(raw)
+        if resolved is not None and any(
+            _is_within(resolved, root) for root in _REPOSITORY_ROOTS
+        ):
+            return True
+    return False
+
+
+def _references_protected_control_path(args: Mapping[str, Any]) -> bool:
+    for raw in _iter_strings(args):
+        lowered = raw.lower()
+        if any(marker in lowered for marker in _CONTROL_MARKERS):
+            return True
+        resolved = _resolve_candidate(raw)
+        if resolved is None:
             continue
-        try:
-            candidate = Path(raw).expanduser()
-            if not candidate.is_absolute():
-                candidate = Path("/opt/data") / candidate
-            resolved = candidate.resolve(strict=False)
-        except (OSError, RuntimeError, ValueError):
-            continue
-        for root in _REPOSITORY_ROOTS:
-            try:
-                resolved.relative_to(root)
+        if any(
+            resolved == protected or _is_within(resolved, protected)
+            for protected in _PROTECTED_CONTROL_PATHS
+        ):
+            return True
+        if _is_within(resolved, Path("/opt/data")):
+            name = resolved.name.lower()
+            if (
+                name in _SENSITIVE_DATA_NAMES
+                or name.startswith(".env")
+                or "token" in name
+                or "secret" in name
+                or "credential" in name
+            ):
                 return True
-            except ValueError:
-                continue
     return False
 
 
@@ -472,7 +586,10 @@ def _block(
         session_id=session_id,
         tool_call_id=tool_call_id,
     )
-    return {"action": "block", "message": f"{_BLOCK_MESSAGE} Reason: {reason}"}
+    return {
+        "action": "block",
+        "message": f"{_BLOCK_MESSAGE} Reason: {reason}",
+    }
 
 
 def _on_pre_tool_call(
@@ -529,7 +646,21 @@ def _on_pre_tool_call(
     if name in _FILE_TOOLS and _references_repository(arguments):
         return _block(
             tool_name=name,
-            reason="Direct access to a local project or coder workspace is disabled.",
+            reason=(
+                "Direct access to a local project or coder workspace is "
+                "disabled."
+            ),
+            task_id=task_id,
+            session_id=session_id,
+            tool_call_id=tool_call_id,
+        )
+    if name in _FILE_TOOLS and _references_protected_control_path(arguments):
+        return _block(
+            tool_name=name,
+            reason=(
+                "Direct access to Kael config, credentials, controllers, "
+                "plugins, ledger, or audit files is disabled."
+            ),
             task_id=task_id,
             session_id=session_id,
             tool_call_id=tool_call_id,
