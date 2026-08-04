@@ -105,7 +105,7 @@ jobs:
         run: |
           python scripts/inventory_package_architecture.py \
             --write \
-            --label pr-600-discounted-banana-pricing
+            --label p1-package-architecture-baseline
 
       - name: Refresh inventory contract constants
         run: |
@@ -165,7 +165,7 @@ jobs:
         run: |
           python scripts/inventory_package_architecture.py \
             --write \
-            --label pr-600-discounted-banana-pricing
+            --label p1-package-architecture-baseline
 
       - name: Validate refreshed branch
         run: |
