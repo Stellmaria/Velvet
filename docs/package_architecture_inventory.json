@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 648,
-  "production_loc": 142291,
+  "production_loc": 142454,
   "layer_counts": {
     "application": 21,
     "composition": 66,
@@ -34359,12 +34359,12 @@
       "module": "velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 304,
-      "function_count": 11,
-      "class_count": 1,
+      "loc": 467,
+      "function_count": 18,
+      "class_count": 3,
       "handler_count": 0,
-      "max_function_length": 59,
-      "branch_count": 30,
+      "max_function_length": 61,
+      "branch_count": 46,
       "internal_imports": [
         "velvet_bot.core.config.kie",
         "velvet_bot.domains.auf_runtime",
@@ -34373,7 +34373,7 @@
         "velvet_bot.presentation.telegram.routers.workspace_auf",
         "velvet_bot.workspace_ui"
       ],
-      "external_import_count": 13,
+      "external_import_count": 14,
       "aiogram_imports": [
         "aiogram.exceptions",
         "aiogram.fsm.context",
@@ -34393,22 +34393,32 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 48,
+          "line": 64,
           "owner": "_byesu_api_key",
           "call": "os.getenv"
         },
         {
-          "line": 52,
+          "line": 68,
           "owner": "_byesu_api_key",
           "call": "os.getenv"
         },
         {
-          "line": 63,
+          "line": 200,
+          "owner": "_fetch_codex_subscription_limits",
+          "call": "os.getenv"
+        },
+        {
+          "line": 201,
+          "owner": "_fetch_codex_subscription_limits",
+          "call": "os.getenv"
+        },
+        {
+          "line": 79,
           "owner": "_byesu_api_key",
           "call": "os.getenv"
         },
         {
-          "line": 62,
+          "line": 78,
           "owner": "_byesu_api_key",
           "call": "os.getenv"
         }

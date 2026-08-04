@@ -6,6 +6,7 @@ import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from html import escape
 from typing import Mapping
@@ -23,12 +24,27 @@ from velvet_bot.workspace_ui import workspace_callback
 
 _PROVIDER_TIMEOUT_SECONDS = 8
 _BYESU_BILLING_URL = "https://byesu.com/dashboard/billing/subscription"
+_CODEX_LIMITS_DEFAULT_BASE_URL = "http://hermes-coder-router:8878"
 
 
 @dataclass(frozen=True, slots=True)
 class ProviderBalance:
     value: Decimal | None
     unit: str
+    error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CodexLimitWindow:
+    used_percent: Decimal
+    window_duration_mins: int
+    resets_at: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class CodexSubscriptionLimits:
+    plan_type: str
+    windows: tuple[CodexLimitWindow, ...]
     error: str | None = None
 
 
@@ -131,6 +147,151 @@ async def _fetch_byesu_balance() -> ProviderBalance:
     if remaining < 0:
         remaining = Decimal("0")
     return ProviderBalance(remaining.quantize(Decimal("0.01")), "$")
+
+
+def _read_codex_limits_json(
+    *,
+    base_url: str,
+    api_key: str,
+    timeout_seconds: int,
+) -> Mapping[str, object]:
+    request = urllib.request.Request(
+        f"{base_url.rstrip('/')}/v1/coders/velvet/rate-limits",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+            "User-Agent": "VelvetBot/1.0 codex-limits",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        if error.code in {401, 403}:
+            message = "доступ к лимитам Codex запрещён"
+        else:
+            message = f"Codex router вернул HTTP {error.code}"
+        raise RuntimeError(message) from error
+    except (urllib.error.URLError, TimeoutError, OSError) as error:
+        raise RuntimeError("Codex router недоступен") from error
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Codex вернул неизвестный формат лимитов") from error
+    if not isinstance(payload, Mapping):
+        raise RuntimeError("Codex вернул неизвестный формат лимитов")
+    return payload
+
+
+def _codex_window(value: object) -> CodexLimitWindow | None:
+    if not isinstance(value, Mapping):
+        return None
+    used = _decimal(value.get("used_percent"))
+    duration = value.get("window_duration_mins")
+    reset = value.get("resets_at")
+    if used is None or used > 100 or isinstance(duration, bool) or not isinstance(duration, int):
+        return None
+    if duration <= 0 or duration > 525_600:
+        return None
+    resets_at = reset if isinstance(reset, int) and not isinstance(reset, bool) and reset > 0 else None
+    return CodexLimitWindow(used, duration, resets_at)
+
+
+async def _fetch_codex_subscription_limits() -> CodexSubscriptionLimits:
+    api_key = os.getenv("CODEX_LIMITS_API_KEY", "").strip()
+    base_url = os.getenv(
+        "CODEX_LIMITS_BASE_URL",
+        _CODEX_LIMITS_DEFAULT_BASE_URL,
+    ).strip()
+    if not api_key or not base_url:
+        return CodexSubscriptionLimits("unknown", (), "интеграция не настроена")
+    try:
+        payload = await asyncio.wait_for(
+            asyncio.to_thread(
+                _read_codex_limits_json,
+                base_url=base_url,
+                api_key=api_key,
+                timeout_seconds=_PROVIDER_TIMEOUT_SECONDS,
+            ),
+            timeout=_PROVIDER_TIMEOUT_SECONDS + 1,
+        )
+    except TimeoutError:
+        return CodexSubscriptionLimits("unknown", (), "запрос лимитов превысил время ожидания")
+    except RuntimeError as error:
+        return CodexSubscriptionLimits("unknown", (), str(error))
+    plan_type = str(payload.get("plan_type") or "unknown").strip().casefold()
+    windows = tuple(
+        window
+        for window in (
+            _codex_window(payload.get("primary")),
+            _codex_window(payload.get("secondary")),
+        )
+        if window is not None
+    )
+    if not windows:
+        return CodexSubscriptionLimits(plan_type, (), "окна лимитов не возвращены")
+    return CodexSubscriptionLimits(
+        plan_type,
+        tuple(sorted(windows, key=lambda item: item.window_duration_mins)),
+    )
+
+
+def _codex_plan_label(plan_type: str) -> str:
+    return {
+        "plus": "Plus",
+        "pro": "Pro",
+        "team": "Team",
+        "business": "Business",
+        "enterprise": "Enterprise",
+    }.get(plan_type, "ChatGPT")
+
+
+def _codex_window_label(minutes: int) -> str:
+    if minutes % 10_080 == 0:
+        days = minutes // 1_440
+        return f"{days} дн."
+    if minutes % 60 == 0:
+        return f"{minutes // 60} ч"
+    return f"{minutes} мин"
+
+
+def _codex_reset_label(
+    resets_at: int | None,
+    *,
+    now: datetime | None = None,
+) -> str | None:
+    if resets_at is None:
+        return None
+    current = now or datetime.now(timezone.utc)
+    seconds = max(0, int(datetime.fromtimestamp(resets_at, timezone.utc).timestamp() - current.timestamp()))
+    minutes = (seconds + 59) // 60
+    days, minute_remainder = divmod(minutes, 1_440)
+    hours, minute_remainder = divmod(minute_remainder, 60)
+    if days:
+        return f"сброс через {days} д {hours} ч"
+    if hours:
+        return f"сброс через {hours} ч {minute_remainder} мин"
+    return f"сброс через {minute_remainder} мин"
+
+
+def _codex_lines(
+    limits: CodexSubscriptionLimits,
+    *,
+    now: datetime | None = None,
+) -> list[str]:
+    plan = _codex_plan_label(limits.plan_type)
+    if limits.error:
+        return [f"• <b>Codex {escape(plan)}</b>: {escape(limits.error)}"]
+    result: list[str] = []
+    for window in limits.windows:
+        remaining = max(Decimal("0"), Decimal("100") - window.used_percent)
+        reset = _codex_reset_label(window.resets_at, now=now)
+        suffix = f" · {escape(reset)}" if reset else ""
+        result.append(
+            f"• <b>Codex {escape(plan)} · {_codex_window_label(window.window_duration_mins)}</b>: "
+            f"<b>{_format_decimal(remaining)}% осталось</b>{suffix}"
+        )
+    return result
+
 
 
 async def _fetch_kie_balances(
@@ -264,9 +425,10 @@ async def handle_auf_provider_balances(
         return
 
     await state.clear()
-    (kie_balance, grs_balance), byesu_balance = await asyncio.gather(
+    (kie_balance, grs_balance), byesu_balance, codex_limits = await asyncio.gather(
         _fetch_kie_balances(kie_settings),
         _fetch_byesu_balance(),
+        _fetch_codex_subscription_limits(),
     )
     wallet = wallet_overview.wallet
     text = "\n".join(
@@ -277,6 +439,7 @@ async def handle_auf_provider_balances(
             _provider_line("Kie.ai", kie_balance),
             _provider_line("GRS AI", grs_balance),
             _provider_line("Byesu · остаток квоты ключа", byesu_balance),
+            *_codex_lines(codex_limits),
             "",
             "<b>Внутренний кошелёк Velvet</b>",
             f"• Доступно: <b>{format_auf_units(wallet.available_units)}</b>",

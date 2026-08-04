@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import hmac
 import json
+import math
 import os
 import re
+import selectors
 import signal
 import subprocess
 import tempfile
 import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from http import HTTPStatus
@@ -181,6 +184,171 @@ def render_legacy_output(payload: dict[str, Any]) -> str:
     )
 
 
+def _bounded_number(
+    value: object,
+    *,
+    minimum: float,
+    maximum: float,
+) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(result) or result < minimum or result > maximum:
+        return None
+    return result
+
+
+def _normalize_codex_rate_window(value: object) -> dict[str, int | float | None] | None:
+    if not isinstance(value, dict):
+        return None
+    used_percent = _bounded_number(
+        value.get("usedPercent"),
+        minimum=0,
+        maximum=100,
+    )
+    duration = _bounded_number(
+        value.get("windowDurationMins"),
+        minimum=1,
+        maximum=525_600,
+    )
+    if used_percent is None or duration is None:
+        return None
+    resets_at = _bounded_number(
+        value.get("resetsAt"),
+        minimum=1,
+        maximum=32_503_680_000,
+    )
+    return {
+        "used_percent": used_percent,
+        "window_duration_mins": int(duration),
+        "resets_at": int(resets_at) if resets_at is not None else None,
+    }
+
+
+def normalize_codex_subscription_rate_limits(
+    account_result: object,
+    rate_result: object,
+) -> dict[str, Any]:
+    if not isinstance(account_result, dict):
+        raise RuntimeError("Codex вернул неизвестный формат аккаунта")
+    account = account_result.get("account")
+    if not isinstance(account, dict) or account.get("type") != "chatgpt":
+        raise RuntimeError("Codex не авторизован через ChatGPT")
+    plan_type = str(account.get("planType") or "unknown").strip().casefold()
+    if not isinstance(rate_result, dict):
+        raise RuntimeError("Codex вернул неизвестный формат лимитов")
+    rate_limits = rate_result.get("rateLimits")
+    if not isinstance(rate_limits, dict):
+        raise RuntimeError("Codex не вернул лимиты подписки")
+    primary = _normalize_codex_rate_window(rate_limits.get("primary"))
+    secondary = _normalize_codex_rate_window(rate_limits.get("secondary"))
+    if primary is None and secondary is None:
+        raise RuntimeError("Codex не вернул окна лимитов подписки")
+    reached = rate_limits.get("rateLimitReachedType")
+    return {
+        "plan_type": plan_type,
+        "primary": primary,
+        "secondary": secondary,
+        "rate_limit_reached_type": reached if isinstance(reached, str) else None,
+    }
+
+
+def read_codex_subscription_rate_limits(
+    codex_bin: str,
+    codex_home: Path,
+    *,
+    timeout_seconds: int = 12,
+) -> dict[str, Any]:
+    if not (codex_home / "auth.json").is_file():
+        raise RuntimeError("Codex не авторизован")
+    process = subprocess.Popen(
+        [codex_bin, "app-server", "--stdio"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        bufsize=1,
+        env={**os.environ, "CODEX_HOME": str(codex_home)},
+    )
+    if process.stdin is None or process.stdout is None:
+        process.kill()
+        raise RuntimeError("Codex app-server не запустился")
+    deadline = time.monotonic() + max(3, timeout_seconds)
+    selector = selectors.DefaultSelector()
+    selector.register(process.stdout, selectors.EVENT_READ)
+
+    def send(payload: dict[str, Any]) -> None:
+        process.stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        process.stdin.flush()
+
+    def collect(expected_ids: set[int]) -> dict[int, object]:
+        results: dict[int, object] = {}
+        while expected_ids - set(results):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not selector.select(remaining):
+                raise RuntimeError("Codex app-server превысил время ожидания")
+            line = process.stdout.readline()
+            if not line:
+                raise RuntimeError("Codex app-server завершился без ответа")
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict) or payload.get("id") not in expected_ids:
+                continue
+            request_id = int(payload["id"])
+            if payload.get("error") is not None:
+                raise RuntimeError("Codex app-server отклонил запрос лимитов")
+            results[request_id] = payload.get("result")
+        return results
+
+    try:
+        send(
+            {
+                "method": "initialize",
+                "id": 1,
+                "params": {
+                    "clientInfo": {
+                        "name": "velvet_balance_probe",
+                        "title": "Velvet Balance Probe",
+                        "version": "1.0",
+                    }
+                },
+            }
+        )
+        collect({1})
+        send({"method": "initialized", "params": {}})
+        send(
+            {
+                "method": "account/read",
+                "id": 2,
+                "params": {"refreshToken": False},
+            }
+        )
+        send({"method": "account/rateLimits/read", "id": 3})
+        results = collect({2, 3})
+        return normalize_codex_subscription_rate_limits(results[2], results[3])
+    except (OSError, ValueError) as error:
+        raise RuntimeError("Codex app-server недоступен") from error
+    finally:
+        selector.close()
+        try:
+            process.stdin.close()
+        except OSError:
+            pass
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=2)
+
+
+
 class RunStore:
     def __init__(self, root: Path) -> None:
         self.root = root
@@ -292,6 +460,12 @@ class CodexManager:
             "workspace": str(self.workspace),
             "structured_output": True,
         }
+
+    def rate_limits(self) -> dict[str, Any]:
+        return read_codex_subscription_rate_limits(
+            self.codex_bin,
+            self.codex_home,
+        )
 
     def submit(self, payload: dict[str, Any]) -> dict[str, Any]:
         allowed_fields = {"input", "session_id", "instructions", "model"}
@@ -533,6 +707,9 @@ class Handler(BaseHTTPRequestHandler):
         self.manager.authenticate(self.headers.get("Authorization"))
         if self.command == "GET" and path == "/v1/capabilities":
             self._json(HTTPStatus.OK, self.manager.capabilities())
+            return
+        if self.command == "GET" and path == "/v1/rate-limits":
+            self._json(HTTPStatus.OK, self.manager.rate_limits())
             return
         if self.command == "POST" and path == "/v1/runs":
             self._json(HTTPStatus.ACCEPTED, self.manager.submit(self._read_json()))
