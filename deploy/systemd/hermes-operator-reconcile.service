@@ -11,7 +11,7 @@ Group=root
 WorkingDirectory=/srv/velvet
 EnvironmentFile=/srv/hermes-operator-control/operator.env
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 /usr/local/libexec/velvet-hermes-operator-reconcile.py
+ExecStart=/usr/bin/python3 /usr/local/libexec/velvet-hermes-operator-reconcile-entrypoint.py
 Restart=on-failure
 RestartSec=3
 TimeoutStartSec=30
