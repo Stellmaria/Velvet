@@ -91,6 +91,11 @@ class SecurityGateContractTests(unittest.TestCase):
             errors = GATE.check_security_exceptions(root=root, today=date(2026, 8, 2))
         self.assertTrue(any("expired" in error for error in errors))
 
+    def test_lock_rebuild_is_constrained_by_committed_graph(self) -> None:
+        source = SECURITY_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("--constraint requirements.lock", source)
+        self.assertIn("--constraint requirements-dev.lock", source)
+
     def test_vulnerable_fixture_is_isolated_and_audited(self) -> None:
         fixture = VULNERABLE_REQUIREMENTS.read_text(encoding="utf-8")
         workflow = SECURITY_WORKFLOW.read_text(encoding="utf-8")
