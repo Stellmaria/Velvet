@@ -1,0 +1,82 @@
+name: arthur rebase staging
+
+on:
+  push:
+    branches:
+      - tmp/arthur-librarian-phase1-rebase
+    paths:
+      - ".github/workflows/arthur-rebase-staging.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arthur-rebase-staging
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    if: github.repository == 'Stellmaria/Velvet'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: tmp/arthur-librarian-phase1-rebase
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Fetch reviewed PR source branch
+        run: git fetch --no-tags origin fix/arthur-librarian-phase1
+
+      - name: Copy only approved Phase 1 paths
+        run: |
+          set -euo pipefail
+          git checkout origin/fix/arthur-librarian-phase1 -- \
+            deploy/hermes-librarian/compose.yaml \
+            deploy/hermes-librarian/install.sh \
+            deploy/hermes-librarian/start.sh \
+            docs/worklog/2026-08-04-arthur-librarian-phase1-hardening.md \
+            tests/test_storage_librarian_ollama.py \
+            tests/test_storage_librarian_phase1_hardening.py \
+            velvet_bot/application/storage_librarian.py \
+            velvet_bot/domains/telegram_storage/librarian_content.py \
+            velvet_bot/domains/telegram_storage/librarian_models.py \
+            velvet_bot/domains/telegram_storage/librarian_repository.py \
+            velvet_bot/infrastructure/ai/storage_librarian_ollama.py
+
+      - name: Generate inventories against current main ancestry
+        run: |
+          set -euo pipefail
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label arthur-librarian-phase1
+          python scripts/update_p2_stability_inventory.py \
+            --label arthur-librarian-phase1 \
+            --schema-version 78
+
+      - name: Commit rebuilt branch and remove workflow
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            deploy/hermes-librarian/compose.yaml \
+            deploy/hermes-librarian/install.sh \
+            deploy/hermes-librarian/start.sh \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/worklog/2026-08-04-arthur-librarian-phase1-hardening.md \
+            tests/test_storage_librarian_ollama.py \
+            tests/test_storage_librarian_phase1_hardening.py \
+            velvet_bot/application/storage_librarian.py \
+            velvet_bot/domains/telegram_storage/librarian_content.py \
+            velvet_bot/domains/telegram_storage/librarian_models.py \
+            velvet_bot/domains/telegram_storage/librarian_repository.py \
+            velvet_bot/infrastructure/ai/storage_librarian_ollama.py
+          git rm .github/workflows/arthur-rebase-staging.yml
+          git commit -m "fix: rebuild Arthur Librarian Phase 1 on current main"
+          git push origin HEAD:tmp/arthur-librarian-phase1-rebase
