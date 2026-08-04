@@ -161,6 +161,12 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
+      - name: Regenerate final canonical inventory
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label pr-600-discounted-banana-pricing
+
       - name: Validate refreshed branch
         run: |
           python -m compileall -q velvet_bot tests scripts
