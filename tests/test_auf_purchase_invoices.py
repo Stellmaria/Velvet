@@ -79,19 +79,26 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
                 """
             )
 
-    async def _invoice(self, *, key: str, package: int = 100):
+    async def _invoice(
+        self,
+        *,
+        key: str,
+        package: int = 100,
+        currency: str = "RUB",
+    ):
         return await self.service.create_invoice(
             workspace_id=DEFAULT_WORKSPACE_ID,
             package_auf=package,
             actor_user_id=77,
             idempotency_key=f"test:purchase:{key}",
+            billing_currency=currency,
         )
 
     async def test_invoice_locks_package_price_and_exchange_rate(self) -> None:
         invoice = await self._invoice(key="locked", package=100)
-        self.assertEqual(Decimal("3.37000000"), invoice.package_price_usd)
+        self.assertEqual(Decimal("5.37000000"), invoice.package_price_usd)
         self.assertEqual(Decimal("79.85000000"), invoice.locked_exchange_rate)
-        self.assertEqual(Decimal("269.00"), invoice.final_local_amount)
+        self.assertEqual(Decimal("429.00"), invoice.final_local_amount)
 
         async with self.database.acquire() as connection:
             await connection.execute(
@@ -104,12 +111,19 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         stored = await self.repository.invoice_by_code(invoice.public_code)
         self.assertIsNotNone(stored)
         assert stored is not None
-        self.assertEqual(Decimal("269.00"), stored.final_local_amount)
+        self.assertEqual(Decimal("429.00"), stored.final_local_amount)
         self.assertEqual(Decimal("79.85000000"), stored.locked_exchange_rate)
 
+    async def test_usd_invoice_uses_fixed_package_price(self) -> None:
+        invoice = await self._invoice(key="usd", package=100, currency="USD")
+        self.assertEqual("USD", invoice.billing_currency)
+        self.assertEqual(Decimal("5.37000000"), invoice.package_price_usd)
+        self.assertEqual(Decimal("5.37"), invoice.final_local_amount)
+        self.assertEqual(Decimal("79.85000000"), invoice.locked_exchange_rate)
+
     async def test_invoice_creation_is_idempotent(self) -> None:
-        first = await self._invoice(key="dedupe", package=40)
-        second = await self._invoice(key="dedupe", package=40)
+        first = await self._invoice(key="dedupe", package=20)
+        second = await self._invoice(key="dedupe", package=20)
         self.assertEqual(first.id, second.id)
         async with self.database.acquire() as connection:
             count = await connection.fetchval(

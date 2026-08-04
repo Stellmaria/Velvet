@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from enum import StrEnum
@@ -14,8 +14,13 @@ from velvet_bot.domains.auf_runtime import AufRuntimeService
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 
 from .models import AufWallet
+from .package_pricing import active_package_price
 from .service import AUF_PACKAGES
-from .store import _ensure_wallet, _wallet_from_row
+from .store import (
+    _ensure_wallet,
+    _wallet_from_row,
+    set_invoice_currency_usd,
+)
 
 
 class AufInvoiceStatus(StrEnum):
@@ -77,6 +82,7 @@ class AufPurchaseRepository:
         if amount not in AUF_PACKAGES:
             raise ValueError("Неизвестный пакет Ауф.")
         key = _idempotency_key(idempotency_key)
+        fixed_rub = await active_package_price(self._database, amount)
         async with self._database.acquire() as connection:
             async with connection.transaction():
                 existing = await connection.fetchrow(
@@ -100,8 +106,15 @@ class AufPurchaseRepository:
                     raise RuntimeError("Настройки экономики Ауф не инициализированы.")
                 retail = Decimal(settings["retail_auf_usd"])
                 rate = Decimal(settings["billing_usd_to_rub"])
-                usd = (Decimal(amount) * retail).quantize(Decimal("0.01"))
-                local = _round_rub(usd * rate)
+                if fixed_rub is None:
+                    usd = (Decimal(amount) * retail).quantize(Decimal("0.01"))
+                    local = _round_rub(usd * rate)
+                else:
+                    local = Decimal(fixed_rub).quantize(Decimal("0.01"))
+                    usd = (local / rate).quantize(
+                        Decimal("0.01"),
+                        rounding=ROUND_HALF_UP,
+                    )
                 invoice_id = uuid4()
                 public_code = _public_code(invoice_id)
                 expires_at = datetime.now(timezone.utc) + timedelta(
@@ -140,6 +153,16 @@ class AufPurchaseRepository:
         if row is None:
             raise RuntimeError("Не удалось создать счёт на покупку Ауф.")
         return _invoice_from_row(row)
+
+    async def set_currency_usd(
+        self,
+        *,
+        invoice_id: UUID,
+    ) -> Decimal | None:
+        return await set_invoice_currency_usd(
+            self._database,
+            invoice_id=invoice_id,
+        )
 
     async def recent_invoices(
         self,
@@ -493,16 +516,31 @@ class AufPurchaseService:
         package_auf: int,
         actor_user_id: int,
         idempotency_key: str,
+        billing_currency: str = "RUB",
     ) -> AufPurchaseInvoice:
         await self._runtime.require_workspace_access(
             workspace_id=int(workspace_id),
             actor_user_id=int(actor_user_id),
         )
-        return await self._repository.create_invoice(
+        currency = _billing_currency(billing_currency)
+        invoice = await self._repository.create_invoice(
             workspace_id=int(workspace_id),
             package_auf=int(package_auf),
             actor_user_id=int(actor_user_id),
             idempotency_key=idempotency_key,
+        )
+        if currency == "RUB" or invoice.billing_currency == "USD":
+            return invoice
+        usd_amount = await self._repository.set_currency_usd(
+            invoice_id=invoice.id,
+        )
+        if usd_amount is None:
+            raise RuntimeError("Не удалось зафиксировать валюту счёта.")
+        return replace(
+            invoice,
+            package_price_usd=usd_amount,
+            billing_currency="USD",
+            final_local_amount=usd_amount,
         )
 
     async def recent_invoices(
@@ -594,6 +632,13 @@ def _normalize_code(value: str) -> str:
     if not code or len(code) > 16:
         raise ValueError("Некорректный код счёта Ауф.")
     return code
+
+
+def _billing_currency(value: str) -> str:
+    currency = str(value or "").strip().upper()
+    if currency not in {"RUB", "USD"}:
+        raise ValueError("Поддерживаются только RUB и USD.")
+    return currency
 
 
 def _idempotency_key(value: str) -> str:

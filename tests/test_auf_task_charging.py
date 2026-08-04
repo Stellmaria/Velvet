@@ -131,7 +131,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             idempotency_key=f"test:auf-charge:grant:{amount}",
         )
 
-    async def test_price_catalog_uses_provider_plus_thirty_whole_values(self) -> None:
+    async def test_price_catalog_uses_global_margin_policy_whole_values(self) -> None:
         cases = (
             (self._request(key="quote-nb2").payload, Decimal("1")),
             (
@@ -149,7 +149,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1K",
                     references=5,
                 ).payload,
-                Decimal("5"),
+                Decimal("4"),
             ),
             (
                 self._request(
@@ -159,7 +159,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     duration=5,
                     audio=True,
                 ).payload,
-                Decimal("9"),
+                Decimal("6"),
             ),
             (
                 self._request(
@@ -168,7 +168,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1080p",
                     duration=5,
                 ).payload,
-                Decimal("29"),
+                Decimal("20"),
             ),
         )
         for payload, expected in cases:

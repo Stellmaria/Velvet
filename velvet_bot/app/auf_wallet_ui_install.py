@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 
-from velvet_bot.presentation.telegram.routers.workspace_auf_wallet import (
+from velvet_bot.app.auf_wallet_currency_ui import (
     handle_auf_wallet_action,
 )
 
