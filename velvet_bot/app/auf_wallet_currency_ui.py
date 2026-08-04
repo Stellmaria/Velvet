@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 from decimal import Decimal
 from html import escape
 
@@ -165,43 +164,6 @@ def _invoice_line(invoice) -> str:
         f"{escape(legacy._INVOICE_LABELS[invoice.status])}"
     )
 
-
-async def _set_invoice_currency(
-    purchase_service: AufPurchaseService,
-    invoice,
-    currency: str,
-):
-    selected_currency = _normalize_currency(currency)
-    if selected_currency == "RUB":
-        return invoice
-
-    repository = getattr(purchase_service, "_repository", None)
-    database = getattr(repository, "_database", None)
-    if database is None:
-        raise RuntimeError("Хранилище счетов недоступно для выбора валюты.")
-
-    async with database.acquire() as connection:
-        row = await connection.fetchrow(
-            """
-            UPDATE auf_purchase_invoices
-            SET billing_currency = 'USD',
-                final_local_amount = package_price_usd,
-                updated_at = NOW()
-            WHERE id = $1::UUID
-              AND status = 'created'
-            RETURNING package_price_usd
-            """,
-            invoice.id,
-        )
-    if row is None:
-        raise RuntimeError("Не удалось зафиксировать валюту счёта.")
-
-    usd_amount = Decimal(row["package_price_usd"])
-    return replace(
-        invoice,
-        billing_currency="USD",
-        final_local_amount=usd_amount,
-    )
 
 
 async def _notify_owner_purchase_intent(
@@ -375,11 +337,7 @@ async def handle_auf_wallet_action(
                 package_auf=package_auf,
                 actor_user_id=callback.from_user.id,
                 idempotency_key=f"telegram-wallet-invoice:{callback.id}",
-            )
-            invoice = await _set_invoice_currency(
-                auf_purchase_service,
-                invoice,
-                selected_currency,
+                billing_currency=selected_currency,
             )
             owner_notified = await _notify_owner_purchase_intent(
                 callback,

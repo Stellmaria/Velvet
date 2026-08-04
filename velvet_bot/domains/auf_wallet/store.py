@@ -241,6 +241,27 @@ class AufWalletRepository:
         return _wallet_from_row(row)
 
 
+async def set_invoice_currency_usd(
+    database: Database,
+    *,
+    invoice_id: UUID,
+) -> Decimal | None:
+    async with database.acquire() as connection:
+        value = await connection.fetchval(
+            """
+            UPDATE auf_purchase_invoices
+            SET billing_currency = 'USD',
+                final_local_amount = package_price_usd,
+                updated_at = NOW()
+            WHERE id = $1::UUID
+              AND status = 'created'
+            RETURNING package_price_usd
+            """,
+            invoice_id,
+        )
+    return Decimal(value) if value is not None else None
+
+
 async def _ensure_wallet(connection: Any, *, workspace_id: int, for_update: bool = False):
     await connection.execute(
         """
@@ -315,4 +336,4 @@ def _entry_from_row(row: Mapping[str, Any]) -> AufWalletEntry:
     )
 
 
-__all__ = ("AufWalletRepository",)
+__all__ = ("AufWalletRepository", "set_invoice_currency_usd")

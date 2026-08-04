@@ -1,8 +1,8 @@
 # Package-wide architecture inventory
 
-- Generated from: `p1-package-architecture-baseline`
-- Production modules: **645**
-- Production LOC: **141159**
+- Generated from: `pr-587-auf-pricing-rub-usd`
+- Production modules: **646**
+- Production LOC: **141664**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **44**
@@ -13,7 +13,7 @@
 ## Layers
 
 - `application`: **21** modules
-- `composition`: **64** modules
+- `composition`: **65** modules
 - `core`: **7** modules
 - `domain`: **183** modules
 - `infrastructure`: **29** modules
