@@ -59,7 +59,8 @@ Chunking в этой фазе не реализуется: большие док
 - installer выполняет structured bot-to-Ollama smoke;
 - добавлены regression tests для всех перечисленных контрактов;
 - канонические package/P2 inventory перегенерированы: production LOC 141744, architecture violations 548, approved broad boundaries 106 из 106;
-- package inventory записан с канонической меткой `working-tree`, которую воспроизводит CI.
+- package inventory записан с канонической меткой `working-tree`, которую воспроизводит CI;
+- repository-layout inventory обновлён для нового test consumer `tests/test_storage_librarian_phase1_hardening.py`.
 
 ### Миграции и совместимость
 
