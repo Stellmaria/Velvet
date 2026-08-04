@@ -131,7 +131,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
             idempotency_key=f"test:auf-charge:grant:{amount}",
         )
 
-    async def test_price_catalog_uses_global_margin_policy_whole_values(self) -> None:
+    async def test_price_catalog_uses_hardened_global_policy(self) -> None:
         cases = (
             (self._request(key="quote-nb2").payload, Decimal("1")),
             (
@@ -140,7 +140,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     model="nano_banana_pro",
                     resolution="4K",
                 ).payload,
-                Decimal("3"),
+                Decimal("4"),
             ),
             (
                 self._request(
@@ -159,7 +159,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     duration=5,
                     audio=True,
                 ).payload,
-                Decimal("5"),
+                Decimal("6"),
             ),
             (
                 self._request(
@@ -216,6 +216,48 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(repriced.quoted_units, baseline.quoted_units)
         self.assertEqual(Decimal("80.00"), repriced.markup_percent)
         await self.pricing.clear_user_markup(user_id=self._OWNER_ID)
+
+    async def test_individual_markup_rejects_values_below_safety_floor(self) -> None:
+        async with self.database.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO telegram_users (user_id, first_name)
+                VALUES ($1::BIGINT, 'Pricing floor test')
+                ON CONFLICT (user_id) DO NOTHING
+                """,
+                self._OWNER_ID,
+            )
+        with self.assertRaisesRegex(ValueError, "15.00%"):
+            await self.pricing.set_user_markup(
+                user_id=self._OWNER_ID,
+                markup_percent=Decimal("14.99"),
+                actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+            )
+
+    async def test_fifteen_percent_override_preserves_wan_2k_tier(self) -> None:
+        async with self.database.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO telegram_users (user_id, first_name)
+                VALUES ($1::BIGINT, 'Pricing tier test')
+                ON CONFLICT (user_id) DO NOTHING
+                """,
+                self._OWNER_ID,
+            )
+        await self.pricing.set_user_markup(
+            user_id=self._OWNER_ID,
+            markup_percent=Decimal("15"),
+            actor_user_id=GLOBAL_WORKSPACE_CREATOR_ID,
+        )
+        quote = await self.pricing.quote(
+            self._request(
+                key="markup-wan-2k",
+                model="wan_27_image",
+                resolution="2K",
+            ).payload
+        )
+        self.assertEqual(Decimal("3"), quote.quoted_auf)
+        self.assertEqual(Decimal("15.00"), quote.markup_percent)
 
     async def test_enqueue_reserves_once_and_success_captures(self) -> None:
         await self._grant(10)
