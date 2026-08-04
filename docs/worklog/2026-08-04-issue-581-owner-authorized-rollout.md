@@ -1,11 +1,13 @@
 # Сессия: owner-authorized merge и controlled rollout #581
 
 - Дата: 2026-08-04
+- ID: `owner-rollout-issue-581-20260804`
 - Линия/фаза: hotfix/controlled rollout
-- Статус: выполняется
+- Статус: частично
 - Issue: #581
 - PR: #582
 - Ветка: `hotfix/581-unified-coder-router-sandbox`
+- Базовый commit: `eb4849c3ee4461b540d3e1ba0572cf54f82a12d3`
 - Reviewed head до авторизации: `17c42fc0746b8aa49a26b547dfe48678e6c8ec3a`
 
 ## Перед началом
