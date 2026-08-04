@@ -13,6 +13,7 @@ OPERATOR_ENV="${HERMES_OPERATOR_ENV:-/srv/hermes-operator-control/operator.env}"
 SERVICE_USER="${HERMES_RECONCILE_SERVICE_USER:-velvet}"
 SOURCE_DIR="$VELVET_APP_DIR/deploy/hermes-reconcile"
 HOST_SCRIPT_TARGET="/usr/local/libexec/velvet-hermes-operator-reconcile.py"
+HOST_ENTRYPOINT_TARGET="/usr/local/libexec/velvet-hermes-operator-reconcile-entrypoint.py"
 HOST_UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/hermes-operator-reconcile.service"
 HOST_UNIT_TARGET="/etc/systemd/system/hermes-operator-reconcile.service"
 GATEWAY_UNIT_SOURCE="$VELVET_APP_DIR/deploy/systemd/hermes-reconcile-gateway.service"
@@ -27,6 +28,7 @@ for path in \
   "$SOURCE_DIR/Dockerfile" \
   "$SOURCE_DIR/gateway.py" \
   "$SOURCE_DIR/host_reconcile.py" \
+  "$SOURCE_DIR/host_reconcile_entrypoint.py" \
   "$SOURCE_DIR/reconcilectl.py" \
   "$HOST_UNIT_SOURCE" \
   "$GATEWAY_UNIT_SOURCE" \
@@ -106,6 +108,7 @@ install -d -m 0770 -o root -g "$SERVICE_USER" \
 install -d -m 0700 -o root -g root \
   /srv/hermes-operator-control/reconcile-state
 install -m 0755 -o root -g root "$SOURCE_DIR/host_reconcile.py" "$HOST_SCRIPT_TARGET"
+install -m 0755 -o root -g root "$SOURCE_DIR/host_reconcile_entrypoint.py" "$HOST_ENTRYPOINT_TARGET"
 install -m 0644 -o root -g root "$HOST_UNIT_SOURCE" "$HOST_UNIT_TARGET"
 install -m 0644 -o root -g root "$GATEWAY_UNIT_SOURCE" "$GATEWAY_UNIT_TARGET"
 
@@ -180,6 +183,8 @@ if [[ "$healthy" != "true" ]]; then
   exit 5
 fi
 
+# Expansion is intentionally deferred to the shell running inside Hermes.
+# shellcheck disable=SC2016
 runuser -u "$SERVICE_USER" -- \
   docker compose --env-file "$VELVET_ENV_FILE" -f "$VELVET_COMPOSE_FILE" \
     --profile agent exec -T hermes \
@@ -195,5 +200,5 @@ systemctl --no-pager --full status hermes-reconcile-gateway.service
 printf '%s\n' \
   "Hermes reconcile control installed." \
   "Kael can request only: coders, entities, librarian or all." \
-  "Each request requires a clean main checkout matching fetched origin/main." \
+  "Each request requires a clean checkout exactly matching fetched origin/main; attached main and detached HEAD are supported." \
   "Arbitrary shell, paths, services and commit SHA are not accepted."

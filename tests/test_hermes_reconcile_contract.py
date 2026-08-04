@@ -210,7 +210,11 @@ class HermesReconcileStaticContractTests(unittest.TestCase):
         self.assertIn("NoNewPrivileges=true", self.host_unit)
         self.assertIn("RuntimeDirectory=hermes-operator-reconcile", self.host_unit)
         self.assertIn(
-            "/usr/local/libexec/velvet-hermes-operator-reconcile.py",
+            "/usr/local/libexec/velvet-hermes-operator-reconcile-entrypoint.py",
+            self.host_unit,
+        )
+        self.assertNotIn(
+            "/srv/velvet/deploy/hermes-reconcile/host_reconcile_entrypoint.py",
             self.host_unit,
         )
         self.assertIn("User=velvet", self.gateway_unit)
@@ -221,6 +225,8 @@ class HermesReconcileStaticContractTests(unittest.TestCase):
         self.assertIn("without printing secret values", self.installer)
         self.assertIn("chmod 0600", self.installer)
         self.assertIn("reconcilectl.py", self.installer)
+        self.assertIn("HOST_ENTRYPOINT_TARGET", self.installer)
+        self.assertIn("host_reconcile_entrypoint.py", self.installer)
         self.assertNotIn("TELEGRAM_BOT_TOKEN", self.installer)
         self.assertNotIn("SUPERVISOR_TOKEN", self.installer)
 
