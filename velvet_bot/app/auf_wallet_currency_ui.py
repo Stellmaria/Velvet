@@ -165,6 +165,7 @@ def _invoice_line(invoice) -> str:
     )
 
 
+
 async def _notify_owner_purchase_intent(
     callback: CallbackQuery,
     *,
