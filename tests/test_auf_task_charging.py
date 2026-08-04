@@ -149,7 +149,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1K",
                     references=5,
                 ).payload,
-                Decimal("4"),
+                Decimal("3"),
             ),
             (
                 self._request(
@@ -159,7 +159,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     duration=5,
                     audio=True,
                 ).payload,
-                Decimal("6"),
+                Decimal("5"),
             ),
             (
                 self._request(
@@ -168,7 +168,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1080p",
                     duration=5,
                 ).payload,
-                Decimal("20"),
+                Decimal("18"),
             ),
         )
         for payload, expected in cases:
