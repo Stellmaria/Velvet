@@ -161,6 +161,7 @@ SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
         "main.py",
         "velvet_bot/**",
         "scripts/container_healthcheck.py",
+        ".github/workflows/security.yml",
     ),
     "mypy": (
         "mypy.ini",
