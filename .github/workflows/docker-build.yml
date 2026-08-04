@@ -34,7 +34,7 @@ on:
       - "scripts/vision_model_loader.sh"
       - "scripts/benchmark_vision_gateway.py"
       - "tests/test_ci_changed_surfaces.py"
-      - "tests/test_docker_build_concurrency.py"
+      - "tests/test_docker_build_workflow_contract.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
   push:
@@ -71,7 +71,7 @@ on:
       - "scripts/vision_model_loader.sh"
       - "scripts/benchmark_vision_gateway.py"
       - "tests/test_ci_changed_surfaces.py"
-      - "tests/test_docker_build_concurrency.py"
+      - "tests/test_docker_build_workflow_contract.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
 
@@ -90,6 +90,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 2
           persist-credentials: false
 
@@ -99,11 +100,13 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.base_ref }}
           BEFORE_SHA: ${{ github.event.before }}
         run: |
           python scripts/ci_changed_surfaces.py \
             --event-name "$EVENT_NAME" \
             --base-sha "$BASE_SHA" \
+            --base-ref "$BASE_REF" \
             --before-sha "$BEFORE_SHA" \
             --github-output "$GITHUB_OUTPUT"
 
