@@ -61,8 +61,9 @@ The reconciler:
 8. retires the old manual Compose override into the backup directory only after
    all checks pass.
 
-A failed reconciliation restores the previous unit files and does not stop or
-remove the already-running containers.
+A failed reconciliation restores the previous unit files and force-recreates only
+the two coder containers from their previously mounted Compose source. It never
+uses `compose down`, removes volumes or deletes persistent coder data.
 
 ## Smoke modes
 
