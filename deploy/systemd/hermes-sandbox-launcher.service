@@ -7,9 +7,10 @@ After=docker.service hermes-sandbox-launcher.socket
 Type=simple
 User=root
 Group=root
-Environment=PYTHONPATH=/usr/local/lib/hermes-sandbox-launcher
+Environment=PYTHONPATH=/usr/local/lib/hermes-sandbox-launcher/current
 EnvironmentFile=/srv/hermes-coders/launcher.env
-ExecStart=/usr/bin/python3 /usr/local/lib/hermes-sandbox-launcher/launcher.py
+EnvironmentFile=/srv/hermes-coders/launcher-secrets.env
+ExecStart=/usr/bin/python3 /usr/local/lib/hermes-sandbox-launcher/current/launcher.py
 Restart=on-failure
 RestartSec=3
 TimeoutStartSec=30
@@ -32,10 +33,12 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_CHOWN CAP_FOWNER
 AmbientCapabilities=
-ReadOnlyPaths=/usr/local/lib/hermes-sandbox-launcher
+ReadOnlyPaths=/usr/local/lib/hermes-sandbox-launcher/current
 ReadOnlyPaths=/srv/hermes-coders/codex
 ReadOnlyPaths=/srv/hermes-coders/secrets
+ReadOnlyPaths=/srv/hermes-coders/launcher-secrets.env
 ReadWritePaths=/run/hermes-sandbox
+ReadWritePaths=/run/hermes-sandbox-private
 ReadWritePaths=/srv/hermes-coders/codex-runs
 UMask=0077
 
