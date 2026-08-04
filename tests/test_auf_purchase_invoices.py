@@ -108,8 +108,8 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(Decimal("79.85000000"), stored.locked_exchange_rate)
 
     async def test_invoice_creation_is_idempotent(self) -> None:
-        first = await self._invoice(key="dedupe", package=40)
-        second = await self._invoice(key="dedupe", package=40)
+        first = await self._invoice(key="dedupe", package=20)
+        second = await self._invoice(key="dedupe", package=20)
         self.assertEqual(first.id, second.id)
         async with self.database.acquire() as connection:
             count = await connection.fetchval(
