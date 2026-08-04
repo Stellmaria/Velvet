@@ -128,7 +128,7 @@ class ErrorCenterTests(unittest.TestCase):
         captured = capture_log_record(
             self._record(
                 "Failed BOT_TOKEN=%s DATABASE_URL=%s",
-                "123456789:abcdefghijklmnopqrstuvwxyzABCDE",
+                "123456789:" + "abcdefghijklmnopqrstuvwxyzABCDE",
                 "postgresql://velvet:secret@localhost:5432/velvet",
             )
         )
