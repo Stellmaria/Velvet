@@ -3737,7 +3737,7 @@
       "issue": "#463"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:3ea39b747c3133f6",
+      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:1fcb511b394a190e",
       "owner": "provider-adapters",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [

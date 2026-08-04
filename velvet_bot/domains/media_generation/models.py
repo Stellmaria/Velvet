@@ -220,10 +220,8 @@ class KieModelCatalog:
     seedream_5_pro_image: str = ""
     nano_banana_2: str = "nano-banana-2"
     nano_banana_pro: str = "nano-banana-pro"
-    qwen2_image_edit: str = "qwen2/image-edit"
     wan_27_image: str = "wan/2-7-image"
     wan_27_image_pro: str = "wan/2-7-image-pro"
-    flux_2_pro_image: str = "flux-2/pro-image-to-image"
     grok_imagine_video: str = "grok-imagine/image-to-video"
     grok_imagine_video_15: str = "grok-imagine-video-1-5-preview"
     seedance_15_pro_video: str = "bytedance/seedance-1.5-pro"
@@ -249,14 +247,10 @@ class KieModelCatalog:
             model = self.nano_banana_2
         elif alias is KieModelAlias.NANO_BANANA_PRO:
             model = self.nano_banana_pro
-        elif alias is KieModelAlias.QWEN2_IMAGE_EDIT:
-            model = self.qwen2_image_edit
         elif alias is KieModelAlias.WAN_27_IMAGE:
             model = self.wan_27_image
         elif alias is KieModelAlias.WAN_27_IMAGE_PRO:
             model = self.wan_27_image_pro
-        elif alias is KieModelAlias.FLUX_2_PRO_IMAGE:
-            model = self.flux_2_pro_image
         elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:
             model = self.grok_imagine_video
         elif alias is KieModelAlias.GROK_IMAGINE_VIDEO_15:
@@ -294,14 +288,11 @@ class KiePricing:
     nano_banana_2_usd: Decimal = Decimal("0.02")
     nano_banana_pro_usd: Decimal | None = None
     # Configurable preflight estimates. Provider billing remains the source of truth.
-    qwen2_image_edit_usd: Decimal = Decimal("0.02")
     wan_27_1k_usd: Decimal = Decimal("0.03")
     wan_27_2k_usd: Decimal = Decimal("0.03")
     wan_27_pro_1k_usd: Decimal = Decimal("0.075")
     wan_27_pro_2k_usd: Decimal = Decimal("0.075")
     wan_27_pro_4k_usd: Decimal = Decimal("0.075")
-    flux_2_pro_1k_usd: Decimal = Decimal("0.045")
-    flux_2_pro_2k_usd: Decimal = Decimal("0.075")
     grok_480p_usd_per_second: Decimal = Decimal("0.008")
     grok_720p_usd_per_second: Decimal = Decimal("0.015")
     grok_15_480p_usd_per_second: Decimal = Decimal("0.0725")
@@ -332,8 +323,6 @@ class KiePricing:
                 if request.resolution.casefold() == "4k"
                 else self.nano_1k_2k_usd
             )
-        if request.model is KieModelAlias.QWEN2_IMAGE_EDIT:
-            return self.qwen2_image_edit_usd
         if request.model is KieModelAlias.WAN_27_IMAGE:
             return (
                 self.wan_27_2k_usd
@@ -345,12 +334,6 @@ class KiePricing:
                 "2k": self.wan_27_pro_2k_usd,
                 "4k": self.wan_27_pro_4k_usd,
             }.get(request.resolution.casefold(), self.wan_27_pro_1k_usd)
-        if request.model is KieModelAlias.FLUX_2_PRO_IMAGE:
-            return (
-                self.flux_2_pro_2k_usd
-                if request.resolution.casefold() == "2k"
-                else self.flux_2_pro_1k_usd
-            )
         if request.model is KieModelAlias.GROK_IMAGINE_VIDEO:
             rate = (
                 self.grok_720p_usd_per_second
@@ -585,23 +568,6 @@ class KieGenerationRequest:
                     "image_input": list(self.image_urls),
                 }
             )
-        elif self.model is KieModelAlias.QWEN2_IMAGE_EDIT:
-            qwen_images: str | list[str]
-            if len(self.image_urls) == 1:
-                qwen_images = self.image_urls[0]
-            else:
-                # The marketplace schema exposes an array while the API example
-                # still shows a scalar. Preserve both contracts.
-                qwen_images = list(self.image_urls)
-            payload.update(
-                {
-                    "image_url": qwen_images,
-                    "image_size": self.aspect_ratio.strip(),
-                    "output_format": self.output_format.strip() or "png",
-                    "seed": 0,
-                    "nsfw_checker": mature_override,
-                }
-            )
         elif self.model in {
             KieModelAlias.WAN_27_IMAGE,
             KieModelAlias.WAN_27_IMAGE_PRO,
@@ -617,15 +583,6 @@ class KieGenerationRequest:
                     "aspect_ratio": self.aspect_ratio.strip(),
                     "watermark": False,
                     "seed": 0,
-                    "nsfw_checker": mature_override,
-                }
-            )
-        elif self.model is KieModelAlias.FLUX_2_PRO_IMAGE:
-            payload.update(
-                {
-                    "input_urls": list(self.image_urls),
-                    "aspect_ratio": self.aspect_ratio.strip(),
-                    "resolution": self.resolution.upper(),
                     "nsfw_checker": mature_override,
                 }
             )

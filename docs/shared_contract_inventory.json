@@ -3027,8 +3027,8 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_optional_int",
-          "line": 863,
-          "end_line": 869
+          "line": 820,
+          "end_line": 826
         },
         {
           "path": "velvet_bot/domains/media_generation/task_queue.py",
@@ -3127,8 +3127,8 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_non_negative_int",
-          "line": 851,
-          "end_line": 855
+          "line": 808,
+          "end_line": 812
         }
       ]
     },
@@ -7420,7 +7420,7 @@
       ]
     },
     {
-      "digest": "bb0f7e820b2da010be3abeb7cf99347a92cb199bc829f711f480d8fa444cfd4a",
+      "digest": "68f49cd5c0cda96c61b0a0ed6677f221a043529326c4fa06affbb3346b8780fc",
       "kind": "semantic-near-duplicate",
       "family": "provider/model labels",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -7737,8 +7737,8 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "__post_init__",
-          "line": 482,
-          "end_line": 535
+          "line": 465,
+          "end_line": 518
         },
         {
           "path": "velvet_bot/domains/media_generation/worker.py",
@@ -8433,7 +8433,7 @@
       ]
     },
     {
-      "digest": "d3cfa720749d0b4a6188b92749722cda5ae5b4ac91bab2add76063ade8601c45",
+      "digest": "70ea3363ca4aa99059c3e21cfc59e89a46af25f53580e0106951af86806b68c9",
       "kind": "semantic-near-duplicate",
       "family": "task payload/result mapping/formatting",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -8547,22 +8547,22 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "from_task_payload",
-          "line": 693,
-          "end_line": 730
+          "line": 650,
+          "end_line": 687
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "from_api",
-          "line": 752,
-          "end_line": 776
+          "line": 709,
+          "end_line": 733
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_extract_result_urls",
-          "line": 836,
-          "end_line": 848
+          "line": 793,
+          "end_line": 805
         },
         {
           "path": "velvet_bot/domains/media_generation/task_queue.py",

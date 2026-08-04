@@ -43,6 +43,29 @@ class PhotoCapabilityMapTests(unittest.TestCase):
         self.assertFalse(KieModelAlias.QWEN2_IMAGE_EDIT.is_photo_model)
         self.assertFalse(KieModelAlias.FLUX_2_PRO_IMAGE.is_photo_model)
 
+    def test_retired_image_aliases_have_no_provider_or_pricing_route(self) -> None:
+        from velvet_bot.domains.media_generation import KieModelCatalog
+
+        catalog = KieModelCatalog()
+        pricing = KiePricing()
+        for model in (
+            KieModelAlias.QWEN2_IMAGE_EDIT,
+            KieModelAlias.FLUX_2_PRO_IMAGE,
+        ):
+            with self.subTest(model=model):
+                with self.assertRaisesRegex(ValueError, "Неизвестная модель"):
+                    catalog.provider_model(model, input_mode=KieInputMode.PHOTO_TEXT)
+                request = KieGenerationRequest(
+                    model=model,
+                    input_mode=KieInputMode.PHOTO_TEXT,
+                    prompt="legacy",
+                    references=_references(1),
+                    aspect_ratio="1:1",
+                    resolution="1K",
+                )
+                with self.assertRaisesRegex(ValueError, "Неизвестная модель"):
+                    pricing.estimate_usd(request)
+
     def test_request_rejects_wan_reference_overflow(self) -> None:
         with self.assertRaisesRegex(ValueError, "принимает не больше 9"):
             KieGenerationRequest(

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 646,
-  "production_loc": 141689,
+  "production_loc": 141646,
   "layer_counts": {
     "application": 21,
     "composition": 65,
@@ -4206,13 +4206,13 @@
       }
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:3ea39b747c3133f6",
+      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:1fcb511b394a190e",
       "category": "monolithic-module-loc",
       "path": "velvet_bot/domains/media_generation/models.py",
-      "fingerprint": "3ea39b747c3133f60f0be7a659e08495ccc6fbd982f06c9683b2dee311591a92",
-      "summary": "874 LOC exceeds 800",
+      "fingerprint": "1fcb511b394a190e35cd38b5a703f09e44940721f440d91e919cc7f954d34234",
+      "summary": "831 LOC exceeds 800",
       "details": {
-        "loc": 874,
+        "loc": 831,
         "limit": 800
       }
     },
@@ -18966,12 +18966,12 @@
       "module": "velvet_bot.domains.media_generation.models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 874,
+      "loc": 831,
       "function_count": 38,
       "class_count": 11,
       "handler_count": 0,
-      "max_function_length": 114,
-      "branch_count": 80,
+      "max_function_length": 88,
+      "branch_count": 73,
       "internal_imports": [],
       "external_import_count": 6,
       "aiogram_imports": [],
@@ -19002,13 +19002,13 @@
           }
         },
         {
-          "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:3ea39b747c3133f6",
+          "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:1fcb511b394a190e",
           "category": "monolithic-module-loc",
           "path": "velvet_bot/domains/media_generation/models.py",
-          "fingerprint": "3ea39b747c3133f60f0be7a659e08495ccc6fbd982f06c9683b2dee311591a92",
-          "summary": "874 LOC exceeds 800",
+          "fingerprint": "1fcb511b394a190e35cd38b5a703f09e44940721f440d91e919cc7f954d34234",
+          "summary": "831 LOC exceeds 800",
           "details": {
-            "loc": 874,
+            "loc": 831,
             "limit": 800
           }
         }

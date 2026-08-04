@@ -60,7 +60,7 @@
 - Активный каталог изображений ограничен пятью моделями: Banana 2, Banana Pro, Seedream 5 Pro, Wan 2.7 и Wan 2.7 Pro.
 - Wan 2.7 использует отдельный provider ID `wan/2-7-image` и сетку 1/2 VL.
 - Wan 2.7 Pro использует `wan/2-7-image-pro` и сетку 3/4/5 VL; 4K доступно только без референсов.
-- Qwen Image и FLUX удалены из активных capability/config/pricing-контуров; durable aliases сохранены только для чтения исторических задач.
+- Qwen Image и FLUX удалены из capability, provider routing, payload builders, env-конфигурации и pricing; строковые alias сохранены только для десериализации исторических задач.
 - Повторный Wan-пересчёт больше не читает `auf_package_prices` и не умножает стоимость дважды.
 
 ### Миграции и совместимость

@@ -1,70 +1,46 @@
-# Фото-генерация: модели, лимиты и настройки
+# Фото-генерация: активные модели, лимиты и цены
 
-Этот документ фиксирует capability map для нового сценария `фото + текст → фото`.
-Интерфейс принимает фото и текст в любом порядке, подтверждает вход, затем предлагает
-только поддерживаемые конкретной моделью настройки и показывает предварительную
-стоимость до постановки задачи в очередь.
+Интерфейс Ауф предлагает только пять активных моделей изображений. Удалённые
+Qwen Image и FLUX не имеют capability, provider route, env-настроек или цен для
+новых задач. Их старые строковые alias остаются только для чтения исторических
+payload и не могут быть запущены повторно.
 
-## Модели
+## Активные модели
 
-| Внутренний alias | Provider model id | Провайдер | Референсы | Качество | Соотношения сторон |
-|---|---|---:|---:|---|---|
-| `nano_banana_2` | `nano-banana-2` | GRS AI | 5* | 1K, 2K, 4K | 1:1, 2:3, 3:2, 3:4, 4:3, 9:16, 16:9, 21:9 |
-| `nano_banana_pro` | `nano-banana-pro` | GRS AI | 5* | 1K, 2K, 4K | 1:1, 2:3, 3:2, 3:4, 4:3, 9:16, 16:9, 21:9 |
-| `seedream_5_pro` | `seedream/5-pro-image-to-image` | Kie.ai | 10 | 1K, 2K | 1:1, 4:3, 3:4, 16:9, 9:16, 2:3, 3:2, 21:9 |
-| `qwen2_image_edit` | `qwen2/image-edit` | Kie.ai | 3 | 2K | 1:1, 2:3, 3:2, 3:4, 4:3, 9:16, 16:9, 21:9 |
-| `wan_27_image` | `wan/2-7-image` | Kie.ai | 9 | 1K, 2K | 1:1, 3:4, 4:3, 1:8, 8:1, 9:16, 16:9, 21:9 |
-| `flux_2_pro_image` | `flux-2/pro-image-to-image` | Kie.ai | 8 | 1K, 2K | auto, 1:1, 4:3, 3:4, 16:9, 9:16, 3:2, 2:3 |
+| Alias | Provider model id | Провайдер | Референсы | Качество | Цена |
+|---|---|---|---:|---|---|
+| `nano_banana_2` | `nano-banana-2` | GRS AI | до 5 | 1K, 2K, 4K | 1 / 2 / 3 VL |
+| `nano_banana_pro` | `nano-banana-pro` | GRS AI | до 5 | 1K, 2K, 4K | 2 / 3 / 4 VL |
+| `seedream_5_pro` | `seedream/5-pro-*` | Kie.ai | до 10 | 1K, 2K | 2 / 4 VL |
+| `wan_27_image` | `wan/2-7-image` | Kie.ai | до 9 | 1K, 2K | 1 / 2 VL |
+| `wan_27_image_pro` | `wan/2-7-image-pro` | Kie.ai | до 9 | 1K, 2K, 4K | 3 / 4 / 5 VL |
 
-`*` GRS AI публикует массив `images`, но не указывает жёсткий максимум. До
-провайдерского подтверждения сохранён прежний безопасный лимит в пять фото.
-
-## Поведение интерфейса
-
-1. Пользователь нажимает `Ауф → Фото`.
-2. Отправляет фото или текст. Бот просит недостающую часть.
-3. Фото с подписью сразу считается полным входом.
-4. Референсы можно добавить из Telegram, системного архива или доступного личного
-   пространства. Команды: `/refs` и `/refs Имя персонажа`.
-5. После подтверждения входа выбираются модель, качество и поддерживаемое
-   соотношение сторон.
-6. Результат всегда один. Параметры gallery/count пользователю не показываются.
-7. На последнем экране отображаются итоговые параметры и предварительная цена.
-8. Только кнопка `Да, создать` ставит неизменяемый снимок запроса в очередь.
+Wan 2.7 Pro в 4K доступен только в режиме «Только текст». Для режима
+«Фото + текст» интерфейс предлагает 1K и 2K.
 
 ## Переменные окружения
 
-Маршруты имеют рабочие значения по умолчанию, но могут быть переопределены:
-
 ```dotenv
-KIE_QWEN2_IMAGE_EDIT_MODEL=qwen2/image-edit
+KIE_SEEDREAM_5_PRO_TEXT_MODEL=seedream/5-pro-text-to-image
+KIE_SEEDREAM_5_PRO_IMAGE_MODEL=seedream/5-pro-image-to-image
 KIE_WAN_27_IMAGE_MODEL=wan/2-7-image
-KIE_FLUX_2_PRO_IMAGE_MODEL=flux-2/pro-image-to-image
+KIE_WAN_27_IMAGE_PRO_MODEL=wan/2-7-image-pro
+GRS_NANO_BANANA_2_MODEL=nano-banana-2
+GRS_NANO_BANANA_PRO_MODEL=nano-banana-pro
+
+KIE_WAN_27_IMAGE_1K_USD=0.03
+KIE_WAN_27_IMAGE_2K_USD=0.03
+KIE_WAN_27_IMAGE_PRO_1K_USD=0.075
+KIE_WAN_27_IMAGE_PRO_2K_USD=0.075
+KIE_WAN_27_IMAGE_PRO_4K_USD=0.075
 ```
 
-Предварительная цена используется бюджетным guard и финальным экраном. Эти значения
-нужно сверить с фактическим тарифом аккаунта Kie.ai перед production-развёртыванием:
+Предварительная USD-оценка используется бюджетным guard. Пользовательская цена
+берётся из версионированного каталога Ауф и фиксируется перед постановкой задачи
+в очередь.
 
-```dotenv
-KIE_QWEN2_IMAGE_EDIT_USD=0.02
-KIE_WAN_27_IMAGE_1K_USD=0.05
-KIE_WAN_27_IMAGE_2K_USD=0.08
-KIE_FLUX_2_PRO_IMAGE_1K_USD=0.045
-KIE_FLUX_2_PRO_IMAGE_2K_USD=0.075
-```
+## Wan payload
 
-Фактическое списание и `creditsConsumed` провайдера остаются источником истины;
-предварительная цена не подменяет биллинг.
-
-## Provider payload
-
-- Qwen2: `image_url`, `prompt`, `image_size`, `output_format`, `seed`.
-- Wan 2.7: `input_urls`, `prompt`, `bbox_list`, `n=1`, `enable_sequential=false`,
-  `thinking_mode=false`, `resolution`, `aspect_ratio`, `watermark=false`.
-- FLUX.2 Pro: `input_urls`, `prompt`, `aspect_ratio`, `resolution`,
-  `nsfw_checker=false` для режима Mature.
-- Seedream 5 Pro: `image_urls`, `prompt`, `aspect_ratio`, `quality`,
-  `output_format`, `nsfw_checker=false` для режима Mature.
-
-Приложение не добавляет собственную модерацию в режиме Mature. Это не отменяет
-возможные ограничения, проверки и отказы самого провайдера или модели.
+Обе Wan-модели используют `prompt`, `input_urls` для режима с референсами,
+`n`, `enable_sequential`, `resolution`, `aspect_ratio` и provider NSFW flag.
+Количество результатов оплачивается пропорционально и не зависит от цен пакетов VL.
