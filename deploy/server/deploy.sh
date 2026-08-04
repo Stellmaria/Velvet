@@ -97,29 +97,91 @@ fi
 previous_sha="$(git rev-parse HEAD)"
 previous_bot_container="$("${compose[@]}" ps -q bot 2>/dev/null || true)"
 previous_bot_image=""
+previous_bot_image_id=""
+rollback_bot_image=""
 if [[ -n "$previous_bot_container" ]]; then
   previous_bot_image="$(docker inspect --format '{{.Config.Image}}' "$previous_bot_container" 2>/dev/null || true)"
+  previous_bot_image_id="$(docker inspect --format '{{.Image}}' "$previous_bot_container" 2>/dev/null || true)"
+  if [[ "$previous_bot_image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    rollback_bot_image="velvet-bot:rollback-${previous_sha:0:12}"
+    docker image tag "$previous_bot_image_id" "$rollback_bot_image"
+  fi
 fi
 backup_path="$data_dir/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
 deployment_started=0
 
+wait_for_service_health() {
+  local service="$1"
+  VELVET_APP_DIR="$APP_DIR" \
+  VELVET_ENV_FILE="$ENV_FILE" \
+  VELVET_COMPOSE_FILE="$COMPOSE_FILE" \
+    bash deploy/server/wait-compose-health.sh \
+      "$service" "$HEALTH_ATTEMPTS" "$HEALTH_INTERVAL"
+}
+
+start_core_services() {
+  "${compose[@]}" up -d --remove-orphans postgres supervisor-proxy || return
+  wait_for_service_health postgres || return
+  wait_for_service_health supervisor-proxy
+}
+
+start_bot_service() {
+  "${compose[@]}" rm -sf bot >/dev/null 2>&1 || true
+  "${compose[@]}" up -d --no-deps bot
+}
+
 rollback_code() {
   local exit_code="$?"
+  local rollback_failed=0
+  trap - ERR INT TERM
+  set +e
   if [[ "$deployment_started" == "1" ]]; then
     echo "Deployment failed; rolling application code back to $previous_sha" >&2
-    git reset --hard "$previous_sha" >&2 || true
-    "${compose[@]}" build supervisor-proxy >&2 || true
-    if [[ -n "$previous_bot_image" ]]; then
-      export VELVET_IMAGE="$previous_bot_image"
-      docker pull "$previous_bot_image" >&2 || true
-    else
-      unset VELVET_IMAGE || true
-      "${compose[@]}" build bot >&2 || true
+    if ! git reset --hard "$previous_sha" >&2; then
+      rollback_failed=1
     fi
-    "${compose[@]}" up -d postgres supervisor-proxy bot >&2 || true
+    if ! "${compose[@]}" build supervisor-proxy >&2; then
+      rollback_failed=1
+    fi
+    if [[ -n "$rollback_bot_image" ]] && docker image inspect "$rollback_bot_image" >/dev/null 2>&1; then
+      export VELVET_IMAGE="$rollback_bot_image"
+    elif [[ "$previous_bot_image" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]; then
+      if docker pull "$previous_bot_image" >&2; then
+        export VELVET_IMAGE="$previous_bot_image"
+      else
+        rollback_failed=1
+      fi
+    else
+      unset VELVET_IMAGE
+      if ! "${compose[@]}" build bot >&2; then
+        rollback_failed=1
+      fi
+    fi
+    if (( rollback_failed == 0 )) && ! start_core_services >&2; then
+      rollback_failed=1
+    fi
+    if (( rollback_failed == 0 )) && ! start_bot_service >&2; then
+      rollback_failed=1
+    fi
+    if (( rollback_failed == 0 )) && ! wait_for_service_health bot >&2; then
+      rollback_failed=1
+    fi
+    if (( rollback_failed == 0 )) && ! "${compose[@]}" exec -T bot python scripts/server_smoke.py --skip-telegram >&2; then
+      rollback_failed=1
+    fi
     if [[ "$krita_server_enabled" == "1" ]]; then
-      "${compose[@]}" --profile watermark build krita >&2 || true
-      "${compose[@]}" --profile watermark up -d krita >&2 || true
+      if ! "${compose[@]}" --profile watermark build krita >&2; then
+        rollback_failed=1
+      elif ! "${compose[@]}" --profile watermark up -d --no-deps krita >&2; then
+        rollback_failed=1
+      elif ! wait_for_service_health krita >&2; then
+        rollback_failed=1
+      fi
+    fi
+    if (( rollback_failed == 0 )); then
+      echo "Rollback restored the previous bot image and passed health checks." >&2
+    else
+      echo "Rollback did not restore a verified healthy runtime; manual intervention is required." >&2
     fi
     echo "Database was not automatically restored." >&2
     echo "Verified pre-deploy dump: $backup_path" >&2
@@ -191,10 +253,15 @@ fi
 
 if [[ "$krita_server_enabled" == "1" ]]; then
   "${compose[@]}" --profile watermark build --pull krita
-  "${compose[@]}" --profile watermark up -d --remove-orphans \
-    postgres supervisor-proxy bot krita
+fi
+
+start_core_services
+start_bot_service
+
+if [[ "$krita_server_enabled" == "1" ]]; then
+  "${compose[@]}" --profile watermark rm -sf krita >/dev/null 2>&1 || true
+  "${compose[@]}" --profile watermark up -d --no-deps krita
 else
-  "${compose[@]}" up -d --remove-orphans postgres supervisor-proxy bot
   "${compose[@]}" --profile watermark stop --timeout 45 krita >/dev/null 2>&1 || true
 fi
 
@@ -242,6 +309,9 @@ for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
       fi
       deployment_started=0
       trap - ERR INT TERM
+      if [[ -n "$rollback_bot_image" ]]; then
+        docker image rm "$rollback_bot_image" >/dev/null 2>&1 || true
+      fi
       echo "Velvet deployment succeeded: $deployed_sha"
       if [[ -n "$IMAGE_OVERRIDE" ]]; then
         echo "Verified application image: $IMAGE_OVERRIDE"

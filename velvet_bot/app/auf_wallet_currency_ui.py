@@ -34,11 +34,11 @@ def _normalize_currency(value: object) -> str:
 
 
 def _package_callback_value(amount: int, currency: str) -> str:
-    return f"{int(amount)}:{_normalize_currency(currency)}"
+    return f"{int(amount)}|{_normalize_currency(currency)}"
 
 
 def _parse_package_callback_value(value: str) -> tuple[int, str]:
-    amount_raw, separator, currency_raw = str(value or "").partition(":")
+    amount_raw, separator, currency_raw = str(value or "").partition("|")
     if not separator:
         return int(amount_raw), "RUB"
     return int(amount_raw), _normalize_currency(currency_raw)
