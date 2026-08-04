@@ -8,7 +8,7 @@
 - Repository modules: **44**
 - Startup installer stages: **28**
 - Registered package violations: **548**
-- Registered exemptions: **548**
+- Registered exemptions: **0**
 
 ## Layers
 
