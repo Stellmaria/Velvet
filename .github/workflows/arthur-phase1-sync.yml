@@ -1,0 +1,176 @@
+name: arthur phase1 main sync
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/arthur-phase1-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: >-
+      github.repository == 'Stellmaria/Velvet' &&
+      github.event.pull_request.head.ref == 'tmp/arthur-phase1-sync' &&
+      github.event.pull_request.user.login == 'Stellmaria'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Arthur branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/arthur-librarian-phase1
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Merge current main and regenerate contracts
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit -X theirs origin/main
+
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
+          python scripts/update_p2_stability_inventory.py \
+            --label arthur-librarian-phase1-main-sync \
+            --schema-version 78
+          python - <<'PY'
+          from pathlib import Path
+          from scripts.inventory_repository_layout import build_inventory, render_markdown
+          import json
+          import re
+
+          root = Path('.')
+          layout = build_inventory(label='p3e-repository-layout-complete')
+          (root / 'docs/repository_layout_inventory.json').write_text(
+              json.dumps(layout, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          (root / 'docs/repository_layout_inventory.md').write_text(
+              render_markdown(layout),
+              encoding='utf-8',
+          )
+
+          inventory = json.loads(
+              (root / 'docs/package_architecture_inventory.json').read_text(encoding='utf-8')
+          )
+          shared = inventory['shared_contract_summary']
+          test_path = root / 'tests/test_package_architecture_inventory.py'
+          text = test_path.read_text(encoding='utf-8')
+
+          def replace(pattern: str, replacement: str) -> None:
+              global text
+              updated, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f'Expected one baseline match for: {pattern}')
+              text = updated
+
+          def py_int(value: int) -> str:
+              return f'{value:_}'
+
+          replace(
+              r'self\.assertEqual\([0-9_]+, self\.inventory\["production_module_count"\]\)',
+              f'self.assertEqual({py_int(inventory["production_module_count"])}, self.inventory["production_module_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, self\.inventory\["production_loc"\]\)',
+              f'self.assertEqual({py_int(inventory["production_loc"])}, self.inventory["production_loc"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, self\.inventory\["root_module_count"\]\)',
+              f'self.assertEqual({py_int(inventory["root_module_count"])}, self.inventory["root_module_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, self\.inventory\["router_count"\]\)',
+              f'self.assertEqual({py_int(inventory["router_count"])}, self.inventory["router_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, self\.inventory\["repository_module_count"\]\)',
+              f'self.assertEqual({py_int(inventory["repository_module_count"])}, self.inventory["repository_module_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, len\(self\.inventory\["installer_graph"\]\)\)',
+              f'self.assertEqual({len(inventory["installer_graph"])}, len(self.inventory["installer_graph"]))',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, self\.inventory\["violation_count"\]\)',
+              f'self.assertEqual({py_int(inventory["violation_count"])}, self.inventory["violation_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, shared\["production_python_files"\]\)',
+              f'self.assertEqual({py_int(shared["production_python_files"])}, shared["production_python_files"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, shared\["function_count"\]\)',
+              f'self.assertEqual({py_int(shared["function_count"])}, shared["function_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, shared\["private_contract_access_count"\]\)',
+              f'self.assertEqual({py_int(shared["private_contract_access_count"])}, shared["private_contract_access_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, shared\["blocking_private_contract_access_count"\]\)',
+              f'self.assertEqual({py_int(shared["blocking_private_contract_access_count"])}, shared["blocking_private_contract_access_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, shared\["exact_duplicate_group_count"\]\)',
+              f'self.assertEqual({py_int(shared["exact_duplicate_group_count"])}, shared["exact_duplicate_group_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, shared\["normalized_duplicate_group_count"\]\)',
+              f'self.assertEqual({py_int(shared["normalized_duplicate_group_count"])}, shared["normalized_duplicate_group_count"])',
+          )
+          replace(
+              r'self\.assertEqual\([0-9_]+, shared\["semantic_near_duplicate_group_count"\]\)',
+              f'self.assertEqual({py_int(shared["semantic_near_duplicate_group_count"])}, shared["semantic_near_duplicate_group_count"])',
+          )
+          replace(
+              r'self\.assertEqual\(list\(range\(1, [0-9_]+\)\), \[item\["order"\] for item in graph\]\)',
+              f'self.assertEqual(list(range(1, {len(inventory["installer_graph"]) + 1})), [item["order"] for item in graph])',
+          )
+          replace(
+              r'self\.assertIn\("Production modules: \*\*[0-9]+\*\*", self\.markdown\)',
+              f'self.assertIn("Production modules: **{inventory["production_module_count"]}**", self.markdown)',
+          )
+          replace(
+              r'self\.assertIn\("Production LOC: \*\*[0-9]+\*\*", self\.markdown\)',
+              f'self.assertIn("Production LOC: **{inventory["production_loc"]}**", self.markdown)',
+          )
+          replace(
+              r'self\.assertIn\("Startup installer stages: \*\*[0-9]+\*\*", self\.markdown\)',
+              f'self.assertIn("Startup installer stages: **{len(inventory["installer_graph"])}**", self.markdown)',
+          )
+          replace(
+              r'self\.assertIn\("Registered package violations: \*\*[0-9]+\*\*", self\.markdown\)',
+              f'self.assertIn("Registered package violations: **{inventory["violation_count"]}**", self.markdown)',
+          )
+          replace(
+              r'self\.assertIn\("Registered exemptions: \*\*[0-9]+\*\*", self\.markdown\)',
+              f'self.assertIn("Registered exemptions: **{inventory["violation_count"]}**", self.markdown)',
+          )
+          test_path.write_text(text, encoding='utf-8')
+          PY
+
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label p1-package-architecture-baseline
+          python -m unittest -q \
+            tests.test_package_architecture_inventory \
+            tests.test_storage_librarian_phase1_hardening
+
+          git add \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            tests/test_package_architecture_inventory.py
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync Arthur Phase 1 with current main"
+          fi
+          git push origin HEAD:fix/arthur-librarian-phase1
