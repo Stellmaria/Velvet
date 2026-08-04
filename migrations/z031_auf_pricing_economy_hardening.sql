@@ -56,6 +56,41 @@ ALTER TABLE auf_price_versions
     ADD CONSTRAINT auf_price_versions_minimum_velvets_check
     CHECK (minimum_velvets > 0);
 
+-- Retire image routes that are no longer offered for new generations.
+UPDATE auf_price_versions
+SET effective_to = GREATEST(NOW(), effective_from + INTERVAL '1 microsecond'),
+    source = source || '; retired from active AUF image catalog'
+WHERE effective_to IS NULL
+  AND operation = 'media.generate'
+  AND model_alias IN ('qwen2_image_edit', 'flux_2_pro_image', 'wan_27_image');
+
+-- Publish separate standard and Pro Wan 2.7 price versions. Provider pricing is
+-- flat per result; VL floors keep product quality tiers explicit and profitable.
+INSERT INTO auf_price_versions (
+    version_key, provider, model_alias, resolution, audio,
+    pricing_basis, unit_cost_usd, extra_reference_cost_usd,
+    retail_units, extra_reference_retail_units, minimum_velvets, source
+)
+VALUES
+    ('2026-08-04:wan-2-7-image:1k', 'kie', 'wan_27_image', '1K', NULL,
+     'fixed', 0.03000000, 0, 10000, 0, 1, 'Wan 2.7 standard active catalog'),
+    ('2026-08-04:wan-2-7-image:2k', 'kie', 'wan_27_image', '2K', NULL,
+     'fixed', 0.03000000, 0, 20000, 0, 2, 'Wan 2.7 standard active catalog'),
+    ('2026-08-04:wan-2-7-image-pro:1k', 'kie', 'wan_27_image_pro', '1K', NULL,
+     'fixed', 0.07500000, 0, 30000, 0, 3, 'Wan 2.7 Pro active catalog'),
+    ('2026-08-04:wan-2-7-image-pro:2k', 'kie', 'wan_27_image_pro', '2K', NULL,
+     'fixed', 0.07500000, 0, 40000, 0, 4, 'Wan 2.7 Pro active catalog'),
+    ('2026-08-04:wan-2-7-image-pro:4k', 'kie', 'wan_27_image_pro', '4K', NULL,
+     'fixed', 0.07500000, 0, 50000, 0, 5, 'Wan 2.7 Pro text-to-image only')
+ON CONFLICT (version_key) DO UPDATE
+SET effective_to = NULL,
+    unit_cost_usd = EXCLUDED.unit_cost_usd,
+    retail_units = EXCLUDED.retail_units,
+    extra_reference_cost_usd = EXCLUDED.extra_reference_cost_usd,
+    extra_reference_retail_units = EXCLUDED.extra_reference_retail_units,
+    minimum_velvets = EXCLUDED.minimum_velvets,
+    source = EXCLUDED.source;
+
 -- Product floors preserve meaningful quality tiers after integer-VL rounding.
 UPDATE auf_price_versions
 SET minimum_velvets = CASE
@@ -67,11 +102,11 @@ SET minimum_velvets = CASE
     WHEN model_alias = 'nano_banana_pro' AND UPPER(COALESCE(resolution, '')) = '4K' THEN 4
     WHEN model_alias = 'seedream_5_pro' AND UPPER(COALESCE(resolution, '')) = '1K' THEN 2
     WHEN model_alias = 'seedream_5_pro' AND UPPER(COALESCE(resolution, '')) = '2K' THEN 4
-    WHEN model_alias = 'qwen2_image_edit' AND UPPER(COALESCE(resolution, '')) = '2K' THEN 1
-    WHEN model_alias = 'wan_27_image' AND UPPER(COALESCE(resolution, '')) = '1K' THEN 2
-    WHEN model_alias = 'wan_27_image' AND UPPER(COALESCE(resolution, '')) = '2K' THEN 3
-    WHEN model_alias = 'flux_2_pro_image' AND UPPER(COALESCE(resolution, '')) = '1K' THEN 2
-    WHEN model_alias = 'flux_2_pro_image' AND UPPER(COALESCE(resolution, '')) = '2K' THEN 3
+    WHEN model_alias = 'wan_27_image' AND UPPER(COALESCE(resolution, '')) = '1K' THEN 1
+    WHEN model_alias = 'wan_27_image' AND UPPER(COALESCE(resolution, '')) = '2K' THEN 2
+    WHEN model_alias = 'wan_27_image_pro' AND UPPER(COALESCE(resolution, '')) = '1K' THEN 3
+    WHEN model_alias = 'wan_27_image_pro' AND UPPER(COALESCE(resolution, '')) = '2K' THEN 4
+    WHEN model_alias = 'wan_27_image_pro' AND UPPER(COALESCE(resolution, '')) = '4K' THEN 5
     ELSE 1
 END,
 source = source || '; stable quote reference and SKU floor'

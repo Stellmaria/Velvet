@@ -37,6 +37,8 @@ class _Connection:
             minimums = {
                 "nano_banana_2": {"1K": 1, "2K": 2, "4K": 3},
                 "nano_banana_pro": {"1K": 2, "2K": 3, "4K": 4},
+                "wan_27_image": {"1K": 1, "2K": 2},
+                "wan_27_image_pro": {"1K": 3, "2K": 4, "4K": 5},
             }
             return {
                 "id": 1,
@@ -118,6 +120,42 @@ class BananaPriceTests(unittest.IsolatedAsyncioTestCase):
             _payload("nano_banana_pro", "1K"),
         )
         self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
+
+
+class WanImagePriceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_standard_and_pro_keep_separate_price_grids(self) -> None:
+        expected_by_model = {
+            "wan_27_image": {"1K": 1, "2K": 2},
+            "wan_27_image_pro": {"1K": 3, "2K": 4, "4K": 5},
+        }
+        costs = {
+            "wan_27_image": Decimal("0.03"),
+            "wan_27_image_pro": Decimal("0.075"),
+        }
+        for model, expected in expected_by_model.items():
+            for resolution, velvets in expected.items():
+                with self.subTest(model=model, resolution=resolution):
+                    quote = await quote_auf_payload(
+                        _Connection(
+                            model_alias=model,
+                            resolution=resolution,
+                            unit_cost_usd=costs[model],
+                        ),
+                        _payload(model, resolution),
+                    )
+                    self.assertEqual(velvets * AUF_SCALE, quote.quoted_units)
+
+    async def test_individual_markup_does_not_collapse_wan_pro_floor(self) -> None:
+        quote = await quote_auf_payload(
+            _Connection(
+                model_alias="wan_27_image_pro",
+                resolution="1K",
+                unit_cost_usd=Decimal("0.075"),
+                override=Decimal("15"),
+            ),
+            _payload("wan_27_image_pro", "1K"),
+        )
+        self.assertEqual(3 * AUF_SCALE, quote.quoted_units)
 
 
 class OwnerCostOnlyTests(unittest.TestCase):

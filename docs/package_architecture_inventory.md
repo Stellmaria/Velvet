@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **646**
-- Production LOC: **141685**
+- Production LOC: **141689**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **44**
@@ -25,10 +25,10 @@
 
 ## Shared/private baseline
 
-- private cross-module accesses: **186**
+- private cross-module accesses: **187**
 - blocking known private contracts: **0**
-- exact / normalized / semantic duplicate groups: **64 / 98 / 9**
-- private access fingerprint: `09eda473b2f3e223be6ec9ba8f43708a46dcabbc1f0f87fff32ae8ed7ef35af8`
+- exact / normalized / semantic duplicate groups: **65 / 97 / 9**
+- private access fingerprint: `1ede851cc36a62bddfab222c4267eb6c4087e673a2da9935f259e0e2db805ab3`
 
 ## Installer graph
 
@@ -81,8 +81,8 @@
 ## Largest modules
 
 - `velvet_bot/presentation/telegram/routers/workspace_owner_controls.py`: 2263 LOC, 40 functions, max function 474 lines, target `presentation`.
-- `velvet_bot/app/auf_photo_model_modes.py`: 1780 LOC, 52 functions, max function 284 lines, target `composition`.
 - `velvet_bot/presentation/telegram/routers/workspace_guided_actions.py`: 1773 LOC, 40 functions, max function 468 lines, target `presentation`.
+- `velvet_bot/app/auf_photo_model_modes.py`: 1768 LOC, 53 functions, max function 286 lines, target `composition`.
 - `velvet_bot/presentation/telegram/routers/workspace_auf.py`: 1427 LOC, 34 functions, max function 451 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/workspace_qwen.py`: 1236 LOC, 25 functions, max function 238 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_auf_photo.py`: 1229 LOC, 38 functions, max function 248 lines, target `presentation`.
@@ -95,7 +95,7 @@
 - `velvet_bot/domains/workspaces/qwen_repository.py`: 909 LOC, 25 functions, max function 78 lines, target `domain`.
 - `velvet_bot/backup_service.py`: 900 LOC, 34 functions, max function 73 lines, target `application/<bounded-use-case>`.
 - `velvet_bot/media_sets.py`: 882 LOC, 20 functions, max function 115 lines, target `domains/<bounded-domain>`.
-- `velvet_bot/domains/media_generation/models.py`: 858 LOC, 38 functions, max function 111 lines, target `domain`.
+- `velvet_bot/domains/media_generation/models.py`: 874 LOC, 38 functions, max function 114 lines, target `domain`.
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py`: 807 LOC, 11 functions, max function 333 lines, target `presentation`.
 - `velvet_bot/ai_vision.py`: 774 LOC, 24 functions, max function 77 lines, target `domains/<bounded-domain>`.
 - `velvet_bot/ai_quality.py`: 744 LOC, 23 functions, max function 82 lines, target `domains/<bounded-domain>`.

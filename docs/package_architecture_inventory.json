@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 646,
-  "production_loc": 141685,
+  "production_loc": 141689,
   "layer_counts": {
     "application": 21,
     "composition": 65,
@@ -80,14 +80,14 @@
     }
   ],
   "shared_contract_summary": {
-    "production_python_files": 641,
-    "function_count": 3685,
-    "private_contract_access_count": 186,
+    "production_python_files": 646,
+    "function_count": 3725,
+    "private_contract_access_count": 187,
     "blocking_private_contract_access_count": 0,
-    "exact_duplicate_group_count": 64,
-    "normalized_duplicate_group_count": 98,
+    "exact_duplicate_group_count": 65,
+    "normalized_duplicate_group_count": 97,
     "semantic_near_duplicate_group_count": 9,
-    "private_access_sha256": "09eda473b2f3e223be6ec9ba8f43708a46dcabbc1f0f87fff32ae8ed7ef35af8"
+    "private_access_sha256": "1ede851cc36a62bddfab222c4267eb6c4087e673a2da9935f259e0e2db805ab3"
   },
   "installer_graph": [
     {
@@ -3280,10 +3280,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:dfb043809bab284c",
+      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:34a11f2d3df99e97",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "dfb043809bab284c4749f03b5e59cacdc4d72971425135104a67891ac283cd9c",
+      "fingerprint": "34a11f2d3df99e97b24f72a8f89be243477c069882e2b48e00689d7f74012bab",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
@@ -3850,10 +3850,10 @@
       }
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:d214a85dc08c0e7f",
+      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:c2c3753e280a5e46",
       "category": "method-assign-ignore",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "d214a85dc08c0e7fa905cb30da6064994638c1fe8bae94e9836bb432c2af2c53",
+      "fingerprint": "c2c3753e280a5e466293bdf78046e9edc70519e066c5fd22815a75e567a673f1",
       "summary": "5 method-assign ignores",
       "details": {
         "count": 5
@@ -3920,13 +3920,13 @@
       }
     },
     {
-      "id": "monolithic-function:velvet_bot/app/auf_photo_model_modes.py:8d9b5a00b8de635b",
+      "id": "monolithic-function:velvet_bot/app/auf_photo_model_modes.py:3bf49f6aff5a6885",
       "category": "monolithic-function",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "8d9b5a00b8de635b98152684cfa1b39e37898514e4ee4b7f162b192b199dc517",
-      "summary": "max function 284 lines exceeds 180",
+      "fingerprint": "3bf49f6aff5a68857909dd5a6bd185adb711fa1a9937cf65ed5519c8308f7034",
+      "summary": "max function 286 lines exceeds 180",
       "details": {
-        "max_function_length": 284,
+        "max_function_length": 286,
         "limit": 180
       }
     },
@@ -3953,13 +3953,13 @@
       }
     },
     {
-      "id": "monolithic-function:velvet_bot/core/config/kie.py:c6a1d2f8806dd648",
+      "id": "monolithic-function:velvet_bot/core/config/kie.py:7edd5b89e9d99be0",
       "category": "monolithic-function",
       "path": "velvet_bot/core/config/kie.py",
-      "fingerprint": "c6a1d2f8806dd64841857e023e748eb330c6a3cc80c59329f0437039c85f3207",
-      "summary": "max function 229 lines exceeds 180",
+      "fingerprint": "7edd5b89e9d99be066da02430c61088b660b74c20c8e9a6f4e0ccc8b406033f9",
+      "summary": "max function 230 lines exceeds 180",
       "details": {
-        "max_function_length": 229,
+        "max_function_length": 230,
         "limit": 180
       }
     },
@@ -4184,13 +4184,13 @@
       }
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:6bc0b735c7b3806d",
+      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:c22be377e639a4e1",
       "category": "monolithic-module-loc",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "6bc0b735c7b3806dde64d725bc51ad64cd892d4c6e99d8879a0d9bcea26f3535",
-      "summary": "1780 LOC exceeds 800",
+      "fingerprint": "c22be377e639a4e1aeef042bc5851f6f15a2d24de5312cd3fcd641ab68f0e709",
+      "summary": "1768 LOC exceeds 800",
       "details": {
-        "loc": 1780,
+        "loc": 1768,
         "limit": 800
       }
     },
@@ -4206,13 +4206,13 @@
       }
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:970b96b356df0a27",
+      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:3ea39b747c3133f6",
       "category": "monolithic-module-loc",
       "path": "velvet_bot/domains/media_generation/models.py",
-      "fingerprint": "970b96b356df0a27da4950dfc8a81d0ec01e7a004b2cd5398cdf912d2a9ed201",
-      "summary": "858 LOC exceeds 800",
+      "fingerprint": "3ea39b747c3133f60f0be7a659e08495ccc6fbd982f06c9683b2dee311591a92",
+      "summary": "874 LOC exceeds 800",
       "details": {
-        "loc": 858,
+        "loc": 874,
         "limit": 800
       }
     },
@@ -4725,19 +4725,18 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:b7ce255cd75f7b94",
+      "id": "sql-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:55127d056daa1ff2",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "b7ce255cd75f7b94c97a457285f7eeb28a60a8231b21eb7daedf0455bff844f8",
-      "summary": "3 SQL literals outside persistence",
+      "fingerprint": "55127d056daa1ff202890f9f6a29a4b49abfe763366be7606b800599da5564df",
+      "summary": "1 SQL literals outside persistence",
       "details": {
-        "count": 3,
+        "count": 1,
         "keywords": [
           "SELECT"
         ],
         "owners": [
-          "_handle_command",
-          "_quote_with_wan_count"
+          "_handle_command"
         ]
       }
     },
@@ -6605,10 +6604,10 @@
       }
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:59a7836648a20932",
+      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:bd4735b99de9100f",
       "category": "type-ignore-usage",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
-      "fingerprint": "59a7836648a20932473a8881af76d2e838a1109f73e560023defcecff06b0e0a",
+      "fingerprint": "bd4735b99de9100f50416099ef48821305f0839f86fe55e97a1591f888cc97a0",
       "summary": "17 type-ignore comments",
       "details": {
         "count": 17
@@ -10083,12 +10082,12 @@
       "module": "velvet_bot.app.auf_photo_model_modes",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 1780,
-      "function_count": 52,
+      "loc": 1768,
+      "function_count": 53,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 284,
-      "branch_count": 156,
+      "max_function_length": 286,
+      "branch_count": 152,
       "internal_imports": [
         "velvet_bot.core.ai_budget",
         "velvet_bot.domains.ai_usage",
@@ -10107,7 +10106,7 @@
         "aiogram.fsm.state",
         "aiogram.types"
       ],
-      "sql_literal_count": 3,
+      "sql_literal_count": 1,
       "database_acquire_count": 1,
       "foreign_assignment_targets": [
         "KieClient._create_grs_task",
@@ -10141,18 +10140,13 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 1468,
+          "line": 1491,
           "owner": "_provider_model",
           "call": "os.getenv"
         },
         {
-          "line": 1636,
+          "line": 1624,
           "owner": "_create_grs_with_vt_fallback",
-          "call": "os.getenv"
-        },
-        {
-          "line": 1466,
-          "owner": "_provider_model",
           "call": "os.getenv"
         }
       ],
@@ -10160,19 +10154,18 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:b7ce255cd75f7b94",
+          "id": "sql-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:55127d056daa1ff2",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "b7ce255cd75f7b94c97a457285f7eeb28a60a8231b21eb7daedf0455bff844f8",
-          "summary": "3 SQL literals outside persistence",
+          "fingerprint": "55127d056daa1ff202890f9f6a29a4b49abfe763366be7606b800599da5564df",
+          "summary": "1 SQL literals outside persistence",
           "details": {
-            "count": 3,
+            "count": 1,
             "keywords": [
               "SELECT"
             ],
             "owners": [
-              "_handle_command",
-              "_quote_with_wan_count"
+              "_handle_command"
             ]
           }
         },
@@ -10235,20 +10228,20 @@
           }
         },
         {
-          "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:d214a85dc08c0e7f",
+          "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:c2c3753e280a5e46",
           "category": "method-assign-ignore",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "d214a85dc08c0e7fa905cb30da6064994638c1fe8bae94e9836bb432c2af2c53",
+          "fingerprint": "c2c3753e280a5e466293bdf78046e9edc70519e066c5fd22815a75e567a673f1",
           "summary": "5 method-assign ignores",
           "details": {
             "count": 5
           }
         },
         {
-          "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:59a7836648a20932",
+          "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:bd4735b99de9100f",
           "category": "type-ignore-usage",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "59a7836648a20932473a8881af76d2e838a1109f73e560023defcecff06b0e0a",
+          "fingerprint": "bd4735b99de9100f50416099ef48821305f0839f86fe55e97a1591f888cc97a0",
           "summary": "17 type-ignore comments",
           "details": {
             "count": 17
@@ -10265,34 +10258,34 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:dfb043809bab284c",
+          "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:34a11f2d3df99e97",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "dfb043809bab284c4749f03b5e59cacdc4d72971425135104a67891ac283cd9c",
+          "fingerprint": "34a11f2d3df99e97b24f72a8f89be243477c069882e2b48e00689d7f74012bab",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
           }
         },
         {
-          "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:6bc0b735c7b3806d",
+          "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:c22be377e639a4e1",
           "category": "monolithic-module-loc",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "6bc0b735c7b3806dde64d725bc51ad64cd892d4c6e99d8879a0d9bcea26f3535",
-          "summary": "1780 LOC exceeds 800",
+          "fingerprint": "c22be377e639a4e1aeef042bc5851f6f15a2d24de5312cd3fcd641ab68f0e709",
+          "summary": "1768 LOC exceeds 800",
           "details": {
-            "loc": 1780,
+            "loc": 1768,
             "limit": 800
           }
         },
         {
-          "id": "monolithic-function:velvet_bot/app/auf_photo_model_modes.py:8d9b5a00b8de635b",
+          "id": "monolithic-function:velvet_bot/app/auf_photo_model_modes.py:3bf49f6aff5a6885",
           "category": "monolithic-function",
           "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "fingerprint": "8d9b5a00b8de635b98152684cfa1b39e37898514e4ee4b7f162b192b199dc517",
-          "summary": "max function 284 lines exceeds 180",
+          "fingerprint": "3bf49f6aff5a68857909dd5a6bd185adb711fa1a9937cf65ed5519c8308f7034",
+          "summary": "max function 286 lines exceeds 180",
           "details": {
-            "max_function_length": 284,
+            "max_function_length": 286,
             "limit": 180
           }
         }
@@ -15327,11 +15320,11 @@
       "module": "velvet_bot.core.config.kie",
       "layer": "core",
       "target_package": "core",
-      "loc": 297,
+      "loc": 298,
       "function_count": 4,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 229,
+      "max_function_length": 230,
       "branch_count": 13,
       "internal_imports": [
         "velvet_bot.core.config.settings",
@@ -15403,37 +15396,37 @@
           "call": "os.getenv"
         },
         {
-          "line": 227,
+          "line": 228,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 234,
+          "line": 235,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 241,
+          "line": 242,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 253,
+          "line": 254,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
         {
-          "line": 260,
+          "line": 261,
           "owner": "load_kie_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 280,
-          "owner": "_env_decimal_with_legacy",
           "call": "os.getenv"
         },
         {
           "line": 281,
+          "owner": "_env_decimal_with_legacy",
+          "call": "os.getenv"
+        },
+        {
+          "line": 282,
           "owner": "_env_decimal_with_legacy",
           "call": "os.getenv"
         },
@@ -15483,7 +15476,7 @@
           "call": "os.getenv"
         },
         {
-          "line": 110,
+          "line": 117,
           "owner": "load_kie_settings",
           "call": "os.getenv"
         },
@@ -15498,12 +15491,7 @@
           "call": "os.getenv"
         },
         {
-          "line": 129,
-          "owner": "load_kie_settings",
-          "call": "os.getenv"
-        },
-        {
-          "line": 271,
+          "line": 272,
           "owner": "_env_decimal",
           "call": "os.getenv"
         }
@@ -15512,13 +15500,13 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "monolithic-function:velvet_bot/core/config/kie.py:c6a1d2f8806dd648",
+          "id": "monolithic-function:velvet_bot/core/config/kie.py:7edd5b89e9d99be0",
           "category": "monolithic-function",
           "path": "velvet_bot/core/config/kie.py",
-          "fingerprint": "c6a1d2f8806dd64841857e023e748eb330c6a3cc80c59329f0437039c85f3207",
-          "summary": "max function 229 lines exceeds 180",
+          "fingerprint": "7edd5b89e9d99be066da02430c61088b660b74c20c8e9a6f4e0ccc8b406033f9",
+          "summary": "max function 230 lines exceeds 180",
           "details": {
-            "max_function_length": 229,
+            "max_function_length": 230,
             "limit": 180
           }
         }
@@ -18947,7 +18935,7 @@
       "module": "velvet_bot.domains.media_generation.model_catalog",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 22,
+      "loc": 21,
       "function_count": 1,
       "class_count": 0,
       "handler_count": 0,
@@ -18978,12 +18966,12 @@
       "module": "velvet_bot.domains.media_generation.models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 858,
+      "loc": 874,
       "function_count": 38,
       "class_count": 11,
       "handler_count": 0,
-      "max_function_length": 111,
-      "branch_count": 77,
+      "max_function_length": 114,
+      "branch_count": 80,
       "internal_imports": [],
       "external_import_count": 6,
       "aiogram_imports": [],
@@ -19014,13 +19002,13 @@
           }
         },
         {
-          "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:970b96b356df0a27",
+          "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:3ea39b747c3133f6",
           "category": "monolithic-module-loc",
           "path": "velvet_bot/domains/media_generation/models.py",
-          "fingerprint": "970b96b356df0a27da4950dfc8a81d0ec01e7a004b2cd5398cdf912d2a9ed201",
-          "summary": "858 LOC exceeds 800",
+          "fingerprint": "3ea39b747c3133f60f0be7a659e08495ccc6fbd982f06c9683b2dee311591a92",
+          "summary": "874 LOC exceeds 800",
           "details": {
-            "loc": 858,
+            "loc": 874,
             "limit": 800
           }
         }

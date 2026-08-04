@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "production_python_files": 641,
-  "function_count": 3685,
+  "production_python_files": 646,
+  "function_count": 3725,
   "contracts": [
     {
       "family": "safe edit/send fallback",
@@ -272,7 +272,7 @@
       ]
     }
   ],
-  "private_contract_access_count": 186,
+  "private_contract_access_count": 187,
   "private_contract_accesses": [
     {
       "path": "velvet_bot/app/auf_cancel_ui_install.py",
@@ -467,7 +467,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 112,
+      "line": 109,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_state_value",
       "access_kind": "module-attribute",
@@ -477,7 +477,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 116,
+      "line": 113,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_references",
       "access_kind": "module-attribute",
@@ -487,7 +487,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 383,
+      "line": 385,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_truncate",
       "access_kind": "module-attribute",
@@ -497,7 +497,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 629,
+      "line": 649,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_ratio_keyboard",
       "access_kind": "module-attribute",
@@ -507,7 +507,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 818,
+      "line": 842,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_truncate",
       "access_kind": "module-attribute",
@@ -517,7 +517,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 829,
+      "line": 853,
       "source_module": "velvet_bot.app.auf_photo_ui_install",
       "private_name": "_final_keyboard",
       "access_kind": "module-attribute",
@@ -527,7 +527,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 919,
+      "line": 943,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_load_character_reference_rows",
       "access_kind": "module-attribute",
@@ -537,7 +537,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 954,
+      "line": 978,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_save_references",
       "access_kind": "module-attribute",
@@ -547,7 +547,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1070,
+      "line": 1094,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_save_references",
       "access_kind": "module-attribute",
@@ -557,7 +557,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1079,
+      "line": 1103,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_save_references",
       "access_kind": "module-attribute",
@@ -567,7 +567,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1087,
+      "line": 1111,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_load_sources",
       "access_kind": "module-attribute",
@@ -577,7 +577,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1098,
+      "line": 1122,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_source_keyboard",
       "access_kind": "module-attribute",
@@ -587,7 +587,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1111,
+      "line": 1135,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_load_characters",
       "access_kind": "module-attribute",
@@ -597,7 +597,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1123,
+      "line": 1147,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_character_keyboard",
       "access_kind": "module-attribute",
@@ -607,7 +607,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1369,
+      "line": 1395,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_save_references",
       "access_kind": "module-attribute",
@@ -617,7 +617,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1397,
+      "line": 1423,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_load_sources",
       "access_kind": "module-attribute",
@@ -627,7 +627,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1408,
+      "line": 1434,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_source_keyboard",
       "access_kind": "module-attribute",
@@ -637,7 +637,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1411,
+      "line": 1437,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_load_sources",
       "access_kind": "module-attribute",
@@ -647,7 +647,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1538,
+      "line": 1535,
       "source_module": "velvet_bot.domains.auf_wallet.pricing",
       "private_name": "_original_model_first_quote",
       "access_kind": "getattr",
@@ -657,7 +657,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1694,
+      "line": 1682,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_PHOTO_MODELS",
       "access_kind": "assignment",
@@ -667,7 +667,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1695,
+      "line": 1683,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_model",
       "access_kind": "assignment",
@@ -677,7 +677,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1696,
+      "line": 1684,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_model_keyboard",
       "access_kind": "assignment",
@@ -687,7 +687,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1697,
+      "line": 1685,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_input_keyboard",
       "access_kind": "assignment",
@@ -697,7 +697,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1698,
+      "line": 1686,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_review_keyboard",
       "access_kind": "assignment",
@@ -707,7 +707,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1699,
+      "line": 1687,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_resolution_keyboard",
       "access_kind": "assignment",
@@ -717,7 +717,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1700,
+      "line": 1688,
       "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
       "private_name": "_final_keyboard",
       "access_kind": "assignment",
@@ -727,7 +727,7 @@
     {
       "path": "velvet_bot/app/auf_photo_model_modes.py",
       "module": "velvet_bot.app.auf_photo_model_modes",
-      "line": 1717,
+      "line": 1705,
       "source_module": "velvet_bot.infrastructure.ai.KieClient",
       "private_name": "_create_grs_task",
       "access_kind": "assignment",
@@ -842,6 +842,16 @@
       "private_name": "_source_keyboard",
       "access_kind": "assignment",
       "expression": "photo_router._source_keyboard",
+      "family": "state compatibility accessors"
+    },
+    {
+      "path": "velvet_bot/app/auf_wallet_currency_ui.py",
+      "module": "velvet_bot.app.auf_wallet_currency_ui",
+      "line": 246,
+      "source_module": "velvet_bot.presentation.telegram.routers.workspace_auf_wallet",
+      "private_name": "_entry_line",
+      "access_kind": "module-attribute",
+      "expression": "legacy._entry_line",
       "family": "state compatibility accessors"
     },
     {
@@ -1157,7 +1167,7 @@
     {
       "path": "velvet_bot/domains/auf_wallet/purchase.py",
       "module": "velvet_bot.domains.auf_wallet.purchase",
-      "line": 18,
+      "line": 19,
       "source_module": "velvet_bot.domains.auf_wallet.store",
       "private_name": "_ensure_wallet",
       "access_kind": "direct-import",
@@ -1167,7 +1177,7 @@
     {
       "path": "velvet_bot/domains/auf_wallet/purchase.py",
       "module": "velvet_bot.domains.auf_wallet.purchase",
-      "line": 18,
+      "line": 19,
       "source_module": "velvet_bot.domains.auf_wallet.store",
       "private_name": "_wallet_from_row",
       "access_kind": "direct-import",
@@ -2202,18 +2212,18 @@
       "current_occurrences": []
     }
   ],
-  "exact_duplicate_group_count": 64,
-  "normalized_duplicate_group_count": 98,
+  "exact_duplicate_group_count": 65,
+  "normalized_duplicate_group_count": 97,
   "semantic_near_duplicate_group_count": 9,
   "duplicate_kind_counts": {
     "allowed-template": 34,
     "generated/compat": 1,
-    "normalized-near-duplicate": 97,
-    "real-duplicate": 30,
+    "normalized-near-duplicate": 96,
+    "real-duplicate": 31,
     "semantic-near-duplicate": 9
   },
   "duplicate_family_counts": {
-    "callback navigation and back buttons": 16,
+    "callback navigation and back buttons": 17,
     "deletion helpers": 4,
     "media download/preview/original delivery": 21,
     "message chunking/HTML fallback": 1,
@@ -2224,7 +2234,7 @@
     "repeated progress-card updates": 2,
     "retry/backoff policies": 3,
     "safe edit/send fallback": 8,
-    "state compatibility accessors": 17,
+    "state compatibility accessors": 16,
     "task payload/result mapping/formatting": 5,
     "workspace task history/ownership queries": 1
   },
@@ -2261,8 +2271,8 @@
           "path": "velvet_bot/presentation/telegram/storage_librarian.py",
           "module": "velvet_bot.presentation.telegram.storage_librarian",
           "name": "stop_storage_librarian",
-          "line": 152,
-          "end_line": 162
+          "line": 238,
+          "end_line": 248
         },
         {
           "path": "velvet_bot/presentation/telegram/storage_scheduler.py",
@@ -2328,6 +2338,28 @@
           "name": "_download_file",
           "line": 73,
           "end_line": 103
+        }
+      ]
+    },
+    {
+      "digest": "100ef9f966ade7603808f82e2c5285917a099c4ffa0e9da8ad6b32e365641bd8",
+      "kind": "real-duplicate",
+      "family": "callback navigation and back buttons",
+      "reason": "exact normalized AST body",
+      "occurrences": [
+        {
+          "path": "velvet_bot/app/auf_wallet_currency_ui.py",
+          "module": "velvet_bot.app.auf_wallet_currency_ui",
+          "name": "_callback",
+          "line": 53,
+          "end_line": 58
+        },
+        {
+          "path": "velvet_bot/presentation/telegram/routers/workspace_auf_wallet.py",
+          "module": "velvet_bot.presentation.telegram.routers.workspace_auf_wallet",
+          "name": "_callback",
+          "line": 46,
+          "end_line": 51
         }
       ]
     },
@@ -2784,8 +2816,8 @@
           "path": "velvet_bot/domains/telegram_storage/files.py",
           "module": "velvet_bot.domains.telegram_storage.files",
           "name": "storage_message_link",
-          "line": 57,
-          "end_line": 60
+          "line": 36,
+          "end_line": 39
         },
         {
           "path": "velvet_bot/domains/watermark/telegram_storage.py",
@@ -2850,8 +2882,8 @@
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_model",
-          "line": 95,
-          "end_line": 100
+          "line": 92,
+          "end_line": 97
         },
         {
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_photo.py",
@@ -2872,8 +2904,8 @@
           "path": "velvet_bot/domains/auf_wallet/purchase.py",
           "module": "velvet_bot.domains.auf_wallet.purchase",
           "name": "__init__",
-          "line": 481,
-          "end_line": 487
+          "line": 504,
+          "end_line": 510
         },
         {
           "path": "velvet_bot/domains/auf_wallet/service.py",
@@ -2995,8 +3027,8 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_optional_int",
-          "line": 847,
-          "end_line": 853
+          "line": 863,
+          "end_line": 869
         },
         {
           "path": "velvet_bot/domains/media_generation/task_queue.py",
@@ -3095,8 +3127,8 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_non_negative_int",
-          "line": 835,
-          "end_line": 839
+          "line": 851,
+          "end_line": 855
         }
       ]
     },
@@ -3253,8 +3285,8 @@
           "path": "velvet_bot/domains/vision_routing/factory.py",
           "module": "velvet_bot.domains.vision_routing.factory",
           "name": "_bounded_int",
-          "line": 185,
-          "end_line": 196
+          "line": 214,
+          "end_line": 225
         }
       ]
     },
@@ -3268,8 +3300,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_normalize_strings",
-          "line": 113,
-          "end_line": 123
+          "line": 114,
+          "end_line": 124
         },
         {
           "path": "velvet_bot/prompt_result_comparison.py",
@@ -3297,8 +3329,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_decode_report",
-          "line": 215,
-          "end_line": 224
+          "line": 228,
+          "end_line": 237
         },
         {
           "path": "velvet_bot/quality_calibration.py",
@@ -3392,8 +3424,8 @@
           "path": "velvet_bot/domains/telegram_storage/models.py",
           "module": "velvet_bot.domains.telegram_storage.models",
           "name": "_int_env",
-          "line": 48,
-          "end_line": 53
+          "line": 52,
+          "end_line": 57
         }
       ]
     },
@@ -3414,8 +3446,8 @@
           "path": "velvet_bot/app/workers.py",
           "module": "velvet_bot.app.workers",
           "name": "_env_enabled",
-          "line": 73,
-          "end_line": 80
+          "line": 76,
+          "end_line": 83
         },
         {
           "path": "velvet_bot/domains/vision_batches/service.py",
@@ -4105,28 +4137,6 @@
       ]
     },
     {
-      "digest": "0591e52ec80e22f8a28433ee01c8c9ec1ed98f5c46faac501665951c60fb9047",
-      "kind": "normalized-near-duplicate",
-      "family": "state compatibility accessors",
-      "reason": "AST normalized across local names, literals and image/video media leaves",
-      "occurrences": [
-        {
-          "path": "velvet_bot/app/auf_photo_model_modes.py",
-          "module": "velvet_bot.app.auf_photo_model_modes",
-          "name": "_resolution_keyboard",
-          "line": 391,
-          "end_line": 409
-        },
-        {
-          "path": "velvet_bot/presentation/telegram/routers/workspace_auf_photo.py",
-          "module": "velvet_bot.presentation.telegram.routers.workspace_auf_photo",
-          "name": "_resolution_keyboard",
-          "line": 147,
-          "end_line": 168
-        }
-      ]
-    },
-    {
       "digest": "088fec2f3d690166bae113d971a6eb664a713eb27156b6ce633ecf1677c7934a",
       "kind": "normalized-near-duplicate",
       "family": "deletion helpers",
@@ -4304,8 +4314,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_normalize_strings",
-          "line": 113,
-          "end_line": 123
+          "line": 114,
+          "end_line": 124
         },
         {
           "path": "velvet_bot/prompt_result_comparison.py",
@@ -4340,8 +4350,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_parse_ollama_payload",
-          "line": 523,
-          "end_line": 548
+          "line": 536,
+          "end_line": 561
         },
         {
           "path": "velvet_bot/palette_composition_analysis.py",
@@ -4398,8 +4408,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_schema_prompt",
-          "line": 514,
-          "end_line": 520
+          "line": 527,
+          "end_line": 533
         },
         {
           "path": "velvet_bot/reference_comparison.py",
@@ -4594,8 +4604,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_provider_available",
-          "line": 655,
-          "end_line": 669
+          "line": 668,
+          "end_line": 682
         },
         {
           "path": "velvet_bot/ai_vision.py",
@@ -4603,13 +4613,6 @@
           "name": "_provider_available",
           "line": 677,
           "end_line": 692
-        },
-        {
-          "path": "velvet_bot/services/workspace_qwen_quality.py",
-          "module": "velvet_bot.services.workspace_qwen_quality",
-          "name": "_provider_available",
-          "line": 46,
-          "end_line": 60
         }
       ]
     },
@@ -4854,8 +4857,8 @@
           "path": "velvet_bot/domains/telegram_storage/models.py",
           "module": "velvet_bot.domains.telegram_storage.models",
           "name": "_bool_env",
-          "line": 37,
-          "end_line": 45
+          "line": 41,
+          "end_line": 49
         }
       ]
     },
@@ -4869,8 +4872,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_clamp_score",
-          "line": 105,
-          "end_line": 110
+          "line": 106,
+          "end_line": 111
         },
         {
           "path": "velvet_bot/palette_composition_analysis.py",
@@ -4970,8 +4973,8 @@
           "path": "velvet_bot/domains/auf_wallet/purchase.py",
           "module": "velvet_bot.domains.auf_wallet.purchase",
           "name": "mark_reconciliation_checked",
-          "line": 469,
-          "end_line": 477
+          "line": 492,
+          "end_line": 500
         },
         {
           "path": "velvet_bot/error_center.py",
@@ -5160,8 +5163,8 @@
           "path": "velvet_bot/domains/telegram_storage/files.py",
           "module": "velvet_bot.domains.telegram_storage.files",
           "name": "storage_message_link",
-          "line": 57,
-          "end_line": 60
+          "line": 36,
+          "end_line": 39
         },
         {
           "path": "velvet_bot/domains/watermark/telegram_storage.py",
@@ -5675,8 +5678,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "_decode_report",
-          "line": 215,
-          "end_line": 224
+          "line": 228,
+          "end_line": 237
         },
         {
           "path": "velvet_bot/domains/media_rework/repository.py",
@@ -6031,8 +6034,8 @@
           "path": "velvet_bot/ai_quality.py",
           "module": "velvet_bot.ai_quality",
           "name": "mark_error",
-          "line": 356,
-          "end_line": 381
+          "line": 369,
+          "end_line": 394
         },
         {
           "path": "velvet_bot/ai_vision.py",
@@ -6093,6 +6096,13 @@
       "family": "callback navigation and back buttons",
       "reason": "AST normalized across local names, literals and image/video media leaves",
       "occurrences": [
+        {
+          "path": "velvet_bot/app/auf_wallet_currency_ui.py",
+          "module": "velvet_bot.app.auf_wallet_currency_ui",
+          "name": "_callback",
+          "line": 53,
+          "end_line": 58
+        },
         {
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_wallet.py",
           "module": "velvet_bot.presentation.telegram.routers.workspace_auf_wallet",
@@ -6338,8 +6348,15 @@
           "path": "velvet_bot/domains/auf_wallet/purchase.py",
           "module": "velvet_bot.domains.auf_wallet.purchase",
           "name": "invoice_by_code",
-          "line": 164,
-          "end_line": 170
+          "line": 187,
+          "end_line": 193
+        },
+        {
+          "path": "velvet_bot/domains/telegram_storage/librarian_repository.py",
+          "module": "velvet_bot.domains.telegram_storage.librarian_repository",
+          "name": "analysis_by_object_id",
+          "line": 480,
+          "end_line": 499
         }
       ]
     },
@@ -7403,7 +7420,7 @@
       ]
     },
     {
-      "digest": "2a04202a2379185057d9c4c6b090fd459dd7539e38e9b6d98bbf2e1a33671992",
+      "digest": "bb0f7e820b2da010be3abeb7cf99347a92cb199bc829f711f480d8fa444cfd4a",
       "kind": "semantic-near-duplicate",
       "family": "provider/model labels",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -7489,71 +7506,78 @@
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_model_keyboard",
-          "line": 183,
-          "end_line": 197
+          "line": 180,
+          "end_line": 194
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_model_card",
-          "line": 223,
-          "end_line": 234
+          "line": 220,
+          "end_line": 236
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_input_text",
-          "line": 301,
-          "end_line": 335
+          "line": 303,
+          "end_line": 337
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_review_text",
-          "line": 360,
-          "end_line": 388
+          "line": 362,
+          "end_line": 390
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_show_resolution",
-          "line": 599,
-          "end_line": 614
+          "line": 618,
+          "end_line": 634
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_show_ratios",
-          "line": 617,
-          "end_line": 630
+          "line": 637,
+          "end_line": 650
+        },
+        {
+          "path": "velvet_bot/app/auf_photo_model_modes.py",
+          "module": "velvet_bot.app.auf_photo_model_modes",
+          "name": "_show_wan_options",
+          "line": 667,
+          "end_line": 694
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_show_wallet_final",
-          "line": 713,
-          "end_line": 834
+          "line": 737,
+          "end_line": 858
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_enqueue_photo",
-          "line": 837,
-          "end_line": 904
+          "line": 861,
+          "end_line": 928
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_append_prompt_from_message",
-          "line": 1244,
-          "end_line": 1276
+          "line": 1270,
+          "end_line": 1302
         },
         {
           "path": "velvet_bot/app/auf_photo_model_modes.py",
           "module": "velvet_bot.app.auf_photo_model_modes",
           "name": "_handle_input",
-          "line": 1279,
-          "end_line": 1373
+          "line": 1305,
+          "end_line": 1399
         },
         {
           "path": "velvet_bot/app/auf_photo_ui_install.py",
@@ -7664,8 +7688,8 @@
           "path": "velvet_bot/domains/auf_wallet/pricing.py",
           "module": "velvet_bot.domains.auf_wallet.pricing",
           "name": "quote_auf_payload",
-          "line": 144,
-          "end_line": 312
+          "line": 166,
+          "end_line": 340
         },
         {
           "path": "velvet_bot/domains/media_generation/economy_worker.py",
@@ -7706,15 +7730,15 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "display_name",
-          "line": 82,
-          "end_line": 94
+          "line": 83,
+          "end_line": 96
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "__post_init__",
-          "line": 477,
-          "end_line": 522
+          "line": 482,
+          "end_line": 535
         },
         {
           "path": "velvet_bot/domains/media_generation/worker.py",
@@ -7945,7 +7969,7 @@
       ]
     },
     {
-      "digest": "724a79e0fddd6b29608835765e2447719fed0a602ce282f7e607a6c46045de4f",
+      "digest": "a05b5bebf6198a3cff8017baa450d4223658d720bcade728490a953551a08d38",
       "kind": "semantic-near-duplicate",
       "family": "safe edit/send fallback",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -8150,8 +8174,8 @@
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_provider_balances.py",
           "module": "velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances",
           "name": "handle_auf_provider_balances",
-          "line": 217,
-          "end_line": 275
+          "line": 237,
+          "end_line": 295
         },
         {
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_root.py",
@@ -8304,15 +8328,15 @@
           "path": "velvet_bot/presentation/telegram/storage_center.py",
           "module": "velvet_bot.presentation.telegram.storage_center",
           "name": "_run_manual_migration",
-          "line": 103,
-          "end_line": 131
+          "line": 113,
+          "end_line": 141
         },
         {
           "path": "velvet_bot/presentation/telegram/storage_center.py",
           "module": "velvet_bot.presentation.telegram.storage_center",
           "name": "progress",
-          "line": 110,
-          "end_line": 117
+          "line": 120,
+          "end_line": 127
         },
         {
           "path": "velvet_bot/presentation/telegram/workspace_archive_dashboard_controller.py",
@@ -8409,7 +8433,7 @@
       ]
     },
     {
-      "digest": "0648e3499d4364521b0b5fefb603c8604d62e0969dba65f5812a19a742c37af3",
+      "digest": "d3cfa720749d0b4a6188b92749722cda5ae5b4ac91bab2add76063ade8601c45",
       "kind": "semantic-near-duplicate",
       "family": "task payload/result mapping/formatting",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -8523,22 +8547,22 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "from_task_payload",
-          "line": 677,
-          "end_line": 714
+          "line": 693,
+          "end_line": 730
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "from_api",
-          "line": 736,
-          "end_line": 760
+          "line": 752,
+          "end_line": 776
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_extract_result_urls",
-          "line": 820,
-          "end_line": 832
+          "line": 836,
+          "end_line": 848
         },
         {
           "path": "velvet_bot/domains/media_generation/task_queue.py",

@@ -72,6 +72,7 @@ class KieModelAlias(StrEnum):
     NANO_BANANA_PRO = "nano_banana_pro"
     QWEN2_IMAGE_EDIT = "qwen2_image_edit"
     WAN_27_IMAGE = "wan_27_image"
+    WAN_27_IMAGE_PRO = "wan_27_image_pro"
     FLUX_2_PRO_IMAGE = "flux_2_pro_image"
     GROK_IMAGINE_VIDEO = "grok_imagine_video"
     GROK_IMAGINE_VIDEO_15 = "grok_imagine_video_15"
@@ -85,7 +86,8 @@ class KieModelAlias(StrEnum):
             self.NANO_BANANA_2: "Nano Banana 2",
             self.NANO_BANANA_PRO: "Nano Banana Pro",
             self.QWEN2_IMAGE_EDIT: "Qwen Image 2.0",
-            self.WAN_27_IMAGE: "Wan 2.7 Image",
+            self.WAN_27_IMAGE: "Wan 2.7",
+            self.WAN_27_IMAGE_PRO: "Wan 2.7 Pro",
             self.FLUX_2_PRO_IMAGE: "FLUX.2 Pro",
             self.GROK_IMAGINE_VIDEO: "Grok Imagine v1",
             self.GROK_IMAGINE_VIDEO_15: "Grok Imagine Video 1.5",
@@ -178,14 +180,6 @@ _PHOTO_MODEL_CAPABILITIES: dict[KieModelAlias, KiePhotoModelCapabilities] = {
         aspect_ratios=_COMMON_RATIOS,
         default_aspect_ratio="9:16",
     ),
-    KieModelAlias.QWEN2_IMAGE_EDIT: KiePhotoModelCapabilities(
-        max_references=3,
-        prompt_limit=8000,
-        resolutions=("2K",),
-        aspect_ratios=("1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"),
-        default_aspect_ratio="9:16",
-        supports_provider_mature_override=True,
-    ),
     KieModelAlias.WAN_27_IMAGE: KiePhotoModelCapabilities(
         max_references=9,
         prompt_limit=5000,
@@ -194,12 +188,12 @@ _PHOTO_MODEL_CAPABILITIES: dict[KieModelAlias, KiePhotoModelCapabilities] = {
         default_aspect_ratio="9:16",
         supports_provider_mature_override=True,
     ),
-    KieModelAlias.FLUX_2_PRO_IMAGE: KiePhotoModelCapabilities(
-        max_references=8,
+    KieModelAlias.WAN_27_IMAGE_PRO: KiePhotoModelCapabilities(
+        max_references=9,
         prompt_limit=5000,
-        resolutions=("1K", "2K"),
-        aspect_ratios=("auto", "1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3"),
-        default_aspect_ratio="auto",
+        resolutions=("1K", "2K", "4K"),
+        aspect_ratios=("1:1", "3:4", "4:3", "1:8", "8:1", "9:16", "16:9", "21:9"),
+        default_aspect_ratio="9:16",
         supports_provider_mature_override=True,
     ),
 }
@@ -228,6 +222,7 @@ class KieModelCatalog:
     nano_banana_pro: str = "nano-banana-pro"
     qwen2_image_edit: str = "qwen2/image-edit"
     wan_27_image: str = "wan/2-7-image"
+    wan_27_image_pro: str = "wan/2-7-image-pro"
     flux_2_pro_image: str = "flux-2/pro-image-to-image"
     grok_imagine_video: str = "grok-imagine/image-to-video"
     grok_imagine_video_15: str = "grok-imagine-video-1-5-preview"
@@ -258,6 +253,8 @@ class KieModelCatalog:
             model = self.qwen2_image_edit
         elif alias is KieModelAlias.WAN_27_IMAGE:
             model = self.wan_27_image
+        elif alias is KieModelAlias.WAN_27_IMAGE_PRO:
+            model = self.wan_27_image_pro
         elif alias is KieModelAlias.FLUX_2_PRO_IMAGE:
             model = self.flux_2_pro_image
         elif alias is KieModelAlias.GROK_IMAGINE_VIDEO:
@@ -298,8 +295,11 @@ class KiePricing:
     nano_banana_pro_usd: Decimal | None = None
     # Configurable preflight estimates. Provider billing remains the source of truth.
     qwen2_image_edit_usd: Decimal = Decimal("0.02")
-    wan_27_1k_usd: Decimal = Decimal("0.05")
-    wan_27_2k_usd: Decimal = Decimal("0.08")
+    wan_27_1k_usd: Decimal = Decimal("0.03")
+    wan_27_2k_usd: Decimal = Decimal("0.03")
+    wan_27_pro_1k_usd: Decimal = Decimal("0.075")
+    wan_27_pro_2k_usd: Decimal = Decimal("0.075")
+    wan_27_pro_4k_usd: Decimal = Decimal("0.075")
     flux_2_pro_1k_usd: Decimal = Decimal("0.045")
     flux_2_pro_2k_usd: Decimal = Decimal("0.075")
     grok_480p_usd_per_second: Decimal = Decimal("0.008")
@@ -340,6 +340,11 @@ class KiePricing:
                 if request.resolution.casefold() == "2k"
                 else self.wan_27_1k_usd
             )
+        if request.model is KieModelAlias.WAN_27_IMAGE_PRO:
+            return {
+                "2k": self.wan_27_pro_2k_usd,
+                "4k": self.wan_27_pro_4k_usd,
+            }.get(request.resolution.casefold(), self.wan_27_pro_1k_usd)
         if request.model is KieModelAlias.FLUX_2_PRO_IMAGE:
             return (
                 self.flux_2_pro_2k_usd
@@ -520,6 +525,14 @@ class KieGenerationRequest:
                     f"{self.model.display_name} не поддерживает соотношение "
                     f"{self.aspect_ratio}."
                 )
+            if (
+                self.model is KieModelAlias.WAN_27_IMAGE_PRO
+                and self.resolution.upper() == "4K"
+                and self.input_mode is not KieInputMode.TEXT
+            ):
+                raise ValueError(
+                    "Wan 2.7 Pro поддерживает 4K только в режиме «Только текст»."
+                )
 
     @property
     def provider_prompt(self) -> str:
@@ -589,7 +602,10 @@ class KieGenerationRequest:
                     "nsfw_checker": mature_override,
                 }
             )
-        elif self.model is KieModelAlias.WAN_27_IMAGE:
+        elif self.model in {
+            KieModelAlias.WAN_27_IMAGE,
+            KieModelAlias.WAN_27_IMAGE_PRO,
+        }:
             payload.update(
                 {
                     "input_urls": list(self.image_urls),
