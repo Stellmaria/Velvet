@@ -26,38 +26,75 @@ def _references(count: int) -> tuple[KieReferenceImage, ...]:
 
 
 class PhotoCapabilityMapTests(unittest.TestCase):
-    def test_documented_reference_limits_are_model_specific(self) -> None:
-        self.assertEqual(10, KieModelAlias.SEEDREAM_5_PRO.max_photo_references)
-        self.assertEqual(5, KieModelAlias.NANO_BANANA_2.max_photo_references)
-        self.assertEqual(5, KieModelAlias.NANO_BANANA_PRO.max_photo_references)
-        self.assertEqual(3, KieModelAlias.QWEN2_IMAGE_EDIT.max_photo_references)
-        self.assertEqual(9, KieModelAlias.WAN_27_IMAGE.max_photo_references)
-        self.assertEqual(8, KieModelAlias.FLUX_2_PRO_IMAGE.max_photo_references)
+    def test_active_image_capabilities_cover_only_approved_models(self) -> None:
+        expected = {
+            KieModelAlias.SEEDREAM_5_PRO: (10, 8000, ("1K", "2K")),
+            KieModelAlias.NANO_BANANA_2: (5, 8000, ("1K", "2K", "4K")),
+            KieModelAlias.NANO_BANANA_PRO: (5, 8000, ("1K", "2K", "4K")),
+            KieModelAlias.WAN_27_IMAGE: (9, 5000, ("1K", "2K")),
+            KieModelAlias.WAN_27_IMAGE_PRO: (9, 5000, ("1K", "2K", "4K")),
+        }
+        for model, (references, prompt, resolutions) in expected.items():
+            with self.subTest(model=model):
+                self.assertTrue(model.is_photo_model)
+                self.assertEqual(references, model.max_photo_references)
+                self.assertEqual(prompt, model.photo_prompt_limit)
+                self.assertEqual(resolutions, model.supported_photo_resolutions)
+        self.assertFalse(KieModelAlias.QWEN2_IMAGE_EDIT.is_photo_model)
+        self.assertFalse(KieModelAlias.FLUX_2_PRO_IMAGE.is_photo_model)
 
-    def test_qwen_has_fixed_2k_quality_and_ratio_selection(self) -> None:
-        self.assertEqual(
-            ("2K",),
-            KieModelAlias.QWEN2_IMAGE_EDIT.supported_photo_resolutions,
-        )
-        self.assertIn(
-            "9:16",
-            KieModelAlias.QWEN2_IMAGE_EDIT.supported_aspect_ratios,
-        )
+    def test_retired_image_aliases_have_no_provider_or_pricing_route(self) -> None:
+        from velvet_bot.domains.media_generation import KieModelCatalog
 
-    def test_wan_and_flux_prompt_limits_match_provider_contract(self) -> None:
-        self.assertEqual(5000, KieModelAlias.WAN_27_IMAGE.photo_prompt_limit)
-        self.assertEqual(5000, KieModelAlias.FLUX_2_PRO_IMAGE.photo_prompt_limit)
+        catalog = KieModelCatalog()
+        pricing = KiePricing()
+        for model in (
+            KieModelAlias.QWEN2_IMAGE_EDIT,
+            KieModelAlias.FLUX_2_PRO_IMAGE,
+        ):
+            with self.subTest(model=model):
+                with self.assertRaisesRegex(ValueError, "Неизвестная модель"):
+                    catalog.provider_model(model, input_mode=KieInputMode.PHOTO_TEXT)
+                request = KieGenerationRequest(
+                    model=model,
+                    input_mode=KieInputMode.PHOTO_TEXT,
+                    prompt="legacy",
+                    references=_references(1),
+                    aspect_ratio="1:1",
+                    resolution="1K",
+                )
+                with self.assertRaisesRegex(ValueError, "Неизвестная модель"):
+                    pricing.estimate_usd(request)
 
-    def test_request_rejects_model_specific_reference_overflow(self) -> None:
-        with self.assertRaisesRegex(ValueError, "принимает не больше 3"):
+    def test_request_rejects_wan_reference_overflow(self) -> None:
+        with self.assertRaisesRegex(ValueError, "принимает не больше 9"):
             KieGenerationRequest(
-                model=KieModelAlias.QWEN2_IMAGE_EDIT,
+                model=KieModelAlias.WAN_27_IMAGE,
                 input_mode=KieInputMode.PHOTO_TEXT,
                 prompt="edit",
-                references=_references(4),
+                references=_references(10),
                 aspect_ratio="9:16",
                 resolution="2K",
             )
+
+    def test_wan_pro_4k_is_text_only(self) -> None:
+        with self.assertRaisesRegex(ValueError, "4K только"):
+            KieGenerationRequest(
+                model=KieModelAlias.WAN_27_IMAGE_PRO,
+                input_mode=KieInputMode.PHOTO_TEXT,
+                prompt="edit",
+                references=_references(1),
+                aspect_ratio="9:16",
+                resolution="4K",
+            )
+        request = KieGenerationRequest(
+            model=KieModelAlias.WAN_27_IMAGE_PRO,
+            input_mode=KieInputMode.TEXT,
+            prompt="premium poster",
+            aspect_ratio="9:16",
+            resolution="4K",
+        )
+        self.assertEqual("4K", request.resolution)
 
     def test_archive_source_and_workspace_survive_queue_snapshot(self) -> None:
         reference = KieReferenceImage(
@@ -74,110 +111,57 @@ class PhotoCapabilityMapTests(unittest.TestCase):
 
 
 class PhotoProviderPayloadTests(unittest.TestCase):
-    def test_qwen_uses_scalar_for_one_reference(self) -> None:
-        request = KieGenerationRequest(
-            model=KieModelAlias.QWEN2_IMAGE_EDIT,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="keep the face and change the background",
-            references=_references(1),
-            image_urls=("https://cdn.example/one.jpg",),
-            content_mode=KieContentMode.MATURE,
-            aspect_ratio="9:16",
-            resolution="2K",
-        )
-        payload = request.to_input()
-        self.assertEqual("https://cdn.example/one.jpg", payload["image_url"])
-        self.assertEqual("9:16", payload["image_size"])
-        self.assertIs(False, payload["nsfw_checker"])
+    def test_wan_variants_share_provider_payload_contract(self) -> None:
+        for model, resolution in (
+            (KieModelAlias.WAN_27_IMAGE, "2K"),
+            (KieModelAlias.WAN_27_IMAGE_PRO, "2K"),
+        ):
+            with self.subTest(model=model):
+                request = KieGenerationRequest(
+                    model=model,
+                    input_mode=KieInputMode.PHOTO_TEXT,
+                    prompt="edit only the requested details",
+                    references=_references(2),
+                    image_urls=(
+                        "https://cdn.example/one.jpg",
+                        "https://cdn.example/two.jpg",
+                    ),
+                    content_mode=KieContentMode.MATURE,
+                    aspect_ratio="9:16",
+                    resolution=resolution,
+                )
+                payload = request.to_input()
+                self.assertEqual(1, payload["n"])
+                self.assertIs(False, payload["enable_sequential"])
+                self.assertIs(False, payload["thinking_mode"])
+                self.assertIs(False, payload["watermark"])
+                self.assertIs(False, payload["nsfw_checker"])
+                self.assertEqual([[], []], payload["bbox_list"])
 
-    def test_qwen_preserves_marketplace_multi_reference_contract(self) -> None:
-        urls = tuple(f"https://cdn.example/{index}.jpg" for index in range(3))
-        request = KieGenerationRequest(
-            model=KieModelAlias.QWEN2_IMAGE_EDIT,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="combine the references",
-            references=_references(3),
-            image_urls=urls,
-            aspect_ratio="1:1",
-            resolution="2K",
-        )
-        self.assertEqual(list(urls), request.to_input()["image_url"])
-
-    def test_wan_forces_one_output_and_disables_gallery_watermark(self) -> None:
-        request = KieGenerationRequest(
-            model=KieModelAlias.WAN_27_IMAGE,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="edit only the requested details",
-            references=_references(2),
-            image_urls=(
-                "https://cdn.example/one.jpg",
-                "https://cdn.example/two.jpg",
-            ),
-            content_mode=KieContentMode.MATURE,
-            aspect_ratio="9:16",
-            resolution="2K",
-        )
-        payload = request.to_input()
-        self.assertEqual(1, payload["n"])
-        self.assertIs(False, payload["enable_sequential"])
-        self.assertIs(False, payload["thinking_mode"])
-        self.assertIs(False, payload["watermark"])
-        self.assertIs(False, payload["nsfw_checker"])
-        self.assertEqual([[], []], payload["bbox_list"])
-
-    def test_flux_uses_documented_image_to_image_fields(self) -> None:
-        request = KieGenerationRequest(
-            model=KieModelAlias.FLUX_2_PRO_IMAGE,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="move the subject to a night city",
-            references=_references(1),
-            image_urls=("https://cdn.example/one.jpg",),
-            content_mode=KieContentMode.MATURE,
-            aspect_ratio="auto",
-            resolution="1K",
-        )
-        payload = request.to_input()
-        self.assertEqual(
-            ["https://cdn.example/one.jpg"],
-            payload["input_urls"],
-        )
-        self.assertEqual("auto", payload["aspect_ratio"])
-        self.assertEqual("1K", payload["resolution"])
-        self.assertIs(False, payload["nsfw_checker"])
-
-    def test_preflight_pricing_is_configurable_per_new_model(self) -> None:
+    def test_preflight_pricing_is_configurable_per_wan_variant(self) -> None:
         pricing = KiePricing(
-            qwen2_image_edit_usd=Decimal("0.021"),
-            wan_27_2k_usd=Decimal("0.081"),
-            flux_2_pro_1k_usd=Decimal("0.046"),
+            wan_27_1k_usd=Decimal("0.031"),
+            wan_27_2k_usd=Decimal("0.032"),
+            wan_27_pro_1k_usd=Decimal("0.076"),
+            wan_27_pro_2k_usd=Decimal("0.077"),
+            wan_27_pro_4k_usd=Decimal("0.078"),
         )
-        qwen = KieGenerationRequest(
-            model=KieModelAlias.QWEN2_IMAGE_EDIT,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="edit",
-            references=_references(1),
-            aspect_ratio="1:1",
-            resolution="2K",
-        )
-        wan = KieGenerationRequest(
-            model=KieModelAlias.WAN_27_IMAGE,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="edit",
-            references=_references(1),
-            aspect_ratio="1:1",
-            resolution="2K",
-        )
-        flux = KieGenerationRequest(
-            model=KieModelAlias.FLUX_2_PRO_IMAGE,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="edit",
-            references=_references(1),
-            aspect_ratio="auto",
-            resolution="1K",
-        )
-        self.assertEqual(Decimal("0.021"), pricing.estimate_usd(qwen))
-        self.assertEqual(Decimal("0.081"), pricing.estimate_usd(wan))
-        self.assertEqual(Decimal("0.046"), pricing.estimate_usd(flux))
+        expected = {
+            (KieModelAlias.WAN_27_IMAGE, "1K"): Decimal("0.031"),
+            (KieModelAlias.WAN_27_IMAGE, "2K"): Decimal("0.032"),
+            (KieModelAlias.WAN_27_IMAGE_PRO, "1K"): Decimal("0.076"),
+            (KieModelAlias.WAN_27_IMAGE_PRO, "2K"): Decimal("0.077"),
+            (KieModelAlias.WAN_27_IMAGE_PRO, "4K"): Decimal("0.078"),
+        }
+        for (model, resolution), cost in expected.items():
+            request = KieGenerationRequest(
+                model=model,
+                input_mode=KieInputMode.TEXT,
+                prompt="image",
+                aspect_ratio="1:1",
+                resolution=resolution,
+            )
+            self.assertEqual(cost, pricing.estimate_usd(request))
 
 
 if __name__ == "__main__":

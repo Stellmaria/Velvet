@@ -34,6 +34,12 @@ class _Connection:
 
     async def fetchrow(self, query: str, *args):
         if "FROM auf_price_versions" in query:
+            minimums = {
+                "nano_banana_2": {"1K": 1, "2K": 2, "4K": 3},
+                "nano_banana_pro": {"1K": 2, "2K": 3, "4K": 4},
+                "wan_27_image": {"1K": 1, "2K": 2},
+                "wan_27_image_pro": {"1K": 3, "2K": 4, "4K": 5},
+            }
             return {
                 "id": 1,
                 "version_key": "pricing:test",
@@ -45,13 +51,17 @@ class _Connection:
                 "unit_cost_usd": self.unit_cost_usd,
                 "extra_reference_cost_usd": Decimal("0"),
                 "quality_surcharge_velvets": 0,
+                "minimum_velvets": minimums[self.model_alias][self.resolution],
             }
         if "FROM auf_economy_settings" in query:
             return {
-                "retail_auf_usd": Decimal("0.03"),
-                "billing_usd_to_rub": Decimal("80"),
+                "retail_auf_usd": Decimal("0.04309777"),
+                "billing_usd_to_rub": Decimal("79.7257"),
                 "billing_usd_to_byn": Decimal("3"),
-                "retail_markup_percent": Decimal("30"),
+                "retail_markup_percent": Decimal("42.86"),
+                "quote_rub_per_vl": Decimal("4"),
+                "operational_cost_buffer_percent": Decimal("5"),
+                "minimum_user_markup_percent": Decimal("15"),
             }
         raise AssertionError(query)
 
@@ -59,7 +69,7 @@ class _Connection:
         if "FROM auf_user_markup_overrides" in query:
             return self.override
         if "FROM auf_package_prices" in query:
-            return Decimal("2")
+            raise AssertionError("Generation quotes must not depend on package prices")
         raise AssertionError(query)
 
 
@@ -77,35 +87,75 @@ def _payload(model: str, resolution: str) -> dict[str, object]:
 
 
 class BananaPriceTests(unittest.IsolatedAsyncioTestCase):
-    async def test_both_banana_models_use_one_two_three_vl(self) -> None:
-        expected = {"1K": 1, "2K": 2, "4K": 3}
-        for model, cost in (
-            ("nano_banana_2", Decimal("0.02")),
-            ("nano_banana_pro", Decimal("0.03")),
-        ):
+    async def test_banana_and_banana_pro_keep_distinct_quality_grids(self) -> None:
+        expected_by_model = {
+            "nano_banana_2": {"1K": 1, "2K": 2, "4K": 3},
+            "nano_banana_pro": {"1K": 2, "2K": 3, "4K": 4},
+        }
+        costs = {
+            "nano_banana_2": Decimal("0.02"),
+            "nano_banana_pro": Decimal("0.03"),
+        }
+        for model, expected in expected_by_model.items():
             for resolution, velvets in expected.items():
                 with self.subTest(model=model, resolution=resolution):
                     quote = await quote_auf_payload(
                         _Connection(
                             model_alias=model,
                             resolution=resolution,
-                            unit_cost_usd=cost,
+                            unit_cost_usd=costs[model],
                         ),
                         _payload(model, resolution),
                     )
                     self.assertEqual(velvets * AUF_SCALE, quote.quoted_units)
 
-    async def test_individual_markup_changes_banana_base(self) -> None:
+    async def test_individual_markup_preserves_banana_pro_floor(self) -> None:
         quote = await quote_auf_payload(
             _Connection(
                 model_alias="nano_banana_pro",
                 resolution="1K",
                 unit_cost_usd=Decimal("0.03"),
-                override=Decimal("45"),
+                override=Decimal("15"),
             ),
             _payload("nano_banana_pro", "1K"),
         )
         self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
+
+
+class WanImagePriceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_standard_and_pro_keep_separate_price_grids(self) -> None:
+        expected_by_model = {
+            "wan_27_image": {"1K": 1, "2K": 2},
+            "wan_27_image_pro": {"1K": 3, "2K": 4, "4K": 5},
+        }
+        costs = {
+            "wan_27_image": Decimal("0.03"),
+            "wan_27_image_pro": Decimal("0.075"),
+        }
+        for model, expected in expected_by_model.items():
+            for resolution, velvets in expected.items():
+                with self.subTest(model=model, resolution=resolution):
+                    quote = await quote_auf_payload(
+                        _Connection(
+                            model_alias=model,
+                            resolution=resolution,
+                            unit_cost_usd=costs[model],
+                        ),
+                        _payload(model, resolution),
+                    )
+                    self.assertEqual(velvets * AUF_SCALE, quote.quoted_units)
+
+    async def test_individual_markup_does_not_collapse_wan_pro_floor(self) -> None:
+        quote = await quote_auf_payload(
+            _Connection(
+                model_alias="wan_27_image_pro",
+                resolution="1K",
+                unit_cost_usd=Decimal("0.075"),
+                override=Decimal("15"),
+            ),
+            _payload("wan_27_image_pro", "1K"),
+        )
+        self.assertEqual(3 * AUF_SCALE, quote.quoted_units)
 
 
 class OwnerCostOnlyTests(unittest.TestCase):
@@ -121,15 +171,19 @@ class OwnerCostOnlyTests(unittest.TestCase):
             duration_seconds=6,
             reference_count=1,
             provider_cost_usd=Decimal("0.15"),
-            global_markup_percent=Decimal("30"),
+            global_markup_percent=Decimal("42.86"),
             user_markup_override_percent=None,
-            markup_percent=Decimal("30"),
+            minimum_user_markup_percent=Decimal("15"),
+            markup_percent=Decimal("42.86"),
+            operational_cost_buffer_percent=Decimal("5"),
+            quote_rub_per_vl=Decimal("4"),
             quality_surcharge_velvets=0,
-            target_retail_usd=Decimal("0.195"),
-            minimum_revenue_usd=Decimal("0.2204"),
+            minimum_velvets=4,
+            target_retail_usd=Decimal("0.2250045"),
+            minimum_revenue_usd=Decimal("0.250860"),
             billing_usd_to_rub=Decimal("79.7257"),
             billing_usd_to_byn=Decimal("2.92661"),
-            quoted_units=8 * AUF_SCALE,
+            quoted_units=5 * AUF_SCALE,
         )
 
     def test_owner_block_contains_only_provider_and_real_cost(self) -> None:

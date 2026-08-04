@@ -223,3 +223,17 @@ CI блокирует содержательный PR без завершённ�
 - registered transitional private accesses: **186**;
 - blocking known private contracts: **0**;
 - целевая консолидация временных delivery/UI layers остаётся в **#457**.
+
+## Срез feature-ветки AUF от 4 августа 2026 года
+
+Этот блок фиксирует воспроизводимые числа текущей feature-ветки PR #590. Он не означает merge, rollout или закрытие архитектурного долга.
+
+- production Python files: **646**;
+- inventoried functions: **3725**;
+- registered transitional private accesses: **187**;
+- blocking known private contracts: **0**;
+- package production modules: **646**;
+- package production LOC: **141648**;
+- registered package architecture fingerprints: **548**.
+
+Переходные media delivery и provider-routing слои по-прежнему требуют burn-down в #457 и #459.

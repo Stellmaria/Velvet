@@ -39,17 +39,14 @@ from velvet_bot.reference_media import validate_reference_document
 
 _INSTALLED = False
 _MAX_PROMPT_MESSAGES = 2
-_TEXT_MODEL_IDS = {
-    KieModelAlias.QWEN2_IMAGE_EDIT: ("KIE_QWEN2_TEXT_MODEL", "qwen2/text-to-image"),
-    KieModelAlias.FLUX_2_PRO_IMAGE: (
-        "KIE_FLUX_2_PRO_TEXT_MODEL",
-        "flux-2/pro-text-to-image",
-    ),
-}
+_WAN_IMAGE_MODELS = frozenset(
+    {KieModelAlias.WAN_27_IMAGE, KieModelAlias.WAN_27_IMAGE_PRO}
+)
 _PHOTO_MODELS = (
     KieModelAlias.NANO_BANANA_2,
     KieModelAlias.NANO_BANANA_PRO,
     KieModelAlias.SEEDREAM_5_PRO,
+    KieModelAlias.WAN_27_IMAGE_PRO,
     KieModelAlias.WAN_27_IMAGE,
 )
 _ORIGINAL_PROVIDER_MODEL = KieModelCatalog.provider_model
@@ -148,7 +145,7 @@ def _mode_name(mode: KieInputMode) -> str:
 
 
 def _result_count(data: Mapping[str, object], model: KieModelAlias) -> int:
-    if model is not KieModelAlias.WAN_27_IMAGE:
+    if model not in _WAN_IMAGE_MODELS:
         return 1
     try:
         value = int(str(_state_value(data, "auf_wan_n") or "1"))
@@ -222,6 +219,11 @@ def _mode_keyboard(workspace_id: int, model: KieModelAlias) -> InlineKeyboardMar
 
 def _model_card(model: KieModelAlias) -> str:
     resolutions = ", ".join(model.supported_photo_resolutions)
+    wan_pro_note = (
+        " 4K доступно только без референсов."
+        if model is KieModelAlias.WAN_27_IMAGE_PRO
+        else ""
+    )
     return (
         f"<b>{escape(model.display_name)}</b>\n\n"
         "Режимы: <b>только текст</b> или <b>фото + текст</b>.\n"
@@ -229,7 +231,7 @@ def _model_card(model: KieModelAlias) -> str:
         "Максимальный размер одного файла: <b>10 МБ</b>.\n"
         f"Промт: <b>до {model.photo_prompt_limit} символов</b>, "
         "можно отправить двумя сообщениями.\n"
-        f"Качество: <b>{escape(resolutions)}</b>.\n\n"
+        f"Качество: <b>{escape(resolutions)}</b>.{wan_pro_note}\n\n"
         "Выберите способ генерации."
     )
 
@@ -388,7 +390,24 @@ def _review_text(
     return "\n".join(lines)
 
 
-def _resolution_keyboard(workspace_id: int, model: KieModelAlias) -> InlineKeyboardMarkup:
+def _available_resolutions(
+    model: KieModelAlias,
+    mode: KieInputMode | None,
+) -> tuple[str, ...]:
+    if model is KieModelAlias.WAN_27_IMAGE_PRO and mode is not KieInputMode.TEXT:
+        return tuple(
+            resolution
+            for resolution in model.supported_photo_resolutions
+            if resolution != "4K"
+        )
+    return model.supported_photo_resolutions
+
+
+def _resolution_keyboard(
+    workspace_id: int,
+    model: KieModelAlias,
+    mode: KieInputMode | None = None,
+) -> InlineKeyboardMarkup:
     rows = [
         [
             _button(
@@ -398,7 +417,7 @@ def _resolution_keyboard(workspace_id: int, model: KieModelAlias) -> InlineKeybo
                 value=resolution,
             )
         ]
-        for resolution in model.supported_photo_resolutions
+        for resolution in _available_resolutions(model, mode)
     ]
     rows.extend(
         [
@@ -490,7 +509,7 @@ def _final_keyboard(
         rows.append(
             [_button("Формат файла", "photo_choose_format", workspace_id=workspace_id)]
         )
-    if model is KieModelAlias.WAN_27_IMAGE:
+    if model in _WAN_IMAGE_MODELS:
         rows.append(
             [_button("Количество и серия", "photo_wan_settings", workspace_id=workspace_id)]
         )
@@ -603,6 +622,7 @@ async def _show_resolution(
 ) -> None:
     data = await state.get_data()
     workspace_id = int(_state_value(data, "auf_workspace_id") or 0)
+    mode = _input_mode(_state_value(data, "auf_input_mode"))
     await state.set_state(ModelFirstPhotoForm.choosing_resolution)
     await edit_or_answer_auf_callback(
         callback,
@@ -610,7 +630,7 @@ async def _show_resolution(
             f"<b>{escape(model.display_name)} · качество</b>\n\n"
             "Выберите разрешение результата."
         ),
-        reply_markup=_resolution_keyboard(workspace_id, model),
+        reply_markup=_resolution_keyboard(workspace_id, model, mode),
     )
 
 
@@ -647,8 +667,11 @@ async def _show_format(callback: CallbackQuery, state: FSMContext) -> None:
 async def _show_wan_options(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     workspace_id = int(_state_value(data, "auf_workspace_id") or 0)
+    model = _model(_state_value(data, "auf_model"))
+    if model not in _WAN_IMAGE_MODELS:
+        model = KieModelAlias.WAN_27_IMAGE
     sequential = _wan_sequential(data)
-    n = _result_count(data, KieModelAlias.WAN_27_IMAGE)
+    n = _result_count(data, model)
     maximum = 12 if sequential else 4
     if n > maximum:
         n = maximum
@@ -657,7 +680,7 @@ async def _show_wan_options(callback: CallbackQuery, state: FSMContext) -> None:
     await edit_or_answer_auf_callback(
         callback,
         text=(
-            "<b>Wan 2.7 Image · количество результатов</b>\n\n"
+            f"<b>{escape(model.display_name)} · количество результатов</b>\n\n"
             f"Изображений: <b>{n}</b>.\n"
             f"Связная серия: <b>{'включена' if sequential else 'выключена'}</b>.\n\n"
             "При включённой серии модель создаёт связанные последовательные кадры. "
@@ -686,13 +709,14 @@ def _request(data: Mapping[str, object]) -> KieGenerationRequest:
     references = _references(data) if mode is KieInputMode.PHOTO_TEXT else ()
     resolution = str(_state_value(data, "auf_resolution") or "").strip().upper()
     if not resolution:
-        resolution = model.supported_photo_resolutions[-1]
+        available_resolutions = _available_resolutions(model, mode)
+        resolution = available_resolutions[-1]
     ratio = str(_state_value(data, "auf_aspect_ratio") or "").strip()
     if not ratio:
         ratio = _infer_ratio(prompt, model)
     output_format = _output_format(data, model) or "png"
     extra_input: dict[str, object] = {}
-    if model is KieModelAlias.WAN_27_IMAGE:
+    if model in _WAN_IMAGE_MODELS:
         extra_input = {
             "n": _result_count(data, model),
             "enable_sequential": _wan_sequential(data),
@@ -725,7 +749,7 @@ async def _show_wallet_final(
     ):
         await _show_format(callback, state)
         return
-    if request.model is KieModelAlias.WAN_27_IMAGE and not bool(
+    if request.model in _WAN_IMAGE_MODELS and not bool(
         _state_value(data, "auf_wan_configured")
     ):
         await _show_wan_options(callback, state)
@@ -805,7 +829,7 @@ async def _show_wallet_final(
         )
     count = int(request.extra_input.get("n", 1))
     lines.append(f"Результатов: <b>{count}</b>")
-    if request.model is KieModelAlias.WAN_27_IMAGE:
+    if request.model in _WAN_IMAGE_MODELS:
         lines.append(
             f"Связная серия: <b>{'включена' if request.extra_input.get('enable_sequential') else 'выключена'}</b>"
         )
@@ -1170,9 +1194,11 @@ async def _handle_action(
         await _show_resolution(callback, state, model)
         return
     if action == "photo_resolution":
-        model = _model(_state_value(await state.get_data(), "auf_model"))
+        data = await state.get_data()
+        model = _model(_state_value(data, "auf_model"))
+        mode = _input_mode(_state_value(data, "auf_input_mode"))
         resolution = str(callback_data.value).upper()
-        if model is None or resolution not in model.supported_photo_resolutions:
+        if model is None or resolution not in _available_resolutions(model, mode):
             await callback.answer("Недоступное качество.", show_alert=True)
             return
         await state.update_data(auf_resolution=resolution)
@@ -1461,9 +1487,6 @@ def _provider_model(
     *,
     input_mode: KieInputMode | None = None,
 ) -> str:
-    if alias in _TEXT_MODEL_IDS and input_mode is KieInputMode.TEXT:
-        variable, default = _TEXT_MODEL_IDS[alias]
-        return os.getenv(variable, default).strip() or default
     if alias is KieModelAlias.NANO_BANANA_PRO:
         primary = os.getenv(
             "GRS_NANO_BANANA_PRO_VT_MODEL",
@@ -1475,22 +1498,7 @@ def _provider_model(
 
 def _to_input(self: KieGenerationRequest) -> dict[str, object]:
     mature_override = self.content_mode is not KieContentMode.MATURE
-    if self.model is KieModelAlias.QWEN2_IMAGE_EDIT:
-        payload: dict[str, object] = {
-            "prompt": self.provider_prompt,
-            "image_size": self.aspect_ratio.strip(),
-            "output_format": self.output_format.strip() or "png",
-            "nsfw_checker": mature_override,
-        }
-        if self.input_mode is not KieInputMode.TEXT:
-            payload["image_url"] = (
-                self.image_urls[0]
-                if len(self.image_urls) == 1
-                else list(self.image_urls)
-            )
-        payload.update(dict(self.extra_input))
-        return payload
-    if self.model is KieModelAlias.WAN_27_IMAGE:
+    if self.model in _WAN_IMAGE_MODELS:
         n = max(1, int(self.extra_input.get("n", 1)))
         sequential = bool(self.extra_input.get("enable_sequential", False))
         maximum = 12 if sequential else 4
@@ -1505,23 +1513,12 @@ def _to_input(self: KieGenerationRequest) -> dict[str, object]:
         if self.input_mode is not KieInputMode.TEXT:
             payload["input_urls"] = list(self.image_urls)
         return payload
-    if self.model is KieModelAlias.FLUX_2_PRO_IMAGE:
-        payload = {
-            "prompt": self.provider_prompt,
-            "aspect_ratio": self.aspect_ratio.strip(),
-            "resolution": self.resolution.upper(),
-            "nsfw_checker": mature_override,
-        }
-        if self.input_mode is not KieInputMode.TEXT:
-            payload["input_urls"] = list(self.image_urls)
-        payload.update(dict(self.extra_input))
-        return payload
     return _ORIGINAL_TO_INPUT(self)
 
 
 def _estimate_usd(self: KiePricing, request: KieGenerationRequest) -> Decimal:
     value = _ORIGINAL_ESTIMATE_USD(self, request)
-    if request.model is KieModelAlias.WAN_27_IMAGE:
+    if request.model in _WAN_IMAGE_MODELS:
         try:
             n = max(1, int(request.extra_input.get("n", 1)))
         except (TypeError, ValueError):
@@ -1540,7 +1537,9 @@ async def _quote_with_wan_count(
     request_value = payload.get("request")
     if not isinstance(request_value, Mapping):
         return quote
-    if str(request_value.get("model") or "") != KieModelAlias.WAN_27_IMAGE.value:
+    if str(request_value.get("model") or "") not in {
+        model.value for model in _WAN_IMAGE_MODELS
+    }:
         return quote
     extra = request_value.get("extra_input")
     extra_input = dict(extra) if isinstance(extra, Mapping) else {}
@@ -1550,47 +1549,36 @@ async def _quote_with_wan_count(
         n = 1
     if n <= 1:
         return quote
+
     provider_cost = quote.provider_cost_usd * Decimal(n)
-    target_retail_usd = provider_cost * (
-        Decimal("1") + quote.markup_percent / Decimal("100")
+    operational_multiplier = (
+        Decimal("1")
+        + quote.operational_cost_buffer_percent / Decimal("100")
     )
-    package_floor_rub = await connection.fetchval(
-        """
-        SELECT MIN(price_rub / package_auf::NUMERIC)
-        FROM auf_package_prices
-        WHERE is_active = TRUE
-          AND effective_from <= NOW()
-          AND (effective_to IS NULL OR effective_to > NOW())
-        """
-    )
-    if package_floor_rub is not None:
-        minimum_rub_per_auf = Decimal(package_floor_rub)
-    else:
-        retail_auf_usd = await connection.fetchval(
-            """
-            SELECT retail_auf_usd
-            FROM auf_economy_settings
-            WHERE singleton_id = 1
-            """
-        )
-        minimum_rub_per_auf = Decimal(retail_auf_usd) * quote.billing_usd_to_rub
+    markup_multiplier = Decimal("1") + quote.markup_percent / Decimal("100")
+    target_retail_usd = provider_cost * operational_multiplier * markup_multiplier
     target_retail_rub = target_retail_usd * quote.billing_usd_to_rub
-    whole_auf = max(
+    cost_based_velvets = max(
         1,
         int(
-            (target_retail_rub / minimum_rub_per_auf).to_integral_value(
+            (target_retail_rub / quote.quote_rub_per_vl).to_integral_value(
                 rounding=ROUND_CEILING
             )
         ),
     )
-    quoted_units = whole_auf * AUF_SCALE
-    minimum_revenue_rub = minimum_rub_per_auf * Decimal(whole_auf)
+    quality_adjusted_velvets = (
+        cost_based_velvets + quote.quality_surcharge_velvets * n
+    )
+    whole_velvets = max(quote.minimum_velvets * n, quality_adjusted_velvets)
+    minimum_revenue_rub = quote.quote_rub_per_vl * Decimal(whole_velvets)
     return replace(
         quote,
         provider_cost_usd=provider_cost,
         target_retail_usd=target_retail_usd,
-        minimum_revenue_usd=minimum_revenue_rub / quote.billing_usd_to_rub,
-        quoted_units=quoted_units,
+        minimum_revenue_usd=(
+            minimum_revenue_rub / quote.billing_usd_to_rub
+        ),
+        quoted_units=whole_velvets * AUF_SCALE,
     )
 
 

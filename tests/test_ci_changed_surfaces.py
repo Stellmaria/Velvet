@@ -90,13 +90,14 @@ class CiChangedSurfacesTests(unittest.TestCase):
         self.assertIn("steps.changes.outputs.mypy == 'true'", source)
         self.assertIn("Skip unchanged bounded type surface", source)
 
-    def test_project_notes_avoids_full_history_and_obsolete_runs(self) -> None:
+    def test_project_notes_fetches_exact_base_without_obsolete_setup(self) -> None:
         source = NOTES_WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: true", source)
-        self.assertIn("fetch-depth: 2", source)
-        self.assertNotIn("fetch-depth: 0", source)
+        self.assertIn("fetch-depth: 0", source)
+        self.assertNotIn("fetch-depth: 2", source)
         self.assertNotIn("actions/setup-python", source)
         self.assertNotIn("git fetch", source)
+        self.assertIn("github.event.pull_request.base.sha", source)
 
 
 if __name__ == "__main__":

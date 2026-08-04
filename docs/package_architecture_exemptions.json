@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "baseline_issue": "#460",
-  "shared_private_access_sha256": "09eda473b2f3e223be6ec9ba8f43708a46dcabbc1f0f87fff32ae8ed7ef35af8",
+  "shared_private_access_sha256": "1ede851cc36a62bddfab222c4267eb6c4087e673a2da9935f259e0e2db805ab3",
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",
   "exceptions": [
     {
@@ -37,7 +37,6 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
-        "velvet_bot/services/workspace_qwen_quality.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
@@ -457,6 +456,7 @@
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/domains/auf_wallet/purchase.py",
         "velvet_bot/domains/auf_wallet/service.py"
       ],
       "replacement": "Canonical boundary tracked by #460.",
@@ -882,6 +882,7 @@
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
+        "velvet_bot/app/auf_wallet_currency_ui.py",
         "velvet_bot/app/auf_workspace_ui_install.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/presentation/telegram/routers/workspace_auf_balance.py",
@@ -2499,7 +2500,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:dfb043809bab284c",
+      "id": "installed-sentinel:velvet_bot/app/auf_photo_model_modes.py:34a11f2d3df99e97",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
@@ -3270,7 +3271,7 @@
       "issue": "#455"
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:d214a85dc08c0e7f",
+      "id": "method-assign-ignore:velvet_bot/app/auf_photo_model_modes.py:c2c3753e280a5e46",
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
@@ -3361,7 +3362,7 @@
       "issue": "#455"
     },
     {
-      "id": "monolithic-function:velvet_bot/app/auf_photo_model_modes.py:8d9b5a00b8de635b",
+      "id": "monolithic-function:velvet_bot/app/auf_photo_model_modes.py:3bf49f6aff5a6885",
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
@@ -3398,7 +3399,7 @@
       "issue": "#455"
     },
     {
-      "id": "monolithic-function:velvet_bot/core/config/kie.py:c6a1d2f8806dd648",
+      "id": "monolithic-function:velvet_bot/core/config/kie.py:7edd5b89e9d99be0",
       "owner": "architecture-governance",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
@@ -3545,6 +3546,7 @@
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
+        "velvet_bot/app/auf_wallet_currency_ui.py",
         "velvet_bot/app/auf_workspace_ui_install.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/presentation/telegram/routers/workspace_auf_balance.py",
@@ -3710,7 +3712,7 @@
       "issue": "#463"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:6bc0b735c7b3806d",
+      "id": "monolithic-module-loc:velvet_bot/app/auf_photo_model_modes.py:c22be377e639a4e1",
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
@@ -3735,7 +3737,7 @@
       "issue": "#463"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:970b96b356df0a27",
+      "id": "monolithic-module-loc:velvet_bot/domains/media_generation/models.py:1fcb511b394a190e",
       "owner": "provider-adapters",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
@@ -3835,6 +3837,7 @@
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
+        "velvet_bot/app/auf_wallet_currency_ui.py",
         "velvet_bot/app/auf_workspace_ui_install.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/presentation/telegram/routers/workspace_auf_balance.py",
@@ -4250,7 +4253,6 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
-        "velvet_bot/services/workspace_qwen_quality.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
@@ -4401,7 +4403,7 @@
       "issue": "#458"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:b7ce255cd75f7b94",
+      "id": "sql-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:55127d056daa1ff2",
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -4693,6 +4695,7 @@
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/domains/auf_wallet/purchase.py",
         "velvet_bot/domains/auf_wallet/service.py"
       ],
       "replacement": "Canonical boundary tracked by #458.",
@@ -4701,7 +4704,7 @@
       "issue": "#458"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:f6c0ac90351bfbd3",
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:ef58b2fc2d83d17d",
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -5291,6 +5294,7 @@
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
+        "velvet_bot/app/auf_wallet_currency_ui.py",
         "velvet_bot/app/auf_workspace_ui_install.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/presentation/telegram/routers/workspace_auf_balance.py",
@@ -5800,7 +5804,6 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
-        "velvet_bot/services/workspace_qwen_quality.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
@@ -5857,7 +5860,7 @@
       "issue": "#455"
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:59a7836648a20932",
+      "id": "type-ignore-usage:velvet_bot/app/auf_photo_model_modes.py:bd4735b99de9100f",
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -6072,7 +6075,6 @@
         "velvet_bot/quality_set_ai_dashboard.py",
         "velvet_bot/quality_ui.py",
         "velvet_bot/resilient_ai_quality.py",
-        "velvet_bot/services/workspace_qwen_quality.py",
         "velvet_bot/velvet_ai_ui.py"
       ],
       "replacement": "Canonical boundary tracked by #463.",
