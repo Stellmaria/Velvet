@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 
+from velvet_bot.app.auf_wallet_currency_fix import install_auf_wallet_currency_fix
 from velvet_bot.app.auf_wallet_currency_ui import handle_auf_wallet_action
 
 _INSTALLED = False
@@ -14,6 +15,7 @@ def install_auf_wallet_ui() -> None:
     if _INSTALLED:
         return
 
+    install_auf_wallet_currency_fix()
     controller = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_controller"
     )
