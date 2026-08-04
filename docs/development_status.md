@@ -172,6 +172,12 @@ PR #450/#456 считаются временной stabilization, а не цел
 Не завершено живой средой: server reconcile/restart и post-rollout smoke. До
 этого capability имеет статус «готово в коде», а не «установлено в production».
 
+В issue #584 canonical packs Каэля, Велвета и Макса получают исполняемый
+readiness/evidence gate. Он отделяет coder implementation от review/merge/rollout,
+требует high-risk integration evidence, сверяет effective workspace и mutation
+с ledger/GitHub и ограничивает automatic review-fix двумя итерациями. Production
+installation и live identity/dry-run acceptance остаются отдельным rollout gate.
+
 ## Эксплуатационные обязательства
 
 Не закрыты одним CI:

@@ -238,8 +238,9 @@ Canonical helpers уже созданы, но transitional debt закрывае
 
 Канонический cognitive control plane хранится в Obsidian-compatible
 `brain-vault/`, но не заменяет GitHub, runtime DB, task ledger или secrets
-store. Четыре сущности имеют отдельные manifest profiles: Каэль, Velvet Coder,
-Макс и Velvet Librarian.
+store. Ровно три operational identity имеют canonical packs: Каэль, Велвет и
+Макс. Velvet Librarian остаётся отдельным deny-all utility profile и не является
+coder/operator identity.
 
 Действующие архитектурные решения:
 
@@ -253,6 +254,17 @@ store. Четыре сущности имеют отдельные manifest prof
 - долговременная запись проходит Kael review и coder PR;
 - `context-manifest.json`, preflight и smoke подтверждают role/project и SHA-256;
 - runtime memory seed никогда не перезаписывает живую memory.
+
+Issue #584 разделяет `implemented_by_coder`, независимый review, merge
+authorization и rollout verification. Green CI необходим, но не является review
+approval. Для complex/high-risk Каэль проверяет requirement/changed-file coverage,
+cross-component integration evidence и trusted ledger/GitHub/runtime facts.
+
+Owner-direct и Kael-delegated входы сохраняют одну identity Велвета либо Макса.
+Единственный task checkout — effective per-run workspace runner; static/shared
+workspace не является evidence. Mutation является OR HEAD/ref/tree/base/execution/
+push/PR signals, а конфликт источников блокирует pipeline. После двух automatic
+review-fix итераций существующий PR сохраняется и задача эскалируется.
 
 Код и CI не означают server rollout. Фактическая установка выполняется после
 merge через разрешённый `reconcilectl` и закрывается live context/auth/health

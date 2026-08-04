@@ -131,8 +131,9 @@ def build_task_handoff(
         "identity": target.identity,
         "task": clean_task,
         "context": (
-            f"Repository={target.repository}; workspace=/workspace; "
-            f"coder={target.bot_handle}; load compiled and repository AGENTS."
+            f"Repository={target.repository}; coder={target.bot_handle}; "
+            "use only the effective per-run workspace injected by the runner; "
+            "load compiled and repository AGENTS."
         ),
         "acceptance_criteria": [
             "Минимальное изменение решает задачу и имеет regression coverage.",
@@ -141,7 +142,7 @@ def build_task_handoff(
             "Созданы одна feature branch и не более одного PR в main.",
         ],
         "allowed_actions": [
-            "read and edit files inside /workspace",
+            "read and edit files only inside the effective per-run workspace",
             "run project tests and static checks",
             "create one branch, commit, push and pull request",
             "inspect production data only through configured read-only role",
