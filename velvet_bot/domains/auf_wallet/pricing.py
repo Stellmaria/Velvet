@@ -26,7 +26,12 @@ class AufPriceQuote:
     user_markup_override_percent: Decimal | None
     minimum_user_markup_percent: Decimal
     markup_percent: Decimal
+    pricing_strategy: str
+    target_margin_percent: Decimal
+    minimum_contribution_margin_percent: Decimal
+    allow_subsidized_generations: bool
     operational_cost_buffer_percent: Decimal
+    subsidy_guard_applied: bool
     quote_rub_per_vl: Decimal
     quality_surcharge_velvets: int
     minimum_velvets: int
@@ -49,11 +54,16 @@ class AufPriceQuote:
         return self.provider_cost_usd * self.billing_usd_to_byn
 
     @property
-    def buffered_cost_usd(self) -> Decimal:
-        return self.provider_cost_usd * (
-            Decimal("1")
-            + self.operational_cost_buffer_percent / Decimal("100")
+    def operational_reserve_usd(self) -> Decimal:
+        return (
+            self.provider_cost_usd
+            * self.operational_cost_buffer_percent
+            / Decimal("100")
         )
+
+    @property
+    def buffered_cost_usd(self) -> Decimal:
+        return self.provider_cost_usd + self.operational_reserve_usd
 
     @property
     def target_retail_rub(self) -> Decimal:
@@ -73,13 +83,23 @@ class AufPriceQuote:
 
     @property
     def minimum_profit_usd(self) -> Decimal:
-        return self.minimum_revenue_usd - self.provider_cost_usd
+        return self.minimum_revenue_usd - self.buffered_cost_usd
 
     @property
     def actual_markup_percent(self) -> Decimal:
         if self.provider_cost_usd <= 0:
             return Decimal("0")
         return self.minimum_profit_usd / self.provider_cost_usd * Decimal("100")
+
+    @property
+    def contribution_margin_percent(self) -> Decimal:
+        if self.minimum_revenue_usd <= 0:
+            return Decimal("0")
+        return (
+            self.minimum_profit_usd
+            / self.minimum_revenue_usd
+            * Decimal("100")
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,16 +249,20 @@ async def quote_auf_payload(
     if extra_reference_cost > 0 and reference_count > 1:
         provider_cost += extra_reference_cost * Decimal(reference_count - 1)
     (
-    quality_surcharge_velvets,
-    standard_minimum_velvets,
-    discounted_minimum_velvets,
-) = _price_floors(row)
+        quality_surcharge_velvets,
+        standard_minimum_velvets,
+        discounted_minimum_velvets,
+    ) = _price_floors(row)
 
     settings = await connection.fetchrow(
         """
         SELECT retail_auf_usd, billing_usd_to_rub, billing_usd_to_byn,
                retail_markup_percent, quote_rub_per_vl,
-               operational_cost_buffer_percent, minimum_user_markup_percent
+               minimum_user_markup_percent, pricing_strategy,
+               target_margin_percent, minimum_contribution_margin_percent,
+               allow_subsidized_generations,
+               auf_effective_operational_reserve_percent()
+                   AS effective_operational_reserve_percent
         FROM auf_economy_settings
         WHERE singleton_id = 1
         """
@@ -253,11 +277,23 @@ async def quote_auf_payload(
     )
     quote_rub_per_vl = Decimal(settings["quote_rub_per_vl"])
     operational_cost_buffer_percent = _validate_markup_percent(
-        Decimal(settings["operational_cost_buffer_percent"])
+        Decimal(settings["effective_operational_reserve_percent"])
     )
     minimum_user_markup_percent = _validate_markup_percent(
         Decimal(settings["minimum_user_markup_percent"])
     )
+    pricing_strategy = str(settings["pricing_strategy"])
+    if pricing_strategy not in {"markup", "target_margin"}:
+        raise RuntimeError("Неизвестная стратегия расчёта цены Ауф.")
+    target_margin_percent = _validate_margin_percent(
+        Decimal(settings["target_margin_percent"]),
+        label="Целевая маржа",
+    )
+    minimum_contribution_margin_percent = _validate_margin_percent(
+        Decimal(settings["minimum_contribution_margin_percent"]),
+        label="Минимальная маржа",
+    )
+    allow_subsidized_generations = bool(settings["allow_subsidized_generations"])
     if (
         retail_auf_usd <= 0
         or usd_to_rub <= 0
@@ -291,12 +327,34 @@ async def quote_auf_payload(
     ):
         minimum_velvets = discounted_minimum_velvets
 
-    operational_multiplier = (
-        Decimal("1")
-        + operational_cost_buffer_percent / Decimal("100")
+    buffered_cost_usd = provider_cost * (
+        Decimal("1") + operational_cost_buffer_percent / Decimal("100")
     )
-    markup_multiplier = Decimal("1") + markup_percent / Decimal("100")
-    target_retail_usd = provider_cost * operational_multiplier * markup_multiplier
+    applied_strategy = pricing_strategy
+    if user_markup_override is not None:
+        applied_strategy = "user_markup"
+        target_retail_usd = buffered_cost_usd * (
+            Decimal("1") + markup_percent / Decimal("100")
+        )
+    elif pricing_strategy == "target_margin":
+        target_retail_usd = buffered_cost_usd / (
+            Decimal("1") - target_margin_percent / Decimal("100")
+        )
+    else:
+        target_retail_usd = buffered_cost_usd * (
+            Decimal("1") + global_markup_percent / Decimal("100")
+        )
+
+    subsidy_guard_applied = False
+    if not allow_subsidized_generations:
+        guardrail_retail_usd = buffered_cost_usd / (
+            Decimal("1")
+            - minimum_contribution_margin_percent / Decimal("100")
+        )
+        if target_retail_usd < guardrail_retail_usd:
+            target_retail_usd = guardrail_retail_usd
+            subsidy_guard_applied = True
+
     target_retail_rub = target_retail_usd * usd_to_rub
     cost_based_velvets = max(
         1,
@@ -326,7 +384,12 @@ async def quote_auf_payload(
         user_markup_override_percent=user_markup_override,
         minimum_user_markup_percent=minimum_user_markup_percent,
         markup_percent=markup_percent,
+        pricing_strategy=applied_strategy,
+        target_margin_percent=target_margin_percent,
+        minimum_contribution_margin_percent=minimum_contribution_margin_percent,
+        allow_subsidized_generations=allow_subsidized_generations,
         operational_cost_buffer_percent=operational_cost_buffer_percent,
+        subsidy_guard_applied=subsidy_guard_applied,
         quote_rub_per_vl=quote_rub_per_vl,
         quality_surcharge_velvets=quality_surcharge_velvets,
         minimum_velvets=minimum_velvets,
@@ -399,12 +462,24 @@ async def _load_user_markup_policy(
 
 
 def format_owner_price_details(quote: AufPriceQuote) -> str:
-    """Render provider identity and real cost for an authorized Стэл view."""
+    """Render provider identity and real economics for an authorized Стэл view."""
 
+    guard = (
+        "\nЗащита от субсидии: <b>подняла цену до минимальной маржи</b>"
+        if quote.subsidy_guard_applied
+        else ""
+    )
     return (
-        "<b>Себестоимость провайдера · только Стэл</b>\n"
+        "<b>Экономика генерации · только Стэл</b>\n"
         f"Провайдер: <code>{escape(quote.provider.upper())}</code>\n"
-        f"Себестоимость: {_money_triplet(quote.provider_cost_usd, quote)}"
+        f"Себестоимость: {_money_triplet(quote.provider_cost_usd, quote)}\n"
+        f"Резерв: <b>{quote.operational_cost_buffer_percent:.2f}%</b> · "
+        f"{_money_triplet(quote.operational_reserve_usd, quote)}\n"
+        f"Стратегия: <code>{escape(quote.pricing_strategy)}</code> · "
+        f"целевая маржа <b>{quote.target_margin_percent:.2f}%</b>\n"
+        f"Маржа после округления: "
+        f"<b>{quote.contribution_margin_percent:.2f}%</b>"
+        f"{guard}"
     )
 
 
@@ -418,6 +493,13 @@ def _validate_markup_percent(value: Decimal) -> Decimal:
     normalized = Decimal(value).quantize(Decimal("0.01"))
     if not normalized.is_finite() or normalized < 0 or normalized > Decimal("1000"):
         raise ValueError("Наценка должна быть от 0 до 1000 процентов.")
+    return normalized
+
+
+def _validate_margin_percent(value: Decimal, *, label: str) -> Decimal:
+    normalized = Decimal(value).quantize(Decimal("0.01"))
+    if not normalized.is_finite() or normalized < 0 or normalized >= Decimal("100"):
+        raise ValueError(f"{label} должна быть от 0 до 99.99 процента.")
     return normalized
 
 
