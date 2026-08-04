@@ -56,16 +56,24 @@ class KaelCoderControlDeploymentTests(unittest.TestCase):
     def test_plugin_protects_its_control_plane_from_file_tools(self) -> None:
         for marker in (
             '"/opt/data/config.yaml"',
+            '"/opt/data/AGENTS.md"',
+            '"/opt/data/SOUL.md"',
             '"/opt/data/.hermes-ops-client-token"',
             '"/opt/data/tools"',
             '"/opt/data/plugins"',
+            '"/opt/data/hooks"',
             '"/opt/data/orchestration"',
             '"/opt/data/audit"',
+            '"/opt/data/processes.json"',
+            '"/proc"',
             "_references_protected_control_path",
             "O_NOFOLLOW",
         ):
             self.assertIn(marker, self.plugin)
-        self.assertIn("test_control_plane_files_are_immutable_to_model_tools", self.plugin_tests)
+        self.assertIn(
+            "test_control_plane_and_process_secrets_are_immutable",
+            self.plugin_tests,
+        )
         self.assertIn("test_audit_refuses_symlink_target", self.plugin_tests)
 
     def test_operator_installer_places_and_enables_user_plugin(self) -> None:
