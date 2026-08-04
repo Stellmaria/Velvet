@@ -16,6 +16,8 @@ from velvet_bot.domains.telegram_storage.librarian_repository import (
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Regression coverage for the Phase 1 production-safety contracts.
+
 
 class _Transaction:
     async def __aenter__(self) -> "_Transaction":
