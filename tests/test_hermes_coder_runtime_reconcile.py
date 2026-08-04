@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_ROOT = "/srv/hermes-coders/releases/current-hermes-coders"
 
 
 def load_module(name: str, path: Path):
@@ -55,17 +56,23 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
         self.assertEqual(2, source.count("command: []"))
         self.assertNotIn("/init", source)
 
-    def test_systemd_uses_override_reconcile_and_tier_smoke(self) -> None:
+    def test_systemd_uses_approved_release_reconcile_and_smokes(self) -> None:
         source = (ROOT / "deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
         compose_lines = [line for line in source.splitlines() if "docker compose" in line]
         self.assertEqual(4, len(compose_lines))
         for line in compose_lines:
-            self.assertIn("-f compose.yaml -f compose.runtime.yaml", line)
+            self.assertIn("--project-name hermes-coders", line)
+            self.assertIn(
+                "-f compose.yaml -f compose.runtime.yaml -f compose.security.yaml",
+                line,
+            )
+        self.assertIn(f"WorkingDirectory={RELEASE_ROOT}/deploy/hermes-coders", source)
+        self.assertNotIn("/srv/velvet/deploy/hermes-coders", source)
         reconcile_line = (
             "ExecStartPre=+/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/reconcile_workspaces.py"
+            f"{RELEASE_ROOT}/deploy/hermes-coders/reconcile_workspaces.py"
         )
         self.assertIn(reconcile_line, source)
         self.assertLess(source.index(reconcile_line), source.index("preflight.py"))
@@ -73,7 +80,28 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
         self.assertIn("runtime_smoke.py", source)
         self.assertIn("tier_provider_smoke.py", source)
         self.assertIn("runtime_source_guard.py", source)
+        self.assertIn("HERMES_CODEX_STRICT_NESTED_PROC_SMOKE=0", source)
         self.assertEqual(2, source.count("codex_tier_runner.py"))
+
+    def test_release_systemd_reconciler_is_non_destructive_and_scoped(self) -> None:
+        source = (
+            ROOT / "deploy/hermes-coders/reconcile_release_systemd.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn("current-hermes-coders", source)
+        self.assertIn("/var/backups/hermes-coders-systemd", source)
+        self.assertIn("systemctl daemon-reload", source)
+        self.assertIn("systemctl reset-failed", source)
+        self.assertIn("active/exited/0", source)
+        self.assertIn("runtime_smoke.py", source)
+        self.assertIn("tier_provider_smoke.py", source)
+        self.assertIn("router_smoke.py", source)
+        self.assertIn("previous_compose_dir", source)
+        self.assertIn("restore_previous_containers", source)
+        self.assertIn("--no-deps --no-build --force-recreate", source)
+        self.assertIn("hermes-coder-velvet hermes-coder-max", source)
+        self.assertNotIn("docker compose down", source)
+        self.assertNotIn("down -v", source)
+        self.assertNotIn("rm -rf", source)
 
     def test_reconcile_source_is_fixed_scope_and_parses(self) -> None:
         path = ROOT / "deploy/hermes-coders/reconcile_workspaces.py"

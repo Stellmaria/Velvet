@@ -23,10 +23,67 @@ updates the full production checkout and restarts bot-side services.
    host/container zombies.
 8. Any failed verification recreates both containers from their previous Compose
    source.
+9. The successful workflow atomically updates
+   `/srv/hermes-coders/releases/current-hermes-coders` to the exact release.
 
 The release does not restart the Velvet bot, PostgreSQL, supervisor, Krita, chat
 agents, database proxies or the coder router. It does not run migrations or submit
 a production coder task.
+
+## One-time systemd reconciliation
+
+The production units are release-bound. They must use:
+
+- `/srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-coders`;
+- `/srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-orchestration`.
+
+After the first release containing the release-bound units, run exactly once:
+
+```bash
+release_dir="$(readlink -f /srv/hermes-coders/releases/current-hermes-coders)"
+sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
+  bash "$release_dir/deploy/hermes-coders/reconcile_release_systemd.sh"
+```
+
+The reconciler:
+
+1. validates that the symlink resolves to a 40-character release SHA;
+2. backs up installed units and known legacy overrides under
+   `/var/backups/hermes-coders-systemd`;
+3. installs both repository-managed unit files;
+4. removes the obsolete `20-bwrap-runtime.conf` drop-in from the active systemd
+   configuration while preserving its backup;
+5. performs `daemon-reload`, enables the units and clears stale failed state;
+6. starts or reloads the coder and router oneshot units without `compose down` and
+   without deleting volumes, auth, ledger, runs, workspaces or secrets;
+7. requires `active/exited/0`, runtime/provider/router smoke, healthy containers,
+   restart count `0` and `init=true`;
+8. retires the old manual Compose override into the backup directory only after
+   all checks pass.
+
+A failed reconciliation restores the previous unit files and force-recreates only
+the two coder containers from their previously mounted Compose source. It never
+uses `compose down`, removes volumes or deletes persistent coder data.
+
+## Smoke modes
+
+`runtime_smoke.py` always checks GitHub push authorization, ChatGPT/Codex auth,
+model catalog, immutable base checkout, disposable writable run clone, AppArmor,
+seccomp, `NoNewPrivs`, dropped capabilities, read-only rootfs and zombie state.
+
+The nested bubblewrap `/proc` mount is a separate strict diagnostic because some
+host AppArmor combinations reject that additional nested mount even though real
+read-only and writable task sandboxes work. Enable it explicitly only for sandbox
+qualification:
+
+```bash
+sudo env \
+  HERMES_CODERS_ROOT=/srv/hermes-coders \
+  HERMES_CODEX_STRICT_NESTED_PROC_SMOKE=1 \
+  python3 /srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-coders/runtime_smoke.py
+```
+
+Normal systemd startup uses `HERMES_CODEX_STRICT_NESTED_PROC_SMOKE=0`.
 
 ## Evidence contract
 
