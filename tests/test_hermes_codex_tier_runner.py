@@ -133,6 +133,20 @@ class AuditedTierRunnerTests(unittest.TestCase):
             self.base_workspace
         )
 
+    def queue(self, run_id: str) -> None:
+        self.manager.store.write(
+            {
+                "run_id": run_id,
+                "status": "queued",
+                "mutation_policy": "read_only",
+                "requested_tier": "small",
+                "task_type": "read_only",
+                "attempted_models": [],
+                "attempted_routes": [],
+                "mutation_started": False,
+            }
+        )
+
     def prepare(self, run_id: str) -> Path:
         workspace, source_ref = self.manager._prepare_workspace(run_id)
         self.assertEqual("origin/main", source_ref)
@@ -155,6 +169,67 @@ class AuditedTierRunnerTests(unittest.TestCase):
             self.assertFalse((self.base_workspace / ".git" / "worktrees").exists())
         finally:
             self.manager._cleanup_workspace(workspace)
+
+    def test_prepare_workspace_clones_from_origin_not_partial_base(self) -> None:
+        self.git(self.base_workspace, "config", "remote.origin.promisor", "true")
+        self.git(
+            self.base_workspace,
+            "config",
+            "remote.origin.partialclonefilter",
+            "blob:none",
+        )
+        real_run = subprocess.run
+        commands: list[list[str]] = []
+
+        def recording_run(command, *args, **kwargs):
+            commands.append(list(command))
+            return real_run(command, *args, **kwargs)
+
+        run_id = "1" * 32
+        with patch.object(tier.subprocess, "run", side_effect=recording_run):
+            workspace = self.prepare(run_id)
+        try:
+            clone = next(command for command in commands if command[:2] == ["git", "clone"])
+            self.assertIn("--filter=blob:none", clone)
+            self.assertIn("--single-branch", clone)
+            self.assertEqual(str(self.remote), clone[-2])
+            self.assertEqual(str(workspace), clone[-1])
+            self.assertNotIn(str(self.base_workspace), clone)
+        finally:
+            self.manager._cleanup_workspace(workspace)
+
+    def test_workspace_preparation_failure_is_terminal_not_queued(self) -> None:
+        run_id = "2" * 32
+        self.queue(run_id)
+        with (
+            patch.object(
+                self.manager,
+                "_prepare_workspace",
+                side_effect=RuntimeError(
+                    "fatal: pack has 1 unresolved delta; token=super-secret"
+                ),
+            ),
+            patch.object(
+                tier.ProviderChainManager,
+                "_execute",
+                autospec=True,
+            ) as parent_execute,
+        ):
+            self.manager._execute(
+                run_id,
+                "inspect README",
+                "read only",
+                "gpt-5.6-luna",
+            )
+        record = self.manager.store.read(run_id)
+        self.assertEqual("failed", record["status"])
+        self.assertTrue(record["finished_at"])
+        self.assertFalse(record["mutation_started"])
+        self.assertEqual(
+            "workspace_preparation_failed", record["last_event"]["type"]
+        )
+        self.assertNotIn("super-secret", record["error"])
+        parent_execute.assert_not_called()
 
     def test_clean_commit_is_still_recorded_as_mutation(self) -> None:
         run_id = "b" * 32
@@ -250,15 +325,7 @@ class AuditedTierRunnerTests(unittest.TestCase):
 
     def test_execute_injects_effective_workspace_and_cleans_only_run_clone(self) -> None:
         run_id = "e" * 32
-        self.manager.store.write(
-            {
-                "run_id": run_id,
-                "status": "queued",
-                "mutation_policy": "read_only",
-                "requested_tier": "small",
-                "task_type": "read_only",
-            }
-        )
+        self.queue(run_id)
         with patch.object(
             tier.ProviderChainManager,
             "_execute",
