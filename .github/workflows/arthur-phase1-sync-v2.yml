@@ -1,0 +1,101 @@
+name: arthur phase1 main sync v2
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/arthur-phase1-sync-v2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: >-
+      github.repository == 'Stellmaria/Velvet' &&
+      github.event.pull_request.head.ref == 'tmp/arthur-phase1-sync' &&
+      github.event.pull_request.user.login == 'Stellmaria'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Arthur branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/arthur-librarian-phase1
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Merge current main and rebuild reviewed baselines
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit -X theirs origin/main
+
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline
+          python scripts/update_p2_stability_inventory.py \
+            --label arthur-librarian-phase1-main-sync \
+            --schema-version 78
+          python - <<'PY'
+          from pathlib import Path
+          from scripts.inventory_repository_layout import build_inventory, render_markdown
+          import json
+          import re
+
+          root = Path('.')
+          layout = build_inventory(label='p3e-repository-layout-complete')
+          (root / 'docs/repository_layout_inventory.json').write_text(
+              json.dumps(layout, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          (root / 'docs/repository_layout_inventory.md').write_text(
+              render_markdown(layout),
+              encoding='utf-8',
+          )
+
+          inventory = json.loads(
+              (root / 'docs/package_architecture_inventory.json').read_text(encoding='utf-8')
+          )
+          loc = int(inventory['production_loc'])
+          test_path = root / 'tests/test_package_architecture_inventory.py'
+          text = test_path.read_text(encoding='utf-8')
+          text, count_a = re.subn(
+              r'self\.assertEqual\([0-9_]+, self\.inventory\["production_loc"\]\)',
+              f'self.assertEqual({loc:_}, self.inventory["production_loc"])',
+              text,
+              count=1,
+          )
+          text, count_b = re.subn(
+              r'self\.assertIn\("Production LOC: \*\*[0-9]+\*\*", self\.markdown\)',
+              f'self.assertIn("Production LOC: **{loc}**", self.markdown)',
+              text,
+              count=1,
+          )
+          if count_a != 1 or count_b != 1:
+              raise SystemExit(f'LOC baseline replacements failed: {count_a}, {count_b}')
+          test_path.write_text(text, encoding='utf-8')
+          PY
+
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label p1-package-architecture-baseline
+          python -m unittest -q \
+            tests.test_package_architecture_inventory \
+            tests.test_storage_librarian_phase1_hardening
+
+          git add \
+            docs/package_architecture_exemptions.json \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            tests/test_package_architecture_inventory.py
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync Arthur Phase 1 with current main"
+          fi
+          git push origin HEAD:fix/arthur-librarian-phase1
