@@ -37,15 +37,17 @@ jobs:
 
           pricing_test = Path("tests/test_auf_pricing_policy.py")
           pricing_text = pricing_test.read_text(encoding="utf-8")
-          old = '''        source = inspect.getsource(quote_auf_payload)
-                  self.assertIn("minimum_discounted_velvets", source)
-                  self.assertNotIn("_banana_quality_surcharge", source)'''
-          new = '''        source = inspect.getsource(quote_auf_payload)
-                  self.assertIn("discounted_floor", source)
-                  self.assertNotIn("_banana_quality_surcharge", source)'''
-          if old not in pricing_text:
-              raise SystemExit("pricing policy contract fragment not found")
-          pricing_test.write_text(pricing_text.replace(old, new), encoding="utf-8")
+          pricing_text, pricing_count = pricing_text.replace(
+              'self.assertIn("minimum_discounted_velvets", source)',
+              'self.assertIn("discounted_floor", source)',
+          ), pricing_text.count(
+              'self.assertIn("minimum_discounted_velvets", source)'
+          )
+          if pricing_count != 1:
+              raise SystemExit(
+                  f"expected one pricing policy assertion, found {pricing_count}"
+              )
+          pricing_test.write_text(pricing_text, encoding="utf-8")
 
           inventory = json.loads(
               Path("docs/package_architecture_inventory.json").read_text(
