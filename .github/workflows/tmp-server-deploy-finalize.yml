@@ -1,0 +1,69 @@
+name: temporary server deploy hotfix finalizer
+
+on:
+  pull_request:
+    types: [synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.head_ref == 'fix/deploy-compose-race-rollback' && github.actor == 'Stellmaria'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/deploy-compose-race-rollback
+          fetch-depth: 0
+
+      - name: Remove partial-start orphan cleanup and strengthen contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          deploy_path = Path('deploy/server/deploy.sh')
+          deploy = deploy_path.read_text(encoding='utf-8')
+          old = '  "${compose[@]}" up -d --remove-orphans postgres supervisor-proxy || return\n'
+          new = '  "${compose[@]}" up -d postgres supervisor-proxy || return\n'
+          if deploy.count(old) != 1:
+              raise SystemExit('expected partial core startup command not found exactly once')
+          deploy_path.write_text(deploy.replace(old, new, 1), encoding='utf-8')
+
+          test_path = Path('tests/test_server_supervisor_contract.py')
+          tests = test_path.read_text(encoding='utf-8')
+          old_test = '''        self.assertIn(
+              '"${compose[@]}" up -d --remove-orphans postgres supervisor-proxy',
+              self.deploy,
+          )
+          '''
+          new_test = '''        self.assertIn(
+              '"${compose[@]}" up -d postgres supervisor-proxy',
+              self.deploy,
+          )
+          self.assertNotIn("postgres supervisor-proxy bot", self.deploy)
+          '''
+          if tests.count(old_test) != 1:
+              raise SystemExit('expected staged startup assertion not found exactly once')
+          test_path.write_text(tests.replace(old_test, new_test, 1), encoding='utf-8')
+          PY
+          bash -n deploy/server/deploy.sh
+          python -m unittest tests.test_server_supervisor_contract
+
+      - name: Commit finalization and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-server-deploy-finalize.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            deploy/server/deploy.sh \
+            tests/test_server_supervisor_contract.py \
+            .github/workflows/tmp-server-deploy-finalize.yml
+          git commit -m "test: prevent partial compose orphan cleanup"
+          git push origin HEAD:fix/deploy-compose-race-rollback
