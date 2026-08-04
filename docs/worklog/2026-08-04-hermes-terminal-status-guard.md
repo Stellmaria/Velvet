@@ -81,6 +81,14 @@
 - evidence manifest SHA-256:
   `60493ece0535e7256614dabbf7833b974c418181ce9bcfa580661e72c9726ed1`.
 
+CI infrastructure refresh:
+
+- PR `#602` merged into `main` as
+  `ea3966bd6fbb733aa32ffa32677336f3687759ca`;
+- targeted contracts now install hash-locked project dependencies;
+- PostgreSQL shards remain skipped for the Hermes-only surface;
+- exact-head CI for `#597` is rerun after this refresh.
+
 ### PR и commits
 
 - PR: `#597` — `Hermes coder: preserve terminal status during workspace preparation`;
