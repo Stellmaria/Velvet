@@ -106,7 +106,15 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn('docker pull "$IMAGE_OVERRIDE"', self.deploy)
         self.assertIn("org.opencontainers.image.revision", self.deploy)
         self.assertIn("Running image mismatch", self.deploy)
-        self.assertIn("postgres supervisor-proxy bot", self.deploy)
+        self.assertIn("start_core_services()", self.deploy)
+        self.assertIn(
+            '"${compose[@]}" up -d --remove-orphans postgres supervisor-proxy',
+            self.deploy,
+        )
+        self.assertIn('"${compose[@]}" rm -sf bot', self.deploy)
+        self.assertIn('"${compose[@]}" up -d --no-deps bot', self.deploy)
+        self.assertIn("wait_for_service_health postgres", self.deploy)
+        self.assertIn("wait_for_service_health supervisor-proxy", self.deploy)
         self.assertIn('${TMPDIR:-/tmp}/velvet-deploy.lock', self.deploy)
         self.assertIn(
             'docker_config="${DOCKER_CONFIG:-$data_dir/runtime/docker-config}"',
@@ -114,6 +122,32 @@ class ServerSupervisorContractTests(unittest.TestCase):
         )
         self.assertIn('export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"', self.deploy)
         self.assertIn('chmod 0700 "$docker_config"', self.deploy)
+
+    def test_deploy_preserves_exact_running_image_for_local_rollback(self) -> None:
+        self.assertIn("previous_bot_image_id", self.deploy)
+        self.assertIn(
+            'rollback_bot_image="velvet-bot:rollback-${previous_sha:0:12}"',
+            self.deploy,
+        )
+        self.assertIn(
+            'docker image tag "$previous_bot_image_id" "$rollback_bot_image"',
+            self.deploy,
+        )
+        self.assertIn(
+            'docker image inspect "$rollback_bot_image"',
+            self.deploy,
+        )
+        self.assertNotIn('docker pull "$rollback_bot_image"', self.deploy)
+        self.assertNotIn('docker pull "$previous_bot_image" >&2 || true', self.deploy)
+
+    def test_deploy_rollback_requires_health_and_smoke(self) -> None:
+        rollback = self.deploy.split("rollback_code() {", 1)[1].split(
+            "trap rollback_code", 1
+        )[0]
+        self.assertIn("wait_for_service_health bot", rollback)
+        self.assertIn("scripts/server_smoke.py --skip-telegram", rollback)
+        self.assertIn("manual intervention is required", rollback)
+        self.assertIn("trap - ERR INT TERM", rollback)
 
     def test_systemd_runtime_has_dedicated_client_group_and_umask(self) -> None:
         self.assertIn("User=velvet", self.unit)
