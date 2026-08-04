@@ -71,12 +71,14 @@ jobs:
           set -euo pipefail
           mkdir -p generated-locks
           uv pip compile requirements.txt \
+            --constraint requirements.lock \
             --python-version 3.13 \
             --generate-hashes \
             --no-annotate \
             --no-header \
             --output-file generated-locks/requirements.lock
           uv pip compile requirements-dev.txt \
+            --constraint requirements-dev.lock \
             --python-version 3.13 \
             --generate-hashes \
             --no-annotate \
