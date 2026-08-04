@@ -38,7 +38,9 @@ class Launcher:
         self._verify_runtime_prerequisites()
 
     @staticmethod
-    def _checked(args: list[str], *, timeout: int, error: str) -> subprocess.CompletedProcess[str]:
+    def _checked(
+        args: list[str], *, timeout: int, error: str
+    ) -> subprocess.CompletedProcess[str]:
         try:
             result = subprocess.run(
                 args,
@@ -64,12 +66,14 @@ class Launcher:
             timeout=20,
             error=f"Sandbox network is unavailable: {NETWORK}",
         )
-        for project, image in IMAGES.items():
-            self._checked(
-                ["docker", "image", "inspect", image],
-                timeout=20,
-                error=f"Pinned sandbox image is unavailable for {project}",
-            )
+
+    def _verify_image(self, project: str) -> None:
+        image = IMAGES[project]
+        self._checked(
+            ["docker", "image", "inspect", image],
+            timeout=20,
+            error=f"Pinned sandbox image is unavailable for {project}",
+        )
 
     def cleanup_stale(self) -> None:
         result = self._checked(
@@ -134,6 +138,7 @@ class Launcher:
         name = container_name(project, run_id)
         started = time.monotonic()
         try:
+            self._verify_image(project)
             env_file = write_env_file(request)
             command = build_docker_command(request, env_file)
             audit(
@@ -223,6 +228,7 @@ class Launcher:
     def probe(self, project: str) -> dict[str, Any]:
         if project not in _PROJECTS:
             raise LauncherProtocolError("invalid project")
+        self._verify_image(project)
         probe_root = (ROOT / "codex-runs" / project / "probes").resolve()
         probe_root.mkdir(parents=True, exist_ok=True, mode=0o750)
         target = Path(tempfile.mkdtemp(prefix="launcher-", dir=probe_root)).resolve()

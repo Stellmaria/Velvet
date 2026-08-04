@@ -39,10 +39,7 @@ class CoderTarget:
 
 CODERS = (
     CoderTarget(
-        "velvet",
-        "hermes-coder-velvet",
-        "hermes-chat-velvet",
-        "Stellmaria/Velvet",
+        "velvet", "hermes-coder-velvet", "hermes-chat-velvet", "Stellmaria/Velvet"
     ),
     CoderTarget(
         "max",
@@ -78,11 +75,7 @@ def _default_runner(
     args: Sequence[str], timeout_seconds: int
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        list(args),
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=timeout_seconds,
+        list(args), check=False, capture_output=True, text=True, timeout=timeout_seconds
     )
 
 
@@ -183,6 +176,11 @@ case "$remote" in
   {https_remote}|{https_remote}.git) ;;
   *) echo "unexpected origin remote" >&2; exit 31 ;;
 esac
+helper="$(git config --global --get credential.https://github.com.helper || true)"
+case "$helper" in
+  *"gh auth git-credential"*) ;;
+  *) echo "GitHub credential helper is not configured" >&2; exit 32 ;;
+esac
 git -C /workspace push --dry-run origin \
   HEAD:refs/heads/hermes-auth-smoke-{target.project} >/dev/null
 """
@@ -233,7 +231,8 @@ client = SandboxLauncherClient()
 ping = client.ping()
 assert ping.get('backend') == 'host-docker-launcher'
 assert ping.get('nested_bwrap') is False
-client.probe('{target.project}')
+probe = client.probe('{target.project}')
+assert int(probe.get('returncode', 1)) == 0, probe.get('stderr')
 PYCAP
 
 remote="$(git -C /workspace-base remote get-url origin)"
@@ -291,21 +290,13 @@ def probe_command(target: CoderTarget, *, coder: bool) -> list[str]:
 
 
 def verify_github_access(
-    target: CoderTarget,
-    *,
-    runner: Runner = _default_runner,
+    target: CoderTarget, *, runner: Runner = _default_runner
 ) -> None:
-    run_checked(
-        probe_command(target, coder=False),
-        timeout_seconds=45,
-        runner=runner,
-    )
+    run_checked(probe_command(target, coder=False), timeout_seconds=45, runner=runner)
 
 
 def verify_codex_access(
-    target: CoderTarget,
-    *,
-    runner: Runner = _default_runner,
+    target: CoderTarget, *, runner: Runner = _default_runner
 ) -> None:
     auth = ROOT / "codex" / target.project / "auth.json"
     if not auth.is_file() or auth.stat().st_size == 0:
@@ -315,17 +306,11 @@ def verify_codex_access(
         raise SmokeError(
             f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}"
         )
-    run_checked(
-        probe_command(target, coder=True),
-        timeout_seconds=120,
-        runner=runner,
-    )
+    run_checked(probe_command(target, coder=True), timeout_seconds=120, runner=runner)
 
 
 def verify_target(
-    target: CoderTarget,
-    *,
-    runner: Runner = _default_runner,
+    target: CoderTarget, *, runner: Runner = _default_runner
 ) -> None:
     verify_github_access(target, runner=runner)
     verify_codex_access(target, runner=runner)

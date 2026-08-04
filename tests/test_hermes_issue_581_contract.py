@@ -141,7 +141,7 @@ class Issue581ContractTests(unittest.TestCase):
 
         runtime = (ROOT / "deploy/hermes-coders/compose.runtime.yaml").read_text()
         compose = (ROOT / "deploy/hermes-coders/compose.yaml").read_text()
-        self.assertEqual(2, runtime.count("/app/codex_launcher_runner.py"))
+        self.assertEqual(4, runtime.count("/app/codex_launcher_runner.py"))
         self.assertEqual(2, runtime.count("CODEX_EXECUTION_BACKEND: launcher"))
         self.assertEqual(2, compose.count(":/workspace-base:ro"))
         self.assertIn("init: true", compose)

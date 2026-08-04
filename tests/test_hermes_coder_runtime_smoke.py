@@ -56,48 +56,48 @@ class HermesCoderRuntimeSmokeTests(unittest.TestCase):
     def test_failed_probe_redacts_token(self) -> None:
         def runner(_args, _timeout):
             return subprocess.CompletedProcess(
-                [],
-                1,
-                "",
-                "token=github_pat_secretvalue",
+                [], 1, "", "token=github_pat_secretvalue"
             )
 
         with self.assertRaises(runtime_smoke.SmokeError) as context:
             runtime_smoke.verify_github_access(
-                runtime_smoke.CODERS[1],
-                runner=runner,
+                runtime_smoke.CODERS[1], runner=runner
             )
         message = str(context.exception)
         self.assertIn("[REDACTED]", message)
         self.assertNotIn("secretvalue", message)
 
-    def test_systemd_runs_live_smoke_after_start_and_reload(self) -> None:
+    def test_systemd_runs_live_smoke_from_exact_release_link(self) -> None:
         source = Path("deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
-        smoke = (
-            "ExecStartPost=/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/runtime_smoke.py"
+        prefix = (
+            "/srv/hermes-coders/releases/current-hermes-coders/"
+            "deploy/hermes-coders"
         )
-        reload_smoke = (
-            "ExecReload=/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/runtime_smoke.py"
-        )
+        smoke = f"ExecStartPost=/usr/bin/python3 {prefix}/runtime_smoke.py"
+        reload_smoke = f"ExecReload=/usr/bin/python3 {prefix}/runtime_smoke.py"
+        self.assertIn(f"WorkingDirectory={prefix}", source)
         self.assertIn(smoke, source)
         self.assertIn(reload_smoke, source)
+        self.assertNotIn("/srv/velvet/deploy/hermes-coders", source)
         self.assertLess(source.index("ExecStart=/usr/bin/docker"), source.index(smoke))
         self.assertLess(
             source.index("ExecReload=/usr/bin/docker"), source.index(reload_smoke)
         )
 
-    def test_reinstall_preserves_runs_api_key_and_requires_smoke(self) -> None:
+    def test_reinstall_preserves_runs_key_and_activates_launcher_first(self) -> None:
         source = Path("deploy/hermes-coders/install.sh").read_text(encoding="utf-8")
-        self.assertIn(
-            '"API_SERVER_KEY": existing.get("API_SERVER_KEY", "")',
-            source,
-        )
-        self.assertIn('"$SOURCE_DIR/runtime_smoke.py"', source)
-        self.assertIn("python3 $SOURCE_DIR/runtime_smoke.py", source)
+        self.assertIn('"API_SERVER_KEY": api_key', source)
+        self.assertIn('"CODEX_RUNNER_API_KEY": runner_key', source)
+        self.assertIn('"$LAUNCHER_INSTALLER"', source)
+        self.assertIn("current-hermes-coders", source)
+        self.assertIn("compose.security.yaml", source)
+        self.assertLess(source.index('"$LAUNCHER_INSTALLER"'), source.index('"${compose[@]}" build'))
+        self.assertLess(source.index('"${compose[@]}" build'), source.index("systemctl restart hermes-coders.service"))
+        self.assertNotIn("apparmor-hermes-codex-bwrap", source)
+        self.assertNotIn("seccomp-bwrap.json", source)
+        self.assertNotIn("compose.bwrap.override.yaml", source)
 
 
 if __name__ == "__main__":

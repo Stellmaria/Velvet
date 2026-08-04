@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path("deploy/hermes-coders")
 LAUNCHER_ROOT = Path("deploy/hermes-sandbox-launcher")
+RELEASE_PREFIX = "/srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-coders"
 
 
 class HermesCodersContractTests(unittest.TestCase):
@@ -117,8 +118,8 @@ class HermesCodersContractTests(unittest.TestCase):
             self.assertIn("verify_installed_context.py", installer)
             self.assertIn("velvet-coder", installer)
             self.assertIn("max-coder", installer)
-        self.assertIn('--mode hermes', reconcile_installer)
-        self.assertIn('--mode codex', reconcile_installer)
+        self.assertIn("--mode hermes", reconcile_installer)
+        self.assertIn("--mode codex", reconcile_installer)
         self.assertIn('mode="codex"', preflight)
         self.assertIn('"--output-schema"', runner)
         self.assertIn("structured_output", runner)
@@ -186,28 +187,22 @@ class HermesCodersContractTests(unittest.TestCase):
         source = Path("deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
-        preflight = (
-            "ExecStartPre=+/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/preflight.py"
-        )
+        preflight = f"ExecStartPre=+/usr/bin/python3 {RELEASE_PREFIX}/preflight.py"
         sandbox_preflight = (
-            "ExecStartPre=+/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/sandbox_preflight.py"
+            f"ExecStartPre=+/usr/bin/python3 {RELEASE_PREFIX}/sandbox_preflight.py"
         )
         compose_start = (
             "ExecStart=/usr/bin/docker compose --profile velvet "
             "--profile max -f compose.yaml -f compose.runtime.yaml "
-            "-f compose.security.yaml "
-            "up -d --build --remove-orphans"
+            "-f compose.security.yaml up -d --build --remove-orphans"
         )
-        smoke = (
-            "ExecStartPost=/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/runtime_smoke.py"
-        )
+        smoke = f"ExecStartPost=/usr/bin/python3 {RELEASE_PREFIX}/runtime_smoke.py"
+        self.assertIn(f"WorkingDirectory={RELEASE_PREFIX}", source)
         self.assertIn(preflight, source)
         self.assertIn(sandbox_preflight, source)
         self.assertIn(compose_start, source)
         self.assertIn(smoke, source)
+        self.assertNotIn("/srv/velvet/deploy/hermes-coders", source)
         self.assertLess(source.index(preflight), source.index(sandbox_preflight))
         self.assertLess(source.index(sandbox_preflight), source.index(compose_start))
         self.assertLess(source.index(compose_start), source.index(smoke))
@@ -237,6 +232,7 @@ class HermesCodersContractTests(unittest.TestCase):
             ROOT / "install.sh",
             ROOT / "install-codex.sh",
             ROOT / "codex-login.sh",
+            ROOT / "release.sh",
             LAUNCHER_ROOT / "install.sh",
             Path("deploy/hermes-orchestration/install.sh"),
         ):

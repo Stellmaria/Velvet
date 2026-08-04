@@ -6,8 +6,10 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
   exit 1
 fi
 
-SOURCE_DIR="${HERMES_SANDBOX_SOURCE_DIR:-/srv/velvet/deploy/hermes-sandbox-launcher}"
-CODERS_SOURCE="${HERMES_CODERS_SOURCE_DIR:-/srv/velvet/deploy/hermes-coders}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SOURCE_DIR="${HERMES_SANDBOX_SOURCE_DIR:-$SCRIPT_DIR}"
+REPO_ROOT="${HERMES_RELEASE_ROOT:-$(cd "$SOURCE_DIR/../.." && pwd -P)}"
+CODERS_SOURCE="${HERMES_CODERS_SOURCE_DIR:-$REPO_ROOT/deploy/hermes-coders}"
 INSTALL_DIR="${HERMES_SANDBOX_INSTALL_DIR:-/usr/local/lib/hermes-sandbox-launcher}"
 ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 APP_GROUP="${HERMES_CODERS_APP_GROUP:-velvet}"
@@ -15,8 +17,8 @@ SANDBOX_GROUP="${HERMES_SANDBOX_GROUP:-hermes-sandbox}"
 NETWORK="${HERMES_SANDBOX_NETWORK:-hermes-sandbox-egress}"
 HERMES_UID_VALUE="${HERMES_UID:-10000}"
 HERMES_GID_VALUE="${HERMES_GID:-10000}"
-SOCKET_SOURCE="/srv/velvet/deploy/systemd/hermes-sandbox-launcher.socket"
-SERVICE_SOURCE="/srv/velvet/deploy/systemd/hermes-sandbox-launcher.service"
+SOCKET_SOURCE="$REPO_ROOT/deploy/systemd/hermes-sandbox-launcher.socket"
+SERVICE_SOURCE="$REPO_ROOT/deploy/systemd/hermes-sandbox-launcher.service"
 SOCKET_TARGET="/etc/systemd/system/hermes-sandbox-launcher.socket"
 SERVICE_TARGET="/etc/systemd/system/hermes-sandbox-launcher.service"
 RUNNER_PROFILE_SOURCE="$CODERS_SOURCE/security/apparmor-hermes-codex-runner"
@@ -28,6 +30,12 @@ if [[ ! "$NETWORK" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ ]]; then
   echo "Небезопасное имя HERMES_SANDBOX_NETWORK: $NETWORK" >&2
   exit 2
 fi
+for value in "$REPO_ROOT" "$SOURCE_DIR" "$CODERS_SOURCE"; do
+  if [[ "$value" != /* ]]; then
+    echo "Launcher paths должны быть абсолютными: $value" >&2
+    exit 2
+  fi
+done
 
 for required in \
   "$SOURCE_DIR/launcher.py" \
@@ -79,20 +87,21 @@ install -d -o "$HERMES_UID_VALUE" -g "$HERMES_GID_VALUE" -m 0750 \
   "$ROOT/codex-runs/max/workspaces" \
   "$ROOT/codex-runs/velvet/probes" \
   "$ROOT/codex-runs/max/probes"
-
 install -d -o root -g "$APP_GROUP" -m 0750 "$ROOT"
-temp_env="$(mktemp "$ROOT/.launcher.env.XXXXXX")"
-trap 'rm -f -- "$temp_env"' EXIT
-cat > "$temp_env" <<EOF
+
+launcher_env_tmp="$(mktemp "$ROOT/.launcher.env.XXXXXX")"
+trap 'rm -f -- "$launcher_env_tmp"' EXIT
+cat > "$launcher_env_tmp" <<EOF
+HERMES_CODERS_ROOT=$ROOT
 HERMES_SANDBOX_GID=$SANDBOX_GID_VALUE
 HERMES_SANDBOX_NETWORK=$NETWORK
 HERMES_SANDBOX_INSTALL_DIR=$INSTALL_DIR
 HERMES_UID=$HERMES_UID_VALUE
 HERMES_GID=$HERMES_GID_VALUE
 EOF
-chown root:"$APP_GROUP" "$temp_env"
-chmod 0640 "$temp_env"
-mv -f "$temp_env" "$ROOT/launcher.env"
+chown root:"$APP_GROUP" "$launcher_env_tmp"
+chmod 0640 "$launcher_env_tmp"
+mv -f "$launcher_env_tmp" "$ROOT/launcher.env"
 trap - EXIT
 
 if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
@@ -108,7 +117,7 @@ install -o root -g root -m 0644 "$SERVICE_SOURCE" "$SERVICE_TARGET"
 
 systemctl daemon-reload
 systemctl enable --now hermes-sandbox-launcher.socket
-systemctl try-restart hermes-sandbox-launcher.service || true
+systemctl restart hermes-sandbox-launcher.service
 
 python3 - "$NETWORK" <<'PY'
 import json
@@ -138,7 +147,7 @@ if response.get('network') != expected_network:
 PY
 
 printf '%s\n' \
-  "Hermes sandbox launcher installed." \
+  "Hermes sandbox launcher installed from exact release root: $REPO_ROOT" \
   "- socket: /run/hermes-sandbox/launcher.sock" \
   "- network: $NETWORK" \
   "- code: $INSTALL_DIR" \

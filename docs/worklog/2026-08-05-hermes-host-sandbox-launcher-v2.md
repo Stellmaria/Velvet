@@ -5,15 +5,15 @@
 - Линия/фаза: `Hermes security / canonical execution backend`
 - Статус: `частично`
 - Ветка: `feat/594-host-sandbox-launcher-v2`
-- Базовый commit при старте: `c5685fc117c9c622afc955287f0cae5b9d5dae81`
-- Текущая база PR после синхронизации: `88540a17ef32a69ce7470ab2f48afcb5552e054a`
+- Базовый commit: `c5685fc117c9c622afc955287f0cae5b9d5dae81`
+- Текущая база PR: `55064cc0298962e616c3841644bcbd6e343a06ef`
 - Связанные issue: `#594`, `#581`, `#584`, `#595`
 
 ## Перед началом
 
 ### Цель
 
-Заменить неработающий nested-bwrap contract на один проверяемый security boundary:
+Заменить неработающий nested-bwrap contract одним проверяемым security boundary:
 root-owned Unix-socket launcher и отдельный disposable Docker container для
 каждой попытки Codex, не переписывая router, tier policy, ledger, workspace
 lifecycle и mutation audit.
@@ -41,9 +41,9 @@ Docker masked paths и AppArmor.
 - route-scoped credential projection;
 - отдельные AppArmor profiles runner/run;
 - runner adapter без automatic local fallback;
-- installer/preflight/runtime smoke;
+- canonical installer/preflight/runtime smoke;
+- exact-main versioned release script и rollback;
 - behavioral и deployment contracts;
-- обновление exact-main Hermes release workflow;
 - отдельный staged production rollout после merge approval.
 
 ### Критерии готовности
@@ -65,33 +65,31 @@ Docker masked paths и AppArmor.
 - root-owned launcher является новой доверенной поверхностью;
 - Docker startup увеличивает latency каждой попытки;
 - AppArmor и systemd hardening требуют live host проверки;
-- текущий release workflow умеет пересоздавать только coder containers и должен
-  быть расширен до atomic launcher activation;
-- compatibility override сохраняется для rollback до завершения live acceptance;
+- compatibility override сохраняется только для rollback до live acceptance;
 - database migrations и основной bot stack в эту работу не входят.
 
 ## После завершения
 
 ### Фактически сделано
 
-- создана новая ветка от exact current `main`;
-- опубликован реальный draft PR `#629` с 22 changed files;
-- подготовлен fixed-schema launcher contract;
-- Docker command вычисляется launcher-ом и не принимает arbitrary arguments;
+- создана реальная ветка и draft PR `#629`;
+- реализован fixed-schema launcher contract без arbitrary Docker arguments;
 - добавлены route/model matrix, path/symlink validation и scoped env files;
-- добавлены separate timeout/cancellation semantics и stale cleanup;
-- systemd server использует socket activation, peer UID check и bounded
-  connection capacity;
-- Codex home копируется через explicit allowlist, provider route не получает
-  subscription auth;
-- canonical runner adapter сохраняет существующий control plane;
+- timeout отделён от owner cancellation;
+- execution evidence вычисляется до output truncation;
+- launcher использует systemd socket, peer UID check и bounded capacity;
+- Codex home копируется через explicit allowlist;
+- provider route не получает subscription auth;
+- runner adapter сохраняет существующий control plane;
 - local rollback требует отдельного operator gate;
-- подготовлены AppArmor profiles, socket/service units, installer и preflight;
-- добавлены behavioral и deployment tests;
-- ветка синхронизирована с продвинувшимся `main` merge-коммитом;
-- первый exact-head CI выявил два совместимых дефекта: устаревший bwrap contract
-  и удалённый helper `verify_github_access`; оба исправляются одним correction
-  commit.
+- добавлены отдельные AppArmor profiles runner/run;
+- launcher устанавливается из exact release root в root-owned fixed directory;
+- `hermes-coders.service` использует stable exact-release symlink;
+- canonical coder installer замыкает context, launcher, build, preflight и restart;
+- release workflow передаёт управление versioned `release.sh` exact SHA;
+- rollback сохраняет root artifacts, symlink и image identity;
+- compatibility override используется только внутри rollback;
+- добавлены behavioral, lifecycle и release contracts.
 
 ### Миграции и совместимость
 
@@ -100,39 +98,38 @@ Docker masked paths и AppArmor.
 - project/tier/provider routing не переносится в launcher;
 - ledger, terminal state, workspace clone и mutation audit остаются в текущем
   runner;
-- production services и compatibility override этой кодовой сессией не менялись.
+- auth, ledger, runs, workspaces и secrets не удаляются rollback-ом;
+- production services этой кодовой сессией не менялись.
 
 ### Проверки
 
-- preflight Python compilation прошла;
-- exact-head type check прошёл;
-- project notes потребовал допустимый статус и исправлен на `частично`;
-- test shards выявили устаревшие runtime-smoke contracts, исправленные в
-  correction commit;
-- Docker, security и branch-protection checks будут оцениваться только на новом
-  exact head;
-- live AppArmor, socket, canary, reboot и rollback остаются rollout-only.
+- Python preflight compilation прошла на опубликованных heads;
+- type check прошёл на `f22bf4c3ab2762b97c3abde9f3ea5e8331972698`;
+- первый test run выявил устаревший bwrap contract и удалённый smoke helper;
+- второй test run выявил неверный count command+mount и точное поле worklog;
+- исправления и полный install/release contract включаются в следующий head;
+- full exact-head CI, independent review и live host acceptance ещё не завершены.
 
 ### PR и commit
 
 - PR: `#629`;
 - первый implementation commit: `8eb6ff42b70eeeb1f4a0078638257609d9ed12c2`;
-- merge current main commit: `1d9bcdefc4002cea4dd3c0bf87a35f3ad60cf3bd`;
-- новый exact head будет определён correction commit;
+- merge-base sync commit: `1d9bcdefc4002cea4dd3c0bf87a35f3ad60cf3bd`;
+- runtime compatibility commit: `f22bf4c3ab2762b97c3abde9f3ea5e8331972698`;
+- следующий exact head: `будет зафиксирован после install/release commit`;
 - merge commit в `main`: `отсутствует`;
 - production SHA: `не менялся`.
 
 ### Незавершённое
 
-- получить зелёный exact-head CI для launcher core;
-- интегрировать launcher installer в canonical coder installer;
-- обновить exact-main Hermes release workflow;
-- выполнить independent review;
+- синхронизировать ветку с текущим `main`;
+- получить полностью зелёный exact-head CI;
+- провести independent security/runtime review;
 - получить отдельное merge approval;
 - выполнить staged rollout и live acceptance;
 - удалить compatibility override только после полного PASS.
 
 ### Следующий шаг
 
-Опубликовать correction commit для runtime-smoke compatibility и worklog,
-дождаться exact-head CI, затем замкнуть canonical installer и release workflow.
+Опубликовать install/release commit, проверить exact-head CI, исправить только
+подтверждённые failures и передать готовый diff на независимый review.

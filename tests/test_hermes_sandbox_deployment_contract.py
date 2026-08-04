@@ -30,7 +30,7 @@ class SandboxLauncherDeploymentContractTests(unittest.TestCase):
         runtime = (CODERS / "compose.runtime.yaml").read_text(encoding="utf-8")
         security = (CODERS / "compose.security.yaml").read_text(encoding="utf-8")
         self.assertEqual(2, runtime.count("CODEX_EXECUTION_BACKEND: launcher"))
-        self.assertEqual(2, runtime.count("/app/codex_launcher_runner.py"))
+        self.assertEqual(4, runtime.count("/app/codex_launcher_runner.py"))
         self.assertEqual(2, runtime.count("sandbox_launcher_client.py"))
         self.assertEqual(2, runtime.count("launcher.sock"))
         self.assertEqual(2, security.count("apparmor=hermes-codex-runner"))
@@ -43,7 +43,7 @@ class SandboxLauncherDeploymentContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, runtime + security)
 
-    def test_systemd_uses_fixed_launcher_install_and_socket_activation(self) -> None:
+    def test_systemd_uses_fixed_launcher_and_exact_release_symlink(self) -> None:
         coders = (SYSTEMD / "hermes-coders.service").read_text(encoding="utf-8")
         launcher = (SYSTEMD / "hermes-sandbox-launcher.service").read_text(
             encoding="utf-8"
@@ -51,9 +51,12 @@ class SandboxLauncherDeploymentContractTests(unittest.TestCase):
         socket_unit = (SYSTEMD / "hermes-sandbox-launcher.socket").read_text(
             encoding="utf-8"
         )
+        release_prefix = "/srv/hermes-coders/releases/current-hermes-coders"
         self.assertIn("Requires=docker.service hermes-sandbox-launcher.socket", coders)
+        self.assertIn(f"WorkingDirectory={release_prefix}/deploy/hermes-coders", coders)
         self.assertIn("EnvironmentFile=/srv/hermes-coders/launcher.env", coders)
         self.assertIn("sandbox_preflight.py", coders)
+        self.assertNotIn("/srv/velvet/deploy/hermes-coders", coders)
         self.assertIn(
             "ExecStart=/usr/bin/python3 /usr/local/lib/hermes-sandbox-launcher/launcher.py",
             launcher,
@@ -64,8 +67,10 @@ class SandboxLauncherDeploymentContractTests(unittest.TestCase):
         self.assertIn("SocketMode=0660", socket_unit)
         self.assertIn("Accept=no", socket_unit)
 
-    def test_installer_creates_dedicated_network_and_does_not_switch_traffic(self) -> None:
+    def test_launcher_installer_uses_exact_release_root_without_switching_traffic(self) -> None:
         source = (LAUNCHER / "install.sh").read_text(encoding="utf-8")
+        self.assertIn('REPO_ROOT="${HERMES_RELEASE_ROOT:', source)
+        self.assertIn('SOCKET_SOURCE="$REPO_ROOT/deploy/systemd/', source)
         self.assertIn("docker network create --driver bridge --attachable", source)
         self.assertIn("/usr/local/lib/hermes-sandbox-launcher", source)
         self.assertIn("apparmor_parser -r", source)
@@ -73,7 +78,21 @@ class SandboxLauncherDeploymentContractTests(unittest.TestCase):
         self.assertNotIn("systemctl restart hermes-coders.service", source)
         self.assertNotIn("docker compose", source)
 
-    def test_runner_preserves_existing_control_plane_and_fails_closed(self) -> None:
+    def test_coder_installer_orders_launcher_build_preflight_and_restart(self) -> None:
+        source = (CODERS / "install.sh").read_text(encoding="utf-8")
+        launcher = source.index('"$LAUNCHER_INSTALLER"')
+        build = source.index('"${compose[@]}" build')
+        preflight = source.index('python3 "$SOURCE_DIR/sandbox_preflight.py"')
+        restart = source.index("systemctl restart hermes-coders.service")
+        self.assertLess(launcher, build)
+        self.assertLess(build, preflight)
+        self.assertLess(preflight, restart)
+        self.assertIn("current-hermes-coders", source)
+        self.assertIn('"CODEX_RUNNER_API_KEY": runner_key', source)
+        self.assertNotIn("compose.bwrap.override.yaml", source)
+        self.assertNotIn("apparmor-hermes-codex-bwrap", source)
+
+    def test_runner_preserves_control_plane_and_fails_closed(self) -> None:
         source = (CODERS / "codex_launcher_runner.py").read_text(encoding="utf-8")
         self.assertIn(
             "class LauncherTierProviderManager(AuditedTierProviderManager)", source
@@ -99,7 +118,6 @@ class SandboxLauncherDeploymentContractTests(unittest.TestCase):
         self.assertIn('"--sandbox",\n        "danger-full-access"', source)
         self.assertNotIn("for child in source.iterdir()", source)
         self.assertNotIn("{**os.environ", source)
-        self.assertIn("child", "child")  # keep test body explicit and non-empty
 
     def test_apparmor_separates_runner_and_disposable_run(self) -> None:
         runner = (CODERS / "security/apparmor-hermes-codex-runner").read_text(
@@ -118,9 +136,9 @@ class SandboxLauncherDeploymentContractTests(unittest.TestCase):
         self.assertNotIn("mount options=", runner + run)
 
     def test_adr_declares_single_boundary_and_no_automatic_downgrade(self) -> None:
-        text = (
-            ROOT / "docs/adr/0001-hermes-host-sandbox-launcher.md"
-        ).read_text(encoding="utf-8")
+        text = (ROOT / "docs/adr/0001-hermes-host-sandbox-launcher.md").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("disposable", text)
         self.assertIn("no automatic downgrade", text)
         self.assertIn("Give the runner Docker socket access", text)

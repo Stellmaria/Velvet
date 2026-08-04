@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import socket
 import stat
 import subprocess
 import sys
@@ -21,6 +20,10 @@ INSTALL_ROOT = Path(
 NETWORK = os.environ.get(
     "HERMES_SANDBOX_NETWORK", "hermes-sandbox-egress"
 ).strip()
+IMAGES = (
+    "velvet-codex-coder-velvet:local",
+    "velvet-codex-coder-max:local",
+)
 
 
 class SandboxPreflightError(RuntimeError):
@@ -41,18 +44,16 @@ def require_private(path: Path) -> None:
         )
 
 
-def verify_network() -> None:
+def run_checked(args: list[str], message: str) -> None:
     result = subprocess.run(
-        ["docker", "network", "inspect", NETWORK],
+        args,
         check=False,
         capture_output=True,
         text=True,
         timeout=20,
     )
     if result.returncode != 0:
-        raise SandboxPreflightError(
-            f"Dedicated sandbox network недоступна: {NETWORK}"
-        )
+        raise SandboxPreflightError(message)
 
 
 def main() -> int:
@@ -104,10 +105,24 @@ def main() -> int:
                 f"Active Compose всё ещё содержит запрещённый sandbox marker: {forbidden}"
             )
 
-    verify_network()
+    run_checked(
+        ["docker", "network", "inspect", NETWORK],
+        f"Dedicated sandbox network недоступна: {NETWORK}",
+    )
+    for image in IMAGES:
+        run_checked(
+            ["docker", "image", "inspect", image],
+            f"Pinned sandbox image недоступен: {image}",
+        )
+
     socket_path = Path("/run/hermes-sandbox/launcher.sock")
     if not socket_path.exists() or not stat.S_ISSOCK(socket_path.stat().st_mode):
         raise SandboxPreflightError(f"Launcher socket недоступен: {socket_path}")
+    socket_mode = stat.S_IMODE(socket_path.stat().st_mode)
+    if socket_mode != 0o660:
+        raise SandboxPreflightError(
+            f"Launcher socket имеет неверный режим {socket_mode:04o}; требуется 0660"
+        )
     try:
         payload = SandboxLauncherClient(str(socket_path)).ping()
     except LauncherClientError as error:
@@ -123,6 +138,7 @@ def main() -> int:
     print("- execution backend: host-sandbox-launcher")
     print("- boundary: disposable Docker container")
     print(f"- dedicated network: {NETWORK}")
+    print("- pinned images: Velvet and Max")
     print("- nested bwrap: disabled")
     print("- local execution fallback: explicit operator gate only")
     return 0
