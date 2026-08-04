@@ -75,10 +75,10 @@ class AufWalletServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_package_prices_follow_usd_rate(self) -> None:
         service = AufWalletService(_FakeRepository(), _FakeRuntimeService())
         quotes = await service.package_quotes(workspace_id=7, actor_user_id=77)
-        self.assertEqual((40, 100, 250, 500, 1000, 2500), tuple(q.amount_auf for q in quotes))
-        self.assertEqual(Decimal("1.20"), quotes[0].price_usd)
-        self.assertEqual(Decimal("100"), quotes[0].price_rub)
-        self.assertEqual(Decimal("3.51"), quotes[0].price_byn)
+        self.assertEqual((20, 100, 250, 500, 1000, 2500), tuple(q.amount_auf for q in quotes))
+        self.assertEqual(Decimal("0.60"), quotes[0].price_usd)
+        self.assertEqual(Decimal("50"), quotes[0].price_rub)
+        self.assertEqual(Decimal("1.76"), quotes[0].price_byn)
         self.assertEqual(Decimal("6000"), quotes[-1].price_rub)
 
     async def test_non_owner_cannot_manage_wallet(self) -> None:
