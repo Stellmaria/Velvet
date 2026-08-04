@@ -52,79 +52,130 @@ Docker socket/production volumes и запрет production privileges.
   `source=owner-direct`, task ID и fail-closed token contract;
 - delegated CLI использует `source=kael-delegated`; router handoff фиксирует
   canonical identity `Велвет`/`Макс`;
-- каждый run получает отдельный worktree от свежего `origin/main`, mutation
-  fingerprint и scoped cleanup audit;
-- добавлены enforcing AppArmor, allowlist seccomp и третий Compose security layer;
+- каждый run получает disposable clone от актуальной default branch;
+- shared base checkout монтируется read-only и не является task workspace;
+- runner записывает effective per-run cwd в ledger и добавляет его в execution
+  context непосредственно перед запуском модели;
+- mutation audit учитывает HEAD, branch, refs, working tree, shared base и
+  branch/PR evidence, поэтому clean status после commit не маскирует mutation;
+- добавлены enforcing AppArmor, Docker-default-based seccomp и третий Compose
+  security layer;
 - installer и systemd используют одинаковые три lifecycle layer, restart oneshot
   и проверку `active/exited/0`;
 - context installer верифицирует manifest после последней atomic записи;
-- runtime smoke проверяет namespaces/bwrap/security/fingerprint и
-  `cryptography==50.0.0`.
+- orchestration installer вызывает один canonical coder reconcile и устанавливает
+  Каэля через compiler/install/verify без ручной перезаписи managed `SOUL.md`;
+- runtime smoke разделяет read-only base probe и writable disposable-run probe,
+  проверяет namespaces/security/fingerprint и `cryptography==50.0.0`.
 
 ### Миграции и совместимость
 
 Миграций БД нет. Direct helper теперь требует central router client token и не
 совместим с прямым обращением к runner; это намеренный fail-closed контракт.
 
-### Проверки
+Codex task checkout изменён с общего `/workspace` на dynamic path внутри
+`/opt/codex-runs/<project>/workspaces/<run_id>`. `/workspace-base` доступен только
+как read-only источник для создания disposable clone.
+
+### Проверки первоначальной реализации
 
 - `python -m unittest` focused Hermes set: 76 tests — OK после обновления одного
   устаревшего lifecycle expectation;
 - `python -m unittest discover -s tests -p 'test_hermes*.py'`: 161 tests прошли,
-  один unrelated module collection заблокирован отсутствующим `asyncpg` в образе;
-- финальный focused contract set: 74 tests — OK, включая project notes;
+  один unrelated module collection был заблокирован отсутствующим `asyncpg` в
+  isolated coder image;
+- focused contract set: 74 tests — OK, включая project notes;
 - `git diff --check`, `bash -n`, `compileall` — OK;
-- независимый high-risk review выявил и помог исправить inherited fingerprint
-  helper collision, incomplete AppArmor execute rules и неверные namespace/proc probes;
 - Docker/AppArmor/systemd/Telegram live smoke не запускались: production и Docker
-  запрещены контрактом задачи.
+  были запрещены контрактом задачи.
 
-### PR и commit
+### PR и исходная реализация
 
 - PR: #582;
 - implementation commit: `1c918234dbe55674eb652dbb22064e83deeb010a`;
-- CI для implementation commit: все 19 checks terminal, 18 pass и один
-  ожидаемый CodeQL wrapper `skipping` после успешных `codeql-actions/python`.
+- первый reviewed head: `c1772ade7062208644da9b4d77ec5b393cac828d`;
+- первый coder review-fix head: `f8980f1e6477c79d53a71eb7637ea64bc1fe45e7`.
+
+### Blocking review 4849528520
+
+Первый независимый review выявил несовместимые direct/router schemas, duplicate
+`security_opt`, незамкнутый router token, не исправленный orchestration installer,
+неверный main-Hermes probe, нерабочий bwrap smoke, handcrafted seccomp, неполный
+AppArmor и hardcoded `origin/main`.
+
+Исправлено в существующем PR:
+
+- direct payload проходит integration path
+  `codex_delegate -> HTTP Handler -> TierAwareCoderRouter -> mocked upstream`;
+- routing metadata сохраняется до runner;
+- security overlay не дублирует `no-new-privileges`;
+- реальный three-layer Compose render проходит `config --quiet`;
+- router client token выводится из `HERMES_OPS_CLIENT_TOKEN` и передаётся обоим
+  direct coder env без вывода значения;
+- canonical server Compose и service `hermes` используются для cryptography probe;
+- seccomp основан на Docker default с ограниченной userns clone rule;
+- AppArmor содержит mount propagation, proc, bind и confined project execution;
+- default branch получается из remote metadata и валидируется.
+
+### Blocking review 4849624310 и независимый fix pass
+
+Второй review был вызван противоречием: remote PR head изменился, но ledger
+continuation-run сообщил `mutation_started=false`.
+
+Причина локализована в execution workspace contract:
+
+- runner создавал isolated worktree и считал fingerprint в нём;
+- router и compiled AGENTS продолжали направлять модель в `/workspace`;
+- общий checkout оставался writable;
+- commit/push мог происходить вне контролируемого path.
+
+По распоряжению владельца автоматический цикл Каэль → coder остановлен. Дальнейшие
+изменения внесены независимым исполнителем в ту же branch и тот же PR.
+
+Исправления:
+
+- Git worktree заменён на disposable clone, не требующий writable shared `.git`;
+- base checkout монтируется как `/workspace-base:ro`;
+- legacy `/workspace` отсутствует у Codex runner;
+- router и coder AGENTS требуют работать только в current runner cwd;
+- effective `workspace_path`, source ref и baseline HEAD сохраняются в ledger;
+- snapshot включает HEAD, branch, refs и working tree;
+- base checkout snapshot проверяется отдельно;
+- commit с последующим clean status покрыт behavioral test;
+- read-only commit отклоняется даже при clean final status;
+- изменение base checkout завершается fail-closed;
+- cleanup удаляет только clone конкретного run;
+- runtime smoke отдельно доказывает read-only base и writable per-run clone;
+- AppArmor разрешает inherited execution только внутри disposable run tree;
+- orchestration install больше не выполняет ранний preflight и не редактирует
+  manifest-managed Hermes `SOUL.md` вручную;
+- Kael context устанавливается только через brain compiler/install/verify.
+
+Issue #584 дополнен обязательными правилами effective workspace, evidence conflict,
+mutation evidence и максимумом двух автоматических review-fix итераций.
+
+### CI независимого fix pass
+
+- preflight, type check, project notes, Hermes monitor/reconcile и три test shards
+  прошли на промежуточном head;
+- первый CI выявил устаревший exact-string read-only contract. Он заменён проверкой
+  фактического поведения: assigned runner cwd, запрет Git mutation и отсутствие
+  static `workspace=/workspace`;
+- точный финальный head и полный terminal CI фиксируются перед merge recommendation;
+- live AppArmor/systemd/bwrap/Telegram проверки остаются rollout-only.
 
 ### Незавершённое
 
-Нужен отдельный approved live rollout с четырьмя Telegram paths. Временный
-production workaround этим PR не удаляется.
-
-### Blocking review 4849528520 — исправление 4 августа 2026
-
-- direct payload теперь проходит integration path
-  `codex_delegate -> HTTP Handler -> TierAwareCoderRouter -> mocked upstream` и
-  сохраняет все пять routing-полей до runner;
-- security overlay больше не дублирует `no-new-privileges`; реальный Compose
-  v2.39.1 render трёх layers проходит `config --quiet`;
-- единственный router client token выводится из `HERMES_OPS_CLIENT_TOKEN`,
-  записывается без печати значения в router env и оба direct coder env;
-- orchestration installer использует runtime/security layers, устанавливает
-  manifest-managed coder context с режимом `0600`, не перезаписывает coder
-  `SOUL.md` после manifest и выполняет verify после последней записи;
-- lifecycle явно перезапускает coder, router и incident oneshot units;
-- cryptography probe использует `.env.server`, canonical server Compose и
-  service `hermes`; bwrap probe реально исполняет Git с доступным root tree;
-- seccomp заменён актуальной Docker-default основой с минимальными bwrap
-  additions; AppArmor дополнен mount propagation/proc/bind и project-tool exec;
-- isolated worktree получает и валидирует default branch из remote metadata,
-  без hardcoded `origin/main`.
-
-Проверки review-среза: focused Hermes — 60 tests OK; полный релевантный Hermes
-suite без импортирующего отсутствующий в runner `asyncpg` entity-contract —
-165 tests OK, 1 environment skip; `compileall`, `bash -n`, JSON parse,
-`git diff --check` — OK; standalone Docker Compose v2.39.1 three-layer
-`config --quiet` — OK. Docker daemon, AppArmor parser/audit и live container
-smoke недоступны в isolated coder contract и остаются rollout-only проверками.
-Первый CI review-fix head дополнительно выявил, что доступный на GitHub runner
-`apparmor_parser` пытался открыть системный cache; parser regression переведён
-на отдельный temporary cache без повышенных privileges.
-Второй CI head подтвердил AppArmor parse и выявил недостающие synthetic env
-files в Compose regression; test fixture создаёт четыре пустых env-файла и
-проверяет именно merged three-layer config без чтения реальных credentials.
+- дождаться terminal CI на точном финальном head;
+- выполнить отдельный approved live rollout;
+- проверить enforcing AppArmor и custom seccomp на production host;
+- выполнить direct/delegated read-only paths для Велвета и Макса;
+- выполнить mutation-audit smoke с test branch/PR без merge;
+- удалить временный `seccomp=unconfined`/unconfined AppArmor workaround только после
+  успешного постоянного sandbox acceptance.
 
 ### Следующий шаг
 
-После owner review слить PR #582; затем отдельным разрешённым rollout выполнить
-AppArmor/systemd/bwrap и четыре Telegram smoke до удаления workaround.
+После terminal CI и owner review подготовить controlled rollout точного merge SHA.
+Merge, deploy, restart production и удаление временного workaround выполняются
+только по отдельному разрешению владельца.
