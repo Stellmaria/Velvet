@@ -516,7 +516,7 @@ class ErrorIncidentCenter:
                 ]
             )
         text = "\n".join(lines)
-        return text[:4090]
+        return text
 
     async def _publish_to_log_chat(self, incident: ErrorIncident) -> None:
         if self._log_chat_id is None:
@@ -598,7 +598,7 @@ class ErrorIncidentCenter:
             try:
                 await self._bot.send_message(
                     chat_id=owner_id,
-                    text="\n".join(lines)[:4090],
+                    text="\n".join(lines),
                     reply_markup=markup,
                     disable_web_page_preview=True,
                 )
