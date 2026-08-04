@@ -120,6 +120,9 @@ smoke недоступны в isolated coder contract и остаются rollou
 Первый CI review-fix head дополнительно выявил, что доступный на GitHub runner
 `apparmor_parser` пытался открыть системный cache; parser regression переведён
 на отдельный temporary cache без повышенных privileges.
+Второй CI head подтвердил AppArmor parse и выявил недостающие synthetic env
+files в Compose regression; test fixture создаёт четыре пустых env-файла и
+проверяет именно merged three-layer config без чтения реальных credentials.
 
 ### Следующий шаг
 

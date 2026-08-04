@@ -91,6 +91,10 @@ class Issue581ContractTests(unittest.TestCase):
             self.skipTest("docker compose CLI unavailable")
         source = ROOT / "deploy/hermes-coders"
         with tempfile.TemporaryDirectory() as directory:
+            secrets = Path(directory) / "secrets"
+            secrets.mkdir()
+            for name in ("velvet.env", "velvet-db.env", "max.env", "max-db.env"):
+                (secrets / name).touch()
             env = os.environ | {"HERMES_CODERS_ROOT": directory}
             result = subprocess.run(
                 ["docker", "compose", "--profile", "velvet", "--profile", "max",
