@@ -32,7 +32,9 @@ jobs:
           persist-credentials: true
 
       - name: Apply architecture-safe refactor
-        run: python scripts/_temporary_refactor_auf_currency.py
+        run: |
+          python scripts/_temporary_prepare_auf_refactor.py
+          python scripts/_temporary_refactor_auf_currency.py
 
       - name: Refresh architecture inventory
         run: |
@@ -104,6 +106,7 @@ jobs:
         run: |
           git checkout origin/main -- .github/workflows/tests.yml
           rm -f .github/workflows/temporary-auf-pricing-refactor.yml
+          rm -f scripts/_temporary_prepare_auf_refactor.py
           rm -f scripts/_temporary_refactor_auf_currency.py
 
       - name: Commit and push refactor
