@@ -26,6 +26,7 @@ from velvet_bot.workspace_ui import workspace_callback
 logger = logging.getLogger(__name__)
 
 _CURRENCIES = ("RUB", "USD")
+_PACKAGE_CALLBACK_SEPARATOR = "|"
 
 
 def _normalize_currency(value: object) -> str:
@@ -34,11 +35,16 @@ def _normalize_currency(value: object) -> str:
 
 
 def _package_callback_value(amount: int, currency: str) -> str:
-    return f"{int(amount)}:{_normalize_currency(currency)}"
+    return (
+        f"{int(amount)}{_PACKAGE_CALLBACK_SEPARATOR}"
+        f"{_normalize_currency(currency)}"
+    )
 
 
 def _parse_package_callback_value(value: str) -> tuple[int, str]:
-    amount_raw, separator, currency_raw = str(value or "").partition(":")
+    amount_raw, separator, currency_raw = str(value or "").partition(
+        _PACKAGE_CALLBACK_SEPARATOR
+    )
     if not separator:
         return int(amount_raw), "RUB"
     return int(amount_raw), _normalize_currency(currency_raw)
@@ -163,7 +169,6 @@ def _invoice_line(invoice) -> str:
         f"{_format_money(invoice.final_local_amount, invoice.billing_currency)} · "
         f"{escape(legacy._INVOICE_LABELS[invoice.status])}"
     )
-
 
 
 async def _notify_owner_purchase_intent(
@@ -424,7 +429,7 @@ async def handle_auf_wallet_action(
         callback,
         workspace_id=workspace_id,
         wallet_service=auf_wallet_service,
-        purchase_service=auf_purchase_service,
+        purchase_service=purchase_service,
         currency=selected_currency,
         answer_callback=alert is None,
     )
