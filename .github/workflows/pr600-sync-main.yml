@@ -1,0 +1,39 @@
+name: sync PR 600 with current main
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr600-sync-main-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: github.event.pull_request.number == 600 && github.head_ref == 'feat/auf-privileged-banana-pricing'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/auf-privileged-banana-pricing
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Merge current main and remove sync workflow
+        run: |
+          set -euo pipefail
+          git config user.name 'Velvet CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git fetch origin main
+          git merge --no-edit origin/main
+          rm .github/workflows/pr600-sync-main.yml
+          git add -- .github/workflows/pr600-sync-main.yml
+          git diff --cached --check
+          git commit -m 'ci: remove temporary PR 600 main sync'
+          git push origin HEAD:feat/auf-privileged-banana-pricing
