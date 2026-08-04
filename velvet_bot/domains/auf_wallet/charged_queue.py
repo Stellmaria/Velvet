@@ -141,11 +141,17 @@ async def _reserve_charge(
         """
         INSERT INTO auf_task_charges (
             task_id, workspace_id, price_version_id,
-            quoted_units, reserved_units, provider_cost_usd, status
+            quoted_units, reserved_units, provider_cost_usd,
+            pricing_strategy, target_margin_percent,
+            operational_reserve_percent, operational_reserve_usd,
+            minimum_revenue_usd, subsidy_guard_applied, status
         )
         VALUES (
             $1::UUID, $2::BIGINT, $3::BIGINT,
-            $4::BIGINT, $4::BIGINT, $5::NUMERIC, 'reserved'
+            $4::BIGINT, $4::BIGINT, $5::NUMERIC,
+            $6::VARCHAR, $7::NUMERIC,
+            $8::NUMERIC, $9::NUMERIC,
+            $10::NUMERIC, $11::BOOLEAN, 'reserved'
         )
         """,
         task_id,
@@ -153,6 +159,12 @@ async def _reserve_charge(
         quote.price_version_id,
         quote.quoted_units,
         quote.provider_cost_usd,
+        quote.pricing_strategy,
+        quote.target_margin_percent,
+        quote.operational_cost_buffer_percent,
+        quote.operational_reserve_usd,
+        quote.minimum_revenue_usd,
+        quote.subsidy_guard_applied,
     )
     await connection.execute(
         """
@@ -184,6 +196,11 @@ async def _reserve_charge(
                 "duration_seconds": quote.duration_seconds,
                 "reference_count": quote.reference_count,
                 "provider_cost_usd": str(quote.provider_cost_usd),
+                "pricing_strategy": quote.pricing_strategy,
+                "target_margin_percent": str(quote.target_margin_percent),
+                "minimum_contribution_margin_percent": str(
+                    quote.minimum_contribution_margin_percent
+                ),
                 "global_markup_percent": str(quote.global_markup_percent),
                 "user_markup_override_percent": (
                     str(quote.user_markup_override_percent)
@@ -191,9 +208,17 @@ async def _reserve_charge(
                     else None
                 ),
                 "markup_percent": str(quote.markup_percent),
+                "operational_reserve_percent": str(
+                    quote.operational_cost_buffer_percent
+                ),
+                "operational_reserve_usd": str(quote.operational_reserve_usd),
+                "subsidy_guard_applied": quote.subsidy_guard_applied,
                 "quality_surcharge_velvets": quote.quality_surcharge_velvets,
                 "target_retail_usd": str(quote.target_retail_usd),
                 "minimum_revenue_usd": str(quote.minimum_revenue_usd),
+                "contribution_margin_percent": str(
+                    quote.contribution_margin_percent
+                ),
                 "billing_usd_to_rub": str(quote.billing_usd_to_rub),
                 "billing_usd_to_byn": str(quote.billing_usd_to_byn),
                 "whole_velvets": quote.quoted_units // AUF_SCALE,

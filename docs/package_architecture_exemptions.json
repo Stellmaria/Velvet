@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "p1-package-architecture-baseline",
+  "generated_from": "940726cd7eeb8b032429e3e1d1a224d4aed40622",
   "baseline_issue": "#460",
   "shared_private_access_sha256": "1ede851cc36a62bddfab222c4267eb6c4087e673a2da9935f259e0e2db805ab3",
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",
@@ -445,6 +445,19 @@
       "consumers": [
         "velvet_bot/domains/auf_wallet/__init__.py",
         "velvet_bot/domains/meow_wallet/charged_queue.py"
+      ],
+      "replacement": "Canonical boundary tracked by #460.",
+      "removal_condition": "Remove this exemption when #460 retires the fingerprinted debt without behavior regression.",
+      "regression_test": "tests/test_package_architecture_inventory.py",
+      "issue": "#460"
+    },
+    {
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:fcf305e82309e555",
+      "owner": "architecture-governance",
+      "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
+      "consumers": [
+        "velvet_bot/domains/auf_wallet/__init__.py",
+        "velvet_bot/domains/auf_wallet/service.py"
       ],
       "replacement": "Canonical boundary tracked by #460.",
       "removal_condition": "Remove this exemption when #460 retires the fingerprinted debt without behavior regression.",
@@ -1695,6 +1708,18 @@
       "issue": "#459"
     },
     {
+      "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:c57d54375959a6ea",
+      "owner": "application-composition",
+      "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
+      "consumers": [
+        "velvet_bot/app/composition.py"
+      ],
+      "replacement": "Canonical boundary tracked by #455.",
+      "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
+      "regression_test": "tests/test_package_architecture_inventory.py",
+      "issue": "#455"
+    },
+    {
       "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:dfd53c17e121bd25",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
@@ -2476,6 +2501,18 @@
       "issue": "#459"
     },
     {
+      "id": "installed-sentinel:velvet_bot/app/auf_margin_dashboard_install.py:7eeb5d8f99cd8695",
+      "owner": "application-composition",
+      "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
+      "consumers": [
+        "velvet_bot/app/composition.py"
+      ],
+      "replacement": "Canonical boundary tracked by #455.",
+      "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
+      "regression_test": "tests/test_package_architecture_inventory.py",
+      "issue": "#455"
+    },
+    {
       "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:74419a93f06d4beb",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
@@ -3001,6 +3038,18 @@
       "removal_condition": "Remove this exemption when #459 retires the fingerprinted debt without behavior regression.",
       "regression_test": "tests/test_package_architecture_inventory.py",
       "issue": "#459"
+    },
+    {
+      "id": "installer-like-module:velvet_bot/app/auf_margin_dashboard_install.py:a6099df5a5bfa3f2",
+      "owner": "application-composition",
+      "reason": "Existing installer-like-module debt captured by the reviewed baseline.",
+      "consumers": [
+        "velvet_bot/app/composition.py"
+      ],
+      "replacement": "Canonical boundary tracked by #455.",
+      "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
+      "regression_test": "tests/test_package_architecture_inventory.py",
+      "issue": "#455"
     },
     {
       "id": "installer-like-module:velvet_bot/app/auf_owner_pricing_ui_install.py:417bd2c656d965fc",
@@ -4678,12 +4727,25 @@
       "issue": "#458"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:a4faea04c3c710b5",
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:0fc7c8ad47779852",
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/domains/auf_wallet/__init__.py",
         "velvet_bot/domains/meow_wallet/charged_queue.py"
+      ],
+      "replacement": "Canonical boundary tracked by #458.",
+      "removal_condition": "Remove this exemption when #458 retires the fingerprinted debt without behavior regression.",
+      "regression_test": "tests/test_package_architecture_inventory.py",
+      "issue": "#458"
+    },
+    {
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:8ffcd044baf03a3d",
+      "owner": "auf-application-presentation",
+      "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
+      "consumers": [
+        "velvet_bot/domains/auf_wallet/__init__.py",
+        "velvet_bot/domains/auf_wallet/service.py"
       ],
       "replacement": "Canonical boundary tracked by #458.",
       "removal_condition": "Remove this exemption when #458 retires the fingerprinted debt without behavior regression.",
@@ -4704,7 +4766,7 @@
       "issue": "#458"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:108ab1f09389a505",
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:46c73ca2dc44d46b",
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -6575,7 +6637,7 @@
       "issue": "#460"
     },
     {
-      "id": "typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:143bb3b5c3f17619",
+      "id": "typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:f203665a6707ad1a",
       "owner": "architecture-governance",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [

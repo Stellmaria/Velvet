@@ -39,6 +39,21 @@ class AufEconomySettings:
 
 
 @dataclass(frozen=True, slots=True)
+class AufMarginSummary:
+    days: int
+    generations: int
+    captured_units: int
+    realized_revenue_usd: Decimal
+    provider_cost_usd: Decimal
+    operational_reserve_usd: Decimal
+    contribution_profit_usd: Decimal
+    contribution_margin_percent: Decimal | None
+    subsidy_usd: Decimal
+    subsidized_generations: int
+    estimated_basis_generations: int
+
+
+@dataclass(frozen=True, slots=True)
 class AufWallet:
     workspace_id: int
     available_units: int
@@ -144,6 +159,7 @@ __all__ = (
     "AUF_SCALE",
     "AufEconomySettings",
     "AufInsufficientBalance",
+    "AufMarginSummary",
     "AufWallet",
     "AufWalletEntry",
     "AufWalletError",
