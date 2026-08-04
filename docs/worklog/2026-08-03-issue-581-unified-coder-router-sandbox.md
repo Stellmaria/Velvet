@@ -81,13 +81,17 @@ Docker socket/production volumes и запрет production privileges.
 
 ### PR и commit
 
-Будут записаны после commit/push/создания единственного PR.
+- PR: #582;
+- implementation commit: `1c918234dbe55674eb652dbb22064e83deeb010a`;
+- CI для implementation commit: все 19 checks terminal, 18 pass и один
+  ожидаемый CodeQL wrapper `skipping` после успешных `codeql-actions/python`.
 
 ### Незавершённое
 
-Нужны независимый review, GitHub CI и отдельный approved live rollout с четырьмя
-Telegram paths. Временный production workaround этим PR не удаляется.
+Нужен отдельный approved live rollout с четырьмя Telegram paths. Временный
+production workaround этим PR не удаляется.
 
 ### Следующий шаг
 
-Завершить review, создать один commit/PR в main и дождаться terminal CI status.
+После owner review слить PR #582; затем отдельным разрешённым rollout выполнить
+AppArmor/systemd/bwrap и четыре Telegram smoke до удаления workaround.
