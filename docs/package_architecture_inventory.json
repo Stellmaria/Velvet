@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 646,
-  "production_loc": 141664,
+  "production_loc": 141685,
   "layer_counts": {
     "application": 21,
     "composition": 65,
@@ -5136,13 +5136,13 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:f6c0ac90351bfbd3",
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:ef58b2fc2d83d17d",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/pricing.py",
-      "fingerprint": "f6c0ac90351bfbd34466807c7ceefe9c08bfe62974d86d0d0abced54148f4cd4",
-      "summary": "8 SQL literals outside persistence",
+      "fingerprint": "ef58b2fc2d83d17dd15c499ba15f46b7b2ec56cc2ed7d6e7741ca06cea28563e",
+      "summary": "7 SQL literals outside persistence",
       "details": {
-        "count": 8,
+        "count": 7,
         "keywords": [
           "DELETE FROM",
           "INSERT INTO",
@@ -17575,11 +17575,11 @@
       "module": "velvet_bot.domains.auf_wallet.pricing",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 414,
+      "loc": 428,
       "function_count": 24,
       "class_count": 4,
       "handler_count": 0,
-      "max_function_length": 169,
+      "max_function_length": 175,
       "branch_count": 15,
       "internal_imports": [
         "velvet_bot.database",
@@ -17587,7 +17587,7 @@
       ],
       "external_import_count": 6,
       "aiogram_imports": [],
-      "sql_literal_count": 8,
+      "sql_literal_count": 7,
       "database_acquire_count": 4,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
@@ -17604,13 +17604,13 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:f6c0ac90351bfbd3",
+          "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:ef58b2fc2d83d17d",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/pricing.py",
-          "fingerprint": "f6c0ac90351bfbd34466807c7ceefe9c08bfe62974d86d0d0abced54148f4cd4",
-          "summary": "8 SQL literals outside persistence",
+          "fingerprint": "ef58b2fc2d83d17dd15c499ba15f46b7b2ec56cc2ed7d6e7741ca06cea28563e",
+          "summary": "7 SQL literals outside persistence",
           "details": {
-            "count": 8,
+            "count": 7,
             "keywords": [
               "DELETE FROM",
               "INSERT INTO",
@@ -33475,12 +33475,12 @@
       "module": "velvet_bot.presentation.telegram.routers.user_management",
       "layer": "presentation",
       "target_package": "presentation",
-      "loc": 289,
+      "loc": 296,
       "function_count": 10,
       "class_count": 0,
       "handler_count": 4,
       "max_function_length": 69,
-      "branch_count": 28,
+      "branch_count": 29,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.auf_wallet",

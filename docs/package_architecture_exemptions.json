@@ -4701,7 +4701,7 @@
       "issue": "#458"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:f6c0ac90351bfbd3",
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:ef58b2fc2d83d17d",
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [

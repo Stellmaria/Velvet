@@ -124,16 +124,10 @@ class AufPricingRepository:
     ) -> AufUserMarkupPolicy:
         normalized = _validate_markup_percent(markup_percent)
         async with self._database.acquire() as connection:
-            minimum_markup = await connection.fetchval(
-                """
-                SELECT minimum_user_markup_percent
-                FROM auf_economy_settings
-                WHERE singleton_id = 1
-                """
+            current_policy = await _load_user_markup_policy(
+                connection, int(user_id)
             )
-            if minimum_markup is None:
-                raise RuntimeError("Настройки экономики Ауф не инициализированы.")
-            minimum_normalized = _validate_markup_percent(Decimal(minimum_markup))
+            minimum_normalized = current_policy.minimum_user_markup_percent
             if normalized < minimum_normalized:
                 raise ValueError(
                     "Индивидуальная наценка не может быть ниже "
