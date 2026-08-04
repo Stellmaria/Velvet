@@ -119,6 +119,29 @@ class AufUserMarkupPolicy:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class _PricingSettings:
+    retail_auf_usd: Decimal
+    usd_to_rub: Decimal
+    usd_to_byn: Decimal
+    global_markup_percent: Decimal
+    quote_rub_per_vl: Decimal
+    operational_reserve_percent: Decimal
+    minimum_user_markup_percent: Decimal
+    pricing_strategy: str
+    target_margin_percent: Decimal
+    minimum_contribution_margin_percent: Decimal
+    allow_subsidized_generations: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _PricingTarget:
+    strategy: str
+    markup_percent: Decimal
+    target_retail_usd: Decimal
+    subsidy_guard_applied: bool
+
+
 class AufPriceNotConfigured(ValueError):
     pass
 
@@ -187,27 +210,118 @@ async def quote_auf_payload(
     connection: Any,
     payload: Mapping[str, object],
 ) -> AufPriceQuote:
-    request_value = payload.get("request")
-    if not isinstance(request_value, Mapping):
-        raise AufPriceNotConfigured("В AI-задаче отсутствуют параметры генерации.")
-
-    model_alias = str(request_value.get("model") or "").strip()
-    resolution = str(request_value.get("resolution") or "").strip()
+    request = _request_payload(payload)
+    model_alias = str(request.get("model") or "").strip()
+    resolution = str(request.get("resolution") or "").strip()
     if not model_alias:
         raise AufPriceNotConfigured("В AI-задаче не указана модель генерации.")
 
-    extra_input = request_value.get("extra_input")
-    extra = dict(extra_input) if isinstance(extra_input, Mapping) else {}
-    audio: bool | None = (
-        bool(extra.get("generate_audio", False))
-        if model_alias == "seedance_15_pro_video"
-        else None
-    )
-    duration_seconds = _positive_int(request_value.get("duration_seconds"), default=6)
-    references = request_value.get("references")
-    reference_count = len(references) if isinstance(references, (list, tuple)) else 0
+    audio = _request_audio(model_alias, request)
+    duration_seconds = _positive_int(request.get("duration_seconds"), default=6)
+    reference_count = _reference_count(request)
     user_id = _positive_int(payload.get("user_id"), default=0)
+    row = await _load_price_version(
+        connection,
+        model_alias=model_alias,
+        resolution=resolution,
+        audio=audio,
+    )
+    provider_cost = _provider_cost(
+        row,
+        duration_seconds=duration_seconds,
+        reference_count=reference_count,
+    )
+    quality_surcharge, standard_floor, discounted_floor = _price_floors(row)
+    settings = await _load_pricing_settings(connection)
+    user_override = await _load_user_markup_override(connection, user_id=user_id)
+    target = _pricing_target(
+        provider_cost_usd=provider_cost,
+        settings=settings,
+        user_markup_override=user_override,
+    )
+    minimum_velvets = _minimum_velvets(
+        standard=standard_floor,
+        discounted=discounted_floor,
+        user_override=user_override,
+        effective_markup=target.markup_percent,
+        minimum_user_markup=settings.minimum_user_markup_percent,
+    )
+    whole_velvets = _whole_velvets(
+        target_retail_usd=target.target_retail_usd,
+        usd_to_rub=settings.usd_to_rub,
+        quote_rub_per_vl=settings.quote_rub_per_vl,
+        quality_surcharge=quality_surcharge,
+        minimum_velvets=minimum_velvets,
+    )
+    minimum_revenue_usd = (
+        settings.quote_rub_per_vl
+        * Decimal(whole_velvets)
+        / settings.usd_to_rub
+    )
 
+    return AufPriceQuote(
+        price_version_id=int(row["id"]),
+        version_key=str(row["version_key"]),
+        provider=str(row["provider"]),
+        model_alias=model_alias,
+        resolution=resolution,
+        audio=audio,
+        duration_seconds=duration_seconds,
+        reference_count=reference_count,
+        provider_cost_usd=provider_cost,
+        global_markup_percent=settings.global_markup_percent,
+        user_markup_override_percent=user_override,
+        minimum_user_markup_percent=settings.minimum_user_markup_percent,
+        markup_percent=target.markup_percent,
+        pricing_strategy=target.strategy,
+        target_margin_percent=settings.target_margin_percent,
+        minimum_contribution_margin_percent=(
+            settings.minimum_contribution_margin_percent
+        ),
+        allow_subsidized_generations=settings.allow_subsidized_generations,
+        operational_cost_buffer_percent=settings.operational_reserve_percent,
+        subsidy_guard_applied=target.subsidy_guard_applied,
+        quote_rub_per_vl=settings.quote_rub_per_vl,
+        quality_surcharge_velvets=quality_surcharge,
+        minimum_velvets=minimum_velvets,
+        target_retail_usd=target.target_retail_usd,
+        minimum_revenue_usd=minimum_revenue_usd,
+        billing_usd_to_rub=settings.usd_to_rub,
+        billing_usd_to_byn=settings.usd_to_byn,
+        quoted_units=whole_velvets * AUF_SCALE,
+    )
+
+
+def _request_payload(payload: Mapping[str, object]) -> Mapping[str, object]:
+    request = payload.get("request")
+    if not isinstance(request, Mapping):
+        raise AufPriceNotConfigured("В AI-задаче отсутствуют параметры генерации.")
+    return request
+
+
+def _request_audio(
+    model_alias: str,
+    request: Mapping[str, object],
+) -> bool | None:
+    if model_alias != "seedance_15_pro_video":
+        return None
+    raw_extra = request.get("extra_input")
+    extra = dict(raw_extra) if isinstance(raw_extra, Mapping) else {}
+    return bool(extra.get("generate_audio", False))
+
+
+def _reference_count(request: Mapping[str, object]) -> int:
+    references = request.get("references")
+    return len(references) if isinstance(references, (list, tuple)) else 0
+
+
+async def _load_price_version(
+    connection: Any,
+    *,
+    model_alias: str,
+    resolution: str,
+    audio: bool | None,
+) -> Any:
     row = await connection.fetchrow(
         """
         SELECT id, version_key, provider, model_alias, resolution, audio,
@@ -237,24 +351,29 @@ async def quote_auf_payload(
         raise AufPriceNotConfigured(
             f"Для модели {model_alias}{suffix} не настроена цена Ауф."
         )
+    return row
 
-    pricing_basis = str(row["pricing_basis"])
+
+def _provider_cost(
+    row: Any,
+    *,
+    duration_seconds: int,
+    reference_count: int,
+) -> Decimal:
     unit_cost = Decimal(row["unit_cost_usd"])
-    provider_cost = (
+    cost = (
         unit_cost * Decimal(duration_seconds)
-        if pricing_basis == "per_second"
+        if str(row["pricing_basis"]) == "per_second"
         else unit_cost
     )
     extra_reference_cost = Decimal(row["extra_reference_cost_usd"])
     if extra_reference_cost > 0 and reference_count > 1:
-        provider_cost += extra_reference_cost * Decimal(reference_count - 1)
-    (
-        quality_surcharge_velvets,
-        standard_minimum_velvets,
-        discounted_minimum_velvets,
-    ) = _price_floors(row)
+        cost += extra_reference_cost * Decimal(reference_count - 1)
+    return cost
 
-    settings = await connection.fetchrow(
+
+async def _load_pricing_settings(connection: Any) -> _PricingSettings:
+    row = await connection.fetchrow(
         """
         SELECT retail_auf_usd, billing_usd_to_rub, billing_usd_to_byn,
                retail_markup_percent, quote_rub_per_vl,
@@ -267,160 +386,151 @@ async def quote_auf_payload(
         WHERE singleton_id = 1
         """
     )
-    if settings is None:
+    if row is None:
         raise RuntimeError("Настройки экономики Ауф не инициализированы.")
-    retail_auf_usd = Decimal(settings["retail_auf_usd"])
-    usd_to_rub = Decimal(settings["billing_usd_to_rub"])
-    usd_to_byn = Decimal(settings["billing_usd_to_byn"])
-    global_markup_percent = _validate_markup_percent(
-        Decimal(settings["retail_markup_percent"])
-    )
-    quote_rub_per_vl = Decimal(settings["quote_rub_per_vl"])
-    operational_cost_buffer_percent = _validate_markup_percent(
-        Decimal(settings["effective_operational_reserve_percent"])
-    )
-    minimum_user_markup_percent = _validate_markup_percent(
-        Decimal(settings["minimum_user_markup_percent"])
-    )
-    pricing_strategy = str(settings["pricing_strategy"])
-    if pricing_strategy not in {"markup", "target_margin"}:
+    strategy = str(row["pricing_strategy"])
+    if strategy not in {"markup", "target_margin"}:
         raise RuntimeError("Неизвестная стратегия расчёта цены Ауф.")
-    target_margin_percent = _validate_margin_percent(
-        Decimal(settings["target_margin_percent"]),
-        label="Целевая маржа",
+    settings = _PricingSettings(
+        retail_auf_usd=Decimal(row["retail_auf_usd"]),
+        usd_to_rub=Decimal(row["billing_usd_to_rub"]),
+        usd_to_byn=Decimal(row["billing_usd_to_byn"]),
+        global_markup_percent=_validate_markup_percent(
+            Decimal(row["retail_markup_percent"])
+        ),
+        quote_rub_per_vl=Decimal(row["quote_rub_per_vl"]),
+        operational_reserve_percent=_validate_markup_percent(
+            Decimal(row["effective_operational_reserve_percent"])
+        ),
+        minimum_user_markup_percent=_validate_markup_percent(
+            Decimal(row["minimum_user_markup_percent"])
+        ),
+        pricing_strategy=strategy,
+        target_margin_percent=_validate_margin_percent(
+            Decimal(row["target_margin_percent"]),
+            label="Целевая маржа",
+        ),
+        minimum_contribution_margin_percent=_validate_margin_percent(
+            Decimal(row["minimum_contribution_margin_percent"]),
+            label="Минимальная маржа",
+        ),
+        allow_subsidized_generations=bool(row["allow_subsidized_generations"]),
     )
-    minimum_contribution_margin_percent = _validate_margin_percent(
-        Decimal(settings["minimum_contribution_margin_percent"]),
-        label="Минимальная маржа",
-    )
-    allow_subsidized_generations = bool(settings["allow_subsidized_generations"])
     if (
-        retail_auf_usd <= 0
-        or usd_to_rub <= 0
-        or usd_to_byn <= 0
-        or quote_rub_per_vl <= 0
+        settings.retail_auf_usd <= 0
+        or settings.usd_to_rub <= 0
+        or settings.usd_to_byn <= 0
+        or settings.quote_rub_per_vl <= 0
     ):
         raise RuntimeError("Курсы и расчётная стоимость VL должны быть больше нуля.")
+    return settings
 
-    user_markup_override: Decimal | None = None
-    if user_id > 0:
-        override_value = await connection.fetchval(
-            """
-            SELECT markup_percent
-            FROM auf_user_markup_overrides
-            WHERE user_id = $1::BIGINT
-            """,
-            user_id,
-        )
-        if override_value is not None:
-            user_markup_override = _validate_markup_percent(Decimal(override_value))
-    markup_percent = (
-        max(user_markup_override, minimum_user_markup_percent)
-        if user_markup_override is not None
-        else global_markup_percent
-    )
-    minimum_velvets = standard_minimum_velvets
-    if (
-        user_markup_override is not None
-        and markup_percent == minimum_user_markup_percent
-        and discounted_minimum_velvets is not None
-    ):
-        minimum_velvets = discounted_minimum_velvets
 
-    buffered_cost_usd = provider_cost * (
-        Decimal("1") + operational_cost_buffer_percent / Decimal("100")
+async def _load_user_markup_override(
+    connection: Any,
+    *,
+    user_id: int,
+) -> Decimal | None:
+    if user_id <= 0:
+        return None
+    value = await connection.fetchval(
+        """
+        SELECT markup_percent
+        FROM auf_user_markup_overrides
+        WHERE user_id = $1::BIGINT
+        """,
+        user_id,
     )
-    applied_strategy = pricing_strategy
+    return _validate_markup_percent(Decimal(value)) if value is not None else None
+
+
+def _pricing_target(
+    *,
+    provider_cost_usd: Decimal,
+    settings: _PricingSettings,
+    user_markup_override: Decimal | None,
+) -> _PricingTarget:
+    buffered_cost = provider_cost_usd * (
+        Decimal("1") + settings.operational_reserve_percent / Decimal("100")
+    )
+    markup = settings.global_markup_percent
+    strategy = settings.pricing_strategy
     if user_markup_override is not None:
-        applied_strategy = "user_markup"
-        target_retail_usd = buffered_cost_usd * (
-            Decimal("1") + markup_percent / Decimal("100")
+        markup = max(
+            user_markup_override,
+            settings.minimum_user_markup_percent,
         )
-    elif pricing_strategy == "target_margin":
-        target_retail_usd = buffered_cost_usd / (
-            Decimal("1") - target_margin_percent / Decimal("100")
+        strategy = "user_markup"
+        target = buffered_cost * (Decimal("1") + markup / Decimal("100"))
+    elif strategy == "target_margin":
+        target = buffered_cost / (
+            Decimal("1") - settings.target_margin_percent / Decimal("100")
         )
     else:
-        target_retail_usd = buffered_cost_usd * (
-            Decimal("1") + global_markup_percent / Decimal("100")
-        )
+        target = buffered_cost * (Decimal("1") + markup / Decimal("100"))
 
-    subsidy_guard_applied = False
-    if not allow_subsidized_generations:
-        guardrail_retail_usd = buffered_cost_usd / (
+    guard_applied = False
+    if not settings.allow_subsidized_generations:
+        guardrail = buffered_cost / (
             Decimal("1")
-            - minimum_contribution_margin_percent / Decimal("100")
+            - settings.minimum_contribution_margin_percent / Decimal("100")
         )
-        if target_retail_usd < guardrail_retail_usd:
-            target_retail_usd = guardrail_retail_usd
-            subsidy_guard_applied = True
+        if target < guardrail:
+            target = guardrail
+            guard_applied = True
+    return _PricingTarget(
+        strategy=strategy,
+        markup_percent=markup,
+        target_retail_usd=target,
+        subsidy_guard_applied=guard_applied,
+    )
 
-    target_retail_rub = target_retail_usd * usd_to_rub
-    cost_based_velvets = max(
+
+def _minimum_velvets(
+    *,
+    standard: int,
+    discounted: int | None,
+    user_override: Decimal | None,
+    effective_markup: Decimal,
+    minimum_user_markup: Decimal,
+) -> int:
+    if (
+        user_override is not None
+        and effective_markup == minimum_user_markup
+        and discounted is not None
+    ):
+        return discounted
+    return standard
+
+
+def _whole_velvets(
+    *,
+    target_retail_usd: Decimal,
+    usd_to_rub: Decimal,
+    quote_rub_per_vl: Decimal,
+    quality_surcharge: int,
+    minimum_velvets: int,
+) -> int:
+    cost_based = max(
         1,
         int(
-            (target_retail_rub / quote_rub_per_vl).to_integral_value(
+            (target_retail_usd * usd_to_rub / quote_rub_per_vl).to_integral_value(
                 rounding=ROUND_CEILING
             )
         ),
     )
-    quality_adjusted_velvets = cost_based_velvets + quality_surcharge_velvets
-    whole_velvets = max(minimum_velvets, quality_adjusted_velvets)
-    quoted_units = whole_velvets * AUF_SCALE
-    minimum_revenue_rub = quote_rub_per_vl * Decimal(whole_velvets)
-    minimum_revenue_usd = minimum_revenue_rub / usd_to_rub
-
-    return AufPriceQuote(
-        price_version_id=int(row["id"]),
-        version_key=str(row["version_key"]),
-        provider=str(row["provider"]),
-        model_alias=model_alias,
-        resolution=resolution,
-        audio=audio,
-        duration_seconds=duration_seconds,
-        reference_count=reference_count,
-        provider_cost_usd=provider_cost,
-        global_markup_percent=global_markup_percent,
-        user_markup_override_percent=user_markup_override,
-        minimum_user_markup_percent=minimum_user_markup_percent,
-        markup_percent=markup_percent,
-        pricing_strategy=applied_strategy,
-        target_margin_percent=target_margin_percent,
-        minimum_contribution_margin_percent=minimum_contribution_margin_percent,
-        allow_subsidized_generations=allow_subsidized_generations,
-        operational_cost_buffer_percent=operational_cost_buffer_percent,
-        subsidy_guard_applied=subsidy_guard_applied,
-        quote_rub_per_vl=quote_rub_per_vl,
-        quality_surcharge_velvets=quality_surcharge_velvets,
-        minimum_velvets=minimum_velvets,
-        target_retail_usd=target_retail_usd,
-        minimum_revenue_usd=minimum_revenue_usd,
-        billing_usd_to_rub=usd_to_rub,
-        billing_usd_to_byn=usd_to_byn,
-        quoted_units=quoted_units,
-    )
+    return max(minimum_velvets, cost_based + quality_surcharge)
 
 
 def _price_floors(row: Any) -> tuple[int, int, int | None]:
     getter = row.get if hasattr(row, "get") else None
-    quality_surcharge_raw = (
-        getter("quality_surcharge_velvets", 0) if getter is not None else 0
-    )
-    standard_minimum_raw = (
-        getter("minimum_velvets", 1) if getter is not None else 1
-    )
-    discounted_minimum_raw = (
-        getter("minimum_discounted_velvets") if getter is not None else None
-    )
-    discounted_minimum_velvets = (
-        max(1, int(discounted_minimum_raw))
-        if discounted_minimum_raw is not None
-        else None
-    )
+    quality_raw = getter("quality_surcharge_velvets", 0) if getter else 0
+    standard_raw = getter("minimum_velvets", 1) if getter else 1
+    discounted_raw = getter("minimum_discounted_velvets") if getter else None
     return (
-        max(0, int(quality_surcharge_raw or 0)),
-        max(1, int(standard_minimum_raw or 1)),
-        discounted_minimum_velvets,
+        max(0, int(quality_raw or 0)),
+        max(1, int(standard_raw or 1)),
+        max(1, int(discounted_raw)) if discounted_raw is not None else None,
     )
 
 
