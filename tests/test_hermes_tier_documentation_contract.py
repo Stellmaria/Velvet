@@ -39,25 +39,29 @@ class TierDocumentationContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, source)
 
-    def test_kael_runbook_has_no_legacy_unclassified_submit(self) -> None:
+    def test_kael_runbook_requires_typed_fail_closed_submit(self) -> None:
         source = (ROOT / "deploy/hermes-operator/AGENTS.kael.md").read_text(
             encoding="utf-8"
         )
-        self.assertNotIn(
-            'coderctl.py submit velvet --source kael-delegated --task "<задача>"',
-            source,
-        )
+        self.assertNotIn("coderctl.py submit velvet", source)
+        self.assertNotIn("coderctl.py submit max", source)
         for marker in (
-            "task_type",
-            "complexity",
-            "risk",
-            "mutation_policy",
-            "requested_tier",
-            "--task-type read_only",
-            "--task-type code",
-            "--tier small",
-            "--tier standard",
+            "typed tool `coder_delegate`",
+            '"project": "velvet"',
+            '"project": "max"',
+            '"task_type": "read_only"',
+            '"task_type": "code"',
+            '"complexity": "small"',
+            '"complexity": "standard"',
+            '"risk": "low"',
+            '"risk": "medium"',
+            '"mutation_policy": "read_only"',
+            '"mutation_policy": "workspace_write"',
+            '"requested_tier": "small"',
+            '"requested_tier": "standard"',
+            "Локальный fallback запрещён",
             "degraded Terra",
+            "production_privileges=false",
         ):
             self.assertIn(marker, source)
 

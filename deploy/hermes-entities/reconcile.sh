@@ -12,6 +12,7 @@ CODERS_ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 OPERATOR_SOURCE="$VELVET_APP_DIR/deploy/hermes-operator"
 CODERS_SOURCE="$VELVET_APP_DIR/deploy/hermes-coders"
 BRAIN_SOURCE="$VELVET_APP_DIR/deploy/hermes-brain"
+KAEL_CODER_PLUGIN_SOURCE="$OPERATOR_SOURCE/plugins/kael-coder-control"
 
 for path in \
   "$VELVET_ENV_FILE" \
@@ -22,6 +23,8 @@ for path in \
   "$CODERS_SOURCE/ensure_runtime_config.py" \
   "$OPERATOR_SOURCE/coderctl.py" \
   "$OPERATOR_SOURCE/runctl.py" \
+  "$KAEL_CODER_PLUGIN_SOURCE/plugin.yaml" \
+  "$KAEL_CODER_PLUGIN_SOURCE/__init__.py" \
   "$CODERS_SOURCE/SOUL.velvet.md" \
   "$CODERS_SOURCE/SOUL.max.md" \
   "$CODERS_SOURCE/AGENTS.velvet.md" \
@@ -69,10 +72,21 @@ done
 
 hermes_uid="$(stat -c '%u' "$hermes_data")"
 hermes_gid="$(stat -c '%g' "$hermes_data")"
+kael_plugin_target="$hermes_data/plugins/kael-coder-control"
 
 install -d -m 0750 -o "$hermes_uid" -g "$hermes_gid" \
   "$hermes_data/tools" \
-  "$hermes_data/orchestration"
+  "$hermes_data/orchestration" \
+  "$hermes_data/plugins" \
+  "$kael_plugin_target"
+install -d -m 0700 -o "$hermes_uid" -g "$hermes_gid" \
+  "$hermes_data/audit"
+install -m 0640 -o "$hermes_uid" -g "$hermes_gid" \
+  "$KAEL_CODER_PLUGIN_SOURCE/plugin.yaml" \
+  "$kael_plugin_target/plugin.yaml"
+install -m 0640 -o "$hermes_uid" -g "$hermes_gid" \
+  "$KAEL_CODER_PLUGIN_SOURCE/__init__.py" \
+  "$kael_plugin_target/__init__.py"
 
 python3 "$BRAIN_SOURCE/install_context_pack.py" \
   --pack "$pack_root/kael" \
@@ -185,6 +199,7 @@ PY
 
 printf 'Kael entity: %s/SOUL.md\n' "$hermes_data"
 printf 'Kael operations: %s/AGENTS.md\n' "$hermes_data"
+printf 'Kael coder control: %s and plugins.enabled\n' "$kael_plugin_target"
 printf 'Coder contexts: %s/workspaces/{velvet,max}/.hermes.md\n' "$CODERS_ROOT"
 printf 'Brain manifests: %s/context-manifest.json and %s/{data,codex}/{velvet,max}/context-manifest.json\n' \
   "$hermes_data" "$CODERS_ROOT"

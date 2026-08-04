@@ -11,6 +11,65 @@ from pathlib import Path
 FULL_SCAN_EVENTS = frozenset({"schedule", "workflow_dispatch"})
 ZERO_SHA = "0" * 40
 
+DOCKER_SHARED_PATTERNS = (
+    ".dockerignore",
+)
+
+DOCKER_VELVET_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile",
+    "requirements.txt",
+    "requirements.lock",
+    "main.py",
+    "velvet_bot/**",
+    "scripts/container_healthcheck.py",
+)
+
+DOCKER_SUPERVISOR_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile.server-supervisor-proxy",
+    "scripts/server_supervisor_proxy.py",
+)
+
+DOCKER_VISION_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile.vision-gateway",
+    "Dockerfile.vision-runtime",
+    "requirements.vision-gateway.txt",
+    "vision_gateway/**",
+    "scripts/vision_runtime_entrypoint.sh",
+    "scripts/vision_model_loader.sh",
+)
+
+DOCKER_KRITA_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile.krita-server",
+    "docker-compose.server.yml",
+    ".env.server.example",
+    "deploy/krita-server/**",
+    "deploy/server/install-krita-server.sh",
+    "deploy/server/krita-smoke.sh",
+    "deploy/server/wait-compose-health.sh",
+    "tools/krita/**",
+    "scripts/krita_server_healthcheck.py",
+)
+
+DOCKER_HERMES_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "docker-compose.server.yml",
+    ".env.hermes.example",
+    ".env.server.example",
+    "deploy/hermes-brain/**",
+    "deploy/hermes-coders/**",
+    "deploy/hermes-entities/**",
+    "deploy/hermes-librarian/**",
+    "deploy/hermes-operator/**",
+    "deploy/hermes-orchestration/**",
+)
+
+DOCKER_CI_PATTERNS = (
+    ".github/workflows/docker-build.yml",
+    ".github/workflows/branch-protection-contract.yml",
+    "scripts/ci_changed_surfaces.py",
+    "tests/test_ci_changed_surfaces.py",
+    "tests/test_docker_build_workflow_contract.py",
+)
+
 SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
     "supply_chain": (
         ".github/workflows/**",
@@ -76,6 +135,19 @@ SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
         "velvet_bot/domains/archive/models.py",
         "velvet_bot/domains/archive/preview_models.py",
     ),
+    "docker_velvet": DOCKER_VELVET_PATTERNS,
+    "docker_supervisor": DOCKER_SUPERVISOR_PATTERNS,
+    "docker_vision": DOCKER_VISION_PATTERNS,
+    "docker_krita": DOCKER_KRITA_PATTERNS,
+    "docker_hermes": DOCKER_HERMES_PATTERNS,
+    "docker_ci": DOCKER_CI_PATTERNS,
+    "docker_any": (
+        DOCKER_VELVET_PATTERNS
+        + DOCKER_SUPERVISOR_PATTERNS
+        + DOCKER_VISION_PATTERNS
+        + DOCKER_KRITA_PATTERNS
+        + DOCKER_HERMES_PATTERNS
+    ),
 }
 
 
@@ -108,22 +180,55 @@ def _ensure_commit(sha: str) -> None:
     )
 
 
+def _resolve_pull_request_base(*, base_sha: str, base_ref: str) -> str:
+    # GitHub's pull_request payload may retain the base SHA from PR creation
+    # while the target branch advances. Prefer the current remote base ref and
+    # compute the merge-base against the checked-out PR head.
+    if base_ref:
+        remote_ref = f"refs/remotes/origin/{base_ref}"
+        subprocess.run(
+            (
+                "git",
+                "fetch",
+                "--no-tags",
+                "origin",
+                f"{base_ref}:{remote_ref}",
+            ),
+            check=True,
+        )
+        return _git("merge-base", "HEAD", remote_ref).strip()
+
+    if base_sha and base_sha != ZERO_SHA:
+        _ensure_commit(base_sha)
+        return base_sha
+    return ""
+
+
 def resolve_changed_files(
     *,
     event_name: str,
     base_sha: str,
     before_sha: str,
+    base_ref: str = "",
 ) -> tuple[tuple[str, ...], bool]:
     """Return changed repository paths and whether a conservative full scan is needed."""
 
     if event_name in FULL_SCAN_EVENTS:
         return tuple(sorted(_git("ls-files").splitlines())), True
 
-    compare_sha = base_sha if event_name == "pull_request" else before_sha
+    if event_name == "pull_request":
+        compare_sha = _resolve_pull_request_base(
+            base_sha=base_sha,
+            base_ref=base_ref,
+        )
+    else:
+        compare_sha = before_sha
+        if compare_sha and compare_sha != ZERO_SHA:
+            _ensure_commit(compare_sha)
+
     if not compare_sha or compare_sha == ZERO_SHA:
         return tuple(sorted(_git("ls-files").splitlines())), True
 
-    _ensure_commit(compare_sha)
     changed = tuple(
         sorted(
             line
@@ -162,6 +267,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event-name", required=True)
     parser.add_argument("--base-sha", default="")
+    parser.add_argument("--base-ref", default="")
     parser.add_argument("--before-sha", default="")
     parser.add_argument("--github-output", type=Path, required=True)
     parser.add_argument("--changed-files", type=Path)
@@ -173,6 +279,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     paths, full_scan = resolve_changed_files(
         event_name=args.event_name,
         base_sha=args.base_sha,
+        base_ref=args.base_ref,
         before_sha=args.before_sha,
     )
     if args.changed_files is not None:

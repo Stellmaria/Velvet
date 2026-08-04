@@ -126,13 +126,29 @@ class HermesRuntimeConfigTests(unittest.TestCase):
             )
         )
         self.assertTrue(MODULE.config_has_env_passthrough(text, "GH_TOKEN"))
+        self.assertFalse(
+            MODULE.config_has_sequence_item(
+                text,
+                "plugins",
+                "enabled",
+                MODULE.KAEL_CODER_CONTROL_PLUGIN,
+            )
+        )
 
-    def test_kael_profile_uses_data_cwd_without_github_passthrough(self) -> None:
-        path = self.write_config("terminal:\n  backend: local\n")
+    def test_kael_profile_uses_data_cwd_and_enables_coder_control(self) -> None:
+        path = self.write_config(
+            "terminal:\n"
+            "  backend: local\n"
+            "plugins:\n"
+            "  enabled: []\n"
+        )
 
-        MODULE.ensure_runtime_contract(path, profile="kael")
+        first = MODULE.ensure_runtime_contract(path, profile="kael")
         text = path.read_text(encoding="utf-8")
+        second = MODULE.ensure_runtime_contract(path, profile="kael")
 
+        self.assertTrue(first)
+        self.assertFalse(second)
         self.assertTrue(
             MODULE.config_has_mapping_scalar(text, "terminal", "cwd", "/opt/data")
         )
@@ -144,6 +160,39 @@ class HermesRuntimeConfigTests(unittest.TestCase):
                 "warnings_enabled",
                 "true",
             )
+        )
+        self.assertTrue(
+            MODULE.config_has_sequence_item(
+                text,
+                "plugins",
+                "enabled",
+                MODULE.KAEL_CODER_CONTROL_PLUGIN,
+            )
+        )
+        self.assertEqual(1, text.count(MODULE.KAEL_CODER_CONTROL_PLUGIN))
+
+    def test_kael_profile_preserves_existing_enabled_plugins(self) -> None:
+        path = self.write_config(
+            "plugins:\n"
+            "  enabled:\n"
+            "    - existing-plugin\n"
+        )
+
+        MODULE.ensure_runtime_contract(path, profile="kael")
+        text = path.read_text(encoding="utf-8")
+
+        self.assertIn("- existing-plugin", text)
+        self.assertIn(f"- {MODULE.KAEL_CODER_CONTROL_PLUGIN}", text)
+
+    def test_kael_profile_adds_plugins_section_when_missing(self) -> None:
+        path = self.write_config("model:\n  default: gpt-5.4-mini\n")
+
+        MODULE.ensure_runtime_contract(path, profile="kael")
+        text = path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "plugins:\n  enabled:\n    - kael-coder-control\n",
+            text,
         )
 
 
