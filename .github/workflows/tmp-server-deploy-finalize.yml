@@ -40,12 +40,12 @@ jobs:
               '"${compose[@]}" up -d --remove-orphans postgres supervisor-proxy',
               self.deploy,
           )
-          '''
+          '''.replace('              ', '            ').replace('          )', '        )')
           new_test = '''        self.assertIn(
-              '"${compose[@]}" up -d postgres supervisor-proxy',
-              self.deploy,
-          )
-          self.assertNotIn("postgres supervisor-proxy bot", self.deploy)
+            '"${compose[@]}" up -d postgres supervisor-proxy',
+            self.deploy,
+        )
+        self.assertNotIn("postgres supervisor-proxy bot", self.deploy)
           '''
           if tests.count(old_test) != 1:
               raise SystemExit('expected staged startup assertion not found exactly once')
