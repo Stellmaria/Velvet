@@ -3,9 +3,10 @@
 - Дата: `2026-08-04`
 - ID: `mypy-fastpath-control-20260804`
 - Линия/фаза: `CI performance / acceptance benchmark`
-- Статус: `контрольный прогон`
+- Статус: `завершено`
 - Ветка: `ci/mypy-fastpath-benchmark-20260804`
 - Базовый commit: `3c88544e2d2dd920528dd742763b8062f7f4a4c9`
+- Связанный PR: `#612`
 
 ## Перед началом
 
@@ -50,7 +51,7 @@
 ### Фактически сделано
 
 Создано только документальное изменение для изолированного запуска fast paths.
-Фактические timestamps и выводы будут сняты из exact-head workflow logs.
+Фактические timestamps и выводы снимаются из exact-head workflow logs PR `#612`.
 
 ### Миграции и совместимость
 
@@ -59,22 +60,22 @@
 
 ### Проверки
 
-Запланированы project-notes contract, required test aggregator, type check,
-security contexts и branch-protection contract на exact head PR.
+Запущены project-notes contract, required test aggregator, type check, security
+contexts и branch-protection contract на exact head PR `#612`.
 
 ### PR и commit
 
-PR и commit будут указаны в отчёте по результатам контрольного прогона. Сам PR
-будет закрыт без merge.
+- PR: `#612`;
+- первоначальный benchmark commit: `b6f216a8071437e897d0f66b6307c6d0610a6087`;
+- этот PR будет закрыт без merge после снятия метрик.
 
 ### Незавершённое
 
-- открыть benchmark PR;
-- дождаться завершения required checks;
+- дождаться завершения required checks на исправленном worklog;
 - снять точные времена job и checkout-шагов;
 - закрыть PR без merge.
 
 ### Следующий шаг
 
-Открыть одноразовый PR, выполнить контрольный прогон и закрыть его после снятия
-метрик.
+Завершить exact-head контрольный прогон, зафиксировать метрики в ответе и закрыть
+benchmark PR без merge.
