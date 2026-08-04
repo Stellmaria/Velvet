@@ -46,12 +46,12 @@ class CiChangedSurfacesTests(unittest.TestCase):
             if name != "tests_docs_only":
                 self.assertFalse(enabled, name)
 
-    def test_workflow_change_runs_ci_contracts_without_full_or_image_build(self) -> None:
+    def test_security_workflow_change_executes_image_security_contract(self) -> None:
         outputs = MODULE.classify_paths([".github/workflows/security.yml"])
         self.assertTrue(outputs["supply_chain"])
         self.assertTrue(outputs["codeql_actions"])
         self.assertFalse(outputs["codeql_python"])
-        self.assertFalse(outputs["image"])
+        self.assertTrue(outputs["image"])
         self.assertTrue(outputs["tests_ci"])
         self.assertTrue(outputs["tests_targeted"])
         self.assertFalse(outputs["tests_full"])
