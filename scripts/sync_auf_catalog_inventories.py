@@ -103,7 +103,7 @@ def _snapshot(shared: dict[str, object], package: dict[str, object]) -> str:
 
 
 def _sync_canonical_docs(shared: dict[str, object], package: dict[str, object]) -> None:
-    snapshot = _snapshot(shared, package)
+    snapshot = _snapshot(shared, package).rstrip()
     for path in CANONICAL_DOCS:
         text = path.read_text(encoding="utf-8").rstrip()
         if SNAPSHOT_MARKER in text:
