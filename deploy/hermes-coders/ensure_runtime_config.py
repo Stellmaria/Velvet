@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 PASSTHROUGH_VARIABLE = "GH_TOKEN"
+KAEL_CODER_CONTROL_PLUGIN = "kael-coder-control"
 
 
 class ConfigPatchError(RuntimeError):
@@ -106,6 +107,100 @@ def _inline_values(suffix: str) -> list[str] | None:
     if not body:
         return []
     return [_normalize_scalar(item) for item in body.split(",")]
+
+
+def _sequence_block_end(lines: list[str], *, key_index: int, end: int) -> int:
+    for index in range(key_index + 1, end):
+        line = lines[index]
+        if _meaningful(line) and _indent_width(line) <= 2:
+            return index
+    return end
+
+
+def config_has_sequence_item(
+    text: str,
+    section_name: str,
+    key: str,
+    item: str,
+) -> bool:
+    lines = text.splitlines()
+    section = _find_top_level_section(lines, section_name)
+    if section is None:
+        return False
+    start, end = section
+    key_index = _find_mapping_key(lines, start=start, end=end, name=key)
+    if key_index is None:
+        return False
+
+    suffix = _yaml_code(lines[key_index]).split(":", 1)[1].strip()
+    inline = _inline_values(suffix)
+    if inline is not None:
+        return item in inline
+    if suffix not in {"", "null", "~"}:
+        return False
+
+    block_end = _sequence_block_end(lines, key_index=key_index, end=end)
+    for index in range(key_index + 1, block_end):
+        stripped = _yaml_code(lines[index]).strip()
+        if stripped.startswith("-"):
+            value = _normalize_scalar(stripped[1:])
+            if value == item:
+                return True
+    return False
+
+
+def _ensure_sequence_item_lines(
+    lines: list[str],
+    *,
+    section_name: str,
+    key: str,
+    item: str,
+) -> bool:
+    section = _find_top_level_section(lines, section_name)
+    if section is None:
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.extend(
+            (
+                f"{section_name}:",
+                f"  {key}:",
+                f"    - {item}",
+            )
+        )
+        return True
+
+    start, end = section
+    key_index = _find_mapping_key(lines, start=start, end=end, name=key)
+    if key_index is None:
+        lines[end:end] = [f"  {key}:", f"    - {item}"]
+        return True
+
+    suffix = _yaml_code(lines[key_index]).split(":", 1)[1].strip()
+    inline = _inline_values(suffix)
+    if inline is not None:
+        values = [value for value in inline if value]
+        if item in values:
+            return False
+        values.append(item)
+        lines[key_index] = f"  {key}: [{', '.join(values)}]"
+        return True
+
+    if suffix not in {"", "null", "~"}:
+        raise ConfigPatchError(
+            f"Неподдерживаемый {section_name}.{key}: {suffix}"
+        )
+
+    block_end = _sequence_block_end(lines, key_index=key_index, end=end)
+    for index in range(key_index + 1, block_end):
+        stripped = _yaml_code(lines[index]).strip()
+        if stripped.startswith("-"):
+            value = _normalize_scalar(stripped[1:])
+            if value == item:
+                return False
+
+    lines[key_index] = f"  {key}:"
+    lines.insert(block_end, f"    - {item}")
+    return True
 
 
 def config_has_env_passthrough(text: str, variable: str) -> bool:
@@ -245,6 +340,13 @@ def ensure_runtime_contract(path: Path, *, profile: str) -> bool:
         key="hard_stop_enabled",
         rendered_value="true",
     )
+    if profile == "kael":
+        changed |= _ensure_sequence_item_lines(
+            lines,
+            section_name="plugins",
+            key="enabled",
+            item=KAEL_CODER_CONTROL_PLUGIN,
+        )
 
     updated = "\n".join(lines).rstrip() + "\n"
     if updated != original:
