@@ -3,7 +3,7 @@
 - Дата: 2026-08-04
 - ID: `9670e80c2398410eadc4ffe376c1eb81`
 - Линия/фаза: Telegram Storage Librarian, production integration hardening
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `agent/9670e80c-two-model-storage-librarian`
 - Базовый commit: `eb4849c3ee4461b540d3e1ba0572cf54f82a12d3`
 - Tier contract: `task_type=code`, `complexity=complex`, `risk=high`, `mutation_policy=isolated_pr_only`, `requested_tier=high_risk`
@@ -77,18 +77,17 @@ SQL-миграций нет. Существующие queue/index records сов
 - `bandit -q -r` для нового client/application boundary: OK;
 - package architecture, Telegram navigation, public repository safety и project notes contracts: OK;
 - independent high-risk review + повторная проверка исправлений: blockers=0;
-- GitHub CI: ожидается после открытия PR.
+- GitHub CI для implementation head `98e096ecc831784525d3dd57ddb50fd8a1cdb7cb`: все checks passed (tests shards + aggregate, preflight, Docker build/contract, bounded mypy, project notes, branch protection, static/image/supply-chain security и CodeQL).
 
 ### PR и commit
 
-Ветка `agent/9670e80c-two-model-storage-librarian`; commit и PR будут добавлены после публикации.
+Ветка `agent/9670e80c-two-model-storage-librarian`; implementation commit `98e096ecc831784525d3dd57ddb50fd8a1cdb7cb`; PR `https://github.com/Stellmaria/Velvet/pull/585`.
 
 ### Незавершённое
 
 - production rollout и manual smoke запрещены в этой сессии и выполняются только после merge;
 - image bytes pipeline не реализован, поэтому vision/image support не объявляется готовой;
 - первый разрешённый rollout скачает обе source models и требует контроля RAM/swap/latency;
-- CI ожидается после открытия PR.
 
 ### Следующий шаг
 
