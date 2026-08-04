@@ -63,7 +63,8 @@ profile hermes-codex-bwrap flags=(attach_disconnected,mediate_deleted) {
   /workspace-base/** r,
   /tmp/** rwk,
 
-  deny /workspace/** rwklx,
+  deny /workspace/ rwkl,
+  deny /workspace/** rwkl,
   deny /var/run/docker.sock rw,
   deny /run/docker.sock rw,
   deny /proc/sys/** w,
