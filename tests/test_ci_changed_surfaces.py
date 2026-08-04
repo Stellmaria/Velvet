@@ -46,14 +46,25 @@ class CiChangedSurfacesTests(unittest.TestCase):
             if name != "tests_docs_only":
                 self.assertFalse(enabled, name)
 
-    def test_workflow_change_runs_ci_contracts_without_full_test_shards(self) -> None:
+    def test_workflow_change_runs_ci_contracts_without_full_or_image_build(self) -> None:
         outputs = MODULE.classify_paths([".github/workflows/security.yml"])
         self.assertTrue(outputs["supply_chain"])
         self.assertTrue(outputs["codeql_actions"])
         self.assertFalse(outputs["codeql_python"])
-        self.assertTrue(outputs["image"])
+        self.assertFalse(outputs["image"])
         self.assertTrue(outputs["tests_ci"])
         self.assertTrue(outputs["tests_targeted"])
+        self.assertFalse(outputs["tests_full"])
+
+    def test_selector_change_does_not_rebuild_production_image(self) -> None:
+        outputs = MODULE.classify_paths(
+            ["scripts/ci_changed_surfaces.py", "tests/test_ci_changed_surfaces.py"]
+        )
+        self.assertTrue(outputs["supply_chain"])
+        self.assertTrue(outputs["codeql_python"])
+        self.assertTrue(outputs["tests_ci"])
+        self.assertTrue(outputs["tests_targeted"])
+        self.assertFalse(outputs["image"])
         self.assertFalse(outputs["tests_full"])
 
     def test_python_change_selects_python_scanners_and_full_tests(self) -> None:
@@ -221,6 +232,8 @@ class CiChangedSurfacesTests(unittest.TestCase):
         self.assertIn("Resolve changed mypy surface", source)
         self.assertIn("steps.changes.outputs.mypy == 'true'", source)
         self.assertIn("Skip unchanged bounded type surface", source)
+        self.assertIn("BASE_REF: ${{ github.base_ref }}", source)
+        self.assertIn('--base-ref "$BASE_REF"', source)
 
     def test_project_notes_fetches_exact_base_without_obsolete_setup(self) -> None:
         source = NOTES_WORKFLOW.read_text(encoding="utf-8")
