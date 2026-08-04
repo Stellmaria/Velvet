@@ -1,9 +1,7 @@
 name: arthur rebase staging
 
 on:
-  push:
-    branches:
-      - tmp/arthur-librarian-phase1-rebase
+  pull_request:
     paths:
       - ".github/workflows/arthur-rebase-staging.yml"
 
@@ -16,7 +14,10 @@ concurrency:
 
 jobs:
   rebuild:
-    if: github.repository == 'Stellmaria/Velvet'
+    if: >-
+      github.repository == 'Stellmaria/Velvet' &&
+      github.event.pull_request.head.ref == 'tmp/arthur-librarian-phase1-rebase' &&
+      github.event.pull_request.user.login == 'Stellmaria'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
