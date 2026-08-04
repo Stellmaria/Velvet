@@ -170,6 +170,7 @@ async def set_user_markup(
         await message.answer(
             "<b>Индивидуальная наценка</b>\n\n"
             "Установить: <code>/velvet_markup @username 45</code>\n"
+            "Минимум: <b>15%</b>\n"
             "Проверить: <code>/velvet_markup @username</code>\n"
             "Вернуть общую: <code>/velvet_markup @username reset</code>"
         )
@@ -191,11 +192,15 @@ async def set_user_markup(
         if percent is None:
             await message.answer("Процент должен быть числом от 0 до 1000, максимум два знака после запятой.")
             return
-        policy = await pricing.set_user_markup(
-            user_id=user_id,
-            markup_percent=percent,
-            actor_user_id=int(message.from_user.id),
-        )
+        try:
+            policy = await pricing.set_user_markup(
+                user_id=user_id,
+                markup_percent=percent,
+                actor_user_id=int(message.from_user.id),
+            )
+        except ValueError as error:
+            await message.answer(str(error))
+            return
 
     if policy.override_markup_percent is None:
         mode = "общая"
@@ -204,7 +209,9 @@ async def set_user_markup(
         mode = "индивидуальная"
         detail = (
             "Общая наценка остаётся "
-            f"{_compact_decimal(policy.global_markup_percent)}%."
+            f"{_compact_decimal(policy.global_markup_percent)}%. "
+            "Защитный минимум индивидуальной наценки: "
+            f"{_compact_decimal(policy.minimum_user_markup_percent)}%."
         )
     await message.answer(
         "<b>Наценка пользователя обновлена</b>\n\n"
