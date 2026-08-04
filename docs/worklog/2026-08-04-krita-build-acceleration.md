@@ -13,44 +13,90 @@
 
 Сократить время обязательного Docker CI для реальных изменений Krita. После #596 unrelated PR больше не собирает Krita, но Krita-related PR по-прежнему может выполнять холодный `apt-get install krita` из `ubuntu:24.04` и занимать до 40 минут.
 
-### Подтверждённая причина
+### Исходный контекст
 
-`Dockerfile.krita-server` объединяет два слоя с разной частотой изменений:
+`Dockerfile.krita-server` уже расположен корректно с точки зрения layer invalidation: тяжёлый `apt-get install` выполняется до всех repository `COPY`. Поэтому изменения plugin, entrypoint или healthcheck не должны пересобирать системный слой, если BuildKit может его восстановить.
 
-1. тяжёлый системный runtime: Ubuntu, Krita, Qt/PyQt, Xvfb, Mesa и шрифты;
-2. часто меняемый слой Velvet: plugin, desktop manifest, entrypoint и healthcheck.
+PR #596 добавил `type=gha,scope=velvet-krita`, однако cache, созданный только в feature branch, не является надёжной общей основой для следующих PR. Default branch не прогревает этот scope, если merge не затрагивает Krita surface. В результате новый Krita-related PR всё ещё может начать с пустого cache и снова устанавливать весь графический стек.
 
-GHA layer cache ускоряет повторный run в доступной cache scope, но не является надёжной общей основой для нового PR. Поэтому первый Krita build в другой ветке может снова устанавливать весь графический стек.
+Отдельный GHCR base image рассматривался, но признан избыточным для текущей задачи: он добавил бы registry publishing, version/digest lifecycle и новые supply-chain permissions, хотя Dockerfile уже имеет правильную границу тяжёлого слоя.
 
 ### Планируемый объём
 
-1. Выделить воспроизводимый `Dockerfile.krita-base` только с системными пакетами и runtime user/layout.
-2. Публиковать versioned base image в GHCR только из доверенного `main`/manual workflow.
-3. Закрепить runtime Dockerfile на явном base reference с digest или immutable version contract.
-4. В PR собирать только тонкий runtime/plugin слой поверх опубликованной базы.
-5. Сохранить GHA cache как дополнительное ускорение, а не единственную опору.
-6. Добавить changed-surface разделение `krita_base` и `krita_runtime`.
-7. Сохранить полный Krita smoke для runtime и base изменений.
-8. Добавить контракты, запрещающие плавающий `latest`, непинованный action и бессмысленную холодную установку Krita в обычном PR build.
+1. Добавить отдельный workflow прогрева cache только для `main`, schedule и ручного запуска.
+2. Использовать тот же `type=gha,scope=velvet-krita`, который читает PR Docker build.
+3. Не давать workflow `packages: write` и не публиковать registry image.
+4. Дважды в неделю обновлять доступность default-branch cache, чтобы он не исчезал из-за неиспользования.
+5. Проверять, что системный package layer остаётся до repository `COPY`.
+6. Проверять собранный image через `docker image inspect` и наличие `krita`/`python3` без запуска сервиса.
+7. Сохранить существующий полный Krita smoke в PR Docker workflow.
+8. Добавить regression contract для triggers, permissions, cache scope, timeout и layer ordering.
 
 ### Критерии готовности
 
-- изменение plugin/entrypoint/healthcheck не выполняет `apt-get install krita`;
-- изменение base Dockerfile или package manifest запускает base build contract;
-- base image публикуется только из доверенного контекста с минимальными permissions;
-- PR не получает package write permissions;
-- runtime image остаётся локально загружаемым для smoke;
-- Krita smoke не пропускается при изменениях Krita;
-- workflow concurrency и timeout сохраняются;
-- CI проходит на актуальном `main`.
+- cache warmer не запускается из `pull_request`;
+- workflow работает только в доверенном default-branch/scheduled/manual контексте;
+- permissions остаются `contents: read` без registry write;
+- cache warmer и PR build используют одинаковый `scope=velvet-krita`;
+- тяжёлый package layer остаётся до первого repository `COPY`;
+- workflow имеет concurrency cancellation и bounded timeout;
+- после merge workflow self-trigger прогревает default-branch cache;
+- полный CI проходит на актуальном `main`.
 
-### Ограничения
+### Риски и ограничения
 
-- production rollout и замена `KRITA_SERVER_IMAGE` не входят в этот PR;
-- опубликованный base должен иметь явную политику обновления и rollback;
-- нельзя использовать плавающий `latest` как production или CI dependency;
-- нельзя ослаблять container/security checks ради сокращения времени.
+- первый default-branch warm после merge всё ещё может быть холодным и занять значительное время, но он не блокирует pull request;
+- редкое изменение самого package layer закономерно потребует полной установки один раз;
+- доступность cache зависит от GitHub Actions cache backend, поэтому PR build сохраняет обычный корректный fallback, а не становится cache-only;
+- production rollout и `KRITA_SERVER_IMAGE` не меняются;
+- Krita smoke и security checks не ослабляются;
+- плавающий registry image и дополнительные package permissions не вводятся.
 
 ## После завершения
 
-Заполняется после реализации и полного CI.
+### Фактически сделано
+
+- открыт draft PR #599;
+- добавлен `.github/workflows/krita-cache-warm.yml`;
+- workflow запускается на `main` при изменениях Krita inputs, дважды в неделю и вручную;
+- добавлены read-only permissions, concurrency cancellation и timeout 35 минут;
+- cache warmer использует общий `type=gha,scope=velvet-krita` без registry push;
+- перед build проверяется порядок package layer и repository `COPY`;
+- после build проверяются локальный image и наличие Krita/Python;
+- добавлен `tests/test_krita_cache_workflow_contract.py`.
+
+### Миграции и совместимость
+
+Миграций БД и production config нет. `Dockerfile.krita-server`, compose и runtime image contract не меняются. Новый workflow только заполняет уже используемый GHA cache scope. При отсутствии cache PR build продолжает обычную полную сборку.
+
+### Проверки
+
+Добавлены контракты:
+
+- отсутствие `pull_request` trigger;
+- default-branch, schedule и manual triggers;
+- `contents: read` без `packages: write`, `--push` и GHCR;
+- одинаковые cache-from/cache-to scope в warmer и PR build;
+- timeout и stale-run cancellation;
+- package layer до repository copies;
+- self-trigger после merge;
+- локальная проверка warmed image.
+
+Полный CI PR #599 выполняется. Первый project-notes run выявил только отсутствующие стандартные разделы worklog; содержание приведено к контракту этим commit.
+
+### PR и commit
+
+PR: #599 `Ускорить реальные Docker-сборки Krita`.
+
+Текущий head фиксируется после завершения реализации и зелёного CI.
+
+### Незавершённое
+
+- полный CI ещё не завершён;
+- cache warmer ещё не выполнялся на `main`;
+- фактическое время первого тёплого Krita-related PR ещё не измерено;
+- Docker workflow path/selector contracts требуют финальной сверки.
+
+### Следующий шаг
+
+Довести CI contracts до зелёного состояния, проверить security workflow и итоговый diff. После review и merge дождаться успешного default-branch cache warm, затем измерить реальный Krita-related PR build и подтвердить, что тяжёлый `apt-get install` восстанавливается из cache.
