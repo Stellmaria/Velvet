@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 import threading
+from pathlib import Path
 from typing import Any
 
 from codex_first_runner import Handler, ThreadingHTTPServer
@@ -16,7 +19,54 @@ class AuditedTierProviderManager(ProviderChainManager):
     def __init__(self) -> None:
         super().__init__()
         self._baseline_lock = threading.RLock()
+        self._isolation_lock = threading.Lock()
         self._run_baselines: dict[str, str] = {}
+        self._base_workspace = self.workspace
+        self._worktree_root = Path(
+            os.environ.get(
+                "CODEX_ISOLATED_WORKTREE_ROOT", str(self.store.root / "workspaces")
+            )
+        ).resolve()
+        self._worktree_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+
+    def _worktree_git(self, *args: str, cwd: Path | None = None) -> None:
+        result = subprocess.run(
+            ["git", *args], cwd=cwd or self._base_workspace, check=False,
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                "isolated worktree setup failed: "
+                + (result.stderr.strip() or f"git exit {result.returncode}")[-1000:]
+            )
+
+    def _prepare_worktree(self, run_id: str) -> Path:
+        target = (self._worktree_root / run_id).resolve()
+        if target.parent != self._worktree_root:
+            raise RuntimeError("unsafe isolated worktree path")
+        self._worktree_git("fetch", "--prune", "origin", "main")
+        try:
+            self._worktree_git(
+                "worktree", "add", "--detach", str(target), "origin/main"
+            )
+        except RuntimeError:
+            if target.parent == self._worktree_root and target.exists():
+                shutil.rmtree(target)
+            raise
+        return target
+
+    def _cleanup_worktree(self, target: Path) -> None:
+        try:
+            self._worktree_git("worktree", "remove", "--force", str(target))
+        except RuntimeError as error:
+            self.store.update(
+                target.name,
+                cleanup_error=str(error),
+                last_event={"type": "isolated_workspace_cleanup_failed"},
+            )
+        finally:
+            if target.parent == self._worktree_root and target.exists():
+                shutil.rmtree(target)
 
     def capabilities(self) -> dict[str, Any]:
         payload = super().capabilities()
@@ -41,13 +91,19 @@ class AuditedTierProviderManager(ProviderChainManager):
         instructions: str,
         selected_model: str,
     ) -> None:
-        with self._baseline_lock:
-            self._run_baselines[run_id] = self._fingerprint()
-        try:
-            super()._execute(run_id, prompt, instructions, selected_model)
-        finally:
-            with self._baseline_lock:
-                self._run_baselines.pop(run_id, None)
+        with self._isolation_lock:
+            isolated = self._prepare_worktree(run_id)
+            self.workspace = isolated
+            self.store.update(run_id, workspace=str(isolated))
+            try:
+                with self._baseline_lock:
+                    self._run_baselines[run_id] = self._fingerprint()
+                super()._execute(run_id, prompt, instructions, selected_model)
+            finally:
+                self.workspace = self._base_workspace
+                with self._baseline_lock:
+                    self._run_baselines.pop(run_id, None)
+                self._cleanup_worktree(isolated)
 
     def _success(
         self,

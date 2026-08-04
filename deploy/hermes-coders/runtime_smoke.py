@@ -14,8 +14,10 @@ from typing import Callable, Sequence
 
 ROOT = Path(os.environ.get("HERMES_CODERS_ROOT", "/srv/hermes-coders"))
 SOURCE_DIR = Path(__file__).resolve().parent
-COMPOSE_FILE = Path(
-    os.environ.get("HERMES_CODERS_COMPOSE_FILE", str(SOURCE_DIR / "compose.yaml"))
+COMPOSE_FILES = (
+    SOURCE_DIR / "compose.yaml",
+    SOURCE_DIR / "compose.runtime.yaml",
+    SOURCE_DIR / "compose.security.yaml",
 )
 STARTUP_TIMEOUT_SECONDS = max(
     30,
@@ -27,6 +29,7 @@ POLL_INTERVAL_SECONDS = max(
 )
 CODEX_VERSION = "0.144.1"
 CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
+CRYPTOGRAPHY_VERSION = "50.0.0"
 
 
 @dataclass(frozen=True)
@@ -95,8 +98,7 @@ def compose_prefix() -> list[str]:
         "velvet",
         "--profile",
         "max",
-        "-f",
-        str(COMPOSE_FILE),
+        *[part for path in COMPOSE_FILES for part in ("-f", str(path))],
     ]
 
 
@@ -303,6 +305,20 @@ case "$remote" in
 esac
 git -C /workspace push --dry-run origin \
   HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
+
+fingerprint_before="$(git -C /workspace status --porcelain=v1 --untracked-files=all | sha256sum)"
+unshare --user --map-root-user true
+unshare --user --map-root-user --mount true
+bwrap --unshare-user --unshare-pid --ro-bind / / --proc /proc true
+bwrap --unshare-user --ro-bind /workspace /workspace \
+  git -C /workspace status --short >/dev/null
+fingerprint_after="$(git -C /workspace status --porcelain=v1 --untracked-files=all | sha256sum)"
+test "$fingerprint_before" = "$fingerprint_after"
+awk '$1 == "NoNewPrivs:" && $2 == "1" {{ok=1}} END {{exit !ok}}' /proc/1/status
+awk '$1 == "CapEff:" && $2 == "0000000000000000" {{ok=1}} END {{exit !ok}}' /proc/1/status
+awk '$1 == "Seccomp:" && $2 == "2" {{ok=1}} END {{exit !ok}}' /proc/1/status
+grep -F 'hermes-codex-bwrap' /proc/1/attr/current >/dev/null
+findmnt -n -o OPTIONS / | grep -E '(^|,)ro(,|$)' >/dev/null
 """
 
 
@@ -340,9 +356,24 @@ def verify_codex_access(
     run_checked(codex_probe_command(target), timeout_seconds=60, runner=runner)
 
 
+def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
+    command = [
+        "docker", "compose", "-f", "/srv/velvet/docker-compose.yml",
+        "exec", "-T", "bot", "python", "-c",
+        "import importlib.metadata as m; print(m.version('cryptography'))",
+    ]
+    result = run_checked(command, timeout_seconds=30, runner=runner)
+    if result.stdout.strip() != CRYPTOGRAPHY_VERSION:
+        raise SmokeError(
+            "main Hermes cryptography mismatch: expected "
+            f"{CRYPTOGRAPHY_VERSION}, actual {redact(result.stdout.strip())}"
+        )
+
+
 def main() -> int:
-    if not COMPOSE_FILE.is_file():
-        raise SmokeError(f"Отсутствует Compose-файл: {COMPOSE_FILE}")
+    for compose_file in COMPOSE_FILES:
+        if not compose_file.is_file():
+            raise SmokeError(f"Отсутствует Compose-файл: {compose_file}")
     if not ROOT.is_dir():
         raise SmokeError(f"Отсутствует Hermes Coder root: {ROOT}")
 
@@ -355,6 +386,8 @@ def main() -> int:
             f"Hermes/Codex smoke: {target.project} -> {target.repository}: "
             "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, PUSH_OK"
         )
+    verify_main_cryptography()
+    print(f"Main Hermes dependency: cryptography=={CRYPTOGRAPHY_VERSION}: OK")
     return 0
 
 

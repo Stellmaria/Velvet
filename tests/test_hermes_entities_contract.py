@@ -44,7 +44,7 @@ class HermesEntitySeparationTests(unittest.TestCase):
 
     def test_coder_souls_are_personas_and_project_rules_are_separate(self) -> None:
         cases = {
-            "velvet": ("Velvet Coder", "Stellmaria/Velvet"),
+            "velvet": ("Ты Велвет", "Stellmaria/Velvet"),
             "max": ("Ты Макс", "Stellmaria/romatic_club_bot_max"),
         }
         for project, (identity, repository) in cases.items():

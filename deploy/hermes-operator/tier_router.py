@@ -166,6 +166,7 @@ def build_tier_handoff(
         "task_id": task_id,
         "source": clean_source,
         "project": target.project,
+        "identity": target.identity,
         **routing,
         "task": clean_task,
         "context": (

@@ -167,6 +167,7 @@ class HermesCodersContractTests(unittest.TestCase):
         compose_start = (
             "ExecStart=/usr/bin/docker compose --profile velvet "
             "--profile max -f compose.yaml -f compose.runtime.yaml "
+            "-f compose.security.yaml "
             "up -d --build --remove-orphans"
         )
         smoke = (

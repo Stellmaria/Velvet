@@ -57,13 +57,9 @@ def build_payload(
     if len(clean) > 30_000:
         raise DelegateError("Задача превышает 30000 символов")
     payload: dict[str, Any] = {
-        "input": clean,
-        "session_id": f"telegram-{project}-{uuid.uuid4().hex}",
-        "instructions": (
-            f"Ты Codex-first coder проекта {project}. Сохрани requested tier, "
-            "работай только в текущем repository и верни schema-bound JSON. "
-            "Не merge, не deploy и не меняй production."
-        ),
+        "task_id": uuid.uuid4().hex,
+        "task": clean,
+        "source": "owner-direct",
         "task_type": task_type,
         "complexity": complexity,
         "risk": risk,
@@ -71,14 +67,21 @@ def build_payload(
         "requested_tier": requested_tier,
     }
     if model:
-        payload["model"] = model
+        expected = {
+            "small": "gpt-5.6-luna",
+            "standard": "gpt-5.6-terra",
+            "complex": "gpt-5.6-sol",
+            "high_risk": "gpt-5.6-sol",
+        }[requested_tier]
+        if model != expected:
+            raise DelegateError("Явная model не соответствует requested tier")
     return payload
 
 
 class RunnerClient:
     def __init__(self) -> None:
         self.base_url = _required_env("HERMES_CODEX_DELEGATE_URL").rstrip("/")
-        self.token = _required_env("CODEX_RUNNER_API_KEY", minimum=24)
+        self.token = _required_env("HERMES_CODER_ROUTER_CLIENT_TOKEN", minimum=24)
         self.project = _required_env("HERMES_CODEX_DELEGATE_PROJECT")
         self.timeout_seconds = max(
             30,
@@ -132,7 +135,7 @@ class RunnerClient:
     def run(self, task: str, **routing: Any) -> dict[str, Any]:
         submitted = self.request(
             "POST",
-            "/v1/runs",
+            f"/v1/coders/{self.project}/runs",
             build_payload(task, project=self.project, **routing),
         )
         run_id = submitted.get("run_id")
@@ -140,7 +143,9 @@ class RunnerClient:
             raise DelegateError("Runner не вернул run_id")
         deadline = time.monotonic() + self.timeout_seconds
         while time.monotonic() < deadline:
-            record = self.request("GET", f"/v1/runs/{run_id}")
+            record = self.request(
+                "GET", f"/v1/coders/{self.project}/runs/{run_id}"
+            )
             if record.get("status") in _TERMINAL:
                 return record
             time.sleep(self.poll_seconds)
@@ -184,6 +189,7 @@ def main(argv: list[str]) -> int:
         key: result.get(key)
         for key in (
             "run_id",
+            "task_id",
             "status",
             "task_type",
             "complexity",

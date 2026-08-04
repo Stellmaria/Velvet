@@ -147,12 +147,13 @@ class CoderRouterTests(unittest.TestCase):
                 payload = {
                     "task_id": ("a" if project == "velvet" else "b") * 32,
                     "task": "Исправить тест",
-                    "source": "owner-request",
+                    "source": "owner-direct",
                     **self.routing(),
                 }
                 result = router.submit(project, payload)
             self.assertEqual("standard", result["requested_tier"])
             forwarded = upstream.call_args.args[3]
+            self.assertIn('"source": "owner-direct"', forwarded["input"])
             for key, value in self.routing().items():
                 self.assertEqual(value, forwarded[key])
             self.assertEqual(

@@ -1,0 +1,12 @@
+services:
+  hermes-coder-velvet:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=hermes-codex-bwrap
+      - seccomp=./security/seccomp-bwrap.json
+
+  hermes-coder-max:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=hermes-codex-bwrap
+      - seccomp=./security/seccomp-bwrap.json

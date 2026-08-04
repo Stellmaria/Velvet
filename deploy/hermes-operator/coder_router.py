@@ -17,7 +17,9 @@ logger = logging.getLogger("velvet.hermes_coder_router")
 _MAX_BODY_BYTES = 32_768
 _TASK_ID = re.compile(r"^[a-f0-9]{32}$")
 _RUN_ID = re.compile(r"^[A-Za-z0-9_-]{3,160}$")
-_TASK_SOURCES = frozenset({"owner-request", "incident", "maintenance"})
+_TASK_SOURCES = frozenset(
+    {"owner-request", "owner-direct", "kael-delegated", "incident", "maintenance"}
+)
 _SECRET_KEY = re.compile(r"(?i)(token|secret|password|api[_-]?key|authorization)")
 _SECRET_TEXT_PATTERNS = (
     re.compile(r"(?i)(authorization\s*:\s*bearer\s+)[^\s,;]+"),
@@ -34,6 +36,7 @@ _SUCCESSFUL_CHECK_CONCLUSIONS = frozenset({"success", "neutral", "skipped"})
 @dataclass(frozen=True, slots=True)
 class CoderTarget:
     project: str
+    identity: str
     repository: str
     bot_handle: str
     base_url: str
@@ -81,6 +84,7 @@ def load_targets() -> dict[str, CoderTarget]:
     return {
         "velvet": CoderTarget(
             project="velvet",
+            identity="Велвет",
             repository="Stellmaria/Velvet",
             bot_handle="@velvet_private_coder_bot",
             base_url=os.getenv(
@@ -92,6 +96,7 @@ def load_targets() -> dict[str, CoderTarget]:
         ),
         "max": CoderTarget(
             project="max",
+            identity="Макс",
             repository="Stellmaria/romatic_club_bot_max",
             bot_handle="@romatic_max_coder_bot",
             base_url=os.getenv(
@@ -123,6 +128,7 @@ def build_task_handoff(
         "task_id": task_id,
         "source": clean_source,
         "project": target.project,
+        "identity": target.identity,
         "task": clean_task,
         "context": (
             f"Repository={target.repository}; workspace=/workspace; "

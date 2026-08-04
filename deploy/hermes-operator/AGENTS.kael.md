@@ -128,7 +128,7 @@ python /opt/data/tools/runctl.py stop <run_id>
 python /opt/data/tools/coderctl.py health all
 
 python /opt/data/tools/coderctl.py submit velvet \
-  --source owner-request \
+  --source kael-delegated \
   --task-type read_only \
   --complexity small \
   --risk low \
@@ -137,7 +137,7 @@ python /opt/data/tools/coderctl.py submit velvet \
   --task "<задача без изменений>"
 
 python /opt/data/tools/coderctl.py submit max \
-  --source owner-request \
+  --source kael-delegated \
   --task-type code \
   --complexity standard \
   --risk medium \

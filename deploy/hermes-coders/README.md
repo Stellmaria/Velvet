@@ -249,3 +249,21 @@ HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
 ```
 
 Не использовать `down -v`: bind-mounted data, workspaces и secrets должны сохраняться.
+
+## Единый router и sandbox
+
+Direct Telegram и delegated Каэлем задачи используют один central tier router.
+Direct helper выставляет `source=owner-direct`, Каэль — `source=kael-delegated`;
+оба пути получают task/run IDs и routing fields только от router/ledger. При
+недоступности router direct helper завершается fail-closed без shell/Git fallback.
+
+Lifecycle обоих coder runner всегда рендерится из трёх слоёв:
+`compose.yaml`, `compose.runtime.yaml`, `compose.security.yaml`. Security layer
+назначает только runner-процессам enforcing `hermes-codex-bwrap` и custom seccomp.
+Runtime smoke проверяет user/mount namespaces, minimal bwrap, read-only Git,
+неизменный fingerprint, NoNewPrivs, пустой capability set, named AppArmor,
+active seccomp, read-only rootfs и `cryptography==50.0.0` в main Hermes.
+
+Каждый run создаёт отдельный worktree от свежего `origin/main` под
+`codex-runs/<project>/workspaces`; cleanup ограничен каталогом конкретного run и
+не затрагивает auth, ledger, run history, secrets или approved caches.
