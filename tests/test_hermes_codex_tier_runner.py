@@ -148,7 +148,10 @@ class AuditedTierRunnerTests(unittest.TestCase):
                 self.git(self.base_workspace, "rev-parse", "HEAD").strip(),
                 self.git(workspace, "rev-parse", "HEAD").strip(),
             )
-            self.assertEqual(str(self.remote), self.git(workspace, "remote", "get-url", "origin").strip())
+            self.assertEqual(
+                str(self.remote),
+                self.git(workspace, "remote", "get-url", "origin").strip(),
+            )
             self.assertFalse((self.base_workspace / ".git" / "worktrees").exists())
         finally:
             self.manager._cleanup_workspace(workspace)
@@ -159,6 +162,7 @@ class AuditedTierRunnerTests(unittest.TestCase):
         self.seed(run_id, "workspace_write", workspace)
         self.git(workspace, "config", "user.name", "Test Coder")
         self.git(workspace, "config", "user.email", "coder@example.invalid")
+        self.git(workspace, "switch", "-c", "agent/test-clean-commit")
         (workspace / "change.txt").write_text("changed\n", encoding="utf-8")
         self.git(workspace, "add", "change.txt")
         self.git(workspace, "commit", "-m", "change")
@@ -181,6 +185,7 @@ class AuditedTierRunnerTests(unittest.TestCase):
         record = self.manager.store.read(run_id)
         self.assertTrue(record["mutation_started"])
         self.assertTrue(record["head_changed"])
+        self.assertTrue(record["branch_changed"])
         self.assertTrue(record["refs_changed"])
         self.assertFalse(record["working_tree_changed"])
         parent_success.assert_called_once()
