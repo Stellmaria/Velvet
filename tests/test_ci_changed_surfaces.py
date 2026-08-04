@@ -4,6 +4,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,6 +80,31 @@ class CiChangedSurfacesTests(unittest.TestCase):
         self.assertFalse(outputs["docker_velvet"])
         self.assertFalse(outputs["docker_supervisor"])
 
+    def test_issue_593_change_set_builds_only_hermes_images(self) -> None:
+        paths = [
+            ".github/workflows/docker-build.yml",
+            "deploy/hermes-coders/ensure_runtime_config.py",
+            "deploy/hermes-entities/reconcile.sh",
+            "deploy/hermes-operator/AGENTS.kael.md",
+            "deploy/hermes-operator/install.sh",
+            "deploy/hermes-operator/plugins/kael-coder-control/__init__.py",
+            "deploy/hermes-operator/plugins/kael-coder-control/plugin.yaml",
+            "docs/worklog/2026-08-04-issue-593-kael-fail-closed-coder-delegation.md",
+            "scripts/ci_changed_surfaces.py",
+            "tests/test_ci_changed_surfaces.py",
+            "tests/test_docker_build_workflow_contract.py",
+            "tests/test_hermes_kael_coder_control.py",
+            "tests/test_hermes_kael_coder_control_deployment.py",
+            "tests/test_hermes_runtime_config.py",
+            "tests/test_hermes_tier_documentation_contract.py",
+        ]
+        outputs = MODULE.classify_paths(paths)
+        self.assertTrue(outputs["docker_hermes"])
+        self.assertTrue(outputs["docker_ci"])
+        self.assertTrue(outputs["docker_any"])
+        for name in DOCKER_IMAGE_SURFACES - {"docker_hermes"}:
+            self.assertFalse(outputs[name], name)
+
     def test_krita_change_builds_only_krita_image(self) -> None:
         outputs = MODULE.classify_paths(
             ["tools/krita/velvet_logo/velvet_logo.py"]
@@ -100,6 +126,22 @@ class CiChangedSurfacesTests(unittest.TestCase):
         self.assertFalse(outputs["docker_any"])
         for name in DOCKER_IMAGE_SURFACES:
             self.assertFalse(outputs[name], name)
+
+    def test_pull_request_base_ref_fallback_avoids_full_scan(self) -> None:
+        with patch.object(MODULE.subprocess, "run") as run, patch.object(
+            MODULE,
+            "_git",
+            return_value="a" * 40,
+        ):
+            resolved = MODULE._resolve_pull_request_base(
+                base_sha="",
+                base_ref="main",
+            )
+
+        self.assertEqual("a" * 40, resolved)
+        command = run.call_args.args[0]
+        self.assertEqual("git", command[0])
+        self.assertIn("main:refs/remotes/origin/main", command)
 
     def test_full_scan_enables_every_surface(self) -> None:
         outputs = MODULE.classify_paths([], full_scan=True)
@@ -144,6 +186,8 @@ class CiChangedSurfacesTests(unittest.TestCase):
     def test_docker_workflow_builds_only_changed_surfaces_with_cache(self) -> None:
         source = DOCKER_WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("Resolve changed Docker surfaces", source)
+        self.assertIn("--base-ref \"$BASE_REF\"", source)
+        self.assertIn("github.event.pull_request.head.sha || github.sha", source)
         self.assertIn("steps.changes.outputs.docker_velvet == 'true'", source)
         self.assertIn("steps.changes.outputs.docker_supervisor == 'true'", source)
         self.assertIn("steps.changes.outputs.docker_vision == 'true'", source)
