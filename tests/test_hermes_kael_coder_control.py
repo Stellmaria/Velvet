@@ -47,10 +47,7 @@ class KaelCoderControlTests(unittest.TestCase):
         self.audit_path = Path(directory.name) / "audit.jsonl"
         environment = patch.dict(
             os.environ,
-            {
-                "KAEL_CODER_AUDIT_PATH": str(self.audit_path),
-                "KAEL_CODERCTL_PATH": "/opt/data/tools/coderctl.py",
-            },
+            {"KAEL_CODER_AUDIT_PATH": str(self.audit_path)},
             clear=False,
         )
         environment.start()
@@ -69,11 +66,13 @@ class KaelCoderControlTests(unittest.TestCase):
         values.update(changes)
         return values
 
-    def test_registers_typed_tool_and_both_hooks(self) -> None:
+    def test_registers_typed_tool_in_telegram_toolset_and_both_hooks(self) -> None:
         context = FakeContext()
         MODULE.register(context)
 
         self.assertEqual(["coder_delegate"], [item["name"] for item in context.tools])
+        self.assertEqual("hermes-telegram", MODULE.TELEGRAM_TOOLSET)
+        self.assertEqual(MODULE.TELEGRAM_TOOLSET, context.tools[0]["toolset"])
         schema = context.tools[0]["schema"]["parameters"]
         self.assertFalse(schema["additionalProperties"])
         self.assertEqual(
@@ -113,7 +112,7 @@ class KaelCoderControlTests(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertIsInstance(command, list)
         self.assertFalse(run.call_args.kwargs["shell"])
-        self.assertIn("/opt/data/tools/coderctl.py", command)
+        self.assertEqual(MODULE.CODERCTL_PATH, command[1])
         self.assertIn("submit", command)
         self.assertIn("--task-type", command)
         self.assertEqual("gpt-5.6-luna", result["selected_primary_model"])
@@ -176,7 +175,7 @@ class KaelCoderControlTests(unittest.TestCase):
         self.assertFalse(result["mutation_started"])
         self.assertFalse(result["production_privileges"])
 
-    def test_terminal_allows_controller_commands(self) -> None:
+    def test_terminal_allows_only_validated_controller_commands(self) -> None:
         allowed = (
             "python /opt/data/tools/monitorctl.py summary",
             "python /opt/data/tools/opsctl.py velvet status",
@@ -185,6 +184,7 @@ class KaelCoderControlTests(unittest.TestCase):
             "python /opt/data/tools/coderctl.py health all",
             "python /opt/data/tools/coderctl.py status abc123",
             "python /opt/data/tools/coderctl.py pr velvet 593",
+            "/opt/data/tools/monitorctl.py resources",
         )
         for command in allowed:
             with self.subTest(command=command):
@@ -213,6 +213,23 @@ class KaelCoderControlTests(unittest.TestCase):
                 )
                 self.assertEqual("block", result["action"])
 
+    def test_terminal_blocks_unknown_controller_actions_and_targets(self) -> None:
+        blocked = (
+            "python /opt/data/tools/monitorctl.py shell",
+            "python /opt/data/tools/opsctl.py other status",
+            "python /opt/data/tools/opsctl.py velvet shell",
+            "python /opt/data/tools/reconcilectl.py submit unknown",
+            "python /opt/data/tools/runctl.py submit run_123",
+            "python /opt/data/tools/coderctl.py submit velvet",
+        )
+        for command in blocked:
+            with self.subTest(command=command):
+                result = MODULE._on_pre_tool_call(
+                    tool_name="terminal",
+                    args={"command": command},
+                )
+                self.assertEqual("block", result["action"])
+
     def test_local_search_and_code_execution_are_blocked(self) -> None:
         for tool_name in ("search_files", "execute_code", "python_repl"):
             with self.subTest(tool_name=tool_name):
@@ -227,12 +244,17 @@ class KaelCoderControlTests(unittest.TestCase):
             tool_name="read_file",
             args={"path": "/opt/data/workspace/Velvet/README.md"},
         )
+        relative_blocked = MODULE._on_pre_tool_call(
+            tool_name="read_file",
+            args={"path": "workspace/Velvet/README.md"},
+        )
         allowed = MODULE._on_pre_tool_call(
             tool_name="read_file",
             args={"path": "/opt/data/config.yaml"},
         )
 
         self.assertEqual("block", blocked["action"])
+        self.assertEqual("block", relative_blocked["action"])
         self.assertIsNone(allowed)
 
     def test_non_coder_delegation_is_preserved(self) -> None:
