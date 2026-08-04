@@ -1,15 +1,15 @@
 name: temporary server deploy hotfix finalizer
 
 on:
-  pull_request:
-    types: [synchronize, reopened]
+  push:
+    branches:
+      - fix/deploy-compose-race-rollback
 
 permissions:
   contents: write
 
 jobs:
   finalize:
-    if: github.head_ref == 'fix/deploy-compose-race-rollback' && github.actor == 'Stellmaria'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -37,10 +37,10 @@ jobs:
           test_path = Path('tests/test_server_supervisor_contract.py')
           tests = test_path.read_text(encoding='utf-8')
           old_test = '''        self.assertIn(
-              '"${compose[@]}" up -d --remove-orphans postgres supervisor-proxy',
-              self.deploy,
-          )
-          '''.replace('              ', '            ').replace('          )', '        )')
+            '"${compose[@]}" up -d --remove-orphans postgres supervisor-proxy',
+            self.deploy,
+        )
+          '''
           new_test = '''        self.assertIn(
             '"${compose[@]}" up -d postgres supervisor-proxy',
             self.deploy,
