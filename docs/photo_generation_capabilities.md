@@ -44,3 +44,7 @@ KIE_WAN_27_IMAGE_PRO_4K_USD=0.075
 Обе Wan-модели используют `prompt`, `input_urls` для режима с референсами,
 `n`, `enable_sequential`, `resolution`, `aspect_ratio` и provider NSFW flag.
 Количество результатов оплачивается пропорционально и не зависит от цен пакетов VL.
+
+Канонические shared/package architecture snapshots пересобраны для этого каталога.
+PR остаётся feature-веткой: merge, миграция `z031` и production rollout выполняются
+отдельно.
