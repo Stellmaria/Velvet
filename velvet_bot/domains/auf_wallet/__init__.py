@@ -2,10 +2,15 @@ from velvet_bot.domains.auf_wallet.charged_queue import (
     AufChargedTaskQueueService,
     build_auf_charged_task_queue_service,
 )
+from velvet_bot.domains.auf_wallet.economics import (
+    AufEconomicsRepository,
+    format_margin_summary,
+)
 from velvet_bot.domains.auf_wallet.models import (
     AUF_SCALE,
     AufEconomySettings,
     AufInsufficientBalance,
+    AufMarginSummary,
     AufWallet,
     AufWalletEntry,
     AufWalletError,
@@ -44,12 +49,14 @@ from velvet_bot.domains.auf_wallet.store import AufWalletRepository
 __all__ = (
     "AUF_PACKAGES",
     "AUF_SCALE",
-    "AufPackageQuote",
     "AufChargedTaskQueueService",
+    "AufEconomicsRepository",
     "AufEconomySettings",
     "AufInsufficientBalance",
     "AufInvoiceError",
     "AufInvoiceStatus",
+    "AufMarginSummary",
+    "AufPackageQuote",
     "AufPriceNotConfigured",
     "AufPriceQuote",
     "AufPricingRepository",
@@ -71,6 +78,7 @@ __all__ = (
     "auf_to_units",
     "build_auf_charged_task_queue_service",
     "format_auf_units",
+    "format_margin_summary",
     "format_owner_price_details",
     "format_vl_units",
     "units_to_auf",
