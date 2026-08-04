@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "feat-codex-plus-rate-limits",
+  "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 648,
   "production_loc": 142454,
   "layer_counts": {

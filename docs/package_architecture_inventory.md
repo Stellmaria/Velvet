@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `feat-codex-plus-rate-limits`
+- Generated from: `p1-package-architecture-baseline`
 - Production modules: **648**
 - Production LOC: **142454**
 - Root modules: **113**
