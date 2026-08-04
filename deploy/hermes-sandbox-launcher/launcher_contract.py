@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Any
 
 _RUN_ID = re.compile(r"^[a-f0-9]{32}$")
 _NETWORK_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+_IMAGE_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PROJECTS = frozenset({"velvet", "max"})
 _MODELS = frozenset(
     {"gpt-5.4-mini", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"}
@@ -33,15 +35,26 @@ _EXECUTION_ITEM_TYPES = frozenset(
         "dynamic_tool_call",
     }
 )
+_COMMON_HOME_FILES = (
+    "AGENTS.md",
+    "output.schema.json",
+    "context-manifest.json",
+)
+_SUBSCRIPTION_HOME_FILES = ("auth.json", "config.toml")
 _MAX_REQUEST_BYTES = 131_072
 _MAX_OUTPUT_BYTES = 900_000
-_LISTEN_FDS_START = 3
 
 ROOT = Path(os.environ.get("HERMES_CODERS_ROOT", "/srv/hermes-coders")).resolve()
 SOURCE_DIR = Path(
     os.environ.get(
         "HERMES_SANDBOX_INSTALL_DIR",
-        "/usr/local/lib/hermes-sandbox-launcher",
+        "/usr/local/lib/hermes-sandbox-launcher/current",
+    )
+).resolve()
+PROJECTION_ROOT = Path(
+    os.environ.get(
+        "HERMES_SANDBOX_PROJECTION_ROOT",
+        "/run/hermes-sandbox-private",
     )
 ).resolve()
 NETWORK = os.environ.get(
@@ -52,8 +65,8 @@ if not _NETWORK_NAME.fullmatch(NETWORK):
 UID = int(os.environ.get("HERMES_UID", "10000"))
 GID = int(os.environ.get("HERMES_GID", "10000"))
 IMAGES = {
-    "velvet": "velvet-codex-coder-velvet:local",
-    "max": "velvet-codex-coder-max:local",
+    "velvet": os.environ.get("HERMES_SANDBOX_VELVET_IMAGE", "").strip(),
+    "max": os.environ.get("HERMES_SANDBOX_MAX_IMAGE", "").strip(),
 }
 
 
@@ -84,6 +97,14 @@ def exact_fields(payload: dict[str, Any], expected: set[str]) -> None:
         raise LauncherProtocolError("request fields do not match the fixed schema")
 
 
+def validate_image_ids() -> None:
+    invalid = [project for project, image in IMAGES.items() if not _IMAGE_ID.fullmatch(image)]
+    if invalid:
+        raise RuntimeError(
+            "Immutable sandbox image IDs are missing for: " + ", ".join(invalid)
+        )
+
+
 def validate_run(payload: dict[str, Any]) -> dict[str, Any]:
     exact_fields(
         payload,
@@ -91,6 +112,7 @@ def validate_run(payload: dict[str, Any]) -> dict[str, Any]:
             "action",
             "run_id",
             "project",
+            "project_token",
             "workspace",
             "model",
             "route",
@@ -169,12 +191,50 @@ def project_codex_home(project: str) -> Path:
     return resolved
 
 
-def build_docker_command(request: dict[str, Any], env_file: Path) -> list[str]:
+def create_codex_projection(project: str, run_id: str, route: str) -> Path:
+    source = project_codex_home(project)
+    PROJECTION_ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chown(PROJECTION_ROOT, 0, 0)
+    os.chmod(PROJECTION_ROOT, 0o700)
+    target = Path(
+        tempfile.mkdtemp(prefix=f"{project}-{run_id}-", dir=PROJECTION_ROOT)
+    ).resolve()
+    if target.parent != PROJECTION_ROOT:
+        raise LauncherProtocolError("unsafe Codex projection path")
+    names = list(_COMMON_HOME_FILES)
+    if route == "codex_subscription":
+        names.extend(_SUBSCRIPTION_HOME_FILES)
+    try:
+        for name in names:
+            source_file = source / name
+            if source_file.is_symlink() or not source_file.is_file():
+                raise LauncherProtocolError(
+                    f"required Codex projection file is invalid: {name}"
+                )
+            destination = target / name
+            shutil.copyfile(source_file, destination)
+            os.chown(destination, UID, GID)
+            os.chmod(destination, 0o400)
+        os.chown(target, UID, GID)
+        os.chmod(target, 0o500)
+        return target
+    except Exception:
+        shutil.rmtree(target, ignore_errors=True)
+        raise
+
+
+def build_docker_command(
+    request: dict[str, Any],
+    env_file: Path,
+    codex_projection: Path,
+) -> list[str]:
     project = str(request["project"])
     run_id = str(request["run_id"])
     mutation_policy = str(request["mutation_policy"])
     workspace = host_workspace(project, run_id)
-    codex_home = project_codex_home(project)
+    projection = codex_projection.resolve()
+    if projection.parent != PROJECTION_ROOT or projection.is_symlink() or not projection.is_dir():
+        raise LauncherProtocolError("unsafe Codex projection mount")
     entrypoint = (SOURCE_DIR / "sandbox_entrypoint.py").resolve()
     if entrypoint.parent != SOURCE_DIR or not entrypoint.is_file():
         raise LauncherProtocolError("sandbox entrypoint is missing")
@@ -221,7 +281,7 @@ def build_docker_command(request: dict[str, Any], env_file: Path) -> list[str]:
         "--mount",
         workspace_mount,
         "--mount",
-        f"type=bind,src={codex_home},dst=/opt/codex-ro,readonly",
+        f"type=bind,src={projection},dst=/opt/codex-ro,readonly",
         "--mount",
         f"type=bind,src={entrypoint},dst=/app/hermes_sandbox_entrypoint.py,readonly",
         "--env-file",
