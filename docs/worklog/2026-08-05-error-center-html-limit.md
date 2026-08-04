@@ -3,7 +3,7 @@
 - Дата: 2026-08-05
 - ID: `error-center-html-limit`
 - Линия/фаза: Production stabilization / Error Center
-- Статус: `завершено и выкачено`
+- Статус: `завершено`
 - Issue: `#624`
 - PR: `#628`
 - Ветка: `fix/error-center-html-limit`
@@ -88,6 +88,22 @@ Controlled rollout выполнен 2026-08-05 на commit `224f34d31ea583319a6e
 ### Сопутствующее наблюдение rollout
 
 Во время rollout обнаружено, что ручной запуск `deploy/server/deploy.sh` от `root` вместе с глобальным `umask 077` способен оставить tracked-файлы checkout владельцем `root` и режимом `0600`. Содержимое файлов совпадало с target; владельцы и индекс были восстановлены без изменения кода или данных. Durable follow-up запрещает запуск deploy не владельцем checkout и выполняет `git reset --hard` в изолированном `umask 022`.
+
+### PR и commit
+
+- Error Center implementation: PR `#628`, merge commit `224f34d31ea583319a6e25e32cdcf95c7a6a291f`;
+- deploy ownership follow-up: draft PR `#636`, ветка `fix/server-deploy-checkout-ownership`;
+- production rollout Error Center подтверждён отдельно после merge `#628`.
+
+### Незавершённое
+
+- по Error Center HTML-дефекту незавершённых действий нет;
+- deploy ownership follow-up `#636` должен отдельно пройти required CI, review, merge и controlled rollout;
+- PR `#588` остаётся отдельным draft, заблокированным своей зависимостью, и не входит в эту работу.
+
+### Следующий шаг
+
+Довести required CI PR `#636` до зелёного состояния, затем принимать отдельное решение о merge. После merge выполнить controlled server deploy и подтвердить, что checkout принадлежит `velvet`, tracked tree чистый и root-owned tracked-файлы не создаются.
 
 ### Итог
 
