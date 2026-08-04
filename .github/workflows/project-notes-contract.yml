@@ -25,7 +25,9 @@ jobs:
         if: github.actor != 'dependabot[bot]'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 2
+          # Long-lived PRs may retain a base SHA older than the latest main tip.
+          # The validator needs that exact commit for its symmetric diff.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Validate project memory and worklog
