@@ -32,6 +32,7 @@ EXPECTED_STAGE_NAMES = (
     "install_auf_user_portal",
     "install_auf_photo_model_modes",
     "install_auf_owner_pricing_ui",
+    "install_auf_margin_dashboard",
     "install_original_image_delivery_hotfix",
     "install_original_video_delivery_hotfix",
     "install_auf_result_delivery_recovery",
@@ -50,7 +51,7 @@ class ApplicationCompositionTests(unittest.TestCase):
 
         self.assertEqual(EXPECTED_STAGE_NAMES, composition.stage_names)
         self.assertEqual(2, len(composition.bootstrap_stages))
-        self.assertEqual(26, len(composition.feature_stage_names))
+        self.assertEqual(27, len(composition.feature_stage_names))
 
     def test_run_loads_bootstrap_before_building_feature_stages(self) -> None:
         events: list[str] = []

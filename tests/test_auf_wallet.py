@@ -30,6 +30,7 @@ class _FakeRuntimeService:
 
 class _FakeRepository:
     def __init__(self) -> None:
+        self._database = None
         self.settings = AufEconomySettings(
             provider_auf_usd=Decimal("0.02"),
             retail_auf_usd=Decimal("0.03"),

@@ -1,21 +1,21 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **646**
-- Production LOC: **141659**
+- Production modules: **648**
+- Production LOC: **142204**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **44**
-- Startup installer stages: **28**
-- Registered package violations: **548**
-- Registered exemptions: **548**
+- Startup installer stages: **29**
+- Registered package violations: **553**
+- Registered exemptions: **553**
 
 ## Layers
 
 - `application`: **21** modules
-- `composition`: **65** modules
+- `composition`: **66** modules
 - `core`: **7** modules
-- `domain`: **183** modules
+- `domain`: **184** modules
 - `infrastructure`: **29** modules
 - `other`: **1** modules
 - `presentation`: **215** modules
@@ -51,30 +51,31 @@
 17. `install_auf_user_portal` from `velvet_bot.app.auf_user_portal_install.install_auf_user_portal`; patched symbols: `video_router.settings_text`, `wallet_router.wallet_keyboard`.
 18. `install_auf_photo_model_modes` from `velvet_bot.app.auf_photo_model_modes.install_auf_photo_model_modes`; patched symbols: `KieClient._create_grs_task`, `KieClient.wait_for_task`, `KieGenerationRequest.to_input`, `KieModelCatalog.provider_model`, `KiePricing.estimate_usd`, `photo_router.AufPhotoForm`, `photo_router._PHOTO_MODELS`, `photo_router._final_keyboard`, `photo_router._input_keyboard`, `photo_router._model`, `photo_router._model_keyboard`, `photo_router._request`, `photo_router._resolution_keyboard`, `photo_router._review_keyboard`, `photo_router.handle_auf_photo_action`, `photo_router.handle_auf_photo_command`, `photo_router.handle_auf_photo_input`.
 19. `install_auf_owner_pricing_ui` from `velvet_bot.app.auf_owner_pricing_ui_install.install_auf_owner_pricing_ui`; patched symbols: none detected.
-20. `install_original_image_delivery_hotfix` from `velvet_bot.app.original_image_delivery_hotfix.install_original_image_delivery_hotfix`; patched symbols: `FileDeliveryKieGenerationWorker._send_image_and_document`, `FriendlyKieGenerationWorker._send_image_and_document`.
-21. `install_original_video_delivery_hotfix` from `velvet_bot.app.original_video_delivery_hotfix.install_original_video_delivery_hotfix`; patched symbols: `FileDeliveryKieGenerationWorker._send_video_and_document`, `FriendlyKieGenerationWorker._send_video_and_document`.
-22. `install_auf_result_delivery_recovery` from `velvet_bot.app.auf_result_delivery_recovery.install_auf_result_delivery_recovery`; patched symbols: none detected.
-23. `install_auf_active_delivery_fix` from `velvet_bot.app.auf_active_delivery_fix.install_auf_active_delivery_fix`; patched symbols: none detected.
-24. `install_auf_charged_queue` from `velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue`; patched symbols: none detected.
-25. `install_auf_generation_receipts` from `install_generation_receipts_with_owner_cost_privacy`; patched symbols: none detected.
-26. `install_krita_remote_worker` from `velvet_bot.app.krita_remote_install.install_krita_remote_worker`; patched symbols: `bootstrap._close_application_resources`, `bootstrap.build_worker_manager`, `workers_module.build_worker_manager`.
-27. `install_auf_grs_brand` from `velvet_bot.app.auf_grs_brand_install.install_auf_grs_brand`; patched symbols: `grs_resilience._sanitize_auf_text`, `grs_resilience._sanitize_meow_text`.
-28. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
+20. `install_auf_margin_dashboard` from `velvet_bot.app.auf_margin_dashboard_install.install_auf_margin_dashboard`; patched symbols: none detected.
+21. `install_original_image_delivery_hotfix` from `velvet_bot.app.original_image_delivery_hotfix.install_original_image_delivery_hotfix`; patched symbols: `FileDeliveryKieGenerationWorker._send_image_and_document`, `FriendlyKieGenerationWorker._send_image_and_document`.
+22. `install_original_video_delivery_hotfix` from `velvet_bot.app.original_video_delivery_hotfix.install_original_video_delivery_hotfix`; patched symbols: `FileDeliveryKieGenerationWorker._send_video_and_document`, `FriendlyKieGenerationWorker._send_video_and_document`.
+23. `install_auf_result_delivery_recovery` from `velvet_bot.app.auf_result_delivery_recovery.install_auf_result_delivery_recovery`; patched symbols: none detected.
+24. `install_auf_active_delivery_fix` from `velvet_bot.app.auf_active_delivery_fix.install_auf_active_delivery_fix`; patched symbols: none detected.
+25. `install_auf_charged_queue` from `velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue`; patched symbols: none detected.
+26. `install_auf_generation_receipts` from `install_generation_receipts_with_owner_cost_privacy`; patched symbols: none detected.
+27. `install_krita_remote_worker` from `velvet_bot.app.krita_remote_install.install_krita_remote_worker`; patched symbols: `bootstrap._close_application_resources`, `bootstrap.build_worker_manager`, `workers_module.build_worker_manager`.
+28. `install_auf_grs_brand` from `velvet_bot.app.auf_grs_brand_install.install_auf_grs_brand`; patched symbols: `grs_resilience._sanitize_auf_text`, `grs_resilience._sanitize_meow_text`.
+29. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
 
 ## Violation baseline
 
-- `database-acquire-outside-persistence`: **89**
+- `database-acquire-outside-persistence`: **90**
 - `domain-aiogram-import`: **19**
 - `domain-layer-import`: **3**
-- `dynamic-import`: **21**
+- `dynamic-import`: **22**
 - `foreign-assignment`: **39**
-- `installed-sentinel`: **44**
-- `installer-like-module`: **25**
+- `installed-sentinel`: **45**
+- `installer-like-module`: **26**
 - `method-assign-ignore`: **10**
 - `monolithic-function`: **24**
 - `monolithic-module-loc`: **17**
 - `package-getattr-side-effect`: **19**
-- `sql-outside-persistence`: **108**
+- `sql-outside-persistence`: **109**
 - `type-ignore-usage`: **18**
 - `typing-any-usage`: **112**
 

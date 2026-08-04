@@ -90,6 +90,7 @@ _FEATURE_STAGE_NAMES = (
     "install_auf_user_portal",
     "install_auf_photo_model_modes",
     "install_auf_owner_pricing_ui",
+    "install_auf_margin_dashboard",
     "install_original_image_delivery_hotfix",
     "install_original_video_delivery_hotfix",
     "install_auf_result_delivery_recovery",
@@ -111,6 +112,9 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         install_auf_generation_receipts,
     )
     from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
+    from velvet_bot.app.auf_margin_dashboard_install import (
+        install_auf_margin_dashboard,
+    )
     from velvet_bot.app.auf_owner_cost_privacy_install import (
         install_auf_owner_cost_privacy,
     )
@@ -182,7 +186,7 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         ),
         CompositionStage("install_auf_user_portal", install_auf_user_portal),
         # Install model-first first, then wrap its final screen with the
-        # approved 30% / individual VL pricing policy.
+        # approved generation pricing policy and owner-only margin controls.
         CompositionStage(
             "install_auf_photo_model_modes",
             install_auf_photo_model_modes,
@@ -190,6 +194,10 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         CompositionStage(
             "install_auf_owner_pricing_ui",
             install_auf_owner_pricing_ui,
+        ),
+        CompositionStage(
+            "install_auf_margin_dashboard",
+            install_auf_margin_dashboard,
         ),
         CompositionStage(
             "install_original_image_delivery_hotfix",
@@ -237,11 +245,3 @@ def build_application_composition() -> ApplicationComposition:
 
 async def run_application() -> None:
     await build_application_composition().run()
-
-
-__all__ = (
-    "ApplicationComposition",
-    "CompositionStage",
-    "build_application_composition",
-    "run_application",
-)
