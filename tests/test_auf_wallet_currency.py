@@ -7,6 +7,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from uuid import UUID
 
+from velvet_bot.app import auf_wallet_currency_fix
 from velvet_bot.app import auf_wallet_currency_ui as currency_ui
 from velvet_bot.app import auf_wallet_ui_install
 
@@ -14,7 +15,9 @@ from velvet_bot.app import auf_wallet_ui_install
 @dataclass(frozen=True, slots=True)
 class _Invoice:
     id: UUID
+    package_price_usd: Decimal
     billing_currency: str
+    locked_exchange_rate: Decimal
     final_local_amount: Decimal
 
 
@@ -22,11 +25,13 @@ class _Connection:
     def __init__(self) -> None:
         self.query = ""
         self.invoice_id = None
+        self.usd_amount = None
 
-    async def fetchrow(self, query: str, invoice_id: UUID):
+    async def fetchrow(self, query: str, invoice_id: UUID, usd_amount: Decimal):
         self.query = query
         self.invoice_id = invoice_id
-        return {"package_price_usd": Decimal("5.38")}
+        self.usd_amount = usd_amount
+        return {"package_price_usd": usd_amount}
 
 
 class _Acquire:
@@ -58,26 +63,37 @@ class AufWalletCurrencyTests(unittest.IsolatedAsyncioTestCase):
 
     def test_money_format_uses_selected_currency(self) -> None:
         self.assertEqual("100 ₽", currency_ui._format_money(Decimal("100"), "RUB"))
-        self.assertEqual("$5.38", currency_ui._format_money(Decimal("5.38"), "USD"))
+        self.assertEqual("$5.37", currency_ui._format_money(Decimal("5.37"), "USD"))
 
-    async def test_usd_invoice_is_persisted_with_usd_amount(self) -> None:
+    async def test_usd_invoice_uses_fixed_rub_package_price(self) -> None:
         database = _Database()
         service = SimpleNamespace(
             _repository=SimpleNamespace(_database=database),
         )
         invoice = _Invoice(
             id=UUID("00000000-0000-0000-0000-000000000123"),
+            package_price_usd=Decimal("3.00"),
             billing_currency="RUB",
-            final_local_amount=Decimal("429"),
+            locked_exchange_rate=Decimal("79.85"),
+            final_local_amount=Decimal("429.00"),
         )
 
-        updated = await currency_ui._set_invoice_currency(service, invoice, "USD")
+        updated = await (
+            auf_wallet_currency_fix.set_invoice_currency_from_fixed_package_price(
+                service,
+                invoice,
+                "USD",
+            )
+        )
 
         self.assertEqual("USD", updated.billing_currency)
-        self.assertEqual(Decimal("5.38"), updated.final_local_amount)
+        self.assertEqual(Decimal("5.37"), updated.package_price_usd)
+        self.assertEqual(Decimal("5.37"), updated.final_local_amount)
         self.assertEqual(invoice.id, database.connection.invoice_id)
+        self.assertEqual(Decimal("5.37"), database.connection.usd_amount)
         self.assertIn("billing_currency = 'USD'", database.connection.query)
-        self.assertIn("final_local_amount = package_price_usd", database.connection.query)
+        self.assertIn("package_price_usd = $2::NUMERIC", database.connection.query)
+        self.assertIn("final_local_amount = $2::NUMERIC", database.connection.query)
 
     def test_wallet_displays_both_prices_and_routes_currency_ui(self) -> None:
         render_source = inspect.getsource(currency_ui._render_wallet)
@@ -87,6 +103,7 @@ class AufWalletCurrencyTests(unittest.IsolatedAsyncioTestCase):
 
         install_source = inspect.getsource(auf_wallet_ui_install)
         self.assertIn("auf_wallet_currency_ui", install_source)
+        self.assertIn("install_auf_wallet_currency_fix", install_source)
 
 
 if __name__ == "__main__":
