@@ -117,6 +117,9 @@ suite без импортирующего отсутствующий в runner `
 `git diff --check` — OK; standalone Docker Compose v2.39.1 three-layer
 `config --quiet` — OK. Docker daemon, AppArmor parser/audit и live container
 smoke недоступны в isolated coder contract и остаются rollout-only проверками.
+Первый CI review-fix head дополнительно выявил, что доступный на GitHub runner
+`apparmor_parser` пытался открыть системный cache; parser regression переведён
+на отдельный temporary cache без повышенных privileges.
 
 ### Следующий шаг
 

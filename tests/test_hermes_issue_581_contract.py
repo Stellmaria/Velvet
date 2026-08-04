@@ -114,7 +114,12 @@ class Issue581ContractTests(unittest.TestCase):
             self.assertIn(rule, source)
         parser = shutil.which("apparmor_parser")
         if parser:
-            result = subprocess.run([parser, "-Q", str(profile)], capture_output=True, text=True)
+            with tempfile.TemporaryDirectory() as cache:
+                result = subprocess.run(
+                    [parser, "-Q", "--cache-loc", cache, str(profile)],
+                    capture_output=True,
+                    text=True,
+                )
             self.assertEqual(0, result.returncode, result.stderr)
 
     def test_orchestration_installer_closes_token_context_and_restart_lifecycle(self) -> None:
