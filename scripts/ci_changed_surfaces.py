@@ -11,6 +11,65 @@ from pathlib import Path
 FULL_SCAN_EVENTS = frozenset({"schedule", "workflow_dispatch"})
 ZERO_SHA = "0" * 40
 
+DOCKER_SHARED_PATTERNS = (
+    ".dockerignore",
+)
+
+DOCKER_VELVET_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile",
+    "requirements.txt",
+    "requirements.lock",
+    "main.py",
+    "velvet_bot/**",
+    "scripts/container_healthcheck.py",
+)
+
+DOCKER_SUPERVISOR_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile.server-supervisor-proxy",
+    "scripts/server_supervisor_proxy.py",
+)
+
+DOCKER_VISION_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile.vision-gateway",
+    "Dockerfile.vision-runtime",
+    "requirements.vision-gateway.txt",
+    "vision_gateway/**",
+    "scripts/vision_runtime_entrypoint.sh",
+    "scripts/vision_model_loader.sh",
+)
+
+DOCKER_KRITA_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "Dockerfile.krita-server",
+    "docker-compose.server.yml",
+    ".env.server.example",
+    "deploy/krita-server/**",
+    "deploy/server/install-krita-server.sh",
+    "deploy/server/krita-smoke.sh",
+    "deploy/server/wait-compose-health.sh",
+    "tools/krita/**",
+    "scripts/krita_server_healthcheck.py",
+)
+
+DOCKER_HERMES_PATTERNS = DOCKER_SHARED_PATTERNS + (
+    "docker-compose.server.yml",
+    ".env.hermes.example",
+    ".env.server.example",
+    "deploy/hermes-brain/**",
+    "deploy/hermes-coders/**",
+    "deploy/hermes-entities/**",
+    "deploy/hermes-librarian/**",
+    "deploy/hermes-operator/**",
+    "deploy/hermes-orchestration/**",
+)
+
+DOCKER_CI_PATTERNS = (
+    ".github/workflows/docker-build.yml",
+    ".github/workflows/branch-protection-contract.yml",
+    "scripts/ci_changed_surfaces.py",
+    "tests/test_ci_changed_surfaces.py",
+    "tests/test_docker_build_concurrency.py",
+)
+
 SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
     "supply_chain": (
         ".github/workflows/**",
@@ -75,6 +134,19 @@ SURFACE_PATTERNS: dict[str, tuple[str, ...]] = {
         "velvet_bot/domains/stories/models.py",
         "velvet_bot/domains/archive/models.py",
         "velvet_bot/domains/archive/preview_models.py",
+    ),
+    "docker_velvet": DOCKER_VELVET_PATTERNS,
+    "docker_supervisor": DOCKER_SUPERVISOR_PATTERNS,
+    "docker_vision": DOCKER_VISION_PATTERNS,
+    "docker_krita": DOCKER_KRITA_PATTERNS,
+    "docker_hermes": DOCKER_HERMES_PATTERNS,
+    "docker_ci": DOCKER_CI_PATTERNS,
+    "docker_any": (
+        DOCKER_VELVET_PATTERNS
+        + DOCKER_SUPERVISOR_PATTERNS
+        + DOCKER_VISION_PATTERNS
+        + DOCKER_KRITA_PATTERNS
+        + DOCKER_HERMES_PATTERNS
     ),
 }
 
