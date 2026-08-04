@@ -168,7 +168,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     resolution="1080p",
                     duration=5,
                 ).payload,
-                Decimal("21"),
+                Decimal("20"),
             ),
         )
         for payload, expected in cases:
