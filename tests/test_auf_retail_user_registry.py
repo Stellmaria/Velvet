@@ -38,8 +38,12 @@ class _PriceConnection:
                 "billing_usd_to_byn": Decimal("3"),
                 "retail_markup_percent": Decimal("42.86"),
                 "quote_rub_per_vl": Decimal("4"),
-                "operational_cost_buffer_percent": Decimal("5"),
                 "minimum_user_markup_percent": Decimal("15"),
+                "pricing_strategy": "target_margin",
+                "target_margin_percent": Decimal("30"),
+                "minimum_contribution_margin_percent": Decimal("10"),
+                "allow_subsidized_generations": False,
+                "effective_operational_reserve_percent": Decimal("5"),
             }
         raise AssertionError(query)
 
@@ -91,7 +95,8 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             self._payload(model="nano_banana_2", resolution="2K"),
         )
         self.assertEqual(Decimal("0.02"), quote.provider_cost_usd)
-        self.assertEqual(Decimal("0.03000060"), quote.target_retail_usd)
+        self.assertEqual(Decimal("0.030"), quote.target_retail_usd)
+        self.assertEqual("target_margin", quote.pricing_strategy)
         self.assertEqual(20_000, quote.quoted_units)
         self.assertEqual(Decimal("2.0000"), quote.quoted_auf)
         self.assertEqual(Decimal("0.1"), quote.minimum_revenue_usd)
@@ -124,11 +129,11 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
         self.assertEqual(Decimal("0.185"), quote.provider_cost_usd)
-        self.assertEqual(Decimal("0.27750555"), quote.target_retail_usd)
+        self.assertEqual(Decimal("0.2775"), quote.target_retail_usd)
         self.assertEqual(60_000, quote.quoted_units)
         self.assertEqual(0, quote.quoted_units % 10_000)
 
-    async def test_owner_breakdown_contains_only_provider_cost_in_three_currencies(self) -> None:
+    async def test_owner_breakdown_contains_private_generation_economics(self) -> None:
         connection = _PriceConnection(
             {
                 "id": 3,
@@ -154,13 +159,13 @@ class AufRetailPricingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("₽ РФ", text)
         self.assertIn("Br", text)
         self.assertIn("только Стэл", text)
+        self.assertIn("target_margin", text)
+        self.assertIn("целевая маржа", text)
+        self.assertIn("Маржа после округления", text)
         for forbidden in (
             "VL",
             "вельвет",
-            "Наценка",
             "Выручка",
-            "Прибыль",
-            "маржа",
             "Списание",
         ):
             self.assertNotIn(forbidden, text)
