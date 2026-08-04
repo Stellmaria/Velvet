@@ -55,6 +55,8 @@ Exact release `bfda60395fe03b83b8b62f47707994e870ff691a` успешно выпу
   дополнительном nested `/proc` mount;
 - strict nested `/proc` diagnostic остаётся доступным явно;
 - reconciler резервирует прежнюю конфигурацию и не использует `compose down`;
+- при ошибке reconciler возвращает два coder-контейнера к ранее смонтированному
+  Compose source без удаления volumes;
 - CI проходит на PR merge ref;
 - production rollout выполняется только после отдельного разрешения.
 
@@ -66,6 +68,8 @@ Exact release `bfda60395fe03b83b8b62f47707994e870ff691a` успешно выпу
 - active release worktree нельзя удалять, пока из него bind-mounted runtime files;
 - `--no-build` на reboot предполагает, что release workflow заранее подтвердил
   существующие image IDs;
+- rollback может force-recreate только два coder-контейнера, но не использует
+  `compose down` и не затрагивает persistent data;
 - nested `/proc` diagnostic остаётся отдельным инфраструктурным сигналом и не
   выдаётся за исправленный AppArmor host limitation;
 - auth, ledger, runs, workspaces, secrets и volumes должны быть сохранены.
@@ -85,7 +89,10 @@ Exact release `bfda60395fe03b83b8b62f47707994e870ff691a` успешно выпу
   `HERMES_CODEX_STRICT_NESTED_PROC_SMOKE=1`, normal systemd startup использует `0`;
 - `tier_provider_smoke.py` и `router_smoke.py` стали cwd-independent;
 - добавлен `reconcile_release_systemd.sh` с exact-SHA validation, backup,
-  rollback, stale-failed reset, smoke и container acceptance;
+  stale-failed reset, smoke и container acceptance;
+- перед изменениями reconciler фиксирует ранее смонтированный Compose source;
+- при ошибке rollback восстанавливает unit/drop-in и force-recreate только два
+  coder-контейнера из предыдущего Compose source с прежним override;
 - legacy drop-in удаляется из active systemd только после backup;
 - legacy Compose override переносится в backup только после полного успеха;
 - обновлены release docs и regression tests;
@@ -106,10 +113,10 @@ Exact release `bfda60395fe03b83b8b62f47707994e870ff691a` успешно выпу
 - database migrations отсутствуют;
 - Velvet bot, PostgreSQL, supervisor, Krita и application stack не меняются;
 - Docker volumes и persistent coder data не удаляются;
-- существующие coder images переиспользуются на start/reload;
+- существующие coder images переиспользуются на start/reload и rollback;
 - release workflow и detached worktree contract сохраняются;
-- rollback восстанавливает прежние unit-файлы и drop-in, не останавливая уже
-  работающие контейнеры;
+- rollback восстанавливает прежние unit-файлы, drop-in и ранее смонтированный
+  runtime двух coder-контейнеров;
 - новый normal smoke совместим с текущим production, где read-only/write bwrap
   probes проходят, а nested `/proc` probe отклоняется host policy.
 
@@ -123,18 +130,18 @@ Exact release `bfda60395fe03b83b8b62f47707994e870ff691a` успешно выпу
 - GitHub API default branch вместо `ls-remote | sed`;
 - optional strict nested `/proc` probe;
 - non-destructive systemd reconciler и backup contract;
+- rollback к ранее смонтированному coder Compose source;
 - runtime/provider/router smoke paths после start/reload.
 
-CI первого PR head выявил только несоответствие структуры worklog; кодовые checks
-на момент этой записи ещё выполняются. Структура worklog приведена к canonical
-контракту этим обновлением.
+CI первого PR head выявил несоответствие структуры worklog; структура приведена к
+canonical контракту. Следующие checks перезапускаются на каждом обновлённом head.
 
 ### PR и commit
 
 - Draft PR: `#626`;
 - ветка: `fix/hermes-release-systemd-lifecycle`;
 - base при создании ветки: `c5685fc117c9c622afc955287f0cae5b9d5dae81`;
-- актуальный PR head после исправления worklog фиксируется GitHub;
+- актуальный PR head после safety-исправлений фиксируется GitHub;
 - merge commit и production release SHA отсутствуют до отдельного разрешения.
 
 ### Незавершённое
