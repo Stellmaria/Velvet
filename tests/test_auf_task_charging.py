@@ -159,7 +159,7 @@ class PostgreSQLAufTaskChargingTests(unittest.IsolatedAsyncioTestCase):
                     duration=5,
                     audio=True,
                 ).payload,
-                Decimal("7"),
+                Decimal("6"),
             ),
             (
                 self._request(
