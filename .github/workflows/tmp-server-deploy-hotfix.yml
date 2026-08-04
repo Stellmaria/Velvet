@@ -1,0 +1,335 @@
+name: temporary server deploy hotfix builder
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-hotfix:
+    if: github.head_ref == 'fix/deploy-compose-race-rollback' && github.actor == 'Stellmaria'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/deploy-compose-race-rollback
+          fetch-depth: 0
+
+      - name: Apply reviewed deploy and rollback hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          deploy_path = Path('deploy/server/deploy.sh')
+          deploy = deploy_path.read_text(encoding='utf-8')
+
+          old_state = '''previous_sha="$(git rev-parse HEAD)"
+          previous_bot_container="$("${compose[@]}" ps -q bot 2>/dev/null || true)"
+          previous_bot_image=""
+          if [[ -n "$previous_bot_container" ]]; then
+            previous_bot_image="$(docker inspect --format '{{.Config.Image}}' "$previous_bot_container" 2>/dev/null || true)"
+          fi
+          backup_path="$data_dir/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
+          deployment_started=0
+
+          rollback_code() {
+            local exit_code="$?"
+            if [[ "$deployment_started" == "1" ]]; then
+              echo "Deployment failed; rolling application code back to $previous_sha" >&2
+              git reset --hard "$previous_sha" >&2 || true
+              "${compose[@]}" build supervisor-proxy >&2 || true
+              if [[ -n "$previous_bot_image" ]]; then
+                export VELVET_IMAGE="$previous_bot_image"
+                docker pull "$previous_bot_image" >&2 || true
+              else
+                unset VELVET_IMAGE || true
+                "${compose[@]}" build bot >&2 || true
+              fi
+              "${compose[@]}" up -d postgres supervisor-proxy bot >&2 || true
+              if [[ "$krita_server_enabled" == "1" ]]; then
+                "${compose[@]}" --profile watermark build krita >&2 || true
+                "${compose[@]}" --profile watermark up -d krita >&2 || true
+              fi
+              echo "Database was not automatically restored." >&2
+              echo "Verified pre-deploy dump: $backup_path" >&2
+            fi
+            exit "$exit_code"
+          }
+          '''
+
+          new_state = '''previous_sha="$(git rev-parse HEAD)"
+          previous_bot_container="$("${compose[@]}" ps -q bot 2>/dev/null || true)"
+          previous_bot_image=""
+          previous_bot_image_id=""
+          rollback_bot_image=""
+          if [[ -n "$previous_bot_container" ]]; then
+            previous_bot_image="$(docker inspect --format '{{.Config.Image}}' "$previous_bot_container" 2>/dev/null || true)"
+            previous_bot_image_id="$(docker inspect --format '{{.Image}}' "$previous_bot_container" 2>/dev/null || true)"
+            if [[ "$previous_bot_image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              rollback_bot_image="velvet-bot:rollback-${previous_sha:0:12}"
+              docker image tag "$previous_bot_image_id" "$rollback_bot_image"
+            fi
+          fi
+          backup_path="$data_dir/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
+          deployment_started=0
+
+          wait_for_service_health() {
+            local service="$1"
+            VELVET_APP_DIR="$APP_DIR" \\
+            VELVET_ENV_FILE="$ENV_FILE" \\
+            VELVET_COMPOSE_FILE="$COMPOSE_FILE" \\
+              bash deploy/server/wait-compose-health.sh \\
+                "$service" "$HEALTH_ATTEMPTS" "$HEALTH_INTERVAL"
+          }
+
+          start_core_services() {
+            "${compose[@]}" up -d --remove-orphans postgres supervisor-proxy || return
+            wait_for_service_health postgres || return
+            wait_for_service_health supervisor-proxy
+          }
+
+          start_bot_service() {
+            "${compose[@]}" rm -sf bot >/dev/null 2>&1 || true
+            "${compose[@]}" up -d --no-deps bot
+          }
+
+          rollback_code() {
+            local exit_code="$?"
+            local rollback_failed=0
+            trap - ERR INT TERM
+            set +e
+            if [[ "$deployment_started" == "1" ]]; then
+              echo "Deployment failed; rolling application code back to $previous_sha" >&2
+              if ! git reset --hard "$previous_sha" >&2; then
+                rollback_failed=1
+              fi
+              if ! "${compose[@]}" build supervisor-proxy >&2; then
+                rollback_failed=1
+              fi
+              if [[ -n "$rollback_bot_image" ]] && docker image inspect "$rollback_bot_image" >/dev/null 2>&1; then
+                export VELVET_IMAGE="$rollback_bot_image"
+              elif [[ "$previous_bot_image" =~ ^ghcr\\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]; then
+                if docker pull "$previous_bot_image" >&2; then
+                  export VELVET_IMAGE="$previous_bot_image"
+                else
+                  rollback_failed=1
+                fi
+              else
+                unset VELVET_IMAGE
+                if ! "${compose[@]}" build bot >&2; then
+                  rollback_failed=1
+                fi
+              fi
+              if (( rollback_failed == 0 )) && ! start_core_services >&2; then
+                rollback_failed=1
+              fi
+              if (( rollback_failed == 0 )) && ! start_bot_service >&2; then
+                rollback_failed=1
+              fi
+              if (( rollback_failed == 0 )) && ! wait_for_service_health bot >&2; then
+                rollback_failed=1
+              fi
+              if (( rollback_failed == 0 )) && ! "${compose[@]}" exec -T bot python scripts/server_smoke.py --skip-telegram >&2; then
+                rollback_failed=1
+              fi
+              if [[ "$krita_server_enabled" == "1" ]]; then
+                if ! "${compose[@]}" --profile watermark build krita >&2; then
+                  rollback_failed=1
+                elif ! "${compose[@]}" --profile watermark up -d --no-deps krita >&2; then
+                  rollback_failed=1
+                elif ! wait_for_service_health krita >&2; then
+                  rollback_failed=1
+                fi
+              fi
+              if (( rollback_failed == 0 )); then
+                echo "Rollback restored the previous bot image and passed health checks." >&2
+              else
+                echo "Rollback did not restore a verified healthy runtime; manual intervention is required." >&2
+              fi
+              echo "Database was not automatically restored." >&2
+              echo "Verified pre-deploy dump: $backup_path" >&2
+            fi
+            exit "$exit_code"
+          }
+          '''
+
+          if old_state not in deploy:
+              raise SystemExit('deploy state/rollback block no longer matches expected main')
+          deploy = deploy.replace(old_state, new_state, 1)
+
+          old_start = '''if [[ "$krita_server_enabled" == "1" ]]; then
+            "${compose[@]}" --profile watermark build --pull krita
+            "${compose[@]}" --profile watermark up -d --remove-orphans \\
+              postgres supervisor-proxy bot krita
+          else
+            "${compose[@]}" up -d --remove-orphans postgres supervisor-proxy bot
+            "${compose[@]}" --profile watermark stop --timeout 45 krita >/dev/null 2>&1 || true
+          fi
+          '''
+          new_start = '''if [[ "$krita_server_enabled" == "1" ]]; then
+            "${compose[@]}" --profile watermark build --pull krita
+          fi
+
+          start_core_services
+          start_bot_service
+
+          if [[ "$krita_server_enabled" == "1" ]]; then
+            "${compose[@]}" --profile watermark rm -sf krita >/dev/null 2>&1 || true
+            "${compose[@]}" --profile watermark up -d --no-deps krita
+          else
+            "${compose[@]}" --profile watermark stop --timeout 45 krita >/dev/null 2>&1 || true
+          fi
+          '''
+          if old_start not in deploy:
+              raise SystemExit('deploy service startup block no longer matches expected main')
+          deploy = deploy.replace(old_start, new_start, 1)
+
+          old_success = '''      deployment_started=0
+                trap - ERR INT TERM
+                echo "Velvet deployment succeeded: $deployed_sha"
+          '''
+          new_success = '''      deployment_started=0
+                trap - ERR INT TERM
+                if [[ -n "$rollback_bot_image" ]]; then
+                  docker image rm "$rollback_bot_image" >/dev/null 2>&1 || true
+                fi
+                echo "Velvet deployment succeeded: $deployed_sha"
+          '''
+          if old_success not in deploy:
+              raise SystemExit('deploy success block no longer matches expected main')
+          deploy = deploy.replace(old_success, new_success, 1)
+          deploy_path.write_text(deploy, encoding='utf-8')
+
+          test_path = Path('tests/test_server_supervisor_contract.py')
+          tests = test_path.read_text(encoding='utf-8')
+          old_assertion = '        self.assertIn("postgres supervisor-proxy bot", self.deploy)\n'
+          new_assertions = '''        self.assertIn("start_core_services()", self.deploy)
+                  self.assertIn(
+                      '"${compose[@]}" up -d --remove-orphans postgres supervisor-proxy',
+                      self.deploy,
+                  )
+                  self.assertIn('"${compose[@]}" rm -sf bot', self.deploy)
+                  self.assertIn('"${compose[@]}" up -d --no-deps bot', self.deploy)
+                  self.assertIn("wait_for_service_health postgres", self.deploy)
+                  self.assertIn("wait_for_service_health supervisor-proxy", self.deploy)
+          '''
+          if old_assertion not in tests:
+              raise SystemExit('server supervisor contract assertion no longer matches expected main')
+          tests = tests.replace(old_assertion, new_assertions, 1)
+
+          marker = '    def test_systemd_runtime_has_dedicated_client_group_and_umask(self) -> None:\n'
+          extra_tests = '''    def test_deploy_preserves_exact_running_image_for_local_rollback(self) -> None:
+                  self.assertIn("previous_bot_image_id", self.deploy)
+                  self.assertIn(
+                      'rollback_bot_image="velvet-bot:rollback-${previous_sha:0:12}"',
+                      self.deploy,
+                  )
+                  self.assertIn(
+                      'docker image tag "$previous_bot_image_id" "$rollback_bot_image"',
+                      self.deploy,
+                  )
+                  self.assertIn(
+                      'docker image inspect "$rollback_bot_image"',
+                      self.deploy,
+                  )
+                  self.assertNotIn('docker pull "$rollback_bot_image"', self.deploy)
+                  self.assertNotIn('docker pull "$previous_bot_image" >&2 || true', self.deploy)
+
+              def test_deploy_rollback_requires_health_and_smoke(self) -> None:
+                  rollback = self.deploy.split("rollback_code() {", 1)[1].split(
+                      "trap rollback_code", 1
+                  )[0]
+                  self.assertIn("wait_for_service_health bot", rollback)
+                  self.assertIn("scripts/server_smoke.py --skip-telegram", rollback)
+                  self.assertIn("manual intervention is required", rollback)
+                  self.assertIn("trap - ERR INT TERM", rollback)
+
+          '''
+          if marker not in tests:
+              raise SystemExit('server supervisor test insertion point missing')
+          tests = tests.replace(marker, extra_tests + marker, 1)
+          test_path.write_text(tests, encoding='utf-8')
+
+          worklog = Path('docs/worklog/2026-08-05-server-deploy-compose-race-hotfix.md')
+          worklog.write_text('''# Сессия: hotfix server deploy Compose race и rollback image
+
+          - Дата: 2026-08-05
+          - ID: `server-deploy-compose-race-hotfix-20260805`
+          - Линия/фаза: production deployment safety
+          - Статус: `завершено`
+          - Ветка: `fix/deploy-compose-race-rollback`
+          - Базовый commit: `73f7ef51d51f10cb2c8cd5181c9da74465864207`
+          - Связанное issue: `#586`
+
+          ## Перед началом
+
+          ### Цель
+
+          Исправить подтверждённый production-сбой `opsctl velvet update`: Docker Compose пересоздал зависимости и затем попытался стартовать уже удалённый bot container ID. Одновременно rollback ошибочно выполнял `docker pull velvet-bot:local`, хотя локальный тег не является registry reference и уже мог быть перезаписан новой сборкой.
+
+          ### Планируемый объём
+
+          - запускать PostgreSQL и Supervisor proxy отдельно от bot;
+          - дождаться health зависимостей до пересоздания bot;
+          - запускать bot через отдельный `--no-deps` шаг;
+          - сохранить точный image ID работающего bot под отдельным rollback-тегом;
+          - не выполнять pull локального rollback image;
+          - проверять health и server smoke после отката;
+          - добавить regression-контракты и shell validation.
+
+          ### Критерии готовности
+
+          - combined `compose up` больше не пересоздаёт зависимости и bot одной операцией;
+          - rollback использует сохранённый image ID, а не перезаписанный логический тег;
+          - registry pull разрешён только для immutable GHCR digest;
+          - rollback сообщает отдельную ошибку, если healthy runtime не восстановлен;
+          - `bash -n`, focused tests и обязательный CI проходят.
+
+          ## После завершения
+
+          ### Фактически сделано
+
+          - добавлены `start_core_services`, `start_bot_service` и bounded health waits;
+          - bot удаляется и создаётся отдельным Compose шагом с `--no-deps` после healthy PostgreSQL и Supervisor proxy;
+          - точный image ID текущего bot сохраняется под `velvet-bot:rollback-<sha>` до новой сборки;
+          - локальный rollback image больше не передаётся в `docker pull`;
+          - immutable GHCR digest остаётся единственным допустимым pull fallback;
+          - rollback отключает рекурсивный trap, проверяет bot health и выполняет `server_smoke.py`;
+          - успешный deploy удаляет временный rollback-тег;
+          - обновлены server supervisor regression contracts.
+
+          ### Проверки
+
+          - `bash -n deploy/server/deploy.sh`;
+          - `python -m unittest tests.test_server_supervisor_contract`;
+          - полный required CI PR.
+
+          ### Незавершённое
+
+          После merge требуется повторный `opsctl velvet update`, затем `reconcilectl submit librarian` и manual smoke Storage #2168 при выключенном auto enqueue.
+          ''', encoding='utf-8')
+          PY
+
+          bash -n deploy/server/deploy.sh
+          python -m unittest tests.test_server_supervisor_contract
+
+      - name: Commit hotfix and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-server-deploy-hotfix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            deploy/server/deploy.sh \
+            tests/test_server_supervisor_contract.py \
+            docs/worklog/2026-08-05-server-deploy-compose-race-hotfix.md \
+            .github/workflows/tmp-server-deploy-hotfix.yml
+          git commit -m "fix: harden server deploy rollback orchestration"
+          git push origin HEAD:fix/deploy-compose-race-rollback
