@@ -20,6 +20,18 @@ class RuntimeSourceError(RuntimeError):
     pass
 
 
+def ensure_runtime_sources_container_readable(root: Path = SOURCE_DIR) -> None:
+    """Grant only the world-read bit required by bind-mounted container UIDs."""
+    for name in RUNTIME_SOURCES:
+        path = root / name
+        if not path.is_file():
+            raise RuntimeSourceError(f"Отсутствует runtime source: {path}")
+        mode = stat.S_IMODE(path.stat().st_mode)
+        readable_mode = mode | stat.S_IROTH
+        if readable_mode != mode:
+            path.chmod(readable_mode)
+
+
 def validate_runtime_sources(root: Path = SOURCE_DIR) -> None:
     for name in RUNTIME_SOURCES:
         path = root / name
@@ -33,6 +45,7 @@ def validate_runtime_sources(root: Path = SOURCE_DIR) -> None:
 
 
 def main() -> int:
+    ensure_runtime_sources_container_readable()
     validate_runtime_sources()
     print("Hermes coder runtime source permissions: OK")
     return 0
