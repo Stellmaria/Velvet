@@ -3,7 +3,7 @@
 - Дата: 2026-08-04
 - ID: AUF-PRICING-ECONOMY-HARDENING-20260804
 - Линия/фаза: Ауф / тарификация генераций
-- Статус: на проверке
+- Статус: частично
 - Ветка: feat/auf-pricing-economy-hardening
 - Базовый commit: f4f98ac2d57967a80f399b1986ad7cc069311c68
 
