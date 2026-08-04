@@ -1,34 +1,88 @@
-# VL pricing and RUB/USD invoices
+# Цены VL и счета RUB/USD
 
-Date: 2026-08-04
+- Дата: 2026-08-04
+- ID: AUF-PRICING-RUB-USD-20260804
+- Линия/фаза: Ауф / кошелёк и платежные заявки
+- Статус: завершено
+- Ветка: feat/auf-42-86-margin-packages
+- Базовый commit: e6a77aa7fcb7cdab11581f1503d40230e35feb74
 
-## Context
+## Перед началом
 
-Velvet needed a global default markup corresponding to a 30 percent gross margin, a minimum purchase starting at 100 RUB, and package prices visible and selectable in RUB or USD.
+### Цель
 
-## Changes
+Установить глобальную наценку по умолчанию 42,86%, сохранить индивидуальные надценки, снизить минимальную покупку до 100 ₽ и добавить выбор RUB/USD для новых счетов.
 
-- Set the global default markup to 42.86 percent.
-- Preserve all individual user markup overrides; they continue to take priority over the global default.
-- Replace the 40 VL entry package with 20 VL for 100 RUB.
-- Set active package prices to 20/100/250/500/1000/2500 VL for 100/429/1019/1890/3590/8590 RUB.
-- Display RUB and USD package prices to users.
-- Add RUB/USD selection for new manual invoices while retaining compatibility with old RUB callbacks.
-- Derive a USD invoice from the fixed RUB package price and the locked exchange rate, then persist the exact USD amount in both invoice price fields.
+### Исходный контекст
 
-## Safety and compatibility
+В `main` действовала глобальная наценка 30%, минимальный пакет начинался с 40 VL за 119 ₽, а пользовательские счета создавались только в RUB. В базе уже существовали индивидуальные переопределения наценки, которые нельзя удалять.
 
-- Existing individual markup rows are not deleted or modified.
-- Existing invoices keep their stored currency and locked amounts.
-- Old package callbacks without a currency suffix are interpreted as RUB.
-- Wallet crediting and invoice idempotency remain unchanged.
+### Планируемый объём
 
-## Validation
+- Обновить глобальную настройку экономики и фиксированные цены пакетов.
+- Сохранить таблицу индивидуальных переопределений без изменений.
+- Добавить пакет 20 VL за 100 ₽ и отключить старый пакет 40 VL.
+- Показывать цены пакетов в RUB и USD.
+- Добавить выбор валюты нового счёта.
+- Зафиксировать USD-сумму от реальной RUB-цены выбранного пакета и locked exchange rate.
+- Обновить тесты и документацию.
 
-- Contract tests cover the package list, minimum purchase, default markup, survival of individual overrides, and the 30 percent margin floor.
-- Currency tests cover normalization, callback compatibility, money formatting, UI routing, and conversion of a fixed 429 RUB package to 5.37 USD at a locked 79.85 RUB/USD rate.
-- Full repository CI is required before merge.
+### Критерии готовности
 
-## Rollout
+- Глобальная наценка по умолчанию равна 42,86%.
+- Индивидуальные надценки сохраняются и имеют приоритет.
+- Активные пакеты: 20/100/250/500/1000/2500 VL.
+- Минимальная покупка составляет 100 ₽.
+- Старые callbacks без валюты продолжают создавать RUB-счёт.
+- USD-счёт соответствует фиксированной цене пакета, а не базовой цене одного VL.
+- Обязательный CI завершён успешно до merge.
 
-After merge, production still requires the normal controlled rollout so migration `z029_auf_margin30_packages.sql` is applied and the bot process loads the currency UI changes.
+### Риски и ограничения
+
+- Merge не применяет SQL-миграцию к production автоматически.
+- Изменение цены пакетов влияет на все покупки VL, а не только генерацию фото.
+- USD используется как валюта ручного счёта; полноценный платёжный провайдер в этот PR не входит.
+- Существующие счета не пересчитываются.
+
+## После завершения
+
+### Фактически сделано
+
+- Глобальная наценка по умолчанию установлена на 42,86%.
+- Индивидуальные строки `auf_user_markup_overrides` не удаляются и не изменяются.
+- Старый пакет 40 VL отключается.
+- Добавлены цены 20/100/250/500/1000/2500 VL: 100/429/1019/1890/3590/8590 ₽.
+- Кошелёк показывает RUB и USD всем пользователям.
+- Добавлены кнопки выбора RUB/USD для нового счёта.
+- USD-сумма вычисляется как фиксированная RUB-цена пакета, делённая на зафиксированный курс, с округлением до центов.
+- Старый callback без суффикса валюты сохраняет поведение RUB.
+
+### Миграции и совместимость
+
+- Добавлена миграция `migrations/z029_auf_margin30_packages.sql`.
+- Индивидуальные переопределения наценки полностью сохраняются.
+- Существующие счета и ledger-записи не изменяются.
+- Схема `billing_currency` уже допускает RUB и USD, отдельная DDL-миграция не требуется.
+
+### Проверки
+
+- Contract-тест пакетов и минимальной покупки.
+- Contract-тест глобальной наценки и сохранения индивидуальных overrides.
+- Проверка нижней границы валовой маржи 30% на самом выгодном пакете.
+- Тесты нормализации валюты и обратной совместимости callback.
+- Тест расчёта 429 ₽ как $5,37 при locked rate 79,85 ₽/$.
+- Полный GitHub Actions CI запускается на точном PR head.
+
+### PR и commit
+
+- PR: #587 `feat: обновить цены VL и добавить выбор RUB/USD`.
+- Точный merge commit будет зафиксирован GitHub после успешного CI и merge.
+
+### Незавершённое
+
+- Production rollout, применение миграции и перезапуск бота не входят в merge.
+- Реальная автоматическая оплата картами, Stars или платёжным провайдером не реализована этим PR.
+
+### Следующий шаг
+
+После зелёного CI слить PR #587 в `main`, затем отдельно выполнить контролируемый production rollout с применением миграции и smoke-проверкой кошелька в RUB и USD.
