@@ -127,13 +127,24 @@ _PROTECTED_CONTROL_PATHS = tuple(
     Path(value)
     for value in (
         "/opt/data/config.yaml",
+        "/opt/data/AGENTS.md",
+        "/opt/data/SOUL.md",
+        "/opt/data/context-manifest.json",
         "/opt/data/.env",
         "/opt/data/auth.json",
         "/opt/data/.hermes-ops-client-token",
+        "/opt/data/.gitconfig",
+        "/opt/data/.ssh",
         "/opt/data/tools",
         "/opt/data/plugins",
+        "/opt/data/hooks",
         "/opt/data/orchestration",
         "/opt/data/audit",
+        "/opt/data/processes.json",
+        "/proc",
+        "/run/secrets",
+        "/root/.ssh",
+        "/home/hermes/.ssh",
     )
 )
 _REPOSITORY_MARKERS = tuple(str(path).lower() for path in _REPOSITORY_ROOTS)
@@ -144,6 +155,7 @@ _SENSITIVE_DATA_NAMES = frozenset(
         "credentials.json",
         "secrets.json",
         ".hermes-ops-client-token",
+        ".gitconfig",
     }
 )
 
@@ -658,8 +670,9 @@ def _on_pre_tool_call(
         return _block(
             tool_name=name,
             reason=(
-                "Direct access to Kael config, credentials, controllers, "
-                "plugins, ledger, or audit files is disabled."
+                "Direct access to Kael config, identity, credentials, "
+                "controllers, plugins, hooks, ledger, process state, or audit "
+                "files is disabled."
             ),
             task_id=task_id,
             session_id=session_id,
