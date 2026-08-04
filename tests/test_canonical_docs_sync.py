@@ -105,8 +105,9 @@ class CanonicalDocsSyncTests(unittest.TestCase):
         self.assertIn("не закрывается зелёным CI", self.audit)
 
     def test_navigation_and_branch_maintenance_status_are_current(self) -> None:
-        self.assertIn("Python files scanned: **646**", self.navigation)
-        self.assertIn("Buttons: **1061**", self.navigation)
+        self.assertIn("Python files scanned: **648**", self.navigation)
+        self.assertIn("Files with buttons: **105**", self.navigation)
+        self.assertIn("Buttons: **1063**", self.navigation)
         self.assertIn("Violations: **0**", self.navigation)
 
         for document in (self.status, self.memory, self.audit, self.changelog):

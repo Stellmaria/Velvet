@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from velvet_bot.domains.auf_runtime import AufRuntimeService
 from velvet_bot.domains.workspaces.product_models import GLOBAL_WORKSPACE_CREATOR_ID
 
+from .economics import AufEconomicsRepository
 from .models import (
     AufEconomySettings,
+    AufMarginSummary,
     AufWallet,
     AufWalletOperation,
     AufWalletOverview,
@@ -41,6 +43,7 @@ class AufWalletService:
     ) -> None:
         self._repository = repository
         self._runtime = runtime_service
+        self._economics = AufEconomicsRepository(repository._database)
 
     @staticmethod
     def is_global_owner(user_id: int) -> bool:
@@ -65,6 +68,28 @@ class AufWalletService:
     async def economy_settings(self, *, actor_user_id: int) -> AufEconomySettings:
         self._require_global_owner(actor_user_id)
         return await self._repository.economy_settings()
+
+    async def margin_summary(
+        self,
+        *,
+        actor_user_id: int,
+        days: int = 30,
+    ) -> AufMarginSummary:
+        self._require_global_owner(actor_user_id)
+        return await self._economics.margin_summary(days=days)
+
+    async def record_actual_provider_cost(
+        self,
+        *,
+        task_id: UUID,
+        actual_provider_cost_usd: Decimal,
+        actor_user_id: int,
+    ) -> None:
+        self._require_global_owner(actor_user_id)
+        await self._economics.record_actual_provider_cost(
+            task_id=task_id,
+            actual_provider_cost_usd=actual_provider_cost_usd,
+        )
 
     async def package_quotes(
         self,

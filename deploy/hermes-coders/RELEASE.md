@@ -28,6 +28,19 @@ The release does not restart the Velvet bot, PostgreSQL, supervisor, Krita, chat
 agents, database proxies or the coder router. It does not run migrations or submit
 a production coder task.
 
+## Evidence contract
+
+Every completed `deploy Hermes coders` run is followed by
+`.github/workflows/report-hermes-coder-release.yml`. The reporter does not check
+out or execute release-branch code. It validates that a push ref embeds the exact
+workflow head SHA, reads the completed Actions log with `actions: read`, redacts
+credential-like values, bounds the excerpt to the final 80 lines and comments the
+outcome, commit, ref, run URL and verification tail on issue `#592`.
+
+The reporter has only `actions: read`, `contents: read` and `issues: write`.
+A failed production release produces the same evidence comment and then leaves the
+reporter workflow failed, so failure cannot disappear behind a green reporting job.
+
 Detached release worktrees must remain present while containers bind-mount files
 from them. Old worktree retention is a separate maintenance operation and must
 never remove the target referenced by `/srv/hermes-coders/releases/current-hermes-coders`.

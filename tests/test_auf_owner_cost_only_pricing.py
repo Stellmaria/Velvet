@@ -40,6 +40,10 @@ class _Connection:
                 "wan_27_image": {"1K": 1, "2K": 2},
                 "wan_27_image_pro": {"1K": 3, "2K": 4, "4K": 5},
             }
+            discounted_minimums = {
+                "nano_banana_2": {"1K": 1, "2K": 2, "4K": 3},
+                "nano_banana_pro": {"1K": 1, "2K": 2, "4K": 3},
+            }
             return {
                 "id": 1,
                 "version_key": "pricing:test",
@@ -52,6 +56,9 @@ class _Connection:
                 "extra_reference_cost_usd": Decimal("0"),
                 "quality_surcharge_velvets": 0,
                 "minimum_velvets": minimums[self.model_alias][self.resolution],
+                "minimum_discounted_velvets": discounted_minimums.get(
+                    self.model_alias, {}
+                ).get(self.resolution),
             }
         if "FROM auf_economy_settings" in query:
             return {
@@ -60,8 +67,12 @@ class _Connection:
                 "billing_usd_to_byn": Decimal("3"),
                 "retail_markup_percent": Decimal("42.86"),
                 "quote_rub_per_vl": Decimal("4"),
-                "operational_cost_buffer_percent": Decimal("5"),
                 "minimum_user_markup_percent": Decimal("15"),
+                "pricing_strategy": "target_margin",
+                "target_margin_percent": Decimal("30"),
+                "minimum_contribution_margin_percent": Decimal("10"),
+                "allow_subsidized_generations": False,
+                "effective_operational_reserve_percent": Decimal("5"),
             }
         raise AssertionError(query)
 
@@ -109,7 +120,7 @@ class BananaPriceTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertEqual(velvets * AUF_SCALE, quote.quoted_units)
 
-    async def test_individual_markup_preserves_banana_pro_floor(self) -> None:
+    async def test_minimum_individual_markup_uses_discounted_banana_pro_floor(self) -> None:
         quote = await quote_auf_payload(
             _Connection(
                 model_alias="nano_banana_pro",
@@ -119,7 +130,8 @@ class BananaPriceTests(unittest.IsolatedAsyncioTestCase):
             ),
             _payload("nano_banana_pro", "1K"),
         )
-        self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
+        self.assertEqual(AUF_SCALE, quote.quoted_units)
+        self.assertEqual("user_markup", quote.pricing_strategy)
 
 
 class WanImagePriceTests(unittest.IsolatedAsyncioTestCase):
@@ -175,32 +187,37 @@ class OwnerCostOnlyTests(unittest.TestCase):
             user_markup_override_percent=None,
             minimum_user_markup_percent=Decimal("15"),
             markup_percent=Decimal("42.86"),
+            pricing_strategy="target_margin",
+            target_margin_percent=Decimal("30"),
+            minimum_contribution_margin_percent=Decimal("10"),
+            allow_subsidized_generations=False,
             operational_cost_buffer_percent=Decimal("5"),
+            subsidy_guard_applied=False,
             quote_rub_per_vl=Decimal("4"),
             quality_surcharge_velvets=0,
             minimum_velvets=4,
-            target_retail_usd=Decimal("0.2250045"),
+            target_retail_usd=Decimal("0.225"),
             minimum_revenue_usd=Decimal("0.250860"),
             billing_usd_to_rub=Decimal("79.7257"),
             billing_usd_to_byn=Decimal("2.92661"),
             quoted_units=5 * AUF_SCALE,
         )
 
-    def test_owner_block_contains_only_provider_and_real_cost(self) -> None:
+    def test_owner_block_contains_private_cost_and_margin_policy(self) -> None:
         rendered = format_owner_price_details(self._quote())
 
         self.assertIn("Провайдер: <code>KIE</code>", rendered)
         self.assertIn("$0.1500", rendered)
         self.assertIn("₽ РФ", rendered)
         self.assertIn("Br", rendered)
+        self.assertIn("target_margin", rendered)
+        self.assertIn("целевая маржа", rendered)
+        self.assertIn("Маржа после округления", rendered)
         for forbidden in (
-            "Наценка",
             "Цена по проценту",
             "Надбавка качества",
             "Списание",
             "Выручка",
-            "Прибыль",
-            "маржа",
         ):
             self.assertNotIn(forbidden, rendered)
 

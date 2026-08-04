@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 646,
-  "production_loc": 141744,
+  "production_module_count": 648,
+  "production_loc": 142204,
   "layer_counts": {
     "application": 21,
-    "composition": 65,
+    "composition": 66,
     "core": 7,
-    "domain": 183,
+    "domain": 184,
     "infrastructure": 29,
     "other": 1,
     "presentation": 215,
@@ -92,7 +92,7 @@
   "installer_graph": [
     {
       "order": 1,
-      "line": 226,
+      "line": 234,
       "call": "install_runtime_stability",
       "origin": "velvet_bot.runtime_stability.install_runtime_stability",
       "owner_module": "velvet_bot.runtime_stability",
@@ -104,7 +104,7 @@
     },
     {
       "order": 2,
-      "line": 227,
+      "line": 235,
       "call": "install_channel_analytics_datetime_compat",
       "origin": "velvet_bot.app.channel_analytics_datetime_compat.install_channel_analytics_datetime_compat",
       "owner_module": "velvet_bot.app.channel_analytics_datetime_compat",
@@ -114,7 +114,7 @@
     },
     {
       "order": 3,
-      "line": 157,
+      "line": 161,
       "call": "install_ai_model_routing",
       "origin": "velvet_bot.infrastructure.ai_model_routing.install_ai_model_routing",
       "owner_module": "velvet_bot.infrastructure.ai_model_routing",
@@ -125,7 +125,7 @@
     },
     {
       "order": 4,
-      "line": 158,
+      "line": 162,
       "call": "install_friendly_media_worker",
       "origin": "velvet_bot.domains.media_generation.friendly_worker.install_friendly_media_worker",
       "owner_module": "velvet_bot.domains.media_generation.friendly_worker",
@@ -133,7 +133,7 @@
     },
     {
       "order": 5,
-      "line": 159,
+      "line": 163,
       "call": "install_grs_resilience",
       "origin": "velvet_bot.app.grs_resilience.install_grs_resilience",
       "owner_module": "velvet_bot.app.grs_resilience",
@@ -145,7 +145,7 @@
     },
     {
       "order": 6,
-      "line": 160,
+      "line": 164,
       "call": "install_grs_campaign_retry",
       "origin": "velvet_bot.app.grs_campaign_retry.install_grs_campaign_retry",
       "owner_module": "velvet_bot.app.grs_campaign_retry",
@@ -157,7 +157,7 @@
     },
     {
       "order": 7,
-      "line": 161,
+      "line": 165,
       "call": "install_grs_speedups",
       "origin": "velvet_bot.app.grs_speedups.install_grs_speedups",
       "owner_module": "velvet_bot.app.grs_speedups",
@@ -173,7 +173,7 @@
     },
     {
       "order": 8,
-      "line": 162,
+      "line": 166,
       "call": "install_telegram_progress_resilience",
       "origin": "velvet_bot.app.telegram_progress_resilience.install_telegram_progress_resilience",
       "owner_module": "velvet_bot.app.telegram_progress_resilience",
@@ -184,7 +184,7 @@
     },
     {
       "order": 9,
-      "line": 166,
+      "line": 170,
       "call": "install_auf_cancel_ui",
       "origin": "velvet_bot.app.auf_cancel_ui_install.install_auf_cancel_ui",
       "owner_module": "velvet_bot.app.auf_cancel_ui_install",
@@ -196,7 +196,7 @@
     },
     {
       "order": 10,
-      "line": 167,
+      "line": 171,
       "call": "install_auf_runtime_dispatcher",
       "origin": "velvet_bot.app.auf_runtime_install.install_auf_runtime_dispatcher",
       "owner_module": "velvet_bot.app.auf_runtime_install",
@@ -204,7 +204,7 @@
     },
     {
       "order": 11,
-      "line": 171,
+      "line": 175,
       "call": "install_auf_reconciliation",
       "origin": "velvet_bot.app.auf_reconciliation_install.install_auf_reconciliation",
       "owner_module": "velvet_bot.app.auf_reconciliation_install",
@@ -212,7 +212,7 @@
     },
     {
       "order": 12,
-      "line": 172,
+      "line": 176,
       "call": "install_auf_workspace_ui",
       "origin": "velvet_bot.app.auf_workspace_ui_install.install_auf_workspace_ui",
       "owner_module": "velvet_bot.app.auf_workspace_ui_install",
@@ -222,7 +222,7 @@
     },
     {
       "order": 13,
-      "line": 173,
+      "line": 177,
       "call": "install_auf_wallet_ui",
       "origin": "velvet_bot.app.auf_wallet_ui_install.install_auf_wallet_ui",
       "owner_module": "velvet_bot.app.auf_wallet_ui_install",
@@ -230,7 +230,7 @@
     },
     {
       "order": 14,
-      "line": 174,
+      "line": 178,
       "call": "install_auf_photo_ui",
       "origin": "velvet_bot.app.auf_photo_ui_install.install_auf_photo_ui",
       "owner_module": "velvet_bot.app.auf_photo_ui_install",
@@ -238,7 +238,7 @@
     },
     {
       "order": 15,
-      "line": 175,
+      "line": 179,
       "call": "install_auf_reference_privacy",
       "origin": "velvet_bot.app.auf_reference_privacy_install.install_auf_reference_privacy",
       "owner_module": "velvet_bot.app.auf_reference_privacy_install",
@@ -252,7 +252,7 @@
     },
     {
       "order": 16,
-      "line": 179,
+      "line": 183,
       "call": "install_auf_photo_ratio_callback_fix",
       "origin": "velvet_bot.app.auf_photo_ratio_callback_fix.install_auf_photo_ratio_callback_fix",
       "owner_module": "velvet_bot.app.auf_photo_ratio_callback_fix",
@@ -262,7 +262,7 @@
     },
     {
       "order": 17,
-      "line": 183,
+      "line": 187,
       "call": "install_auf_user_portal",
       "origin": "velvet_bot.app.auf_user_portal_install.install_auf_user_portal",
       "owner_module": "velvet_bot.app.auf_user_portal_install",
@@ -273,7 +273,7 @@
     },
     {
       "order": 18,
-      "line": 186,
+      "line": 190,
       "call": "install_auf_photo_model_modes",
       "origin": "velvet_bot.app.auf_photo_model_modes.install_auf_photo_model_modes",
       "owner_module": "velvet_bot.app.auf_photo_model_modes",
@@ -299,7 +299,7 @@
     },
     {
       "order": 19,
-      "line": 190,
+      "line": 194,
       "call": "install_auf_owner_pricing_ui",
       "origin": "velvet_bot.app.auf_owner_pricing_ui_install.install_auf_owner_pricing_ui",
       "owner_module": "velvet_bot.app.auf_owner_pricing_ui_install",
@@ -307,7 +307,15 @@
     },
     {
       "order": 20,
-      "line": 194,
+      "line": 198,
+      "call": "install_auf_margin_dashboard",
+      "origin": "velvet_bot.app.auf_margin_dashboard_install.install_auf_margin_dashboard",
+      "owner_module": "velvet_bot.app.auf_margin_dashboard_install",
+      "patched_symbols": []
+    },
+    {
+      "order": 21,
+      "line": 202,
       "call": "install_original_image_delivery_hotfix",
       "origin": "velvet_bot.app.original_image_delivery_hotfix.install_original_image_delivery_hotfix",
       "owner_module": "velvet_bot.app.original_image_delivery_hotfix",
@@ -317,8 +325,8 @@
       ]
     },
     {
-      "order": 21,
-      "line": 198,
+      "order": 22,
+      "line": 206,
       "call": "install_original_video_delivery_hotfix",
       "origin": "velvet_bot.app.original_video_delivery_hotfix.install_original_video_delivery_hotfix",
       "owner_module": "velvet_bot.app.original_video_delivery_hotfix",
@@ -328,40 +336,40 @@
       ]
     },
     {
-      "order": 22,
-      "line": 202,
+      "order": 23,
+      "line": 210,
       "call": "install_auf_result_delivery_recovery",
       "origin": "velvet_bot.app.auf_result_delivery_recovery.install_auf_result_delivery_recovery",
       "owner_module": "velvet_bot.app.auf_result_delivery_recovery",
       "patched_symbols": []
     },
     {
-      "order": 23,
-      "line": 206,
+      "order": 24,
+      "line": 214,
       "call": "install_auf_active_delivery_fix",
       "origin": "velvet_bot.app.auf_active_delivery_fix.install_auf_active_delivery_fix",
       "owner_module": "velvet_bot.app.auf_active_delivery_fix",
       "patched_symbols": []
     },
     {
-      "order": 24,
-      "line": 210,
+      "order": 25,
+      "line": 218,
       "call": "install_auf_charged_queue",
       "origin": "velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue",
       "owner_module": "velvet_bot.app.auf_charged_queue_install",
       "patched_symbols": []
     },
     {
-      "order": 25,
-      "line": 211,
+      "order": 26,
+      "line": 219,
       "call": "install_auf_generation_receipts",
       "origin": "install_generation_receipts_with_owner_cost_privacy",
       "owner_module": "install_generation_receipts_with_owner_cost_privacy",
       "patched_symbols": []
     },
     {
-      "order": 26,
-      "line": 215,
+      "order": 27,
+      "line": 223,
       "call": "install_krita_remote_worker",
       "origin": "velvet_bot.app.krita_remote_install.install_krita_remote_worker",
       "owner_module": "velvet_bot.app.krita_remote_install",
@@ -372,8 +380,8 @@
       ]
     },
     {
-      "order": 27,
-      "line": 218,
+      "order": 28,
+      "line": 226,
       "call": "install_auf_grs_brand",
       "origin": "velvet_bot.app.auf_grs_brand_install.install_auf_grs_brand",
       "owner_module": "velvet_bot.app.auf_grs_brand_install",
@@ -383,8 +391,8 @@
       ]
     },
     {
-      "order": 28,
-      "line": 219,
+      "order": 29,
+      "line": 227,
       "call": "install_auf_branding",
       "origin": "velvet_bot.app.auf_branding.install_auf_branding",
       "owner_module": "velvet_bot.app.auf_branding",
@@ -393,20 +401,20 @@
       ]
     }
   ],
-  "violation_count": 548,
+  "violation_count": 553,
   "violation_counts": {
-    "database-acquire-outside-persistence": 89,
+    "database-acquire-outside-persistence": 90,
     "domain-aiogram-import": 19,
     "domain-layer-import": 3,
-    "dynamic-import": 21,
+    "dynamic-import": 22,
     "foreign-assignment": 39,
-    "installed-sentinel": 44,
-    "installer-like-module": 25,
+    "installed-sentinel": 45,
+    "installer-like-module": 26,
     "method-assign-ignore": 10,
     "monolithic-function": 24,
     "monolithic-module-loc": 17,
     "package-getattr-side-effect": 19,
-    "sql-outside-persistence": 108,
+    "sql-outside-persistence": 109,
     "type-ignore-usage": 18,
     "typing-any-usage": 112
   },
@@ -940,6 +948,23 @@
         ],
         "owners": [
           "enqueue"
+        ]
+      }
+    },
+    {
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:fcf305e82309e555",
+      "category": "database-acquire-outside-persistence",
+      "path": "velvet_bot/domains/auf_wallet/economics.py",
+      "fingerprint": "fcf305e82309e55585934ff990be8556ae5ece8d839f02d8a3a29d21797e6237",
+      "summary": "2 acquire calls outside persistence",
+      "details": {
+        "count": 2,
+        "calls": [
+          "self._database.acquire"
+        ],
+        "owners": [
+          "margin_summary",
+          "record_actual_provider_cost"
         ]
       }
     },
@@ -2411,6 +2436,19 @@
       }
     },
     {
+      "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:c57d54375959a6ea",
+      "category": "dynamic-import",
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "fingerprint": "c57d54375959a6ea17854551e7e25edb15528fcbd371336ae5d6707119ef5888",
+      "summary": "2 dynamic imports",
+      "details": {
+        "count": 2,
+        "calls": [
+          "importlib.import_module"
+        ]
+      }
+    },
+    {
       "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:dfd53c17e121bd25",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
@@ -3260,6 +3298,16 @@
       }
     },
     {
+      "id": "installed-sentinel:velvet_bot/app/auf_margin_dashboard_install.py:7eeb5d8f99cd8695",
+      "category": "installed-sentinel",
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "fingerprint": "7eeb5d8f99cd869548104c4591500eb13660618206564279422426fd142e621d",
+      "summary": "4 _INSTALLED references",
+      "details": {
+        "count": 4
+      }
+    },
+    {
       "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:74419a93f06d4beb",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
@@ -3664,6 +3712,14 @@
       "category": "installer-like-module",
       "path": "velvet_bot/app/auf_grs_brand_install.py",
       "fingerprint": "49969cebfed2d2e05fbb3753a8ecc485dbdd930a0253b730934ad92383dfa6be",
+      "summary": "installer/hotfix/fix module requires explicit retirement",
+      "details": {}
+    },
+    {
+      "id": "installer-like-module:velvet_bot/app/auf_margin_dashboard_install.py:a6099df5a5bfa3f2",
+      "category": "installer-like-module",
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "fingerprint": "a6099df5a5bfa3f21ef49febc2e037ea829d2d7329a9f7e67d44a1f80785fdf7",
       "summary": "installer/hotfix/fix module requires explicit retirement",
       "details": {}
     },
@@ -5100,10 +5156,10 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:a4faea04c3c710b5",
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:0fc7c8ad47779852",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/charged_queue.py",
-      "fingerprint": "a4faea04c3c710b58439b39052b5a6a4b08d5f75c0dff775f3be5320c12842b4",
+      "fingerprint": "0fc7c8ad47779852a9e69fa39df11d68a65820f5185400fa91633b27a5a32910",
       "summary": "5 SQL literals outside persistence",
       "details": {
         "count": 5,
@@ -5114,6 +5170,24 @@
         ],
         "owners": [
           "_reserve_charge"
+        ]
+      }
+    },
+    {
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:8ffcd044baf03a3d",
+      "category": "sql-outside-persistence",
+      "path": "velvet_bot/domains/auf_wallet/economics.py",
+      "fingerprint": "8ffcd044baf03a3d1f4fd388d8bd167f2b9cb4f4616939dc7b9485b549523301",
+      "summary": "4 SQL literals outside persistence",
+      "details": {
+        "count": 4,
+        "keywords": [
+          "SELECT",
+          "UPDATE"
+        ],
+        "owners": [
+          "margin_summary",
+          "record_actual_provider_cost"
         ]
       }
     },
@@ -5135,10 +5209,10 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:108ab1f09389a505",
+      "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:46c73ca2dc44d46b",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/domains/auf_wallet/pricing.py",
-      "fingerprint": "108ab1f09389a505a7db802b10f0517e31abd2314f895646bb3b2b251ef3e2ef",
+      "fingerprint": "46c73ca2dc44d46bc2879160889afa919f617211deacade08f0fbc7f849d7f5d",
       "summary": "7 SQL literals outside persistence",
       "details": {
         "count": 7,
@@ -5148,9 +5222,11 @@
           "SELECT"
         ],
         "owners": [
+          "_load_price_version",
+          "_load_pricing_settings",
+          "_load_user_markup_override",
           "_load_user_markup_policy",
           "clear_user_markup",
-          "quote_auf_payload",
           "set_user_markup"
         ]
       }
@@ -7104,13 +7180,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:143bb3b5c3f17619",
+      "id": "typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:f203665a6707ad1a",
       "category": "typing-any-usage",
       "path": "velvet_bot/domains/auf_wallet/pricing.py",
-      "fingerprint": "143bb3b5c3f17619e03a9a3db6b0e6da857eed42cdba1d5bfdfec35ffa0ee83c",
-      "summary": "3 Any references",
+      "fingerprint": "f203665a6707ad1a1fc41fa31202f903a7f8b9e7d26a73e7330642e152ac88a5",
+      "summary": "8 Any references",
       "details": {
-        "count": 3
+        "count": 8
       }
     },
     {
@@ -9656,6 +9732,75 @@
       ]
     },
     {
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "module": "velvet_bot.app.auf_margin_dashboard_install",
+      "layer": "composition",
+      "target_package": "composition",
+      "loc": 118,
+      "function_count": 3,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 104,
+      "branch_count": 5,
+      "internal_imports": [
+        "velvet_bot.domains.auf_wallet"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [
+        "aiogram.types"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 2,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [
+        "install_auf_margin_dashboard"
+      ],
+      "install_calls": [],
+      "installed_sentinel_count": 4,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": [
+        {
+          "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:c57d54375959a6ea",
+          "category": "dynamic-import",
+          "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+          "fingerprint": "c57d54375959a6ea17854551e7e25edb15528fcbd371336ae5d6707119ef5888",
+          "summary": "2 dynamic imports",
+          "details": {
+            "count": 2,
+            "calls": [
+              "importlib.import_module"
+            ]
+          }
+        },
+        {
+          "id": "installer-like-module:velvet_bot/app/auf_margin_dashboard_install.py:a6099df5a5bfa3f2",
+          "category": "installer-like-module",
+          "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+          "fingerprint": "a6099df5a5bfa3f21ef49febc2e037ea829d2d7329a9f7e67d44a1f80785fdf7",
+          "summary": "installer/hotfix/fix module requires explicit retirement",
+          "details": {}
+        },
+        {
+          "id": "installed-sentinel:velvet_bot/app/auf_margin_dashboard_install.py:7eeb5d8f99cd8695",
+          "category": "installed-sentinel",
+          "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+          "fingerprint": "7eeb5d8f99cd869548104c4591500eb13660618206564279422426fd142e621d",
+          "summary": "4 _INSTALLED references",
+          "details": {
+            "count": 4
+          }
+        }
+      ]
+    },
+    {
       "path": "velvet_bot/app/auf_owner_cost_privacy/__init__.py",
       "module": "velvet_bot.app.auf_owner_cost_privacy",
       "layer": "composition",
@@ -11390,7 +11535,7 @@
       "function_count": 9,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 116,
+      "max_function_length": 123,
       "branch_count": 3,
       "internal_imports": [
         "velvet_bot.app.auf_active_delivery_fix",
@@ -11399,6 +11544,7 @@
         "velvet_bot.app.auf_charged_queue_install",
         "velvet_bot.app.auf_generation_receipt_install",
         "velvet_bot.app.auf_grs_brand_install",
+        "velvet_bot.app.auf_margin_dashboard_install",
         "velvet_bot.app.auf_owner_cost_privacy_install",
         "velvet_bot.app.auf_owner_pricing_ui_install",
         "velvet_bot.app.auf_photo_model_modes",
@@ -11447,11 +11593,11 @@
           "call": "install_channel_analytics_datetime_compat"
         },
         {
-          "line": 153,
+          "line": 157,
           "call": "install_auf_generation_receipts"
         },
         {
-          "line": 154,
+          "line": 158,
           "call": "install_auf_owner_cost_privacy"
         }
       ],
@@ -17319,7 +17465,7 @@
       "module": "velvet_bot.domains.auf_wallet",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 77,
+      "loc": 85,
       "function_count": 0,
       "class_count": 0,
       "handler_count": 0,
@@ -17327,6 +17473,7 @@
       "branch_count": 0,
       "internal_imports": [
         "velvet_bot.domains.auf_wallet.charged_queue",
+        "velvet_bot.domains.auf_wallet.economics",
         "velvet_bot.domains.auf_wallet.models",
         "velvet_bot.domains.auf_wallet.pricing",
         "velvet_bot.domains.auf_wallet.purchase",
@@ -17357,11 +17504,11 @@
       "module": "velvet_bot.domains.auf_wallet.charged_queue",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 209,
+      "loc": 234,
       "function_count": 7,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 119,
+      "max_function_length": 144,
       "branch_count": 10,
       "internal_imports": [
         "velvet_bot.database",
@@ -17391,10 +17538,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:a4faea04c3c710b5",
+          "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:0fc7c8ad47779852",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/charged_queue.py",
-          "fingerprint": "a4faea04c3c710b58439b39052b5a6a4b08d5f75c0dff775f3be5320c12842b4",
+          "fingerprint": "0fc7c8ad47779852a9e69fa39df11d68a65820f5185400fa91633b27a5a32910",
           "summary": "5 SQL literals outside persistence",
           "details": {
             "count": 5,
@@ -17460,13 +17607,83 @@
       "violations": []
     },
     {
+      "path": "velvet_bot/domains/auf_wallet/economics.py",
+      "module": "velvet_bot.domains.auf_wallet.economics",
+      "layer": "domain",
+      "target_package": "domain",
+      "loc": 161,
+      "function_count": 4,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 63,
+      "branch_count": 4,
+      "internal_imports": [
+        "velvet_bot.database",
+        "velvet_bot.domains.auf_wallet.models"
+      ],
+      "external_import_count": 4,
+      "aiogram_imports": [],
+      "sql_literal_count": 4,
+      "database_acquire_count": 2,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": [
+        {
+          "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:8ffcd044baf03a3d",
+          "category": "sql-outside-persistence",
+          "path": "velvet_bot/domains/auf_wallet/economics.py",
+          "fingerprint": "8ffcd044baf03a3d1f4fd388d8bd167f2b9cb4f4616939dc7b9485b549523301",
+          "summary": "4 SQL literals outside persistence",
+          "details": {
+            "count": 4,
+            "keywords": [
+              "SELECT",
+              "UPDATE"
+            ],
+            "owners": [
+              "margin_summary",
+              "record_actual_provider_cost"
+            ]
+          }
+        },
+        {
+          "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:fcf305e82309e555",
+          "category": "database-acquire-outside-persistence",
+          "path": "velvet_bot/domains/auf_wallet/economics.py",
+          "fingerprint": "fcf305e82309e55585934ff990be8556ae5ece8d839f02d8a3a29d21797e6237",
+          "summary": "2 acquire calls outside persistence",
+          "details": {
+            "count": 2,
+            "calls": [
+              "self._database.acquire"
+            ],
+            "owners": [
+              "margin_summary",
+              "record_actual_provider_cost"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "path": "velvet_bot/domains/auf_wallet/models.py",
       "module": "velvet_bot.domains.auf_wallet.models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 158,
+      "loc": 174,
       "function_count": 9,
-      "class_count": 9,
+      "class_count": 10,
       "handler_count": 0,
       "max_function_length": 13,
       "branch_count": 5,
@@ -17563,12 +17780,12 @@
       "module": "velvet_bot.domains.auf_wallet.pricing",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 439,
-      "function_count": 23,
-      "class_count": 4,
+      "loc": 631,
+      "function_count": 36,
+      "class_count": 6,
       "handler_count": 0,
-      "max_function_length": 173,
-      "branch_count": 15,
+      "max_function_length": 84,
+      "branch_count": 22,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.auf_wallet.models"
@@ -17579,7 +17796,7 @@
       "database_acquire_count": 4,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 3,
+      "any_count": 8,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
@@ -17592,10 +17809,10 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:108ab1f09389a505",
+          "id": "sql-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:46c73ca2dc44d46b",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/domains/auf_wallet/pricing.py",
-          "fingerprint": "108ab1f09389a505a7db802b10f0517e31abd2314f895646bb3b2b251ef3e2ef",
+          "fingerprint": "46c73ca2dc44d46bc2879160889afa919f617211deacade08f0fbc7f849d7f5d",
           "summary": "7 SQL literals outside persistence",
           "details": {
             "count": 7,
@@ -17605,9 +17822,11 @@
               "SELECT"
             ],
             "owners": [
+              "_load_price_version",
+              "_load_pricing_settings",
+              "_load_user_markup_override",
               "_load_user_markup_policy",
               "clear_user_markup",
-              "quote_auf_payload",
               "set_user_markup"
             ]
           }
@@ -17632,13 +17851,13 @@
           }
         },
         {
-          "id": "typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:143bb3b5c3f17619",
+          "id": "typing-any-usage:velvet_bot/domains/auf_wallet/pricing.py:f203665a6707ad1a",
           "category": "typing-any-usage",
           "path": "velvet_bot/domains/auf_wallet/pricing.py",
-          "fingerprint": "143bb3b5c3f17619e03a9a3db6b0e6da857eed42cdba1d5bfdfec35ffa0ee83c",
-          "summary": "3 Any references",
+          "fingerprint": "f203665a6707ad1a1fc41fa31202f903a7f8b9e7d26a73e7330642e152ac88a5",
+          "summary": "8 Any references",
           "details": {
-            "count": 3
+            "count": 8
           }
         }
       ]
@@ -17748,14 +17967,15 @@
       "module": "velvet_bot.domains.auf_wallet.service",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 246,
-      "function_count": 12,
+      "loc": 271,
+      "function_count": 14,
       "class_count": 3,
       "handler_count": 0,
       "max_function_length": 34,
       "branch_count": 11,
       "internal_imports": [
         "velvet_bot.domains.auf_runtime",
+        "velvet_bot.domains.auf_wallet.economics",
         "velvet_bot.domains.auf_wallet.models",
         "velvet_bot.domains.auf_wallet.package_pricing",
         "velvet_bot.domains.auf_wallet.store",

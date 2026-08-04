@@ -23,6 +23,11 @@ class _Connection:
         quality_surcharge: int = 1,
         minimum_velvets: int = 2,
         minimum_discounted_velvets: int | None = None,
+        pricing_strategy: str = "target_margin",
+        target_margin_percent: Decimal = Decimal("30"),
+        minimum_contribution_margin_percent: Decimal = Decimal("10"),
+        allow_subsidized_generations: bool = False,
+        effective_operational_reserve_percent: Decimal = Decimal("5"),
     ) -> None:
         self.model_alias = model_alias
         self.resolution = resolution
@@ -31,6 +36,13 @@ class _Connection:
         self.quality_surcharge = quality_surcharge
         self.minimum_velvets = minimum_velvets
         self.minimum_discounted_velvets = minimum_discounted_velvets
+        self.pricing_strategy = pricing_strategy
+        self.target_margin_percent = target_margin_percent
+        self.minimum_contribution_margin_percent = minimum_contribution_margin_percent
+        self.allow_subsidized_generations = allow_subsidized_generations
+        self.effective_operational_reserve_percent = (
+            effective_operational_reserve_percent
+        )
 
     async def fetchrow(self, query: str, *args):
         if "FROM auf_price_versions" in query:
@@ -55,8 +67,16 @@ class _Connection:
                 "billing_usd_to_byn": Decimal("3"),
                 "retail_markup_percent": Decimal("42.86"),
                 "quote_rub_per_vl": Decimal("4"),
-                "operational_cost_buffer_percent": Decimal("5"),
                 "minimum_user_markup_percent": Decimal("15"),
+                "pricing_strategy": self.pricing_strategy,
+                "target_margin_percent": self.target_margin_percent,
+                "minimum_contribution_margin_percent": (
+                    self.minimum_contribution_margin_percent
+                ),
+                "allow_subsidized_generations": self.allow_subsidized_generations,
+                "effective_operational_reserve_percent": (
+                    self.effective_operational_reserve_percent
+                ),
             }
         raise AssertionError(query)
 
@@ -70,7 +90,11 @@ class _Connection:
 
 class AufIndividualPricingPolicyTests(unittest.IsolatedAsyncioTestCase):
     @staticmethod
-    def _payload(*, model: str = "nano_banana_2", resolution: str = "2K") -> dict[str, object]:
+    def _payload(
+        *,
+        model: str = "nano_banana_2",
+        resolution: str = "2K",
+    ) -> dict[str, object]:
         return {
             "user_id": 55,
             "request": {
@@ -82,14 +106,16 @@ class AufIndividualPricingPolicyTests(unittest.IsolatedAsyncioTestCase):
             },
         }
 
-    async def test_global_policy_uses_stable_quote_reference(self) -> None:
+    async def test_global_policy_uses_target_margin_and_dynamic_reserve(self) -> None:
         quote = await quote_auf_payload(
             _Connection(override=None, quality_surcharge=1, minimum_velvets=2),
             self._payload(),
         )
-        self.assertEqual(Decimal("42.86"), quote.markup_percent)
+        self.assertEqual("target_margin", quote.pricing_strategy)
+        self.assertEqual(Decimal("30.00"), quote.target_margin_percent)
         self.assertEqual(Decimal("4"), quote.quote_rub_per_vl)
         self.assertEqual(Decimal("5.00"), quote.operational_cost_buffer_percent)
+        self.assertFalse(quote.subsidy_guard_applied)
         self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
 
     async def test_individual_markup_is_floored_at_fifteen_percent(self) -> None:
@@ -104,7 +130,25 @@ class AufIndividualPricingPolicyTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(Decimal("0.00"), quote.user_markup_override_percent)
         self.assertEqual(Decimal("15.00"), quote.markup_percent)
+        self.assertEqual("user_markup", quote.pricing_strategy)
         self.assertEqual(2 * AUF_SCALE, quote.quoted_units)
+
+    async def test_subsidy_guard_raises_weak_user_markup_to_margin_floor(self) -> None:
+        quote = await quote_auf_payload(
+            _Connection(
+                override=Decimal("15"),
+                quality_surcharge=0,
+                minimum_velvets=1,
+                minimum_discounted_velvets=1,
+                minimum_contribution_margin_percent=Decimal("20"),
+            ),
+            self._payload(resolution="1K"),
+        )
+        self.assertTrue(quote.subsidy_guard_applied)
+        self.assertGreaterEqual(
+            quote.contribution_margin_percent,
+            Decimal("20"),
+        )
 
     async def test_banana_pro_has_premium_sku_floor_for_standard_users(self) -> None:
         quote = await quote_auf_payload(
@@ -209,6 +253,9 @@ class AufPricingPolicyContractTests(unittest.TestCase):
         discounted_migration = Path(
             "migrations/z032_auf_discounted_banana_floors.sql"
         ).read_text(encoding="utf-8")
+        accounting_migration = Path(
+            "migrations/z033_auf_margin_accounting.sql"
+        ).read_text(encoding="utf-8")
         self.assertIn("auf_user_markup_overrides", quality_migration)
         self.assertIn("WHEN '2K' THEN 1", quality_migration)
         self.assertIn("WHEN '4K' THEN 2", quality_migration)
@@ -223,10 +270,17 @@ class AufPricingPolicyContractTests(unittest.TestCase):
         self.assertIn("WHEN '1K' THEN 1", discounted_migration)
         self.assertIn("WHEN '2K' THEN 2", discounted_migration)
         self.assertIn("WHEN '4K' THEN 3", discounted_migration)
+        self.assertIn("pricing_strategy = 'target_margin'", accounting_migration)
+        self.assertIn("auf_revenue_lots", accounting_migration)
+        self.assertIn("auf_task_charge_lot_allocations", accounting_migration)
+        self.assertIn("auf_generation_pnl", accounting_migration)
+        self.assertIn("allocate_auf_charge_revenue", accounting_migration)
+        self.assertIn("auf_generation_margin_daily", accounting_migration)
+        self.assertIn("allow_subsidized_generations = FALSE", accounting_migration)
 
     def test_generation_pricing_has_one_database_source_for_banana_surcharge(self) -> None:
         source = inspect.getsource(quote_auf_payload)
-        self.assertIn("minimum_discounted_velvets", source)
+        self.assertIn("discounted_floor", source)
         self.assertNotIn("_banana_quality_surcharge", source)
 
     def test_public_package_ladder_stays_between_100_and_999_rubles(self) -> None:
