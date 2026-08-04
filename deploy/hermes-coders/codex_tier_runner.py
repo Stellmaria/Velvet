@@ -12,7 +12,7 @@ from typing import Any
 
 from codex_first_runner import Handler, ThreadingHTTPServer
 from codex_provider_chain_runner import ProviderChainManager
-from codex_runner import utc_now
+from codex_runner import redact_text, utc_now
 
 
 _SAFE_BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,254}")
@@ -37,7 +37,10 @@ class AuditedTierProviderManager(ProviderChainManager):
         ).resolve()
         if not self._base_workspace.is_dir():
             raise RuntimeError(f"read-only base workspace missing: {self._base_workspace}")
-        if self._base_workspace == self._workspace_root or self._workspace_root in self._base_workspace.parents:
+        if (
+            self._base_workspace == self._workspace_root
+            or self._workspace_root in self._base_workspace.parents
+        ):
             raise RuntimeError("isolated workspace root overlaps the base checkout")
         self._workspace_root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.workspace = self._base_workspace
@@ -95,7 +98,13 @@ class AuditedTierProviderManager(ProviderChainManager):
 
     def _default_branch(self) -> str:
         local = subprocess.run(
-            ["git", "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+            [
+                "git",
+                "symbolic-ref",
+                "--quiet",
+                "--short",
+                "refs/remotes/origin/HEAD",
+            ],
             cwd=self._base_workspace,
             check=False,
             capture_output=True,
@@ -139,33 +148,41 @@ class AuditedTierProviderManager(ProviderChainManager):
         if target.exists():
             shutil.rmtree(target)
 
-        origin_url = self._run_git(self._base_workspace, "remote", "get-url", "origin").strip()
+        origin_url = self._run_git(
+            self._base_workspace, "remote", "get-url", "origin"
+        ).strip()
+        if not origin_url:
+            raise RuntimeError("origin URL is empty")
         default_branch = self._default_branch()
-        clone = subprocess.run(
-            [
-                "git",
-                "clone",
-                "--no-hardlinks",
-                "--no-checkout",
-                str(self._base_workspace),
-                str(target),
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=180,
-        )
-        if clone.returncode != 0:
-            if target.exists() and target.parent == self._workspace_root:
-                shutil.rmtree(target)
-            raise RuntimeError(
-                "isolated clone failed: "
-                + (clone.stderr.strip() or f"git exit {clone.returncode}")[-1500:]
-            )
+        source_ref = f"origin/{default_branch}"
         try:
-            self._run_git(target, "remote", "set-url", "origin", origin_url)
-            self._run_git(target, "fetch", "--prune", "origin", default_branch, timeout=180)
-            source_ref = f"origin/{default_branch}"
+            clone = subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--filter=blob:none",
+                    "--no-checkout",
+                    "--single-branch",
+                    "--branch",
+                    default_branch,
+                    "--",
+                    origin_url,
+                    str(target),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+            if clone.returncode != 0:
+                raise RuntimeError(
+                    "isolated remote clone failed: "
+                    + (
+                        clone.stderr.strip()
+                        or clone.stdout.strip()
+                        or f"git exit {clone.returncode}"
+                    )[-1500:]
+                )
             self._run_git(target, "checkout", "--detach", "--force", source_ref)
         except Exception:
             if target.exists() and target.parent == self._workspace_root:
@@ -190,6 +207,22 @@ class AuditedTierProviderManager(ProviderChainManager):
                 cleanup_error=str(error),
                 last_event={"type": "isolated_workspace_cleanup_failed"},
             )
+
+    def _record_workspace_preparation_failure(
+        self, run_id: str, error: BaseException
+    ) -> None:
+        details = redact_text(str(error).strip())[-4000:] or type(error).__name__
+        self.store.update(
+            run_id,
+            status="failed",
+            finished_at=utc_now(),
+            mutation_started=False,
+            error=details,
+            last_event={
+                "type": "workspace_preparation_failed",
+                "error_type": type(error).__name__,
+            },
+        )
 
     def capabilities(self) -> dict[str, Any]:
         payload = super().capabilities()
@@ -223,21 +256,37 @@ class AuditedTierProviderManager(ProviderChainManager):
         selected_model: str,
     ) -> None:
         with self._isolation_lock:
-            isolated, source_ref = self._prepare_workspace(run_id)
-            self.workspace = isolated
-            isolated_before = self._snapshot(isolated)
-            base_before = self._snapshot(self._base_workspace)
-            with self._baseline_lock:
-                self._run_baselines[run_id] = isolated_before
-                self._base_baselines[run_id] = base_before
-            self.store.update(
-                run_id,
-                workspace=str(isolated),
-                workspace_path=str(isolated),
-                workspace_source_ref=source_ref,
-                baseline_head=isolated_before["head"],
-                base_workspace=str(self._base_workspace),
-            )
+            isolated: Path | None = None
+            try:
+                self.store.update(
+                    run_id,
+                    last_event={"type": "workspace_preparation_started"},
+                )
+                isolated, source_ref = self._prepare_workspace(run_id)
+                self.workspace = isolated
+                isolated_before = self._snapshot(isolated)
+                base_before = self._snapshot(self._base_workspace)
+                with self._baseline_lock:
+                    self._run_baselines[run_id] = isolated_before
+                    self._base_baselines[run_id] = base_before
+                self.store.update(
+                    run_id,
+                    workspace=str(isolated),
+                    workspace_path=str(isolated),
+                    workspace_source_ref=source_ref,
+                    baseline_head=isolated_before["head"],
+                    base_workspace=str(self._base_workspace),
+                )
+            except Exception as error:
+                self.workspace = self._base_workspace
+                with self._baseline_lock:
+                    self._run_baselines.pop(run_id, None)
+                    self._base_baselines.pop(run_id, None)
+                self._record_workspace_preparation_failure(run_id, error)
+                if isolated is not None:
+                    self._cleanup_workspace(isolated)
+                return
+
             workspace_notice = (
                 f"EFFECTIVE RUN WORKSPACE: {isolated}\n"
                 "This current working directory is the only task checkout. "
