@@ -26,7 +26,6 @@ from velvet_bot.workspace_ui import workspace_callback
 logger = logging.getLogger(__name__)
 
 _CURRENCIES = ("RUB", "USD")
-_PACKAGE_CALLBACK_SEPARATOR = "|"
 
 
 def _normalize_currency(value: object) -> str:
@@ -35,16 +34,11 @@ def _normalize_currency(value: object) -> str:
 
 
 def _package_callback_value(amount: int, currency: str) -> str:
-    return (
-        f"{int(amount)}{_PACKAGE_CALLBACK_SEPARATOR}"
-        f"{_normalize_currency(currency)}"
-    )
+    return f"{int(amount)}|{_normalize_currency(currency)}"
 
 
 def _parse_package_callback_value(value: str) -> tuple[int, str]:
-    amount_raw, separator, currency_raw = str(value or "").partition(
-        _PACKAGE_CALLBACK_SEPARATOR
-    )
+    amount_raw, separator, currency_raw = str(value or "").partition("|")
     if not separator:
         return int(amount_raw), "RUB"
     return int(amount_raw), _normalize_currency(currency_raw)
