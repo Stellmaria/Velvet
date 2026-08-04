@@ -130,10 +130,10 @@ class LibrarianRuntimeIsolationTests(unittest.TestCase):
         self.assertEqual("http://librarian-hermes:8642", settings.hermes_base_url)
         self.assertEqual("l" * 48, settings.hermes_api_key)
         self.assertEqual(
-            "velvet-librarian:qwen3.5-9b-local:v3",
+            "velvet-librarian:qwen3-4b-text:v4",
             settings.analyzer_version,
         )
-        self.assertEqual(900, settings.run_timeout_seconds)
+        self.assertEqual(180, settings.run_timeout_seconds)
 
 
 class HermesEntityDeploymentTests(unittest.TestCase):
