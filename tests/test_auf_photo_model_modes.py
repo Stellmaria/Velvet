@@ -35,9 +35,8 @@ class AufPhotoModelModeTests(unittest.TestCase):
             KieModelAlias.SEEDREAM_5_PRO: (10, 8000),
             KieModelAlias.NANO_BANANA_2: (5, 8000),
             KieModelAlias.NANO_BANANA_PRO: (5, 8000),
-            KieModelAlias.QWEN2_IMAGE_EDIT: (3, 8000),
             KieModelAlias.WAN_27_IMAGE: (9, 5000),
-            KieModelAlias.FLUX_2_PRO_IMAGE: (8, 5000),
+            KieModelAlias.WAN_27_IMAGE_PRO: (9, 5000),
         }
         for model, (references, prompt) in expected.items():
             with self.subTest(model=model):
@@ -66,43 +65,41 @@ class AufPhotoModelModeTests(unittest.TestCase):
                         }
                     )
 
-    def test_flux_photo_payload_keeps_uploaded_reference(self) -> None:
-        request = KieGenerationRequest(
-            model=KieModelAlias.FLUX_2_PRO_IMAGE,
-            input_mode=KieInputMode.PHOTO_TEXT,
-            prompt="portrait",
-            references=(_reference(),),
-            resolution="2K",
-            aspect_ratio="9:16",
-        ).with_image_urls(("https://example.com/flux.jpg",))
-        payload = modes._to_input(request)
-        self.assertEqual(["https://example.com/flux.jpg"], payload["input_urls"])
-        self.assertEqual("portrait", payload["prompt"])
+    def test_active_catalog_contains_only_five_approved_models(self) -> None:
+        self.assertEqual(
+            (
+                KieModelAlias.NANO_BANANA_2,
+                KieModelAlias.NANO_BANANA_PRO,
+                KieModelAlias.SEEDREAM_5_PRO,
+                KieModelAlias.WAN_27_IMAGE_PRO,
+                KieModelAlias.WAN_27_IMAGE,
+            ),
+            modes._PHOTO_MODELS,
+        )
 
-    def test_text_routes_do_not_require_fake_reference(self) -> None:
+    def test_wan_provider_routes_are_distinct(self) -> None:
         catalog = KieModelCatalog()
-        with patch.dict(os.environ, {}, clear=False):
-            self.assertEqual(
-                "qwen2/text-to-image",
-                modes._provider_model(
-                    catalog,
-                    KieModelAlias.QWEN2_IMAGE_EDIT,
-                    input_mode=KieInputMode.TEXT,
-                ),
-            )
-            self.assertEqual(
-                "flux-2/pro-text-to-image",
-                modes._provider_model(
-                    catalog,
-                    KieModelAlias.FLUX_2_PRO_IMAGE,
-                    input_mode=KieInputMode.TEXT,
-                ),
-            )
+        self.assertEqual(
+            "wan/2-7-image",
+            modes._provider_model(
+                catalog,
+                KieModelAlias.WAN_27_IMAGE,
+                input_mode=KieInputMode.TEXT,
+            ),
+        )
+        self.assertEqual(
+            "wan/2-7-image-pro",
+            modes._provider_model(
+                catalog,
+                KieModelAlias.WAN_27_IMAGE_PRO,
+                input_mode=KieInputMode.TEXT,
+            ),
+        )
 
+    def test_wan_text_routes_do_not_require_fake_reference(self) -> None:
         for model, resolution in (
-            (KieModelAlias.QWEN2_IMAGE_EDIT, "2K"),
-            (KieModelAlias.FLUX_2_PRO_IMAGE, "2K"),
-            (KieModelAlias.WAN_27_IMAGE, "1K"),
+            (KieModelAlias.WAN_27_IMAGE, "2K"),
+            (KieModelAlias.WAN_27_IMAGE_PRO, "4K"),
         ):
             with self.subTest(model=model):
                 request = KieGenerationRequest(
@@ -113,7 +110,6 @@ class AufPhotoModelModeTests(unittest.TestCase):
                     aspect_ratio="9:16",
                 )
                 payload = modes._to_input(request)
-                self.assertNotIn("image_url", payload)
                 self.assertNotIn("input_urls", payload)
 
     def test_seedream_output_format_is_selected_only_for_seedream(self) -> None:
@@ -164,7 +160,7 @@ class AufPhotoModelModeTests(unittest.TestCase):
             self.assertNotIn(forbidden, payload)
 
         cost = modes._estimate_usd(KiePricing(), request)
-        self.assertEqual(Decimal("0.48"), cost)
+        self.assertEqual(Decimal("0.18"), cost)
 
     def test_wan_non_sequential_count_is_clamped_to_four(self) -> None:
         request = KieGenerationRequest(

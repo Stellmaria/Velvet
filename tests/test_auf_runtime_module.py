@@ -161,23 +161,40 @@ class AufModuleContractTests(unittest.TestCase):
             )
         )
 
-    def test_qwen_wan_and_flux_are_routed_to_kie_dispatcher(self) -> None:
+    def test_seedream_and_both_wan_variants_use_kie_dispatcher(self) -> None:
         kie_aliases = set(AufProvider.KIE.model_aliases)
         self.assertTrue(
             {
-                KieModelAlias.QWEN2_IMAGE_EDIT.value,
+                KieModelAlias.SEEDREAM_5_PRO.value,
                 KieModelAlias.WAN_27_IMAGE.value,
-                KieModelAlias.FLUX_2_PRO_IMAGE.value,
+                KieModelAlias.WAN_27_IMAGE_PRO.value,
             }.issubset(kie_aliases)
         )
 
-    def test_every_media_catalog_model_has_exactly_one_provider_route(self) -> None:
+    def test_retired_image_aliases_have_no_provider_dispatch_route(self) -> None:
+        routed_aliases = set(AufProvider.KIE.model_aliases) | set(
+            AufProvider.GRS.model_aliases
+        )
+        self.assertTrue(
+            {
+                KieModelAlias.QWEN2_IMAGE_EDIT.value,
+                KieModelAlias.FLUX_2_PRO_IMAGE.value,
+            }.isdisjoint(routed_aliases)
+        )
+
+    def test_every_active_media_model_has_exactly_one_provider_route(self) -> None:
         kie_aliases = set(AufProvider.KIE.model_aliases)
         grs_aliases = set(AufProvider.GRS.model_aliases)
-        catalog_aliases = {model.value for model in KieModelAlias}
+        retired_aliases = {
+            KieModelAlias.QWEN2_IMAGE_EDIT.value,
+            KieModelAlias.FLUX_2_PRO_IMAGE.value,
+        }
+        active_aliases = {
+            model.value for model in KieModelAlias
+        } - retired_aliases
 
         self.assertTrue(kie_aliases.isdisjoint(grs_aliases))
-        self.assertEqual(catalog_aliases, kie_aliases | grs_aliases)
+        self.assertEqual(active_aliases, kie_aliases | grs_aliases)
 
 
 @unittest.skipUnless(

@@ -99,17 +99,13 @@ def load_kie_settings() -> KieSettings:
             "GRS_NANO_BANANA_PRO_MODEL",
             "nano-banana-pro",
         ).strip(),
-        qwen2_image_edit=os.getenv(
-            "KIE_QWEN2_IMAGE_EDIT_MODEL",
-            "qwen2/image-edit",
-        ).strip(),
         wan_27_image=os.getenv(
             "KIE_WAN_27_IMAGE_MODEL",
             "wan/2-7-image",
         ).strip(),
-        flux_2_pro_image=os.getenv(
-            "KIE_FLUX_2_PRO_IMAGE_MODEL",
-            "flux-2/pro-image-to-image",
+        wan_27_image_pro=os.getenv(
+            "KIE_WAN_27_IMAGE_PRO_MODEL",
+            "wan/2-7-image-pro",
         ).strip(),
         grok_imagine_video=grok_image_to_video,
         grok_imagine_video_15=grok_15_image_to_video,
@@ -147,9 +143,8 @@ def load_kie_settings() -> KieSettings:
             (KieModelAlias.NANO_BANANA_PRO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.TEXT),
             (KieModelAlias.SEEDREAM_5_PRO, KieInputMode.PHOTO_TEXT),
-            (KieModelAlias.QWEN2_IMAGE_EDIT, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.WAN_27_IMAGE, KieInputMode.PHOTO_TEXT),
-            (KieModelAlias.FLUX_2_PRO_IMAGE, KieInputMode.PHOTO_TEXT),
+            (KieModelAlias.WAN_27_IMAGE_PRO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.GROK_IMAGINE_VIDEO, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.GROK_IMAGINE_VIDEO_15, KieInputMode.PHOTO_TEXT),
             (KieModelAlias.SEEDANCE_15_PRO_VIDEO, KieInputMode.PHOTO_TEXT),
@@ -161,7 +156,7 @@ def load_kie_settings() -> KieSettings:
         except ValueError as error:
             raise RuntimeError(
                 "KIE_ENABLED=true требует model id Kie.ai для Seedream 5 Pro, "
-                "Qwen Image 2.0, Wan 2.7 Image, FLUX.2 Pro и video-моделей, "
+                "Wan 2.7, Wan 2.7 Pro и video-моделей, "
                 "а также GRS model id для Nano Banana 2/Pro."
             ) from error
 
@@ -170,11 +165,17 @@ def load_kie_settings() -> KieSettings:
         seedream_high_usd=_env_decimal("KIE_SEEDREAM_HIGH_USD", "0.15"),
         nano_banana_2_usd=_env_decimal("GRS_NANO_BANANA_2_USD", "0.02"),
         nano_banana_pro_usd=_env_decimal("GRS_NANO_BANANA_PRO_USD", "0.03"),
-        qwen2_image_edit_usd=_env_decimal("KIE_QWEN2_IMAGE_EDIT_USD", "0.02"),
-        wan_27_1k_usd=_env_decimal("KIE_WAN_27_IMAGE_1K_USD", "0.05"),
-        wan_27_2k_usd=_env_decimal("KIE_WAN_27_IMAGE_2K_USD", "0.08"),
-        flux_2_pro_1k_usd=_env_decimal("KIE_FLUX_2_PRO_IMAGE_1K_USD", "0.045"),
-        flux_2_pro_2k_usd=_env_decimal("KIE_FLUX_2_PRO_IMAGE_2K_USD", "0.075"),
+        wan_27_1k_usd=_env_decimal("KIE_WAN_27_IMAGE_1K_USD", "0.03"),
+        wan_27_2k_usd=_env_decimal("KIE_WAN_27_IMAGE_2K_USD", "0.03"),
+        wan_27_pro_1k_usd=_env_decimal(
+            "KIE_WAN_27_IMAGE_PRO_1K_USD", "0.075"
+        ),
+        wan_27_pro_2k_usd=_env_decimal(
+            "KIE_WAN_27_IMAGE_PRO_2K_USD", "0.075"
+        ),
+        wan_27_pro_4k_usd=_env_decimal(
+            "KIE_WAN_27_IMAGE_PRO_4K_USD", "0.075"
+        ),
         grok_480p_usd_per_second=_env_decimal(
             "KIE_GROK_480P_USD_PER_SECOND", "0.008"
         ),
