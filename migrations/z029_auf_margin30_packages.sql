@@ -1,5 +1,6 @@
--- Apply a 30 percent gross-margin target to all users.
+-- Apply a 30 percent gross-margin target as the global default.
 -- A 30 percent margin equals a 42.86 percent markup on provider cost.
+-- Individual user overrides remain intact and continue to take priority.
 -- Package prices keep the cheapest active VL at 3.436 RUB, which covers
 -- the current Nano Banana Pro 1K provider cost with at least 30 percent margin.
 
@@ -8,9 +9,6 @@ SET retail_markup_percent = 42.8600,
     retail_auf_usd = 0.04309777,
     updated_at = NOW()
 WHERE singleton_id = 1;
-
--- The new policy is common for every user. Remove old individual exceptions.
-DELETE FROM auf_user_markup_overrides;
 
 -- Retire the former 40 VL entry. The new entry-level purchase is 20 VL for 100 RUB.
 UPDATE auf_package_prices
