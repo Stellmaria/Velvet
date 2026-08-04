@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path("deploy/hermes-coders")
+LAUNCHER_ROOT = Path("deploy/hermes-sandbox-launcher")
 
 
 class HermesCodersContractTests(unittest.TestCase):
@@ -22,7 +23,9 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("/workspaces/velvet-codex:/workspace-base:ro", source)
         self.assertIn("/workspaces/max-codex:/workspace-base:ro", source)
         self.assertIn("CODEX_WORKSPACE_BASE: /workspace-base", source)
-        self.assertIn("CODEX_ISOLATED_WORKSPACE_ROOT: /opt/codex-runs/workspaces", source)
+        self.assertIn(
+            "CODEX_ISOLATED_WORKSPACE_ROOT: /opt/codex-runs/workspaces", source
+        )
         self.assertNotIn("/workspaces/velvet-codex:/workspace\n", source)
         self.assertNotIn("/workspaces/max-codex:/workspace\n", source)
         self.assertNotIn("/srv/velvet:/workspace", source)
@@ -83,7 +86,6 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("ARG CODEX_VERSION=0.144.1", source)
         self.assertIn("openai/codex/releases/tags/rust-v${CODEX_VERSION}", source)
         self.assertIn("sha256sum -c -", source)
-        self.assertIn("bubblewrap", source)
         self.assertIn("ripgrep", source)
         self.assertIn("COPY --chmod=0555 codex_runner.py", source)
 
@@ -143,20 +145,34 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertNotIn("cat /opt/codex/auth.json", source)
         self.assertNotIn("rm -rf", source)
 
-    def test_runtime_smoke_covers_base_and_run_sandbox(self) -> None:
+    def test_runtime_smoke_covers_base_and_disposable_run_sandbox(self) -> None:
         source = (ROOT / "runtime_smoke.py").read_text(encoding="utf-8")
-        self.assertIn("hermes-chat-velvet", source)
-        self.assertIn("hermes-coder-velvet", source)
-        self.assertIn("codex login status", source)
-        self.assertIn("0.144.1", source)
-        self.assertIn("gpt-5.6-luna", source)
-        self.assertIn("gpt-5.6-terra", source)
-        self.assertIn("gpt-5.6-sol", source)
-        self.assertIn("push --dry-run", source)
-        self.assertIn("/workspace-base", source)
-        self.assertIn("--ro-bind /workspace-base /workspace-base", source)
-        self.assertIn('--bind "$probe" "$probe"', source)
-        self.assertIn("test ! -e /workspace", source)
+        for marker in (
+            "hermes-chat-velvet",
+            "hermes-coder-velvet",
+            "codex login status",
+            "0.144.1",
+            "gpt-5.6-luna",
+            "gpt-5.6-terra",
+            "gpt-5.6-sol",
+            "push --dry-run",
+            "/workspace-base",
+            "SandboxLauncherClient",
+            "client.probe",
+            "host-sandbox-launcher",
+            "disposable-docker-container",
+            "nested_bwrap",
+            "hermes-codex-runner",
+            "test ! -e /workspace",
+        ):
+            self.assertIn(marker, source)
+        for forbidden in (
+            "--ro-bind /workspace-base /workspace-base",
+            '--bind "$probe" "$probe"',
+            "bwrap --unshare-user",
+            "unshare --user",
+        ):
+            self.assertNotIn(forbidden, source)
 
     def test_existing_hermes_byesu_route_remains_available_for_chat(self) -> None:
         source = (ROOT / "config.yaml").read_text(encoding="utf-8")
@@ -166,13 +182,17 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertNotIn("api_key:", source)
         self.assertIn("cwd: /workspace", source)
 
-    def test_systemd_still_runs_preflight_before_compose(self) -> None:
+    def test_systemd_runs_security_preflight_before_compose(self) -> None:
         source = Path("deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
         preflight = (
             "ExecStartPre=+/usr/bin/python3 "
             "/srv/velvet/deploy/hermes-coders/preflight.py"
+        )
+        sandbox_preflight = (
+            "ExecStartPre=+/usr/bin/python3 "
+            "/srv/velvet/deploy/hermes-coders/sandbox_preflight.py"
         )
         compose_start = (
             "ExecStart=/usr/bin/docker compose --profile velvet "
@@ -185,9 +205,11 @@ class HermesCodersContractTests(unittest.TestCase):
             "/srv/velvet/deploy/hermes-coders/runtime_smoke.py"
         )
         self.assertIn(preflight, source)
+        self.assertIn(sandbox_preflight, source)
         self.assertIn(compose_start, source)
         self.assertIn(smoke, source)
-        self.assertLess(source.index(preflight), source.index(compose_start))
+        self.assertLess(source.index(preflight), source.index(sandbox_preflight))
+        self.assertLess(source.index(sandbox_preflight), source.index(compose_start))
         self.assertLess(source.index(compose_start), source.index(smoke))
 
     def test_python_and_bash_sources_parse(self) -> None:
@@ -198,6 +220,13 @@ class HermesCodersContractTests(unittest.TestCase):
             ROOT / "preflight.py",
             ROOT / "runtime_smoke.py",
             ROOT / "codex_tier_runner.py",
+            ROOT / "codex_launcher_runner.py",
+            ROOT / "sandbox_launcher_client.py",
+            ROOT / "sandbox_entrypoint.py",
+            ROOT / "sandbox_preflight.py",
+            LAUNCHER_ROOT / "launcher_contract.py",
+            LAUNCHER_ROOT / "launcher_runtime.py",
+            LAUNCHER_ROOT / "launcher.py",
         ):
             with self.subTest(path=path):
                 ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -208,6 +237,7 @@ class HermesCodersContractTests(unittest.TestCase):
             ROOT / "install.sh",
             ROOT / "install-codex.sh",
             ROOT / "codex-login.sh",
+            LAUNCHER_ROOT / "install.sh",
             Path("deploy/hermes-orchestration/install.sh"),
         ):
             with self.subTest(path=path):

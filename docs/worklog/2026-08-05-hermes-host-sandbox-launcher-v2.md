@@ -3,9 +3,10 @@
 - Дата: `2026-08-05`
 - ID: `hermes-host-sandbox-launcher-v2-20260805`
 - Линия/фаза: `Hermes security / canonical execution backend`
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `feat/594-host-sandbox-launcher-v2`
-- Базовый commit: `c5685fc117c9c622afc955287f0cae5b9d5dae81`
+- Базовый commit при старте: `c5685fc117c9c622afc955287f0cae5b9d5dae81`
+- Текущая база PR после синхронизации: `88540a17ef32a69ce7470ab2f48afcb5552e054a`
 - Связанные issue: `#594`, `#581`, `#584`, `#595`
 
 ## Перед началом
@@ -27,7 +28,7 @@ Docker masked paths и AppArmor.
 
 Предыдущая ветка `feat/594-host-sandbox-launcher` оказалась пустой: GitHub
 показывал `ahead_by=0`, PR и exact-head CI отсутствовали. Реализация v2 начата
-заново от актуального `main`.
+заново от актуального `main` и опубликована как реальный draft PR.
 
 ### Планируемый объём
 
@@ -74,6 +75,7 @@ Docker masked paths и AppArmor.
 ### Фактически сделано
 
 - создана новая ветка от exact current `main`;
+- опубликован реальный draft PR `#629` с 22 changed files;
 - подготовлен fixed-schema launcher contract;
 - Docker command вычисляется launcher-ом и не принимает arbitrary arguments;
 - добавлены route/model matrix, path/symlink validation и scoped env files;
@@ -85,7 +87,11 @@ Docker masked paths и AppArmor.
 - canonical runner adapter сохраняет существующий control plane;
 - local rollback требует отдельного operator gate;
 - подготовлены AppArmor profiles, socket/service units, installer и preflight;
-- добавлены behavioral и deployment tests.
+- добавлены behavioral и deployment tests;
+- ветка синхронизирована с продвинувшимся `main` merge-коммитом;
+- первый exact-head CI выявил два совместимых дефекта: устаревший bwrap contract
+  и удалённый helper `verify_github_access`; оба исправляются одним correction
+  commit.
 
 ### Миграции и совместимость
 
@@ -98,26 +104,29 @@ Docker masked paths и AppArmor.
 
 ### Проверки
 
-- Python syntax и focused tests будут запущены после публикации первого реального
-  commit в ветку;
-- Docker Compose contract будет проверен с synthetic env fixtures;
-- required GitHub CI будет проверяться только на точном head;
+- preflight Python compilation прошла;
+- exact-head type check прошёл;
+- project notes потребовал допустимый статус и исправлен на `частично`;
+- test shards выявили устаревшие runtime-smoke contracts, исправленные в
+  correction commit;
+- Docker, security и branch-protection checks будут оцениваться только на новом
+  exact head;
 - live AppArmor, socket, canary, reboot и rollback остаются rollout-only.
 
 ### PR и commit
 
-- PR: `не открыт до публикации первого реального commit`;
-- base: `c5685fc117c9c622afc955287f0cae5b9d5dae81`;
-- head: `будет зафиксирован после atomic Git tree commit`;
-- merge commit: `отсутствует`;
+- PR: `#629`;
+- первый implementation commit: `8eb6ff42b70eeeb1f4a0078638257609d9ed12c2`;
+- merge current main commit: `1d9bcdefc4002cea4dd3c0bf87a35f3ad60cf3bd`;
+- новый exact head будет определён correction commit;
+- merge commit в `main`: `отсутствует`;
 - production SHA: `не менялся`.
 
 ### Незавершённое
 
-- собрать atomic tree и опубликовать первый head;
-- открыть draft PR;
-- исправить exact-head CI;
-- обновить canonical coder installer и release workflow;
+- получить зелёный exact-head CI для launcher core;
+- интегрировать launcher installer в canonical coder installer;
+- обновить exact-main Hermes release workflow;
 - выполнить independent review;
 - получить отдельное merge approval;
 - выполнить staged rollout и live acceptance;
@@ -125,5 +134,5 @@ Docker masked paths и AppArmor.
 
 ### Следующий шаг
 
-Опубликовать реальный первый commit с launcher core и behavioral contracts,
-проверить compare `ahead_by > 0`, открыть draft PR и разбирать CI по точному head.
+Опубликовать correction commit для runtime-smoke compatibility и worklog,
+дождаться exact-head CI, затем замкнуть canonical installer и release workflow.

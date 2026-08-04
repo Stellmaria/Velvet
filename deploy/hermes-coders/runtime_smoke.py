@@ -38,8 +38,18 @@ class CoderTarget:
 
 
 CODERS = (
-    CoderTarget("velvet", "hermes-coder-velvet", "hermes-chat-velvet", "Stellmaria/Velvet"),
-    CoderTarget("max", "hermes-coder-max", "hermes-chat-max", "Stellmaria/romatic_club_bot_max"),
+    CoderTarget(
+        "velvet",
+        "hermes-coder-velvet",
+        "hermes-chat-velvet",
+        "Stellmaria/Velvet",
+    ),
+    CoderTarget(
+        "max",
+        "hermes-coder-max",
+        "hermes-chat-max",
+        "Stellmaria/romatic_club_bot_max",
+    ),
 )
 
 
@@ -64,28 +74,44 @@ def redact(value: str) -> str:
     return result
 
 
-def _default_runner(args: Sequence[str], timeout_seconds: int) -> subprocess.CompletedProcess[str]:
+def _default_runner(
+    args: Sequence[str], timeout_seconds: int
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        list(args), check=False, capture_output=True, text=True, timeout=timeout_seconds
+        list(args),
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout_seconds,
     )
 
 
 def compose_prefix() -> list[str]:
     return [
-        "docker", "compose", "--profile", "velvet", "--profile", "max",
+        "docker",
+        "compose",
+        "--profile",
+        "velvet",
+        "--profile",
+        "max",
         *[part for path in COMPOSE_FILES for part in ("-f", str(path))],
     ]
 
 
 def _result_details(result: subprocess.CompletedProcess[str]) -> str:
     details = "\n".join(
-        part.strip() for part in (result.stderr or "", result.stdout or "") if part.strip()
+        part.strip()
+        for part in (result.stderr or "", result.stdout or "")
+        if part.strip()
     )
     return redact(details[:2000]) or "без диагностического вывода"
 
 
 def run_checked(
-    args: Sequence[str], *, timeout_seconds: int, runner: Runner = _default_runner
+    args: Sequence[str],
+    *,
+    timeout_seconds: int,
+    runner: Runner = _default_runner,
 ) -> subprocess.CompletedProcess[str]:
     try:
         result = runner(args, timeout_seconds)
@@ -95,15 +121,24 @@ def run_checked(
         ) from exc
     if result.returncode != 0:
         raise SmokeError(
-            f"Команда завершилась с кодом {result.returncode}: {_result_details(result)}"
+            f"Команда завершилась с кодом {result.returncode}: "
+            f"{_result_details(result)}"
         )
     return result
 
 
 def gateway_probe_command(service: str) -> list[str]:
     return [
-        *compose_prefix(), "exec", "-T", service, "python", "-c",
-        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3).read()",
+        *compose_prefix(),
+        "exec",
+        "-T",
+        service,
+        "python",
+        "-c",
+        (
+            "import urllib.request; "
+            "urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3).read()"
+        ),
     ]
 
 
@@ -148,7 +183,8 @@ case "$remote" in
   {https_remote}|{https_remote}.git) ;;
   *) echo "unexpected origin remote" >&2; exit 31 ;;
 esac
-git -C /workspace push --dry-run origin HEAD:refs/heads/hermes-auth-smoke-{target.project} >/dev/null
+git -C /workspace push --dry-run origin \
+  HEAD:refs/heads/hermes-auth-smoke-{target.project} >/dev/null
 """
 
 
@@ -209,7 +245,8 @@ base_fingerprint() {{
   {{
     git -C /workspace-base rev-parse HEAD
     git -C /workspace-base rev-parse --abbrev-ref HEAD
-    git -C /workspace-base for-each-ref --format='%(refname)%00%(objectname)%00' refs/heads refs/tags
+    git -C /workspace-base for-each-ref \
+      --format='%(refname)%00%(objectname)%00' refs/heads refs/tags
     git -C /workspace-base status --porcelain=v1 -z --untracked-files=all
   }} | sha256sum
 }}
@@ -218,12 +255,22 @@ findmnt -n -o OPTIONS /workspace-base | grep -E '(^|,)ro(,|$)' >/dev/null
 probe="/opt/codex-runs/smoke-{target.project}-$$"
 trap 'rm -rf -- "$probe"' EXIT
 rm -rf -- "$probe"
-default_branch="$(GIT_TERMINAL_PROMPT=0 git ls-remote --symref "$remote" HEAD | sed -n 's#^ref: refs/heads/\\([^[:space:]]*\\)[[:space:]]*HEAD$#\1#p' | head -n 1)"
+default_branch="$(
+  GIT_TERMINAL_PROMPT=0 git ls-remote --symref "$remote" HEAD \
+    | sed -n 's#^ref: refs/heads/\\([^[:space:]]*\\)[[:space:]]*HEAD$#\1#p' \
+    | head -n 1
+)"
 test -n "$default_branch"
 git check-ref-format --branch "$default_branch" >/dev/null
-GIT_TERMINAL_PROMPT=0 git clone --filter=blob:none --no-checkout --single-branch --branch "$default_branch" "$remote" "$probe" >/dev/null
+GIT_TERMINAL_PROMPT=0 git clone \
+  --filter=blob:none \
+  --no-checkout \
+  --single-branch \
+  --branch "$default_branch" \
+  "$remote" "$probe" >/dev/null
 git -C "$probe" checkout --detach --force "origin/$default_branch" >/dev/null
-git -C "$probe" push --dry-run origin HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
+git -C "$probe" push --dry-run origin \
+  HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
 test "$(base_fingerprint)" = "$fingerprint_before"
 awk '$1 == "NoNewPrivs:" && $2 == "1" {{ok=1}} END {{exit !ok}}' /proc/1/status
 awk '$1 == "CapEff:" && $2 == "0000000000000000" {{ok=1}} END {{exit !ok}}' /proc/1/status
@@ -243,22 +290,61 @@ def probe_command(target: CoderTarget, *, coder: bool) -> list[str]:
     return [*compose_prefix(), "exec", "-T", service, "sh", "-ceu", script]
 
 
-def verify_target(target: CoderTarget, *, runner: Runner = _default_runner) -> None:
+def verify_github_access(
+    target: CoderTarget,
+    *,
+    runner: Runner = _default_runner,
+) -> None:
+    run_checked(
+        probe_command(target, coder=False),
+        timeout_seconds=45,
+        runner=runner,
+    )
+
+
+def verify_codex_access(
+    target: CoderTarget,
+    *,
+    runner: Runner = _default_runner,
+) -> None:
     auth = ROOT / "codex" / target.project / "auth.json"
     if not auth.is_file() or auth.stat().st_size == 0:
         raise SmokeError(f"Codex auth отсутствует: {auth}")
     mode = stat.S_IMODE(auth.stat().st_mode)
     if mode != 0o600:
-        raise SmokeError(f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}")
-    run_checked(probe_command(target, coder=False), timeout_seconds=45, runner=runner)
-    run_checked(probe_command(target, coder=True), timeout_seconds=120, runner=runner)
+        raise SmokeError(
+            f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}"
+        )
+    run_checked(
+        probe_command(target, coder=True),
+        timeout_seconds=120,
+        runner=runner,
+    )
+
+
+def verify_target(
+    target: CoderTarget,
+    *,
+    runner: Runner = _default_runner,
+) -> None:
+    verify_github_access(target, runner=runner)
+    verify_codex_access(target, runner=runner)
 
 
 def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
     command = [
-        "docker", "compose", "--env-file", "/srv/velvet/.env.server",
-        "-f", "/srv/velvet/docker-compose.server.yml", "exec", "-T", "hermes",
-        "python", "-c", "import importlib.metadata as m; print(m.version('cryptography'))",
+        "docker",
+        "compose",
+        "--env-file",
+        "/srv/velvet/.env.server",
+        "-f",
+        "/srv/velvet/docker-compose.server.yml",
+        "exec",
+        "-T",
+        "hermes",
+        "python",
+        "-c",
+        "import importlib.metadata as m; print(m.version('cryptography'))",
     ]
     result = run_checked(command, timeout_seconds=30, runner=runner)
     if result.stdout.strip() != CRYPTOGRAPHY_VERSION:
