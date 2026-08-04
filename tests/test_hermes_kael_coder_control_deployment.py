@@ -24,6 +24,9 @@ class KaelCoderControlDeploymentTests(unittest.TestCase):
         self.agents = (
             ROOT / "deploy/hermes-operator/AGENTS.kael.md"
         ).read_text(encoding="utf-8")
+        self.plugin_tests = (
+            ROOT / "tests/test_hermes_kael_coder_control.py"
+        ).read_text(encoding="utf-8")
 
     def test_plugin_manifest_declares_typed_tool_and_policy_hooks(self) -> None:
         self.assertIn("name: kael-coder-control", self.manifest)
@@ -77,7 +80,7 @@ class KaelCoderControlDeploymentTests(unittest.TestCase):
             "runctl.py",
         ):
             self.assertIn(controller, self.agents)
-        self.assertIn("delegate_task", self.plugin)
+        self.assertIn('tool_name="delegate_task"', self.plugin_tests)
 
     def test_shell_deployment_files_parse(self) -> None:
         bash = shutil.which("bash")
