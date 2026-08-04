@@ -24,6 +24,11 @@
 - основной Hermes имеет local terminal и writable `/opt/data`;
 - `coderctl.py` уже использует strict enums, project allowlist и fail-closed router transport.
 
+Дополнительная проверка закреплённого upstream выявила два существенных свойства:
+
+- Telegram строит surface из статического toolset `hermes-telegram`; plugin tool из отдельного standalone toolset загрузился бы, но остался невидимым модели;
+- registry добавляет plugin tools в platform surface, когда они зарегистрированы в том же `hermes-telegram` toolset.
+
 ### Улучшаемая существующая функция
 
 Улучшается существующая функция Каэля как единого server control plane и координатора Velvet/Max coder-агентов. Изменение не добавляет новую предметную область.
@@ -34,19 +39,22 @@
 2. Strict schema для project/task type/complexity/risk/mutation policy/tier/task.
 3. Adapter к `/opt/data/tools/coderctl.py` через argv и `shell=False`.
 4. `pre_tool_call` policy, сохраняющая controller-команды и non-coder delegation, но блокирующая coder bypass.
-5. JSONL audit без текста задачи и secrets.
-6. Идемпотентная установка plugin и включение в runtime config.
-7. Контрактные и unit-тесты.
-8. После merge отдельный production reconcile и Telegram smoke.
+5. Immutable boundary для controllers, plugin, config, identity, hooks, ledger, audit и process secrets.
+6. JSONL audit без текста задачи и secrets.
+7. Идемпотентная установка plugin и включение в runtime config.
+8. Контрактные и unit-тесты.
+9. После merge отдельный production reconcile и Telegram smoke.
 
 ### Критерии готовности
 
 - invalid fields отклоняются до subprocess/router;
 - router unavailable возвращает явную ошибку без local fallback;
 - `coderctl.py submit` через terminal блокируется;
-- `monitorctl.py`, `opsctl.py`, `reconcilectl.py`, `runctl.py` и read-only coderctl operations остаются доступны;
+- `monitorctl.py`, `opsctl.py`, `reconcilectl.py`, `runctl.py` и non-submit coderctl operations остаются доступны;
 - `delegate_task` для Квин и других non-coder агентов не блокируется;
+- `coder_delegate` реально входит в Telegram tool surface;
 - local repository/search/Git/GitHub/code tools блокируются и аудируются;
+- model file tools не могут читать или менять config, identity, credentials, controllers, plugins, hooks, ledger, audit, process state и `/proc/*/environ`;
 - plugin устанавливается с приватными правами и сохраняет существующие enabled plugins;
 - CI проходит;
 - live Telegram canary создаёт router POST и canonical ledger metadata.
@@ -54,7 +62,8 @@
 ### Риски и ограничения
 
 - plugin API привязан к закреплённому Hermes Agent `0.19.0`; image digest остаётся обязательной частью rollout contract;
-- слишком широкая terminal policy могла бы лишить Каэля server control, поэтому разрешены только существующие узкие controllers;
+- слишком широкая terminal policy могла бы лишить Каэля server control, поэтому разрешены только существующие узкие controllers и их allowlisted actions;
+- `process` сам не запускает команды, а управляет только процессами, ранее созданными через terminal; произвольный terminal блокируется, а rollout перезапускает основной Hermes;
 - код и CI не означают production rollout;
 - nested bwrap issue #594 не входит в этот срез;
 - production restart/reconcile выполняется только после merge и отдельного разрешения.
@@ -64,12 +73,14 @@
 ### Фактически сделано
 
 - добавлен user plugin `kael-coder-control`;
-- зарегистрирован typed tool `coder_delegate`;
-- handler вызывает `coderctl.py submit` через список argv, `shell=False`, bounded timeout и explicit error response;
+- зарегистрирован typed tool `coder_delegate` в активном `hermes-telegram` toolset;
+- handler вызывает фиксированный `/opt/data/tools/coderctl.py submit` через список argv, `shell=False`, bounded timeout и explicit error response;
 - canonical response всегда содержит `requested_tier`, `selected_primary_model`, `actual_route`, `attempted_routes`, `mutation_started`, `production_privileges=false`;
 - добавлены audit events classification, delegate invocation, router submit/result, rejected local tool и terminal failure;
-- local terminal ограничен существующими controller scripts, а `coderctl.py submit` через terminal запрещён;
+- audit использует append-only open с `O_NOFOLLOW` и mode `0600`, не сохраняя текст задачи;
+- local terminal ограничен существующими controller scripts и allowlisted actions, а `coderctl.py submit` через terminal запрещён;
 - `search_files`, general code execution, direct Git/GitHub tools и coder workspace paths блокируются;
+- direct и symlink-resolved file access к config, `AGENTS.md`, `SOUL.md`, context manifest, credentials, tools, plugins, hooks, orchestration ledger, audit, process checkpoint, `/proc`, `/run/secrets` и SSH secrets блокируется;
 - non-coder `delegate_task` сохраняется;
 - runtime config patcher идемпотентно добавляет `kael-coder-control` в `plugins.enabled`, не удаляя другие plugins;
 - operator installer и entities reconcile устанавливают plugin и audit directory с ограниченными правами;
@@ -99,21 +110,34 @@ python3 -m unittest tests.test_hermes_kael_coder_control -v
 Ran 13 tests ... OK
 ```
 
-После формирования PR добавлены runtime-config, deployment contract и shell syntax tests. Полный CI PR #596 ещё требуется.
+В PR добавлены дополнительные проверки:
+
+- Telegram toolset exposure;
+- strict typed schema и invalid fields;
+- explicit router failure без fallback;
+- controller action/project/target allowlist;
+- blocked terminal/search/code/Git/GitHub/workspace access;
+- immutable control plane, identity и process secret paths;
+- symlink-resistant audit target;
+- preserved Queen/non-coder delegation;
+- runtime-config idempotency и сохранение existing plugins;
+- operator/entities installation и shell syntax.
+
+Полный CI PR #596 перезапускается на финальном head после hardening цикла.
 
 ### PR и commit
 
 PR: #596 `Fail-closed Kael coder delegation`.
 
-Commit: текущий head feature branch; итоговый SHA фиксируется после CI-fix цикла.
+Commit: текущий head feature branch; итоговый SHA фиксируется после зелёного CI.
 
 ### Незавершённое
 
-- CI ещё не завершён;
+- финальный CI ещё не завершён;
 - production plugin не установлен;
 - Telegram read-only Velvet/Max smoke, router POST и terminal ledger не проверены;
 - rollback smoke не выполнен.
 
 ### Следующий шаг
 
-Проверить и исправить CI PR #596, провести review и перевести PR из draft после завершения обязательных проверок. После merge выполнить только entities/operator reconcile для основного Hermes, пересоздать только `velvet-hermes-1` при необходимости и провести fail-closed Telegram canary без mutation.
+Дождаться полного зелёного CI PR #596 и провести итоговый review. PR остаётся draft. После отдельного разрешения на ready/merge и после merge выполнить только entities/operator reconcile для основного Hermes, пересоздать только `velvet-hermes-1` при необходимости и провести fail-closed Telegram canary без mutation.
