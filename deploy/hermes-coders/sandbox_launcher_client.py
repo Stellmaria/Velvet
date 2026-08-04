@@ -7,7 +7,7 @@ import socket
 from pathlib import Path
 from typing import Any
 
-_MAX_RESPONSE_BYTES = 2_500_000
+_MAX_RESPONSE_BYTES = 2_000_000
 
 
 class LauncherClientError(RuntimeError):
@@ -16,27 +16,26 @@ class LauncherClientError(RuntimeError):
 
 class SandboxLauncherClient:
     def __init__(self, socket_path: str | None = None) -> None:
-        raw = socket_path or os.environ.get(
+        self.socket_path = socket_path or os.environ.get(
             "HERMES_SANDBOX_LAUNCHER_SOCKET",
             "/run/hermes-sandbox/launcher.sock",
         )
-        self.socket_path = Path(raw)
-        if not self.socket_path.is_absolute():
-            raise RuntimeError("HERMES_SANDBOX_LAUNCHER_SOCKET должен быть absolute path")
+        self.project = os.environ.get("HERMES_CODER_PROJECT", "").strip()
+        self.project_token = os.environ.get(
+            "HERMES_SANDBOX_LAUNCHER_TOKEN", ""
+        ).strip()
 
-    def _request(self, payload: dict[str, Any], *, timeout_seconds: int) -> dict[str, Any]:
+    def _request(self, payload: dict[str, Any], *, timeout: float) -> dict[str, Any]:
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode(
             "utf-8"
         ) + b"\n"
-        if len(body) > 131_072:
-            raise LauncherClientError("launcher request exceeds 128 KiB")
+        chunks: list[bytes] = []
+        total = 0
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-                client.settimeout(timeout_seconds)
-                client.connect(str(self.socket_path))
+                client.settimeout(timeout)
+                client.connect(self.socket_path)
                 client.sendall(body)
-                chunks: list[bytes] = []
-                total = 0
                 while True:
                     chunk = client.recv(65_536)
                     if not chunk:
@@ -44,27 +43,64 @@ class SandboxLauncherClient:
                     chunks.append(chunk)
                     total += len(chunk)
                     if total > _MAX_RESPONSE_BYTES:
-                        raise LauncherClientError("launcher response exceeds limit")
+                        raise LauncherClientError("launcher response exceeds 2 MB")
                     if b"\n" in chunk:
                         break
-        except (OSError, socket.timeout) as error:
-            raise LauncherClientError(
-                f"sandbox launcher unavailable: {type(error).__name__}"
-            ) from error
+        except (OSError, TimeoutError) as error:
+            raise LauncherClientError("sandbox launcher is unavailable") from error
         raw = b"".join(chunks).split(b"\n", 1)[0]
+        if not raw:
+            raise LauncherClientError("sandbox launcher returned an empty response")
         try:
             response = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise LauncherClientError("sandbox launcher returned invalid JSON") from error
         if not isinstance(response, dict):
-            raise LauncherClientError("sandbox launcher response must be an object")
+            raise LauncherClientError("sandbox launcher response is not an object")
         if response.get("ok") is not True:
-            message = str(response.get("error") or "sandbox launcher rejected request")
-            raise LauncherClientError(message[:2_000])
+            raise LauncherClientError(str(response.get("error") or "launcher rejected request"))
         return response
 
+    def _project_credentials(self, project: str | None = None) -> tuple[str, str]:
+        selected = project or self.project
+        if selected not in {"velvet", "max"}:
+            raise LauncherClientError("sandbox launcher project is unavailable")
+        if self.project and selected != self.project:
+            raise LauncherClientError("cross-project launcher request is forbidden")
+        if len(self.project_token) < 32:
+            raise LauncherClientError("sandbox launcher project token is unavailable")
+        return selected, self.project_token
+
     def ping(self) -> dict[str, Any]:
-        return self._request({"action": "ping"}, timeout_seconds=5)
+        return self._request({"action": "ping"}, timeout=10)
+
+    def probe(self, project: str | None = None) -> dict[str, Any]:
+        selected, token = self._project_credentials(project)
+        response = self._request(
+            {
+                "action": "probe",
+                "project": selected,
+                "project_token": token,
+            },
+            timeout=60,
+        )
+        result = response.get("result")
+        if not isinstance(result, dict):
+            raise LauncherClientError("sandbox launcher probe result is invalid")
+        return result
+
+    def cancel(self, run_id: str) -> bool:
+        project, token = self._project_credentials()
+        response = self._request(
+            {
+                "action": "cancel",
+                "run_id": run_id,
+                "project": project,
+                "project_token": token,
+            },
+            timeout=20,
+        )
+        return bool(response.get("cancelled"))
 
     def run(
         self,
@@ -78,11 +114,13 @@ class SandboxLauncherClient:
         timeout_seconds: int,
         prompt: str,
     ) -> dict[str, Any]:
+        selected, token = self._project_credentials(project)
         response = self._request(
             {
                 "action": "run",
                 "run_id": run_id,
-                "project": project,
+                "project": selected,
+                "project_token": token,
                 "workspace": str(workspace),
                 "model": model,
                 "route": route,
@@ -90,37 +128,18 @@ class SandboxLauncherClient:
                 "timeout_seconds": timeout_seconds,
                 "prompt": prompt,
             },
-            timeout_seconds=timeout_seconds + 60,
+            timeout=float(timeout_seconds + 90),
         )
         result = response.get("result")
         if not isinstance(result, dict):
-            raise LauncherClientError("sandbox launcher result is missing")
-        expected = {"returncode", "stdout", "stderr", "cancelled", "execution_started"}
+            raise LauncherClientError("sandbox launcher run result is invalid")
+        expected = {
+            "returncode",
+            "stdout",
+            "stderr",
+            "cancelled",
+            "execution_started",
+        }
         if set(result) != expected:
-            raise LauncherClientError("sandbox launcher result schema mismatch")
-        if not isinstance(result["returncode"], int):
-            raise LauncherClientError("sandbox launcher returncode is invalid")
-        if not isinstance(result["stdout"], str) or not isinstance(result["stderr"], str):
-            raise LauncherClientError("sandbox launcher output is invalid")
-        if not isinstance(result["cancelled"], bool):
-            raise LauncherClientError("sandbox launcher cancelled flag is invalid")
-        if not isinstance(result["execution_started"], bool):
-            raise LauncherClientError("sandbox launcher execution flag is invalid")
+            raise LauncherClientError("sandbox launcher result fields are invalid")
         return result
-
-    def probe(self, project: str) -> dict[str, Any]:
-        response = self._request(
-            {"action": "probe", "project": project},
-            timeout_seconds=60,
-        )
-        result = response.get("result")
-        if not isinstance(result, dict) or result.get("returncode") != 0:
-            raise LauncherClientError("sandbox launcher probe failed")
-        return result
-
-    def cancel(self, run_id: str) -> bool:
-        response = self._request(
-            {"action": "cancel", "run_id": run_id},
-            timeout_seconds=20,
-        )
-        return bool(response.get("cancelled"))
