@@ -89,7 +89,7 @@ Codex task checkout изменён с общего `/workspace` на dynamic pat
 - Docker/AppArmor/systemd/Telegram live smoke не запускались: production и Docker
   были запрещены контрактом задачи.
 
-### PR и исходная реализация
+### PR и commit
 
 - PR: #582;
 - implementation commit: `1c918234dbe55674eb652dbb22064e83deeb010a`;
