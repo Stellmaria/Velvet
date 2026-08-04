@@ -88,7 +88,7 @@ def _read_json(
         if error.code == 401:
             message = "ключ Byesu отклонён"
         elif error.code == 403:
-            message = "доступ к лимиту Byesu запрещён"
+            message = "доступ к квоте Byesu запрещён"
         elif error.code == 429:
             message = "Byesu временно ограничил запросы"
         else:
@@ -97,12 +97,12 @@ def _read_json(
     except (urllib.error.URLError, TimeoutError) as error:
         raise RuntimeError("сеть Byesu недоступна") from error
     except json.JSONDecodeError as error:
-        raise RuntimeError("Byesu вернул неизвестный формат лимита") from error
+        raise RuntimeError("Byesu вернул неизвестный формат квоты") from error
 
     if not isinstance(payload, Mapping):
-        raise RuntimeError("Byesu вернул неизвестный формат лимита")
+        raise RuntimeError("Byesu вернул неизвестный формат квоты")
     if payload.get("error"):
-        raise RuntimeError("Byesu отклонил запрос лимита")
+        raise RuntimeError("Byesu отклонил запрос квоты")
     return payload
 
 
@@ -111,26 +111,26 @@ async def _fetch_byesu_balance() -> ProviderBalance:
     if not api_key:
         return ProviderBalance(None, "$", "API-ключ не настроен")
     try:
-        payload = await asyncio.wait_for(
-            asyncio.to_thread(
-                _read_json,
-                _BYESU_BILLING_URL,
-                api_key=api_key,
-                timeout_seconds=_PROVIDER_TIMEOUT_SECONDS,
+        subscription, usage = await asyncio.wait_for(
+            asyncio.gather(
+                asyncio.to_thread(_read_json, _BYESU_BILLING_URL, api_key=api_key, timeout_seconds=_PROVIDER_TIMEOUT_SECONDS),
+                asyncio.to_thread(_read_json, _BYESU_BILLING_URL.replace("subscription", "usage"), api_key=api_key, timeout_seconds=_PROVIDER_TIMEOUT_SECONDS),
             ),
             timeout=_PROVIDER_TIMEOUT_SECONDS + 1,
         )
     except TimeoutError:
-        return ProviderBalance(None, "$", "запрос лимита превысил время ожидания")
+        return ProviderBalance(None, "$", "запрос квоты превысил время ожидания")
     except RuntimeError as error:
         return ProviderBalance(None, "$", str(error))
 
-    value = _decimal(payload.get("hard_limit_usd"))
-    if value is None:
-        value = _decimal(payload.get("balance_usd"))
-    if value is None:
-        return ProviderBalance(None, "$", "провайдер не вернул доступный лимит")
-    return ProviderBalance(value, "$")
+    limit = _decimal(subscription.get("hard_limit_usd"))
+    used = _decimal(usage.get("total_usage"))
+    if limit is None or used is None:
+        return ProviderBalance(None, "$", "провайдер не вернул лимит или использование квоты")
+    remaining = limit - used / Decimal("100")
+    if remaining < 0:
+        remaining = Decimal("0")
+    return ProviderBalance(remaining.quantize(Decimal("0.01")), "$")
 
 
 async def _fetch_kie_balances(
@@ -276,7 +276,7 @@ async def handle_auf_provider_balances(
             "<b>Внешние провайдеры</b>",
             _provider_line("Kie.ai", kie_balance),
             _provider_line("GRS AI", grs_balance),
-            _provider_line("Byesu · доступно по ключу", byesu_balance),
+            _provider_line("Byesu · остаток квоты ключа", byesu_balance),
             "",
             "<b>Внутренний кошелёк Velvet</b>",
             f"• Доступно: <b>{format_auf_units(wallet.available_units)}</b>",
