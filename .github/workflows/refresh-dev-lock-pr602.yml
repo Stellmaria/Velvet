@@ -1,4 +1,4 @@
-name: temporary dev lock refresh for PR 602
+name: finalize CI dependency fix for PR 602
 
 on:
   pull_request:
@@ -11,11 +11,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: refresh-dev-lock-pr602-${{ github.event.pull_request.number }}
+  group: finalize-ci-dependency-fix-pr602-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  refresh:
+  finalize:
     if: >-
       github.event.pull_request.number == 602 &&
       github.event.pull_request.head.ref == 'fix/ci-targeted-contract-dependencies' &&
@@ -30,39 +30,78 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-        with:
-          version: "0.11.16"
-          enable-cache: true
-          cache-dependency-glob: requirements-dev.txt
-
-      - name: Rebuild and verify canonical dev lock
+      - name: Apply deterministic lock verification and self-remove
         shell: bash
         run: |
           set -euo pipefail
-          uv pip compile requirements-dev.txt \
-            --python-version 3.13 \
-            --generate-hashes \
-            --no-annotate \
-            --no-header \
-            --output-file requirements-dev.lock
-          actual_blob="$(git hash-object requirements-dev.lock)"
-          printf 'generated_dev_lock_blob=%s\n' "$actual_blob"
-          test "$actual_blob" = ef06eb4d2d1ffb2ab41cc6e800333586159ed7f4
+          python - <<'PY'
+          from pathlib import Path
 
-      - name: Commit only canonical dev lock
+          workflow = Path('.github/workflows/security.yml')
+          source = workflow.read_text(encoding='utf-8')
+          runtime_old = '''          uv pip compile requirements.txt \\
+            --python-version 3.13 \\
+'''
+          runtime_new = '''          uv pip compile requirements.txt \\
+            --constraint requirements.lock \\
+            --python-version 3.13 \\
+'''
+          dev_old = '''          uv pip compile requirements-dev.txt \\
+            --python-version 3.13 \\
+'''
+          dev_new = '''          uv pip compile requirements-dev.txt \\
+            --constraint requirements-dev.lock \\
+            --python-version 3.13 \\
+'''
+          if source.count(runtime_old) != 1 or source.count(dev_old) != 1:
+              raise SystemExit('security workflow compile contract changed unexpectedly')
+          source = source.replace(runtime_old, runtime_new, 1).replace(dev_old, dev_new, 1)
+          workflow.write_text(source, encoding='utf-8')
+
+          test_path = Path('tests/test_security_gate_contract.py')
+          tests = test_path.read_text(encoding='utf-8')
+          marker = '    def test_vulnerable_fixture_is_isolated_and_audited(self) -> None:\n'
+          method = '''    def test_lock_rebuild_is_constrained_by_committed_graph(self) -> None:\n        source = SECURITY_WORKFLOW.read_text(encoding="utf-8")\n        self.assertIn("--constraint requirements.lock", source)\n        self.assertIn("--constraint requirements-dev.lock", source)\n\n'''
+          if method not in tests:
+              if tests.count(marker) != 1:
+                  raise SystemExit('security contract insertion point changed unexpectedly')
+              tests = tests.replace(marker, method + marker, 1)
+              test_path.write_text(tests, encoding='utf-8')
+
+          Path('.github/workflows/refresh-dev-lock-pr602.yml').unlink()
+          PY
+
+      - name: Validate exact final scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          python -m unittest \
+            tests.test_security_gate_contract \
+            tests.test_selective_tests_workflow_contract
+          mapfile -t changed < <(git status --short | awk '{print $2}' | sort)
+          printf '%s\n' "${changed[@]}"
+          expected=(
+            .github/workflows/refresh-dev-lock-pr602.yml
+            .github/workflows/security.yml
+            tests/test_security_gate_contract.py
+          )
+          test "${#changed[@]}" -eq "${#expected[@]}"
+          for i in "${!expected[@]}"; do
+            test "${changed[$i]}" = "${expected[$i]}"
+          done
+
+      - name: Commit final CI fix
         shell: bash
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          mapfile -t changed < <(git status --short | awk '{print $2}' | sort)
-          printf '%s\n' "${changed[@]}"
-          test "${#changed[@]}" -eq 1
-          test "${changed[0]}" = requirements-dev.lock
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -- requirements-dev.lock
-          git commit -m "build: refresh canonical dev dependency lock"
+          git add -- \
+            .github/workflows/security.yml \
+            tests/test_security_gate_contract.py
+          git rm -- .github/workflows/refresh-dev-lock-pr602.yml
+          git commit -m "ci: make lock verification deterministic"
           git push origin "HEAD:${HEAD_REF}"
