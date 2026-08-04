@@ -231,9 +231,15 @@ def _ensure_commit(sha: str) -> None:
 
 
 def _resolve_pull_request_base(*, base_sha: str, base_ref: str) -> str:
-    # GitHub's pull_request payload may retain the base SHA from PR creation
-    # while the target branch advances. Prefer the current remote base ref and
-    # compute the merge-base against the checked-out PR head.
+    # The pull_request event supplies the exact base tree used for this run.
+    # Prefer it so shallow checkouts can diff two known commits without fetching
+    # branch history. Strict branch protection will request a fresh run if main
+    # advances before merge.
+    if base_sha and base_sha != ZERO_SHA:
+        _ensure_commit(base_sha)
+        return base_sha
+
+    # Keep a fail-closed fallback for callers or events that lack an exact SHA.
     if base_ref:
         remote_ref = f"refs/remotes/origin/{base_ref}"
         subprocess.run(
@@ -247,10 +253,6 @@ def _resolve_pull_request_base(*, base_sha: str, base_ref: str) -> str:
             check=True,
         )
         return _git("merge-base", "HEAD", remote_ref).strip()
-
-    if base_sha and base_sha != ZERO_SHA:
-        _ensure_commit(base_sha)
-        return base_sha
     return ""
 
 
