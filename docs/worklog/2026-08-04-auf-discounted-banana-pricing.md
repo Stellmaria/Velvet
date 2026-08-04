@@ -57,6 +57,8 @@
 - Обычная Banana Pro продолжает использовать 2/3/4 VL.
 - Override 20% и выше продолжает использовать обычный floor.
 - Python fallback `_banana_quality_surcharge` удалён; используется только `quality_surcharge_velvets` из price version.
+- Разбор product floors вынесен из `quote_auf_payload`, чтобы функция оставалась в архитектурном лимите.
+- Канонический package architecture inventory пересобран; существующие SQL и typing exemptions перенесены на новые fingerprints без добавления долга.
 - Добавлены unit- и contract-тесты для двух тарифных сеток и действующих пакетов 100–999 ₽.
 
 ### Миграции и совместимость
@@ -75,7 +77,7 @@
 - Сохранена проверка независимости generation quote от `auf_package_prices`.
 - Добавлен контракт отсутствия Python fallback для Banana surcharge.
 - Добавлен контракт действующего диапазона пакетов 100–999 ₽.
-- Полный GitHub Actions CI ещё не запускался.
+- Профильные тесты и полный GitHub Actions CI запущены в PR #600.
 
 ### PR и commit
 
@@ -83,12 +85,12 @@
 - Миграция: `a2275db37ff15544f8312a543a91728bfc778921`.
 - Расчётчик: `27b08f570547d2b439d5195f4c494e822f4ec591`.
 - Тесты: `011ea80531d04c2218aecfbe14b895559c9daa3f`.
-- PR ещё не открыт.
+- PR: #600 `feat: унифицировать цены Banana для тарифа 15%`.
 
 ### Незавершённое
 
 - Не выполнен полный CI.
-- Не создан draft PR.
+- PR #600 открыт и проходит обязательные проверки.
 - Не выполнены merge и production rollout.
 - Переход с markup на target margin и фактический P&L по партиям VL остаются отдельной работой.
 
