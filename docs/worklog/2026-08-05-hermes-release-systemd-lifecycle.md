@@ -6,7 +6,7 @@
 - Статус: `частично`
 - Ветка: `fix/hermes-release-systemd-lifecycle`
 - Базовый commit: `c5685fc117c9c622afc955287f0cae5b9d5dae81`
-- Связанные issue и release evidence: `#592`, `#581`, `#611`, `#620`
+- Связанные issue, PR и release evidence: `#592`, `#581`, `#611`, `#620`, `#626`
 
 ## Перед началом
 
@@ -16,7 +16,7 @@
 который продолжал использовать mutable checkout `/srv/velvet` и оставался в
 состоянии `failed/inactive` после старого startup smoke.
 
-### Подтверждённое production-состояние
+### Исходный контекст
 
 Exact release `bfda60395fe03b83b8b62f47707994e870ff691a` успешно выпущен.
 Оба coder-контейнера подтверждены как `running`, `healthy`, restart count `0` и
@@ -35,52 +35,85 @@ Exact release `bfda60395fe03b83b8b62f47707994e870ff691a` успешно выпу
 - `runtime_smoke.py` извлекал default branch через хрупкий `ls-remote | sed` и на
   production получил недопустимое имя `?`.
 
-### Ограничения
+### Планируемый объём
 
-- не использовать `docker compose down` или `down -v`;
-- не удалять auth, ledger, runs, workspaces, secrets или volumes;
-- не выполнять production rollout и merge без отдельного разрешения владельца;
-- не ослаблять AppArmor, seccomp, `NoNewPrivs`, capability или read-only rootfs;
-- сохранить exact-main detached release и rollback contract.
+- привязать coder/router units к approved release symlink;
+- исключить rebuild и возврат к mutable checkout при reboot/start/reload;
+- сделать три smoke независимыми от текущего каталога;
+- заменить хрупкое определение default branch на authenticated GitHub API;
+- отделить nested `/proc` qualification probe от обязательного startup smoke;
+- добавить root-only backup/rollback reconciler для one-time migration systemd;
+- покрыть изменения contract tests и release documentation;
+- не выполнять merge, release или production reconciliation в рамках PR.
 
-## Реализация
+### Критерии готовности
 
-### Release-bound units
+- unit-файлы не содержат `/srv/velvet/deploy/hermes-*`;
+- coder и router lifecycle используют `current-hermes-coders`;
+- Compose project names фиксированы, пути smoke абсолютные;
+- normal startup сохраняет обязательные sandbox checks, но не блокируется на
+  дополнительном nested `/proc` mount;
+- strict nested `/proc` diagnostic остаётся доступным явно;
+- reconciler резервирует прежнюю конфигурацию и не использует `compose down`;
+- CI проходит на PR merge ref;
+- production rollout выполняется только после отдельного разрешения.
 
-Оба systemd unit переведены на:
+### Риски и ограничения
 
-```text
-/srv/hermes-coders/releases/current-hermes-coders
-```
+- systemd migration требует root и отдельного ручного запуска после exact-main
+  release;
+- старые units/drop-in нельзя удалять без backup;
+- active release worktree нельзя удалять, пока из него bind-mounted runtime files;
+- `--no-build` на reboot предполагает, что release workflow заранее подтвердил
+  существующие image IDs;
+- nested `/proc` diagnostic остаётся отдельным инфраструктурным сигналом и не
+  выдаётся за исправленный AppArmor host limitation;
+- auth, ledger, runs, workspaces, secrets и volumes должны быть сохранены.
 
-Обычный start/reload использует fixed Compose project names и `--no-build`, чтобы
-reboot не собирал images и не возвращался к mutable `/srv/velvet`.
+## После завершения
 
-### Startup smoke
+### Фактически сделано
 
-`runtime_smoke.py`:
+- оба systemd unit переведены на
+  `/srv/hermes-coders/releases/current-hermes-coders`;
+- start/reload используют fixed Compose project names и `--no-build`;
+- `runtime_smoke.py` использует absolute Compose paths и GitHub API
+  `.default_branch`;
+- обязательные userns, mountns, bwrap read-only/write, AppArmor, seccomp,
+  capability, rootfs, auth, push dry-run, fingerprint и zombie checks сохранены;
+- nested bubblewrap `/proc` probe вынесен в
+  `HERMES_CODEX_STRICT_NESTED_PROC_SMOKE=1`, normal systemd startup использует `0`;
+- `tier_provider_smoke.py` и `router_smoke.py` стали cwd-independent;
+- добавлен `reconcile_release_systemd.sh` с exact-SHA validation, backup,
+  rollback, stale-failed reset, smoke и container acceptance;
+- legacy drop-in удаляется из active systemd только после backup;
+- legacy Compose override переносится в backup только после полного успеха;
+- обновлены release docs и regression tests;
+- открыт draft PR `#626`.
 
-- использует абсолютные Compose paths и project name `hermes-coders`;
-- получает default branch через authenticated GitHub API `.default_branch`;
-- сохраняет обязательные userns, mountns, bwrap read-only/write, AppArmor,
-  seccomp, capability, rootfs и zombie checks;
-- отделяет nested bubblewrap `/proc` probe в explicit strict mode
-  `HERMES_CODEX_STRICT_NESTED_PROC_SMOKE=1`;
-- systemd startup использует strict mode `0`.
+### Риски и ограничения
 
-`tier_provider_smoke.py` и `router_smoke.py` используют абсолютные Compose paths
-и fixed project names, поэтому запускаются из любого каталога.
+- production всё ещё работает на ранее успешном release и пока сохраняет старое
+  красное состояние systemd;
+- PR не исправляет host kernel/AppArmor способность выполнять nested `/proc`
+  mount, а корректно отделяет этот diagnostic от startup readiness;
+- one-time reconciler ещё не выполнялся на production;
+- окончательная проверка reboot/start lifecycle возможна только после merge,
+  exact-main release и отдельного разрешения владельца.
 
-### Systemd reconciler
+### Миграции и совместимость
 
-Добавлен root-only `deploy/hermes-coders/reconcile_release_systemd.sh`.
-Он проверяет exact release SHA, резервирует старые unit/drop-in/override, ставит
-release-bound units, очищает stale failed state, запускает или reload-ит oneshot
-units, выполняет все smoke и проверяет container health. Legacy override
-перемещается в backup только после полного успеха. При ошибке unit-файлы
-восстанавливаются, уже работающие контейнеры не удаляются и не останавливаются.
+- database migrations отсутствуют;
+- Velvet bot, PostgreSQL, supervisor, Krita и application stack не меняются;
+- Docker volumes и persistent coder data не удаляются;
+- существующие coder images переиспользуются на start/reload;
+- release workflow и detached worktree contract сохраняются;
+- rollback восстанавливает прежние unit-файлы и drop-in, не останавливая уже
+  работающие контейнеры;
+- новый normal smoke совместим с текущим production, где read-only/write bwrap
+  probes проходят, а nested `/proc` probe отклоняется host policy.
 
-## Проверки
+### Проверки
 
 Добавлены или обновлены contract tests для:
 
@@ -92,28 +125,29 @@ units, выполняет все smoke и проверяет container health. L
 - non-destructive systemd reconciler и backup contract;
 - runtime/provider/router smoke paths после start/reload.
 
-Required CI и production rollout ещё не выполнены.
+CI первого PR head выявил только несоответствие структуры worklog; кодовые checks
+на момент этой записи ещё выполняются. Структура worklog приведена к canonical
+контракту этим обновлением.
 
-## Rollout после merge
+### PR и commit
 
-1. Выпустить точный актуальный `main` через `release/hermes-coders-<sha>`.
-2. Получить `Outcome: success` в issue `#592`.
-3. Запустить один раз:
+- Draft PR: `#626`;
+- ветка: `fix/hermes-release-systemd-lifecycle`;
+- base при создании ветки: `c5685fc117c9c622afc955287f0cae5b9d5dae81`;
+- актуальный PR head после исправления worklog фиксируется GitHub;
+- merge commit и production release SHA отсутствуют до отдельного разрешения.
 
-```bash
-release_dir="$(readlink -f /srv/hermes-coders/releases/current-hermes-coders)"
-sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
-  bash "$release_dir/deploy/hermes-coders/reconcile_release_systemd.sh"
-```
+### Незавершённое
 
-4. Подтвердить `active/exited/0` для coder и router units.
-5. Повторить health, два read-only handoff и zombie checks.
-6. Не удалять backup directory до следующего успешного reboot/restart smoke.
-
-## Незавершённое
-
-- дождаться required CI;
-- устранить возможные contract failures;
+- дождаться повторного required CI на новом head;
+- устранить возможные code/test/contract failures;
+- при необходимости синхронизировать ветку с новым `main` без потери scope;
 - review и merge требуют отдельного разрешения;
 - exact-main release и systemd reconciliation требуют отдельного разрешения;
-- после rollout обновить статус worklog на `завершено` с release SHA и evidence.
+- после rollout обновить статус на `завершено` с release SHA и evidence из #592;
+- подтвердить следующий reboot/restart smoke перед удалением backup.
+
+### Следующий шаг
+
+Дождаться CI draft PR `#626`, исправить только подтверждённые failures и оставить
+PR без merge и production действий до отдельного указания владельца.
