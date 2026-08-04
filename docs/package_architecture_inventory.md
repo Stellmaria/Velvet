@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `arthur-librarian-phase1`
+- Generated from: `working-tree`
 - Production modules: **646**
 - Production LOC: **141744**
 - Root modules: **113**
