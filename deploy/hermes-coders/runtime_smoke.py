@@ -245,6 +245,8 @@ test "$HOME" = "/opt/codex"
 test -r /opt/codex/AGENTS.md
 test -r /opt/codex/output.schema.json
 test -r /opt/codex/context-manifest.json
+test -d /workspace-base
+test ! -e /workspace
 mode="$(stat -c '%a' /opt/codex/auth.json)"
 test "$mode" = "600"
 codex --version | grep -F '{CODEX_VERSION}' >/dev/null
@@ -271,6 +273,11 @@ if payload.get('models') != {models_json}:
     raise SystemExit('unexpected model set')
 if payload.get('structured_output') is not True:
     raise SystemExit('structured output schema is not active')
+isolation = payload.get('routing', {{}}).get('workspace_isolation', {{}})
+if isolation.get('per_run_clone') is not True:
+    raise SystemExit('per-run clone isolation is not active')
+if isolation.get('base_checkout_read_only') is not True:
+    raise SystemExit('base checkout is not declared read-only')
 PYCAP
 
 python - <<'PYCONTEXT'
@@ -298,21 +305,50 @@ actual_repo="$(gh api repos/{repository} --jq .full_name)"
 test "$actual_repo" = "{repository}"
 push_allowed="$(gh api repos/{repository} --jq '.permissions.push')"
 test "$push_allowed" = "true"
-remote="$(git -C /workspace remote get-url origin)"
+remote="$(git -C /workspace-base remote get-url origin)"
 case "$remote" in
   {https_remote}|{https_remote}.git) ;;
   *) echo "unexpected Codex origin remote for {target.project}" >&2; exit 41 ;;
 esac
-git -C /workspace push --dry-run origin \
+
+base_fingerprint() {{
+  {{
+    git -C /workspace-base rev-parse HEAD
+    git -C /workspace-base rev-parse --abbrev-ref HEAD
+    git -C /workspace-base for-each-ref --format='%(refname)%00%(objectname)%00' refs/heads refs/tags
+    git -C /workspace-base status --porcelain=v1 -z --untracked-files=all
+  }} | sha256sum
+}}
+
+fingerprint_before="$(base_fingerprint)"
+findmnt -n -o OPTIONS /workspace-base | grep -E '(^|,)ro(,|$)' >/dev/null
+
+probe="/opt/codex-runs/smoke-{target.project}-$$"
+trap 'rm -rf -- "$probe"' EXIT
+rm -rf -- "$probe"
+git clone --no-hardlinks --no-checkout /workspace-base "$probe" >/dev/null
+head="$(git -C /workspace-base rev-parse HEAD)"
+git -C "$probe" checkout --detach --force "$head" >/dev/null
+git -C "$probe" remote set-url origin "$remote"
+git -C "$probe" push --dry-run origin \
   HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
 
-fingerprint_before="$(git -C /workspace status --porcelain=v1 --untracked-files=all | sha256sum)"
 unshare --user --map-root-user true
 unshare --user --map-root-user --mount true
 bwrap --unshare-user --unshare-pid --ro-bind / / --proc /proc true
-bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev --bind /workspace /workspace \
-  git -C /workspace status --short >/dev/null
-fingerprint_after="$(git -C /workspace status --porcelain=v1 --untracked-files=all | sha256sum)"
+
+# Read-only proof: Git executes against the immutable base checkout.
+bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev \
+  --ro-bind /workspace-base /workspace-base \
+  git -C /workspace-base status --short >/dev/null
+
+# Writable proof: only the disposable per-run clone is bind-mounted writable.
+bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev \
+  --bind "$probe" "$probe" \
+  sh -ceu 'touch "$1/.bwrap-write"; git -C "$1" status --short >/dev/null; rm -f "$1/.bwrap-write"' \
+  sh "$probe"
+
+fingerprint_after="$(base_fingerprint)"
 test "$fingerprint_before" = "$fingerprint_after"
 awk '$1 == "NoNewPrivs:" && $2 == "1" {{ok=1}} END {{exit !ok}}' /proc/1/status
 awk '$1 == "CapEff:" && $2 == "0000000000000000" {{ok=1}} END {{exit !ok}}' /proc/1/status
@@ -353,7 +389,7 @@ def verify_codex_access(
     mode = stat.S_IMODE(auth.stat().st_mode)
     if mode != 0o600:
         raise SmokeError(f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}")
-    run_checked(codex_probe_command(target), timeout_seconds=60, runner=runner)
+    run_checked(codex_probe_command(target), timeout_seconds=90, runner=runner)
 
 
 def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
@@ -385,7 +421,7 @@ def main() -> int:
         verify_codex_access(target)
         print(
             f"Hermes/Codex smoke: {target.project} -> {target.repository}: "
-            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, PUSH_OK"
+            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, BASE_RO_OK, RUN_RW_OK, PUSH_OK"
         )
     verify_main_cryptography()
     print(f"Main Hermes dependency: cryptography=={CRYPTOGRAPHY_VERSION}: OK")
