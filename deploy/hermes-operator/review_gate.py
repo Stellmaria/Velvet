@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 from pathlib import PurePath
+import re
 from typing import Collection, Mapping
 
 
@@ -73,8 +74,8 @@ class ReviewRequest:
     findings: tuple[str, ...] = ()
     rollout_only_checks: tuple[str, ...] = ()
     protocol_changed: bool = False
-    integration_results: tuple[str, ...] = ()
-    test_evidence: tuple[EvidenceLevel, ...] = ()
+    integration_results: tuple["TrustedCheck", ...] = ()
+    required_integration_checks: tuple[str, ...] = ()
     review_fix_iterations: int = 0
     ledger: Mapping[str, object] | None = None
     github_mutation_observed: bool = False
@@ -95,6 +96,22 @@ class ReviewDecision:
     delegate_fix: bool = False
 
 
+@dataclass(frozen=True)
+class TrustedCheck:
+    name: str
+    status: str
+    conclusion: str
+    source: str = "github-check-run"
+
+    @property
+    def successful(self) -> bool:
+        return (
+            self.source == "github-check-run"
+            and self.status == "completed"
+            and self.conclusion in {"success", "neutral", "skipped"}
+        )
+
+
 def evidence_satisfies(
     available: Collection[EvidenceLevel], required: EvidenceLevel
 ) -> bool:
@@ -112,8 +129,7 @@ def readiness_after_coder(coder_stage: str, *, ci_green: bool) -> ReadinessStage
     return ReadinessStage.REVIEW_PENDING
 
 
-def mutation_from_ledger(ledger: Mapping[str, object]) -> bool:
-    signals = (
+_MUTATION_SIGNALS = (
         "head_changed",
         "branch_changed",
         "refs_changed",
@@ -121,8 +137,41 @@ def mutation_from_ledger(ledger: Mapping[str, object]) -> bool:
         "base_workspace_changed",
         "execution_started",
         "push_or_pr_observed",
+)
+
+
+def audit_ledger(ledger: Mapping[str, object]) -> tuple[bool, tuple[str, ...]]:
+    findings: list[str] = []
+    for field in _MUTATION_SIGNALS + ("mutation_started",):
+        if field not in ledger:
+            findings.append(f"ledger evidence field missing: {field}")
+        elif type(ledger[field]) is not bool:
+            findings.append(f"ledger evidence field is not boolean: {field}")
+
+    baseline = ledger.get("baseline_head")
+    final = ledger.get("final_head")
+    if not isinstance(baseline, str) or re.fullmatch(r"[a-f0-9]{40}", baseline) is None:
+        findings.append("baseline_head is not a Git SHA")
+    if not isinstance(final, str) or re.fullmatch(r"[a-f0-9]{40}", final) is None:
+        findings.append("final_head is not a Git SHA")
+    derived_head_changed = (
+        isinstance(baseline, str)
+        and isinstance(final, str)
+        and baseline != final
     )
-    return any(ledger.get(field) is True for field in signals)
+    if type(ledger.get("head_changed")) is bool and ledger["head_changed"] != derived_head_changed:
+        findings.append("head_changed conflicts with baseline_head/final_head")
+
+    computed = derived_head_changed or any(
+        ledger.get(field) is True for field in _MUTATION_SIGNALS
+    )
+    if type(ledger.get("mutation_started")) is bool and ledger["mutation_started"] != computed:
+        findings.append("mutation_started conflicts with trusted mutation signals")
+    return computed, tuple(findings)
+
+
+def mutation_from_ledger(ledger: Mapping[str, object]) -> bool:
+    return audit_ledger(ledger)[0]
 
 
 def trusted_route_metadata(
@@ -161,15 +210,19 @@ def evaluate_review(request: ReviewRequest) -> ReviewDecision:
     if missing_files:
         findings.append("required files unchanged: " + ", ".join(missing_files))
 
-    if request.protocol_changed and not request.integration_results:
-        findings.append("cross-component protocol change lacks integration result")
-    elif request.protocol_changed:
-        verified.append("cross-component integration result recorded")
+    successful_checks = {
+        check.name for check in request.integration_results if check.successful
+    }
+    missing_checks = sorted(set(request.required_integration_checks) - successful_checks)
+    if request.protocol_changed and not request.required_integration_checks:
+        findings.append("cross-component protocol change lacks required integration checks")
+    if missing_checks:
+        findings.append("trusted integration checks missing or unsuccessful: " + ", ".join(missing_checks))
+    elif request.required_integration_checks:
+        verified.append("required GitHub integration checks passed")
 
-    if request.high_risk and not evidence_satisfies(
-        request.test_evidence, EvidenceLevel.INTEGRATION_PUBLIC_INTERFACE
-    ):
-        findings.append("high-risk acceptance has only static/unit evidence")
+    if request.high_risk and not request.required_integration_checks:
+        findings.append("high-risk acceptance lacks named trusted integration checks")
 
     if ledger is None:
         findings.append("trusted ledger evidence is missing")
@@ -182,7 +235,7 @@ def evaluate_review(request: ReviewRequest) -> ReviewDecision:
             "baseline_head",
             "final_head",
             "mutation_started",
-        }
+        } | set(_MUTATION_SIGNALS)
         missing_ledger = sorted(required_ledger - ledger.keys())
         if missing_ledger:
             findings.append("ledger evidence fields missing: " + ", ".join(missing_ledger))
@@ -198,11 +251,16 @@ def evaluate_review(request: ReviewRequest) -> ReviewDecision:
         ):
             findings.append("effective workspace resolves to shared/base checkout")
 
-        computed_mutation = mutation_from_ledger(ledger)
+        computed_mutation, audit_findings = audit_ledger(ledger)
+        findings.extend(audit_findings)
         ledger_mutation = ledger.get("mutation_started")
-        if ledger_mutation is False and (computed_mutation or request.github_mutation_observed):
+        if audit_findings or (
+            ledger_mutation is False
+            and (computed_mutation or request.github_mutation_observed)
+        ):
             evidence_conflict = True
-            findings.append("mutation evidence conflicts with ledger mutation_started=false")
+            if request.github_mutation_observed and ledger_mutation is False:
+                findings.append("GitHub mutation conflicts with ledger mutation_started=false")
         elif ledger_mutation is True or computed_mutation:
             verified.append("mutation_started is supported by trusted evidence")
 

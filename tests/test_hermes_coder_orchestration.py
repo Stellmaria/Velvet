@@ -238,10 +238,13 @@ class CoderRouterTests(unittest.TestCase):
             },
             {"state": "success", "statuses": []},
         )
-        with patch.object(router, "github_get", side_effect=responses) as github_get:
+        with patch.object(router, "github_get", side_effect=responses) as github_get, patch.object(
+            router, "github_list", return_value=[{"filename": "client.py"}]
+        ):
             result = router.pull_request("velvet", 534)
         self.assertTrue(result["checks_complete"])
         self.assertTrue(result["checks_success"])
+        self.assertEqual(["client.py"], result["files"])
         self.assertEqual(
             ["/pulls/534", f"/commits/{sha}/check-runs", f"/commits/{sha}/status"],
             [call.args[1] for call in github_get.call_args_list],

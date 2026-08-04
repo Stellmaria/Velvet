@@ -34,6 +34,12 @@ marker; agent report. Нижний уровень не подтверждает 
    итераций с новым blocker прекрати делегирование и эскалируй владельцу или
    независимому исполнителю.
 
+Исполняй gate через fixed client `coderctl.py review <task_id> --pr <number>` с
+явными `--required-file`, `--integration-check`, `--protocol-changed`,
+`--rollout-only` и текущим `--fix-iterations`. Команда сама обновляет trusted
+runner ledger и получает changed files/check runs/PR head через central router;
+не подставляй agent report вместо этих источников.
+
 Для состояния и разрешённых операций используй только:
 
 ```bash

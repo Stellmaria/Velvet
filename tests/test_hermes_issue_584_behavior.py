@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import stat
 import sys
 import tempfile
+import threading
 import unittest
+import urllib.error
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +28,10 @@ def load(name: str, relative: str):
 
 review = load("issue584_review_gate", "deploy/hermes-operator/review_gate.py")
 router = load("issue584_router", "deploy/hermes-operator/coder_router.py")
+delegate = load("issue584_delegate", "deploy/hermes-coders/codex_delegate.py")
+sys.modules["coder_router"] = router
+tier_router = load("issue584_tier_router", "deploy/hermes-operator/tier_router.py")
+coderctl = load("issue584_coderctl", "deploy/hermes-operator/coderctl.py")
 
 
 def ledger(**overrides: object) -> dict[str, object]:
@@ -31,6 +39,8 @@ def ledger(**overrides: object) -> dict[str, object]:
         "task_id": "a" * 32,
         "run_id": "run-584",
         "workspace_path": "/opt/codex-runs/velvet/workspaces/run-584",
+        "process_cwd": "/opt/codex-runs/velvet/workspaces/run-584",
+        "base_workspace": "/workspace-base",
         "workspace_source_ref": "origin/main",
         "baseline_head": "1" * 40,
         "final_head": "2" * 40,
@@ -56,8 +66,10 @@ def request(**overrides: object):
         "changed_files": frozenset({"client.py", "server.py", "integration_test.py"}),
         "required_files": frozenset({"client.py", "server.py"}),
         "protocol_changed": True,
-        "integration_results": ("client -> public server handler -> mocked upstream: pass",),
-        "test_evidence": (review.EvidenceLevel.INTEGRATION_PUBLIC_INTERFACE,),
+        "integration_results": (
+            review.TrustedCheck("hermes-integration", "completed", "success"),
+        ),
+        "required_integration_checks": ("hermes-integration",),
         "ledger": ledger(),
         "process_cwd": "/opt/codex-runs/velvet/workspaces/run-584",
         "base_workspace": "/workspace-base",
@@ -102,12 +114,12 @@ class ReadinessBehaviorTests(unittest.TestCase):
         decision = review.evaluate_review(
             request(
                 integration_results=(),
-                test_evidence=(review.EvidenceLevel.STATIC_CONTRACT,),
+                required_integration_checks=(),
             )
         )
         self.assertEqual(review.ReviewStatus.CHANGES_REQUESTED, decision.status)
         self.assertTrue(any("integration" in item for item in decision.review_findings))
-        self.assertTrue(any("static/unit" in item for item in decision.review_findings))
+        self.assertTrue(any("trusted integration" in item for item in decision.review_findings))
 
     def test_evidence_hierarchy_never_promotes_a_weaker_level(self) -> None:
         self.assertFalse(
@@ -144,6 +156,20 @@ class ReadinessBehaviorTests(unittest.TestCase):
             decision.verified_facts,
         )
 
+    def test_execution_event_alone_keeps_mutation_started_true(self) -> None:
+        evidence = ledger(
+            final_head="1" * 40,
+            head_changed=False,
+            branch_changed=False,
+            refs_changed=False,
+            working_tree_changed=False,
+            execution_started=True,
+            push_or_pr_observed=False,
+            mutation_started=True,
+        )
+        self.assertTrue(review.mutation_from_ledger(evidence))
+        self.assertEqual((), review.audit_ledger(evidence)[1])
+
     def test_ledger_github_conflict_blocks_review_approval(self) -> None:
         evidence = ledger(
             head_changed=False,
@@ -159,6 +185,33 @@ class ReadinessBehaviorTests(unittest.TestCase):
         self.assertEqual(review.ReviewStatus.BLOCKED, decision.status)
         self.assertTrue(decision.evidence_conflict)
         self.assertFalse(decision.delegate_fix)
+
+    def test_missing_untyped_or_internally_inconsistent_audit_is_blocked(self) -> None:
+        for invalid in (
+            {
+                key: value
+                for key, value in ledger(mutation_started=False).items()
+                if key not in {"head_changed", "refs_changed"}
+            },
+            ledger(mutation_started="false"),
+            ledger(head_changed=False),
+        ):
+            with self.subTest(invalid=invalid):
+                decision = review.evaluate_review(request(ledger=invalid))
+                self.assertEqual(review.ReviewStatus.BLOCKED, decision.status)
+                self.assertTrue(decision.evidence_conflict)
+
+    def test_agent_style_integration_claim_is_not_trusted(self) -> None:
+        decision = review.evaluate_review(
+            request(
+                integration_results=(
+                    review.TrustedCheck(
+                        "hermes-integration", "completed", "success", source="agent-report"
+                    ),
+                ),
+            )
+        )
+        self.assertEqual(review.ReviewStatus.CHANGES_REQUESTED, decision.status)
 
     def test_second_fix_iteration_escalates_and_preserves_existing_pr(self) -> None:
         decision = review.evaluate_review(
@@ -193,6 +246,142 @@ class IdentityAndContextIntegrationTests(unittest.TestCase):
             self.assertEqual(direct["identity"], delegated["identity"])
             self.assertNotIn("workspace=/workspace", json.dumps(direct))
             self.assertIn("effective per-run workspace", direct["context"])
+
+    def test_direct_and_delegated_clients_share_http_router_identity_and_workspace_contract(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "HERMES_CODER_ROUTER_CLIENT_TOKEN": "c" * 48,
+                "HERMES_CODER_VELVET_TOKEN": "v" * 48,
+                "HERMES_CODER_VELVET_GITHUB_TOKEN": "g" * 48,
+            },
+        ):
+            service = tier_router.TierAwareCoderRouter()
+        server = router.ThreadingHTTPServer(("127.0.0.1", 0), router.Handler)
+        server.router = service
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        routing = {
+            "task_type": "code",
+            "complexity": "complex",
+            "risk": "high",
+            "mutation_policy": "isolated_pr_only",
+            "requested_tier": "high_risk",
+        }
+        try:
+            thread.start()
+            with patch.object(
+                service,
+                "upstream",
+                side_effect=(
+                    {"run_id": "direct-run", "status": "queued"},
+                    {"run_id": "delegated-run", "status": "queued"},
+                ),
+            ) as upstream, patch.dict(
+                os.environ,
+                {
+                    "HERMES_CODEX_DELEGATE_URL": f"http://127.0.0.1:{server.server_port}",
+                    "HERMES_CODER_ROUTER_CLIENT_TOKEN": "c" * 48,
+                    "HERMES_CODEX_DELEGATE_PROJECT": "velvet",
+                },
+            ):
+                direct_client = delegate.RunnerClient()
+                direct_client.request(
+                    "POST",
+                    "/v1/coders/velvet/runs",
+                    delegate.build_payload(
+                        "direct", project="velvet", model=None, **routing
+                    ),
+                )
+                delegated_client = coderctl.RouterClient()
+                delegated_client.base_url = f"http://127.0.0.1:{server.server_port}"
+                with patch.object(delegated_client, "_token", return_value="c" * 48):
+                    delegated_client.submit(
+                        "velvet",
+                        task_id="d" * 32,
+                        task="delegated",
+                        source="kael-delegated",
+                        **routing,
+                    )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+        self.assertEqual(2, upstream.call_count)
+        prompts = [call.args[3]["input"] for call in upstream.call_args_list]
+        self.assertIn('"source": "owner-direct"', prompts[0])
+        self.assertIn('"source": "kael-delegated"', prompts[1])
+        for prompt in prompts:
+            self.assertIn('"identity": "Велвет"', prompt)
+            self.assertIn("effective per-run path", prompt)
+            self.assertNotIn("workspace=/workspace", prompt)
+
+    def test_direct_client_is_fail_closed_when_router_is_unavailable(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "HERMES_CODEX_DELEGATE_URL": "http://127.0.0.1:1",
+                "HERMES_CODER_ROUTER_CLIENT_TOKEN": "c" * 48,
+                "HERMES_CODEX_DELEGATE_PROJECT": "velvet",
+            },
+        ), patch("urllib.request.urlopen", side_effect=urllib.error.URLError("down")):
+            with self.assertRaises(delegate.DelegateError):
+                delegate.RunnerClient().request("GET", "/v1/coders/velvet/capabilities")
+
+    def test_coderctl_review_command_executes_gate_with_ledger_and_github_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            ledger_path = Path(directory) / "tasks.json"
+            store = coderctl.Ledger(ledger_path)
+            store.upsert(
+                {
+                    "task_id": "e" * 32,
+                    "run_id": "run-584",
+                    "project": "velvet",
+                    "requested_tier": "high_risk",
+                    "created_at": "2026-08-04T00:00:00+00:00",
+                }
+            )
+            status_payload = {"status": "completed", **ledger()}
+            pull_payload = {
+                "head_sha": "2" * 40,
+                "head_ref": "issue/584",
+                "checks_success": True,
+                "checks": [
+                    {
+                        "name": "hermes-integration",
+                        "status": "completed",
+                        "conclusion": "success",
+                    }
+                ],
+                "files": ["client.py", "server.py"],
+            }
+            with patch.object(
+                coderctl.RouterClient, "status", return_value=status_payload
+            ), patch.object(
+                coderctl.RouterClient, "pull_request", return_value=pull_payload
+            ):
+                exit_code = coderctl.main(
+                    [
+                        "--ledger",
+                        str(ledger_path),
+                        "review",
+                        "e" * 32,
+                        "--pr",
+                        "584",
+                        "--required-file",
+                        "client.py",
+                        "--required-file",
+                        "server.py",
+                        "--protocol-changed",
+                        "--integration-check",
+                        "hermes-integration",
+                        "--rollout-only",
+                        "host smoke",
+                    ]
+                )
+            self.assertEqual(0, exit_code)
+            saved = store.find("e" * 32)
+            assert saved is not None
+            self.assertEqual("review_approved", saved["stage"])
 
     def test_compile_install_verify_preserves_hashes_and_private_permissions(self) -> None:
         brain = ROOT / "deploy/hermes-brain"

@@ -93,6 +93,13 @@ cleanliness являются rollout-only и локально не закрыв�
   mutation, evidence conflict и review-fix limit;
 - integration test компилирует, устанавливает и проверяет packs Каэля, Велвета
   и Макса, hashes и private permissions после финальной записи.
+- review-fix cycle 1 подключил gate к `coderctl review`: команда обновляет
+  trusted runner ledger, получает PR head/files/check runs через central router,
+  сохраняет decision и останавливает pipeline при conflict;
+- mutation audit теперь требует и type-validates полный signal set, выводит
+  HEAD change из baseline/final SHA и учитывает execution-only event;
+- integration evidence принимается только из успешного named GitHub check run;
+  direct и delegated clients проходят один HTTP router/upstream contract test.
 
 ### Миграции и совместимость
 
@@ -111,11 +118,17 @@ coder/operator identity. Installed production contexts не изменялись
 - full `test_hermes*.py` discovery: 181 passed, 1 skipped, collection одного
   unrelated storage-librarian test blocked отсутствующим `asyncpg` в isolated image;
 - `git diff --check` — OK.
+- review-fix focused suite (`issue_584_behavior`, coder orchestration, tier runner,
+  issue #581 и brain vault): 64 tests OK, 1 optional environment skip.
 
 ### PR и commit
 
-Implementation commit, exact head и PR будут добавлены после commit/push.
-Автоматических review-fix циклов на этом срезе: 0.
+Initial implementation commit:
+`8feb0b2e08de94101cb3fce0b128bf1739e26d94`.
+Независимый high-risk review exact initial head: `changes_requested` — два
+critical, два high и один medium finding; все приняты в review-fix cycle 1.
+Fix commit, final exact head и PR будут добавлены после commit/push.
+Автоматических review-fix циклов на этом срезе: 1 из 2 разрешённых.
 
 ### Незавершённое
 

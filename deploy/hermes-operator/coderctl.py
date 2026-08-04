@@ -16,6 +16,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from review_gate import (  # noqa: E402
+    ReadinessStage,
+    ReviewRequest,
+    TrustedCheck,
+    evaluate_review,
+)
+
 TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
 TIERS = ("small", "standard", "complex", "high_risk")
 TASK_TYPES = ("general", "code", "read_only", "documentation", "incident")
@@ -37,6 +45,19 @@ _ROUTING_FIELDS = (
     "mutation_started",
     "review_required",
     "degraded_provider_route",
+    "workspace_path",
+    "process_cwd",
+    "workspace_source_ref",
+    "baseline_head",
+    "final_head",
+    "head_changed",
+    "branch_changed",
+    "refs_changed",
+    "working_tree_changed",
+    "base_workspace_changed",
+    "base_workspace",
+    "execution_started",
+    "push_or_pr_observed",
 )
 _PROJECTS = {
     "velvet": ("Stellmaria/Velvet", "@velvet_private_coder_bot"),
@@ -277,6 +298,8 @@ def _update_from_status(
         if field in payload:
             updated[field] = payload.get(field)
     if status in TERMINAL_STATUSES:
+        if status == "completed":
+            updated["readiness_stage"] = ReadinessStage.IMPLEMENTED_BY_CODER
         updated["finished_at"] = _utc_now()
         updated["output"] = payload.get("output") or payload.get("error")
         updated["structured_output"] = payload.get("structured_output")
@@ -350,6 +373,16 @@ def build_parser() -> argparse.ArgumentParser:
     pull = commands.add_parser("pr")
     pull.add_argument("project", choices=("velvet", "max"))
     pull.add_argument("number", type=int)
+
+    review = commands.add_parser("review")
+    review.add_argument("reference")
+    review.add_argument("--pr", type=int, required=True)
+    review.add_argument("--required-file", action="append", default=[])
+    review.add_argument("--integration-check", action="append", default=[])
+    review.add_argument("--protocol-changed", action="store_true")
+    review.add_argument("--finding", action="append", default=[])
+    review.add_argument("--rollout-only", action="append", default=[])
+    review.add_argument("--fix-iterations", type=int, choices=(0, 1, 2), default=0)
     return parser
 
 
@@ -433,6 +466,65 @@ def main(argv: list[str] | None = None) -> int:
             )
         project = str(record["project"])
         run_id = str(record["run_id"])
+
+        if args.command == "review":
+            _update_from_status(ledger, record, client.status(project, run_id))
+            refreshed = ledger.find(str(record["task_id"]))
+            if refreshed is None:
+                raise CoderApiError("Ledger record disappeared during review refresh.")
+            record = refreshed
+            pull = client.pull_request(project, args.pr)
+            checks = tuple(
+                TrustedCheck(
+                    name=str(item.get("name", "")),
+                    status=str(item.get("status", "")),
+                    conclusion=str(item.get("conclusion", "")),
+                )
+                for item in pull.get("checks", [])
+                if isinstance(item, dict)
+            )
+            decision = evaluate_review(
+                ReviewRequest(
+                    coder_stage=str(record.get("readiness_stage", "")),
+                    ci_green=pull.get("checks_success") is True,
+                    high_risk=record.get("requested_tier") == "high_risk",
+                    changed_files=frozenset(
+                        str(item) for item in pull.get("files", [])
+                    ),
+                    required_files=frozenset(args.required_file),
+                    findings=tuple(args.finding),
+                    rollout_only_checks=tuple(args.rollout_only),
+                    protocol_changed=args.protocol_changed,
+                    integration_results=checks,
+                    required_integration_checks=tuple(args.integration_check),
+                    review_fix_iterations=args.fix_iterations,
+                    ledger=record,
+                    github_mutation_observed=bool(
+                        pull.get("head_sha") or pull.get("head_ref")
+                    ),
+                    process_cwd=str(record.get("process_cwd", "")),
+                    base_workspace=str(record.get("base_workspace", "")),
+                )
+            )
+            payload = {
+                "status": decision.status,
+                "stage": decision.stage,
+                "verified_facts": decision.verified_facts,
+                "agent_claims_not_independently_verified": (
+                    decision.agent_claims_not_independently_verified
+                ),
+                "review_findings": decision.review_findings,
+                "rollout_only_checks": decision.rollout_only_checks,
+                "recommended_next_action": decision.recommended_next_action,
+                "evidence_conflict": decision.evidence_conflict,
+                "delegate_fix": decision.delegate_fix,
+                "review_fix_iterations": args.fix_iterations,
+                "reviewed_pr": args.pr,
+                "reviewed_head": pull.get("head_sha"),
+            }
+            ledger.upsert({**record, **payload, "updated_at": _utc_now()})
+            _print(payload)
+            return 0 if str(decision.status) == "approved" else 2
 
         if args.command == "status":
             payload = _update_from_status(

@@ -234,6 +234,7 @@ class AuditedTierProviderManager(ProviderChainManager):
                 run_id,
                 workspace=str(isolated),
                 workspace_path=str(isolated),
+                process_cwd=str(isolated),
                 workspace_source_ref=source_ref,
                 baseline_head=isolated_before["head"],
                 base_workspace=str(self._base_workspace),
@@ -297,6 +298,7 @@ class AuditedTierProviderManager(ProviderChainManager):
         base_delta = self._changed(base_before, base_after) if base_before else {}
         git_mutated = any(isolated_delta.values()) or any(base_delta.values())
         record = self.store.read(run_id)
+        execution_started = record.get("execution_started") is True
         mutation_policy = str(record.get("mutation_policy") or "workspace_write")
 
         evidence = {
@@ -307,6 +309,7 @@ class AuditedTierProviderManager(ProviderChainManager):
             "refs_changed": bool(isolated_delta.get("refs_changed")),
             "working_tree_changed": bool(isolated_delta.get("working_tree_changed")),
             "base_workspace_changed": any(base_delta.values()),
+            "execution_started": execution_started,
         }
         self.store.update(run_id, mutation_started=git_mutated, **evidence)
         if mutation_policy == "read_only" and git_mutated:
@@ -332,12 +335,13 @@ class AuditedTierProviderManager(ProviderChainManager):
 
         super()._success(run_id, model, models, routes, route, reason, stdout)
         completed = self.store.read(run_id)
+        execution_started = completed.get("execution_started") is True
         structured = completed.get("structured_output")
         push_or_pr_observed = bool(
             isinstance(structured, dict)
             and (str(structured.get("branch") or "") or str(structured.get("pr") or ""))
         )
-        mutation_started = git_mutated or push_or_pr_observed
+        mutation_started = git_mutated or execution_started or push_or_pr_observed
         self.store.update(
             run_id,
             mutation_started=mutation_started,

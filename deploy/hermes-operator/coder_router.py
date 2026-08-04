@@ -227,7 +227,7 @@ class CoderRouter:
         token: str,
         payload: dict[str, Any] | None = None,
         github: bool = False,
-    ) -> dict[str, Any]:
+    ) -> Any:
         body = None
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         if github:
@@ -260,8 +260,6 @@ class CoderRouter:
             result = json.loads(raw)
         except json.JSONDecodeError as error:
             raise RouterError(HTTPStatus.BAD_GATEWAY, "Upstream вернул повреждённый JSON.") from error
-        if not isinstance(result, dict):
-            raise RouterError(HTTPStatus.BAD_GATEWAY, "Upstream вернул неожиданный тип ответа.")
         return redact(result)
 
     def upstream(
@@ -271,22 +269,41 @@ class CoderRouter:
         path: str,
         payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return self._json_request(
+        result = self._json_request(
             method=method,
             url=f"{target.base_url}{path}",
             token=target.api_token,
             payload=payload,
         )
+        if not isinstance(result, dict):
+            raise RouterError(HTTPStatus.BAD_GATEWAY, "Upstream вернул неожиданный тип ответа.")
+        return result
 
     def github_get(self, target: CoderTarget, path: str) -> dict[str, Any]:
         if not path.startswith("/") or ".." in path or "?" in path:
             raise RouterError(HTTPStatus.BAD_REQUEST, "Некорректный GitHub path.")
-        return self._json_request(
+        result = self._json_request(
             method="GET",
             url=f"{_GITHUB_API}/repos/{target.repository}{path}",
             token=target.github_token,
             github=True,
         )
+        if not isinstance(result, dict):
+            raise RouterError(HTTPStatus.BAD_GATEWAY, "GitHub вернул неожиданный тип ответа.")
+        return result
+
+    def github_list(self, target: CoderTarget, path: str) -> list[dict[str, Any]]:
+        if not path.startswith("/") or ".." in path or "?" in path:
+            raise RouterError(HTTPStatus.BAD_REQUEST, "Некорректный GitHub path.")
+        result = self._json_request(
+            method="GET",
+            url=f"{_GITHUB_API}/repos/{target.repository}{path}",
+            token=target.github_token,
+            github=True,
+        )
+        if not isinstance(result, list) or not all(isinstance(item, dict) for item in result):
+            raise RouterError(HTTPStatus.BAD_GATEWAY, "GitHub вернул неожиданный список.")
+        return result
 
     def capabilities(self, project: str) -> dict[str, Any]:
         return self.upstream(self._target(project), "GET", "/v1/capabilities")
@@ -349,6 +366,7 @@ class CoderRouter:
             raise RouterError(HTTPStatus.BAD_GATEWAY, "GitHub PR не содержит корректный head SHA.")
         checks_payload = self.github_get(target, f"/commits/{head_sha}/check-runs")
         status_payload = self.github_get(target, f"/commits/{head_sha}/status")
+        files_payload = self.github_list(target, f"/pulls/{number}/files")
         raw_checks = checks_payload.get("check_runs")
         checks = []
         if isinstance(raw_checks, list):
@@ -396,6 +414,11 @@ class CoderRouter:
             "head_ref": head.get("ref"),
             "base_ref": base.get("ref"),
             "changed_files": pull.get("changed_files"),
+            "files": sorted(
+                str(item["filename"])
+                for item in files_payload
+                if isinstance(item.get("filename"), str)
+            ),
             "additions": pull.get("additions"),
             "deletions": pull.get("deletions"),
             "checks": checks,
