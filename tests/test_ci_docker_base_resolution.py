@@ -23,14 +23,30 @@ MODULE = load_module()
 
 
 class DockerBaseResolutionTests(unittest.TestCase):
-    def test_current_base_ref_wins_over_stale_payload_sha(self) -> None:
+    def test_exact_payload_base_sha_wins_over_named_branch(self) -> None:
+        base_sha = "b" * 40
+        with patch.object(MODULE.subprocess, "run") as run, patch.object(
+            MODULE,
+            "_git",
+        ) as git, patch.object(MODULE, "_ensure_commit") as ensure_commit:
+            resolved = MODULE._resolve_pull_request_base(
+                base_sha=base_sha,
+                base_ref="main",
+            )
+
+        self.assertEqual(base_sha, resolved)
+        ensure_commit.assert_called_once_with(base_sha)
+        run.assert_not_called()
+        git.assert_not_called()
+
+    def test_named_branch_remains_fail_closed_fallback_without_sha(self) -> None:
         with patch.object(MODULE.subprocess, "run") as run, patch.object(
             MODULE,
             "_git",
             return_value="c" * 40,
         ), patch.object(MODULE, "_ensure_commit") as ensure_commit:
             resolved = MODULE._resolve_pull_request_base(
-                base_sha="b" * 40,
+                base_sha="",
                 base_ref="main",
             )
 
