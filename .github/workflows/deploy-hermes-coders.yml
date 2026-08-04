@@ -1,0 +1,265 @@
+name: deploy Hermes coders
+
+on:
+  push:
+    branches:
+      - "release/hermes-coders-*"
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type DEPLOY_HERMES to release the current main commit"
+        required: true
+        type: string
+      source_commit:
+        description: "Exact 40-character current main commit"
+        required: true
+        type: string
+
+concurrency:
+  group: velvet-hermes-coder-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || inputs.confirmation == 'DEPLOY_HERMES'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Checkout exact release ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate exact current main release
+        id: release
+        shell: bash
+        env:
+          MANUAL_SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          set -euo pipefail
+          source_commit="${GITHUB_SHA,,}"
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            source_commit="${MANUAL_SOURCE_COMMIT,,}"
+            if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "source_commit must be an exact 40-character SHA" >&2
+              exit 2
+            fi
+            if [[ "$source_commit" != "${GITHUB_SHA,,}" ]]; then
+              echo "Manual release must execute from the exact requested main commit" >&2
+              exit 2
+            fi
+          else
+            expected_ref="refs/heads/release/hermes-coders-${source_commit}"
+            if [[ "$GITHUB_REF" != "$expected_ref" ]]; then
+              echo "Release branch must be named release/hermes-coders-<exact SHA>" >&2
+              exit 2
+            fi
+          fi
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          if [[ "$source_commit" != "${main_sha,,}" ]]; then
+            echo "Hermes release must point to the current main commit" >&2
+            exit 2
+          fi
+          printf 'source_commit=%s\n' "$source_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Validate deployment secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Release only Hermes coder containers
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          SOURCE_COMMIT: ${{ steps.release.outputs.source_commit }}
+        run: |
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          ssh -p "$port" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            bash -s -- "$SOURCE_COMMIT" "$app_dir" <<'REMOTE'
+          set -Eeuo pipefail
+          umask 077
+
+          target_sha="$1"
+          app_dir="$2"
+          hermes_root=/srv/hermes-coders
+          release_root="$hermes_root/releases"
+          release_dir="$release_root/$target_sha"
+          compose_dir="$release_dir/deploy/hermes-coders"
+          override_file="$hermes_root/compose.bwrap.override.yaml"
+          velvet_container=hermes-coders-hermes-coder-velvet-1
+          max_container=hermes-coders-hermes-coder-max-1
+
+          exec 9>"${TMPDIR:-/tmp}/velvet-hermes-coder-release.lock"
+          if ! flock -n 9; then
+            echo "Another Hermes coder release is already running." >&2
+            exit 75
+          fi
+
+          cd "$app_dir"
+          test -d .git
+          git fetch --no-tags --prune origin main
+          remote_main="$(git rev-parse origin/main)"
+          if [[ "$remote_main" != "$target_sha" ]]; then
+            echo "Target is no longer current main: $target_sha != $remote_main" >&2
+            exit 2
+          fi
+          git cat-file -e "${target_sha}^{commit}"
+
+          mkdir -p "$release_root"
+          if [[ -e "$release_dir" ]]; then
+            test "$(git -C "$release_dir" rev-parse HEAD)" = "$target_sha"
+          else
+            git worktree add --detach "$release_dir" "$target_sha"
+          fi
+          test -f "$compose_dir/codex_tier_runner.py"
+          test -f "$compose_dir/compose.yaml"
+          test -f "$compose_dir/compose.runtime.yaml"
+          test -f "$compose_dir/compose.security.yaml"
+
+          inspect_container() {
+            docker inspect "$1" --format '{{.Name}}|{{.Id}}|{{.Image}}|{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|{{.RestartCount}}|{{json .HostConfig.Init}}|{{.State.Pid}}'
+          }
+
+          for container in "$velvet_container" "$max_container"; do
+            inspect_container "$container"
+            test "$(docker inspect "$container" --format '{{.State.Status}}')" = running
+            test "$(docker inspect "$container" --format '{{.State.Health.Status}}')" = healthy
+            test "$(docker inspect "$container" --format '{{.RestartCount}}')" -eq 0
+            test "$(docker inspect "$container" --format '{{json .HostConfig.Init}}')" = true
+          done
+
+          zombies_before="$(ps -eo stat= | awk '$1 ~ /^Z/ {count++} END {print count+0}')"
+          test "$zombies_before" -eq 0
+
+          previous_velvet_source="$(docker inspect "$velvet_container" --format '{{range .Mounts}}{{if eq .Destination "/app/codex_tier_runner.py"}}{{.Source}}{{end}}{{end}}')"
+          previous_max_source="$(docker inspect "$max_container" --format '{{range .Mounts}}{{if eq .Destination "/app/codex_tier_runner.py"}}{{.Source}}{{end}}{{end}}')"
+          test -n "$previous_velvet_source"
+          test -n "$previous_max_source"
+          previous_compose_dir="$(dirname "$previous_velvet_source")"
+          test "$previous_compose_dir" = "$(dirname "$previous_max_source")"
+          test -f "$previous_compose_dir/compose.yaml"
+          test -f "$previous_compose_dir/compose.runtime.yaml"
+          test -f "$previous_compose_dir/compose.security.yaml"
+
+          previous_velvet_image="$(docker inspect "$velvet_container" --format '{{.Image}}')"
+          previous_max_image="$(docker inspect "$max_container" --format '{{.Image}}')"
+
+          compose_args=(
+            --project-name hermes-coders
+            --profile velvet
+            --profile max
+            -f compose.yaml
+            -f compose.runtime.yaml
+            -f compose.security.yaml
+          )
+          if [[ -f "$override_file" ]]; then
+            compose_args+=( -f "$override_file" )
+          fi
+
+          run_compose() {
+            local directory="$1"
+            shift
+            (
+              cd "$directory"
+              HERMES_CODERS_ROOT="$hermes_root" \
+              HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
+                docker compose "${compose_args[@]}" "$@"
+            )
+          }
+
+          rollback() {
+            local exit_code="$?"
+            echo "Hermes coder release failed; restoring containers from $previous_compose_dir" >&2
+            run_compose "$previous_compose_dir" up -d \
+              --no-deps --no-build --force-recreate \
+              hermes-coder-velvet hermes-coder-max >&2 || true
+            exit "$exit_code"
+          }
+          trap rollback ERR INT TERM
+
+          run_compose "$compose_dir" config --quiet
+          python3 "$compose_dir/runtime_source_guard.py"
+
+          run_compose "$compose_dir" up -d \
+            --no-deps --no-build --force-recreate \
+            hermes-coder-velvet hermes-coder-max
+
+          for attempt in $(seq 1 48); do
+            velvet_health="$(docker inspect "$velvet_container" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')"
+            max_health="$(docker inspect "$max_container" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')"
+            if [[ "$velvet_health" == healthy && "$max_health" == healthy ]]; then
+              break
+            fi
+            if [[ "$velvet_health" =~ ^(unhealthy|exited|dead)$ || "$max_health" =~ ^(unhealthy|exited|dead)$ ]]; then
+              docker logs --tail 200 "$velvet_container" >&2 || true
+              docker logs --tail 200 "$max_container" >&2 || true
+              false
+            fi
+            sleep 5
+          done
+
+          test "$(docker inspect "$velvet_container" --format '{{.State.Health.Status}}')" = healthy
+          test "$(docker inspect "$max_container" --format '{{.State.Health.Status}}')" = healthy
+          test "$(docker inspect "$velvet_container" --format '{{.RestartCount}}')" -eq 0
+          test "$(docker inspect "$max_container" --format '{{.RestartCount}}')" -eq 0
+          test "$(docker inspect "$velvet_container" --format '{{json .HostConfig.Init}}')" = true
+          test "$(docker inspect "$max_container" --format '{{json .HostConfig.Init}}')" = true
+          test "$(docker inspect "$velvet_container" --format '{{.Image}}')" = "$previous_velvet_image"
+          test "$(docker inspect "$max_container" --format '{{.Image}}')" = "$previous_max_image"
+
+          expected_source="$compose_dir/codex_tier_runner.py"
+          expected_sha="$(sha256sum "$expected_source" | awk '{print $1}')"
+          for container in "$velvet_container" "$max_container"; do
+            mounted_source="$(docker inspect "$container" --format '{{range .Mounts}}{{if eq .Destination "/app/codex_tier_runner.py"}}{{.Source}}{{end}}{{end}}')"
+            test "$mounted_source" = "$expected_source"
+            actual_sha="$(docker exec "$container" sha256sum /app/codex_tier_runner.py | awk '{print $1}')"
+            test "$actual_sha" = "$expected_sha"
+            container_zombies="$(docker exec "$container" python -c 'from pathlib import Path; print(sum(1 for p in Path("/proc").glob("[0-9]*/stat") if ") Z " in p.read_text(errors="ignore")))')"
+            test "$container_zombies" -eq 0
+          done
+
+          zombies_after="$(ps -eo stat= | awk '$1 ~ /^Z/ {count++} END {print count+0}')"
+          test "$zombies_after" -eq 0
+
+          ln -sfn "$release_dir" "$release_root/current-hermes-coders"
+          trap - ERR INT TERM
+
+          echo "Hermes coder release succeeded: $target_sha"
+          echo "Mounted source SHA-256: $expected_sha"
+          inspect_container "$velvet_container"
+          inspect_container "$max_container"
+          REMOTE
