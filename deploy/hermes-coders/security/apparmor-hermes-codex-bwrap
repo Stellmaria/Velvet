@@ -1,0 +1,72 @@
+#include <tunables/global>
+
+profile hermes-codex-bwrap flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  userns,
+
+  # Bubblewrap mount propagation and root setup.
+  mount options=(rw, rslave) -> /,
+  mount options=(rw, rprivate) -> /,
+  mount options=(rw, bind) / -> /,
+  mount options=(rw, bind) / -> /**,
+  mount options=(ro, remount, bind) / -> /,
+  mount options=(ro, remount, bind) /** -> /**,
+  mount fstype=proc -> /proc/,
+  umount /**,
+  pivot_root,
+
+  # Device tree and immutable repository source.
+  mount options=(rw, bind) /dev -> /dev,
+  mount options=(rw, rbind) /dev -> /dev,
+  mount options=(ro, bind) /workspace-base -> /workspace-base,
+  mount options=(ro, remount, bind) /workspace-base -> /workspace-base,
+  mount options=(ro, bind) /workspace-base/** -> /workspace-base/**,
+  mount options=(ro, remount, bind) /workspace-base/** -> /workspace-base/**,
+
+  # Only disposable per-run clones are writable task checkouts.
+  mount options=(rw, bind) /opt/codex-runs/** -> /opt/codex-runs/**,
+  mount options=(ro, remount, bind) /opt/codex-runs/** -> /opt/codex-runs/**,
+
+  network inet stream,
+  network inet6 stream,
+
+  / r,
+  /** r,
+  /bin/sh ix,
+  /usr/bin/python ix,
+  /usr/bin/python3 ix,
+  /usr/local/bin/python ix,
+  /usr/local/bin/python3 ix,
+  /usr/local/bin/codex ix,
+  /usr/bin/bwrap ix,
+  /usr/bin/git ix,
+  /usr/bin/gh ix,
+  /usr/bin/unshare ix,
+  /usr/bin/true ix,
+  /usr/bin/sha256sum ix,
+  /usr/bin/findmnt ix,
+  /usr/bin/grep ix,
+  /usr/bin/awk ix,
+  /usr/bin/stat ix,
+  /usr/bin/env ix,
+  /usr/bin/bash ix,
+  /usr/bin/make ix,
+  /usr/bin/pytest ix,
+  /usr/local/bin/** ix,
+  /usr/** mr,
+  /lib/** mr,
+  /lib64/** mr,
+
+  /opt/codex/** rwk,
+  /opt/codex-runs/** rwkix,
+  /workspace-base/ r,
+  /workspace-base/** r,
+  /tmp/** rwk,
+
+  deny /workspace/ rwkl,
+  deny /workspace/** rwkl,
+  deny /var/run/docker.sock rw,
+  deny /run/docker.sock rw,
+  deny /proc/sys/** w,
+  deny /sys/** w,
+}

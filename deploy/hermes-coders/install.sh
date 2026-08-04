@@ -13,15 +13,22 @@ SOURCE_DIR="${HERMES_CODERS_SOURCE_DIR:-/srv/velvet/deploy/hermes-coders}"
 BRAIN_SOURCE="${HERMES_BRAIN_SOURCE_DIR:-/srv/velvet/deploy/hermes-brain}"
 BRAIN_VAULT_MANIFEST="${HERMES_BRAIN_MANIFEST:-$BRAIN_SOURCE/../../brain-vault/manifest.json}"
 OPERATOR_ENV="${HERMES_OPERATOR_ENV:-/srv/velvet/.env.hermes}"
+CONTROL_OPERATOR_ENV="${HERMES_CONTROL_OPERATOR_ENV:-/srv/hermes-operator-control/operator.env}"
 VELVET_REPO="${HERMES_VELVET_REPO:-https://github.com/Stellmaria/Velvet.git}"
 MAX_REPO="${HERMES_MAX_REPO:-https://github.com/Stellmaria/romatic_club_bot_max.git}"
 HERMES_UID_VALUE="${HERMES_UID:-10000}"
 HERMES_GID_VALUE="${HERMES_GID:-10000}"
 UNIT_SOURCE="/srv/velvet/deploy/systemd/hermes-coders.service"
 UNIT_TARGET="/etc/systemd/system/hermes-coders.service"
+APPARMOR_SOURCE="$SOURCE_DIR/security/apparmor-hermes-codex-bwrap"
+APPARMOR_TARGET="/etc/apparmor.d/hermes-codex-bwrap"
 
 for required in \
   "$SOURCE_DIR/compose.yaml" \
+  "$SOURCE_DIR/compose.runtime.yaml" \
+  "$SOURCE_DIR/compose.security.yaml" \
+  "$SOURCE_DIR/security/seccomp-bwrap.json" \
+  "$APPARMOR_SOURCE" \
   "$SOURCE_DIR/config.yaml" \
   "$SOURCE_DIR/SOUL.velvet.md" \
   "$SOURCE_DIR/SOUL.max.md" \
@@ -33,6 +40,7 @@ for required in \
   "$BRAIN_SOURCE/verify_installed_context.py" \
   "$BRAIN_VAULT_MANIFEST" \
   "$OPERATOR_ENV" \
+  "$CONTROL_OPERATOR_ENV" \
   "$UNIT_SOURCE"; do
   if [[ ! -f "$required" ]]; then
     echo "Отсутствует обязательный файл: $required" >&2
@@ -79,7 +87,7 @@ clone_workspace() {
 clone_workspace "$VELVET_REPO" "$ROOT/workspaces/velvet"
 clone_workspace "$MAX_REPO" "$ROOT/workspaces/max"
 
-python3 - "$OPERATOR_ENV" "$ROOT/secrets/velvet.env" "$ROOT/secrets/max.env" <<'PY'
+python3 - "$OPERATOR_ENV" "$CONTROL_OPERATOR_ENV" "$ROOT/secrets/velvet.env" "$ROOT/secrets/max.env" <<'PY'
 from __future__ import annotations
 
 import os
@@ -115,6 +123,10 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
         "TELEGRAM_ALLOWED_USERS": existing.get("TELEGRAM_ALLOWED_USERS", ""),
         "GH_TOKEN": existing.get("GH_TOKEN", ""),
         "API_SERVER_KEY": existing.get("API_SERVER_KEY", ""),
+        "HERMES_CODER_ROUTER_CLIENT_TOKEN": (
+            existing.get("HERMES_CODER_ROUTER_CLIENT_TOKEN", "")
+            or model_values["HERMES_CODER_ROUTER_CLIENT_TOKEN"]
+        ),
     }
     body = "\n".join(f"{key}={value}" for key, value in values.items()) + "\n"
     path.write_text(body, encoding="utf-8")
@@ -122,6 +134,7 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
 
 
 source = parse_env(Path(sys.argv[1]))
+operator = parse_env(Path(sys.argv[2]))
 coder_key = source.get("BYESU_HERMES_CODEX_API_KEY", "")
 pro_key = (
     source.get("BYESU_HERMES_GPT_PRO_API_KEY", "")
@@ -132,8 +145,11 @@ pro_key = (
 model_values = {
     "BYESU_HERMES_CODEX_API_KEY": coder_key,
     "BYESU_HERMES_GPT_PRO_API_KEY": pro_key,
+    "HERMES_CODER_ROUTER_CLIENT_TOKEN": operator.get("HERMES_OPS_CLIENT_TOKEN", ""),
 }
-for target in map(Path, sys.argv[2:]):
+if len(model_values["HERMES_CODER_ROUTER_CLIENT_TOKEN"]) < 24:
+    raise SystemExit("Canonical coder router client token отсутствует или слишком короткий")
+for target in map(Path, sys.argv[3:]):
     write_env(target, model_values)
 
 if coder_key:
@@ -244,19 +260,38 @@ for db_env in "$ROOT/secrets/velvet-db.env" "$ROOT/secrets/max-db.env"; do
 done
 
 install -m 0644 "$UNIT_SOURCE" "$UNIT_TARGET"
+install -o root -g root -m 0644 "$APPARMOR_SOURCE" "$APPARMOR_TARGET"
+apparmor_parser -r "$APPARMOR_TARGET"
+if [[ "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" != "Y" ]]; then
+  echo "AppArmor не включён; coder sandbox не может быть установлен" >&2
+  exit 5
+fi
 systemctl daemon-reload
+systemctl enable hermes-coders.service
+systemctl restart hermes-coders.service
+active_state="$(systemctl show hermes-coders.service -p ActiveState --value)"
+sub_state="$(systemctl show hermes-coders.service -p SubState --value)"
+exec_status="$(systemctl show hermes-coders.service -p ExecMainStatus --value)"
+if [[ "$active_state" != "active" || "$sub_state" != "exited" || "$exec_status" != "0" ]]; then
+  echo "hermes-coders.service не подтвердил active/exited/0: $active_state/$sub_state/$exec_status" >&2
+  exit 6
+fi
 
 cd "$SOURCE_DIR"
 HERMES_CODERS_ROOT="$ROOT" docker compose \
   --profile velvet \
   --profile max \
   -f compose.yaml \
+  -f compose.runtime.yaml \
+  -f compose.security.yaml \
   config --quiet
 
 HERMES_CODERS_ROOT="$ROOT" docker compose \
   --profile velvet \
   --profile max \
   -f compose.yaml \
+  -f compose.runtime.yaml \
+  -f compose.security.yaml \
   build
 
 cat <<EOF
@@ -270,6 +305,6 @@ Hermes Coder infrastructure prepared.
 
 Затем:
   sudo env HERMES_CODERS_ROOT=$ROOT python3 $SOURCE_DIR/preflight.py
-  sudo systemctl enable --now hermes-coders.service
+  sudo systemctl restart hermes-coders.service
   sudo env HERMES_CODERS_ROOT=$ROOT python3 $SOURCE_DIR/runtime_smoke.py
 EOF

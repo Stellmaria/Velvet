@@ -2,7 +2,7 @@ services:
   hermes-chat-velvet:
     environment:
       GIT_CONFIG_GLOBAL: /opt/data/.gitconfig
-      HERMES_CODEX_DELEGATE_URL: http://hermes-coder-velvet:8642
+      HERMES_CODEX_DELEGATE_URL: http://hermes-coder-router:8878
       HERMES_CODEX_DELEGATE_PROJECT: velvet
     volumes:
       - ./codex_delegate.py:/app/codex_delegate.py:ro
@@ -10,7 +10,7 @@ services:
   hermes-chat-max:
     environment:
       GIT_CONFIG_GLOBAL: /opt/data/.gitconfig
-      HERMES_CODEX_DELEGATE_URL: http://hermes-coder-max:8642
+      HERMES_CODEX_DELEGATE_URL: http://hermes-coder-router:8878
       HERMES_CODEX_DELEGATE_PROJECT: max
     volumes:
       - ./codex_delegate.py:/app/codex_delegate.py:ro

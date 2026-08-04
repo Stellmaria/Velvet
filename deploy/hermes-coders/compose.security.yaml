@@ -1,0 +1,10 @@
+services:
+  hermes-coder-velvet:
+    security_opt:
+      - apparmor=hermes-codex-bwrap
+      - seccomp=./security/seccomp-bwrap.json
+
+  hermes-coder-max:
+    security_opt:
+      - apparmor=hermes-codex-bwrap
+      - seccomp=./security/seccomp-bwrap.json

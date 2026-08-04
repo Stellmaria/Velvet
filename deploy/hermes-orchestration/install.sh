@@ -13,6 +13,8 @@ HERMES_ENV_FILE="${HERMES_ENV_FILE:-$VELVET_APP_DIR/.env.hermes}"
 SERVICE_USER="${HERMES_ORCHESTRATION_SERVICE_USER:-velvet}"
 CODERS_ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 CODERS_SOURCE="$VELVET_APP_DIR/deploy/hermes-coders"
+BRAIN_SOURCE="$VELVET_APP_DIR/deploy/hermes-brain"
+BRAIN_MANIFEST="$VELVET_APP_DIR/brain-vault/manifest.json"
 OPERATOR_SOURCE="$VELVET_APP_DIR/deploy/hermes-operator"
 ORCHESTRATION_SOURCE="$VELVET_APP_DIR/deploy/hermes-orchestration"
 CONTROL_ROOT="${HERMES_OPERATOR_CONTROL_ROOT:-/srv/hermes-operator-control}"
@@ -29,14 +31,18 @@ required=(
   "$VELVET_ENV_FILE"
   "$VELVET_COMPOSE_FILE"
   "$HERMES_ENV_FILE"
+  "$CODERS_SOURCE/install.sh"
   "$CODERS_SOURCE/compose.yaml"
-  "$CODERS_SOURCE/SOUL.velvet.md"
-  "$CODERS_SOURCE/SOUL.max.md"
-  "$CODERS_SOURCE/ensure_runtime_config.py"
-  "$CODERS_SOURCE/preflight.py"
+  "$CODERS_SOURCE/compose.runtime.yaml"
+  "$CODERS_SOURCE/compose.security.yaml"
+  "$BRAIN_SOURCE/context_compiler.py"
+  "$BRAIN_SOURCE/install_context_pack.py"
+  "$BRAIN_SOURCE/verify_installed_context.py"
+  "$BRAIN_MANIFEST"
   "$OPERATOR_SOURCE/coder_router.py"
   "$OPERATOR_SOURCE/coderctl.py"
-  "$OPERATOR_SOURCE/SOUL.operator.md"
+  "$OPERATOR_SOURCE/SOUL.kael.md"
+  "$OPERATOR_SOURCE/AGENTS.kael.md"
   "$ORCHESTRATION_SOURCE/compose.yaml"
   "$VELVET_APP_DIR/scripts/hermes_incident_monitor.py"
   "$ROUTER_UNIT_SOURCE"
@@ -44,6 +50,8 @@ required=(
   "$OPERATOR_ENV"
   "$CODERS_ROOT/secrets/velvet.env"
   "$CODERS_ROOT/secrets/max.env"
+  "$CODERS_ROOT/secrets/velvet-db.env"
+  "$CODERS_ROOT/secrets/max-db.env"
 )
 for path in "${required[@]}"; do
   if [[ ! -f "$path" ]]; then
@@ -118,6 +126,16 @@ def ensure_key(path: Path) -> dict[str, str]:
     return values
 
 
+def set_value(path: Path, name: str, value: str) -> None:
+    values = parse_env(path)
+    values[name] = value
+    path.write_text(
+        "\n".join(f"{key}={item}" for key, item in values.items()) + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(path, 0o600)
+
+
 velvet_path, max_path, operator_path, router_path, hermes_path, server_path, incident_path = map(
     Path, sys.argv[1:]
 )
@@ -141,6 +159,8 @@ operator = parse_env(operator_path)
 client_token = operator.get("HERMES_OPS_CLIENT_TOKEN", "")
 if len(client_token) < 24:
     raise SystemExit("HERMES_OPS_CLIENT_TOKEN отсутствует или слишком короткий")
+set_value(velvet_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN", client_token)
+set_value(max_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN", client_token)
 router_values = {
     "HERMES_CODER_ROUTER_CLIENT_TOKEN": client_token,
     "HERMES_CODER_VELVET_TOKEN": velvet["API_SERVER_KEY"],
@@ -201,11 +221,18 @@ chmod 0600 \
   "$CODER_ROUTER_ENV" \
   "$INCIDENT_ENV"
 
-python3 \
-  "$CODERS_SOURCE/ensure_runtime_config.py" \
-  "$CODERS_ROOT/data/velvet/config.yaml" \
-  "$CODERS_ROOT/data/max/config.yaml"
-env HERMES_CODERS_ROOT="$CODERS_ROOT" python3 "$CODERS_SOURCE/preflight.py"
+# Canonical coder reconciliation owns context install/verify, preflight, AppArmor,
+# systemd unit installation and the three-layer Compose lifecycle. Do not duplicate
+# those writes here or run preflight before the context generation is repaired.
+env \
+  HERMES_CODERS_ROOT="$CODERS_ROOT" \
+  HERMES_CODERS_SOURCE_DIR="$CODERS_SOURCE" \
+  HERMES_BRAIN_SOURCE_DIR="$BRAIN_SOURCE" \
+  HERMES_BRAIN_MANIFEST="$BRAIN_MANIFEST" \
+  HERMES_OPERATOR_ENV="$HERMES_ENV_FILE" \
+  HERMES_CONTROL_OPERATOR_ENV="$OPERATOR_ENV" \
+  HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
+  "$CODERS_SOURCE/install.sh"
 
 velvet_data_dir="$(python3 - "$VELVET_ENV_FILE" <<'PY'
 from pathlib import Path
@@ -222,57 +249,42 @@ print(values.get("VELVET_DATA_DIR", "/srv/velvet/data"))
 PY
 )"
 hermes_data="$velvet_data_dir/hermes"
-install -d -m 0750 "$hermes_data" "$hermes_data/tools" "$hermes_data/orchestration"
-hermes_uid="$(stat -c '%u' "$hermes_data")"
-hermes_gid="$(stat -c '%g' "$hermes_data")"
-install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \
+velvet_uid="$(stat -c '%u' "$velvet_data_dir")"
+velvet_gid="$(stat -c '%g' "$velvet_data_dir")"
+install -d -o "$velvet_uid" -g "$velvet_gid" -m 0750 \
+  "$hermes_data" "$hermes_data/tools" "$hermes_data/orchestration"
+
+pack_root="$(mktemp -d)"
+trap 'rm -rf -- "$pack_root"' EXIT
+python3 "$BRAIN_SOURCE/context_compiler.py" validate
+python3 "$BRAIN_SOURCE/context_compiler.py" compile \
+  --entity kael --output "$pack_root/kael"
+python3 "$BRAIN_SOURCE/install_context_pack.py" \
+  --pack "$pack_root/kael" \
+  --target "$hermes_data" \
+  --entity kael \
+  --mode hermes
+python3 "$BRAIN_SOURCE/verify_installed_context.py" \
+  --target "$hermes_data" \
+  --entity kael \
+  --mode hermes
+
+install -m 0500 -o "$velvet_uid" -g "$velvet_gid" \
   "$OPERATOR_SOURCE/coderctl.py" "$hermes_data/tools/coderctl.py"
-chown "$hermes_uid:$hermes_gid" "$hermes_data/orchestration"
+chown "$velvet_uid:$velvet_gid" "$hermes_data/orchestration"
 chmod 0750 "$hermes_data/orchestration"
 
-python3 - "$hermes_data/SOUL.md" "$OPERATOR_SOURCE/SOUL.operator.md" <<'PY'
-from pathlib import Path
-import sys
-
-begin = "<!-- BEGIN MANAGED HERMES OPERATOR CONTROL -->"
-end = "<!-- END MANAGED HERMES OPERATOR CONTROL -->"
-target = Path(sys.argv[1])
-managed = Path(sys.argv[2]).read_text(encoding="utf-8").strip()
-current = target.read_text(encoding="utf-8") if target.exists() else "# Hermes operator\n"
-block = f"{begin}\n{managed}\n{end}"
-if begin in current and end in current:
-    prefix, rest = current.split(begin, 1)
-    _, suffix = rest.split(end, 1)
-    current = prefix.rstrip() + "\n\n" + block + suffix
-else:
-    current = current.rstrip() + "\n\n" + block + "\n"
-target.write_text(current, encoding="utf-8")
-PY
-chown "$hermes_uid:$hermes_gid" "$hermes_data/SOUL.md"
-chmod 0640 "$hermes_data/SOUL.md"
-
-for project in velvet max; do
-  data_dir="$CODERS_ROOT/data/$project"
-  if [[ ! -d "$data_dir" ]]; then
-    echo "Отсутствует coder data directory: $data_dir" >&2
-    exit 4
-  fi
-  install -m 0640 \
-    -o "$(stat -c '%u' "$data_dir")" \
-    -g "$(stat -c '%g' "$data_dir")" \
-    "$CODERS_SOURCE/SOUL.$project.md" "$data_dir/SOUL.md"
-done
-
-runuser -u "$SERVICE_USER" -- env \
-  HERMES_CODERS_ROOT="$CODERS_ROOT" \
+runuser -u "$SERVICE_USER" -- env HERMES_CODERS_ROOT="$CODERS_ROOT" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
-  docker compose --profile velvet --profile max -f "$CODERS_SOURCE/compose.yaml" \
-  up -d --build --force-recreate
+  docker compose --profile velvet --profile max \
+  -f "$CODERS_SOURCE/compose.yaml" -f "$CODERS_SOURCE/compose.runtime.yaml" \
+  -f "$CODERS_SOURCE/compose.security.yaml" config --quiet
 
 install -m 0644 "$ROUTER_UNIT_SOURCE" "$ROUTER_UNIT_TARGET"
 install -m 0644 "$INCIDENT_UNIT_SOURCE" "$INCIDENT_UNIT_TARGET"
 systemctl daemon-reload
-systemctl enable --now hermes-coder-router.service
+systemctl enable hermes-coder-router.service velvet-hermes-incident-monitor.service
+systemctl restart hermes-coder-router.service
 
 runuser -u "$SERVICE_USER" -- bash -ceu "
   cd '$VELVET_APP_DIR'
@@ -327,25 +339,30 @@ if [[ "$coder_health_ok" != "true" ]]; then
   exit 6
 fi
 
-systemctl enable --now velvet-hermes-incident-monitor.service
+systemctl restart velvet-hermes-incident-monitor.service
 if ! systemctl is-active --quiet velvet-hermes-incident-monitor.service; then
   systemctl --no-pager --full status velvet-hermes-incident-monitor.service >&2 || true
   exit 7
 fi
 
+systemctl --no-pager --full status hermes-coders.service
 systemctl --no-pager --full status hermes-coder-router.service
 systemctl --no-pager --full status velvet-hermes-incident-monitor.service
 runuser -u "$SERVICE_USER" -- env \
   HERMES_CODERS_ROOT="$CODERS_ROOT" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
-  docker compose --profile velvet --profile max -f "$CODERS_SOURCE/compose.yaml" ps
+  docker compose --profile velvet --profile max \
+  -f "$CODERS_SOURCE/compose.yaml" -f "$CODERS_SOURCE/compose.runtime.yaml" \
+  -f "$CODERS_SOURCE/compose.security.yaml" ps
 runuser -u "$SERVICE_USER" -- env \
   HERMES_CODER_ROUTER_ENV_FILE="$CODER_ROUTER_ENV" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
   docker compose -f "$ORCHESTRATION_SOURCE/compose.yaml" ps
 
 printf '%s\n' \
-  "Hermes coder orchestration installed." \
+  "Hermes coder orchestration installed atomically." \
+  "Coder contexts, AppArmor, systemd and three-layer Compose were reconciled by the canonical coder installer." \
+  "Kael context was compiled, installed and verified after the final managed write." \
   "Main Hermes can submit/status/wait/list tasks through /opt/data/tools/coderctl.py." \
   "Both coder capabilities were verified through the isolated router." \
   "Read-only Velvet incident monitor is active and reports terminal results to Telegram."

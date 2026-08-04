@@ -44,7 +44,7 @@ class TierDocumentationContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertNotIn(
-            'coderctl.py submit velvet --source owner-request --task "<задача>"',
+            'coderctl.py submit velvet --source kael-delegated --task "<задача>"',
             source,
         )
         for marker in (

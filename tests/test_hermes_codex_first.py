@@ -189,11 +189,11 @@ class DirectCoderContractTests(unittest.TestCase):
         self.assertEqual(2, source.count("/app/codex_first_safe_runner.py"))
         self.assertEqual(2, source.count("/app/codex_delegate.py"))
         self.assertIn(
-            "HERMES_CODEX_DELEGATE_URL: http://hermes-coder-velvet:8642",
+            "HERMES_CODEX_DELEGATE_URL: http://hermes-coder-router:8878",
             source,
         )
         self.assertIn(
-            "HERMES_CODEX_DELEGATE_URL: http://hermes-coder-max:8642",
+            "HERMES_CODEX_DELEGATE_URL: http://hermes-coder-router:8878",
             source,
         )
         self.assertEqual(

@@ -317,8 +317,10 @@ def build_parser() -> argparse.ArgumentParser:
     submit.add_argument("--task", required=True)
     submit.add_argument(
         "--source",
-        choices=("owner-request", "incident", "maintenance"),
-        default="owner-request",
+        choices=(
+            "kael-delegated", "owner-request", "owner-direct", "incident", "maintenance"
+        ),
+        default="kael-delegated",
     )
     submit.add_argument("--task-type", choices=TASK_TYPES, required=True)
     submit.add_argument("--complexity", choices=COMPLEXITIES, required=True)

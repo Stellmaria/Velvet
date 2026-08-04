@@ -14,8 +14,10 @@ from typing import Callable, Sequence
 
 ROOT = Path(os.environ.get("HERMES_CODERS_ROOT", "/srv/hermes-coders"))
 SOURCE_DIR = Path(__file__).resolve().parent
-COMPOSE_FILE = Path(
-    os.environ.get("HERMES_CODERS_COMPOSE_FILE", str(SOURCE_DIR / "compose.yaml"))
+COMPOSE_FILES = (
+    SOURCE_DIR / "compose.yaml",
+    SOURCE_DIR / "compose.runtime.yaml",
+    SOURCE_DIR / "compose.security.yaml",
 )
 STARTUP_TIMEOUT_SECONDS = max(
     30,
@@ -27,6 +29,7 @@ POLL_INTERVAL_SECONDS = max(
 )
 CODEX_VERSION = "0.144.1"
 CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
+CRYPTOGRAPHY_VERSION = "50.0.0"
 
 
 @dataclass(frozen=True)
@@ -95,8 +98,7 @@ def compose_prefix() -> list[str]:
         "velvet",
         "--profile",
         "max",
-        "-f",
-        str(COMPOSE_FILE),
+        *[part for path in COMPOSE_FILES for part in ("-f", str(path))],
     ]
 
 
@@ -243,6 +245,8 @@ test "$HOME" = "/opt/codex"
 test -r /opt/codex/AGENTS.md
 test -r /opt/codex/output.schema.json
 test -r /opt/codex/context-manifest.json
+test -d /workspace-base
+test ! -e /workspace
 mode="$(stat -c '%a' /opt/codex/auth.json)"
 test "$mode" = "600"
 codex --version | grep -F '{CODEX_VERSION}' >/dev/null
@@ -269,6 +273,11 @@ if payload.get('models') != {models_json}:
     raise SystemExit('unexpected model set')
 if payload.get('structured_output') is not True:
     raise SystemExit('structured output schema is not active')
+isolation = payload.get('routing', {{}}).get('workspace_isolation', {{}})
+if isolation.get('per_run_clone') is not True:
+    raise SystemExit('per-run clone isolation is not active')
+if isolation.get('base_checkout_read_only') is not True:
+    raise SystemExit('base checkout is not declared read-only')
 PYCAP
 
 python - <<'PYCONTEXT'
@@ -296,13 +305,56 @@ actual_repo="$(gh api repos/{repository} --jq .full_name)"
 test "$actual_repo" = "{repository}"
 push_allowed="$(gh api repos/{repository} --jq '.permissions.push')"
 test "$push_allowed" = "true"
-remote="$(git -C /workspace remote get-url origin)"
+remote="$(git -C /workspace-base remote get-url origin)"
 case "$remote" in
   {https_remote}|{https_remote}.git) ;;
   *) echo "unexpected Codex origin remote for {target.project}" >&2; exit 41 ;;
 esac
-git -C /workspace push --dry-run origin \
+
+base_fingerprint() {{
+  {{
+    git -C /workspace-base rev-parse HEAD
+    git -C /workspace-base rev-parse --abbrev-ref HEAD
+    git -C /workspace-base for-each-ref --format='%(refname)%00%(objectname)%00' refs/heads refs/tags
+    git -C /workspace-base status --porcelain=v1 -z --untracked-files=all
+  }} | sha256sum
+}}
+
+fingerprint_before="$(base_fingerprint)"
+findmnt -n -o OPTIONS /workspace-base | grep -E '(^|,)ro(,|$)' >/dev/null
+
+probe="/opt/codex-runs/smoke-{target.project}-$$"
+trap 'rm -rf -- "$probe"' EXIT
+rm -rf -- "$probe"
+git clone --no-hardlinks --no-checkout /workspace-base "$probe" >/dev/null
+head="$(git -C /workspace-base rev-parse HEAD)"
+git -C "$probe" checkout --detach --force "$head" >/dev/null
+git -C "$probe" remote set-url origin "$remote"
+git -C "$probe" push --dry-run origin \
   HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
+
+unshare --user --map-root-user true
+unshare --user --map-root-user --mount true
+bwrap --unshare-user --unshare-pid --ro-bind / / --proc /proc true
+
+# Read-only proof: Git executes against the immutable base checkout.
+bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev \
+  --ro-bind /workspace-base /workspace-base \
+  git -C /workspace-base status --short >/dev/null
+
+# Writable proof: only the disposable per-run clone is bind-mounted writable.
+bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev \
+  --bind "$probe" "$probe" \
+  sh -ceu 'touch "$1/.bwrap-write"; git -C "$1" status --short >/dev/null; rm -f "$1/.bwrap-write"' \
+  sh "$probe"
+
+fingerprint_after="$(base_fingerprint)"
+test "$fingerprint_before" = "$fingerprint_after"
+awk '$1 == "NoNewPrivs:" && $2 == "1" {{ok=1}} END {{exit !ok}}' /proc/1/status
+awk '$1 == "CapEff:" && $2 == "0000000000000000" {{ok=1}} END {{exit !ok}}' /proc/1/status
+awk '$1 == "Seccomp:" && $2 == "2" {{ok=1}} END {{exit !ok}}' /proc/1/status
+grep -F 'hermes-codex-bwrap' /proc/1/attr/current >/dev/null
+findmnt -n -o OPTIONS / | grep -E '(^|,)ro(,|$)' >/dev/null
 """
 
 
@@ -337,12 +389,28 @@ def verify_codex_access(
     mode = stat.S_IMODE(auth.stat().st_mode)
     if mode != 0o600:
         raise SmokeError(f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}")
-    run_checked(codex_probe_command(target), timeout_seconds=60, runner=runner)
+    run_checked(codex_probe_command(target), timeout_seconds=90, runner=runner)
+
+
+def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
+    command = [
+        "docker", "compose", "--env-file", "/srv/velvet/.env.server",
+        "-f", "/srv/velvet/docker-compose.server.yml",
+        "exec", "-T", "hermes", "python", "-c",
+        "import importlib.metadata as m; print(m.version('cryptography'))",
+    ]
+    result = run_checked(command, timeout_seconds=30, runner=runner)
+    if result.stdout.strip() != CRYPTOGRAPHY_VERSION:
+        raise SmokeError(
+            "main Hermes cryptography mismatch: expected "
+            f"{CRYPTOGRAPHY_VERSION}, actual {redact(result.stdout.strip())}"
+        )
 
 
 def main() -> int:
-    if not COMPOSE_FILE.is_file():
-        raise SmokeError(f"Отсутствует Compose-файл: {COMPOSE_FILE}")
+    for compose_file in COMPOSE_FILES:
+        if not compose_file.is_file():
+            raise SmokeError(f"Отсутствует Compose-файл: {compose_file}")
     if not ROOT.is_dir():
         raise SmokeError(f"Отсутствует Hermes Coder root: {ROOT}")
 
@@ -353,8 +421,10 @@ def main() -> int:
         verify_codex_access(target)
         print(
             f"Hermes/Codex smoke: {target.project} -> {target.repository}: "
-            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, PUSH_OK"
+            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, BASE_RO_OK, RUN_RW_OK, PUSH_OK"
         )
+    verify_main_cryptography()
+    print(f"Main Hermes dependency: cryptography=={CRYPTOGRAPHY_VERSION}: OK")
     return 0
 
 

@@ -10,6 +10,7 @@ import tempfile
 from pathlib import Path
 
 from context_compiler import BrainError, verify_pack
+from verify_installed_context import RuntimeContextError, verify_installed
 
 
 SKILL_NAME = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
@@ -187,6 +188,11 @@ def main() -> int:
         entity=args.entity,
         mode=args.mode,
     )
+    # The manifest is installed last. Verification therefore observes the
+    # complete active generation and fails closed before any runtime preflight.
+    verify_installed(
+        Path(args.target), entity=args.entity, mode=args.mode
+    )
     print(
         f"Context pack installed: {manifest['entity_id']} -> "
         f"{Path(args.target).resolve()}"
@@ -197,6 +203,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (BrainError, InstallError, OSError, ValueError) as error:
+    except (BrainError, InstallError, RuntimeContextError, OSError, ValueError) as error:
         print(f"Velvet Brain installation failed: {error}", file=sys.stderr)
         raise SystemExit(2)

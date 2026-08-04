@@ -93,18 +93,19 @@ def _handoff_policy(
         "Docker socket or systemd",
         "production writes or secrets access",
         "cross-project checkout or context",
+        "access to legacy /workspace, shared /workspace-base, chat workspaces or sibling runs",
         "merge, deployment, restart, update or rollback",
     ]
     if mutation_policy == "read_only":
         return (
             [
                 "Сохрани requested tier, task type, complexity, risk и mutation policy.",
-                "Подтверди состояние read-only evidence без изменения workspace.",
+                "Подтверди состояние read-only evidence без изменения current run workspace.",
                 "Вывод не содержит secrets, персональные данные или нерелевантные логи.",
                 "Не создавай branch, commit, push или pull request.",
             ],
             [
-                "read files inside /workspace",
+                "read files inside the current process working directory only",
                 "run read-only project checks and static inspection",
                 "inspect production data only through configured read-only role",
             ],
@@ -113,7 +114,7 @@ def _handoff_policy(
                 *common_forbidden,
             ],
             [
-                "Run only checks that do not modify the workspace.",
+                "Run only checks that do not modify the current run workspace.",
                 "Report exact read-only evidence and remaining uncertainty.",
             ],
         )
@@ -124,10 +125,10 @@ def _handoff_policy(
             "Focused tests и обязательные project checks завершены.",
             "Diff не содержит secrets, runtime files и несвязанных изменений.",
             "Созданы одна feature branch и не более одного PR в main.",
-            "Для complex/high_risk обязателен isolated workspace и независимый review.",
+            "Для complex/high_risk обязателен isolated run workspace и независимый review.",
         ],
         [
-            "read and edit files inside /workspace",
+            "read and edit files inside the current process working directory only",
             "run project tests and static checks",
             "create one branch, commit, push and pull request",
             "inspect production data only through configured read-only role",
@@ -166,11 +167,13 @@ def build_tier_handoff(
         "task_id": task_id,
         "source": clean_source,
         "project": target.project,
+        "identity": target.identity,
         **routing,
         "task": clean_task,
         "context": (
-            f"Repository={target.repository}; workspace=/workspace; "
-            f"coder={target.bot_handle}; load compiled and repository AGENTS."
+            f"Repository={target.repository}; execution_workspace=current runner cwd; "
+            f"coder={target.bot_handle}; load compiled and repository AGENTS. "
+            "The runner injects the effective per-run path. Never replace it with a static path."
         ),
         "acceptance_criteria": acceptance,
         "allowed_actions": allowed,
@@ -212,6 +215,8 @@ def build_tier_prompt(
 
 {encoded}
 
+Работай только в текущем cwd, который runner назначит конкретному run. Не переходи
+в `/workspace`, `/workspace-base`, chat workspace или каталоги других runs.
 Подтверди repository, Task ID, requested tier и mutation policy. {completion}
 Верни ровно JSON по установленной output schema: status, branch, pr, tests,
 blocker и memory_candidates. Не добавляй Markdown вокруг JSON.
@@ -253,11 +258,12 @@ class TierAwareCoderRouter(CoderRouter):
         target = self._target(project)
         instruction = (
             "Ты изолированный read-only coder-агент. Сохрани явный requested tier, "
-            "не меняй workspace, не создавай branch/commit/PR и верни schema-bound JSON."
+            "работай только в назначенном runner cwd, не меняй Git state, не создавай "
+            "branch/commit/PR и верни schema-bound JSON."
             if routing["mutation_policy"] == "read_only"
             else "Ты изолированный coder-агент. Сохрани явный requested tier, "
-            "работай только в указанном репозитории, создай одну ветку и не более "
-            "одного PR, не меняй production и верни schema-bound JSON."
+            "работай только в назначенном runner cwd указанного репозитория, создай "
+            "одну ветку и не более одного PR, не меняй production и верни schema-bound JSON."
         )
         result = self.upstream(
             target,

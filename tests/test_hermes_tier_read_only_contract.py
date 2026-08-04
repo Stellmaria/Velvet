@@ -70,6 +70,14 @@ class TierReadOnlyContractTests(unittest.TestCase):
             "file or Git mutation, branch, commit, push or pull request",
             handoff["forbidden_actions"],
         )
+        self.assertIn(
+            "access to legacy /workspace, shared /workspace-base, chat workspaces or sibling runs",
+            handoff["forbidden_actions"],
+        )
+        self.assertIn(
+            "current process working directory only",
+            handoff["allowed_actions"][0],
+        )
         prompt = tier_router.build_tier_prompt(
             target,
             task_id="a" * 32,
@@ -78,6 +86,8 @@ class TierReadOnlyContractTests(unittest.TestCase):
             routing=self.routing,
         )
         self.assertIn("только read-only анализ без branch/commit/PR", prompt)
+        self.assertIn("Работай только в текущем cwd", prompt)
+        self.assertIn("Не переходи\nв `/workspace`, `/workspace-base`", prompt)
         self.assertNotIn("создай одну ветку", prompt)
 
     def test_read_only_submit_sends_non_mutating_instruction(self) -> None:
@@ -101,8 +111,10 @@ class TierReadOnlyContractTests(unittest.TestCase):
                 },
             )
         forwarded = upstream.call_args.args[3]
-        self.assertIn("не меняй workspace", forwarded["instructions"])
+        self.assertIn("назначенном runner cwd", forwarded["instructions"])
+        self.assertIn("не меняй Git state", forwarded["instructions"])
         self.assertIn("не создавай branch/commit/PR", forwarded["instructions"])
+        self.assertNotIn("workspace=/workspace", forwarded["input"])
         self.assertEqual("read_only", forwarded["mutation_policy"])
         self.assertEqual("small", result["requested_tier"])
 

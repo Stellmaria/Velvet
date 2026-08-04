@@ -49,12 +49,14 @@ x-codex-runner: &codex-runner
     dockerfile: Dockerfile.coder
   restart: unless-stopped
   command: ["python", "/app/codex_routed_runner.py"]
-  working_dir: /workspace
+  working_dir: /opt/codex-runs
   user: "${HERMES_UID:-10000}:${HERMES_GID:-10000}"
   environment:
     HOME: /opt/codex
     CODEX_HOME: /opt/codex
-    CODEX_WORKSPACE: /workspace
+    CODEX_WORKSPACE: /workspace-base
+    CODEX_WORKSPACE_BASE: /workspace-base
+    CODEX_ISOLATED_WORKSPACE_ROOT: /opt/codex-runs/workspaces
     CODEX_RUN_ROOT: /opt/codex-runs
     CODEX_RUNNER_HOST: 0.0.0.0
     CODEX_RUNNER_PORT: "8642"
@@ -141,7 +143,7 @@ services:
     volumes:
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/codex/velvet:/opt/codex
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/codex-runs/velvet:/opt/codex-runs
-      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/workspaces/velvet-codex:/workspace
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/workspaces/velvet-codex:/workspace-base:ro
     networks:
       - egress
       - agent-control
@@ -183,7 +185,7 @@ services:
     volumes:
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/codex/max:/opt/codex
       - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/codex-runs/max:/opt/codex-runs
-      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/workspaces/max-codex:/workspace
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/workspaces/max-codex:/workspace-base:ro
     networks:
       - egress
       - agent-control

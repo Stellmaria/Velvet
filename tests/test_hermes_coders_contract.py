@@ -19,8 +19,12 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("  hermes-coder-max:", source)
         self.assertIn("/workspaces/velvet:/workspace", source)
         self.assertIn("/workspaces/max:/workspace", source)
-        self.assertIn("/workspaces/velvet-codex:/workspace", source)
-        self.assertIn("/workspaces/max-codex:/workspace", source)
+        self.assertIn("/workspaces/velvet-codex:/workspace-base:ro", source)
+        self.assertIn("/workspaces/max-codex:/workspace-base:ro", source)
+        self.assertIn("CODEX_WORKSPACE_BASE: /workspace-base", source)
+        self.assertIn("CODEX_ISOLATED_WORKSPACE_ROOT: /opt/codex-runs/workspaces", source)
+        self.assertNotIn("/workspaces/velvet-codex:/workspace\n", source)
+        self.assertNotIn("/workspaces/max-codex:/workspace\n", source)
         self.assertNotIn("/srv/velvet:/workspace", source)
         self.assertNotIn("/srv/romatic-club:/workspace", source)
         self.assertNotIn("docker.sock", source)
@@ -37,10 +41,12 @@ class HermesCodersContractTests(unittest.TestCase):
             "\nx-db-proxy:", 1
         )[0]
         self.assertIn("read_only: true", codex_anchor)
+        self.assertIn("working_dir: /opt/codex-runs", codex_anchor)
         for section in (velvet, maximum):
             self.assertIn("<<: *codex-runner", section)
             self.assertIn("- egress", section)
             self.assertIn("- agent-control", section)
+            self.assertIn(":/workspace-base:ro", section)
             self.assertNotIn("velvet-db", section)
             self.assertNotIn("max-db", section)
             self.assertNotIn("velvet-production", section)
@@ -137,7 +143,7 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertNotIn("cat /opt/codex/auth.json", source)
         self.assertNotIn("rm -rf", source)
 
-    def test_runtime_smoke_covers_chat_codex_models_and_push(self) -> None:
+    def test_runtime_smoke_covers_base_and_run_sandbox(self) -> None:
         source = (ROOT / "runtime_smoke.py").read_text(encoding="utf-8")
         self.assertIn("hermes-chat-velvet", source)
         self.assertIn("hermes-coder-velvet", source)
@@ -147,6 +153,10 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertIn("gpt-5.6-terra", source)
         self.assertIn("gpt-5.6-sol", source)
         self.assertIn("push --dry-run", source)
+        self.assertIn("/workspace-base", source)
+        self.assertIn("--ro-bind /workspace-base /workspace-base", source)
+        self.assertIn('--bind "$probe" "$probe"', source)
+        self.assertIn("test ! -e /workspace", source)
 
     def test_existing_hermes_byesu_route_remains_available_for_chat(self) -> None:
         source = (ROOT / "config.yaml").read_text(encoding="utf-8")
@@ -167,6 +177,7 @@ class HermesCodersContractTests(unittest.TestCase):
         compose_start = (
             "ExecStart=/usr/bin/docker compose --profile velvet "
             "--profile max -f compose.yaml -f compose.runtime.yaml "
+            "-f compose.security.yaml "
             "up -d --build --remove-orphans"
         )
         smoke = (
@@ -186,6 +197,7 @@ class HermesCodersContractTests(unittest.TestCase):
             ROOT / "ensure_runtime_config.py",
             ROOT / "preflight.py",
             ROOT / "runtime_smoke.py",
+            ROOT / "codex_tier_runner.py",
         ):
             with self.subTest(path=path):
                 ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -196,6 +208,7 @@ class HermesCodersContractTests(unittest.TestCase):
             ROOT / "install.sh",
             ROOT / "install-codex.sh",
             ROOT / "codex-login.sh",
+            Path("deploy/hermes-orchestration/install.sh"),
         ):
             with self.subTest(path=path):
                 result = subprocess.run(
