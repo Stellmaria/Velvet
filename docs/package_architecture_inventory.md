@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `8eb85176d97ca8f239e7029db270a39948d9c346`
+- Generated from: `940726cd7eeb8b032429e3e1d1a224d4aed40622`
 - Production modules: **648**
 - Production LOC: **142204**
 - Root modules: **113**
