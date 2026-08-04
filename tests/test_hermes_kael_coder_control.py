@@ -239,23 +239,46 @@ class KaelCoderControlTests(unittest.TestCase):
                 )
                 self.assertEqual("block", result["action"])
 
-    def test_workspace_file_access_is_blocked_but_config_read_is_preserved(self) -> None:
-        blocked = MODULE._on_pre_tool_call(
-            tool_name="read_file",
-            args={"path": "/opt/data/workspace/Velvet/README.md"},
+    def test_workspace_file_access_is_blocked(self) -> None:
+        blocked = (
+            "/opt/data/workspace/Velvet/README.md",
+            "workspace/Velvet/README.md",
+            "/srv/velvet/README.md",
+            "/srv/romatic-club-max/README.md",
         )
-        relative_blocked = MODULE._on_pre_tool_call(
-            tool_name="read_file",
-            args={"path": "workspace/Velvet/README.md"},
-        )
-        allowed = MODULE._on_pre_tool_call(
-            tool_name="read_file",
-            args={"path": "/opt/data/config.yaml"},
-        )
+        for path in blocked:
+            with self.subTest(path=path):
+                result = MODULE._on_pre_tool_call(
+                    tool_name="read_file",
+                    args={"path": path},
+                )
+                self.assertEqual("block", result["action"])
 
-        self.assertEqual("block", blocked["action"])
-        self.assertEqual("block", relative_blocked["action"])
-        self.assertIsNone(allowed)
+    def test_control_plane_files_are_immutable_to_model_tools(self) -> None:
+        blocked = (
+            "/opt/data/config.yaml",
+            "/opt/data/.hermes-ops-client-token",
+            "/opt/data/tools/coderctl.py",
+            "/opt/data/plugins/kael-coder-control/__init__.py",
+            "/opt/data/orchestration/tasks.json",
+            "/opt/data/audit/kael-coder-control.jsonl",
+            "/opt/data/provider-secret.txt",
+        )
+        for path in blocked:
+            for tool_name in ("read_file", "write_file", "patch"):
+                with self.subTest(path=path, tool_name=tool_name):
+                    result = MODULE._on_pre_tool_call(
+                        tool_name=tool_name,
+                        args={"path": path, "content": "tampered"},
+                    )
+                    self.assertEqual("block", result["action"])
+
+        self.assertIsNone(
+            MODULE._on_pre_tool_call(
+                tool_name="read_file",
+                args={"path": "/opt/data/AGENTS.md"},
+            )
+        )
 
     def test_non_coder_delegation_is_preserved(self) -> None:
         self.assertIsNone(
@@ -300,6 +323,21 @@ class KaelCoderControlTests(unittest.TestCase):
         self.assertIn("delegate_invocation", audit)
         self.assertIn("router_submit", audit)
         self.assertIn("router_result", audit)
+
+    def test_audit_refuses_symlink_target(self) -> None:
+        target = self.audit_path.parent / "target.jsonl"
+        target.write_text("original\n", encoding="utf-8")
+        symlink = self.audit_path.parent / "audit-link.jsonl"
+        symlink.symlink_to(target)
+
+        with patch.dict(
+            os.environ,
+            {"KAEL_CODER_AUDIT_PATH": str(symlink)},
+            clear=False,
+        ):
+            MODULE._audit("must_not_follow")
+
+        self.assertEqual("original\n", target.read_text(encoding="utf-8"))
 
     def test_terminal_failure_is_audited(self) -> None:
         MODULE._on_post_tool_call(
