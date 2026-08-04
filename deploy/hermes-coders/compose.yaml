@@ -48,6 +48,7 @@ x-codex-runner: &codex-runner
     context: .
     dockerfile: Dockerfile.coder
   restart: unless-stopped
+  init: true
   command: ["python", "/app/codex_routed_runner.py"]
   working_dir: /opt/codex-runs
   user: "${HERMES_UID:-10000}:${HERMES_GID:-10000}"
