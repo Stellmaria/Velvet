@@ -33,6 +33,17 @@ Actions runs, поэтому создание release ref само по себе
 - публиковать outcome и verification tail в фиксированный issue `#592`;
 - оставлять reporter failed, если production release завершился неуспешно.
 
+### Критерии готовности
+
+- reporter запускается только после завершения `deploy Hermes coders`;
+- release ref и workflow head SHA совпадают;
+- workflow не checkout-ит и не исполняет release code;
+- permissions ограничены чтением Actions/code и записью комментария issue;
+- credential-like значения редактируются, excerpt ограничен 80 строками;
+- issue `#592` получает outcome, commit, ref, run URL и verification tail;
+- failed release документируется и оставляет reporter workflow красным;
+- повторный exact-main release подтверждён evidence comment с outcome `success`.
+
 ## После завершения
 
 ### Фактически сделано
