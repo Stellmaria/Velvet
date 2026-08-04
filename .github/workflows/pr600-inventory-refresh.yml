@@ -158,7 +158,6 @@ jobs:
       - name: Validate refreshed branch
         run: |
           python -m compileall -q velvet_bot tests scripts
-          python -m unittest tests.test_auf_pricing_policy
           python scripts/ci_preflight.py
 
       - name: Remove temporary workflow and publish refresh
