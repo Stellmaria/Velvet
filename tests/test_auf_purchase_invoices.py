@@ -89,9 +89,9 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_invoice_locks_package_price_and_exchange_rate(self) -> None:
         invoice = await self._invoice(key="locked", package=100)
-        self.assertEqual(Decimal("3.37000000"), invoice.package_price_usd)
+        self.assertEqual(Decimal("5.37000000"), invoice.package_price_usd)
         self.assertEqual(Decimal("79.85000000"), invoice.locked_exchange_rate)
-        self.assertEqual(Decimal("269.00"), invoice.final_local_amount)
+        self.assertEqual(Decimal("429.00"), invoice.final_local_amount)
 
         async with self.database.acquire() as connection:
             await connection.execute(
@@ -104,7 +104,7 @@ class PostgreSQLAufPurchaseInvoiceTests(unittest.IsolatedAsyncioTestCase):
         stored = await self.repository.invoice_by_code(invoice.public_code)
         self.assertIsNotNone(stored)
         assert stored is not None
-        self.assertEqual(Decimal("269.00"), stored.final_local_amount)
+        self.assertEqual(Decimal("429.00"), stored.final_local_amount)
         self.assertEqual(Decimal("79.85000000"), stored.locked_exchange_rate)
 
     async def test_invoice_creation_is_idempotent(self) -> None:
