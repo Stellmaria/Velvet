@@ -1,0 +1,74 @@
+name: arthur inventory diff
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/arthur-inventory-diff.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    if: >-
+      github.repository == 'Stellmaria/Velvet' &&
+      github.event.pull_request.head.ref == 'fix/arthur-librarian-phase1' &&
+      github.event.pull_request.user.login == 'Stellmaria'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+          check-latest: false
+
+      - name: Capture exact canonical diffs
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/before artifact
+          cp docs/package_architecture_inventory.json /tmp/before/package.json
+          cp docs/package_architecture_inventory.md /tmp/before/package.md
+          cp docs/repository_layout_inventory.json /tmp/before/repository.json
+          cp docs/repository_layout_inventory.md /tmp/before/repository.md
+
+          python scripts/inventory_package_architecture.py --write
+          python - <<'PY'
+          from pathlib import Path
+          from scripts.inventory_repository_layout import build_inventory, render_markdown
+          import json
+
+          root = Path('.')
+          inventory = build_inventory(label='p3e-repository-layout-complete')
+          (root / 'docs/repository_layout_inventory.json').write_text(
+              json.dumps(inventory, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          (root / 'docs/repository_layout_inventory.md').write_text(
+              render_markdown(inventory),
+              encoding='utf-8',
+          )
+          PY
+
+          diff -u /tmp/before/package.json docs/package_architecture_inventory.json > artifact/package-json.diff || true
+          diff -u /tmp/before/package.md docs/package_architecture_inventory.md > artifact/package-md.diff || true
+          diff -u /tmp/before/repository.json docs/repository_layout_inventory.json > artifact/repository-json.diff || true
+          diff -u /tmp/before/repository.md docs/repository_layout_inventory.md > artifact/repository-md.diff || true
+          cp docs/package_architecture_inventory.json artifact/generated-package.json
+          cp docs/package_architecture_inventory.md artifact/generated-package.md
+          cp docs/repository_layout_inventory.json artifact/generated-repository.json
+          cp docs/repository_layout_inventory.md artifact/generated-repository.md
+
+      - name: Upload exact inventory diff
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: arthur-inventory-diff
+          path: artifact
+          if-no-files-found: error
+          retention-days: 1
