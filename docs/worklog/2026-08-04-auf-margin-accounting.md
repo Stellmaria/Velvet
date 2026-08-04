@@ -70,11 +70,13 @@
 - Добавлен ежедневный SQL-view для отчётности по workspace и модели.
 - Канонический package architecture inventory пересобран на Python 3.13.
 - Ветка синхронизирована с актуальным `main`, включая исправление bounded mypy shallow checkout из PR #608.
+- PostgreSQL settlement-функция дополнительно пересоздаётся с квалифицированным `allocation.basis_quality`, чтобы исключить конфликт с локальной переменной PL/pgSQL.
 
 ### Миграции и совместимость
 
 - `migrations/z033_auf_margin_accounting.sql` добавляет настройки стратегии, снимки charge, FIFO-лоты, allocations, generation P&L, динамический резерв, settlement trigger и ежедневный view.
 - `migrations/z034_auf_revenue_lot_debits.sql` синхронизирует revenue lots с ручными дебетами и отрицательными корректировками.
+- `migrations/z035_auf_settlement_basis_quality_fix.sql` устраняет неоднозначную ссылку `basis_quality` в settlement-функции до production rollout.
 - Публичные пакеты и их цены не изменяются.
 - Индивидуальная markup-политика и сниженные Banana floors не удаляются.
 - Исторические остатки получают `legacy_estimate` по стабильной расчётной опоре VL; они не объявляются фактической выручкой.
@@ -92,18 +94,19 @@
 - Добавлен контракт owner-only P&L dashboard и его места в application composition.
 - Исправлен старый retail pricing test, ожидавший глобальную markup-формулу.
 - Package architecture inventory сгенерирован тем же Python 3.13, что использует CI gate.
-- Полный GitHub Actions CI повторно запущен после исправлений.
+- Telegram navigation inventory обновлён после добавления owner-only P&L-кнопок.
+- PostgreSQL charging test подтвердил неоднозначность `basis_quality`; добавлена отдельная исправляющая миграция и полный CI повторно запущен.
 
 ### PR и commit
 
 - Основной PR: #609 `feat: добавить P&L и защиту маржи генераций`.
 - Техническая синхронизация main: PR #613, merge commit `782082cfe79bf591256f9ff6aa5e8930bff8c57e`.
-- Миграции: `z033_auf_margin_accounting.sql`, `z034_auf_revenue_lot_debits.sql`.
+- Миграции: `z033_auf_margin_accounting.sql`, `z034_auf_revenue_lot_debits.sql`, `z035_auf_settlement_basis_quality_fix.sql`.
 - Текущая ветка: `feat/auf-margin-accounting`.
 
 ### Незавершённое
 
-- Обязательные проверки PR #609 ещё не завершены после последнего исправления worklog.
+- Обязательные проверки PR #609 ещё не завершены после исправления PostgreSQL settlement-функции.
 - PR #609 остаётся draft до полного зелёного CI.
 - Merge основного PR и production rollout не выполнены.
 - Интеграция с provider callback для автоматической передачи уточнённой actual cost остаётся отдельной работой; сейчас доступен безопасный repository/service API и quoted fallback.
