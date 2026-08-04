@@ -1,0 +1,101 @@
+name: report Hermes coder release
+
+on:
+  workflow_run:
+    workflows:
+      - deploy Hermes coders
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: report-hermes-coder-release-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: >-
+      github.event.workflow_run.event == 'push' ||
+      github.event.workflow_run.event == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate exact release identity
+        shell: bash
+        env:
+          RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_EVENT" == "push" ]]; then
+            expected_prefix="release/hermes-coders-"
+            if [[ "$RELEASE_BRANCH" != "$expected_prefix"* ]]; then
+              echo "Unexpected Hermes release branch: $RELEASE_BRANCH" >&2
+              exit 2
+            fi
+            embedded_sha="${RELEASE_BRANCH#"$expected_prefix"}"
+            if [[ ! "$embedded_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Release branch does not contain an exact SHA" >&2
+              exit 2
+            fi
+            if [[ "${embedded_sha,,}" != "${RELEASE_SHA,,}" ]]; then
+              echo "Release branch SHA does not match workflow head" >&2
+              exit 2
+            fi
+          fi
+
+      - name: Collect and redact release log
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          gh run view "$RELEASE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --log > release.log 2>&1 || true
+          sed -E \
+            -e 's/((token|secret|password|authorization|api[_-]?key)[=: ]+)[^ ,;]+/\1<redacted>/Ig' \
+            -e 's#(https://[^/@:]+:)[^@/]+@#\1<redacted>@#g' \
+            release.log | tail -n 80 > release-tail.log
+          test -s release-tail.log || printf '%s\n' 'No job log was available.' > release-tail.log
+
+      - name: Comment release evidence on issue 592
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
+          RELEASE_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_EVENT: ${{ github.event.workflow_run.event }}
+          RELEASE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          {
+            printf '## Hermes coder production release\n\n'
+            printf -- '- Outcome: `%s`\n' "$RELEASE_CONCLUSION"
+            printf -- '- Commit: `%s`\n' "$RELEASE_SHA"
+            printf -- '- Ref: `%s`\n' "$RELEASE_BRANCH"
+            printf -- '- Event: `%s`\n' "$RELEASE_EVENT"
+            printf -- '- Workflow run: %s\n' "$RELEASE_RUN_URL"
+            printf -- '- Run ID: `%s`\n\n' "$RELEASE_RUN_ID"
+            printf '### Redacted verification tail\n\n```text\n'
+            cat release-tail.log
+            printf '\n```\n'
+          } > release-report.md
+          gh issue comment 592 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body-file release-report.md
+
+      - name: Fail reporter when release failed
+        if: github.event.workflow_run.conclusion != 'success'
+        shell: bash
+        run: |
+          echo "Hermes coder release did not succeed." >&2
+          exit 1
