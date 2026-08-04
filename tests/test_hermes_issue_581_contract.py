@@ -119,7 +119,7 @@ class Issue581ContractTests(unittest.TestCase):
             "mount options=(rw, bind) /opt/codex-runs/** -> /opt/codex-runs/**",
             "/workspace-base/** r",
             "/opt/codex-runs/** rwk",
-            "deny /workspace/** rwklx",
+            "deny /workspace/** rwkl",
             "fstype=proc",
             "pivot_root",
             "/usr/bin/git ix",
