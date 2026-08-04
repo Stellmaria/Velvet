@@ -72,7 +72,7 @@
 - Проверка нижней границы валовой маржи 30% на самом выгодном пакете.
 - Тесты нормализации валюты и обратной совместимости callback.
 - Тест расчёта 429 ₽ как $5,37 при locked rate 79,85 ₽/$.
-- Package architecture inventory пересобран штатным генератором после удаления UI SQL и hotfix-модуля.
+- Package architecture inventory пересобран штатным генератором на Python 3.13 после удаления UI SQL и hotfix-модуля.
 - Полный GitHub Actions CI запускается на точном PR head.
 
 ### PR и commit
