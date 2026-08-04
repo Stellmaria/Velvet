@@ -16,6 +16,7 @@ from codex_runner import redact_text, utc_now
 
 
 _SAFE_BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,254}")
+_TERMINAL_RUN_STATUSES = frozenset({"completed", "failed", "cancelled"})
 
 
 class AuditedTierProviderManager(ProviderChainManager):
@@ -208,9 +209,15 @@ class AuditedTierProviderManager(ProviderChainManager):
                 last_event={"type": "isolated_workspace_cleanup_failed"},
             )
 
+    def _run_is_terminal(self, run_id: str) -> bool:
+        record = self.store.read(run_id)
+        return str(record.get("status") or "") in _TERMINAL_RUN_STATUSES
+
     def _record_workspace_preparation_failure(
         self, run_id: str, error: BaseException
     ) -> None:
+        if self._run_is_terminal(run_id):
+            return
         details = redact_text(str(error).strip())[-4000:] or type(error).__name__
         self.store.update(
             run_id,
@@ -256,6 +263,8 @@ class AuditedTierProviderManager(ProviderChainManager):
         selected_model: str,
     ) -> None:
         with self._isolation_lock:
+            if self._run_is_terminal(run_id):
+                return
             isolated: Path | None = None
             try:
                 self.store.update(

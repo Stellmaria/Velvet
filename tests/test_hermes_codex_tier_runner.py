@@ -231,6 +231,84 @@ class AuditedTierRunnerTests(unittest.TestCase):
         self.assertNotIn("super-secret", record["error"])
         parent_execute.assert_not_called()
 
+    def test_execute_does_not_overwrite_existing_terminal_status(self) -> None:
+        terminal_records = (
+            ("completed", "3" * 32),
+            ("failed", "4" * 32),
+            ("cancelled", "5" * 32),
+        )
+        for status, run_id in terminal_records:
+            with self.subTest(status=status):
+                self.queue(run_id)
+                finished_at = f"2000-01-0{len(status)}T00:00:00+00:00"
+                last_event = {"type": f"existing_{status}"}
+                self.manager.store.update(
+                    run_id,
+                    status=status,
+                    finished_at=finished_at,
+                    last_event=last_event,
+                )
+                with (
+                    patch.object(self.manager, "_prepare_workspace") as prepare,
+                    patch.object(
+                        tier.ProviderChainManager,
+                        "_execute",
+                        autospec=True,
+                    ) as parent_execute,
+                ):
+                    self.manager._execute(
+                        run_id,
+                        "inspect README",
+                        "read only",
+                        "gpt-5.6-luna",
+                    )
+                record = self.manager.store.read(run_id)
+                self.assertEqual(status, record["status"])
+                self.assertEqual(finished_at, record["finished_at"])
+                self.assertEqual(last_event, record["last_event"])
+                prepare.assert_not_called()
+                parent_execute.assert_not_called()
+
+    def test_workspace_preparation_failure_preserves_concurrent_cancellation(self) -> None:
+        run_id = "6" * 32
+        self.queue(run_id)
+        cancelled_at = "2000-02-01T00:00:00+00:00"
+        cancelled_event = {"type": "cancelled_during_workspace_preparation"}
+
+        def cancel_then_fail(_run_id: str):
+            self.manager.store.update(
+                run_id,
+                status="cancelled",
+                finished_at=cancelled_at,
+                last_event=cancelled_event,
+            )
+            raise RuntimeError("fatal: clone failed; token=super-secret")
+
+        with (
+            patch.object(
+                self.manager,
+                "_prepare_workspace",
+                side_effect=cancel_then_fail,
+            ),
+            patch.object(
+                tier.ProviderChainManager,
+                "_execute",
+                autospec=True,
+            ) as parent_execute,
+        ):
+            self.manager._execute(
+                run_id,
+                "inspect README",
+                "read only",
+                "gpt-5.6-luna",
+            )
+        record = self.manager.store.read(run_id)
+        self.assertEqual("cancelled", record["status"])
+        self.assertEqual(cancelled_at, record["finished_at"])
+        self.assertEqual(cancelled_event, record["last_event"])
+        self.assertEqual(self.manager._base_workspace, self.manager.workspace)
+        parent_execute.assert_not_called()
+
     def test_clean_commit_is_still_recorded_as_mutation(self) -> None:
         run_id = "b" * 32
         workspace = self.prepare(run_id)
