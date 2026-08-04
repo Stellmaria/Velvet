@@ -24,6 +24,7 @@ on:
       - "requirements.vision-gateway.txt"
       - "main.py"
       - "velvet_bot/**"
+      - "scripts/ci_changed_surfaces.py"
       - "scripts/container_healthcheck.py"
       - "scripts/hermes_incident_monitor.py"
       - "scripts/krita_server_healthcheck.py"
@@ -32,6 +33,8 @@ on:
       - "scripts/vision_runtime_entrypoint.sh"
       - "scripts/vision_model_loader.sh"
       - "scripts/benchmark_vision_gateway.py"
+      - "tests/test_ci_changed_surfaces.py"
+      - "tests/test_docker_build_workflow_contract.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
   push:
@@ -58,6 +61,7 @@ on:
       - "requirements.vision-gateway.txt"
       - "main.py"
       - "velvet_bot/**"
+      - "scripts/ci_changed_surfaces.py"
       - "scripts/container_healthcheck.py"
       - "scripts/hermes_incident_monitor.py"
       - "scripts/krita_server_healthcheck.py"
@@ -66,11 +70,17 @@ on:
       - "scripts/vision_runtime_entrypoint.sh"
       - "scripts/vision_model_loader.sh"
       - "scripts/benchmark_vision_gateway.py"
+      - "tests/test_ci_changed_surfaces.py"
+      - "tests/test_docker_build_workflow_contract.py"
       - ".github/workflows/docker-build.yml"
       - ".github/workflows/deploy-production.yml"
 
 permissions:
   contents: read
+
+concurrency:
+  group: docker-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -80,7 +90,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Resolve changed Docker surfaces
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python scripts/ci_changed_surfaces.py \
+            --event-name "$EVENT_NAME" \
+            --base-sha "$BASE_SHA" \
+            --base-ref "$BASE_REF" \
+            --before-sha "$BEFORE_SHA" \
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Prepare minimal compose environment
         run: |
@@ -202,6 +230,7 @@ jobs:
           bash -n scripts/vision_runtime_entrypoint.sh
           bash -n scripts/vision_model_loader.sh
           python -m py_compile \
+            scripts/ci_changed_surfaces.py \
             scripts/server_supervisor.py \
             scripts/server_supervisor_proxy.py \
             scripts/hermes_incident_monitor.py \
@@ -245,29 +274,90 @@ jobs:
           VELVET_BACKEND_NETWORK=velvet_backend \
             docker compose -f deploy/hermes-orchestration/compose.yaml config --quiet
 
+      - name: Set up cached Docker builder
+        if: steps.changes.outputs.docker_any == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create \
+            --name "velvet-ci-${GITHUB_RUN_ID}" \
+            --driver docker-container \
+            --use
+          docker buildx inspect --bootstrap
+
       - name: Build Velvet image
-        run: docker build --tag velvet-bot:ci .
+        if: steps.changes.outputs.docker_velvet == 'true'
+        shell: bash
+        run: |
+          docker buildx build \
+            --load \
+            --cache-from type=gha,scope=velvet-bot \
+            --cache-to type=gha,mode=max,scope=velvet-bot,ignore-error=true \
+            --tag velvet-bot:ci \
+            .
+
+      - name: Skip unchanged Velvet image
+        if: steps.changes.outputs.docker_velvet != 'true'
+        run: echo "Velvet image inputs are unchanged."
 
       - name: Build Server Supervisor proxy image
+        if: steps.changes.outputs.docker_supervisor == 'true'
+        shell: bash
         run: |
-          docker build \
+          docker buildx build \
+            --load \
             --file Dockerfile.server-supervisor-proxy \
-            --tag velvet-server-supervisor-proxy:ci .
+            --cache-from type=gha,scope=velvet-supervisor-proxy \
+            --cache-to type=gha,mode=max,scope=velvet-supervisor-proxy,ignore-error=true \
+            --tag velvet-server-supervisor-proxy:ci \
+            .
+
+      - name: Skip unchanged Supervisor image
+        if: steps.changes.outputs.docker_supervisor != 'true'
+        run: echo "Supervisor proxy image inputs are unchanged."
 
       - name: Build local VL images
+        if: steps.changes.outputs.docker_vision == 'true'
+        shell: bash
         run: |
-          docker build \
+          docker buildx build \
+            --load \
             --file Dockerfile.vision-gateway \
-            --tag velvet-vision-gateway:ci .
-          docker build \
+            --cache-from type=gha,scope=velvet-vision-gateway \
+            --cache-to type=gha,mode=max,scope=velvet-vision-gateway,ignore-error=true \
+            --tag velvet-vision-gateway:ci \
+            .
+          docker buildx build \
+            --load \
             --file Dockerfile.vision-runtime \
             --build-arg VISION_RUNTIME_BASE_IMAGE=alpine:3.21 \
-            --tag velvet-vision-runtime:ci .
+            --cache-from type=gha,scope=velvet-vision-runtime \
+            --cache-to type=gha,mode=max,scope=velvet-vision-runtime,ignore-error=true \
+            --tag velvet-vision-runtime:ci \
+            .
+
+      - name: Skip unchanged vision images
+        if: steps.changes.outputs.docker_vision != 'true'
+        run: echo "Vision image inputs are unchanged."
 
       - name: Build Krita server image
-        run: docker build --file Dockerfile.krita-server --tag velvet-krita-server:ci .
+        if: steps.changes.outputs.docker_krita == 'true'
+        shell: bash
+        run: |
+          docker buildx build \
+            --load \
+            --file Dockerfile.krita-server \
+            --cache-from type=gha,scope=velvet-krita \
+            --cache-to type=gha,mode=max,scope=velvet-krita,ignore-error=true \
+            --tag velvet-krita-server:ci \
+            .
+
+      - name: Skip unchanged Krita image
+        if: steps.changes.outputs.docker_krita != 'true'
+        run: echo "Krita image inputs are unchanged."
 
       - name: Build Hermes Coder images
+        if: steps.changes.outputs.docker_hermes == 'true'
         run: |
           HERMES_CODERS_ROOT="$PWD/.ci/hermes-coders" \
           HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
@@ -278,12 +368,23 @@ jobs:
               build
 
       - name: Build Hermes operator and coder router image
+        if: steps.changes.outputs.docker_hermes == 'true'
+        shell: bash
         run: |
-          docker build \
+          docker buildx build \
+            --load \
             --file deploy/hermes-operator/Dockerfile \
-            --tag velvet-hermes-coder-router:ci .
+            --cache-from type=gha,scope=velvet-hermes-operator \
+            --cache-to type=gha,mode=max,scope=velvet-hermes-operator,ignore-error=true \
+            --tag velvet-hermes-coder-router:ci \
+            .
+
+      - name: Skip unchanged Hermes images
+        if: steps.changes.outputs.docker_hermes != 'true'
+        run: echo "Hermes image inputs are unchanged."
 
       - name: Run Krita plugin smoke
+        if: steps.changes.outputs.docker_krita == 'true'
         run: |
           set -Eeuo pipefail
           cleanup() {
@@ -301,3 +402,7 @@ jobs:
             bash deploy/server/wait-compose-health.sh krita 36 5
           sudo env VELVET_APP_DIR="$PWD" VELVET_ENV_FILE=.env.server \
             bash deploy/server/krita-smoke.sh .env.server
+
+      - name: Skip unchanged Krita smoke
+        if: steps.changes.outputs.docker_krita != 'true'
+        run: echo "Krita smoke is not required for this change set."
