@@ -181,25 +181,28 @@ def _ensure_commit(sha: str) -> None:
 
 
 def _resolve_pull_request_base(*, base_sha: str, base_ref: str) -> str:
+    # GitHub's pull_request payload may retain the base SHA from PR creation
+    # while the target branch advances. Prefer the current remote base ref and
+    # compute the merge-base against the checked-out PR head.
+    if base_ref:
+        remote_ref = f"refs/remotes/origin/{base_ref}"
+        subprocess.run(
+            (
+                "git",
+                "fetch",
+                "--no-tags",
+                "--depth=1",
+                "origin",
+                f"{base_ref}:{remote_ref}",
+            ),
+            check=True,
+        )
+        return _git("merge-base", "HEAD", remote_ref).strip()
+
     if base_sha and base_sha != ZERO_SHA:
         _ensure_commit(base_sha)
         return base_sha
-    if not base_ref:
-        return ""
-
-    remote_ref = f"refs/remotes/origin/{base_ref}"
-    subprocess.run(
-        (
-            "git",
-            "fetch",
-            "--no-tags",
-            "--depth=1",
-            "origin",
-            f"{base_ref}:{remote_ref}",
-        ),
-        check=True,
-    )
-    return _git("merge-base", "HEAD", remote_ref).strip()
+    return ""
 
 
 def resolve_changed_files(
