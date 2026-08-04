@@ -11,6 +11,8 @@ RELEASE_LINK="$HERMES_ROOT/releases/current-hermes-coders"
 CODER_UNIT=hermes-coders.service
 ROUTER_UNIT=hermes-coder-router.service
 SYSTEMD_DIR=/etc/systemd/system
+APPARMOR_TARGET=/etc/apparmor.d/hermes-codex-bwrap
+APPARMOR_PARSER=/usr/sbin/apparmor_parser
 LEGACY_DROPIN="$SYSTEMD_DIR/$CODER_UNIT.d/20-bwrap-runtime.conf"
 LEGACY_OVERRIDE="$HERMES_ROOT/compose.bwrap.override.yaml"
 VELVET_CONTAINER=hermes-coders-hermes-coder-velvet-1
@@ -38,6 +40,7 @@ fi
 coder_dir="$release_dir/deploy/hermes-coders"
 router_dir="$release_dir/deploy/hermes-orchestration"
 unit_source_dir="$release_dir/deploy/systemd"
+apparmor_source="$coder_dir/security/apparmor-hermes-codex-bwrap"
 
 for required in \
   "$coder_dir/compose.yaml" \
@@ -45,12 +48,28 @@ for required in \
   "$coder_dir/compose.security.yaml" \
   "$coder_dir/runtime_smoke.py" \
   "$coder_dir/tier_provider_smoke.py" \
+  "$apparmor_source" \
   "$router_dir/compose.yaml" \
   "$router_dir/router_smoke.py" \
   "$unit_source_dir/$CODER_UNIT" \
   "$unit_source_dir/$ROUTER_UNIT"; do
   if [[ ! -f "$required" ]]; then
     echo "Отсутствует release artifact: $required" >&2
+    exit 3
+  fi
+done
+
+if [[ ! -x "$APPARMOR_PARSER" ]]; then
+  echo "AppArmor parser недоступен: $APPARMOR_PARSER" >&2
+  exit 3
+fi
+if [[ "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" != "Y" ]]; then
+  echo "AppArmor не включён; coder sandbox нельзя reconciliate." >&2
+  exit 3
+fi
+for helper in git-remote-http git-remote-https; do
+  if ! grep -Fq "/usr/lib/git-core/$helper ix," "$apparmor_source"; then
+    echo "AppArmor profile не разрешает Git HTTPS helper: $helper" >&2
     exit 3
   fi
 done
@@ -102,8 +121,20 @@ backup_if_present() {
 
 backup_if_present "$SYSTEMD_DIR/$CODER_UNIT" "$CODER_UNIT"
 backup_if_present "$SYSTEMD_DIR/$ROUTER_UNIT" "$ROUTER_UNIT"
+backup_if_present "$APPARMOR_TARGET" hermes-codex-bwrap.apparmor
 backup_if_present "$LEGACY_DROPIN" 20-bwrap-runtime.conf
 backup_if_present "$LEGACY_OVERRIDE" compose.bwrap.override.yaml
+
+restore_previous_apparmor() {
+  if [[ -f "$backup_dir/hermes-codex-bwrap.apparmor" ]]; then
+    install -o root -g root -m 0644 \
+      "$backup_dir/hermes-codex-bwrap.apparmor" "$APPARMOR_TARGET"
+    "$APPARMOR_PARSER" -r "$APPARMOR_TARGET"
+  elif [[ -f "$APPARMOR_TARGET" ]]; then
+    "$APPARMOR_PARSER" -R "$APPARMOR_TARGET" || true
+    rm -f -- "$APPARMOR_TARGET"
+  fi
+}
 
 restore_previous_containers() {
   local compose_args=(
@@ -138,6 +169,7 @@ rollback_units() {
   trap - ERR INT TERM
   echo "Systemd reconciliation failed; restoring previous runtime and units from $backup_dir" >&2
 
+  restore_previous_apparmor >&2 || true
   restore_previous_containers >&2 || true
 
   if [[ -f "$backup_dir/$CODER_UNIT" ]]; then
@@ -162,6 +194,9 @@ rollback_units() {
   exit "$status"
 }
 trap rollback_units ERR INT TERM
+
+install -o root -g root -m 0644 "$apparmor_source" "$APPARMOR_TARGET"
+"$APPARMOR_PARSER" -r "$APPARMOR_TARGET"
 
 install -o root -g root -m 0644 \
   "$unit_source_dir/$CODER_UNIT" "$SYSTEMD_DIR/$CODER_UNIT"
@@ -229,5 +264,6 @@ printf '%s\n' \
   "Hermes release systemd reconciliation: OK" \
   "Release SHA: $release_sha" \
   "Backup: $backup_dir" \
+  "AppArmor profile: $APPARMOR_TARGET" \
   "$CODER_UNIT: active/exited/0" \
   "$ROUTER_UNIT: active/exited/0"
