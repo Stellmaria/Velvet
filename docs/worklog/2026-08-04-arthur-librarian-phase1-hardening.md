@@ -5,7 +5,7 @@
 - Линия/фаза: Telegram Storage Librarian, production safety hardening
 - Статус: `частично`
 - Ветка: `fix/arthur-librarian-phase1`
-- Базовый commit: `00a6d1b9baed0331ba99c911267d3e5a000161dc`
+- Базовый commit: `2827fb7aba72c0447f16ddf05383745a9276e9bd`
 - Связанное issue: `#586`
 
 ## Перед началом
@@ -23,7 +23,7 @@
 - ввести terminal error contract и не повторять неизменяемые validation failures;
 - fail closed для prompt, который не помещается в bounded context;
 - принимать completed только при `done=true` и `done_reason=stop`;
-- сохранять фактический analyzer из результата клиента;
+- сохранять фактический analyzer;
 - потребовать русский natural-language output и убрать нулевой confidence anchor;
 - оставить одновременно загруженной только одну Ollama-модель;
 - не выполнять source pull при уже заполненном persistent volume;
@@ -58,7 +58,8 @@ Chunking в этой фазе не реализуется: большие док
 - start script скачивает только отсутствующие source models;
 - installer выполняет structured bot-to-Ollama smoke;
 - добавлены regression tests для всех перечисленных контрактов;
-- канонические package/P2 inventory перегенерированы: production LOC 141744, architecture violations 548, approved broad boundaries 106 из 106.
+- канонические package/P2 inventory перегенерированы: production LOC 141744, architecture violations 548, approved broad boundaries 106 из 106;
+- package inventory записан с канонической меткой `working-tree`, которую воспроизводит CI.
 
 ### Миграции и совместимость
 
@@ -73,7 +74,7 @@ SQL migration не требуется: поле `analyzer` уже являетс
 
 ### PR и commit
 
-Ветка `fix/arthur-librarian-phase1`; draft PR `#610` создан из актуального `main`.
+Ветка `fix/arthur-librarian-phase1`; draft PR `#610` пересобран от актуального `main`.
 
 ### Незавершённое
 
