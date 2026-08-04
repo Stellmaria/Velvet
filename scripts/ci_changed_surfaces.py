@@ -191,7 +191,6 @@ def _resolve_pull_request_base(*, base_sha: str, base_ref: str) -> str:
                 "git",
                 "fetch",
                 "--no-tags",
-                "--depth=1",
                 "origin",
                 f"{base_ref}:{remote_ref}",
             ),
