@@ -44,6 +44,47 @@ contract tests в том же зафиксированном Python dependency e
 - regression contract проверяет pinned uv, hash-locked install и отсутствие
   PostgreSQL в targeted section.
 
+### Риски и ограничения
+
+- cold-cache установка полного lock-файла остаётся медленнее bare Python job;
+- targeted surfaces по-прежнему зависят от точности классификатора изменённых
+  путей;
+- неизвестные и смешанные изменения намеренно переходят в полный suite;
+- targeted job не подтверждает database integration, это делает только полный
+  PostgreSQL suite.
+
+### Миграции и совместимость
+
+- миграции БД отсутствуют;
+- production runtime и Docker images не изменяются;
+- формат `requirements.lock` и hash verification сохраняются;
+- required context `unit-tests` и branch protection не меняются;
+- targeted Hermes/Krita/CI paths остаются без PostgreSQL.
+
+### Проверки
+
+- workflow contract требует pinned `uv 0.11.16`;
+- workflow contract требует `--require-hashes -r requirements.lock`;
+- workflow contract подтверждает отсутствие PostgreSQL в targeted section;
+- exact-head CI должен выполнить dependency install и выбранные contracts;
+- четыре PostgreSQL shards должны остаться в состоянии `skipped`.
+
+### PR и commit
+
+- PR: `#602`;
+- ветка: `fix/ci-targeted-contract-dependencies`;
+- первый workflow commit: `2a168d297514386e407df7ff43eb405427c2c464`;
+- regression-test commit: `ece635cccc33dddcbe13e4eb33e369e7d29d1fed`;
+- worklog commit: `c619b3640fb81d4c46815835f36c3079db223128`;
+- merge-main commit до обновления worklog: `8c2d777b045984cca183627c01673c8bce434325`.
+
+### Незавершённое
+
+- дождаться зелёных required checks PR `#602`;
+- выполнить merge PR `#602`;
+- обновить PR `#597` на новый `main` без изменения terminal-status diff;
+- повторно подтвердить Hermes targeted tests и Hermes-only Docker surface.
+
 ### Совместимость и безопасность
 
 - production runtime не изменяется;
@@ -64,5 +105,5 @@ contract tests в том же зафиксированном Python dependency e
 
 ### Следующий шаг
 
-Открыть отдельный PR, дождаться зелёного CI, выполнить merge и обновить PR
-`#597` на исправленный `main` без изменения его terminal-status diff.
+После зелёного CI выполнить merge и обновить PR `#597` на исправленный `main`
+без изменения его terminal-status diff.
