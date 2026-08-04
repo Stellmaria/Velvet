@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_ROOT = "/srv/hermes-coders/releases/current-hermes-coders"
 
 
 def load_module(name: str, path: Path):
@@ -28,10 +29,14 @@ tier_smoke = load_module(
     "hermes_tier_provider_smoke_test_module",
     ROOT / "deploy/hermes-coders/tier_provider_smoke.py",
 )
+router_smoke = load_module(
+    "hermes_router_smoke_test_module",
+    ROOT / "deploy/hermes-orchestration/router_smoke.py",
+)
 
 
 class HermesRouterRecoveryContractTests(unittest.TestCase):
-    def test_coder_runtime_pulls_router_into_same_lifecycle(self) -> None:
+    def test_coder_runtime_pulls_router_into_same_release_lifecycle(self) -> None:
         coders = (ROOT / "deploy/systemd/hermes-coders.service").read_text(
             encoding="utf-8"
         )
@@ -45,13 +50,20 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             router,
         )
         self.assertIn(
-            "ExecStartPost=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/router_smoke.py",
+            f"WorkingDirectory={RELEASE_ROOT}/deploy/hermes-orchestration",
             router,
         )
         self.assertIn(
-            "ExecReload=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/router_smoke.py",
+            "ExecStartPost=/usr/bin/python3 "
+            f"{RELEASE_ROOT}/deploy/hermes-orchestration/router_smoke.py",
             router,
         )
+        self.assertIn(
+            "ExecReload=/usr/bin/python3 "
+            f"{RELEASE_ROOT}/deploy/hermes-orchestration/router_smoke.py",
+            router,
+        )
+        self.assertNotIn("/srv/velvet/deploy/hermes-orchestration", router)
 
     def test_router_smoke_checks_tier_parity_without_printing_token(self) -> None:
         source = (ROOT / "deploy/hermes-orchestration/router_smoke.py").read_text(
@@ -63,8 +75,11 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
         self.assertIn("routes_by_tier", source)
         self.assertIn("VELVET_MAX_PARITY_OK", source)
         self.assertIn("HERMES_CODER_ROUTER_CLIENT_TOKEN", source)
+        self.assertIn("Path(__file__).resolve().parent", source)
+        self.assertIn('"--project-name"', source)
         self.assertNotIn("print(token", source)
         self.assertNotIn("print(os.environ", source)
+        self.assertTrue(Path(router_smoke._COMPOSE[-1]).is_absolute())
 
     def test_runtime_configures_same_provider_catalog_for_both_projects(self) -> None:
         source = (ROOT / "deploy/hermes-coders/compose.runtime.yaml").read_text(
@@ -88,6 +103,8 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
         self.assertEqual(2, unit.count("runtime_source_guard.py"))
         self.assertEqual(4, unit.count("tier_provider_smoke.py"))
         self.assertEqual(2, unit.count("runtime_smoke.py"))
+        self.assertIn(RELEASE_ROOT, unit)
+        self.assertNotIn("/srv/velvet/deploy/hermes-coders", unit)
         for source in (
             "codex_delegate.py",
             "codex_first_runner.py",

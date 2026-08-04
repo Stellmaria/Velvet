@@ -5,19 +5,25 @@ import json
 import re
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
+_SOURCE_DIR = Path(__file__).resolve().parent
 _COMPOSE = (
     "docker",
     "compose",
+    "--project-name",
+    "hermes-coders",
     "--profile",
     "velvet",
     "--profile",
     "max",
     "-f",
-    "compose.yaml",
+    str(_SOURCE_DIR / "compose.yaml"),
     "-f",
-    "compose.runtime.yaml",
+    str(_SOURCE_DIR / "compose.runtime.yaml"),
+    "-f",
+    str(_SOURCE_DIR / "compose.security.yaml"),
 )
 _EXPECTED_ROUTES = {
     "small_general": ["gpt-5.6-luna", "gpt-5.6-terra"],

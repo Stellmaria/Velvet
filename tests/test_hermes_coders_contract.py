@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path("deploy/hermes-coders")
+RELEASE_ROOT = "/srv/hermes-coders/releases/current-hermes-coders"
 
 
 class HermesCodersContractTests(unittest.TestCase):
@@ -172,21 +173,22 @@ class HermesCodersContractTests(unittest.TestCase):
         )
         preflight = (
             "ExecStartPre=+/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/preflight.py"
+            f"{RELEASE_ROOT}/deploy/hermes-coders/preflight.py"
         )
         compose_start = (
-            "ExecStart=/usr/bin/docker compose --profile velvet "
-            "--profile max -f compose.yaml -f compose.runtime.yaml "
-            "-f compose.security.yaml "
-            "up -d --build --remove-orphans"
+            "ExecStart=/usr/bin/docker compose --project-name hermes-coders "
+            "--profile velvet --profile max -f compose.yaml "
+            "-f compose.runtime.yaml -f compose.security.yaml "
+            "up -d --no-build --remove-orphans"
         )
         smoke = (
             "ExecStartPost=/usr/bin/python3 "
-            "/srv/velvet/deploy/hermes-coders/runtime_smoke.py"
+            f"{RELEASE_ROOT}/deploy/hermes-coders/runtime_smoke.py"
         )
         self.assertIn(preflight, source)
         self.assertIn(compose_start, source)
         self.assertIn(smoke, source)
+        self.assertNotIn("/srv/velvet/deploy/hermes-coders", source)
         self.assertLess(source.index(preflight), source.index(compose_start))
         self.assertLess(source.index(compose_start), source.index(smoke))
 
@@ -208,6 +210,7 @@ class HermesCodersContractTests(unittest.TestCase):
             ROOT / "install.sh",
             ROOT / "install-codex.sh",
             ROOT / "codex-login.sh",
+            ROOT / "reconcile_release_systemd.sh",
             Path("deploy/hermes-orchestration/install.sh"),
         ):
             with self.subTest(path=path):

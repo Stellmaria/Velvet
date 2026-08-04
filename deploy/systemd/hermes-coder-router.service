@@ -10,18 +10,18 @@ Type=oneshot
 RemainAfterExit=yes
 User=velvet
 Group=velvet
-WorkingDirectory=/srv/velvet/deploy/hermes-orchestration
+WorkingDirectory=/srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-orchestration
 Environment=HERMES_CODER_ROUTER_ENV_FILE=/srv/hermes-operator-control/coders.env
 Environment=HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control
 Environment=VELVET_BACKEND_NETWORK=velvet_backend
 Environment=COMPOSE_BAKE=false
-ExecStartPre=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/prepare_router_env.py /srv/hermes-coders/secrets/velvet.env /srv/hermes-coders/secrets/max.env /srv/hermes-operator-control/coders.env
-ExecStartPre=/usr/bin/docker compose -f compose.yaml config --quiet
-ExecStart=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
-ExecStartPost=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/router_smoke.py
-ExecReload=/usr/bin/docker compose -f compose.yaml up -d --build --remove-orphans
-ExecReload=/usr/bin/python3 /srv/velvet/deploy/hermes-orchestration/router_smoke.py
-ExecStop=/usr/bin/docker compose -f compose.yaml stop hermes-coder-router
+ExecStartPre=/usr/bin/python3 /srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-orchestration/prepare_router_env.py /srv/hermes-coders/secrets/velvet.env /srv/hermes-coders/secrets/max.env /srv/hermes-operator-control/coders.env
+ExecStartPre=/usr/bin/docker compose --project-name hermes-coder-orchestration -f compose.yaml config --quiet
+ExecStart=/usr/bin/docker compose --project-name hermes-coder-orchestration -f compose.yaml up -d --no-build --remove-orphans
+ExecStartPost=/usr/bin/python3 /srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-orchestration/router_smoke.py
+ExecReload=/usr/bin/docker compose --project-name hermes-coder-orchestration -f compose.yaml up -d --no-build --remove-orphans
+ExecReload=/usr/bin/python3 /srv/hermes-coders/releases/current-hermes-coders/deploy/hermes-orchestration/router_smoke.py
+ExecStop=/usr/bin/docker compose --project-name hermes-coder-orchestration -f compose.yaml stop hermes-coder-router
 TimeoutStartSec=900
 TimeoutStopSec=60
 
