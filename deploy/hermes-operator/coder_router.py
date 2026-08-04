@@ -290,6 +290,9 @@ class CoderRouter:
     def capabilities(self, project: str) -> dict[str, Any]:
         return self.upstream(self._target(project), "GET", "/v1/capabilities")
 
+    def rate_limits(self, project: str) -> dict[str, Any]:
+        return self.upstream(self._target(project), "GET", "/v1/rate-limits")
+
     def submit(self, project: str, payload: dict[str, Any]) -> dict[str, Any]:
         if set(payload) != {"task_id", "task", "source"}:
             raise RouterError(HTTPStatus.BAD_REQUEST, "Допустимы только task_id, task и source.")
@@ -461,6 +464,9 @@ class Handler(BaseHTTPRequestHandler):
             parts = [part for part in self.path.split("?")[0].split("/") if part]
             if len(parts) == 4 and parts[:2] == ["v1", "coders"] and parts[3] == "capabilities":
                 self._json(HTTPStatus.OK, self.router.capabilities(parts[2]))
+                return
+            if len(parts) == 4 and parts[:2] == ["v1", "coders"] and parts[3] == "rate-limits":
+                self._json(HTTPStatus.OK, self.router.rate_limits(parts[2]))
                 return
             if len(parts) == 5 and parts[:2] == ["v1", "coders"] and parts[3] == "runs":
                 self._json(HTTPStatus.OK, self.router.run_status(parts[2], parts[4]))
