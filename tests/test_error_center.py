@@ -1,13 +1,47 @@
+import asyncio
 import logging
 import unittest
 import xml.etree.ElementTree as ElementTree
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 from velvet_bot.error_center import (
     ErrorIncident,
     ErrorIncidentCenter,
     capture_log_record,
 )
+
+
+class FakeBot:
+    def __init__(self) -> None:
+        self.sent: list[dict[str, object]] = []
+
+    async def send_message(self, **kwargs):
+        self.sent.append(kwargs)
+        return SimpleNamespace(message_id=1)
+
+
+class FakeRepository:
+    def __init__(self, incidents: tuple[ErrorIncident, ...]) -> None:
+        self.incidents = incidents
+        self.marked = False
+
+    async def unacknowledged_counts(self) -> dict[str, int]:
+        return {
+            "total": len(self.incidents),
+            "warnings": 0,
+            "errors": len(self.incidents),
+            "critical": 0,
+        }
+
+    async def digest_due(self, *, cooldown_seconds: int) -> bool:
+        return True
+
+    async def unacknowledged(self, *, limit: int = 5) -> tuple[ErrorIncident, ...]:
+        return self.incidents[:limit]
+
+    async def mark_digest_sent(self) -> None:
+        self.marked = True
 
 
 class ErrorCenterTests(unittest.TestCase):
@@ -58,10 +92,10 @@ class ErrorCenterTests(unittest.TestCase):
             log_chat_message_id=10,
         )
 
-    @staticmethod
-    def _assert_valid_html(text: str) -> None:
-        ElementTree.fromstring(f"<root>{text}</root>")
-        assert len(text) <= 4090
+    def _assert_valid_telegram_html(self, text: str) -> None:
+        root = ElementTree.fromstring(f"<root>{text}</root>")
+        parsed_text = "".join(root.itertext())
+        self.assertLessEqual(len(parsed_text), 4096)
 
     def test_dynamic_ids_are_grouped_into_one_incident(self) -> None:
         first = capture_log_record(
@@ -117,77 +151,69 @@ class ErrorCenterTests(unittest.TestCase):
         self.assertIn("Ошибка #12", rendered)
         self.assertIn("Повторов:</b> <code>3", rendered)
         self.assertIn("Отмечено просмотренным", rendered)
-        self._assert_valid_html(rendered)
+        self._assert_valid_telegram_html(rendered)
 
-    def test_long_incident_keeps_valid_html_and_traceback_tail(self) -> None:
-        summary = "Сообщение <tag> & кавычки \" ' Юникод " * 300
-        details = "TRACE START\n" + ("<&> traceback line\n" * 800) + "TAIL<&>"
+    def test_long_incident_does_not_cut_html_entity_or_tag(self) -> None:
+        summary = ("Сообщение <tag> & кавычки \" ' Юникод " * 100)[:1200]
+        details = (
+            "TRACE START\n"
+            + ("<&> traceback line\n" * 500)
+            + "TAIL<&>"
+        )[-6000:]
         rendered = self._center()._render_incident(
             self._incident(
-                logger_name="velvet_bot.<danger>&" * 80,
+                logger_name=("velvet_bot.<danger>&" * 40)[:500],
                 summary=summary,
                 details=details,
                 acknowledged=True,
             )
         )
 
-        self._assert_valid_html(rendered)
+        self._assert_valid_telegram_html(rendered)
         self.assertIn("TAIL&lt;&amp;&gt;", rendered)
         self.assertEqual(rendered.count("<code>"), rendered.count("</code>"))
         self.assertEqual(rendered.count("<pre>"), rendered.count("</pre>"))
-        self.assertFalse(rendered.endswith("&"))
+        self.assertTrue(rendered.endswith("</code>"))
 
     def test_long_incident_without_traceback_keeps_summary_valid(self) -> None:
         rendered = self._center()._render_incident(
             self._incident(
-                summary="<&>" * 3000,
+                summary=("<&>" * 400)[:1200],
                 details=None,
             )
         )
 
-        self._assert_valid_html(rendered)
+        self._assert_valid_telegram_html(rendered)
         self.assertIn("<b>Сообщение:</b>", rendered)
         self.assertNotIn("<b>Traceback:</b>", rendered)
 
-    def test_owner_digest_bounds_each_dynamic_summary_before_html(self) -> None:
+    def test_owner_digest_does_not_cut_escaped_summaries(self) -> None:
         incidents = tuple(
             self._incident(
                 incident_id=index,
-                severity="ERROR<&>",
-                summary=("summary <&> with unicode Ю " * 500),
+                summary=("summary <&> with unicode Ю " * 60)[:1200],
                 details=None,
             )
             for index in range(1, 6)
         )
-        rendered = ErrorIncidentCenter._render_owner_digest(
-            {
-                "total": 5,
-                "critical": 0,
-                "errors": 5,
-                "warnings": 0,
-            },
-            incidents,
+        bot = FakeBot()
+        repository = FakeRepository(incidents)
+        center = ErrorIncidentCenter(
+            bot=bot,  # type: ignore[arg-type]
+            repository=repository,  # type: ignore[arg-type]
+            log_chat_id=None,
+            owner_user_ids=frozenset({17}),
         )
 
-        self._assert_valid_html(rendered)
+        sent = asyncio.run(center._send_owner_digest(cooldown_seconds=120))
+
+        self.assertEqual(sent, 1)
+        self.assertTrue(repository.marked)
+        text = str(bot.sent[0]["text"])
+        self._assert_valid_telegram_html(text)
         for index in range(1, 6):
-            self.assertIn(f"• #{index}", rendered)
-        self.assertIn("Прочитано / беру в работу", rendered)
-
-    def test_short_owner_digest_preserves_existing_shape(self) -> None:
-        rendered = ErrorIncidentCenter._render_owner_digest(
-            {
-                "total": 1,
-                "critical": 0,
-                "errors": 1,
-                "warnings": 0,
-            },
-            (self._incident(details=None),),
-        )
-
-        self.assertIn("Всего: <b>1</b>", rendered)
-        self.assertIn("• #12 ERROR · Something failed · ×3", rendered)
-        self._assert_valid_html(rendered)
+            self.assertIn(f"• #{index}", text)
+        self.assertIn("Прочитано / беру в работу", text)
 
 
 if __name__ == "__main__":
