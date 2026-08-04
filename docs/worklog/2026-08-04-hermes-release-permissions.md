@@ -3,9 +3,10 @@
 - Дата: `2026-08-04`
 - ID: `hermes-release-permissions-20260804`
 - Линия/фаза: `server operations / Hermes coder release`
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `fix/hermes-release-worktree-permissions`
-- Связанные PR и issue: `#611`, `#616`, `#592`
+- Базовый commit: `d9a4d22ae03a1c974a70a6202d0acbb313eb7e27`
+- Связанные PR и issue: `#620`, `#611`, `#616`, `#592`
 
 ## Перед началом
 
@@ -75,10 +76,17 @@ Production run `30947027911` успешно прошёл validation secrets, н�
 - required CI checks на exact PR head;
 - после merge новый exact-main release ref и evidence comment в `#592`.
 
+### PR и commit
+
+- PR: `#620`;
+- base: `d9a4d22ae03a1c974a70a6202d0acbb313eb7e27`;
+- exact head фиксируется после обновления worklog и повторного CI;
+- merge commit и production release ref фиксируются после зелёных required checks.
+
 ### Незавершённое
 
-- открыть PR и дождаться required CI;
-- слить PR после зелёного exact-head результата;
+- дождаться required CI на обновлённом exact head;
+- слить PR после зелёного результата;
 - создать новый exact-current-main Hermes release ref;
 - проверить production evidence и только затем закрыть rollout.
 
