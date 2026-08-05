@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
 SOURCE_DIR = Path(__file__).resolve().parent
 RUNTIME_SOURCES = (
     "codex_delegate.py",
+    "codex_runner.py",
+    "codex_routed_runner.py",
     "codex_first_runner.py",
     "codex_first_safe_runner.py",
     "codex_provider_chain_runner.py",
@@ -17,6 +21,21 @@ RUNTIME_SOURCES = (
     "sandbox_preflight.py",
     "compose.runtime.yaml",
 )
+_IMPORT_PROBE = """
+from codex_runner import Handler, ThreadingHTTPServer
+import codex_routed_runner
+import codex_first_runner
+import codex_first_safe_runner
+import codex_provider_chain_runner
+import codex_tier_runner
+import sandbox_launcher_client
+import codex_launcher_runner
+assert codex_first_runner.Handler is Handler
+assert codex_first_runner.ThreadingHTTPServer is ThreadingHTTPServer
+assert codex_routed_runner.Handler is Handler
+assert issubclass(codex_launcher_runner.LauncherTierProviderManager, codex_tier_runner.AuditedTierProviderManager)
+print("HERMES_RUNTIME_IMPORT_GRAPH_OK")
+"""
 
 
 class RuntimeSourceError(RuntimeError):
@@ -47,16 +66,35 @@ def validate_runtime_sources(root: Path = SOURCE_DIR) -> None:
             )
 
 
+def validate_runtime_import_graph(root: Path = SOURCE_DIR) -> None:
+    env = os.environ.copy()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONPATH"] = str(root)
+    result = subprocess.run(
+        [sys.executable, "-c", _IMPORT_PROBE],
+        cwd=root,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result.returncode != 0:
+        details = (result.stderr.strip() or result.stdout.strip() or "unknown error")[-2000:]
+        raise RuntimeSourceError(f"Несовместимый runtime import graph: {details}")
+
+
 def main() -> int:
     ensure_runtime_sources_container_readable()
     validate_runtime_sources()
-    print("Hermes coder runtime source permissions: OK")
+    validate_runtime_import_graph()
+    print("Hermes coder runtime source permissions and imports: OK")
     return 0
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except RuntimeSourceError as error:
+    except (RuntimeSourceError, subprocess.TimeoutExpired) as error:
         print(f"Hermes coder runtime source guard failed: {error}", file=sys.stderr)
         raise SystemExit(2)
