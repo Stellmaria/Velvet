@@ -42,7 +42,7 @@ jobs:
 
           if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
           '''
-          function_replacement = '''compose=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
+          function_replacement = r'''compose=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
           normalize_backup_permissions() {
             local backup_root="$1"
@@ -56,8 +56,8 @@ jobs:
               fi
               normalized=$((normalized + 1))
             done < <(
-              find "$backup_root" -maxdepth 1 -type f \\
-                \( -name '*.dump' -o -name '*.dump.json' \) \\
+              find "$backup_root" -maxdepth 1 -type f \
+                \( -name '*.dump' -o -name '*.dump.json' \) \
                 -print0
             )
 
@@ -88,11 +88,13 @@ jobs:
 
           test_path = Path("tests/test_server_deployment_contract.py")
           test_source = test_path.read_text(encoding="utf-8")
-          test_needle = '''    def test_predeploy_dump_is_readable_by_bot_container(self) -> None:
-              source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
-              self.assertIn('chmod 0644 "$backup_path"', source)
-              self.assertNotIn('chmod 600 "$backup_path"', source)
-          '''
+          method_start = test_source.index(
+              "    def test_predeploy_dump_is_readable_by_bot_container(self) -> None:\n"
+          )
+          method_end = test_source.index(
+              "\n    def test_dump_verifier_uses_disposable_database_and_forced_cleanup",
+              method_start,
+          )
           test_replacement = '''    def test_predeploy_dump_is_readable_by_bot_container(self) -> None:
               source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
               self.assertIn('chmod 0644 "$backup_path"', source)
@@ -108,9 +110,11 @@ jobs:
                   source.index('if [[ "$target_sha" == "$previous_sha"'),
               )
           '''
-          if test_source.count(test_needle) != 1:
-              raise SystemExit("deployment contract test insertion point changed")
-          test_source = test_source.replace(test_needle, test_replacement, 1)
+          test_source = (
+              test_source[:method_start]
+              + test_replacement
+              + test_source[method_end:]
+          )
           test_path.write_text(test_source, encoding="utf-8")
           PY
 
