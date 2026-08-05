@@ -123,6 +123,20 @@ class ServerSupervisorContractTests(unittest.TestCase):
         self.assertIn('export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"', self.deploy)
         self.assertIn('chmod 0700 "$docker_config"', self.deploy)
 
+    def test_deploy_requires_checkout_owner_and_safe_reset_umask(self) -> None:
+        before_lock = self.deploy.split('exec 9>"${TMPDIR:-/tmp}/velvet-deploy.lock"', 1)[0]
+        self.assertIn('checkout_owner_uid="$(stat -c \'%u\' "$APP_DIR")"', before_lock)
+        self.assertIn('current_uid="$(id -u)"', before_lock)
+        self.assertIn("Deployment must run as checkout owner", before_lock)
+        self.assertIn("exit 77", before_lock)
+        self.assertIn("reset_checkout() (\n  umask 022", self.deploy)
+        self.assertEqual(self.deploy.count("git reset --hard"), 1)
+        self.assertIn('reset_checkout "$target_sha"', self.deploy)
+        rollback = self.deploy.split("rollback_code() {", 1)[1].split(
+            "trap rollback_code", 1
+        )[0]
+        self.assertIn('reset_checkout "$previous_sha"', rollback)
+
     def test_deploy_preserves_exact_running_image_for_local_rollback(self) -> None:
         self.assertIn("previous_bot_image_id", self.deploy)
         self.assertIn(

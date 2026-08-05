@@ -80,7 +80,7 @@ class ServerDeploymentContractTests(unittest.TestCase):
         source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
         self.assertLess(
             source.index("verify-dump.sh"),
-            source.index('git reset --hard "$target_sha"'),
+            source.index('reset_checkout "$target_sha"'),
         )
         self.assertIn("scripts/server_preflight.py", source)
         self.assertIn("scripts/server_smoke.py", source)

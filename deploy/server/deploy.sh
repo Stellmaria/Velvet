@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-umask 077
-exec 9>"${TMPDIR:-/tmp}/velvet-deploy.lock"
-if ! flock -n 9; then
-  echo "Another Velvet deployment is already running." >&2
-  exit 75
-fi
-
 APP_DIR="${VELVET_APP_DIR:-/srv/velvet}"
 ENV_FILE="${VELVET_ENV_FILE:-.env.server}"
 COMPOSE_FILE="${VELVET_COMPOSE_FILE:-docker-compose.server.yml}"
@@ -19,7 +12,33 @@ HEALTH_ATTEMPTS="${VELVET_HEALTH_ATTEMPTS:-60}"
 HEALTH_INTERVAL="${VELVET_HEALTH_INTERVAL:-5}"
 START_HERMES="${VELVET_START_HERMES:-0}"
 
+if [[ ! -d "$APP_DIR" ]]; then
+  echo "Missing application directory: $APP_DIR" >&2
+  exit 2
+fi
 cd "$APP_DIR"
+APP_DIR="$(pwd -P)"
+
+checkout_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "$checkout_root" || "$(cd "$checkout_root" && pwd -P)" != "$APP_DIR" ]]; then
+  echo "$APP_DIR is not the root of a Git checkout." >&2
+  exit 2
+fi
+checkout_owner_uid="$(stat -c '%u' "$APP_DIR")"
+checkout_owner_name="$(stat -c '%U' "$APP_DIR")"
+current_uid="$(id -u)"
+current_user="$(id -un)"
+if [[ "$current_uid" != "$checkout_owner_uid" ]]; then
+  echo "Deployment must run as checkout owner $checkout_owner_name (uid=$checkout_owner_uid); current user is $current_user (uid=$current_uid)." >&2
+  exit 77
+fi
+
+umask 077
+exec 9>"${TMPDIR:-/tmp}/velvet-deploy.lock"
+if ! flock -n 9; then
+  echo "Another Velvet deployment is already running." >&2
+  exit 75
+fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $APP_DIR/$ENV_FILE" >&2
@@ -110,6 +129,11 @@ fi
 backup_path="$data_dir/backups/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_sha:0:12}.dump"
 deployment_started=0
 
+reset_checkout() (
+  umask 022
+  git reset --hard "$1"
+)
+
 wait_for_service_health() {
   local service="$1"
   VELVET_APP_DIR="$APP_DIR" \
@@ -137,7 +161,7 @@ rollback_code() {
   set +e
   if [[ "$deployment_started" == "1" ]]; then
     echo "Deployment failed; rolling application code back to $previous_sha" >&2
-    if ! git reset --hard "$previous_sha" >&2; then
+    if ! reset_checkout "$previous_sha" >&2; then
       rollback_failed=1
     fi
     if ! "${compose[@]}" build supervisor-proxy >&2; then
@@ -229,7 +253,7 @@ VELVET_COMPOSE_FILE="$COMPOSE_FILE" \
 
 echo "Deploying $target_sha..."
 deployment_started=1
-git reset --hard "$target_sha"
+reset_checkout "$target_sha"
 "${compose[@]}" pull postgres
 "${compose[@]}" build --pull supervisor-proxy
 

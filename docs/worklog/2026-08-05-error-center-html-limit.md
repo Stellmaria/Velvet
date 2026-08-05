@@ -5,8 +5,10 @@
 - Линия/фаза: Production stabilization / Error Center
 - Статус: `завершено`
 - Issue: `#624`
+- PR: `#628`
 - Ветка: `fix/error-center-html-limit`
 - Базовый commit: `73f7ef51d51f10cb2c8cd5181c9da74465864207`
+- Merge commit: `224f34d31ea583319a6e25e32cdcf95c7a6a291f`
 
 ## Перед началом
 
@@ -59,21 +61,50 @@ Telegram ограничивает сообщение 4096 символами п�
 
 Миграции отсутствуют. Короткие сообщения сохраняют прежнюю структуру. Ack callbacks и incident storage не меняются.
 
-### Проверки
+### Проверки до merge
 
 - `tests/test_error_center.py` расширен focused regression-тестами;
 - XML parser проверяет закрытые теги и entities;
-- полный required CI запускается на PR.
+- required CI прошёл перед merge;
+- PR `#628` слит squash-commit `224f34d31ea583319a6e25e32cdcf95c7a6a291f`;
+- issue `#624` закрыт после merge.
+
+### Production rollout
+
+Controlled rollout выполнен 2026-08-05 на commit `224f34d31ea583319a6e25e32cdcf95c7a6a291f`.
+
+Подтверждено на production:
+
+- checkout и восемь изменённых application-файлов совпали с target Git blobs;
+- `scripts/server_smoke.py` завершился успешно: база `velvet`, 92 миграции, `active_ai_tasks=0`, Telegram bot `@dominusVelvetbot`;
+- контейнер `bot` остался `running/healthy`, restart count `0`;
+- `/test_error_alert` создал incident `#470`, сообщение в лог-чате и acknowledgement владельцем `7221553045`;
+- synthetic long-message smoke создал incident `#471` и сообщение `13592`;
+- parsed Telegram text для длинного incident составил 3006 символов из допустимых 4096;
+- хвост traceback сохранился, HTML и entities прошли XML-проверку;
+- acknowledgement длинного incident записан владельцем `7221553045`;
+- в логах отсутствовали `can't parse entities`, `Unclosed start tag` и ошибки обновления acknowledgement.
+
+### Сопутствующее наблюдение rollout
+
+Во время rollout обнаружено, что ручной запуск `deploy/server/deploy.sh` от `root` вместе с глобальным `umask 077` способен оставить tracked-файлы checkout владельцем `root` и режимом `0600`. Содержимое файлов совпадало с target; владельцы и индекс были восстановлены без изменения кода или данных. Durable follow-up запрещает запуск deploy не владельцем checkout и выполняет `git reset --hard` в изолированном `umask 022`.
 
 ### PR и commit
 
-PR: `#628`. Итоговый merge SHA фиксируется после прохождения required checks и отдельного разрешения владельца на merge.
+- Error Center implementation: PR `#628`, merge commit `224f34d31ea583319a6e25e32cdcf95c7a6a291f`;
+- deploy ownership follow-up: draft PR `#636`, ветка `fix/server-deploy-checkout-ownership`;
+- production rollout Error Center подтверждён отдельно после merge `#628`.
 
 ### Незавершённое
 
-- production rollout и `/test_error_alert` выполняются отдельно после merge;
-- synthetic long-message smoke остаётся rollout-only проверкой.
+- по Error Center HTML-дефекту незавершённых действий нет;
+- deploy ownership follow-up `#636` должен отдельно пройти required CI, review, merge и controlled rollout;
+- PR `#588` остаётся отдельным draft, заблокированным своей зависимостью, и не входит в эту работу.
 
 ### Следующий шаг
 
-Получить полный зелёный CI, затем запросить отдельное решение о merge и controlled rollout только `bot`.
+Довести required CI PR `#636` до зелёного состояния, затем принимать отдельное решение о merge. После merge выполнить controlled server deploy и подтвердить, что checkout принадлежит `velvet`, tracked tree чистый и root-owned tracked-файлы не создаются.
+
+### Итог
+
+Дефект произвольного обрезания готового HTML устранён, merge и production rollout завершены, ручной и synthetic smoke подтверждают корректную публикацию и acknowledgement длинных Error Center сообщений.
