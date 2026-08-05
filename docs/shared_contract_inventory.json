@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "production_python_files": 646,
-  "function_count": 3725,
+  "production_python_files": 648,
+  "function_count": 3747,
   "contracts": [
     {
       "family": "safe edit/send fallback",
@@ -3274,8 +3274,8 @@
           "path": "velvet_bot/app/workers.py",
           "module": "velvet_bot.app.workers",
           "name": "_env_enabled",
-          "line": 76,
-          "end_line": 83
+          "line": 78,
+          "end_line": 85
         },
         {
           "path": "velvet_bot/domains/vision_batches/service.py",
@@ -8416,7 +8416,7 @@
       ]
     },
     {
-      "digest": "6babf2c6338bcbf1bb5d9c6017c8e543f62e13a25cdb6c251462dfb8298a66da",
+      "digest": "88fd4ad7ccfa071a3fd097d3d2cfc0a501e7c2691e9b625a20d62032ad41545f",
       "kind": "semantic-near-duplicate",
       "family": "workspace task history/ownership queries",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -8525,6 +8525,13 @@
           "name": "backfill_task",
           "line": 22,
           "end_line": 28
+        },
+        {
+          "path": "velvet_bot/infrastructure/postgres/ai_task_wakeup_repository.py",
+          "module": "velvet_bot.infrastructure.postgres.ai_task_wakeup_repository",
+          "name": "oldest_queued_age_seconds",
+          "line": 40,
+          "end_line": 47
         }
       ]
     }

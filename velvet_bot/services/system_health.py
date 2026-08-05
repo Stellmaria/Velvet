@@ -250,6 +250,8 @@ class SystemHealthService:
                     "description": item.description,
                     "state": item.state,
                     "interval_seconds": item.interval_seconds,
+                    "current_interval_seconds": item.current_interval_seconds,
+                    "last_outcome": item.last_outcome,
                     "started_at": item.started_at.isoformat() if item.started_at else None,
                     "last_started_at": (
                         item.last_started_at.isoformat() if item.last_started_at else None
@@ -264,6 +266,13 @@ class SystemHealthService:
                     "successful_runs": item.successful_runs,
                     "failed_runs": item.failed_runs,
                     "consecutive_failures": item.consecutive_failures,
+                    "empty_runs": item.empty_runs,
+                    "processed_items": item.processed_items,
+                    "wakeups": item.wakeups,
+                    "fallback_polls": item.fallback_polls,
+                    "listener_reconnects": item.listener_reconnects,
+                    "listener_errors": item.listener_errors,
+                    "oldest_queued_age_seconds": item.oldest_queued_age_seconds,
                     "last_error": cls.redact_text(item.last_error),
                 }
                 for item in report.workers

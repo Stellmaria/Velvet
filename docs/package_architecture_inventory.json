@@ -1,26 +1,26 @@
 {
   "schema_version": 1,
-  "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 646,
-  "production_loc": 141617,
+  "generated_from": "issue-603",
+  "production_module_count": 648,
+  "production_loc": 142137,
   "layer_counts": {
     "application": 21,
     "composition": 62,
     "core": 7,
     "domain": 185,
-    "infrastructure": 30,
+    "infrastructure": 31,
     "other": 1,
     "presentation": 215,
     "root": 114,
     "service": 8,
-    "worker": 3
+    "worker": 4
   },
   "root_module_count": 113,
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",
   "root_unclassified_count": 0,
   "router_count": 84,
   "router_duplicate_count": 0,
-  "repository_module_count": 44,
+  "repository_module_count": 45,
   "runtime_compatibility_components": [
     {
       "component": "ai-quality-schema",
@@ -80,8 +80,8 @@
     }
   ],
   "shared_contract_summary": {
-    "production_python_files": 646,
-    "function_count": 3725,
+    "production_python_files": 648,
+    "function_count": 3747,
     "private_contract_access_count": 170,
     "blocking_private_contract_access_count": 0,
     "exact_duplicate_group_count": 66,
@@ -3689,13 +3689,13 @@
       }
     },
     {
-      "id": "monolithic-function:velvet_bot/app/workers.py:0d9b13fd50600afb",
+      "id": "monolithic-function:velvet_bot/app/workers.py:85726d0fcd082e22",
       "category": "monolithic-function",
       "path": "velvet_bot/app/workers.py",
-      "fingerprint": "0d9b13fd50600afb3c7f62f28b43ccf293c9d4af5b1cc901550a13fdce4122cd",
-      "summary": "max function 254 lines exceeds 180",
+      "fingerprint": "85726d0fcd082e22732e8da267cdef4062fd8722089e33c2115958d1b889204f",
+      "summary": "max function 257 lines exceeds 180",
       "details": {
-        "max_function_length": 254,
+        "max_function_length": 257,
         "limit": 180
       }
     },
@@ -7515,13 +7515,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/workers/manager.py:fc0ce05c34c12991",
+      "id": "typing-any-usage:velvet_bot/workers/manager.py:a90fff492f411429",
       "category": "typing-any-usage",
       "path": "velvet_bot/workers/manager.py",
-      "fingerprint": "fc0ce05c34c12991371aebe865e9d6d0bc96e03836d23a6151d36c5fe2e404a4",
-      "summary": "1 Any references",
+      "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
+      "summary": "2 Any references",
       "details": {
-        "count": 1
+        "count": 2
       }
     }
   ],
@@ -12333,11 +12333,11 @@
       "module": "velvet_bot.app.workers",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 347,
+      "loc": 352,
       "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 254,
+      "max_function_length": 257,
       "branch_count": 13,
       "internal_imports": [
         "velvet_bot.ai_quality",
@@ -12362,6 +12362,7 @@
         "velvet_bot.error_center",
         "velvet_bot.infrastructure.ai",
         "velvet_bot.infrastructure.krita_bridge",
+        "velvet_bot.infrastructure.postgres.ai_task_wakeup_repository",
         "velvet_bot.infrastructure.transient_connections",
         "velvet_bot.local_ai_runtime",
         "velvet_bot.quality_calibration",
@@ -12370,6 +12371,7 @@
         "velvet_bot.services.system_health",
         "velvet_bot.services.workspace_qwen_quality",
         "velvet_bot.workers",
+        "velvet_bot.workers.adaptive",
         "velvet_bot.workers.iterations"
       ],
       "external_import_count": 6,
@@ -12387,7 +12389,7 @@
       "install_definitions": [],
       "install_calls": [
         {
-          "line": 124,
+          "line": 126,
           "call": "install_recoverable_polling_filter"
         }
       ],
@@ -12395,7 +12397,7 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 77,
+          "line": 79,
           "owner": "_env_enabled",
           "call": "os.getenv"
         }
@@ -12403,90 +12405,90 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 120,
+          "line": 122,
           "owner": "build_worker_manager",
           "call": "WorkerManager"
         },
         {
-          "line": 126,
+          "line": 128,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 134,
+          "line": 136,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 142,
+          "line": 144,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 150,
+          "line": 152,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 340,
+          "line": 345,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 183,
+          "line": 185,
           "owner": "build_worker_manager",
           "call": "FriendlyKieGenerationWorker"
         },
         {
-          "line": 210,
+          "line": 212,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 297,
+          "line": 302,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 305,
+          "line": 310,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 318,
+          "line": 323,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 327,
+          "line": 332,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 193,
+          "line": 195,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 273,
+          "line": 275,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 282,
+          "line": 287,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         }
       ],
       "violations": [
         {
-          "id": "monolithic-function:velvet_bot/app/workers.py:0d9b13fd50600afb",
+          "id": "monolithic-function:velvet_bot/app/workers.py:85726d0fcd082e22",
           "category": "monolithic-function",
           "path": "velvet_bot/app/workers.py",
-          "fingerprint": "0d9b13fd50600afb3c7f62f28b43ccf293c9d4af5b1cc901550a13fdce4122cd",
-          "summary": "max function 254 lines exceeds 180",
+          "fingerprint": "85726d0fcd082e22732e8da267cdef4062fd8722089e33c2115958d1b889204f",
+          "summary": "max function 257 lines exceeds 180",
           "details": {
-            "max_function_length": 254,
+            "max_function_length": 257,
             "limit": 180
           }
         }
@@ -15500,7 +15502,7 @@
       "module": "velvet_bot.domains.ai_usage.factory",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 32,
+      "loc": 36,
       "function_count": 2,
       "class_count": 0,
       "handler_count": 0,
@@ -15512,7 +15514,8 @@
         "velvet_bot.domains.ai_usage.ledger",
         "velvet_bot.domains.ai_usage.service",
         "velvet_bot.domains.ai_usage.task_service",
-        "velvet_bot.domains.ai_usage.tasks"
+        "velvet_bot.domains.ai_usage.tasks",
+        "velvet_bot.infrastructure.postgres.ai_task_wakeup_repository"
       ],
       "external_import_count": 1,
       "aiogram_imports": [],
@@ -15777,18 +15780,18 @@
       "module": "velvet_bot.domains.ai_usage.task_service",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 118,
-      "function_count": 14,
-      "class_count": 1,
+      "loc": 149,
+      "function_count": 16,
+      "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 16,
-      "branch_count": 0,
+      "max_function_length": 19,
+      "branch_count": 6,
       "internal_imports": [
         "velvet_bot.core.ai_budget",
         "velvet_bot.domains.ai_usage.task_models",
         "velvet_bot.domains.ai_usage.tasks"
       ],
-      "external_import_count": 4,
+      "external_import_count": 5,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -21929,11 +21932,11 @@
       "module": "velvet_bot.domains.vision_batches.worker",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 180,
+      "loc": 206,
       "function_count": 6,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 45,
+      "max_function_length": 61,
       "branch_count": 9,
       "internal_imports": [
         "velvet_bot.ai_vision",
@@ -21944,7 +21947,9 @@
         "velvet_bot.domains.vision_batches.service",
         "velvet_bot.domains.vision_batches.store",
         "velvet_bot.domains.vision_routing",
-        "velvet_bot.domains.vision_routing.integration"
+        "velvet_bot.domains.vision_routing.integration",
+        "velvet_bot.infrastructure.postgres.ai_task_wakeup_repository",
+        "velvet_bot.workers.adaptive"
       ],
       "external_import_count": 7,
       "aiogram_imports": [
@@ -21964,7 +21969,28 @@
       "package_getattr": false,
       "env_reads": [],
       "polling_values": [],
-      "worker_registrations": [],
+      "worker_registrations": [
+        {
+          "line": 111,
+          "owner": "process_once",
+          "call": "WorkerIterationResult"
+        },
+        {
+          "line": 132,
+          "owner": "process_once",
+          "call": "WorkerIterationResult"
+        },
+        {
+          "line": 131,
+          "owner": "process_once",
+          "call": "WorkerIterationResult"
+        },
+        {
+          "line": 155,
+          "owner": "process_once",
+          "call": "WorkerIterationResult"
+        }
+      ],
       "violations": [
         {
           "id": "domain-aiogram-import:velvet_bot/domains/vision_batches/worker.py:b64790fa67e68a99",
@@ -25273,6 +25299,39 @@
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/postgres/ai_task_wakeup_repository.py",
+      "module": "velvet_bot.infrastructure.postgres.ai_task_wakeup_repository",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 190,
+      "function_count": 16,
+      "class_count": 3,
+      "handler_count": 0,
+      "max_function_length": 28,
+      "branch_count": 14,
+      "internal_imports": [
+        "velvet_bot.database"
+      ],
+      "external_import_count": 4,
+      "aiogram_imports": [],
+      "sql_literal_count": 2,
+      "database_acquire_count": 2,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
       "any_count": 0,
@@ -39897,11 +39956,11 @@
       "module": "velvet_bot.services.system_health",
       "layer": "service",
       "target_package": "service",
-      "loc": 271,
+      "loc": 280,
       "function_count": 8,
       "class_count": 3,
       "handler_count": 0,
-      "max_function_length": 87,
+      "max_function_length": 96,
       "branch_count": 5,
       "internal_imports": [
         "velvet_bot.infrastructure.postgres.system_repository",
@@ -40721,13 +40780,14 @@
       "module": "velvet_bot.workers",
       "layer": "worker",
       "target_package": "worker",
-      "loc": 7,
+      "loc": 21,
       "function_count": 0,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 0,
       "branch_count": 0,
       "internal_imports": [
+        "velvet_bot.workers.adaptive",
         "velvet_bot.workers.manager"
       ],
       "external_import_count": 0,
@@ -40747,6 +40807,52 @@
       "env_reads": [],
       "polling_values": [],
       "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/workers/adaptive.py",
+      "module": "velvet_bot.workers.adaptive",
+      "layer": "worker",
+      "target_package": "worker",
+      "loc": 170,
+      "function_count": 14,
+      "class_count": 5,
+      "handler_count": 0,
+      "max_function_length": 33,
+      "branch_count": 11,
+      "internal_imports": [],
+      "external_import_count": 7,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [
+        {
+          "line": 139,
+          "owner": "wait",
+          "call": "asyncio.sleep",
+          "values": [
+            0
+          ]
+        }
+      ],
+      "worker_registrations": [
+        {
+          "line": 151,
+          "owner": "snapshot",
+          "call": "WorkerWaitSnapshot"
+        }
+      ],
       "violations": []
     },
     {
@@ -40793,14 +40899,15 @@
       "module": "velvet_bot.workers.manager",
       "layer": "worker",
       "target_package": "worker",
-      "loc": 279,
-      "function_count": 17,
-      "class_count": 3,
+      "loc": 350,
+      "function_count": 22,
+      "class_count": 4,
       "handler_count": 0,
       "max_function_length": 49,
-      "branch_count": 22,
+      "branch_count": 25,
       "internal_imports": [
-        "velvet_bot.infrastructure.transient_connections"
+        "velvet_bot.infrastructure.transient_connections",
+        "velvet_bot.workers.adaptive"
       ],
       "external_import_count": 7,
       "aiogram_imports": [],
@@ -40808,7 +40915,7 @@
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 1,
+      "any_count": 2,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
@@ -40820,20 +40927,20 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 89,
+          "line": 115,
           "owner": "register",
           "call": "WorkerSnapshot"
         }
       ],
       "violations": [
         {
-          "id": "typing-any-usage:velvet_bot/workers/manager.py:fc0ce05c34c12991",
+          "id": "typing-any-usage:velvet_bot/workers/manager.py:a90fff492f411429",
           "category": "typing-any-usage",
           "path": "velvet_bot/workers/manager.py",
-          "fingerprint": "fc0ce05c34c12991371aebe865e9d6d0bc96e03836d23a6151d36c5fe2e404a4",
-          "summary": "1 Any references",
+          "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
+          "summary": "2 Any references",
           "details": {
-            "count": 1
+            "count": 2
           }
         }
       ]

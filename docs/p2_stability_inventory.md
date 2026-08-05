@@ -16,7 +16,7 @@ AST-инвентаризация широких исключений и callback
 
 - `velvet_bot/ai_job_runtime.py:55` `create`: compensate-created-ai-job.
 - `velvet_bot/ai_quality.py:716` `process_once`: compensate-claimed-ai-quality.
-- `velvet_bot/ai_vision.py:743` `process_once`: compensate-claimed-ai-profile.
+- `velvet_bot/ai_vision.py:744` `process_once`: compensate-claimed-ai-profile.
 - `velvet_bot/app/bootstrap.py:90` `_close_application_resources`: isolate-worker-shutdown.
 - `velvet_bot/app/bootstrap.py:96` `_close_application_resources`: best-effort-shutdown-audit.
 - `velvet_bot/app/bootstrap.py:104` `_close_application_resources`: isolate-error-center-shutdown.
@@ -24,7 +24,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/app/bootstrap.py:118` `_close_application_resources`: isolate-database-shutdown.
 - `velvet_bot/app/bootstrap.py:135` `_report_fatal_application_error`: preserve-original-fatal-error.
 - `velvet_bot/app/bootstrap.py:308` `run_application`: report-fatal-application-error.
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:81` `_owner_aware_bot_call`: default-to-protected-media.
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:73` `_owner_aware_bot_call`: default-to-protected-media.
 - `velvet_bot/application/media_delivery_deliver.py:70` `execute`: compensate-claimed-media-delivery.
 - `velvet_bot/application/media_delivery_deliver.py:262` `_download`: classify-media-download-failure.
 - `velvet_bot/application/media_delivery_deliver.py:336` `_send_channel`: classify-telegram-channel-failure.
@@ -43,10 +43,10 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/backup_service.py:898` `run_backup_worker`: isolate-backup-worker-iteration.
 - `velvet_bot/calibrated_ai_quality.py:121` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/discussion_analytics_middleware.py:36` `__call__`: isolate-discussion-analytics-ingest.
-- `velvet_bot/domains/media_generation/friendly_worker.py:75` `_recover_durable_delivery`: isolate-durable-recovery-tick.
-- `velvet_bot/domains/media_generation/task_queue.py:201` `complete`: isolate-post-completion-delivery.
-- `velvet_bot/domains/media_generation/task_queue.py:274` `_record_submission_best_effort`: isolate-provider-submission-registration.
-- `velvet_bot/domains/media_generation/task_queue.py:315` `_record_success_best_effort`: isolate-provider-success-registration.
+- `velvet_bot/domains/media_generation/friendly_worker.py:143` `_recover_durable_delivery`: isolate-durable-recovery-tick.
+- `velvet_bot/domains/media_generation/task_queue.py:204` `complete`: isolate-post-completion-delivery.
+- `velvet_bot/domains/media_generation/task_queue.py:299` `_record_submission_best_effort`: isolate-provider-submission-registration.
+- `velvet_bot/domains/media_generation/task_queue.py:340` `_record_success_best_effort`: isolate-provider-success-registration.
 - `velvet_bot/domains/media_quality/service.py:90` `scan_target`: compensate-claimed-media-scan.
 - `velvet_bot/domains/publication/service.py:126` `publish`: compensate-claimed-publication.
 - `velvet_bot/domains/publication/service.py:167` `process_due_once`: isolate-scheduled-draft.
@@ -118,8 +118,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/system_health.py:138` `check`: isolate-telegram-health-probe.
 - `velvet_bot/services/workspace_qwen_quality.py:106` `_download_target`: workspace-qwen-file-fallback.
 - `velvet_bot/services/workspace_qwen_quality.py:170` `process_once`: compensate-workspace-qwen-check.
-- `velvet_bot/workers/manager.py:222` `_execute_once`: isolate-worker-iteration-failure.
-- `velvet_bot/workers/manager.py:267` `_run_periodic`: isolate-worker-loop-failure.
+- `velvet_bot/workers/manager.py:249` `_execute_once`: isolate-worker-iteration-failure.
+- `velvet_bot/workers/manager.py:335` `_run_periodic`: isolate-worker-loop-failure.
 
 ## Unresolved broad exceptions by file
 

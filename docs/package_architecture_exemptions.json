@@ -3152,7 +3152,7 @@
       "issue": "#455"
     },
     {
-      "id": "monolithic-function:velvet_bot/app/workers.py:0d9b13fd50600afb",
+      "id": "monolithic-function:velvet_bot/app/workers.py:85726d0fcd082e22",
       "owner": "application-composition",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
@@ -7256,7 +7256,7 @@
       "issue": "#463"
     },
     {
-      "id": "typing-any-usage:velvet_bot/workers/manager.py:fc0ce05c34c12991",
+      "id": "typing-any-usage:velvet_bot/workers/manager.py:a90fff492f411429",
       "owner": "architecture-governance",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
