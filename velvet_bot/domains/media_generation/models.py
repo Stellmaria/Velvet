@@ -6,6 +6,11 @@ from decimal import Decimal, ROUND_UP
 from enum import StrEnum
 from typing import Any, Mapping
 
+from .provider_contract import (
+    extract_grs_violation_reason,
+    is_grs_violation_status,
+)
+
 KIE_GENERATION_TASK_TYPE = "media.generate.kie"
 # Collection happens before the user chooses a model. This is the highest
 # documented input limit among the currently exposed photo editors.
@@ -759,6 +764,10 @@ class KieTaskRecord:
             "failed": KieTaskState.FAIL,
             "fail": KieTaskState.FAIL,
             "error": KieTaskState.FAIL,
+            "violation": KieTaskState.FAIL,
+            "content_violation": KieTaskState.FAIL,
+            "moderation_violation": KieTaskState.FAIL,
+            "moderated": KieTaskState.FAIL,
         }
         state = state_map.get(status)
         if state is None:
@@ -774,12 +783,17 @@ class KieTaskRecord:
             else ()
         )
         failure = payload.get("error")
-        failure_message = _optional_text(
+        violation_reason = (
+            extract_grs_violation_reason(payload)
+            if is_grs_violation_status(status)
+            else None
+        )
+        failure_message = violation_reason or _optional_text(
             failure.get("message") if isinstance(failure, Mapping) else failure
         ) or _optional_text(payload.get("message") or payload.get("msg"))
         failure_code = _optional_text(
             failure.get("code") if isinstance(failure, Mapping) else payload.get("code")
-        )
+        ) or (status if is_grs_violation_status(status) else None)
         return cls(
             task_id=normalized_task_id,
             state=state,

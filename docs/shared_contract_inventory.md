@@ -1,11 +1,11 @@
 # Shared contract inventory
 
 - Production Python files: **646**
-- Functions inventoried: **3725**
-- Registered private cross-module debt: **187**
+- Functions inventoried: **3727**
+- Registered private cross-module debt: **177**
 - Blocking known private contracts: **0**
-- Exact duplicate groups: **65**
-- Normalized near-duplicate groups: **97**
+- Exact duplicate groups: **66**
+- Normalized near-duplicate groups: **96**
 - Semantic near-duplicate groups: **9**
 
 ## Contract ownership
@@ -18,7 +18,7 @@
 | media download/preview/original delivery | `velvet_bot.domains.media_generation.file_delivery_worker` | `velvet_bot.domains.media_generation.delivery_pipeline` | #457 | transitional | 0 |
 | callback navigation and back buttons | `controller-local keyboard builders` | `velvet_bot.presentation.telegram.shared.navigation` | #419 | transitional | 0 |
 | owner/editor/member guards | `velvet_bot.core.access` | `velvet_bot.core.access` | #460 | canonical | 9 |
-| worker compensation/reporting boilerplate | `velvet_bot.domains.media_generation.worker` | `velvet_bot.domains.media_generation.worker` | #457 | canonical | 4 |
+| worker compensation/reporting boilerplate | `velvet_bot.domains.media_generation.worker` | `velvet_bot.domains.media_generation.worker` | #457 | canonical | 2 |
 | message chunking/HTML fallback | `controller-local long-message senders` | `velvet_bot.presentation.telegram.shared.text` | #419 | transitional | 0 |
 | repeated progress-card updates | `velvet_bot.app.telegram_progress_resilience` | `velvet_bot.presentation.telegram.progress` | #455 | transitional | 0 |
 | task payload/result mapping/formatting | `Auf portal and delivery recovery installers` | `velvet_bot.application.media_tasks.contracts` | #458 | inventory-only | 9 |
@@ -48,6 +48,10 @@
 - `velvet_bot/app/auf_generation_price_privacy_install.py:228` `photo_ui.photo_router._truncate` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_generation_price_privacy_install.py:274` `portal._video_request_from_state` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_generation_receipt_install.py:412` `active._load_provider_urls` (module-attribute, media download/preview/original delivery).
+- `velvet_bot/app/auf_margin_dashboard_install.py:23` `wallet_ui._wallet_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_margin_dashboard_install.py:49` `wallet_ui._callback` (module-attribute, callback navigation and back buttons).
+- `velvet_bot/app/auf_margin_dashboard_install.py:88` `wallet_ui._callback` (module-attribute, callback navigation and back buttons).
+- `velvet_bot/app/auf_margin_dashboard_install.py:113` `wallet_ui._wallet_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/app/auf_owner_cost_privacy_install/__init__.py:1` `from velvet_bot.app.auf_owner_cost_privacy import _progress_text_for_user` (direct-import, repeated progress-card updates).
 - `velvet_bot/app/auf_owner_pricing_ui_install.py:28` `photo_ui.photo_router._final_keyboard` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_owner_pricing_ui_install.py:147` `photo_ui._state_value` (module-attribute, state compatibility accessors).
@@ -97,20 +101,6 @@
 - `velvet_bot/app/auf_reference_privacy_install.py:129` `photo_router._load_sources` (assignment, state compatibility accessors).
 - `velvet_bot/app/auf_reference_privacy_install.py:131` `photo_router._source_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/app/auf_wallet_currency_ui.py:246` `legacy._entry_line` (module-attribute, state compatibility accessors).
-- `velvet_bot/app/grs_campaign_retry.py:15` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
-- `velvet_bot/app/grs_campaign_retry.py:45` `KieClient._create_grs_task` (module-attribute, other repeated implementation).
-- `velvet_bot/app/grs_campaign_retry.py:116` `grs_resilience._ORIGINAL_QUEUE_FAIL` (module-attribute, media download/preview/original delivery).
-- `velvet_bot/app/grs_campaign_retry.py:233` `grs_resilience._format_credits` (module-attribute, other repeated implementation).
-- `velvet_bot/app/grs_campaign_retry.py:272` `KieClient._create_grs_task` (assignment, other repeated implementation).
-- `velvet_bot/app/grs_resilience.py:25` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
-- `velvet_bot/app/grs_speedups.py:19` `from velvet_bot.domains.media_generation.economy_worker import _reference_url_failure` (direct-import, other repeated implementation).
-- `velvet_bot/app/grs_speedups.py:28` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
-- `velvet_bot/app/grs_speedups.py:41` `FriendlyKieGenerationWorker._friendly_progress_text` (module-attribute, repeated progress-card updates).
-- `velvet_bot/app/grs_speedups.py:42` `EconomyKieGenerationWorker._record_provider_result` (module-attribute, other repeated implementation).
-- `velvet_bot/app/grs_speedups.py:340` `FriendlyKieGenerationWorker._start_progress` (assignment, repeated progress-card updates).
-- `velvet_bot/app/grs_speedups.py:343` `FriendlyKieGenerationWorker._friendly_progress_text` (assignment, repeated progress-card updates).
-- `velvet_bot/app/grs_speedups.py:346` `BaseKieGenerationWorker._upload_references` (assignment, other repeated implementation).
-- `velvet_bot/app/grs_speedups.py:349` `EconomyKieGenerationWorker._record_provider_result` (assignment, other repeated implementation).
 - `velvet_bot/app/original_image_delivery_hotfix.py:115` `FileDeliveryKieGenerationWorker._send_image_and_document` (assignment, media download/preview/original delivery).
 - `velvet_bot/app/original_image_delivery_hotfix.py:118` `FriendlyKieGenerationWorker._send_image_and_document` (assignment, other repeated implementation).
 - `velvet_bot/app/original_video_delivery_hotfix.py:117` `FileDeliveryKieGenerationWorker._send_video_and_document` (assignment, media download/preview/original delivery).
@@ -135,7 +125,7 @@
 - `velvet_bot/domains/media_generation/economy_worker.py:35` `from velvet_bot.domains.media_generation.worker import _request_from_task` (direct-import, other repeated implementation).
 - `velvet_bot/domains/meow_wallet/store.py:2` `from velvet_bot.domains.auf_wallet.store import _ensure_wallet` (direct-import, state compatibility accessors).
 - `velvet_bot/domains/meow_wallet/store.py:2` `from velvet_bot.domains.auf_wallet.store import _wallet_from_row` (direct-import, state compatibility accessors).
-- `velvet_bot/infrastructure/ai/__init__.py:12` `from velvet_bot.infrastructure.ai.kie import _build_wan_27_input` (direct-import, other repeated implementation).
+- `velvet_bot/infrastructure/ai/__init__.py:20` `from velvet_bot.infrastructure.ai.kie import _build_wan_27_input` (direct-import, other repeated implementation).
 - `velvet_bot/infrastructure/media_delivery_repository_backfill.py:8` `from velvet_bot.infrastructure.media_delivery_repository_helpers import _VIDEO_MODELS` (direct-import, media download/preview/original delivery).
 - `velvet_bot/infrastructure/media_delivery_repository_record.py:8` `from velvet_bot.infrastructure.media_delivery_repository_helpers import _VIDEO_MODELS` (direct-import, media download/preview/original delivery).
 - `velvet_bot/presentation/telegram/quality_rework_entry.py:9` `from velvet_bot.presentation.telegram.routers.quality_operations_controllers.quality_rework import _list_keyboard` (direct-import, other repeated implementation).
@@ -229,12 +219,12 @@
 
 ## Semantic near-duplicate families
 
-- **media download/preview/original delivery**: 26 functions; shared transport/domain signals despite different names and literals.
+- **media download/preview/original delivery**: 25 functions; shared transport/domain signals despite different names and literals.
 - **pagination keyboards**: 76 functions; shared transport/domain signals despite different names and literals.
-- **provider/model labels**: 63 functions; shared transport/domain signals despite different names and literals.
-- **repeated progress-card updates**: 6 functions; shared transport/domain signals despite different names and literals.
+- **provider/model labels**: 62 functions; shared transport/domain signals despite different names and literals.
+- **repeated progress-card updates**: 5 functions; shared transport/domain signals despite different names and literals.
 - **retry/backoff policies**: 6 functions; shared transport/domain signals despite different names and literals.
 - **safe edit/send fallback**: 59 functions; shared transport/domain signals despite different names and literals.
-- **state compatibility accessors**: 5 functions; shared transport/domain signals despite different names and literals.
-- **task payload/result mapping/formatting**: 25 functions; shared transport/domain signals despite different names and literals.
-- **workspace task history/ownership queries**: 16 functions; shared transport/domain signals despite different names and literals.
+- **state compatibility accessors**: 3 functions; shared transport/domain signals despite different names and literals.
+- **task payload/result mapping/formatting**: 26 functions; shared transport/domain signals despite different names and literals.
+- **workspace task history/ownership queries**: 15 functions; shared transport/domain signals despite different names and literals.

@@ -73,11 +73,7 @@ def _load_bootstrap_runner() -> ApplicationRunner:
 
 
 _FEATURE_STAGE_NAMES = (
-    "install_ai_model_routing",
     "install_friendly_media_worker",
-    "install_grs_resilience",
-    "install_grs_campaign_retry",
-    "install_grs_speedups",
     "install_telegram_progress_resilience",
     "install_auf_cancel_ui",
     "install_auf_runtime_dispatcher",
@@ -98,7 +94,6 @@ _FEATURE_STAGE_NAMES = (
     "install_auf_charged_queue",
     "install_auf_generation_receipts",
     "install_krita_remote_worker",
-    "install_auf_grs_brand",
     "install_auf_branding",
 )
 
@@ -111,7 +106,6 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
     from velvet_bot.app.auf_generation_receipt_install import (
         install_auf_generation_receipts,
     )
-    from velvet_bot.app.auf_grs_brand_install import install_auf_grs_brand
     from velvet_bot.app.auf_margin_dashboard_install import (
         install_auf_margin_dashboard,
     )
@@ -135,9 +129,6 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
     from velvet_bot.app.auf_user_portal_install import install_auf_user_portal
     from velvet_bot.app.auf_wallet_ui_install import install_auf_wallet_ui
     from velvet_bot.app.auf_workspace_ui_install import install_auf_workspace_ui
-    from velvet_bot.app.grs_campaign_retry import install_grs_campaign_retry
-    from velvet_bot.app.grs_resilience import install_grs_resilience
-    from velvet_bot.app.grs_speedups import install_grs_speedups
     from velvet_bot.app.krita_remote_install import install_krita_remote_worker
     from velvet_bot.app.original_image_delivery_hotfix import (
         install_original_image_delivery_hotfix,
@@ -151,18 +142,13 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
     from velvet_bot.domains.media_generation.friendly_worker import (
         install_friendly_media_worker,
     )
-    from velvet_bot.infrastructure.ai_model_routing import install_ai_model_routing
 
     def install_generation_receipts_with_owner_cost_privacy() -> None:
         install_auf_generation_receipts()
         install_auf_owner_cost_privacy()
 
     return (
-        CompositionStage("install_ai_model_routing", install_ai_model_routing),
         CompositionStage("install_friendly_media_worker", install_friendly_media_worker),
-        CompositionStage("install_grs_resilience", install_grs_resilience),
-        CompositionStage("install_grs_campaign_retry", install_grs_campaign_retry),
-        CompositionStage("install_grs_speedups", install_grs_speedups),
         CompositionStage(
             "install_telegram_progress_resilience",
             install_telegram_progress_resilience,
@@ -223,7 +209,6 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         CompositionStage("install_krita_remote_worker", install_krita_remote_worker),
         # Privacy and branding remain last until later bounded slices migrate
         # their controller replacement contracts.
-        CompositionStage("install_auf_grs_brand", install_auf_grs_brand),
         CompositionStage("install_auf_branding", install_auf_branding),
     )
 

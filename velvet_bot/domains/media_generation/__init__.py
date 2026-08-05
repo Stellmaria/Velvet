@@ -1,3 +1,11 @@
+from .provider_contract import (
+    MediaProviderAdapter,
+    MediaProviderName,
+    MediaProviderRegistry,
+    MediaProviderUsage,
+    ProviderFailureKind,
+    ProviderRoute,
+)
 from .models import (
     KIE_GENERATION_TASK_TYPE,
     MAX_KIE_REFERENCES,
@@ -16,6 +24,12 @@ from .models import (
 )
 
 __all__ = (
+    "MediaProviderAdapter",
+    "MediaProviderName",
+    "MediaProviderRegistry",
+    "MediaProviderUsage",
+    "ProviderFailureKind",
+    "ProviderRoute",
     "KIE_GENERATION_TASK_TYPE",
     "MAX_KIE_REFERENCES",
     "MAX_KIE_REFERENCE_BYTES",

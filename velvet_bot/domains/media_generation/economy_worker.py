@@ -124,7 +124,7 @@ class KieGenerationWorker(DeliveryKieGenerationWorker):
             new_paid_attempt = active_provider_task_id is None
             context = AIRequestContext(
                 scope=AIBudgetScope.VISION,
-                provider="kie",
+                provider=request.model.provider_name,
                 model=provider_model,
                 operation="media.generate",
                 estimated_cost_rub=(estimated_cost_rub if new_paid_attempt else Decimal("0")),
@@ -301,7 +301,7 @@ class KieGenerationWorker(DeliveryKieGenerationWorker):
                 task_id=task.id,
                 worker_id=self._worker_id,
                 result={
-                    "provider": "kie",
+                    "provider": request.model.provider_name,
                     "provider_task_id": record.task_id,
                     "model_alias": request.model.value,
                     "input_mode": request.input_mode.value,

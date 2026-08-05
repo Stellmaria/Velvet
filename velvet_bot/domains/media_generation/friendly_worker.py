@@ -1,16 +1,25 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 import logging
+import time
+from collections import OrderedDict
 from collections.abc import Mapping
 from decimal import Decimal, ROUND_HALF_UP
 from html import escape
+from pathlib import Path
 from typing import Any
 
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 
 from velvet_bot.domains.ai_usage import AITask
-from velvet_bot.infrastructure.ai import KieError
+from velvet_bot.domains.media_generation.provider_contract import (
+    grs_retry_stage,
+    grs_terminal_stage,
+    grs_violation_reason,
+    is_grs_violation_error,
+)
 from velvet_bot.infrastructure.media_delivery_runtime import (
     MediaDeliveryRuntime,
     ensure_media_delivery_runtime,
@@ -27,6 +36,65 @@ _GRS_CREDITS = {
     KieModelAlias.NANO_BANANA_2: Decimal("1200"),
     KieModelAlias.NANO_BANANA_PRO: Decimal("1800"),
 }
+_REFERENCE_CACHE_TTL_SECONDS = 20 * 60
+_REFERENCE_CACHE_MAX_ENTRIES = 256
+_REFERENCE_UPLOAD_CONCURRENCY = 3
+_REFERENCE_URL_CACHE: OrderedDict[str, tuple[float, str]] = OrderedDict()
+_REFERENCE_CACHE_LOCK = asyncio.Lock()
+
+
+
+def _reference_cache_key(reference: object) -> str:
+    unique_id = str(getattr(reference, "telegram_file_unique_id", "") or "").strip()
+    file_id = str(getattr(reference, "telegram_file_id", "") or "").strip()
+    mime_type = str(getattr(reference, "mime_type", "") or "").strip().casefold()
+    file_size = str(getattr(reference, "file_size", "") or "").strip()
+    return "|".join((unique_id or file_id, mime_type, file_size))
+
+
+async def _cached_reference_url(key: str) -> str | None:
+    now = time.monotonic()
+    async with _REFERENCE_CACHE_LOCK:
+        expired = [
+            cache_key
+            for cache_key, (expires_at, _) in _REFERENCE_URL_CACHE.items()
+            if expires_at <= now
+        ]
+        for cache_key in expired:
+            _REFERENCE_URL_CACHE.pop(cache_key, None)
+        cached = _REFERENCE_URL_CACHE.get(key)
+        if cached is None:
+            return None
+        expires_at, url = cached
+        if expires_at <= now:
+            _REFERENCE_URL_CACHE.pop(key, None)
+            return None
+        _REFERENCE_URL_CACHE.move_to_end(key)
+        return url
+
+
+async def _remember_reference_url(key: str, url: str) -> None:
+    async with _REFERENCE_CACHE_LOCK:
+        _REFERENCE_URL_CACHE[key] = (
+            time.monotonic() + _REFERENCE_CACHE_TTL_SECONDS,
+            url,
+        )
+        _REFERENCE_URL_CACHE.move_to_end(key)
+        while len(_REFERENCE_URL_CACHE) > _REFERENCE_CACHE_MAX_ENTRIES:
+            _REFERENCE_URL_CACHE.popitem(last=False)
+
+
+async def _forget_reference_urls(urls: tuple[str, ...]) -> None:
+    if not urls:
+        return
+    stale = set(urls)
+    async with _REFERENCE_CACHE_LOCK:
+        for key in [
+            key
+            for key, (_, url) in _REFERENCE_URL_CACHE.items()
+            if url in stale
+        ]:
+            _REFERENCE_URL_CACHE.pop(key, None)
 
 
 class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
@@ -93,6 +161,164 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
                 phase=f"durable_recovery_{phase}",
             )
 
+
+    async def _upload_references(
+        self,
+        *,
+        queue_task_id: object,
+        request: KieGenerationRequest,
+        task: AITask,
+        progress: ProgressMessage | None,
+    ) -> KieGenerationRequest:
+        if not request.references:
+            await self._publish_progress(
+                progress,
+                task=task,
+                request=request,
+                percent=35,
+                stage="Референсы не требуются.",
+            )
+            return request
+
+        total = len(request.references)
+        await self._publish_progress(
+            progress,
+            task=task,
+            request=request,
+            percent=10,
+            stage=f"Параллельно подготавливаю референсы: {total} шт.",
+        )
+        semaphore = asyncio.Semaphore(_REFERENCE_UPLOAD_CONCURRENCY)
+
+        async def prepare(index: int, reference: object) -> str:
+            key = _reference_cache_key(reference)
+            cached = await _cached_reference_url(key)
+            if cached is not None:
+                return cached
+            async with semaphore:
+                cached_after_wait = await _cached_reference_url(key)
+                if cached_after_wait is not None:
+                    return cached_after_wait
+                payload = await self._download_reference(reference)
+                safe_name = Path(
+                    str(getattr(reference, "file_name", "reference.jpg") or "reference.jpg")
+                ).name
+                uploaded = await self._client.upload_reference(
+                    payload,
+                    mime_type=str(getattr(reference, "mime_type", "image/jpeg")),
+                    file_name=f"{queue_task_id}-{index}-{safe_name}",
+                )
+                await _remember_reference_url(key, uploaded.file_url)
+                return uploaded.file_url
+
+        urls = await asyncio.gather(
+            *(
+                prepare(index, reference)
+                for index, reference in enumerate(request.references, start=1)
+            )
+        )
+        await self._queue.heartbeat(
+            task_id=queue_task_id,
+            worker_id=self._worker_id,
+        )
+        await self._publish_progress(
+            progress,
+            task=task,
+            request=request,
+            percent=35,
+            stage=f"Референсы готовы: {total}/{total}.",
+        )
+        return request.with_image_urls(tuple(urls))
+
+    async def _record_provider_result(
+        self,
+        *,
+        task: AITask,
+        runtime: dict[str, object],
+        record: KieTaskRecord,
+        status: str,
+    ) -> dict[str, object]:
+        cached_urls = (
+            tuple(
+                str(value).strip()
+                for value in runtime.get("image_urls", ())
+                if str(value).strip()
+            )
+            if isinstance(runtime.get("image_urls"), (list, tuple))
+            else ()
+        )
+        updated = await super()._record_provider_result(
+            task=task,
+            runtime=runtime,
+            record=record,
+            status=status,
+        )
+        if status == "fail":
+            details = " ".join(
+                value
+                for value in (record.failure_code, record.failure_message)
+                if value
+            ).casefold()
+            if any(token in details for token in ("expired", "download url", "image url")):
+                await _forget_reference_urls(cached_urls)
+        return updated
+
+    async def _report_retry_or_terminal(
+        self,
+        *,
+        task: AITask,
+        request: KieGenerationRequest | None,
+        progress: ProgressMessage | None,
+        failure: object,
+        provider_attempt: int,
+        error: Exception,
+    ) -> None:
+        if not is_grs_violation_error(error):
+            await super()._report_retry_or_terminal(
+                task=task,
+                request=request,
+                progress=progress,
+                failure=failure,
+                provider_attempt=provider_attempt,
+                error=error,
+            )
+            return
+        reason = grs_violation_reason(error)
+        reason_text = (
+            f"Причина сервиса: {reason}"
+            if reason is not None
+            else "Сервис не передал конкретную причину блокировки."
+        )
+        will_retry = bool(getattr(failure, "will_retry", False))
+        if request is not None and will_retry:
+            await self._publish_progress(
+                progress,
+                task=task,
+                request=request,
+                percent=max(5, progress.last_percent if progress else 5),
+                stage=grs_retry_stage(
+                    provider_attempt=provider_attempt,
+                    max_attempts=task.max_attempts,
+                    reason_text=reason_text,
+                ),
+                force=True,
+            )
+            return
+        if request is not None:
+            await self._publish_progress(
+                progress,
+                task=task,
+                request=request,
+                percent=100,
+                stage=grs_terminal_stage(
+                    provider_attempt=provider_attempt,
+                    max_attempts=task.max_attempts,
+                    reason_text=reason_text,
+                ),
+                force=True,
+            )
+        await self._notify_terminal_failure_best_effort(task, error)
+
     async def _start_progress(
         self,
         *,
@@ -103,13 +329,9 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         if chat_id is None:
             return None
 
-        balance: Decimal | None = None
-        if request.model.is_grs:
-            try:
-                balance = await self._client.get_grs_credits()
-            except KieError:
-                logger.info("Could not load GRS balance for progress task=%s", task.id)
-        self._provider_balances[str(task.id)] = balance
+        # Balance is intentionally read only from the dedicated owner screen.
+        # Starting a generation must not block on a second provider request.
+        self._provider_balances[str(task.id)] = None
 
         stage = "Задача принята. Готовлю всё для генерации."
         text = self._friendly_progress_text(
@@ -245,18 +467,21 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
             return
         request = _request_from_payload(task.payload)
         message = friendly_error(request, str(error))
-        provider = "GRS AI" if request is not None and request.model.is_grs else "Kie.ai"
+        if is_grs_violation_error(error):
+            reason = grs_violation_reason(error)
+            message = (
+                "Запрос не прошёл автоматическую проверку содержимого."
+                + (f" Причина сервиса: {reason}" if reason else "")
+            )
         try:
             await self._bot.send_message(
                 chat_id,
-                "<b>Мяу не смог завершить генерацию</b>\n\n"
-                f"Провайдер: <b>{provider}</b>\n"
+                "<b>Ауф не смог завершить генерацию</b>\n\n"
                 f"{escape(message)}\n\n"
-                "Повторная платная отправка автоматически не выполнялась.\n"
-                f"Задача: <code>{task.id}</code>",
+                "Повторная платная отправка автоматически не выполнялась.",
             )
         except TelegramAPIError:
-            logger.exception("Could not deliver friendly terminal failure for %s", task.id)
+            logger.exception("Could not deliver terminal failure for %s", task.id)
         finally:
             self._provider_balances.pop(str(task.id), None)
 
@@ -321,8 +546,6 @@ def install_friendly_media_worker() -> None:
     global _INSTALLED
     if _INSTALLED:
         return
-    workers = importlib.import_module("velvet_bot.app.workers")
-    workers.KieGenerationWorker = FriendlyKieGenerationWorker
     from velvet_bot.app.media_delivery_ui_install import install_media_delivery_ui
 
     install_media_delivery_ui()

@@ -26,7 +26,7 @@ from velvet_bot.domains.ai_usage import (
     build_ai_task_queue_service,
     build_ai_usage_service,
 )
-from velvet_bot.domains.media_generation.economy_worker import KieGenerationWorker
+from velvet_bot.domains.media_generation.friendly_worker import FriendlyKieGenerationWorker
 from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.vision_batches import build_vision_batch_consumer
@@ -165,8 +165,10 @@ def build_worker_manager(
             base_url=active_kie_settings.base_url,
             file_upload_base_url=active_kie_settings.file_upload_base_url,
             timeout_seconds=active_kie_settings.timeout_seconds,
-            poll_interval_seconds=active_kie_settings.poll_interval_seconds,
+            poll_interval_seconds=min(active_kie_settings.poll_interval_seconds, 2),
             task_timeout_seconds=active_kie_settings.task_timeout_seconds,
+            grs_api_key=active_kie_settings.grs_api_key,
+            grs_base_url=active_kie_settings.grs_base_url,
         )
         kie_queue = KieTaskQueueService(
             database=database,
@@ -178,7 +180,7 @@ def build_worker_manager(
                 if slot == 1
                 else f"kie-media-generation-{slot}"
             )
-            kie_worker = KieGenerationWorker(
+            kie_worker = FriendlyKieGenerationWorker(
                 bot=bot,
                 queue=kie_queue,
                 client=kie_client,
@@ -194,7 +196,7 @@ def build_worker_manager(
                         "Экономная генерация фото и видео через Ауф "
                         f"· слот {slot}/{active_kie_settings.max_concurrent_generations}"
                     ),
-                    interval_seconds=3,
+                    interval_seconds=1,
                     runner=kie_worker.process_once,
                 )
             )

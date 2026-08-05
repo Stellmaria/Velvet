@@ -15,11 +15,7 @@ from velvet_bot.app.composition import (
 EXPECTED_STAGE_NAMES = (
     "install_runtime_stability",
     "install_channel_analytics_datetime_compat",
-    "install_ai_model_routing",
     "install_friendly_media_worker",
-    "install_grs_resilience",
-    "install_grs_campaign_retry",
-    "install_grs_speedups",
     "install_telegram_progress_resilience",
     "install_auf_cancel_ui",
     "install_auf_runtime_dispatcher",
@@ -40,7 +36,6 @@ EXPECTED_STAGE_NAMES = (
     "install_auf_charged_queue",
     "install_auf_generation_receipts",
     "install_krita_remote_worker",
-    "install_auf_grs_brand",
     "install_auf_branding",
 )
 
@@ -51,7 +46,7 @@ class ApplicationCompositionTests(unittest.TestCase):
 
         self.assertEqual(EXPECTED_STAGE_NAMES, composition.stage_names)
         self.assertEqual(2, len(composition.bootstrap_stages))
-        self.assertEqual(27, len(composition.feature_stage_names))
+        self.assertEqual(22, len(composition.feature_stage_names))
 
     def test_run_loads_bootstrap_before_building_feature_stages(self) -> None:
         events: list[str] = []

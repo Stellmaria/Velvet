@@ -13,8 +13,12 @@ from velvet_bot.application.media_delivery import (
     raise_if_programming_error,
 )
 from velvet_bot.application.media_tasks import task_payload_mapping, task_result_urls
+from velvet_bot.domains.media_generation.models import KieModelAlias
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.database import Database
+from velvet_bot.domains.media_generation.provider_contract import (
+    is_grs_violation_error,
+)
 from velvet_bot.domains.ai_usage import (
     AITask,
     AITaskFailureResult,
@@ -31,7 +35,6 @@ _VIDEO_MODELS = frozenset(
         "wan_26_image_to_video",
     }
 )
-_GRS_MODELS = frozenset({"nano_banana_2", "nano_banana_pro"})
 
 
 class KieTaskQueueService(AITaskQueueService):
@@ -208,6 +211,28 @@ class KieTaskQueueService(AITaskQueueService):
                 )
         return task
 
+    async def fail(
+        self,
+        *,
+        task_id: UUID,
+        worker_id: str,
+        error: BaseException,
+        base_delay_seconds: int,
+        max_delay_seconds: int,
+    ) -> AITaskFailureResult | None:
+        """Apply provider retry policy without replacing the queue method at runtime."""
+
+        if is_grs_violation_error(error):
+            base_delay_seconds = 0
+            max_delay_seconds = 0
+        return await super().fail(
+            task_id=task_id,
+            worker_id=worker_id,
+            error=error,
+            base_delay_seconds=base_delay_seconds,
+            max_delay_seconds=max_delay_seconds,
+        )
+
     async def fail_terminal(
         self,
         *,
@@ -265,7 +290,7 @@ class KieTaskQueueService(AITaskQueueService):
             model = str(request.get("model") or "").strip()
             await resolver.provider_submitted(
                 task_id=task_id,
-                provider=("grs" if model in _GRS_MODELS else "kie"),
+                provider=_provider_name(model),
                 provider_task_id=provider_task_id,
                 chat_id=_optional_int(payload.get("chat_id")),
                 media_kind=("video" if model in _VIDEO_MODELS else "image"),
@@ -304,7 +329,7 @@ class KieTaskQueueService(AITaskQueueService):
                 task_id=task.id,
                 provider=str(
                     result.get("provider")
-                    or ("grs" if model in _GRS_MODELS else "kie")
+                    or _provider_name(model)
                 ).strip(),
                 provider_task_id=provider_task_id,
                 chat_id=_optional_int(payload.get("chat_id")),
@@ -318,6 +343,13 @@ class KieTaskQueueService(AITaskQueueService):
                 phase="provider_success_registration",
                 task_id=task.id,
             )
+
+
+def _provider_name(model: str) -> str:
+    try:
+        return KieModelAlias(model).provider_name
+    except ValueError:
+        return "kie"
 
 
 def _report_delivery_boundary(

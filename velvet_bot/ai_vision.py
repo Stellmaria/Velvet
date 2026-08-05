@@ -380,18 +380,16 @@ class VisionClient:
         api_key: str | None,
         timeout_seconds: int,
     ) -> None:
-        cleaned_provider = provider.strip().casefold()
-        if cleaned_provider not in {"ollama", "openai_compatible"}:
-            raise ValueError("AI_VISION_PROVIDER должен быть ollama или openai_compatible.")
-        self.provider = cleaned_provider
-        self.base_url = base_url.strip().rstrip("/")
-        self.model = model.strip()
-        self.api_key = api_key.strip() if api_key else None
-        self.timeout_seconds = max(10, min(int(timeout_seconds), 600))
-        if not self.base_url:
-            raise ValueError("AI_VISION_BASE_URL не может быть пустым.")
-        if not self.model:
-            raise ValueError("AI_VISION_MODEL не может быть пустым.")
+        from velvet_bot.infrastructure.ai_model_routing import configure_client
+
+        configure_client(
+            self,
+            provider=provider,
+            base_url=base_url,
+            model=model,
+            api_key=api_key,
+            timeout_seconds=timeout_seconds,
+        )
 
     def _headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -494,8 +492,11 @@ class VisionClient:
             headers=self._headers(),
             method="POST",
         )
+        from velvet_bot.infrastructure.ai_model_routing import routed_read_json
+
         payload = await asyncio.to_thread(
-            self._read_json,
+            routed_read_json,
+            self,
             request,
             timeout=self.timeout_seconds,
         )
