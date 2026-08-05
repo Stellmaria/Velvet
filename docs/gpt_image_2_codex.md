@@ -56,6 +56,9 @@ CODEX_IMAGE_TIMEOUT_SECONDS=3600
    `sandbox_entrypoint.py`;
 4. Velvet Bot с указанными переменными окружения.
 
+Package architecture inventory и reviewed exemptions обновляются вместе с
+изменениями runtime, поэтому preflight проверяет фактический состав новой модели.
+
 Перед включением в production выполните live smoke: текстовая генерация 1K,
 генерация с одним референсом и проверка доставки preview + документа. CI не может
 подтвердить доступность встроенного `image_gen` конкретной активной подписки.
