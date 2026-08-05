@@ -11,11 +11,11 @@ from velvet_bot.domains.codex_image import (
 
 
 class AufGptImage2ContractTests(unittest.TestCase):
-    def test_composition_installs_gpt_image_2_last(self) -> None:
+    def test_composition_installs_gpt_image_2_before_final_branding(self) -> None:
         composition = build_application_composition()
         self.assertEqual(
-            composition.feature_stage_names[-1],
-            "install_auf_gpt_image_2",
+            composition.feature_stage_names[-2:],
+            ("install_auf_gpt_image_2", "install_auf_branding"),
         )
 
     def test_text_mode_accepts_zero_references(self) -> None:
