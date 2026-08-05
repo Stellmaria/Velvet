@@ -83,7 +83,7 @@ class Issue584RuntimeEvidenceTests(unittest.TestCase):
 
     def test_canonical_compose_uses_context_launcher_for_both_projects(self) -> None:
         compose = (ROOT / "deploy/hermes-coders/compose.runtime.yaml").read_text()
-        self.assertEqual(2, compose.count("/app/codex_context_launcher_runner.py"))
+        self.assertEqual(4, compose.count("/app/codex_context_launcher_runner.py"))
         self.assertEqual(
             2,
             compose.count(
