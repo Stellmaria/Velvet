@@ -8,7 +8,9 @@
 - числовые package assertions обновлены из текущего AST-снимка;
 - Telegram navigation inventory обновлён для 651 Python-файла;
 - startup order: GPT Image 2 устанавливается перед финальным Auf branding guard;
-- `main.py` снова использует только публичную границу `velvet_bot.app`;
+- `main.py` использует только публичную границу `velvet_bot.app`;
+- импорт `velvet_bot.app` не запускает worker и не создаёт циклических импортов;
+- GPT Image worker подключается только при выполнении `run_application()`;
 - полный обязательный CI повторно запускается на сгенерированном head.
 
 Файл не меняет runtime-поведение и служит точкой финальной проверки перед merge.
