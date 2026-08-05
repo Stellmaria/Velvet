@@ -60,6 +60,12 @@ Deployment contract расширен проверками области пои�
 
 Формат dump, PostgreSQL restore contract, Telegram Storage encryption и deletion policy не изменены.
 
+### Миграции и совместимость
+
+Миграции базы данных, изменения schema и преобразование backup-файлов не требуются. Repair совместим с существующими custom-format PostgreSQL dump и JSON manifest, поскольку изменяет только Unix mode.
+
+Новые predeploy dump уже создаются с mode `0644`, поэтому повторный `chmod 0644` идемпотентен. Файлы других типов, вложенные artifacts и symlink остаются без изменений. На host, где deploy-пользователь не владеет legacy dump и не имеет права менять mode, deployment завершится до checkout/reset и запуска контейнеров с диагностикой конкретного пути.
+
 ### Проверки
 
 - guarded patch run `31013808979`: success;
@@ -69,6 +75,8 @@ Deployment contract расширен проверками области пои�
 - обязательные PR checks на user-authored head ожидаются.
 
 Два ранних patcher run (`31013502565`, `31013602562`) остановились до commit на генерации тестового текста. Production-файлы ими не изменялись. Финальный patcher использовал явные уровни Python indentation и прошёл собственные guards.
+
+Project notes run `31013956675` корректно обнаружил отсутствовавший обязательный раздел `Миграции и совместимость`; раздел добавлен без изменения production-кода.
 
 ### PR и commit
 
