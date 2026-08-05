@@ -4,8 +4,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **106** в **60** файлах;
-- approved boundaries: **106**;
+- raw broad exceptions: **107** в **61** файлах;
+- approved boundaries: **107**;
 - unresolved broad exceptions: **0** в **0** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
@@ -43,6 +43,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/backup_service.py:898` `run_backup_worker`: isolate-backup-worker-iteration.
 - `velvet_bot/calibrated_ai_quality.py:121` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/discussion_analytics_middleware.py:36` `__call__`: isolate-discussion-analytics-ingest.
+- `velvet_bot/domains/codex_image.py:278` `process_once`: isolate-codex-image-task-failure.
 - `velvet_bot/domains/media_generation/friendly_worker.py:143` `_recover_durable_delivery`: isolate-durable-recovery-tick.
 - `velvet_bot/domains/media_generation/task_queue.py:204` `complete`: isolate-post-completion-delivery.
 - `velvet_bot/domains/media_generation/task_queue.py:299` `_record_submission_best_effort`: isolate-provider-submission-registration.

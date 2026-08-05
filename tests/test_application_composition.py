@@ -36,6 +36,7 @@ EXPECTED_STAGE_NAMES = (
     "install_auf_charged_queue",
     "install_auf_generation_receipts",
     "install_krita_remote_worker",
+    "install_auf_gpt_image_2",
     "install_auf_branding",
 )
 
@@ -46,7 +47,7 @@ class ApplicationCompositionTests(unittest.TestCase):
 
         self.assertEqual(EXPECTED_STAGE_NAMES, composition.stage_names)
         self.assertEqual(2, len(composition.bootstrap_stages))
-        self.assertEqual(22, len(composition.feature_stage_names))
+        self.assertEqual(23, len(composition.feature_stage_names))
 
     def test_run_loads_bootstrap_before_building_feature_stages(self) -> None:
         events: list[str] = []

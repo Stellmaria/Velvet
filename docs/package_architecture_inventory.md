@@ -1,21 +1,21 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **648**
-- Production LOC: **142157**
+- Production modules: **651**
+- Production LOC: **143653**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **45**
-- Startup installer stages: **24**
-- Registered package violations: **523**
-- Registered exemptions: **523**
+- Startup installer stages: **25**
+- Registered package violations: **536**
+- Registered exemptions: **536**
 
 ## Layers
 
 - `application`: **21** modules
-- `composition`: **62** modules
+- `composition`: **64** modules
 - `core`: **7** modules
-- `domain`: **185** modules
+- `domain`: **186** modules
 - `infrastructure`: **31** modules
 - `other`: **1** modules
 - `presentation`: **215** modules
@@ -55,24 +55,25 @@
 21. `install_auf_charged_queue` from `velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue`; patched symbols: none detected.
 22. `install_auf_generation_receipts` from `install_generation_receipts_with_owner_cost_privacy`; patched symbols: none detected.
 23. `install_krita_remote_worker` from `velvet_bot.app.krita_remote_install.install_krita_remote_worker`; patched symbols: `bootstrap._close_application_resources`, `bootstrap.build_worker_manager`, `workers_module.build_worker_manager`.
-24. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
+24. `install_auf_gpt_image_2` from `velvet_bot.app.auf_gpt_image_2_install.install_auf_gpt_image_2`; patched symbols: `photo_router.handle_auf_photo_command`, `photo_router.handle_auf_photo_input`.
+25. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
 
 ## Violation baseline
 
 - `database-acquire-outside-persistence`: **89**
-- `domain-aiogram-import`: **19**
+- `domain-aiogram-import`: **20**
 - `domain-layer-import`: **3**
-- `dynamic-import`: **19**
-- `foreign-assignment`: **34**
-- `installed-sentinel`: **40**
-- `installer-like-module`: **25**
+- `dynamic-import`: **20**
+- `foreign-assignment`: **36**
+- `installed-sentinel`: **42**
+- `installer-like-module`: **26**
 - `method-assign-ignore`: **5**
-- `monolithic-function`: **24**
-- `monolithic-module-loc`: **17**
+- `monolithic-function`: **25**
+- `monolithic-module-loc`: **18**
 - `package-getattr-side-effect`: **19**
-- `sql-outside-persistence`: **108**
+- `sql-outside-persistence`: **109**
 - `type-ignore-usage`: **13**
-- `typing-any-usage`: **108**
+- `typing-any-usage`: **111**
 
 ## Largest modules
 
@@ -87,6 +88,7 @@
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video.py`: 1102 LOC, 31 functions, max function 140 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py`: 1041 LOC, 37 functions, max function 169 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_onboarding.py`: 1023 LOC, 31 functions, max function 222 lines, target `presentation`.
+- `velvet_bot/app/auf_gpt_image_2_install.py`: 1014 LOC, 29 functions, max function 265 lines, target `composition`.
 - `velvet_bot/domains/workspaces/character_management.py`: 1013 LOC, 24 functions, max function 117 lines, target `domain`.
 - `velvet_bot/domains/workspaces/qwen_repository.py`: 909 LOC, 25 functions, max function 78 lines, target `domain`.
 - `velvet_bot/backup_service.py`: 900 LOC, 34 functions, max function 73 lines, target `application/<bounded-use-case>`.
@@ -95,7 +97,6 @@
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py`: 807 LOC, 11 functions, max function 333 lines, target `presentation`.
 - `velvet_bot/ai_vision.py`: 775 LOC, 24 functions, max function 77 lines, target `domains/<bounded-domain>`.
 - `velvet_bot/ai_quality.py`: 744 LOC, 23 functions, max function 82 lines, target `domains/<bounded-domain>`.
-- `velvet_bot/infrastructure/krita_remote_api.py`: 743 LOC, 39 functions, max function 67 lines, target `infrastructure`.
 
 ## Compatibility components
 

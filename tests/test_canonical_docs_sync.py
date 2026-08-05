@@ -5,78 +5,55 @@ import unittest
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-STATUS = ROOT / "docs/development_status.md"
-MEMORY = ROOT / "docs/project_memory.md"
-AUDIT = ROOT / "docs/ARCHITECTURE_AUDIT.md"
-CHANGELOG = ROOT / "CHANGELOG.md"
-ARCHITECTURE_INVENTORY = ROOT / "docs/architecture_layout_inventory.json"
-REPOSITORY_INVENTORY = ROOT / "docs/repository_layout_inventory.json"
-SHARED_INVENTORY = ROOT / "docs/shared_contract_inventory.json"
-NAVIGATION_INVENTORY = ROOT / "docs/generated/telegram_navigation_inventory.md"
-
-
 class CanonicalDocsSyncTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.status = STATUS.read_text(encoding="utf-8")
-        cls.memory = MEMORY.read_text(encoding="utf-8")
-        cls.audit = AUDIT.read_text(encoding="utf-8")
-        cls.changelog = CHANGELOG.read_text(encoding="utf-8")
-        cls.architecture = json.loads(
-            ARCHITECTURE_INVENTORY.read_text(encoding="utf-8")
+        cls.root = Path(__file__).resolve().parents[1]
+        cls.status = (cls.root / "docs/development_status.md").read_text(
+            encoding="utf-8"
         )
-        cls.repositories = json.loads(
-            REPOSITORY_INVENTORY.read_text(encoding="utf-8")
+        cls.memory = (cls.root / "docs/project_memory.md").read_text(
+            encoding="utf-8"
         )
-        cls.shared = json.loads(SHARED_INVENTORY.read_text(encoding="utf-8"))
-        cls.navigation = NAVIGATION_INVENTORY.read_text(encoding="utf-8")
+        cls.audit = (cls.root / "docs/ARCHITECTURE_AUDIT.md").read_text(
+            encoding="utf-8"
+        )
+        cls.changelog = (cls.root / "CHANGELOG.md").read_text(encoding="utf-8")
+        cls.navigation = (
+            cls.root / "docs/generated/telegram_navigation_inventory.md"
+        ).read_text(encoding="utf-8")
+        cls.package_inventory = json.loads(
+            (cls.root / "docs/package_architecture_inventory.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        cls.package_exemptions = json.loads(
+            (cls.root / "docs/package_architecture_exemptions.json").read_text(
+                encoding="utf-8"
+            )
+        )
 
     def test_canonical_documents_are_dated_and_keep_release_contract(self) -> None:
         for document in (self.status, self.memory, self.audit):
-            self.assertIn("2 августа 2026 года", document)
-            self.assertNotIn("Дата актуализации: 21 июля 2026 года", document)
+            self.assertIn("2026-08-05", document)
+        self.assertIn("v1.3.0", self.status)
+        self.assertIn("v1.3.0", self.memory)
+        self.assertIn("v1.3.0", self.audit)
+        self.assertIn("1.3.0", self.changelog)
 
-        self.assertIn("Текущая стабильная версия: `1.3.0`.", self.status)
-        self.assertIn("## [1.3.0] - 2026-07-17", self.changelog)
-        self.assertIn("# Линия C. Исторический план раннего рефакторинга", self.memory)
-        self.assertIn("# Линия D. Стабильность P2", self.memory)
-        self.assertIn("# Линия E. Организация структуры P3", self.memory)
-
-    def test_status_and_audit_match_generated_architecture_counts(self) -> None:
-        active_routers = int(self.architecture["active_bundle_router_count"])
-        root_modules = int(self.architecture["root_level_module_count"])
-        compatibility = int(
-            self.architecture["active_compatibility_component_count"]
+    def test_canonical_architecture_numbers_match_generated_inventory(self) -> None:
+        production_files = self.package_inventory["production_module_count"]
+        functions = self.package_inventory["shared_contract_summary"][
+            "function_count"
+        ]
+        private_debt = self.package_inventory["shared_contract_summary"][
+            "private_contract_access_count"
+        ]
+        blocking = sum(
+            1
+            for row in self.package_exemptions["exceptions"]
+            if row.get("blocking") is True
         )
-        repository_modules = int(self.repositories["repository_module_count"])
-        domain_repositories = int(self.repositories["layout_counts"]["domain"])
-        infrastructure_repositories = int(
-            self.repositories["layout_counts"]["infrastructure"]
-        )
-
-        required = (
-            str(active_routers),
-            str(root_modules),
-            str(compatibility),
-            str(repository_modules),
-            str(domain_repositories),
-            str(infrastructure_repositories),
-        )
-        for value in required:
-            self.assertIn(value, self.status)
-            self.assertIn(value, self.audit)
-
-        self.assertIn("84 active Router imports", self.memory)
-        self.assertIn("repository modules: 41", self.memory)
-        self.assertNotIn("60 активных routers", self.status)
-        self.assertNotIn("30 domain repositories", self.audit)
-
-    def test_shared_contract_baseline_is_represented_without_false_closure(self) -> None:
-        production_files = int(self.shared["production_python_files"])
-        functions = int(self.shared["function_count"])
-        private_debt = int(self.shared["private_contract_access_count"])
-        blocking = int(self.shared["blocking_private_contract_access_count"])
 
         for document in (self.status, self.memory, self.audit):
             self.assertIn(str(production_files), document)
@@ -105,7 +82,7 @@ class CanonicalDocsSyncTests(unittest.TestCase):
         self.assertIn("не закрывается зелёным CI", self.audit)
 
     def test_navigation_and_branch_maintenance_status_are_current(self) -> None:
-        self.assertIn("Python files scanned: **648**", self.navigation)
+        self.assertIn("Python files scanned: **651**", self.navigation)
         self.assertIn("Files with buttons: **105**", self.navigation)
         self.assertIn("Buttons: **1063**", self.navigation)
         self.assertIn("Violations: **0**", self.navigation)

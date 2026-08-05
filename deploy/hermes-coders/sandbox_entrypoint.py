@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -10,22 +11,14 @@ from pathlib import Path
 _ALLOWED_PROJECTS = frozenset({"velvet", "max"})
 _ALLOWED_POLICIES = frozenset({"read_only", "workspace_write"})
 _ROUTE_MODELS = {
-    "codex_subscription": frozenset(
-        {"gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"}
-    ),
-    "byesu_provider": frozenset(
-        {"gpt-5.4-mini", "gpt-5.6-luna", "gpt-5.6-terra"}
-    ),
+    "codex_subscription": frozenset({"gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"}),
+    "byesu_provider": frozenset({"gpt-5.4-mini", "gpt-5.6-luna", "gpt-5.6-terra"}),
 }
-_COMMON_HOME_FILES = (
-    "AGENTS.md",
-    "output.schema.json",
-    "context-manifest.json",
-)
+_COMMON_HOME_FILES = ("AGENTS.md", "output.schema.json", "context-manifest.json")
 _SUBSCRIPTION_HOME_FILES = ("auth.json", "config.toml")
-_SANDBOX_MODE = re.compile(
-    r'(?m)^sandbox_mode\s*=\s*"workspace-write"\s*$'
-)
+_SANDBOX_MODE = re.compile(r'(?m)^sandbox_mode\s*=\s*"workspace-write"\s*$')
+_REASONING_EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
+_IMAGE_REQUEST_PATH = Path("/workspace/.git/hermes-image-request.json")
 
 
 def required_env(name: str) -> str:
@@ -148,7 +141,35 @@ def configure_git(home: Path, project: str) -> None:
     (home / ".gitconfig").chmod(0o600)
 
 
-def execution_env(home: Path, route: str, model: str) -> dict[str, str]:
+def load_image_request() -> dict[str, str] | None:
+    if not _IMAGE_REQUEST_PATH.exists():
+        return None
+    if _IMAGE_REQUEST_PATH.is_symlink() or not _IMAGE_REQUEST_PATH.is_file():
+        raise RuntimeError("GPT Image 2 control file is unsafe")
+    try:
+        payload = json.loads(_IMAGE_REQUEST_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError("GPT Image 2 control file is invalid") from error
+    if not isinstance(payload, dict) or set(payload) != {
+        "task_kind",
+        "reasoning_effort",
+    }:
+        raise RuntimeError("GPT Image 2 control schema is invalid")
+    if payload.get("task_kind") != "image":
+        raise RuntimeError("GPT Image 2 task kind is invalid")
+    effort = str(payload.get("reasoning_effort") or "")
+    if effort not in _REASONING_EFFORTS:
+        raise RuntimeError("GPT Image 2 reasoning effort is invalid")
+    return {"task_kind": "image", "reasoning_effort": effort}
+
+
+def execution_env(
+    home: Path,
+    route: str,
+    model: str,
+    *,
+    image_run: bool,
+) -> dict[str, str]:
     allowed = {
         "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
         "HOME": str(home),
@@ -160,8 +181,10 @@ def execution_env(home: Path, route: str, model: str) -> dict[str, str]:
         "TERM": os.environ.get("TERM", "dumb"),
         "NO_COLOR": "1",
     }
-    github_token = required_env("GH_TOKEN")
-    allowed["GH_TOKEN"] = github_token
+    # Image runs do not need repository credentials. Keep the image tool boundary
+    # independent from GitHub even though it reuses the same isolated checkout.
+    if not image_run:
+        allowed["GH_TOKEN"] = required_env("GH_TOKEN")
     if route == "byesu_provider":
         key_name = (
             "BYESU_HERMES_GPT_PRO_API_KEY"
@@ -193,6 +216,7 @@ def main() -> int:
         config_path.write_text(provider_config(model), encoding="utf-8")
         config_path.chmod(0o600)
     configure_git(home, project)
+    image_request = load_image_request()
 
     command = [
         "codex",
@@ -202,12 +226,28 @@ def main() -> int:
         model,
         "--sandbox",
         "danger-full-access",
-        "--output-schema",
-        str(schema),
-        "-",
     ]
+    if image_request is not None:
+        command.extend(
+            [
+                "-c",
+                f'model_reasoning_effort="{image_request["reasoning_effort"]}"',
+            ]
+        )
+    else:
+        command.extend(["--output-schema", str(schema)])
+    command.append("-")
     os.chdir("/workspace")
-    os.execvpe(command[0], command, execution_env(home, route, model))
+    os.execvpe(
+        command[0],
+        command,
+        execution_env(
+            home,
+            route,
+            model,
+            image_run=image_request is not None,
+        ),
+    )
     return 127
 
 
