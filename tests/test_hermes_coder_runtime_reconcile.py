@@ -88,10 +88,20 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             "ExecStartPre=+/usr/bin/python3 "
             f"{RELEASE_ROOT}/deploy/hermes-coders/reconcile_workspaces.py"
         )
+        preflight_line = (
+            "ExecStartPre=+/usr/bin/python3 "
+            f"{RELEASE_ROOT}/deploy/hermes-coders/preflight.py"
+        )
+        sandbox_preflight_line = (
+            "ExecStartPre=+/usr/bin/python3 "
+            f"{RELEASE_ROOT}/deploy/hermes-coders/sandbox_preflight.py"
+        )
         self.assertIn(reconcile_line, source)
-        self.assertLess(source.index(reconcile_line), source.index("preflight.py"))
+        self.assertIn(preflight_line, source)
+        self.assertIn(sandbox_preflight_line, source)
+        self.assertLess(source.index(reconcile_line), source.index(preflight_line))
+        self.assertLess(source.index(preflight_line), source.index(sandbox_preflight_line))
         self.assertIn("Requires=docker.service hermes-sandbox-launcher.socket", source)
-        self.assertIn("sandbox_preflight.py", source)
         self.assertIn("ExecStartPost=/usr/bin/python3", source)
         self.assertIn("runtime_smoke.py", source)
         self.assertIn("tier_provider_smoke.py", source)
