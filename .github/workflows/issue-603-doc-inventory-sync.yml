@@ -1,0 +1,111 @@
+name: issue 603 doc inventory sync
+
+on:
+  push:
+    branches:
+      - feat/603-adaptive-ai-queue-wakeup
+    paths:
+      - .github/workflows/issue-603-doc-inventory-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-603-doc-inventory-sync
+  cancel-in-progress: false
+
+jobs:
+  synchronize:
+    if: github.repository == 'Stellmaria/Velvet' && github.ref_name == 'feat/603-adaptive-ai-queue-wakeup'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feat/603-adaptive-ai-queue-wakeup
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+
+      - name: Apply exact generated-document updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+          python - <<'PY'
+          from pathlib import Path
+
+          navigation = Path('docs/generated/telegram_navigation_inventory.md')
+          nav_text = navigation.read_text(encoding='utf-8')
+          old_nav = '- Python files scanned: **646**'
+          new_nav = '- Python files scanned: **648**'
+          if nav_text.count(old_nav) != 1 or new_nav in nav_text:
+              raise SystemExit('navigation inventory replacement mismatch')
+          navigation.write_text(nav_text.replace(old_nav, new_nav), encoding='utf-8')
+
+          status = Path('docs/development_status.md')
+          status_text = status.read_text(encoding='utf-8')
+          old_status = (
+              'Provider adapter baseline: 646 production Python files, 3725 functions, '
+              '170 registered private accesses, 0 blocking contracts.'
+          )
+          new_status = (
+              'Provider adapter baseline: 648 production Python files, 3748 functions, '
+              '170 registered private accesses, 0 blocking contracts.'
+          )
+          if status_text.count(old_status) != 1 or new_status in status_text:
+              raise SystemExit('development status replacement mismatch')
+          status.write_text(
+              status_text.replace(old_status, new_status),
+              encoding='utf-8',
+          )
+          PY
+
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown /tmp/telegram-navigation-inventory.md
+          cmp /tmp/telegram-navigation-inventory.md \
+            docs/generated/telegram_navigation_inventory.md
+          python -m unittest \
+            tests.test_telegram_navigation_inventory \
+            tests.test_canonical_docs_sync
+
+          rm -f .github/workflows/issue-603-doc-inventory-sync.yml
+          git add -- \
+            .github/workflows/issue-603-doc-inventory-sync.yml \
+            docs/development_status.md \
+            docs/generated/telegram_navigation_inventory.md
+
+          python - <<'PY'
+          import subprocess
+
+          allowed = {
+              '.github/workflows/issue-603-doc-inventory-sync.yml',
+              'docs/development_status.md',
+              'docs/generated/telegram_navigation_inventory.md',
+          }
+          staged = set(
+              subprocess.check_output(
+                  ['git', 'diff', '--cached', '--name-only'],
+                  text=True,
+              ).splitlines()
+          )
+          unexpected = sorted(staged - allowed)
+          if unexpected:
+              raise SystemExit(f'unexpected staged paths: {unexpected}')
+          if staged != allowed:
+              raise SystemExit(f'incomplete staged paths: {sorted(staged)}')
+          PY
+
+          test "$(git ls-remote origin refs/heads/feat/603-adaptive-ai-queue-wakeup | cut -f1)" = "${GITHUB_SHA}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Synchronize #603 generated documentation"
+          git push origin HEAD:feat/603-adaptive-ai-queue-wakeup
