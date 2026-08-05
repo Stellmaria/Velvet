@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-complete",
-  "repository_module_count": 44,
+  "repository_module_count": 45,
   "layout_counts": {
     "domain": 37,
-    "infrastructure": 7
+    "infrastructure": 8
   },
   "root_module_count": 113,
   "root_module_categories": {
@@ -14,7 +14,7 @@
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 41,
+  "repository_modules_with_production_consumers": 42,
   "repository_modules_with_package_exports": 28,
   "repository_modules_without_runtime_consumers": 3,
   "repository_modules_without_references": 0,
@@ -816,6 +816,25 @@
         "velvet_bot/infrastructure/media_delivery_repository.py"
       ],
       "test_consumers": [],
+      "package_exports": []
+    },
+    {
+      "module": "velvet_bot.infrastructure.postgres.ai_task_wakeup_repository",
+      "path": "velvet_bot/infrastructure/postgres/ai_task_wakeup_repository.py",
+      "layout": "infrastructure",
+      "domain": null,
+      "production_consumer_count": 3,
+      "test_consumer_count": 1,
+      "package_export_count": 0,
+      "reference_count": 4,
+      "production_consumers": [
+        "velvet_bot/app/workers.py",
+        "velvet_bot/domains/ai_usage/factory.py",
+        "velvet_bot/domains/vision_batches/worker.py"
+      ],
+      "test_consumers": [
+        "tests/test_ai_queue_adaptive_wakeup.py"
+      ],
       "package_exports": []
     },
     {

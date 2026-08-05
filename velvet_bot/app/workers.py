@@ -42,6 +42,7 @@ from velvet_bot.domains.workspaces.qwen_repository import WorkspaceQwenRepositor
 from velvet_bot.error_center import ErrorIncidentCenter
 from velvet_bot.infrastructure.ai import KieClient
 from velvet_bot.infrastructure.krita_bridge import KritaBridge, default_krita_bridge_dir
+from velvet_bot.infrastructure.postgres.ai_task_wakeup_repository import PostgresAITaskListener
 from velvet_bot.infrastructure.transient_connections import (
     install_recoverable_polling_filter,
     recover_database_pool,
@@ -53,6 +54,7 @@ from velvet_bot.services.diagnostic_bundle import DiagnosticBundleService
 from velvet_bot.services.system_health import SystemHealthService
 from velvet_bot.services.workspace_qwen_quality import WorkspaceQwenQualityService
 from velvet_bot.workers import PeriodicWorkerSpec, WorkerManager
+from velvet_bot.workers.adaptive import AdaptiveQueueWait
 from velvet_bot.workers.iterations import process_backup_once
 
 
@@ -275,6 +277,9 @@ def build_worker_manager(
                     description="Пакетная очередь смыслового VL-анализа",
                     interval_seconds=3,
                     runner=batch_consumer.process_once,
+                    wait_controller=AdaptiveQueueWait(
+                        PostgresAITaskListener(database.database_url),
+                    ),
                 )
             )
         else:

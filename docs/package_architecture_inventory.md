@@ -1,14 +1,14 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **646**
-- Production LOC: **141620**
+- Production modules: **648**
+- Production LOC: **142157**
 - Root modules: **113**
 - Active Router imports: **84**
-- Repository modules: **44**
+- Repository modules: **45**
 - Startup installer stages: **24**
-- Registered package violations: **524**
-- Registered exemptions: **524**
+- Registered package violations: **523**
+- Registered exemptions: **523**
 
 ## Layers
 
@@ -16,12 +16,12 @@
 - `composition`: **62** modules
 - `core`: **7** modules
 - `domain`: **185** modules
-- `infrastructure`: **30** modules
+- `infrastructure`: **31** modules
 - `other`: **1** modules
 - `presentation`: **215** modules
 - `root`: **114** modules
 - `service`: **8** modules
-- `worker`: **3** modules
+- `worker`: **4** modules
 
 ## Shared/private baseline
 
@@ -72,7 +72,7 @@
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **108**
 - `type-ignore-usage`: **13**
-- `typing-any-usage`: **109**
+- `typing-any-usage`: **108**
 
 ## Largest modules
 

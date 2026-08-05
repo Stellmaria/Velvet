@@ -21,6 +21,13 @@ from velvet_bot.domains.vision_routing.integration import (
     CascadeMediaAIVisionService,
     VisionCascadeAdapter,
 )
+from velvet_bot.infrastructure.postgres.ai_task_wakeup_repository import (
+    PostgresAITaskQueueDiagnostics,
+)
+from velvet_bot.workers.adaptive import (
+    WorkerIterationOutcome,
+    WorkerIterationResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,22 +86,32 @@ class VisionBatchQueueConsumer:
         *,
         queue_service: AITaskQueueService,
         processor: TargetedVisionService,
+        diagnostics: PostgresAITaskQueueDiagnostics | None = None,
         worker_id: str = "vision-semantic-batch",
         heartbeat_seconds: int = 60,
     ) -> None:
         self._queue = queue_service
         self._processor = processor
+        self._diagnostics = diagnostics
         self._worker_id = worker_id
         self._heartbeat_seconds = max(15, int(heartbeat_seconds))
 
-    async def process_once(self) -> int:
+    async def process_once(self) -> WorkerIterationResult:
         task = await self._queue.claim_next(
             worker_id=self._worker_id,
             scopes=(AIBudgetScope.VISION,),
             task_types=(VISION_BATCH_TASK_TYPE,),
         )
         if task is None:
-            return 0
+            oldest_age = (
+                await self._diagnostics.oldest_queued_age_seconds()
+                if self._diagnostics is not None
+                else None
+            )
+            return WorkerIterationResult(
+                WorkerIterationOutcome.EMPTY,
+                oldest_queued_age_seconds=oldest_age,
+            )
         heartbeat = asyncio.create_task(self._heartbeat(task.id))
         try:
             media_id = int(task.payload.get("media_id") or 0)
@@ -111,12 +128,15 @@ class VisionBatchQueueConsumer:
                     "VL batch task lost lock before completion task_id=%s",
                     task.id,
                 )
-                return 0
-            return 1
+                return WorkerIterationResult(WorkerIterationOutcome.SKIPPED)
+            return WorkerIterationResult(
+                WorkerIterationOutcome.PROCESSED,
+                processed_items=1,
+            )
         except asyncio.CancelledError:
             raise
         except BaseException as error:
-            await self._queue.fail(
+            failure = await self._queue.fail(
                 task_id=task.id,
                 worker_id=self._worker_id,
                 error=error,
@@ -127,7 +147,12 @@ class VisionBatchQueueConsumer:
                 task.payload.get("media_id"),
                 error,
             )
-            return 0
+            outcome = (
+                WorkerIterationOutcome.TRANSIENT_FAILURE
+                if failure is not None and failure.will_retry
+                else WorkerIterationOutcome.TERMINAL_FAILURE
+            )
+            return WorkerIterationResult(outcome)
         finally:
             heartbeat.cancel()
             with suppress(asyncio.CancelledError):
@@ -170,6 +195,7 @@ def build_vision_batch_consumer(
     return VisionBatchQueueConsumer(
         queue_service=queue_service,
         processor=processor,
+        diagnostics=PostgresAITaskQueueDiagnostics(database),
     )
 
 

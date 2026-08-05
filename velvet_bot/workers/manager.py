@@ -5,18 +5,38 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Protocol
 
 from velvet_bot.infrastructure.transient_connections import (
     is_transient_connection_error,
 )
+from velvet_bot.workers.adaptive import (
+    WorkerIterationOutcome,
+    WorkerIterationResult,
+    WorkerWaitSnapshot,
+)
 
 logger = logging.getLogger(__name__)
 
-WorkerRunner = Callable[[], Awaitable[Any]]
+WorkerRunner = Callable[[], Awaitable[object]]
 TransientFailureHandler = Callable[[BaseException], Awaitable[None]]
 _TRANSIENT_ALERT_AFTER = 3
 _TRANSIENT_ALERT_REPEAT = 10
+
+
+class WorkerWaitController(Protocol):
+    def delay_for(
+        self,
+        result: object,
+        *,
+        default_interval_seconds: float,
+    ) -> float: ...
+
+    async def wait(self, delay_seconds: float) -> bool: ...
+
+    async def close(self) -> None: ...
+
+    def snapshot(self) -> WorkerWaitSnapshot: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +46,7 @@ class PeriodicWorkerSpec:
     interval_seconds: float
     runner: WorkerRunner
     run_immediately: bool = True
+    wait_controller: WorkerWaitController | None = None
 
     def __post_init__(self) -> None:
         cleaned = self.name.strip()
@@ -53,6 +74,15 @@ class WorkerSnapshot:
     successful_runs: int = 0
     failed_runs: int = 0
     consecutive_failures: int = 0
+    last_outcome: str | None = None
+    current_interval_seconds: float | None = None
+    empty_runs: int = 0
+    processed_items: int = 0
+    wakeups: int = 0
+    fallback_polls: int = 0
+    listener_reconnects: int = 0
+    listener_errors: int = 0
+    oldest_queued_age_seconds: float | None = None
 
     @property
     def healthy(self) -> bool:
@@ -206,6 +236,14 @@ class WorkerManager:
         )
 
     async def _execute_once(self, spec: PeriodicWorkerSpec) -> bool:
+        """Run one iteration and preserve the historical boolean contract."""
+        succeeded, _ = await self._execute_once_with_result(spec)
+        return succeeded
+
+    async def _execute_once_with_result(
+        self,
+        spec: PeriodicWorkerSpec,
+    ) -> tuple[bool, object]:
         async with self._run_locks[spec.name]:
             started_at = datetime.now(UTC)
             current = self._snapshots[spec.name]
@@ -216,7 +254,7 @@ class WorkerManager:
                 next_run_at=None,
             )
             try:
-                await spec.runner()
+                result = await spec.runner()
             except asyncio.CancelledError:
                 raise
             except Exception as error:  # p2-approved-boundary: isolate-worker-iteration-failure
@@ -238,9 +276,11 @@ class WorkerManager:
                         error=error,
                         consecutive_failures=consecutive_failures,
                     )
+                    outcome = WorkerIterationOutcome.TRANSIENT_FAILURE
                 else:
                     logger.exception("Background worker failed name=%s", spec.name)
-                return False
+                    outcome = WorkerIterationOutcome.TERMINAL_FAILURE
+                return False, WorkerIterationResult(outcome)
 
             completed_at = datetime.now(UTC)
             current = self._snapshots[spec.name]
@@ -253,15 +293,60 @@ class WorkerManager:
                 consecutive_failures=0,
                 next_run_at=completed_at + timedelta(seconds=spec.interval_seconds),
             )
-            return True
+            return True, result
+
+    def _apply_wait_snapshot(
+        self,
+        spec: PeriodicWorkerSpec,
+        *,
+        next_run_at: datetime | None = None,
+    ) -> None:
+        controller = spec.wait_controller
+        if controller is None:
+            return
+        wait = controller.snapshot()
+        current = self._snapshots[spec.name]
+        self._snapshots[spec.name] = replace(
+            current,
+            next_run_at=next_run_at if next_run_at is not None else current.next_run_at,
+            last_outcome=wait.last_outcome,
+            current_interval_seconds=wait.current_interval_seconds,
+            empty_runs=wait.empty_runs,
+            processed_items=wait.processed_items,
+            wakeups=wait.wakeups,
+            fallback_polls=wait.fallback_polls,
+            listener_reconnects=wait.listener_reconnects,
+            listener_errors=wait.listener_errors,
+            oldest_queued_age_seconds=wait.oldest_queued_age_seconds,
+        )
 
     async def _run_periodic(self, spec: PeriodicWorkerSpec) -> None:
         if not spec.run_immediately:
             await asyncio.sleep(spec.interval_seconds)
         try:
             while True:
-                await self._execute_once(spec)
-                await asyncio.sleep(spec.interval_seconds)
+                controller = spec.wait_controller
+                if controller is None:
+                    await self._execute_once(spec)
+                    await asyncio.sleep(spec.interval_seconds)
+                    continue
+                succeeded, result = await self._execute_once_with_result(spec)
+                delay = controller.delay_for(
+                    result,
+                    default_interval_seconds=spec.interval_seconds,
+                )
+                self._apply_wait_snapshot(
+                    spec,
+                    next_run_at=datetime.now(UTC) + timedelta(seconds=delay),
+                )
+                if not succeeded:
+                    await asyncio.sleep(delay)
+                    continue
+                woke = await controller.wait(delay)
+                self._apply_wait_snapshot(
+                    spec,
+                    next_run_at=datetime.now(UTC) if woke else None,
+                )
         except asyncio.CancelledError:
             raise
         except Exception as error:  # p2-approved-boundary: isolate-worker-loop-failure
@@ -277,3 +362,6 @@ class WorkerManager:
                 next_run_at=None,
             )
             logger.exception("Background worker loop stopped name=%s", spec.name)
+        finally:
+            if spec.wait_controller is not None:
+                await spec.wait_controller.close()

@@ -1,7 +1,7 @@
 # Shared contract inventory
 
-- Production Python files: **646**
-- Functions inventoried: **3725**
+- Production Python files: **648**
+- Functions inventoried: **3748**
 - Registered private cross-module debt: **170**
 - Blocking known private contracts: **0**
 - Exact duplicate groups: **66**
@@ -220,4 +220,4 @@
 - **safe edit/send fallback**: 59 functions; shared transport/domain signals despite different names and literals.
 - **state compatibility accessors**: 3 functions; shared transport/domain signals despite different names and literals.
 - **task payload/result mapping/formatting**: 26 functions; shared transport/domain signals despite different names and literals.
-- **workspace task history/ownership queries**: 15 functions; shared transport/domain signals despite different names and literals.
+- **workspace task history/ownership queries**: 16 functions; shared transport/domain signals despite different names and literals.

@@ -77,14 +77,14 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_inventory_covers_the_complete_current_package(self) -> None:
         modules = self.inventory["modules"]
-        self.assertEqual(646, self.inventory["production_module_count"])
+        self.assertEqual(648, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(141_620, self.inventory["production_loc"])
+        self.assertEqual(142157, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
         self.assertEqual(0, self.inventory["router_duplicate_count"])
-        self.assertEqual(44, self.inventory["repository_module_count"])
+        self.assertEqual(45, self.inventory["repository_module_count"])
         self.assertEqual(24, len(self.inventory["installer_graph"]))
 
         self.assertEqual(
@@ -107,7 +107,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         observed_ids = [str(item["id"]) for item in violations]
         registered_ids = [str(item["id"]) for item in exceptions]
 
-        self.assertEqual(524, self.inventory["violation_count"])
+        self.assertEqual(523, self.inventory["violation_count"])
         self.assertEqual(self.inventory["violation_count"], len(violations))
         self.assertEqual(len(violations), len(exceptions))
         self.assertEqual(len(observed_ids), len(set(observed_ids)))
@@ -148,8 +148,8 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_shared_private_and_duplicate_fingerprints_are_linked(self) -> None:
         shared = self.inventory["shared_contract_summary"]
-        self.assertEqual(646, shared["production_python_files"])
-        self.assertEqual(3_725, shared["function_count"])
+        self.assertEqual(648, shared["production_python_files"])
+        self.assertEqual(3748, shared["function_count"])
         self.assertEqual(170, shared["private_contract_access_count"])
         self.assertEqual(0, shared["blocking_private_contract_access_count"])
         self.assertEqual(66, shared["exact_duplicate_group_count"])
@@ -180,11 +180,11 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         )
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
-        self.assertIn("Production modules: **646**", self.markdown)
-        self.assertIn("Production LOC: **141620**", self.markdown)
+        self.assertIn("Production modules: **648**", self.markdown)
+        self.assertIn("Production LOC: **142157**", self.markdown)
         self.assertIn("Startup installer stages: **24**", self.markdown)
-        self.assertIn("Registered package violations: **524**", self.markdown)
-        self.assertIn("Registered exemptions: **524**", self.markdown)
+        self.assertIn("Registered package violations: **523**", self.markdown)
+        self.assertIn("Registered exemptions: **523**", self.markdown)
         self.assertIn("Every observed file/category fingerprint", self.markdown)
         self.assertFalse(PREVIEW_WORKFLOW.exists())
 
