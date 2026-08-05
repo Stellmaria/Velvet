@@ -79,7 +79,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         modules = self.inventory["modules"]
         self.assertEqual(646, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(141_617, self.inventory["production_loc"])
+        self.assertEqual(141_620, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
@@ -181,7 +181,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
         self.assertIn("Production modules: **646**", self.markdown)
-        self.assertIn("Production LOC: **141617**", self.markdown)
+        self.assertIn("Production LOC: **141620**", self.markdown)
         self.assertIn("Startup installer stages: **24**", self.markdown)
         self.assertIn("Registered package violations: **524**", self.markdown)
         self.assertIn("Registered exemptions: **524**", self.markdown)

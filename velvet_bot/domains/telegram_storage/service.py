@@ -375,32 +375,35 @@ class TelegramStorageMigrationService:
         backup_stage.mkdir(parents=True, exist_ok=True)
         for item in items:
             self._record_discovered(summary, "backups")
-            source_digest = item.sha256 or await asyncio.to_thread(sha256_file, item.path)
             token = safe_token(f"{item.run_id or 'raw'}-{item.file_name}")
             zip_path = backup_stage / f"{token}.zip"
             encrypted_path = backup_stage / f"{token}.velvet.enc"
             verify_path = backup_stage / f"{token}.verify.zip"
             manifest_path = item.path.with_suffix(item.path.suffix + ".json")
-            files = {item.file_name: item.path}
-            if manifest_path.is_file():
-                files[manifest_path.name] = manifest_path
-            text_entries = {
-                "storage-manifest.json": json.dumps(
-                    {
-                        "backup_run_id": item.run_id,
-                        "backup_kind": item.backup_kind,
-                        "schema_version": item.schema_version,
-                        "source_sha256": source_digest,
-                        "validation": item.validation,
-                        "encryption_key_id": self.settings.encryption_key_id,
-                        "encryption_version": "AES-256-GCM+scrypt:v2",
-                        "packed_at": datetime.now(UTC).isoformat(),
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            }
             try:
+                source_digest = item.sha256 or await asyncio.to_thread(
+                    sha256_file,
+                    item.path,
+                )
+                files = {item.file_name: item.path}
+                if manifest_path.is_file():
+                    files[manifest_path.name] = manifest_path
+                text_entries = {
+                    "storage-manifest.json": json.dumps(
+                        {
+                            "backup_run_id": item.run_id,
+                            "backup_kind": item.backup_kind,
+                            "schema_version": item.schema_version,
+                            "source_sha256": source_digest,
+                            "validation": item.validation,
+                            "encryption_key_id": self.settings.encryption_key_id,
+                            "encryption_version": "AES-256-GCM+scrypt:v2",
+                            "packed_at": datetime.now(UTC).isoformat(),
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                }
                 await asyncio.to_thread(
                     build_zip,
                     zip_path,
