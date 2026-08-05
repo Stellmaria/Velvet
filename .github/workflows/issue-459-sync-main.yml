@@ -1,0 +1,202 @@
+name: Issue 459 sync current main
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/issue-459-sync-main.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-459-sync-main-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: >-
+      github.repository == 'Stellmaria/Velvet' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'fix/459-canonical-provider-adapters'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/459-canonical-provider-adapters
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up canonical Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Merge current main
+        shell: bash
+        run: |
+          git config user.name "ChatGPT Codex Connector"
+          git config user.email "chatgpt-codex-connector@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit --no-ff origin/main
+          printf 'Merged main: %s\n' "$(git rev-parse origin/main)"
+
+      - name: Regenerate canonical inventories
+        shell: bash
+        run: |
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/inventory_architecture_layout.py \
+            --write \
+            --label p3d-analytics-alias-retirement
+          python scripts/inventory_telegram_helpers.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md
+          python scripts/inventory_repository_layout.py \
+            --write \
+            --label p3e-repository-layout-complete
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label p1-package-architecture-baseline
+
+      - name: Synchronize generated assertions and canonical docs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          package = json.loads(Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8"))
+          shared = json.loads(Path("docs/shared_contract_inventory.json").read_text(encoding="utf-8"))
+          architecture = json.loads(Path("docs/architecture_layout_inventory.json").read_text(encoding="utf-8"))
+          repositories = json.loads(Path("docs/repository_layout_inventory.json").read_text(encoding="utf-8"))
+
+          def replace_one(text: str, pattern: str, replacement: str, *, source: str) -> str:
+              updated, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f"could not update {source}: {pattern}")
+              return updated
+
+          package_test = Path("tests/test_package_architecture_inventory.py")
+          text = package_test.read_text(encoding="utf-8")
+          replacements = (
+              (r'self\.assertEqual\(\d+, self\.inventory\["production_module_count"\]\)', f'self.assertEqual({package["production_module_count"]}, self.inventory["production_module_count"])'),
+              (r'self\.assertEqual\([\d_]+, self\.inventory\["production_loc"\]\)', f'self.assertEqual({package["production_loc"]:_}, self.inventory["production_loc"])'),
+              (r'self\.assertEqual\(\d+, self\.inventory\["root_module_count"\]\)', f'self.assertEqual({package["root_module_count"]}, self.inventory["root_module_count"])'),
+              (r'self\.assertEqual\(\d+, self\.inventory\["router_count"\]\)', f'self.assertEqual({package["router_count"]}, self.inventory["router_count"])'),
+              (r'self\.assertEqual\(\d+, self\.inventory\["repository_module_count"\]\)', f'self.assertEqual({package["repository_module_count"]}, self.inventory["repository_module_count"])'),
+              (r'self\.assertEqual\(\d+, len\(self\.inventory\["installer_graph"\]\)\)', f'self.assertEqual({len(package["installer_graph"])}, len(self.inventory["installer_graph"]))'),
+              (r'self\.assertEqual\(\d+, self\.inventory\["violation_count"\]\)', f'self.assertEqual({package["violation_count"]}, self.inventory["violation_count"])'),
+              (r'self\.assertEqual\(\d+, shared\["production_python_files"\]\)', f'self.assertEqual({shared["production_python_files"]}, shared["production_python_files"])'),
+              (r'self\.assertEqual\([\d_]+, shared\["function_count"\]\)', f'self.assertEqual({shared["function_count"]:_}, shared["function_count"])'),
+              (r'self\.assertEqual\(\d+, shared\["private_contract_access_count"\]\)', f'self.assertEqual({shared["private_contract_access_count"]}, shared["private_contract_access_count"])'),
+              (r'self\.assertEqual\(\d+, shared\["blocking_private_contract_access_count"\]\)', f'self.assertEqual({shared["blocking_private_contract_access_count"]}, shared["blocking_private_contract_access_count"])'),
+              (r'self\.assertEqual\(\d+, shared\["exact_duplicate_group_count"\]\)', f'self.assertEqual({shared["exact_duplicate_group_count"]}, shared["exact_duplicate_group_count"])'),
+              (r'self\.assertEqual\(\d+, shared\["normalized_duplicate_group_count"\]\)', f'self.assertEqual({shared["normalized_duplicate_group_count"]}, shared["normalized_duplicate_group_count"])'),
+              (r'self\.assertEqual\(\d+, shared\["semantic_near_duplicate_group_count"\]\)', f'self.assertEqual({shared["semantic_near_duplicate_group_count"]}, shared["semantic_near_duplicate_group_count"])'),
+              (r'list\(range\(1, \d+\)\)', f'list(range(1, {len(package["installer_graph"]) + 1}))'),
+              (r'Production modules: \*\*\d+\*\*', f'Production modules: **{package["production_module_count"]}**'),
+              (r'Production LOC: \*\*\d+\*\*', f'Production LOC: **{package["production_loc"]}**'),
+              (r'Startup installer stages: \*\*\d+\*\*', f'Startup installer stages: **{len(package["installer_graph"])}**'),
+              (r'Registered package violations: \*\*\d+\*\*', f'Registered package violations: **{package["violation_count"]}**'),
+              (r'Registered exemptions: \*\*\d+\*\*', f'Registered exemptions: **{package["violation_count"]}**'),
+          )
+          for pattern, replacement in replacements:
+              text = replace_one(text, pattern, replacement, source=str(package_test))
+          package_test.write_text(text, encoding="utf-8")
+
+          repository_test = Path("tests/test_p3e_repository_layout_inventory.py")
+          text = repository_test.read_text(encoding="utf-8")
+          repository_replacements = (
+              (r'self\.assertEqual\(\d+, inventory\["repository_module_count"\]\)', f'self.assertEqual({repositories["repository_module_count"]}, inventory["repository_module_count"])'),
+              (r'self\.assertEqual\(\d+, inventory\["layout_counts"\]\["domain"\]\)', f'self.assertEqual({repositories["layout_counts"]["domain"]}, inventory["layout_counts"]["domain"])'),
+              (r'self\.assertEqual\(\d+, inventory\["layout_counts"\]\["infrastructure"\]\)', f'self.assertEqual({repositories["layout_counts"]["infrastructure"]}, inventory["layout_counts"]["infrastructure"])'),
+              (r'self\.assertEqual\(\d+, inventory\["root_module_count"\]\)', f'self.assertEqual({repositories["root_module_count"]}, inventory["root_module_count"])'),
+          )
+          for pattern, replacement in repository_replacements:
+              text = replace_one(text, pattern, replacement, source=str(repository_test))
+          repository_test.write_text(text, encoding="utf-8")
+
+          navigation = Path("docs/generated/telegram_navigation_inventory.md").read_text(encoding="utf-8")
+          canonical_test = Path("tests/test_canonical_docs_sync.py")
+          text = canonical_test.read_text(encoding="utf-8")
+          for label in ("Python files scanned", "Files with buttons", "Buttons", "Violations"):
+              match = re.search(rf'{re.escape(label)}: \*\*(\d+)\*\*', navigation)
+              if match is None:
+                  raise RuntimeError(f"navigation count missing: {label}")
+              text = replace_one(
+                  text,
+                  rf'{re.escape(label)}: \*\*\d+\*\*',
+                  f'{label}: **{match.group(1)}**',
+                  source=str(canonical_test),
+              )
+          canonical_test.write_text(text, encoding="utf-8")
+
+          marker_start = "<!-- issue-459-canonical-baseline -->"
+          marker_end = "<!-- /issue-459-canonical-baseline -->"
+          block = (
+              f"{marker_start}\n"
+              f"Canonical provider baseline: {architecture['active_bundle_router_count']} active Router imports; "
+              f"{architecture['root_level_module_count']} root modules; "
+              f"{architecture['active_compatibility_component_count']} compatibility components; "
+              f"repository modules: {repositories['repository_module_count']}; "
+              f"{repositories['layout_counts']['domain']} domain repositories; "
+              f"{repositories['layout_counts']['infrastructure']} infrastructure repositories.\n"
+              f"Provider adapter baseline: {shared['production_python_files']} production Python files, "
+              f"{shared['function_count']} functions, "
+              f"{shared['private_contract_access_count']} registered private accesses, "
+              f"{shared['blocking_private_contract_access_count']} blocking contracts.\n"
+              f"{marker_end}"
+          )
+          for name in (
+              "docs/development_status.md",
+              "docs/project_memory.md",
+              "docs/ARCHITECTURE_AUDIT.md",
+          ):
+              path = Path(name)
+              value = path.read_text(encoding="utf-8")
+              pattern = re.escape(marker_start) + r".*?" + re.escape(marker_end)
+              if marker_start in value:
+                  value = re.sub(pattern, block, value, flags=re.DOTALL)
+              else:
+                  value = value.rstrip() + "\n\n" + block + "\n"
+              path.write_text(value, encoding="utf-8")
+          PY
+
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label p1-package-architecture-baseline
+
+      - name: Install locked dependencies
+        run: python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock
+
+      - name: Validate synchronized branch
+        shell: bash
+        run: |
+          python -m compileall -q main.py velvet_bot scripts tests
+          python -m unittest -v \
+            tests.test_application_composition \
+            tests.test_architecture_layout_inventory \
+            tests.test_p2_stability_inventory \
+            tests.test_p3e_repository_layout_inventory \
+            tests.test_package_architecture_inventory \
+            tests.test_telegram_navigation_inventory \
+            tests.test_canonical_docs_sync \
+            tests.test_auf_generation_receipts \
+            tests.test_auf_runtime_brand_boundary
+          git diff --check
+
+      - name: Remove one-time workflow
+        run: rm -f .github/workflows/issue-459-sync-main.yml
+
+      - name: Commit synchronized branch
+        shell: bash
+        run: |
+          git add -A
+          test -n "$(git status --porcelain)"
+          git commit -m "Sync canonical provider adapters with current main"
+          git push origin HEAD:fix/459-canonical-provider-adapters
