@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 from aiogram.exceptions import TelegramNetworkError
 from aiogram.methods import SendMessage
@@ -11,15 +13,14 @@ from velvet_bot.app.auf_branding import (
     _brand_telegram_value,
     _brand_velvet_currency_text,
 )
-from velvet_bot.app.grs_campaign_retry import (
-    _retry_delays_for_error,
-    _violation_retry_stage,
-)
 from velvet_bot.app.telegram_progress_resilience import (
     _log_transient_progress_failure,
     _provider_reason_without_unsafe_chatter,
 )
+from velvet_bot.domains.ai_usage import AITaskQueueService
 from velvet_bot.domains.media_generation import KieTaskRecord, KieTaskState
+from velvet_bot.domains.media_generation.provider_contract import grs_retry_stage
+from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 from velvet_bot.infrastructure.ai import KieTaskFailed
 
 
@@ -103,9 +104,10 @@ class AufBrandingTests(unittest.TestCase):
         self.assertEqual(payload["file_id"], branded["file_id"])
 
 
-class InstantGrsViolationRetryTests(unittest.TestCase):
-    def test_confirmed_violation_uses_zero_retry_delay(self) -> None:
-        error = KieTaskFailed(
+class InstantGrsViolationRetryTests(unittest.IsolatedAsyncioTestCase):
+    @staticmethod
+    def _violation_error() -> KieTaskFailed:
+        return KieTaskFailed(
             KieTaskRecord(
                 task_id="grs:moderated",
                 state=KieTaskState.FAIL,
@@ -115,19 +117,42 @@ class InstantGrsViolationRetryTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual((0, 0), _retry_delays_for_error(error, 5, 30))
+    async def test_confirmed_violation_uses_zero_retry_delay(self) -> None:
+        service = object.__new__(KieTaskQueueService)
+        parent_fail = AsyncMock(return_value=None)
 
-    def test_unrelated_errors_keep_existing_backoff(self) -> None:
-        self.assertEqual(
-            (5, 30),
-            _retry_delays_for_error(RuntimeError("network"), 5, 30),
-        )
+        with patch.object(AITaskQueueService, "fail", new=parent_fail):
+            await service.fail(
+                task_id=uuid4(),
+                worker_id="worker",
+                error=self._violation_error(),
+                base_delay_seconds=5,
+                max_delay_seconds=30,
+            )
+
+        self.assertEqual(0, parent_fail.await_args.kwargs["base_delay_seconds"])
+        self.assertEqual(0, parent_fail.await_args.kwargs["max_delay_seconds"])
+
+    async def test_unrelated_errors_keep_existing_backoff(self) -> None:
+        service = object.__new__(KieTaskQueueService)
+        parent_fail = AsyncMock(return_value=None)
+
+        with patch.object(AITaskQueueService, "fail", new=parent_fail):
+            await service.fail(
+                task_id=uuid4(),
+                worker_id="worker",
+                error=RuntimeError("network"),
+                base_delay_seconds=5,
+                max_delay_seconds=30,
+            )
+
+        self.assertEqual(5, parent_fail.await_args.kwargs["base_delay_seconds"])
+        self.assertEqual(30, parent_fail.await_args.kwargs["max_delay_seconds"])
 
     def test_retry_message_says_restart_is_immediate(self) -> None:
-        stage = _violation_retry_stage(
+        stage = grs_retry_stage(
             provider_attempt=3,
             max_attempts=50,
-            delay_seconds=30,
             reason_text="GRS AI не передал техническую категорию.",
         )
 

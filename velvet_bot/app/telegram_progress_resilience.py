@@ -9,19 +9,17 @@ from aiogram.exceptions import (
     TelegramNetworkError,
 )
 
-import velvet_bot.app.grs_campaign_retry as grs_campaign_retry
-import velvet_bot.app.grs_resilience as grs_resilience
 from velvet_bot.domains.ai_usage import AITask
 from velvet_bot.domains.media_generation.friendly_worker import (
     FriendlyKieGenerationWorker,
     friendly_stage,
 )
 from velvet_bot.domains.media_generation.models import KieGenerationRequest
+from velvet_bot.domains.media_generation.provider_contract import provider_reason_text
 from velvet_bot.domains.media_generation.worker import _ProgressMessage, _optional_int
 
 logger = logging.getLogger(__name__)
 _INSTALLED = False
-_ORIGINAL_PROVIDER_REASON_TEXT = grs_campaign_retry._provider_reason_without_model_chatter
 _EXTRA_MODEL_CHATTER_MARKERS = (
     "не могу создавать небезопасные изображения",
     "не могу создать небезопасное изображение",
@@ -37,7 +35,7 @@ _EXTRA_MODEL_CHATTER_MARKERS = (
 def _provider_reason_without_unsafe_chatter(value: object) -> str | None:
     """Discard conversational safety refusals that are not provider diagnostics."""
 
-    text = _ORIGINAL_PROVIDER_REASON_TEXT(value)
+    text = provider_reason_text(value)
     if text is None:
         return None
     normalized = text.casefold()
@@ -110,13 +108,12 @@ async def _publish_progress_resilient(
 
 
 def install_telegram_progress_resilience() -> None:
-    """Install transient Telegram handling after the GRS campaign worker is composed."""
+    """Install best-effort Telegram progress updates on the canonical worker."""
 
     global _INSTALLED
     if _INSTALLED:
         return
     FriendlyKieGenerationWorker._publish_progress = _publish_progress_resilient  # type: ignore[method-assign]
-    grs_resilience._provider_reason_text = _provider_reason_without_unsafe_chatter
     _INSTALLED = True
 
 

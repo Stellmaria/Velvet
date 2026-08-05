@@ -4,14 +4,12 @@ import logging
 import re
 from typing import Any
 
-from velvet_bot.app import auf_grs_brand_install as grs_brand
 from velvet_bot.app import auf_photo_model_modes as photo_modes
 from velvet_bot.app import auf_photo_ratio_callback_fix as ratio_fix
 from velvet_bot.app import auf_photo_ui_install as photo_ui
-from velvet_bot.app import grs_campaign_retry
+from velvet_bot.app.auf_owner_cost_privacy.formatting import sanitize_auf_text
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.repository import WorkspaceRepository
-from velvet_bot.infrastructure.ai import KieTaskFailed
 from velvet_bot.protected_bot import ProtectedMediaBot, _PROTECTED_MEDIA_METHODS
 from velvet_bot.presentation.telegram import workspace_home_controller as controller
 
@@ -22,12 +20,6 @@ _ACTIVE_DATABASE: Database | None = None
 _CANONICAL_PHOTO_ROUTE_INSTALLED = False
 _ORIGINAL_DATABASE_INIT = Database.__init__
 _ORIGINAL_PROTECTED_BOT_CALL = ProtectedMediaBot.__call__
-_ORIGINAL_RETRY_DELAYS = grs_campaign_retry._retry_delays_for_error
-_ORIGINAL_RETRY_REPORT = (
-    grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal
-)
-_ORIGINAL_SANITIZE_AUF_TEXT = grs_brand._sanitize_auf_text
-_ORIGINAL_INSTALL_ROUTER_PRIVACY = grs_brand._install_router_privacy
 _ATTEMPT_PREFIX_RE = re.compile(r"(?mi)^(?:Попытка|Повтор):\s*")
 
 
@@ -91,60 +83,8 @@ async def _owner_aware_bot_call(
     )
 
 
-def _instant_provider_rejection_delays(
-    error: BaseException,
-    base_delay_seconds: int,
-    max_delay_seconds: int,
-) -> tuple[int, int]:
-    if isinstance(error, KieTaskFailed):
-        return 0, 0
-    return _ORIGINAL_RETRY_DELAYS(
-        error,
-        base_delay_seconds,
-        max_delay_seconds,
-    )
-
-
-async def _report_retry_or_terminal_without_rejection_pause(
-    self: Any,
-    *,
-    task: Any,
-    request: Any,
-    progress: Any,
-    failure: object,
-    provider_attempt: int,
-    error: Exception,
-) -> None:
-    will_retry = bool(getattr(failure, "will_retry", False))
-    delay = int(getattr(failure, "retry_delay_seconds", 0) or 0)
-    if request is not None and will_retry and delay <= 0:
-        attempt = max(1, int(provider_attempt))
-        await self._publish_progress(
-            progress,
-            task=task,
-            request=request,
-            percent=max(5, progress.last_percent if progress else 5),
-            stage=(
-                f"Попытка сервиса генерации {attempt}/{task.max_attempts} "
-                "не дала результат. Следующая последовательная попытка "
-                "запускается сразу."
-            ),
-            force=True,
-        )
-        return
-    await _ORIGINAL_RETRY_REPORT(
-        self,
-        task=task,
-        request=request,
-        progress=progress,
-        failure=failure,
-        provider_attempt=provider_attempt,
-        error=error,
-    )
-
-
 def _sanitize_auf_text_with_attempt(text: str) -> str:
-    cleaned = _ORIGINAL_SANITIZE_AUF_TEXT(text)
+    cleaned = sanitize_auf_text(text, preserve_attempts=True)
     return _ATTEMPT_PREFIX_RE.sub("Текущая попытка: ", cleaned)
 
 
@@ -289,11 +229,6 @@ def _install_canonical_photo_route() -> None:
     _CANONICAL_PHOTO_ROUTE_INSTALLED = True
 
 
-def _install_router_privacy_with_canonical_photo_route() -> None:
-    _ORIGINAL_INSTALL_ROUTER_PRIVACY()
-    _install_canonical_photo_route()
-
-
 def install_workspace_owner_generation_hotfix() -> None:
     global _INSTALLED
     if _INSTALLED:
@@ -301,29 +236,12 @@ def install_workspace_owner_generation_hotfix() -> None:
 
     Database.__init__ = _capture_database_init  # type: ignore[method-assign]
     ProtectedMediaBot.__call__ = _owner_aware_bot_call  # type: ignore[method-assign]
-
-    grs_campaign_retry._retry_delays_for_error = (
-        _instant_provider_rejection_delays
-    )
-    grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal = (
-        _report_retry_or_terminal_without_rejection_pause
-    )
-
-    grs_brand._PRIVATE_LINE_PATTERNS = tuple(
-        pattern
-        for pattern in grs_brand._PRIVATE_LINE_PATTERNS
-        if "(?:Попытка|Повтор)" not in pattern
-    )
-    grs_brand._sanitize_auf_text = _sanitize_auf_text_with_attempt
-    grs_brand._install_router_privacy = (
-        _install_router_privacy_with_canonical_photo_route
-    )
+    _install_canonical_photo_route()
     _INSTALLED = True
 
 
 __all__ = (
     "_canonical_photo_action",
-    "_instant_provider_rejection_delays",
     "_sanitize_auf_text_with_attempt",
     "_user_owns_workspace",
     "install_workspace_owner_generation_hotfix",

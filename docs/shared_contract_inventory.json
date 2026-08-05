@@ -128,10 +128,8 @@
         "KieGenerationWorker"
       ],
       "notes": "Worker lifecycle owns compensation and terminal reporting.",
-      "consumer_count": 4,
+      "consumer_count": 2,
       "consumers": [
-        "velvet_bot.app.auf_grs_brand_install",
-        "velvet_bot.app.grs_speedups",
         "velvet_bot.domains.media_generation.file_delivery_worker",
         "velvet_bot.runtime_stability"
       ]
@@ -272,7 +270,7 @@
       ]
     }
   ],
-  "private_contract_access_count": 187,
+  "private_contract_access_count": 170,
   "private_contract_accesses": [
     {
       "path": "velvet_bot/app/auf_cancel_ui_install.py",
@@ -363,6 +361,46 @@
       "access_kind": "module-attribute",
       "expression": "active._load_provider_urls",
       "family": "media download/preview/original delivery"
+    },
+    {
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "module": "velvet_bot.app.auf_margin_dashboard_install",
+      "line": 23,
+      "source_module": "velvet_bot.app.auf_wallet_currency_ui",
+      "private_name": "_wallet_keyboard",
+      "access_kind": "module-attribute",
+      "expression": "wallet_ui._wallet_keyboard",
+      "family": "state compatibility accessors"
+    },
+    {
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "module": "velvet_bot.app.auf_margin_dashboard_install",
+      "line": 49,
+      "source_module": "velvet_bot.app.auf_wallet_currency_ui",
+      "private_name": "_callback",
+      "access_kind": "module-attribute",
+      "expression": "wallet_ui._callback",
+      "family": "callback navigation and back buttons"
+    },
+    {
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "module": "velvet_bot.app.auf_margin_dashboard_install",
+      "line": 88,
+      "source_module": "velvet_bot.app.auf_wallet_currency_ui",
+      "private_name": "_callback",
+      "access_kind": "module-attribute",
+      "expression": "wallet_ui._callback",
+      "family": "callback navigation and back buttons"
+    },
+    {
+      "path": "velvet_bot/app/auf_margin_dashboard_install.py",
+      "module": "velvet_bot.app.auf_margin_dashboard_install",
+      "line": 113,
+      "source_module": "velvet_bot.app.auf_wallet_currency_ui",
+      "private_name": "_wallet_keyboard",
+      "access_kind": "assignment",
+      "expression": "wallet_ui._wallet_keyboard",
+      "family": "state compatibility accessors"
     },
     {
       "path": "velvet_bot/app/auf_owner_cost_privacy_install/__init__.py",
@@ -855,146 +893,6 @@
       "family": "state compatibility accessors"
     },
     {
-      "path": "velvet_bot/app/grs_campaign_retry.py",
-      "module": "velvet_bot.app.grs_campaign_retry",
-      "line": 15,
-      "source_module": "velvet_bot.domains.media_generation.worker",
-      "private_name": "_ProgressMessage",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.domains.media_generation.worker import _ProgressMessage",
-      "family": "repeated progress-card updates"
-    },
-    {
-      "path": "velvet_bot/app/grs_campaign_retry.py",
-      "module": "velvet_bot.app.grs_campaign_retry",
-      "line": 45,
-      "source_module": "velvet_bot.infrastructure.ai.KieClient",
-      "private_name": "_create_grs_task",
-      "access_kind": "module-attribute",
-      "expression": "KieClient._create_grs_task",
-      "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/app/grs_campaign_retry.py",
-      "module": "velvet_bot.app.grs_campaign_retry",
-      "line": 116,
-      "source_module": "velvet_bot.app.grs_resilience",
-      "private_name": "_ORIGINAL_QUEUE_FAIL",
-      "access_kind": "module-attribute",
-      "expression": "grs_resilience._ORIGINAL_QUEUE_FAIL",
-      "family": "media download/preview/original delivery"
-    },
-    {
-      "path": "velvet_bot/app/grs_campaign_retry.py",
-      "module": "velvet_bot.app.grs_campaign_retry",
-      "line": 233,
-      "source_module": "velvet_bot.app.grs_resilience",
-      "private_name": "_format_credits",
-      "access_kind": "module-attribute",
-      "expression": "grs_resilience._format_credits",
-      "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/app/grs_campaign_retry.py",
-      "module": "velvet_bot.app.grs_campaign_retry",
-      "line": 272,
-      "source_module": "velvet_bot.infrastructure.ai.KieClient",
-      "private_name": "_create_grs_task",
-      "access_kind": "assignment",
-      "expression": "KieClient._create_grs_task",
-      "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/app/grs_resilience.py",
-      "module": "velvet_bot.app.grs_resilience",
-      "line": 25,
-      "source_module": "velvet_bot.domains.media_generation.worker",
-      "private_name": "_ProgressMessage",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.domains.media_generation.worker import _ProgressMessage",
-      "family": "repeated progress-card updates"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 19,
-      "source_module": "velvet_bot.domains.media_generation.economy_worker",
-      "private_name": "_reference_url_failure",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.domains.media_generation.economy_worker import _reference_url_failure",
-      "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 28,
-      "source_module": "velvet_bot.domains.media_generation.worker",
-      "private_name": "_ProgressMessage",
-      "access_kind": "direct-import",
-      "expression": "from velvet_bot.domains.media_generation.worker import _ProgressMessage",
-      "family": "repeated progress-card updates"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 41,
-      "source_module": "velvet_bot.domains.media_generation.friendly_worker.FriendlyKieGenerationWorker",
-      "private_name": "_friendly_progress_text",
-      "access_kind": "module-attribute",
-      "expression": "FriendlyKieGenerationWorker._friendly_progress_text",
-      "family": "repeated progress-card updates"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 42,
-      "source_module": "velvet_bot.domains.media_generation.economy_worker.KieGenerationWorker",
-      "private_name": "_record_provider_result",
-      "access_kind": "module-attribute",
-      "expression": "EconomyKieGenerationWorker._record_provider_result",
-      "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 340,
-      "source_module": "velvet_bot.domains.media_generation.friendly_worker.FriendlyKieGenerationWorker",
-      "private_name": "_start_progress",
-      "access_kind": "assignment",
-      "expression": "FriendlyKieGenerationWorker._start_progress",
-      "family": "repeated progress-card updates"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 343,
-      "source_module": "velvet_bot.domains.media_generation.friendly_worker.FriendlyKieGenerationWorker",
-      "private_name": "_friendly_progress_text",
-      "access_kind": "assignment",
-      "expression": "FriendlyKieGenerationWorker._friendly_progress_text",
-      "family": "repeated progress-card updates"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 346,
-      "source_module": "velvet_bot.domains.media_generation.worker.KieGenerationWorker",
-      "private_name": "_upload_references",
-      "access_kind": "assignment",
-      "expression": "BaseKieGenerationWorker._upload_references",
-      "family": "other repeated implementation"
-    },
-    {
-      "path": "velvet_bot/app/grs_speedups.py",
-      "module": "velvet_bot.app.grs_speedups",
-      "line": 349,
-      "source_module": "velvet_bot.domains.media_generation.economy_worker.KieGenerationWorker",
-      "private_name": "_record_provider_result",
-      "access_kind": "assignment",
-      "expression": "EconomyKieGenerationWorker._record_provider_result",
-      "family": "other repeated implementation"
-    },
-    {
       "path": "velvet_bot/app/original_image_delivery_hotfix.py",
       "module": "velvet_bot.app.original_image_delivery_hotfix",
       "line": 115,
@@ -1037,7 +935,7 @@
     {
       "path": "velvet_bot/app/telegram_progress_resilience.py",
       "module": "velvet_bot.app.telegram_progress_resilience",
-      "line": 20,
+      "line": 19,
       "source_module": "velvet_bot.domains.media_generation.worker",
       "private_name": "_ProgressMessage",
       "access_kind": "direct-import",
@@ -1047,17 +945,7 @@
     {
       "path": "velvet_bot/app/telegram_progress_resilience.py",
       "module": "velvet_bot.app.telegram_progress_resilience",
-      "line": 24,
-      "source_module": "velvet_bot.app.grs_campaign_retry",
-      "private_name": "_provider_reason_without_model_chatter",
-      "access_kind": "module-attribute",
-      "expression": "grs_campaign_retry._provider_reason_without_model_chatter",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/telegram_progress_resilience.py",
-      "module": "velvet_bot.app.telegram_progress_resilience",
-      "line": 118,
+      "line": 116,
       "source_module": "velvet_bot.domains.media_generation.friendly_worker.FriendlyKieGenerationWorker",
       "private_name": "_publish_progress",
       "access_kind": "assignment",
@@ -1067,27 +955,7 @@
     {
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
       "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 25,
-      "source_module": "velvet_bot.app.grs_campaign_retry",
-      "private_name": "_retry_delays_for_error",
-      "access_kind": "module-attribute",
-      "expression": "grs_campaign_retry._retry_delays_for_error",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 27,
-      "source_module": "velvet_bot.app.grs_campaign_retry.CampaignGrsGenerationWorker",
-      "private_name": "_report_retry_or_terminal",
-      "access_kind": "module-attribute",
-      "expression": "grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 192,
+      "line": 132,
       "source_module": "velvet_bot.app.auf_photo_model_modes",
       "private_name": "_model",
       "access_kind": "module-attribute",
@@ -1097,51 +965,11 @@
     {
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
       "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 192,
+      "line": 132,
       "source_module": "velvet_bot.app.auf_photo_model_modes",
       "private_name": "_state_value",
       "access_kind": "module-attribute",
       "expression": "photo_modes._state_value",
-      "family": "state compatibility accessors"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 305,
-      "source_module": "velvet_bot.app.grs_campaign_retry",
-      "private_name": "_retry_delays_for_error",
-      "access_kind": "assignment",
-      "expression": "grs_campaign_retry._retry_delays_for_error",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 308,
-      "source_module": "velvet_bot.app.grs_campaign_retry.CampaignGrsGenerationWorker",
-      "private_name": "_report_retry_or_terminal",
-      "access_kind": "assignment",
-      "expression": "grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 312,
-      "source_module": "velvet_bot.app.auf_grs_brand_install",
-      "private_name": "_PRIVATE_LINE_PATTERNS",
-      "access_kind": "assignment",
-      "expression": "grs_brand._PRIVATE_LINE_PATTERNS",
-      "family": "state compatibility accessors"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 314,
-      "source_module": "velvet_bot.app.auf_grs_brand_install",
-      "private_name": "_PRIVATE_LINE_PATTERNS",
-      "access_kind": "module-attribute",
-      "expression": "grs_brand._PRIVATE_LINE_PATTERNS",
       "family": "state compatibility accessors"
     },
     {
@@ -1237,7 +1065,7 @@
     {
       "path": "velvet_bot/infrastructure/ai/__init__.py",
       "module": "velvet_bot.infrastructure.ai.__init__",
-      "line": 12,
+      "line": 20,
       "source_module": "velvet_bot.infrastructure.ai.kie",
       "private_name": "_build_wan_27_input",
       "access_kind": "direct-import",
@@ -2212,29 +2040,29 @@
       "current_occurrences": []
     }
   ],
-  "exact_duplicate_group_count": 65,
-  "normalized_duplicate_group_count": 97,
+  "exact_duplicate_group_count": 66,
+  "normalized_duplicate_group_count": 96,
   "semantic_near_duplicate_group_count": 9,
   "duplicate_kind_counts": {
-    "allowed-template": 34,
+    "allowed-template": 36,
     "generated/compat": 1,
-    "normalized-near-duplicate": 96,
-    "real-duplicate": 31,
+    "normalized-near-duplicate": 95,
+    "real-duplicate": 30,
     "semantic-near-duplicate": 9
   },
   "duplicate_family_counts": {
     "callback navigation and back buttons": 17,
     "deletion helpers": 4,
-    "media download/preview/original delivery": 21,
+    "media download/preview/original delivery": 19,
     "message chunking/HTML fallback": 1,
-    "other repeated implementation": 85,
+    "other repeated implementation": 87,
     "owner/editor/member guards": 6,
     "pagination keyboards": 1,
     "provider/model labels": 1,
     "repeated progress-card updates": 2,
-    "retry/backoff policies": 3,
+    "retry/backoff policies": 4,
     "safe edit/send fallback": 8,
-    "state compatibility accessors": 16,
+    "state compatibility accessors": 15,
     "task payload/result mapping/formatting": 5,
     "workspace task history/ownership queries": 1
   },
@@ -2560,8 +2388,8 @@
           "path": "velvet_bot/domains/media_generation/task_queue.py",
           "module": "velvet_bot.domains.media_generation.task_queue",
           "name": "_delivery_metadata",
-          "line": 340,
-          "end_line": 350
+          "line": 372,
+          "end_line": 382
         },
         {
           "path": "velvet_bot/infrastructure/media_delivery_repository_helpers.py",
@@ -2582,8 +2410,8 @@
           "path": "velvet_bot/domains/media_generation/task_queue.py",
           "module": "velvet_bot.domains.media_generation.task_queue",
           "name": "_first_text",
-          "line": 353,
-          "end_line": 358
+          "line": 385,
+          "end_line": 390
         },
         {
           "path": "velvet_bot/infrastructure/media_delivery_repository_helpers.py",
@@ -2895,28 +2723,6 @@
       ]
     },
     {
-      "digest": "4a76e7ece4aff7a2d7925602f6307a31edb53d68b4a7897700c85156f107a762",
-      "kind": "real-duplicate",
-      "family": "state compatibility accessors",
-      "reason": "exact normalized AST body",
-      "occurrences": [
-        {
-          "path": "velvet_bot/domains/auf_wallet/purchase.py",
-          "module": "velvet_bot.domains.auf_wallet.purchase",
-          "name": "__init__",
-          "line": 504,
-          "end_line": 510
-        },
-        {
-          "path": "velvet_bot/domains/auf_wallet/service.py",
-          "module": "velvet_bot.domains.auf_wallet.service",
-          "name": "__init__",
-          "line": 37,
-          "end_line": 43
-        }
-      ]
-    },
-    {
       "digest": "4beca02ebf68454222d008fd1fa9e6bf8bd0d753cc69cd0f6f4689868eff5de9",
       "kind": "allowed-template",
       "family": "other repeated implementation",
@@ -3027,15 +2833,15 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_optional_int",
-          "line": 820,
-          "end_line": 826
+          "line": 834,
+          "end_line": 840
         },
         {
           "path": "velvet_bot/domains/media_generation/task_queue.py",
           "module": "velvet_bot.domains.media_generation.task_queue",
           "name": "_optional_int",
-          "line": 361,
-          "end_line": 367
+          "line": 393,
+          "end_line": 399
         },
         {
           "path": "velvet_bot/domains/media_generation/worker.py",
@@ -3127,8 +2933,8 @@
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_non_negative_int",
-          "line": 808,
-          "end_line": 812
+          "line": 822,
+          "end_line": 826
         }
       ]
     },
@@ -3342,6 +3148,28 @@
       ]
     },
     {
+      "digest": "7cd39db97ead3b908da377108b07a7554e7b963cd83633d542b468951cedbb82",
+      "kind": "allowed-template",
+      "family": "other repeated implementation",
+      "reason": "exact normalized AST body",
+      "occurrences": [
+        {
+          "path": "velvet_bot/infrastructure/ai/provider_adapters.py",
+          "module": "velvet_bot.infrastructure.ai.provider_adapters",
+          "name": "usage",
+          "line": 53,
+          "end_line": 60
+        },
+        {
+          "path": "velvet_bot/infrastructure/ai/provider_adapters.py",
+          "module": "velvet_bot.infrastructure.ai.provider_adapters",
+          "name": "usage",
+          "line": 94,
+          "end_line": 101
+        }
+      ]
+    },
+    {
       "digest": "80e2d392a1642284327a4a1a08597f103c55a64b0c8549e403bbc1914b27d8a9",
       "kind": "allowed-template",
       "family": "other repeated implementation",
@@ -3417,8 +3245,8 @@
           "path": "velvet_bot/domains/telegram_storage/librarian_models.py",
           "module": "velvet_bot.domains.telegram_storage.librarian_models",
           "name": "_int_env",
-          "line": 41,
-          "end_line": 46
+          "line": 45,
+          "end_line": 50
         },
         {
           "path": "velvet_bot/domains/telegram_storage/models.py",
@@ -3484,6 +3312,28 @@
           "name": "_build_service",
           "line": 51,
           "end_line": 56
+        }
+      ]
+    },
+    {
+      "digest": "9c7cce4a777075f9be17e5a8908cff104e739bd5912df490b423c2646128bb62",
+      "kind": "allowed-template",
+      "family": "other repeated implementation",
+      "reason": "exact normalized AST body",
+      "occurrences": [
+        {
+          "path": "velvet_bot/infrastructure/ai/provider_adapters.py",
+          "module": "velvet_bot.infrastructure.ai.provider_adapters",
+          "name": "route",
+          "line": 26,
+          "end_line": 30
+        },
+        {
+          "path": "velvet_bot/infrastructure/ai/provider_adapters.py",
+          "module": "velvet_bot.infrastructure.ai.provider_adapters",
+          "name": "route",
+          "line": 69,
+          "end_line": 73
         }
       ]
     },
@@ -4034,8 +3884,8 @@
           "path": "velvet_bot/ai_vision.py",
           "module": "velvet_bot.ai_vision",
           "name": "__init__",
-          "line": 661,
-          "end_line": 675
+          "line": 662,
+          "end_line": 676
         },
         {
           "path": "velvet_bot/services/workspace_qwen_quality.py",
@@ -4188,6 +4038,28 @@
       ]
     },
     {
+      "digest": "0ad339ddf23a5fce5e3355d3bf0d6e9a1dd22f930859f5dbdbb8bc2eea600ecc",
+      "kind": "normalized-near-duplicate",
+      "family": "retry/backoff policies",
+      "reason": "AST normalized across local names, literals and image/video media leaves",
+      "occurrences": [
+        {
+          "path": "velvet_bot/domains/media_generation/provider_contract.py",
+          "module": "velvet_bot.domains.media_generation.provider_contract",
+          "name": "grs_retry_stage",
+          "line": 305,
+          "end_line": 316
+        },
+        {
+          "path": "velvet_bot/domains/media_generation/provider_contract.py",
+          "module": "velvet_bot.domains.media_generation.provider_contract",
+          "name": "grs_terminal_stage",
+          "line": 319,
+          "end_line": 330
+        }
+      ]
+    },
+    {
       "digest": "0c0020743b2414060288b9fc9588a4979d8f221a95e25eb5dbc566333805308f",
       "kind": "normalized-near-duplicate",
       "family": "other repeated implementation",
@@ -4279,28 +4151,6 @@
           "name": "_module_key",
           "line": 79,
           "end_line": 82
-        }
-      ]
-    },
-    {
-      "digest": "16d0de59763709767ac7f41d5870a208c41e708f51a2fb55e51b099830c58fd8",
-      "kind": "normalized-near-duplicate",
-      "family": "media download/preview/original delivery",
-      "reason": "AST normalized across local names, literals and image/video media leaves",
-      "occurrences": [
-        {
-          "path": "velvet_bot/app/auf_grs_brand_install.py",
-          "module": "velvet_bot.app.auf_grs_brand_install",
-          "name": "_wrap_text_function",
-          "line": 166,
-          "end_line": 175
-        },
-        {
-          "path": "velvet_bot/app/auf_grs_brand_install.py",
-          "module": "velvet_bot.app.auf_grs_brand_install",
-          "name": "_wrap_keyboard_function",
-          "line": 178,
-          "end_line": 187
         }
       ]
     },
@@ -4611,8 +4461,8 @@
           "path": "velvet_bot/ai_vision.py",
           "module": "velvet_bot.ai_vision",
           "name": "_provider_available",
-          "line": 677,
-          "end_line": 692
+          "line": 678,
+          "end_line": 693
         }
       ]
     },
@@ -4850,8 +4700,8 @@
           "path": "velvet_bot/domains/telegram_storage/librarian_models.py",
           "module": "velvet_bot.domains.telegram_storage.librarian_models",
           "name": "_bool_env",
-          "line": 30,
-          "end_line": 38
+          "line": 34,
+          "end_line": 42
         },
         {
           "path": "velvet_bot/domains/telegram_storage/models.py",
@@ -6041,8 +5891,8 @@
           "path": "velvet_bot/ai_vision.py",
           "module": "velvet_bot.ai_vision",
           "name": "mark_error",
-          "line": 611,
-          "end_line": 636
+          "line": 612,
+          "end_line": 637
         }
       ]
     },
@@ -6065,28 +5915,6 @@
           "name": "_callback",
           "line": 71,
           "end_line": 85
-        }
-      ]
-    },
-    {
-      "digest": "be54ad12ea98d543ca9ec5af8deffd69a367fa3b06d628ac60e43fe9cd72b2be",
-      "kind": "normalized-near-duplicate",
-      "family": "media download/preview/original delivery",
-      "reason": "AST normalized across local names, literals and image/video media leaves",
-      "occurrences": [
-        {
-          "path": "velvet_bot/app/grs_campaign_retry.py",
-          "module": "velvet_bot.app.grs_campaign_retry",
-          "name": "_provider_reason_without_model_chatter",
-          "line": 75,
-          "end_line": 84
-        },
-        {
-          "path": "velvet_bot/app/telegram_progress_resilience.py",
-          "module": "velvet_bot.app.telegram_progress_resilience",
-          "name": "_provider_reason_without_unsafe_chatter",
-          "line": 37,
-          "end_line": 46
         }
       ]
     },
@@ -6355,8 +6183,8 @@
           "path": "velvet_bot/domains/telegram_storage/librarian_repository.py",
           "module": "velvet_bot.domains.telegram_storage.librarian_repository",
           "name": "analysis_by_object_id",
-          "line": 480,
-          "end_line": 499
+          "line": 487,
+          "end_line": 506
         }
       ]
     },
@@ -6690,7 +6518,7 @@
   ],
   "semantic_near_duplicate_groups": [
     {
-      "digest": "c0bd4fc03e845bd3d84bcae28c7b4981816953bf5e6ff5e9cdb42909e75a60e1",
+      "digest": "a9b6914e861e93bef98e1cf3f34a74857d1458b54215924309748e99f5ec4fa2",
       "kind": "semantic-near-duplicate",
       "family": "media download/preview/original delivery",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -6715,13 +6543,6 @@
           "name": "send_direct_url_fallback",
           "line": 158,
           "end_line": 225
-        },
-        {
-          "path": "velvet_bot/app/grs_resilience.py",
-          "module": "velvet_bot.app.grs_resilience",
-          "name": "_deliver_best_effort",
-          "line": 531,
-          "end_line": 570
         },
         {
           "path": "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -7420,7 +7241,7 @@
       ]
     },
     {
-      "digest": "68f49cd5c0cda96c61b0a0ed6677f221a043529326c4fa06affbb3346b8780fc",
+      "digest": "257873b6fbd29a5a9de4833eeb2a20671690997822aed7aeec248d47477b158b",
       "kind": "semantic-near-duplicate",
       "family": "provider/model labels",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -7629,13 +7450,6 @@
           "end_line": 472
         },
         {
-          "path": "velvet_bot/app/grs_resilience.py",
-          "module": "velvet_bot.app.grs_resilience",
-          "name": "_deliver_best_effort",
-          "line": 531,
-          "end_line": 570
-        },
-        {
           "path": "velvet_bot/app/media_delivery_ui_install.py",
           "module": "velvet_bot.app.media_delivery_ui_install",
           "name": "from_row",
@@ -7682,14 +7496,14 @@
           "module": "velvet_bot.domains.auf_wallet.charged_queue",
           "name": "_reserve_charge",
           "line": 85,
-          "end_line": 203
+          "end_line": 228
         },
         {
           "path": "velvet_bot/domains/auf_wallet/pricing.py",
           "module": "velvet_bot.domains.auf_wallet.pricing",
-          "name": "quote_auf_payload",
-          "line": 166,
-          "end_line": 340
+          "name": "_load_price_version",
+          "line": 318,
+          "end_line": 354
         },
         {
           "path": "velvet_bot/domains/media_generation/economy_worker.py",
@@ -7716,29 +7530,29 @@
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
           "module": "velvet_bot.domains.media_generation.friendly_worker",
           "name": "_friendly_progress_text",
-          "line": 183,
-          "end_line": 236
+          "line": 405,
+          "end_line": 458
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "display_name",
-          "line": 28,
-          "end_line": 33
+          "line": 33,
+          "end_line": 38
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "display_name",
-          "line": 83,
-          "end_line": 96
+          "line": 88,
+          "end_line": 101
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "__post_init__",
-          "line": 465,
-          "end_line": 518
+          "line": 470,
+          "end_line": 523
         },
         {
           "path": "velvet_bot/domains/media_generation/worker.py",
@@ -7869,38 +7683,31 @@
       ]
     },
     {
-      "digest": "e1332b5597ef9785b30dc717be7679ebfdbbbfc4e1173e729c0534bd7fe4a389",
+      "digest": "cbadda90bc0ea0dbd140f83a965f2c3b582097ef5fbb7baf39692d967df9638b",
       "kind": "semantic-near-duplicate",
       "family": "repeated progress-card updates",
       "reason": "shared transport/domain signals despite different names and literals",
       "occurrences": [
         {
-          "path": "velvet_bot/app/grs_speedups.py",
-          "module": "velvet_bot.app.grs_speedups",
-          "name": "_fast_start_progress",
-          "line": 137,
-          "end_line": 165
-        },
-        {
           "path": "velvet_bot/app/telegram_progress_resilience.py",
           "module": "velvet_bot.app.telegram_progress_resilience",
           "name": "_publish_progress_resilient",
-          "line": 59,
-          "end_line": 109
+          "line": 57,
+          "end_line": 107
         },
         {
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
           "module": "velvet_bot.domains.media_generation.friendly_worker",
           "name": "_start_progress",
-          "line": 96,
-          "end_line": 131
+          "line": 322,
+          "end_line": 353
         },
         {
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
           "module": "velvet_bot.domains.media_generation.friendly_worker",
           "name": "_publish_progress",
-          "line": 133,
-          "end_line": 181
+          "line": 355,
+          "end_line": 403
         },
         {
           "path": "velvet_bot/domains/media_generation/worker.py",
@@ -7969,7 +7776,7 @@
       ]
     },
     {
-      "digest": "a05b5bebf6198a3cff8017baa450d4223658d720bcade728490a953551a08d38",
+      "digest": "17ce68c567778f161ef4259f70740e60561dd1cf6742d5410ea9a7be56cb033d",
       "kind": "semantic-near-duplicate",
       "family": "safe edit/send fallback",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -7985,15 +7792,15 @@
           "path": "velvet_bot/app/telegram_progress_resilience.py",
           "module": "velvet_bot.app.telegram_progress_resilience",
           "name": "_publish_progress_resilient",
-          "line": 59,
-          "end_line": 109
+          "line": 57,
+          "end_line": 107
         },
         {
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
           "module": "velvet_bot.domains.media_generation.friendly_worker",
           "name": "_publish_progress",
-          "line": 133,
-          "end_line": 181
+          "line": 355,
+          "end_line": 403
         },
         {
           "path": "velvet_bot/domains/media_generation/worker.py",
@@ -8174,8 +7981,8 @@
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_provider_balances.py",
           "module": "velvet_bot.presentation.telegram.routers.workspace_auf_provider_balances",
           "name": "handle_auf_provider_balances",
-          "line": 237,
-          "end_line": 295
+          "line": 400,
+          "end_line": 460
         },
         {
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf_root.py",
@@ -8390,31 +8197,17 @@
       ]
     },
     {
-      "digest": "7bfcf9065fe814405dfc35a9522f136fc35a708f30d68cf33eaa9d509b88962f",
+      "digest": "934b04b33c898a45a1239361f893f56318244ea6243b4a362f7889e0c59f44c7",
       "kind": "semantic-near-duplicate",
       "family": "state compatibility accessors",
       "reason": "shared transport/domain signals despite different names and literals",
       "occurrences": [
-        {
-          "path": "velvet_bot/app/auf_grs_brand_install.py",
-          "module": "velvet_bot.app.auf_grs_brand_install",
-          "name": "install_auf_grs_brand",
-          "line": 315,
-          "end_line": 345
-        },
         {
           "path": "velvet_bot/app/auf_photo_ui_install.py",
           "module": "velvet_bot.app.auf_photo_ui_install",
           "name": "_state_value",
           "line": 29,
           "end_line": 32
-        },
-        {
-          "path": "velvet_bot/app/grs_resilience.py",
-          "module": "velvet_bot.app.grs_resilience",
-          "name": "_install_auf_text_cleanup",
-          "line": 577,
-          "end_line": 589
         },
         {
           "path": "velvet_bot/presentation/telegram/routers/workspace_auf.py",
@@ -8433,7 +8226,7 @@
       ]
     },
     {
-      "digest": "70ea3363ca4aa99059c3e21cfc59e89a46af25f53580e0106951af86806b68c9",
+      "digest": "00be6f271b9eadf2811f6ae71b6037e0617f8d3fd44786e9c090b1a9796aa1fe",
       "kind": "semantic-near-duplicate",
       "family": "task payload/result mapping/formatting",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -8495,13 +8288,6 @@
           "end_line": 455
         },
         {
-          "path": "velvet_bot/app/grs_resilience.py",
-          "module": "velvet_bot.app.grs_resilience",
-          "name": "_deliver_best_effort",
-          "line": 531,
-          "end_line": 570
-        },
-        {
           "path": "velvet_bot/application/media_tasks/contracts.py",
           "module": "velvet_bot.application.media_tasks.contracts",
           "name": "task_result_urls",
@@ -8540,36 +8326,36 @@
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
           "module": "velvet_bot.domains.media_generation.friendly_worker",
           "name": "_request_from_payload",
-          "line": 347,
-          "end_line": 354
+          "line": 570,
+          "end_line": 577
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "from_task_payload",
-          "line": 650,
-          "end_line": 687
+          "line": 655,
+          "end_line": 692
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "from_api",
-          "line": 709,
-          "end_line": 733
+          "line": 714,
+          "end_line": 738
         },
         {
           "path": "velvet_bot/domains/media_generation/models.py",
           "module": "velvet_bot.domains.media_generation.models",
           "name": "_extract_result_urls",
-          "line": 793,
-          "end_line": 805
+          "line": 807,
+          "end_line": 819
         },
         {
           "path": "velvet_bot/domains/media_generation/task_queue.py",
           "module": "velvet_bot.domains.media_generation.task_queue",
           "name": "_record_success_best_effort",
-          "line": 281,
-          "end_line": 320
+          "line": 306,
+          "end_line": 345
         },
         {
           "path": "velvet_bot/domains/media_generation/worker.py",
@@ -8600,6 +8386,20 @@
           "end_line": 586
         },
         {
+          "path": "velvet_bot/infrastructure/ai/provider_adapters.py",
+          "module": "velvet_bot.infrastructure.ai.provider_adapters",
+          "name": "usage",
+          "line": 53,
+          "end_line": 60
+        },
+        {
+          "path": "velvet_bot/infrastructure/ai/provider_adapters.py",
+          "module": "velvet_bot.infrastructure.ai.provider_adapters",
+          "name": "usage",
+          "line": 94,
+          "end_line": 101
+        },
+        {
           "path": "velvet_bot/infrastructure/media_delivery_repository_backfill.py",
           "module": "velvet_bot.infrastructure.media_delivery_repository_backfill",
           "name": "_backfill_row",
@@ -8616,18 +8416,11 @@
       ]
     },
     {
-      "digest": "4750ab69bafaa4dec244b1d4621212bbd1f703eeb1759a916786b3086c418585",
+      "digest": "6babf2c6338bcbf1bb5d9c6017c8e543f62e13a25cdb6c251462dfb8298a66da",
       "kind": "semantic-near-duplicate",
       "family": "workspace task history/ownership queries",
       "reason": "shared transport/domain signals despite different names and literals",
       "occurrences": [
-        {
-          "path": "velvet_bot/app/grs_resilience.py",
-          "module": "velvet_bot.app.grs_resilience",
-          "name": "_queue_fail_with_grs_violation_limit",
-          "line": 338,
-          "end_line": 373
-        },
         {
           "path": "velvet_bot/application/workspace_tasks.py",
           "module": "velvet_bot.application.workspace_tasks",
@@ -8709,8 +8502,8 @@
           "path": "velvet_bot/domains/media_generation/task_queue.py",
           "module": "velvet_bot.domains.media_generation.task_queue",
           "name": "_record_submission_best_effort",
-          "line": 241,
-          "end_line": 279
+          "line": 266,
+          "end_line": 304
         },
         {
           "path": "velvet_bot/domains/vision_batches/store.py",

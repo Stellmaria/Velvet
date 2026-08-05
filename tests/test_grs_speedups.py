@@ -5,13 +5,15 @@ import unittest
 from decimal import Decimal
 from types import SimpleNamespace
 
-import velvet_bot.app.grs_speedups as speedups
-from velvet_bot.app.grs_speedups import _fast_upload_references
+import velvet_bot.domains.media_generation.friendly_worker as speedups
 from velvet_bot.domains.media_generation import (
     KieGenerationRequest,
     KieInputMode,
     KieModelAlias,
     KieReferenceImage,
+)
+from velvet_bot.domains.media_generation.friendly_worker import (
+    FriendlyKieGenerationWorker,
 )
 from velvet_bot.presentation.telegram.routers.workspace_auf_grs_balance import (
     _render_grs_balance,
@@ -104,11 +106,11 @@ class GrsReferenceSpeedupTests(unittest.IsolatedAsyncioTestCase):
         )
         task = SimpleNamespace(payload={})
 
-        prepared = await _fast_upload_references(
-            worker,
+        prepared = await FriendlyKieGenerationWorker._upload_references(
+            worker,  # type: ignore[arg-type]
             queue_task_id="queue-id",
             request=request,
-            task=task,
+            task=task,  # type: ignore[arg-type]
             progress=None,
         )
 
@@ -141,18 +143,18 @@ class GrsReferenceSpeedupTests(unittest.IsolatedAsyncioTestCase):
         )
         task = SimpleNamespace(payload={})
 
-        first = await _fast_upload_references(
-            worker,
+        first = await FriendlyKieGenerationWorker._upload_references(
+            worker,  # type: ignore[arg-type]
             queue_task_id="first",
             request=request,
-            task=task,
+            task=task,  # type: ignore[arg-type]
             progress=None,
         )
-        second = await _fast_upload_references(
-            worker,
+        second = await FriendlyKieGenerationWorker._upload_references(
+            worker,  # type: ignore[arg-type]
             queue_task_id="second",
             request=request,
-            task=task,
+            task=task,  # type: ignore[arg-type]
             progress=None,
         )
 

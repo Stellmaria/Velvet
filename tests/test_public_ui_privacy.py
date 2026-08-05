@@ -5,7 +5,7 @@ import unittest
 from aiogram.methods import SendMessage
 
 from velvet_bot.app.auf_branding import _brand_telegram_value
-from velvet_bot.app.auf_grs_brand_install import _sanitize_auf_text
+from velvet_bot.app.auf_owner_cost_privacy.formatting import sanitize_auf_text
 from velvet_bot.presentation.telegram.routers.workspace_auf_grs import (
     model_selection_text,
 )
@@ -26,7 +26,7 @@ class AufPublicUiPrivacyTests(unittest.TestCase):
             "Нужно заполнить GRS_API_KEY и открыть https://grsai.com/private."
         )
 
-        public = _sanitize_auf_text(text)
+        public = sanitize_auf_text(text)
 
         for private_value in (
             "GRS AI",
