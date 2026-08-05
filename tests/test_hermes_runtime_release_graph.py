@@ -101,6 +101,16 @@ def test_canonical_release_preserves_images_and_removes_legacy_dropin() -> None:
     assert 'rm -f -- "$LEGACY_DROPIN"' in release
 
 
+def test_canonical_release_uses_app_user_for_production_git_metadata() -> None:
+    release = (CODER_ROOT / "release.sh").read_text(encoding="utf-8")
+
+    assert 'APP_USER="${HERMES_CODERS_APP_USER:-velvet}"' in release
+    assert 'runuser -u "$APP_USER" -- git -C "$APP_DIR" fetch' in release
+    assert 'runuser -u "$APP_USER" -- git -C "$APP_DIR" rev-parse origin/main' in release
+    assert "\ncd \"$APP_DIR\"\n" not in release
+    assert "\ngit fetch --no-tags --prune origin main\n" not in release
+
+
 def test_canonical_release_shell_syntax() -> None:
     result = subprocess.run(
         ["bash", "-n", str(CODER_ROOT / "release.sh")],

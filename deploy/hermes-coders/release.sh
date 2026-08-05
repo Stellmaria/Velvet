@@ -8,6 +8,7 @@ fi
 
 TARGET_SHA="${1:-}"
 APP_DIR="${2:-/srv/velvet}"
+APP_USER="${HERMES_CODERS_APP_USER:-velvet}"
 ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
 REPO_ROOT="${HERMES_RELEASE_ROOT:-}"
 SOURCE_DIR="$REPO_ROOT/deploy/hermes-coders"
@@ -25,6 +26,10 @@ if [[ ! "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
 fi
 if [[ -z "$REPO_ROOT" || "$REPO_ROOT" != /* ]]; then
   echo "HERMES_RELEASE_ROOT must name the exact detached release worktree." >&2
+  exit 2
+fi
+if ! id "$APP_USER" >/dev/null 2>&1; then
+  echo "Hermes application user does not exist: $APP_USER" >&2
   exit 2
 fi
 for required in \
@@ -52,10 +57,11 @@ if ! flock -n 9; then
   exit 75
 fi
 
-cd "$APP_DIR"
-test -d .git
-git fetch --no-tags --prune origin main
-REMOTE_MAIN="$(git rev-parse origin/main)"
+test -d "$APP_DIR/.git"
+runuser -u "$APP_USER" -- git -C "$APP_DIR" fetch --no-tags --prune origin main
+REMOTE_MAIN="$(
+  runuser -u "$APP_USER" -- git -C "$APP_DIR" rev-parse origin/main
+)"
 if [[ "$REMOTE_MAIN" != "$TARGET_SHA" ]]; then
   echo "Target is no longer current main: $TARGET_SHA != $REMOTE_MAIN" >&2
   exit 2
