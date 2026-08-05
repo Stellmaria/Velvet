@@ -27,6 +27,7 @@ services:
       CODEX_EXECUTION_BACKEND: launcher
       HERMES_SANDBOX_LAUNCHER_SOCKET: /run/hermes-sandbox/launcher.sock
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
+      # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
     volumes:
@@ -54,6 +55,7 @@ services:
       CODEX_EXECUTION_BACKEND: launcher
       HERMES_SANDBOX_LAUNCHER_SOCKET: /run/hermes-sandbox/launcher.sock
       CODEX_PROVIDER_FALLBACK_ENABLED: "true"
+      # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
     volumes:
