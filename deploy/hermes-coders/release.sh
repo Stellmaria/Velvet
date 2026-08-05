@@ -194,6 +194,7 @@ rollback() {
     else
       rollback_compose=(
         docker compose
+        --env-file "$ROOT/launcher.env"
         --project-name hermes-coders
         --profile velvet
         --profile max
