@@ -19,7 +19,7 @@
 
 Из-за раннего выхода не были выполнены canonical coder reconcile, установка актуального AppArmor profile, systemd reconciliation и запуск coder router. Последующие ручные рестарты повторно использовали старую failed-конфигурацию.
 
-### Планируемые изменения
+### Планируемый объём
 
 - установить executable mode для `deploy/hermes-coders/install.sh` в Git tree;
 - добавить regression contract, который проверяет owner execute bit и прямой orchestration call;
@@ -39,7 +39,7 @@
 - orchestration сохраняет единственный canonical вызов installer;
 - обязательные CI-проверки проходят.
 
-### Риски и допущения
+### Риски и ограничения
 
 - production checkout ещё находится на более старом commit и требует controlled update;
 - перед rollout необходимо восстановить ownership checkout после прежнего root-run deploy;
@@ -47,19 +47,34 @@
 
 ## После завершения
 
-### Что сделано
+### Фактически сделано
 
 - mode канонического Hermes coder installer изменён с `100644` на `100755` без изменения содержимого;
 - добавлен contract test для executable bit и orchestration invocation;
 - изменение ограничено deployment metadata, тестом и этой записью.
 
-### Что проверено
+### Миграции и совместимость
+
+Миграции базы данных отсутствуют. Содержимое installer, переменные окружения, systemd units и Docker Compose contracts не меняются. Изменение совместимо с существующим прямым вызовом и shebang файла.
+
+### Проверки
 
 - подтверждён фактический Git mode `100644` на baseline;
 - подтверждён прямой вызов `"$CODERS_SOURCE/install.sh"` в orchestration installer;
+- добавлен regression test для owner execute bit;
 - required CI запускается на PR.
 
-### Что осталось
+### Решения и компромиссы
+
+Executable mode соответствует фактическому контракту прямого вызова и сохраняет shebang как canonical interpreter. Логика installer не дублируется и не оборачивается дополнительным shell-слоем.
+
+### PR и commit
+
+- PR: `#637`;
+- branch head после правки worklog фиксируется GitHub;
+- merge commit фиксируется после зелёного CI.
+
+### Незавершённое
 
 - дождаться required CI;
 - слить PR;
@@ -68,15 +83,10 @@
 - повторно запустить orchestration installer и проверить Codex Plus limits;
 - отдельно извлечь traceback и DB details incident `#449`.
 
-### Решения и компромиссы
+### Следующий шаг
 
-Executable mode соответствует фактическому контракту прямого вызова и сохраняет shebang как canonical interpreter. Логика installer не дублируется и не оборачивается дополнительным shell-слоем.
+Довести required CI PR `#637` до зелёного состояния, выполнить штатный merge, затем провести controlled production recovery без изменения PostgreSQL data volumes.
 
 ### Важные детали для следующей сессии
 
 Production server на момент дефекта находился на `23439a95f13115e3339db632a502e7b9205f49b5`. `main` уже содержит PR `#636`, запрещающий будущие server deploy от root и выполняющий reset под `umask 022`. Первый rollout после этого дефекта должен восстановить ownership только Git checkout metadata и tracked paths, не трогая PostgreSQL data volumes.
-
-### PR и commit
-
-- PR: создаётся после публикации ветки;
-- merge commit: фиксируется после зелёного CI.
