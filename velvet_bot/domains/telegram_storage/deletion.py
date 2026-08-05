@@ -617,7 +617,16 @@ def _audit_result(result: DeletionResult) -> None:
             issue.code,
             issue.path,
         )
-    logger.info(
+    level = (
+        logging.INFO
+        if result.planned
+        or result.deleted_paths
+        or result.issues
+        or result.freed_bytes
+        else logging.DEBUG
+    )
+    logger.log(
+        level,
         "telegram_storage_deletion_result "
         "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",
         result.policy_name,
