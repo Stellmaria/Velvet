@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tier-aware coder router with fail-closed PR file evidence."""
+"""Tier-aware coder router with fail-closed PR and GPT Image 2 evidence."""
 
 from __future__ import annotations
 
@@ -13,28 +13,32 @@ from typing import Any
 
 from coder_router import (
     CoderTarget,
-    Handler,
     RouterError,
     ThreadingHTTPServer,
     _GITHUB_API,
     _redact_text,
     redact,
 )
+from codex_image_router import CodexImageRouterHandler, CodexImageRouterSupport
 from tier_router import TierAwareCoderRouter
 
 logger = logging.getLogger("velvet.hermes_evidence_router")
 _MAX_GITHUB_FILE_PAGES = 30
 
 
-class EvidenceTierAwareCoderRouter(TierAwareCoderRouter):
-    """Preserve typed routing and attach the complete changed-file evidence set."""
+class EvidenceTierAwareCoderRouter(
+    CodexImageRouterSupport,
+    TierAwareCoderRouter,
+):
+    """Preserve typed routing and attach complete file and image evidence."""
 
     def github_list(
-        self, target: CoderTarget, path: str
+        self,
+        target: CoderTarget,
+        path: str,
     ) -> list[dict[str, Any]]:
         if not path.startswith("/") or ".." in path or "?" in path:
             raise RouterError(HTTPStatus.BAD_REQUEST, "Некорректный GitHub path.")
-
         items: list[dict[str, Any]] = []
         for page in range(1, _MAX_GITHUB_FILE_PAGES + 1):
             url = (
@@ -53,7 +57,8 @@ class EvidenceTierAwareCoderRouter(TierAwareCoderRouter):
             )
             try:
                 with urllib.request.urlopen(
-                    request, timeout=self.timeout_seconds
+                    request,
+                    timeout=self.timeout_seconds,
                 ) as response:
                     raw = response.read().decode("utf-8", errors="replace")
             except urllib.error.HTTPError as error:
@@ -121,7 +126,7 @@ def main() -> int:
     host = os.getenv("HERMES_CODER_ROUTER_HOST", "0.0.0.0").strip() or "0.0.0.0"
     port = int(os.getenv("HERMES_CODER_ROUTER_PORT", "8878"))
     router = EvidenceTierAwareCoderRouter()
-    server = ThreadingHTTPServer((host, port), Handler)
+    server = ThreadingHTTPServer((host, port), CodexImageRouterHandler)
     server.router = router  # type: ignore[attr-defined]
     logger.info("Hermes evidence-aware tier router listening on %s:%s", host, port)
     server.serve_forever()
