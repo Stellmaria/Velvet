@@ -16,6 +16,13 @@ Issue: #459
 - retained the final Telegram-wide Auf redaction boundary;
 - kept unknown-submit fail-closed semantics and sequential paid-attempt persistence.
 
+## Validation
+
+The exact implementation commit `14af196a3258e74bafb783a61d7671223856e36b`
+passed Python compile, `git diff --check`, canonical architecture inventory checks
+and 53 focused provider, worker, routing, composition and architecture tests in
+GitHub Actions run `30991264086`.
+
 ## Safety
 
 No migration, provider call, production restart or secret change is performed.
