@@ -19,13 +19,21 @@ class AufRuntimeBrandBoundaryTests(unittest.TestCase):
         self.assertIn("install_auf_cancel_ui", stage_names)
         self.assertIn("install_auf_runtime_dispatcher", stage_names)
         self.assertIn("install_auf_workspace_ui", stage_names)
-        self.assertIn("install_auf_grs_brand", stage_names)
+        self.assertIn("install_friendly_media_worker", stage_names)
+        self.assertIn("install_telegram_progress_resilience", stage_names)
+        self.assertIn("install_auf_branding", stage_names)
         self.assertNotIn("install_meow_cancel_ui", stage_names)
         self.assertNotIn("install_meow_runtime_dispatcher", stage_names)
         self.assertNotIn("install_meow_workspace_ui", stage_names)
+        self.assertNotIn("install_grs_speedups", stage_names)
+        self.assertNotIn("install_auf_grs_brand", stage_names)
         self.assertLess(
-            stage_names.index("install_grs_speedups"),
-            stage_names.index("install_auf_grs_brand"),
+            stage_names.index("install_friendly_media_worker"),
+            stage_names.index("install_telegram_progress_resilience"),
+        )
+        self.assertLess(
+            stage_names.index("install_auf_generation_receipts"),
+            stage_names.index("install_auf_branding"),
         )
 
     def test_legacy_installers_are_thin_compatibility_shims(self) -> None:
@@ -92,17 +100,17 @@ class AufRuntimeBrandBoundaryTests(unittest.TestCase):
                 self.assertNotIn("Мяу", source)
                 self.assertNotIn("мяу", source)
 
-    def test_active_startup_and_grs_delivery_use_auf_brand(self) -> None:
+    def test_active_startup_and_media_delivery_use_auf_brand(self) -> None:
         bootstrap = _read("velvet_bot/app/bootstrap.py")
-        delivery = _read("velvet_bot/app/auf_grs_brand_install.py")
+        branding = _read("velvet_bot/app/auf_branding.py")
         workers = _read("velvet_bot/app/workers.py")
         self.assertIn("Auf/Kie enabled", bootstrap)
         self.assertIn('auf_kie="enabled"', bootstrap)
         self.assertNotIn("Meow/Kie", bootstrap)
         self.assertNotIn("meow_kie=", bootstrap)
-        self.assertIn("<b>Ауф", delivery)
-        self.assertIn("install_auf_grs_brand", delivery)
-        self.assertNotIn('f"<b>Мяу ·', delivery)
+        self.assertIn("🐕 <b>Ауф</b>", branding)
+        self.assertIn("install_auf_branding", branding)
+        self.assertNotIn('f"<b>Мяу ·', branding)
         self.assertIn("генерация фото и видео через Ауф", workers)
         self.assertNotIn("генерация фото и видео через Мяу", workers)
 
