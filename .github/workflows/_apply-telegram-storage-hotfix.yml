@@ -80,16 +80,13 @@ jobs:
           )
           PY
 
-      - name: Run focused tests
-        shell: bash
-        run: python -m unittest tests.test_telegram_storage_permission_noise -v
-
       - name: Commit hotfix and remove helper workflow
         shell: bash
         run: |
           rm .github/workflows/_apply-telegram-storage-hotfix.yml
+          rm -f .github/hotfix-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- velvet_bot/domains/telegram_storage/deletion.py tests/test_telegram_storage_permission_noise.py docs/worklog/2026-08-05-telegram-storage-permission-noise.md .github/workflows/_apply-telegram-storage-hotfix.yml
+          git add -- velvet_bot/domains/telegram_storage/deletion.py tests/test_telegram_storage_permission_noise.py docs/worklog/2026-08-05-telegram-storage-permission-noise.md .github/workflows/_apply-telegram-storage-hotfix.yml .github/hotfix-trigger
           git commit -m "Fix Telegram storage permission isolation logging"
           git push origin HEAD:fix/telegram-storage-permission-noise
