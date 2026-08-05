@@ -58,6 +58,7 @@ CODEX_IMAGE_TIMEOUT_SECONDS=3600
 
 Package architecture inventory и reviewed exemptions обновляются вместе с
 изменениями runtime, поэтому preflight проверяет фактический состав новой модели.
+Инвентарь сохранён с меткой `working-tree`, которую использует обязательный CI.
 
 Перед включением в production выполните live smoke: текстовая генерация 1K,
 генерация с одним референсом и проверка доставки preview + документа. CI не может
