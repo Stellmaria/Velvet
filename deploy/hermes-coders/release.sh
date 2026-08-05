@@ -69,7 +69,7 @@ fi
 HERMES_CODERS_ROOT="$ROOT" python3 "$SOURCE_DIR/ensure_idle.py"
 
 install -d -o root -g root -m 0750 "$ROLLBACK_ROOT"
-STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+STAMP="$(date -u +%Y%m%dT%H%M%SÂ)"
 BACKUP_DIR="$ROLLBACK_ROOT/issue-594-$STAMP-$TARGET_SHA"
 install -d -o root -g root -m 0700 "$BACKUP_DIR/rootfs"
 EXISTING_MANIFEST="$BACKUP_DIR/existing-paths.txt"
@@ -194,6 +194,7 @@ rollback() {
     else
       rollback_compose=(
         docker compose
+        --env-file "$ROOT/launcher.env"
         --project-name hermes-coders
         --profile velvet
         --profile max

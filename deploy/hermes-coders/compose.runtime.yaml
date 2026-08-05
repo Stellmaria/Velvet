@@ -23,6 +23,7 @@ services:
     group_add:
       - "${HERMES_SANDBOX_GID:?HERMES_SANDBOX_GID is required}"
     environment:
+      PYTHONPATH: /app
       HERMES_CODER_PROJECT: velvet
       CODEX_EXECUTION_BACKEND: launcher
       HERMES_SANDBOX_LAUNCHER_SOCKET: /run/hermes-sandbox/launcher.sock
@@ -51,6 +52,7 @@ services:
     group_add:
       - "${HERMES_SANDBOX_GID:?HERMES_SANDBOX_GID is required}"
     environment:
+      PYTHONPATH: /app
       HERMES_CODER_PROJECT: max
       CODEX_EXECUTION_BACKEND: launcher
       HERMES_SANDBOX_LAUNCHER_SOCKET: /run/hermes-sandbox/launcher.sock
