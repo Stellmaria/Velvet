@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **646**
-- Production LOC: **141632**
+- Production LOC: **141618**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **44**
@@ -25,17 +25,17 @@
 
 ## Shared/private baseline
 
-- private cross-module accesses: **177**
+- private cross-module accesses: **170**
 - blocking known private contracts: **0**
 - exact / normalized / semantic duplicate groups: **66 / 96 / 9**
-- private access fingerprint: `8602038100666a88d05e388a405903985087f09a4d245fb1a97c51faebaff1a8`
+- private access fingerprint: `9031957aac41727658381924617a0183b045937c8b1e3d2b5000cea61d820e25`
 
 ## Installer graph
 
 1. `install_runtime_stability` from `velvet_bot.runtime_stability.install_runtime_stability`; patched symbols: `error_center.ErrorIncidentCenter.start`, `error_center._is_recoverable_aiogram_polling_record`, `workers_module.build_worker_manager`.
 2. `install_channel_analytics_datetime_compat` from `velvet_bot.app.channel_analytics_datetime_compat.install_channel_analytics_datetime_compat`; patched symbols: `channel_analytics.parse_channel_post`.
 3. `install_friendly_media_worker` from `velvet_bot.domains.media_generation.friendly_worker.install_friendly_media_worker`; patched symbols: none detected.
-4. `install_telegram_progress_resilience` from `velvet_bot.app.telegram_progress_resilience.install_telegram_progress_resilience`; patched symbols: `FriendlyKieGenerationWorker._publish_progress`, `grs_resilience._provider_reason_text`.
+4. `install_telegram_progress_resilience` from `velvet_bot.app.telegram_progress_resilience.install_telegram_progress_resilience`; patched symbols: `FriendlyKieGenerationWorker._publish_progress`.
 5. `install_auf_cancel_ui` from `velvet_bot.app.auf_cancel_ui_install.install_auf_cancel_ui`; patched symbols: `AITaskQueueService.enqueue`, `FriendlyKieGenerationWorker._publish_progress`, `FriendlyKieGenerationWorker._start_progress`.
 6. `install_auf_runtime_dispatcher` from `velvet_bot.app.auf_runtime_install.install_auf_runtime_dispatcher`; patched symbols: none detected.
 7. `install_auf_reconciliation` from `velvet_bot.app.auf_reconciliation_install.install_auf_reconciliation`; patched symbols: none detected.

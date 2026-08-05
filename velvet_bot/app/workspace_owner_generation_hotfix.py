@@ -7,7 +7,7 @@ from typing import Any
 from velvet_bot.app import auf_photo_model_modes as photo_modes
 from velvet_bot.app import auf_photo_ratio_callback_fix as ratio_fix
 from velvet_bot.app import auf_photo_ui_install as photo_ui
-from velvet_bot.app.auf_public_text import sanitize_auf_text
+from velvet_bot.app.auf_owner_cost_privacy.formatting import sanitize_auf_text
 from velvet_bot.database import Database
 from velvet_bot.domains.workspaces.repository import WorkspaceRepository
 from velvet_bot.protected_bot import ProtectedMediaBot, _PROTECTED_MEDIA_METHODS

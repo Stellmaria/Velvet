@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 646,
-  "production_loc": 141632,
+  "production_loc": 141618,
   "layer_counts": {
     "application": 21,
     "composition": 62,
@@ -81,13 +81,13 @@
   ],
   "shared_contract_summary": {
     "production_python_files": 646,
-    "function_count": 3727,
-    "private_contract_access_count": 177,
+    "function_count": 3725,
+    "private_contract_access_count": 170,
     "blocking_private_contract_access_count": 0,
     "exact_duplicate_group_count": 66,
     "normalized_duplicate_group_count": 96,
     "semantic_near_duplicate_group_count": 9,
-    "private_access_sha256": "8602038100666a88d05e388a405903985087f09a4d245fb1a97c51faebaff1a8"
+    "private_access_sha256": "9031957aac41727658381924617a0183b045937c8b1e3d2b5000cea61d820e25"
   },
   "installer_graph": [
     {
@@ -127,8 +127,7 @@
       "origin": "velvet_bot.app.telegram_progress_resilience.install_telegram_progress_resilience",
       "owner_module": "velvet_bot.app.telegram_progress_resilience",
       "patched_symbols": [
-        "FriendlyKieGenerationWorker._publish_progress",
-        "grs_resilience._provider_reason_text"
+        "FriendlyKieGenerationWorker._publish_progress"
       ]
     },
     {
@@ -2358,13 +2357,13 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:dfd53c17e121bd25",
+      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:7d2dd2251f31655f",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
-      "fingerprint": "dfd53c17e121bd253e7ac29e885515d7d08dbe02d666632f5e68dd5278e18cf2",
-      "summary": "4 dynamic imports",
+      "fingerprint": "7d2dd2251f31655f1db52534662d5586d2e43dd683d289b7d1db23108fea0e8c",
+      "summary": "3 dynamic imports",
       "details": {
-        "count": 4,
+        "count": 3,
         "calls": [
           "importlib.import_module"
         ]
@@ -2712,35 +2711,29 @@
       }
     },
     {
-      "id": "foreign-assignment:velvet_bot/app/telegram_progress_resilience.py:9ce1a41b908c22c7",
+      "id": "foreign-assignment:velvet_bot/app/telegram_progress_resilience.py:c72d5308e7cecdc0",
       "category": "foreign-assignment",
       "path": "velvet_bot/app/telegram_progress_resilience.py",
-      "fingerprint": "9ce1a41b908c22c76a7bea8b940f312a4a3341869b056f41e1d5778f63b8b345",
-      "summary": "2 assignments to imported owners",
+      "fingerprint": "c72d5308e7cecdc0f765de4e0b8135a75a21c540f682496ea82810464d274cd0",
+      "summary": "1 assignments to imported owners",
       "details": {
-        "count": 2,
+        "count": 1,
         "targets": [
-          "FriendlyKieGenerationWorker._publish_progress",
-          "grs_resilience._provider_reason_text"
+          "FriendlyKieGenerationWorker._publish_progress"
         ]
       }
     },
     {
-      "id": "foreign-assignment:velvet_bot/app/workspace_owner_generation_hotfix.py:f72145d6bb0d41a9",
+      "id": "foreign-assignment:velvet_bot/app/workspace_owner_generation_hotfix.py:2aba1518175f9181",
       "category": "foreign-assignment",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "f72145d6bb0d41a966d47a1fc485e5d4a9217f88fba5730567762fab1382912f",
-      "summary": "7 assignments to imported owners",
+      "fingerprint": "2aba1518175f918186b6a3f3f2687e4b81f3df81969479eb2739a78e2d3e2716",
+      "summary": "2 assignments to imported owners",
       "details": {
-        "count": 7,
+        "count": 2,
         "targets": [
           "Database.__init__",
-          "ProtectedMediaBot.__call__",
-          "grs_brand._PRIVATE_LINE_PATTERNS",
-          "grs_brand._install_router_privacy",
-          "grs_brand._sanitize_auf_text",
-          "grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal",
-          "grs_campaign_retry._retry_delays_for_error"
+          "ProtectedMediaBot.__call__"
         ]
       }
     },
@@ -3104,10 +3097,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:74419a93f06d4beb",
+      "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:c2f5b364ec9abc78",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
-      "fingerprint": "74419a93f06d4beb8729069d85613e1c0355edcbda550d78cfea6e027aa30a90",
+      "fingerprint": "c2f5b364ec9abc78727ba581713dab1ceb916c8a3b05572b8331b1b6c169c5ba",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
@@ -3264,20 +3257,20 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/telegram_progress_resilience.py:1300549b5e5180f2",
+      "id": "installed-sentinel:velvet_bot/app/telegram_progress_resilience.py:72960dd3a0bec6d0",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/telegram_progress_resilience.py",
-      "fingerprint": "1300549b5e5180f232f28b36445cd1e4820ca5575958b644fe0a7077ffb55fc9",
+      "fingerprint": "72960dd3a0bec6d0285b0db631a1d60048a8ceb1a098a5332f3f7d2c32a9fbec",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:971f054f071c746f",
+      "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:bcbfe7fd8d872d69",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "971f054f071c746f8fd77235e9873a2688dc19e0efb5137ec44a6ea82be6bf1a",
+      "fingerprint": "bcbfe7fd8d872d6940417cd985610802af638936c7ff3f16652e31c3f7147176",
       "summary": "8 _INSTALLED references",
       "details": {
         "count": 8
@@ -3634,10 +3627,10 @@
       }
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/auf_owner_cost_privacy/progress.py:efa27a10015a992c",
+      "id": "method-assign-ignore:velvet_bot/app/auf_owner_cost_privacy/progress.py:d09869a522c08673",
       "category": "method-assign-ignore",
       "path": "velvet_bot/app/auf_owner_cost_privacy/progress.py",
-      "fingerprint": "efa27a10015a992c90ae095a3b152f7465adf71f6558640410254945fc408450",
+      "fingerprint": "d09869a522c0867375f32ec869f7fd0335e3fc0c8087ab4be78c227bafe83e60",
       "summary": "1 method-assign ignores",
       "details": {
         "count": 1
@@ -3654,20 +3647,20 @@
       }
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/telegram_progress_resilience.py:4be738b443713c65",
+      "id": "method-assign-ignore:velvet_bot/app/telegram_progress_resilience.py:4a1c6ab627e9923c",
       "category": "method-assign-ignore",
       "path": "velvet_bot/app/telegram_progress_resilience.py",
-      "fingerprint": "4be738b443713c65f093963c0eb25212488366ac7c3e1615476b07cbedda9208",
+      "fingerprint": "4a1c6ab627e9923cebf9cf43512548a7a8e48780fc94856442ff37d2888a95b7",
       "summary": "1 method-assign ignores",
       "details": {
         "count": 1
       }
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
+      "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:a925855651627468",
       "category": "method-assign-ignore",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
+      "fingerprint": "a9258556516274687e8a309f31eb7c91e8d134a35b6eefc5bb67909180ae0126",
       "summary": "2 method-assign ignores",
       "details": {
         "count": 2
@@ -6342,10 +6335,10 @@
       }
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:3d4297fb3d454d63",
+      "id": "type-ignore-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:6f00a9b6ec8398b5",
       "category": "type-ignore-usage",
       "path": "velvet_bot/app/auf_owner_cost_privacy/progress.py",
-      "fingerprint": "3d4297fb3d454d631a48ae6c13b6491873ee90e8970b7a2805664752c9af9d00",
+      "fingerprint": "6f00a9b6ec8398b56c36adea744d8014b3d48c7b816a9546920dee715978feb3",
       "summary": "2 type-ignore comments",
       "details": {
         "count": 2
@@ -6372,20 +6365,20 @@
       }
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/telegram_progress_resilience.py:4be738b443713c65",
+      "id": "type-ignore-usage:velvet_bot/app/telegram_progress_resilience.py:4a1c6ab627e9923c",
       "category": "type-ignore-usage",
       "path": "velvet_bot/app/telegram_progress_resilience.py",
-      "fingerprint": "4be738b443713c65f093963c0eb25212488366ac7c3e1615476b07cbedda9208",
+      "fingerprint": "4a1c6ab627e9923cebf9cf43512548a7a8e48780fc94856442ff37d2888a95b7",
       "summary": "1 type-ignore comments",
       "details": {
         "count": 1
       }
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
+      "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:a925855651627468",
       "category": "type-ignore-usage",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
+      "fingerprint": "a9258556516274687e8a309f31eb7c91e8d134a35b6eefc5bb67909180ae0126",
       "summary": "2 type-ignore comments",
       "details": {
         "count": 2
@@ -6542,13 +6535,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:f203665a6707ad1a",
+      "id": "typing-any-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:92738e7d61a8c595",
       "category": "typing-any-usage",
       "path": "velvet_bot/app/auf_owner_cost_privacy/progress.py",
-      "fingerprint": "f203665a6707ad1a1fc41fa31202f903a7f8b9e7d26a73e7330642e152ac88a5",
-      "summary": "8 Any references",
+      "fingerprint": "92738e7d61a8c595c785f0d54ea566d4c0ee0112126faf95f91cbea652491979",
+      "summary": "7 Any references",
       "details": {
-        "count": 8
+        "count": 7
       }
     },
     {
@@ -6642,13 +6635,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:375a31befb74f1a2",
+      "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:6440280b950f8898",
       "category": "typing-any-usage",
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "fingerprint": "375a31befb74f1a20f4894b8ee0242a4ba1194545ef0834a8511858dec51d0c4",
-      "summary": "32 Any references",
+      "fingerprint": "6440280b950f8898ea5bff3b46d6e3f2a3473bbcc5787d49448b228d2835eee0",
+      "summary": "28 Any references",
       "details": {
-        "count": 32
+        "count": 28
       }
     },
     {
@@ -9312,13 +9305,14 @@
       "module": "velvet_bot.app.auf_owner_cost_privacy.formatting",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 101,
-      "function_count": 7,
+      "loc": 172,
+      "function_count": 8,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 24,
-      "branch_count": 6,
+      "max_function_length": 52,
+      "branch_count": 9,
       "internal_imports": [
+        "velvet_bot.app.auf_branding",
         "velvet_bot.domains.workspaces.product_models"
       ],
       "external_import_count": 5,
@@ -9356,23 +9350,24 @@
       "module": "velvet_bot.app.auf_owner_cost_privacy.install",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 38,
+      "loc": 40,
       "function_count": 1,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 17,
+      "max_function_length": 16,
       "branch_count": 1,
       "internal_imports": [
         "velvet_bot.app.auf_owner_cost_privacy.progress",
         "velvet_bot.app.auf_owner_cost_privacy.queue",
-        "velvet_bot.app.auf_owner_cost_privacy.reviews"
+        "velvet_bot.app.auf_owner_cost_privacy.reviews",
+        "velvet_bot.domains.media_generation.friendly_worker"
       ],
       "external_import_count": 2,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
-      "dynamic_import_count": 4,
+      "dynamic_import_count": 3,
       "any_count": 0,
       "cast_count": 0,
       "type_ignore_count": 0,
@@ -9382,19 +9377,19 @@
       ],
       "install_calls": [
         {
-          "line": 31,
+          "line": 33,
           "call": "install_owner_review_screens"
         },
         {
-          "line": 32,
+          "line": 34,
           "call": "install_owner_queue_confirmations"
         },
         {
-          "line": 33,
+          "line": 35,
           "call": "install_public_receipt_policy"
         },
         {
-          "line": 34,
+          "line": 36,
           "call": "install_owner_aware_progress_policy"
         }
       ],
@@ -9405,23 +9400,23 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:dfd53c17e121bd25",
+          "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:7d2dd2251f31655f",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
-          "fingerprint": "dfd53c17e121bd253e7ac29e885515d7d08dbe02d666632f5e68dd5278e18cf2",
-          "summary": "4 dynamic imports",
+          "fingerprint": "7d2dd2251f31655f1db52534662d5586d2e43dd683d289b7d1db23108fea0e8c",
+          "summary": "3 dynamic imports",
           "details": {
-            "count": 4,
+            "count": 3,
             "calls": [
               "importlib.import_module"
             ]
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:74419a93f06d4beb",
+          "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:c2f5b364ec9abc78",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/auf_owner_cost_privacy/install.py",
-          "fingerprint": "74419a93f06d4beb8729069d85613e1c0355edcbda550d78cfea6e027aa30a90",
+          "fingerprint": "c2f5b364ec9abc78727ba581713dab1ceb916c8a3b05572b8331b1b6c169c5ba",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
@@ -9434,11 +9429,11 @@
       "module": "velvet_bot.app.auf_owner_cost_privacy.progress",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 60,
-      "function_count": 5,
+      "loc": 58,
+      "function_count": 4,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 35,
+      "max_function_length": 32,
       "branch_count": 1,
       "internal_imports": [
         "velvet_bot.app.auf_owner_cost_privacy.formatting"
@@ -9449,7 +9444,7 @@
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 8,
+      "any_count": 7,
       "cast_count": 0,
       "type_ignore_count": 2,
       "method_assign_ignore_count": 1,
@@ -9465,33 +9460,33 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "method-assign-ignore:velvet_bot/app/auf_owner_cost_privacy/progress.py:efa27a10015a992c",
+          "id": "method-assign-ignore:velvet_bot/app/auf_owner_cost_privacy/progress.py:d09869a522c08673",
           "category": "method-assign-ignore",
           "path": "velvet_bot/app/auf_owner_cost_privacy/progress.py",
-          "fingerprint": "efa27a10015a992c90ae095a3b152f7465adf71f6558640410254945fc408450",
+          "fingerprint": "d09869a522c0867375f32ec869f7fd0335e3fc0c8087ab4be78c227bafe83e60",
           "summary": "1 method-assign ignores",
           "details": {
             "count": 1
           }
         },
         {
-          "id": "type-ignore-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:3d4297fb3d454d63",
+          "id": "type-ignore-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:6f00a9b6ec8398b5",
           "category": "type-ignore-usage",
           "path": "velvet_bot/app/auf_owner_cost_privacy/progress.py",
-          "fingerprint": "3d4297fb3d454d631a48ae6c13b6491873ee90e8970b7a2805664752c9af9d00",
+          "fingerprint": "6f00a9b6ec8398b56c36adea744d8014b3d48c7b816a9546920dee715978feb3",
           "summary": "2 type-ignore comments",
           "details": {
             "count": 2
           }
         },
         {
-          "id": "typing-any-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:f203665a6707ad1a",
+          "id": "typing-any-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:92738e7d61a8c595",
           "category": "typing-any-usage",
           "path": "velvet_bot/app/auf_owner_cost_privacy/progress.py",
-          "fingerprint": "f203665a6707ad1a1fc41fa31202f903a7f8b9e7d26a73e7330642e152ac88a5",
-          "summary": "8 Any references",
+          "fingerprint": "92738e7d61a8c595c785f0d54ea566d4c0ee0112126faf95f91cbea652491979",
+          "summary": "7 Any references",
           "details": {
-            "count": 8
+            "count": 7
           }
         }
       ]
@@ -12234,18 +12229,17 @@
       "module": "velvet_bot.app.telegram_progress_resilience",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 127,
+      "loc": 124,
       "function_count": 4,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 51,
       "branch_count": 8,
       "internal_imports": [
-        "velvet_bot.app.grs_campaign_retry",
-        "velvet_bot.app.grs_resilience",
         "velvet_bot.domains.ai_usage",
         "velvet_bot.domains.media_generation.friendly_worker",
         "velvet_bot.domains.media_generation.models",
+        "velvet_bot.domains.media_generation.provider_contract",
         "velvet_bot.domains.media_generation.worker"
       ],
       "external_import_count": 4,
@@ -12255,8 +12249,7 @@
       "sql_literal_count": 4,
       "database_acquire_count": 0,
       "foreign_assignment_targets": [
-        "FriendlyKieGenerationWorker._publish_progress",
-        "grs_resilience._provider_reason_text"
+        "FriendlyKieGenerationWorker._publish_progress"
       ],
       "dynamic_import_count": 0,
       "any_count": 0,
@@ -12291,44 +12284,43 @@
           }
         },
         {
-          "id": "foreign-assignment:velvet_bot/app/telegram_progress_resilience.py:9ce1a41b908c22c7",
+          "id": "foreign-assignment:velvet_bot/app/telegram_progress_resilience.py:c72d5308e7cecdc0",
           "category": "foreign-assignment",
           "path": "velvet_bot/app/telegram_progress_resilience.py",
-          "fingerprint": "9ce1a41b908c22c76a7bea8b940f312a4a3341869b056f41e1d5778f63b8b345",
-          "summary": "2 assignments to imported owners",
+          "fingerprint": "c72d5308e7cecdc0f765de4e0b8135a75a21c540f682496ea82810464d274cd0",
+          "summary": "1 assignments to imported owners",
           "details": {
-            "count": 2,
+            "count": 1,
             "targets": [
-              "FriendlyKieGenerationWorker._publish_progress",
-              "grs_resilience._provider_reason_text"
+              "FriendlyKieGenerationWorker._publish_progress"
             ]
           }
         },
         {
-          "id": "method-assign-ignore:velvet_bot/app/telegram_progress_resilience.py:4be738b443713c65",
+          "id": "method-assign-ignore:velvet_bot/app/telegram_progress_resilience.py:4a1c6ab627e9923c",
           "category": "method-assign-ignore",
           "path": "velvet_bot/app/telegram_progress_resilience.py",
-          "fingerprint": "4be738b443713c65f093963c0eb25212488366ac7c3e1615476b07cbedda9208",
+          "fingerprint": "4a1c6ab627e9923cebf9cf43512548a7a8e48780fc94856442ff37d2888a95b7",
           "summary": "1 method-assign ignores",
           "details": {
             "count": 1
           }
         },
         {
-          "id": "type-ignore-usage:velvet_bot/app/telegram_progress_resilience.py:4be738b443713c65",
+          "id": "type-ignore-usage:velvet_bot/app/telegram_progress_resilience.py:4a1c6ab627e9923c",
           "category": "type-ignore-usage",
           "path": "velvet_bot/app/telegram_progress_resilience.py",
-          "fingerprint": "4be738b443713c65f093963c0eb25212488366ac7c3e1615476b07cbedda9208",
+          "fingerprint": "4a1c6ab627e9923cebf9cf43512548a7a8e48780fc94856442ff37d2888a95b7",
           "summary": "1 type-ignore comments",
           "details": {
             "count": 1
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/telegram_progress_resilience.py:1300549b5e5180f2",
+          "id": "installed-sentinel:velvet_bot/app/telegram_progress_resilience.py:72960dd3a0bec6d0",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/telegram_progress_resilience.py",
-          "fingerprint": "1300549b5e5180f232f28b36445cd1e4820ca5575958b644fe0a7077ffb55fc9",
+          "fingerprint": "72960dd3a0bec6d0285b0db631a1d60048a8ceb1a098a5332f3f7d2c32a9fbec",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
@@ -12505,17 +12497,17 @@
       "module": "velvet_bot.app.workspace_owner_generation_hotfix",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 330,
-      "function_count": 12,
+      "loc": 248,
+      "function_count": 9,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 99,
-      "branch_count": 20,
+      "branch_count": 18,
       "internal_imports": [
         "velvet_bot.app",
+        "velvet_bot.app.auf_owner_cost_privacy.formatting",
         "velvet_bot.database",
         "velvet_bot.domains.workspaces.repository",
-        "velvet_bot.infrastructure.ai",
         "velvet_bot.presentation.telegram",
         "velvet_bot.protected_bot"
       ],
@@ -12525,15 +12517,10 @@
       "database_acquire_count": 0,
       "foreign_assignment_targets": [
         "Database.__init__",
-        "ProtectedMediaBot.__call__",
-        "grs_brand._PRIVATE_LINE_PATTERNS",
-        "grs_brand._install_router_privacy",
-        "grs_brand._sanitize_auf_text",
-        "grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal",
-        "grs_campaign_retry._retry_delays_for_error"
+        "ProtectedMediaBot.__call__"
       ],
       "dynamic_import_count": 0,
-      "any_count": 32,
+      "any_count": 28,
       "cast_count": 0,
       "type_ignore_count": 2,
       "method_assign_ignore_count": 2,
@@ -12542,7 +12529,7 @@
       ],
       "install_calls": [
         {
-          "line": 286,
+          "line": 226,
           "call": "controller.install_scoped_auf_handlers"
         }
       ],
@@ -12553,21 +12540,16 @@
       "worker_registrations": [],
       "violations": [
         {
-          "id": "foreign-assignment:velvet_bot/app/workspace_owner_generation_hotfix.py:f72145d6bb0d41a9",
+          "id": "foreign-assignment:velvet_bot/app/workspace_owner_generation_hotfix.py:2aba1518175f9181",
           "category": "foreign-assignment",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "f72145d6bb0d41a966d47a1fc485e5d4a9217f88fba5730567762fab1382912f",
-          "summary": "7 assignments to imported owners",
+          "fingerprint": "2aba1518175f918186b6a3f3f2687e4b81f3df81969479eb2739a78e2d3e2716",
+          "summary": "2 assignments to imported owners",
           "details": {
-            "count": 7,
+            "count": 2,
             "targets": [
               "Database.__init__",
-              "ProtectedMediaBot.__call__",
-              "grs_brand._PRIVATE_LINE_PATTERNS",
-              "grs_brand._install_router_privacy",
-              "grs_brand._sanitize_auf_text",
-              "grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal",
-              "grs_campaign_retry._retry_delays_for_error"
+              "ProtectedMediaBot.__call__"
             ]
           }
         },
@@ -12580,40 +12562,40 @@
           "details": {}
         },
         {
-          "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
+          "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:a925855651627468",
           "category": "method-assign-ignore",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
+          "fingerprint": "a9258556516274687e8a309f31eb7c91e8d134a35b6eefc5bb67909180ae0126",
           "summary": "2 method-assign ignores",
           "details": {
             "count": 2
           }
         },
         {
-          "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
+          "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:a925855651627468",
           "category": "type-ignore-usage",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "e71377ce23728f04faf46f264b303980319873292d1b859f32f673ba683aff3e",
+          "fingerprint": "a9258556516274687e8a309f31eb7c91e8d134a35b6eefc5bb67909180ae0126",
           "summary": "2 type-ignore comments",
           "details": {
             "count": 2
           }
         },
         {
-          "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:375a31befb74f1a2",
+          "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:6440280b950f8898",
           "category": "typing-any-usage",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "375a31befb74f1a20f4894b8ee0242a4ba1194545ef0834a8511858dec51d0c4",
-          "summary": "32 Any references",
+          "fingerprint": "6440280b950f8898ea5bff3b46d6e3f2a3473bbcc5787d49448b228d2835eee0",
+          "summary": "28 Any references",
           "details": {
-            "count": 32
+            "count": 28
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:971f054f071c746f",
+          "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:bcbfe7fd8d872d69",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-          "fingerprint": "971f054f071c746f8fd77235e9873a2688dc19e0efb5137ec44a6ea82be6bf1a",
+          "fingerprint": "bcbfe7fd8d872d6940417cd985610802af638936c7ff3f16652e31c3f7147176",
           "summary": "8 _INSTALLED references",
           "details": {
             "count": 8

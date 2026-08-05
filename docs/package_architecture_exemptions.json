@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "issue-459-provider-adapters",
   "baseline_issue": "#460",
-  "shared_private_access_sha256": "8602038100666a88d05e388a405903985087f09a4d245fb1a97c51faebaff1a8",
+  "shared_private_access_sha256": "9031957aac41727658381924617a0183b045937c8b1e3d2b5000cea61d820e25",
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",
   "exceptions": [
     {
@@ -1325,6 +1325,7 @@
       "reason": "Existing domain-aiogram-import debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
+        "velvet_bot/app/auf_owner_cost_privacy/install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -1578,6 +1579,7 @@
       "reason": "Existing domain-layer-import debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
+        "velvet_bot/app/auf_owner_cost_privacy/install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -1678,7 +1680,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:dfd53c17e121bd25",
+      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:7d2dd2251f31655f",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1831,6 +1833,7 @@
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
+        "velvet_bot/app/auf_owner_cost_privacy/install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -1860,6 +1863,7 @@
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/app/auf_owner_cost_privacy/formatting.py",
         "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -1990,7 +1994,7 @@
       "issue": "#457"
     },
     {
-      "id": "foreign-assignment:velvet_bot/app/telegram_progress_resilience.py:9ce1a41b908c22c7",
+      "id": "foreign-assignment:velvet_bot/app/telegram_progress_resilience.py:c72d5308e7cecdc0",
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
@@ -2002,7 +2006,7 @@
       "issue": "#455"
     },
     {
-      "id": "foreign-assignment:velvet_bot/app/workspace_owner_generation_hotfix.py:f72145d6bb0d41a9",
+      "id": "foreign-assignment:velvet_bot/app/workspace_owner_generation_hotfix.py:2aba1518175f9181",
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
@@ -2290,6 +2294,7 @@
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/app/auf_owner_cost_privacy/formatting.py",
         "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -2359,7 +2364,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:74419a93f06d4beb",
+      "id": "installed-sentinel:velvet_bot/app/auf_owner_cost_privacy/install.py:c2f5b364ec9abc78",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
@@ -2555,7 +2560,7 @@
       "issue": "#457"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/telegram_progress_resilience.py:1300549b5e5180f2",
+      "id": "installed-sentinel:velvet_bot/app/telegram_progress_resilience.py:72960dd3a0bec6d0",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
@@ -2567,7 +2572,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:971f054f071c746f",
+      "id": "installed-sentinel:velvet_bot/app/workspace_owner_generation_hotfix.py:bcbfe7fd8d872d69",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
@@ -2584,6 +2589,7 @@
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
+        "velvet_bot/app/auf_owner_cost_privacy/install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -3065,6 +3071,7 @@
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/app/auf_owner_cost_privacy/formatting.py",
         "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -3073,7 +3080,7 @@
       "issue": "#455"
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/auf_owner_cost_privacy/progress.py:efa27a10015a992c",
+      "id": "method-assign-ignore:velvet_bot/app/auf_owner_cost_privacy/progress.py:d09869a522c08673",
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
@@ -3097,7 +3104,7 @@
       "issue": "#455"
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/telegram_progress_resilience.py:4be738b443713c65",
+      "id": "method-assign-ignore:velvet_bot/app/telegram_progress_resilience.py:4a1c6ab627e9923c",
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
@@ -3109,7 +3116,7 @@
       "issue": "#455"
     },
     {
-      "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
+      "id": "method-assign-ignore:velvet_bot/app/workspace_owner_generation_hotfix.py:a925855651627468",
       "owner": "application-composition",
       "reason": "Existing method-assign-ignore debt captured by the reviewed baseline.",
       "consumers": [
@@ -4485,6 +4492,7 @@
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
+        "velvet_bot/app/auf_owner_cost_privacy/install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -5556,6 +5564,7 @@
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/app/auf_owner_cost_privacy/formatting.py",
         "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -5576,7 +5585,7 @@
       "issue": "#455"
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:3d4297fb3d454d63",
+      "id": "type-ignore-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:6f00a9b6ec8398b5",
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -5612,7 +5621,7 @@
       "issue": "#455"
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/telegram_progress_resilience.py:4be738b443713c65",
+      "id": "type-ignore-usage:velvet_bot/app/telegram_progress_resilience.py:4a1c6ab627e9923c",
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -5624,7 +5633,7 @@
       "issue": "#455"
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:e71377ce23728f04",
+      "id": "type-ignore-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:a925855651627468",
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -5819,6 +5828,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/app/auf_owner_cost_privacy/formatting.py",
         "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
@@ -5859,7 +5869,8 @@
         "velvet_bot/app/auf_owner_cost_privacy/__init__.py",
         "velvet_bot/app/auf_owner_cost_privacy/progress.py",
         "velvet_bot/app/auf_owner_cost_privacy/queue.py",
-        "velvet_bot/app/auf_owner_cost_privacy/reviews.py"
+        "velvet_bot/app/auf_owner_cost_privacy/reviews.py",
+        "velvet_bot/app/workspace_owner_generation_hotfix.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -5867,7 +5878,7 @@
       "issue": "#455"
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:f203665a6707ad1a",
+      "id": "typing-any-usage:velvet_bot/app/auf_owner_cost_privacy/progress.py:92738e7d61a8c595",
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -5990,7 +6001,7 @@
       "issue": "#457"
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:375a31befb74f1a2",
+      "id": "typing-any-usage:velvet_bot/app/workspace_owner_generation_hotfix.py:6440280b950f8898",
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -6256,6 +6267,7 @@
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
+        "velvet_bot/app/auf_owner_cost_privacy/install.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
         "velvet_bot/app/original_image_delivery_hotfix.py",
@@ -6570,7 +6582,6 @@
         "velvet_bot/app/auf_photo_model_modes.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/workers.py",
-        "velvet_bot/app/workspace_owner_generation_hotfix.py",
         "velvet_bot/domains/auf_runtime/dispatcher.py",
         "velvet_bot/domains/auf_runtime/queue.py",
         "velvet_bot/domains/media_generation/economy_worker.py",

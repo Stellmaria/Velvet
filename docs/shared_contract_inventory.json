@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "production_python_files": 646,
-  "function_count": 3727,
+  "function_count": 3725,
   "contracts": [
     {
       "family": "safe edit/send fallback",
@@ -270,7 +270,7 @@
       ]
     }
   ],
-  "private_contract_access_count": 177,
+  "private_contract_access_count": 170,
   "private_contract_accesses": [
     {
       "path": "velvet_bot/app/auf_cancel_ui_install.py",
@@ -935,7 +935,7 @@
     {
       "path": "velvet_bot/app/telegram_progress_resilience.py",
       "module": "velvet_bot.app.telegram_progress_resilience",
-      "line": 20,
+      "line": 19,
       "source_module": "velvet_bot.domains.media_generation.worker",
       "private_name": "_ProgressMessage",
       "access_kind": "direct-import",
@@ -945,17 +945,7 @@
     {
       "path": "velvet_bot/app/telegram_progress_resilience.py",
       "module": "velvet_bot.app.telegram_progress_resilience",
-      "line": 24,
-      "source_module": "velvet_bot.app.grs_campaign_retry",
-      "private_name": "_provider_reason_without_model_chatter",
-      "access_kind": "module-attribute",
-      "expression": "grs_campaign_retry._provider_reason_without_model_chatter",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/telegram_progress_resilience.py",
-      "module": "velvet_bot.app.telegram_progress_resilience",
-      "line": 118,
+      "line": 116,
       "source_module": "velvet_bot.domains.media_generation.friendly_worker.FriendlyKieGenerationWorker",
       "private_name": "_publish_progress",
       "access_kind": "assignment",
@@ -965,27 +955,7 @@
     {
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
       "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 25,
-      "source_module": "velvet_bot.app.grs_campaign_retry",
-      "private_name": "_retry_delays_for_error",
-      "access_kind": "module-attribute",
-      "expression": "grs_campaign_retry._retry_delays_for_error",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 27,
-      "source_module": "velvet_bot.app.grs_campaign_retry.CampaignGrsGenerationWorker",
-      "private_name": "_report_retry_or_terminal",
-      "access_kind": "module-attribute",
-      "expression": "grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 192,
+      "line": 132,
       "source_module": "velvet_bot.app.auf_photo_model_modes",
       "private_name": "_model",
       "access_kind": "module-attribute",
@@ -995,51 +965,11 @@
     {
       "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
       "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 192,
+      "line": 132,
       "source_module": "velvet_bot.app.auf_photo_model_modes",
       "private_name": "_state_value",
       "access_kind": "module-attribute",
       "expression": "photo_modes._state_value",
-      "family": "state compatibility accessors"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 305,
-      "source_module": "velvet_bot.app.grs_campaign_retry",
-      "private_name": "_retry_delays_for_error",
-      "access_kind": "assignment",
-      "expression": "grs_campaign_retry._retry_delays_for_error",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 308,
-      "source_module": "velvet_bot.app.grs_campaign_retry.CampaignGrsGenerationWorker",
-      "private_name": "_report_retry_or_terminal",
-      "access_kind": "assignment",
-      "expression": "grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal",
-      "family": "retry/backoff policies"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 312,
-      "source_module": "velvet_bot.app.auf_grs_brand_install",
-      "private_name": "_PRIVATE_LINE_PATTERNS",
-      "access_kind": "assignment",
-      "expression": "grs_brand._PRIVATE_LINE_PATTERNS",
-      "family": "state compatibility accessors"
-    },
-    {
-      "path": "velvet_bot/app/workspace_owner_generation_hotfix.py",
-      "module": "velvet_bot.app.workspace_owner_generation_hotfix",
-      "line": 314,
-      "source_module": "velvet_bot.app.auf_grs_brand_install",
-      "private_name": "_PRIVATE_LINE_PATTERNS",
-      "access_kind": "module-attribute",
-      "expression": "grs_brand._PRIVATE_LINE_PATTERNS",
       "family": "state compatibility accessors"
     },
     {
@@ -7753,7 +7683,7 @@
       ]
     },
     {
-      "digest": "e68b771d9423cec2f9f89c3ac209d8d1ded79f4dad3dcd3837f67e5e86ccf243",
+      "digest": "cbadda90bc0ea0dbd140f83a965f2c3b582097ef5fbb7baf39692d967df9638b",
       "kind": "semantic-near-duplicate",
       "family": "repeated progress-card updates",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -7762,8 +7692,8 @@
           "path": "velvet_bot/app/telegram_progress_resilience.py",
           "module": "velvet_bot.app.telegram_progress_resilience",
           "name": "_publish_progress_resilient",
-          "line": 59,
-          "end_line": 109
+          "line": 57,
+          "end_line": 107
         },
         {
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",
@@ -7846,7 +7776,7 @@
       ]
     },
     {
-      "digest": "3d2a38939e1d61dde2e3b7b38f8d0bdfb611e59e25d4b6331e299133652fe818",
+      "digest": "17ce68c567778f161ef4259f70740e60561dd1cf6742d5410ea9a7be56cb033d",
       "kind": "semantic-near-duplicate",
       "family": "safe edit/send fallback",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -7862,8 +7792,8 @@
           "path": "velvet_bot/app/telegram_progress_resilience.py",
           "module": "velvet_bot.app.telegram_progress_resilience",
           "name": "_publish_progress_resilient",
-          "line": 59,
-          "end_line": 109
+          "line": 57,
+          "end_line": 107
         },
         {
           "path": "velvet_bot/domains/media_generation/friendly_worker.py",

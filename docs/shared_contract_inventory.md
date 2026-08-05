@@ -1,8 +1,8 @@
 # Shared contract inventory
 
 - Production Python files: **646**
-- Functions inventoried: **3727**
-- Registered private cross-module debt: **177**
+- Functions inventoried: **3725**
+- Registered private cross-module debt: **170**
 - Blocking known private contracts: **0**
 - Exact duplicate groups: **66**
 - Normalized near-duplicate groups: **96**
@@ -105,17 +105,10 @@
 - `velvet_bot/app/original_image_delivery_hotfix.py:118` `FriendlyKieGenerationWorker._send_image_and_document` (assignment, other repeated implementation).
 - `velvet_bot/app/original_video_delivery_hotfix.py:117` `FileDeliveryKieGenerationWorker._send_video_and_document` (assignment, media download/preview/original delivery).
 - `velvet_bot/app/original_video_delivery_hotfix.py:120` `FriendlyKieGenerationWorker._send_video_and_document` (assignment, other repeated implementation).
-- `velvet_bot/app/telegram_progress_resilience.py:20` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
-- `velvet_bot/app/telegram_progress_resilience.py:24` `grs_campaign_retry._provider_reason_without_model_chatter` (module-attribute, retry/backoff policies).
-- `velvet_bot/app/telegram_progress_resilience.py:118` `FriendlyKieGenerationWorker._publish_progress` (assignment, repeated progress-card updates).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:25` `grs_campaign_retry._retry_delays_for_error` (module-attribute, retry/backoff policies).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:27` `grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal` (module-attribute, retry/backoff policies).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:192` `photo_modes._model` (module-attribute, state compatibility accessors).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:192` `photo_modes._state_value` (module-attribute, state compatibility accessors).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:305` `grs_campaign_retry._retry_delays_for_error` (assignment, retry/backoff policies).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:308` `grs_campaign_retry.CampaignGrsGenerationWorker._report_retry_or_terminal` (assignment, retry/backoff policies).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:312` `grs_brand._PRIVATE_LINE_PATTERNS` (assignment, state compatibility accessors).
-- `velvet_bot/app/workspace_owner_generation_hotfix.py:314` `grs_brand._PRIVATE_LINE_PATTERNS` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/telegram_progress_resilience.py:19` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
+- `velvet_bot/app/telegram_progress_resilience.py:116` `FriendlyKieGenerationWorker._publish_progress` (assignment, repeated progress-card updates).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:132` `photo_modes._model` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/workspace_owner_generation_hotfix.py:132` `photo_modes._state_value` (module-attribute, state compatibility accessors).
 - `velvet_bot/domains/auf_runtime/cancellable_worker.py:8` `from velvet_bot.domains.media_generation.worker import _ProgressMessage` (direct-import, repeated progress-card updates).
 - `velvet_bot/domains/auf_runtime/queue.py:7` `from velvet_bot.domains.ai_usage.tasks import _task_from_row` (direct-import, other repeated implementation).
 - `velvet_bot/domains/auf_wallet/purchase.py:19` `from velvet_bot.domains.auf_wallet.store import _ensure_wallet` (direct-import, state compatibility accessors).

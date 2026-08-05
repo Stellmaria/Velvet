@@ -79,7 +79,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         modules = self.inventory["modules"]
         self.assertEqual(646, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(141_632, self.inventory["production_loc"])
+        self.assertEqual(141_618, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
@@ -149,8 +149,8 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
     def test_shared_private_and_duplicate_fingerprints_are_linked(self) -> None:
         shared = self.inventory["shared_contract_summary"]
         self.assertEqual(646, shared["production_python_files"])
-        self.assertEqual(3_727, shared["function_count"])
-        self.assertEqual(177, shared["private_contract_access_count"])
+        self.assertEqual(3_725, shared["function_count"])
+        self.assertEqual(170, shared["private_contract_access_count"])
         self.assertEqual(0, shared["blocking_private_contract_access_count"])
         self.assertEqual(66, shared["exact_duplicate_group_count"])
         self.assertEqual(96, shared["normalized_duplicate_group_count"])
@@ -181,7 +181,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
         self.assertIn("Production modules: **646**", self.markdown)
-        self.assertIn("Production LOC: **141632**", self.markdown)
+        self.assertIn("Production LOC: **141618**", self.markdown)
         self.assertIn("Startup installer stages: **24**", self.markdown)
         self.assertIn("Registered package violations: **524**", self.markdown)
         self.assertIn("Registered exemptions: **524**", self.markdown)
