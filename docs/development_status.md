@@ -239,5 +239,5 @@ CI блокирует содержательный PR без завершённ�
 Переходные media delivery и provider-routing слои по-прежнему требуют burn-down в #457 и #459.
 
 <!-- issue-459-shared-baseline -->
-Provider adapter baseline: 646 production Python files, 3725 functions, 170 registered private accesses, 0 blocking contracts.
+Provider adapter baseline: 648 production Python files, 3748 functions, 170 registered private accesses, 0 blocking contracts.
 <!-- /issue-459-shared-baseline -->
