@@ -18,7 +18,7 @@ services:
   hermes-coder-velvet:
     entrypoint:
       - python
-      - /app/codex_launcher_runner.py
+      - /app/codex_context_launcher_runner.py
     command: []
     group_add:
       - "${HERMES_SANDBOX_GID:?HERMES_SANDBOX_GID is required}"
@@ -40,13 +40,14 @@ services:
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
       - ./codex_tier_runner.py:/app/codex_tier_runner.py:ro
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
+      - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
       - ./sandbox_launcher_client.py:/app/sandbox_launcher_client.py:ro
       - /run/hermes-sandbox/launcher.sock:/run/hermes-sandbox/launcher.sock
 
   hermes-coder-max:
     entrypoint:
       - python
-      - /app/codex_launcher_runner.py
+      - /app/codex_context_launcher_runner.py
     command: []
     group_add:
       - "${HERMES_SANDBOX_GID:?HERMES_SANDBOX_GID is required}"
@@ -66,5 +67,6 @@ services:
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
       - ./codex_tier_runner.py:/app/codex_tier_runner.py:ro
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
+      - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
       - ./sandbox_launcher_client.py:/app/sandbox_launcher_client.py:ro
       - /run/hermes-sandbox/launcher.sock:/run/hermes-sandbox/launcher.sock

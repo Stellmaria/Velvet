@@ -17,6 +17,7 @@ RUNTIME_SOURCES = (
     "codex_provider_chain_runner.py",
     "codex_tier_runner.py",
     "codex_launcher_runner.py",
+    "codex_context_launcher_runner.py",
     "sandbox_launcher_client.py",
     "sandbox_preflight.py",
     "compose.runtime.yaml",
@@ -30,10 +31,12 @@ import codex_provider_chain_runner
 import codex_tier_runner
 import sandbox_launcher_client
 import codex_launcher_runner
+import codex_context_launcher_runner
 assert codex_first_runner.Handler is Handler
 assert codex_first_runner.ThreadingHTTPServer is ThreadingHTTPServer
 assert codex_routed_runner.Handler is Handler
 assert issubclass(codex_launcher_runner.LauncherTierProviderManager, codex_tier_runner.AuditedTierProviderManager)
+assert issubclass(codex_context_launcher_runner.ContextLauncherTierProviderManager, codex_launcher_runner.LauncherTierProviderManager)
 print("HERMES_RUNTIME_IMPORT_GRAPH_OK")
 """
 
