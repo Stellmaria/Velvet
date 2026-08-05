@@ -275,6 +275,10 @@ def cleanup_codex_projection(path: Path) -> None:
     resolved = path.resolve()
     if resolved.parent != PROJECTION_ROOT or resolved == PROJECTION_ROOT:
         raise LauncherProtocolError("unsafe Codex projection cleanup")
+    try:
+        os.chmod(resolved, 0o700)
+    except FileNotFoundError:
+        return
     shutil.rmtree(resolved, ignore_errors=False)
 
 
@@ -288,11 +292,7 @@ def build_docker_command(
     mutation_policy = str(request["mutation_policy"])
     workspace = host_workspace(project, run_id)
     projection = codex_projection.resolve()
-    if (
-        projection.parent != PROJECTION_ROOT
-        or codex_projection.is_symlink()
-        or not projection.is_dir()
-    ):
+    if projection.parent != PROJECTION_ROOT or codex_projection.is_symlink() or not projection.is_dir():
         raise LauncherProtocolError("unsafe Codex projection mount")
     entrypoint = (SOURCE_DIR / "sandbox_entrypoint.py").resolve()
     if entrypoint.parent != SOURCE_DIR or not entrypoint.is_file():
