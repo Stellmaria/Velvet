@@ -72,33 +72,82 @@ installer contract.
 
 ### Фактически сделано
 
-Ожидается после реализации и проверок.
+- `velvet_bot.app.workers.KieGenerationWorker` восстановлен как публичное имя
+  canonical `FriendlyKieGenerationWorker`;
+- обычная регистрация Kie workers использует то же экспортное имя, поэтому
+  receipt installer, runtime dispatcher и фактически создаваемые workers больше
+  не расходятся по class contract;
+- добавлен regression test, который проверяет точную identity export-а и наличие
+  `install_delivery_handler`;
+- добавлен isolated subprocess smoke, выполняющий все feature installers в
+  объявленном порядке вместо прежней проверки только списка stage names;
+- package architecture inventory пересобран штатным генератором на Python 3.13;
+- временный branch-only workflow генерации удалён из итогового diff.
 
 ### Изменённые модули и контракты
 
-Ожидается после реализации и проверок.
+- `velvet_bot/app/workers.py`: compatibility export canonical friendly worker;
+- `tests/test_kie_worker_bootstrap_contract.py`: executable startup regression;
+- `docs/package_architecture_inventory.json` и `.md`: deterministic import
+  fingerprint после изменения public alias;
+- этот worklog: incident, rollback, implementation и validation evidence.
 
 ### Миграции и совместимость
 
 SQL migrations отсутствуют. Compatibility export сохраняет существующих
-потребителей `app.workers.KieGenerationWorker`, не меняя stored data или public
-Telegram payloads.
+потребителей `app.workers.KieGenerationWorker`, не меняя stored data, provider
+routing, durable delivery ownership или public Telegram payloads. Retired economy
+worker не возвращается в production construction.
 
 ### Проверки
 
-Ожидается после реализации и CI.
+Production incident evidence:
+
+- preflight: PASS;
+- pre-deploy custom dump restore: PASS, `migrations=92`, `tables=105`,
+  `characters=96`;
+- новый bot startup: FAIL до worker manager с `AttributeError` на отсутствующем
+  `app.workers.KieGenerationWorker`;
+- automatic code/image rollback: PASS;
+- rollback bot health: PASS;
+- rollback server smoke: PASS, `active_ai_tasks=0`, Telegram intentionally
+  skipped;
+- database rollback не выполнялся;
+- verified dump сохранён как
+  `/srv/velvet/data/backups/predeploy-20260805T204320Z-74bfb3a19506.dump`.
+
+Initial CI head `ad5cb18d5f10db0b2db503c3ac567d452565c10a`, run
+`31046201183`:
+
+- Python compile: PASS;
+- PostgreSQL test shards 0, 1, 2 и 3: PASS;
+- новый Kie bootstrap installer smoke: PASS в полном shard;
+- preflight выявил только stale package architecture inventory;
+- project notes run `31046201141`: PASS;
+- type check run `31046201262`: PASS.
+
+Inventory synchronization workflow run `31046368385`: PASS. Генератор выполнил
+`--write`, затем `--check`; временный workflow удалён. Полный required CI на
+чистом exact PR head выполняется перед merge.
 
 ### PR и commit
 
-Ожидается после публикации PR.
+- PR: #647 `Restore canonical Kie worker bootstrap export`;
+- worklog start: `45717ae1a2f578205d41f834eb015720dd6a5b60`;
+- compatibility export: `9fe01c5af72f8080a1b34f22b48af041bee471e3`;
+- regression tests: `ad5cb18d5f10db0b2db503c3ac567d452565c10a`;
+- deterministic inventory: `14e08a43c7e5bdcf97bfec26e3653b3607503e65`;
+- temporary workflow removal: `3b1e5d4f66d8fa623ae466deece2df246d333e28`;
+- final merge commit: ожидается после required CI.
 
 ### Незавершённое
 
-- реализовать hotfix и regression tests;
-- пройти exact-head required CI;
-- слить PR;
-- повторить production deploy и server acceptance.
+- пройти required CI на clean exact PR head;
+- слить PR #647;
+- повторить production deploy и server smoke;
+- после успешного rollout продолжить live acceptance AI queue по #603.
 
 ### Следующий шаг
 
-Восстановить worker export contract, затем выполнить focused tests.
+Проверить exact-head required CI, слить PR #647 и повторить pinned production
+deploy через штатный rollback-capable script.
