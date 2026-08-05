@@ -90,6 +90,16 @@ class ServerDeploymentContractTests(unittest.TestCase):
         source = Path("deploy/server/deploy.sh").read_text(encoding="utf-8")
         self.assertIn('chmod 0644 "$backup_path"', source)
         self.assertNotIn('chmod 600 "$backup_path"', source)
+        self.assertIn("normalize_backup_permissions()", source)
+        self.assertIn('find "$backup_root" -maxdepth 1 -type f', source)
+        self.assertIn("-name '*.dump'", source)
+        self.assertIn("-name '*.dump.json'", source)
+        self.assertIn('chmod 0644 -- "$candidate"', source)
+        self.assertIn("-print0", source)
+        self.assertLess(
+            source.index('normalize_backup_permissions "$data_dir/backups"'),
+            source.index('if [[ "$target_sha" == "$previous_sha"'),
+        )
 
     def test_dump_verifier_uses_disposable_database_and_forced_cleanup(self) -> None:
         source = Path("deploy/server/verify-dump.sh").read_text(encoding="utf-8")
