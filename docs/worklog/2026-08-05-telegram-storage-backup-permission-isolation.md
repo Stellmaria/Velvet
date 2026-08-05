@@ -44,12 +44,15 @@
 
 В `_migrate_backups` вычисление source digest, проверка manifest и формирование storage manifest перенесены внутрь существующего per-item exception boundary. Ошибка чтения теперь очищает только временные файлы текущего элемента, записывается через `_record_failure` и не прерывает цикл.
 
-Добавлен изолированный async regression-тест: первый backup выбрасывает `PermissionError`, второй проходит упаковку, проверку, загрузку и `mark_backup_offloaded`.
+Добавлен изолированный async regression-тест: первый backup выбрасывает `PermissionError`, второй проходит упаковку, проверку, загрузку и `mark_backup_offloaded`. Тест использует локальные doubles и не создаёт ложную dependency-ссылку на production repository module.
+
+Штатными генераторами пересобран package architecture baseline. Временный branch-only workflow удалил себя тем же generated commit и отсутствует в итоговом diff.
 
 ### Изменённые модули и контракты
 
 - `velvet_bot/domains/telegram_storage/service.py`: расширена существующая граница изоляции backup item;
-- `tests/test_telegram_storage_backup_permission_isolation.py`: новый regression contract.
+- `tests/test_telegram_storage_backup_permission_isolation.py`: новый regression contract;
+- `docs/package_architecture_inventory.json` и `.md`: обновлён воспроизводимый LOC baseline.
 
 Публичные команды, PostgreSQL schema, backup dump format, AES-256-GCM+scrypt:v2 metadata и uploader contract не изменены.
 
@@ -59,23 +62,34 @@
 
 ### Проверки
 
-- diff review: production-изменение ограничено перемещением подготовки backup внутрь существующего `try`;
-- regression-test добавлен, запуск и полный CI фиксируются после открытия PR.
+- focused diff review: production-изменение ограничено перемещением подготовки backup внутрь существующего `try`;
+- Python compile в initial tests run `31010946055`: success;
+- project notes contract run `31010945242`: success;
+- type check run `31010946060`: success;
+- docker build run `31010945126`: success;
+- branch protection contract run `31010946174`: success;
+- initial tests run `31010946055` корректно обнаружил stale generated inventories;
+- штатная пересборка inventories run `31011376523`: success;
+- окончательный обязательный CI на текущем user-authored head ожидается.
 
 ### PR и commit
 
-Ветка содержит commits:
+PR: #643 `Fix Telegram Storage backup permission isolation`.
+
+Содержательные commits:
 
 - `4859a5320bd6c79b803ec006c71ed75b6b8cfe83` — regression-test;
-- `70ec32a7e83d7b51800f7d2a3e7970b8053704d9` — production fix.
+- `70ec32a7e83d7b51800f7d2a3e7970b8053704d9` — production fix;
+- `42228d6d386fd0312c7a5f54510f6be2d3cba423` — remove test-only repository inventory coupling;
+- `b81138c82b1df012063438d4b803fb7a7939cb3d` — generated architecture inventory refresh and temporary workflow removal.
 
-Номер PR и итоговый merge commit будут записаны после зелёных checks.
+Итоговый merge commit будет записан после зелёных checks.
 
 ### Незавершённое
 
-- обязательные CI checks ещё не подтверждены;
+- обязательные CI checks текущего head ещё не подтверждены;
 - production-файл с ошибочными правами требует отдельного host-level исправления и повторного storage scan.
 
 ### Следующий шаг
 
-Открыть PR, дождаться обязательных checks, обновить эту запись фактическими результатами и слить PR. После deployment исправить права конкретного dump и выполнить повторный Telegram Storage Migration.
+Дождаться обязательных checks текущего head, завершить запись фактическими результатами и слить PR. После deployment исправить права конкретного dump и выполнить повторный Telegram Storage Migration.
