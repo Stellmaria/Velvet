@@ -247,6 +247,8 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 
 Дата среза: `2026-08-05`.
 
+Контракт стабильного релиза: `v1.3.0`.
+
 Этот блок фиксирует воспроизводимые числа PR #645 и не означает production rollout или закрытие переходного долга:
 
 - package production modules: **651**;
