@@ -1,0 +1,256 @@
+name: issue 603 fixed loop compatibility
+
+on:
+  push:
+    branches:
+      - feat/603-adaptive-ai-queue-wakeup
+    paths:
+      - .github/workflows/issue-603-fixed-loop-compat.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-603-fixed-loop-compat
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  TEST_DATABASE_URL: postgresql://velvet:velvet_test_password@localhost:5432/velvet_test
+
+jobs:
+  correct:
+    if: github.repository == 'Stellmaria/Velvet' && github.ref_name == 'feat/603-adaptive-ai-queue-wakeup'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feat/603-adaptive-ai-queue-wakeup
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: '0.11.16'
+          enable-cache: true
+          cache-dependency-glob: requirements.lock
+          save-cache: false
+
+      - name: Start native PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql --set=ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'velvet') THEN
+              CREATE ROLE velvet LOGIN SUPERUSER PASSWORD 'velvet_test_password';
+            ELSE
+              ALTER ROLE velvet WITH LOGIN SUPERUSER PASSWORD 'velvet_test_password';
+            END IF;
+          END
+          $$;
+          SELECT 'CREATE DATABASE velvet_test OWNER velvet'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM pg_database WHERE datname = 'velvet_test'
+          )\gexec
+          ALTER DATABASE velvet_test OWNER TO velvet;
+          SQL
+          pg_isready -h localhost -p 5432 -U velvet -d velvet_test
+
+      - name: Install hash-locked dependencies
+        run: uv pip install --system --require-hashes -r requirements.lock
+
+      - name: Apply bounded compatibility correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('velvet_bot/workers/manager.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''            while True:
+                succeeded, result = await self._execute_once_with_result(spec)
+                controller = spec.wait_controller
+                if controller is None:
+                    await asyncio.sleep(spec.interval_seconds)
+                    continue
+                delay = controller.delay_for(
+'''
+          new = '''            while True:
+                controller = spec.wait_controller
+                if controller is None:
+                    await self._execute_once(spec)
+                    await asyncio.sleep(spec.interval_seconds)
+                    continue
+                succeeded, result = await self._execute_once_with_result(spec)
+                delay = controller.delay_for(
+'''
+          if text.count(old) != 1 or new in text:
+              raise SystemExit('fixed-loop compatibility replacement mismatch')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+          python scripts/inventory_architecture_layout.py \
+            --write --label p3d-analytics-alias-retirement
+          python scripts/inventory_architecture_layout.py \
+            --check --label p3d-analytics-alias-retirement
+          python scripts/inventory_repository_layout.py \
+            --write --label p3e-repository-layout-complete
+          python scripts/inventory_repository_layout.py \
+            --check --label p3e-repository-layout-complete
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md \
+            --check
+          python scripts/inventory_package_architecture.py \
+            --write --label p1-package-architecture-baseline
+          python scripts/inventory_package_architecture.py \
+            --check --label p1-package-architecture-baseline
+          python scripts/update_p2_stability_inventory.py \
+            --label issue-603 --schema-version 79
+
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import re
+
+          inventory = json.loads(
+              Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8')
+          )
+          exemptions = json.loads(
+              Path('docs/package_architecture_exemptions.json').read_text(encoding='utf-8')
+          )
+          shared = inventory['shared_contract_summary']
+          path = Path('tests/test_package_architecture_inventory.py')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              r'self\.assertEqual\([\d_]+, self\.inventory\["production_module_count"\]\)':
+                  f'self.assertEqual({inventory["production_module_count"]}, self.inventory["production_module_count"])',
+              r'self\.assertEqual\([\d_]+, self\.inventory\["production_loc"\]\)':
+                  f'self.assertEqual({inventory["production_loc"]}, self.inventory["production_loc"])',
+              r'self\.assertEqual\([\d_]+, self\.inventory\["repository_module_count"\]\)':
+                  f'self.assertEqual({inventory["repository_module_count"]}, self.inventory["repository_module_count"])',
+              r'self\.assertEqual\([\d_]+, self\.inventory\["violation_count"\]\)':
+                  f'self.assertEqual({inventory["violation_count"]}, self.inventory["violation_count"])',
+              r'self\.assertEqual\([\d_]+, shared\["production_python_files"\]\)':
+                  f'self.assertEqual({shared["production_python_files"]}, shared["production_python_files"])',
+              r'self\.assertEqual\([\d_]+, shared\["function_count"\]\)':
+                  f'self.assertEqual({shared["function_count"]}, shared["function_count"])',
+              r'self\.assertIn\("Production modules: \*\*\d+\*\*", self\.markdown\)':
+                  f'self.assertIn("Production modules: **{inventory["production_module_count"]}**", self.markdown)',
+              r'self\.assertIn\("Production LOC: \*\*\d+\*\*", self\.markdown\)':
+                  f'self.assertIn("Production LOC: **{inventory["production_loc"]}**", self.markdown)',
+              r'self\.assertIn\("Registered package violations: \*\*\d+\*\*", self\.markdown\)':
+                  f'self.assertIn("Registered package violations: **{inventory["violation_count"]}**", self.markdown)',
+              r'self\.assertIn\("Registered exemptions: \*\*\d+\*\*", self\.markdown\)':
+                  f'self.assertIn("Registered exemptions: **{len(exemptions["exceptions"])}**", self.markdown)',
+          }
+          for pattern, replacement in replacements.items():
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f'package test update mismatch: {pattern}')
+          path.write_text(text, encoding='utf-8')
+
+          repository = json.loads(
+              Path('docs/repository_layout_inventory.json').read_text(encoding='utf-8')
+          )
+          path = Path('tests/test_p3e_repository_layout_inventory.py')
+          text = path.read_text(encoding='utf-8')
+          patterns = {
+              r'self\.assertEqual\(\d+, inventory\["repository_module_count"\]\)':
+                  f'self.assertEqual({repository["repository_module_count"]}, inventory["repository_module_count"])',
+              r'self\.assertEqual\(\d+, inventory\["layout_counts"\]\["domain"\]\)':
+                  f'self.assertEqual({repository["layout_counts"]["domain"]}, inventory["layout_counts"]["domain"])',
+              r'self\.assertEqual\(\d+, inventory\["layout_counts"\]\["infrastructure"\]\)':
+                  f'self.assertEqual({repository["layout_counts"]["infrastructure"]}, inventory["layout_counts"]["infrastructure"])',
+          }
+          for pattern, replacement in patterns.items():
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f'repository test update mismatch: {pattern}')
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          python -m compileall -q velvet_bot \
+            tests/test_p2_final_stability_boundaries.py \
+            tests/test_ai_queue_adaptive_wakeup.py
+          python -m unittest \
+            tests.test_p2_final_stability_boundaries \
+            tests.test_phase6_runtime \
+            tests.test_ai_queue_adaptive_wakeup \
+            tests.test_architecture_layout_inventory \
+            tests.test_package_architecture_inventory \
+            tests.test_p3e_repository_layout_inventory
+
+          rm -f .github/workflows/issue-603-fixed-loop-compat.yml
+          git add -- \
+            .github/workflows/issue-603-fixed-loop-compat.yml \
+            docs/architecture_layout_inventory.json \
+            docs/architecture_layout_inventory.md \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/shared_contract_inventory.json \
+            docs/shared_contract_inventory.md \
+            tests/test_package_architecture_inventory.py \
+            tests/test_p3e_repository_layout_inventory.py \
+            velvet_bot/workers/manager.py
+
+          python - <<'PY'
+          import subprocess
+
+          allowed = {
+              '.github/workflows/issue-603-fixed-loop-compat.yml',
+              'docs/architecture_layout_inventory.json',
+              'docs/architecture_layout_inventory.md',
+              'docs/package_architecture_inventory.json',
+              'docs/package_architecture_inventory.md',
+              'docs/p2_stability_inventory.json',
+              'docs/p2_stability_inventory.md',
+              'docs/repository_layout_inventory.json',
+              'docs/repository_layout_inventory.md',
+              'docs/shared_contract_inventory.json',
+              'docs/shared_contract_inventory.md',
+              'tests/test_package_architecture_inventory.py',
+              'tests/test_p3e_repository_layout_inventory.py',
+              'velvet_bot/workers/manager.py',
+          }
+          staged = set(
+              subprocess.check_output(
+                  ['git', 'diff', '--cached', '--name-only'],
+                  text=True,
+              ).splitlines()
+          )
+          unexpected = sorted(staged - allowed)
+          if unexpected:
+              raise SystemExit(f'unexpected staged paths: {unexpected}')
+          required = {
+              '.github/workflows/issue-603-fixed-loop-compat.yml',
+              'velvet_bot/workers/manager.py',
+          }
+          if not required.issubset(staged):
+              raise SystemExit(f'missing required staged paths: {sorted(required - staged)}')
+          PY
+
+          test "$(git ls-remote origin refs/heads/feat/603-adaptive-ai-queue-wakeup | cut -f1)" = "${GITHUB_SHA}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Restore #603 fixed-worker loop compatibility"
+          git push origin HEAD:feat/603-adaptive-ai-queue-wakeup
