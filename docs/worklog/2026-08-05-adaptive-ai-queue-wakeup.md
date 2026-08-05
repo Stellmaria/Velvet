@@ -5,7 +5,7 @@
 - Линия/фаза: P1 PostgreSQL load reduction, issue #603
 - Статус: частично
 - Ветка: feat/603-adaptive-ai-queue-wakeup
-- Базовый commit: 1a56d7b9d2fea7a967ba12c5a119b53d0dfb8e5c
+- Базовый commit: 503bf696a4b723b733f8835dcc93cb5c122a7c3e
 
 ## Перед началом
 
@@ -66,7 +66,9 @@
 - worker и system-health snapshots публикуют текущий интервал, empty runs,
   processed items, wakeups, fallback polls, reconnects, listener errors и oldest queue age;
 - обновлены canonical architecture, package, repository, shared-contract и P2 inventories;
-- удалён устаревший `Any` exemption для worker manager; границы остальных exemptions не расширялись.
+- удалён устаревший `Any` exemption для worker manager; границы остальных exemptions не расширялись;
+- текущий `main` с исправлением Telegram Storage #643 синхронизирован обычным
+  двухродительским merge-коммитом без rebase и force-push.
 
 ### Миграции и совместимость
 
@@ -76,38 +78,42 @@ SQL migrations отсутствуют. Existing worker registration, manual run/
 
 ### Проверки
 
-Focused correction workflow в hash-locked окружении с native PostgreSQL прошёл:
+Focused correction и post-main sync workflows в hash-locked окружении с native
+PostgreSQL прошли:
 
 - Python compileall;
 - `tests.test_phase6_runtime`;
 - `tests.test_ai_queue_adaptive_wakeup`;
+- `tests.test_telegram_storage_backup_permission_isolation`;
 - `tests.test_architecture_layout_inventory`;
 - `tests.test_package_architecture_inventory`;
 - `tests.test_p3e_repository_layout_inventory`;
 - canonical inventory write/check gates;
 - deterministic jitter bounds;
 - classifier-backed `ConnectionResetError` transient outcome;
-- real PostgreSQL notification across independent connections.
+- real PostgreSQL notification across independent connections;
+- exact staged-path audit и branch race guard.
 
-Обычный exact-head required CI запускается заново на owner-authored commit после
-того, как GitHub пометил workflow-token commit как `action_required` без создания jobs.
+Временные bootstrap/correction/sync workflows удалены и отсутствуют в итоговом PR diff.
+Обычный exact-head required CI запускается на owner-authored commit после generated
+sync parent `3eb98a7f8860b62f260496d7718cb333a97624ca`.
 
 ### PR и commit
 
 - PR: #642;
-- corrected implementation parent: 71355096cf2182d1a0aae73831b8d069fed921ab;
+- synchronized base `main`: 503bf696a4b723b733f8835dcc93cb5c122a7c3e;
+- generated sync parent: 3eb98a7f8860b62f260496d7718cb333a97624ca;
 - final exact-head: определяется этим owner-authored worklog commit;
 - merge commit: ожидается после terminal required CI PASS.
 
 ### Незавершённое
 
 - дождаться terminal PASS всех required workflows на окончательном head;
-- выполнить independent exact-diff review и проверить отсутствие временных workflows;
+- завершить independent exact-diff review и проверить отсутствие временных workflows;
 - слить PR с expected-head SHA;
 - оставить issue #603 открытым для rollout-only 60-секундного production observation,
   live reconnect/wakeup acceptance и измерения SQL/latency.
 
 ### Следующий шаг
 
-Зафиксировать точный owner-authored head, проверить required CI и выполнить squash
-merge только после terminal PASS без server operations.
+Проверить required CI и выполнить squash merge только после terminal PASS без server operations.
