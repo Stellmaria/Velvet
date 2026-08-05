@@ -275,7 +275,7 @@ class CodexImageWorker:
             await self._deliver(chat_id, request, result, preview, exported)
         except asyncio.CancelledError:
             raise
-        except Exception as error:
+        except Exception as error:  # p2-approved-boundary: isolate-codex-image-task-failure
             await self._queue.fail(
                 task_id=task.id,
                 worker_id=self._worker_id,
