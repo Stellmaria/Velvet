@@ -3,7 +3,7 @@
 - Дата: 2026-08-06
 - ID: `gpt-image-ratio-callback-hotfix`
 - Линия/фаза: Ауф · GPT Image 2 · production hotfix
-- Статус: готово к CI
+- Статус: частично
 - Ветка: `fix/gpt-image-ratio-callback`
 - Базовый commit: `2b43562f67ea167e47a4167432bb9c07e484580d`
 
@@ -31,7 +31,14 @@
 - обработчик получает исходные значения `1:1`, `9:16`, `21:9`;
 - полный CI зелёный.
 
-## После реализации
+### Риски и ограничения
+
+- изменение затрагивает глобальный `AufCallback.unpack`, поэтому ограничено только действием `gpt2_ratio`;
+- callback prefix и separator не меняются, чтобы не сломать уже отправленные Telegram-кнопки;
+- live provider generation не выполняется в CI и остаётся production acceptance после доставки;
+- отдельная неисправность `hermes-coders.service` с pinned sandbox image не относится к этому UI hotfix.
+
+## После завершения
 
 ### Фактически сделано
 
@@ -44,6 +51,26 @@
 
 Миграций базы нет. Prefix, separator и общая структура `AufCallback` не меняются. Старые callback других действий не затрагиваются.
 
-### Production remainder
+### Проверки
 
-После merge требуется обновить контейнер Velvet Bot и повторить путь GPT Image 2 до выбора пропорции. Отдельная проблема `hermes-coders.service` с pinned sandbox image не входит в этот UI hotfix.
+- type check на head `903f3b6b6011cb9b44377e9b24b6735efb5a137e`: PASS;
+- остальные обязательные GitHub Actions перезапускаются после исправления project-notes contract;
+- regression test покрывает реальную клавиатуру для всех значений `CODEX_IMAGE_RATIOS`.
+
+### PR и commit
+
+- PR: `#650 Fix GPT Image 2 ratio callback packing`;
+- ветка: `fix/gpt-image-ratio-callback`;
+- текущий head до исправления worklog: `903f3b6b6011cb9b44377e9b24b6735efb5a137e`;
+- итоговый merge commit будет записан после зелёного CI и merge.
+
+### Незавершённое
+
+- дождаться полного CI на обновлённом head;
+- слить PR #650;
+- развернуть обновлённый `main` на production;
+- повторить живой путь GPT Image 2 до выбора пропорции.
+
+### Следующий шаг
+
+Дождаться зелёных обязательных проверок, слить PR #650 и выполнить штатный server deploy без ручного изменения production checkout.
