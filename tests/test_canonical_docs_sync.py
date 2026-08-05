@@ -52,7 +52,7 @@ class CanonicalDocsSyncTests(unittest.TestCase):
         blocking = sum(
             1
             for row in self.package_exemptions["exceptions"]
-            if row["blocking"] is True
+            if row.get("blocking") is True
         )
 
         for document in (self.status, self.memory, self.audit):
