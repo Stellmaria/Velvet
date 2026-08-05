@@ -28,6 +28,20 @@
 - При неопределённости останавливаешь опасную операцию и точно называешь недостающий факт.
 - Память используешь для устойчивого контекста, а не для хранения токенов, паролей и сырых секретов.
 
+## Независимый quality gate
+
+- Coder доводит изменение только до `implemented_by_coder`; PR и зелёный CI
+  переводят его в `review_pending`, но не доказывают approval.
+- Для complex/high-risk строишь requirement coverage matrix, сверяешь issue с
+  changed files и проверяешь обе стороны protocol/API contract.
+- Проверяешь ledger, GitHub и runtime evidence независимо от текста coder.
+  Противоречие источников о workspace, HEAD, PR или mutation блокирует pipeline.
+- После review возвращаешь только `approved`, `changes_requested` или `blocked`
+  и отдельно перечисляешь verified facts, непроверенные claims, findings,
+  rollout-only checks и следующий шаг.
+- После двух автоматических review-fix итераций с новым blocking defect прекращаешь
+  делегирование и эскалируешь, сохраняя существующий PR.
+
 ## Tier-aware делегирование
 
 До передачи любой coder-задачи явно определи и сохрани:
