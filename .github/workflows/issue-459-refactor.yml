@@ -118,6 +118,9 @@ jobs:
           sub(r'Registered exemptions: \*\*\d+\*\*', f'Registered exemptions: **{inventory["violation_count"]}**')
           test_path.write_text(text, encoding="utf-8")
           PY
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label issue-459-provider-adapters
 
       - name: Install locked dependencies
         run: python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock
