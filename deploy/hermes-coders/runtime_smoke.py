@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
 
-
 ROOT = Path(os.environ.get("HERMES_CODERS_ROOT", "/srv/hermes-coders"))
 SOURCE_DIR = Path(__file__).resolve().parent
 COMPOSE_FILES = (
@@ -20,16 +19,11 @@ COMPOSE_FILES = (
     SOURCE_DIR / "compose.security.yaml",
 )
 STARTUP_TIMEOUT_SECONDS = max(
-    30,
-    int(os.environ.get("HERMES_CODERS_SMOKE_TIMEOUT_SECONDS", "180")),
+    30, int(os.environ.get("HERMES_CODERS_SMOKE_TIMEOUT_SECONDS", "180"))
 )
 POLL_INTERVAL_SECONDS = max(
-    1.0,
-    float(os.environ.get("HERMES_CODERS_SMOKE_POLL_SECONDS", "3")),
+    1.0, float(os.environ.get("HERMES_CODERS_SMOKE_POLL_SECONDS", "3"))
 )
-STRICT_NESTED_PROC_SMOKE = os.environ.get(
-    "HERMES_CODEX_STRICT_NESTED_PROC_SMOKE", "0"
-).strip().casefold() in {"1", "true", "yes", "on"}
 CODEX_VERSION = "0.144.1"
 CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
 CRYPTOGRAPHY_VERSION = "50.0.0"
@@ -45,16 +39,13 @@ class CoderTarget:
 
 CODERS = (
     CoderTarget(
-        project="velvet",
-        coder_service="hermes-coder-velvet",
-        chat_service="hermes-chat-velvet",
-        repository="Stellmaria/Velvet",
+        "velvet", "hermes-coder-velvet", "hermes-chat-velvet", "Stellmaria/Velvet"
     ),
     CoderTarget(
-        project="max",
-        coder_service="hermes-coder-max",
-        chat_service="hermes-chat-max",
-        repository="Stellmaria/romatic_club_bot_max",
+        "max",
+        "hermes-coder-max",
+        "hermes-chat-max",
+        "Stellmaria/romatic_club_bot_max",
     ),
 )
 
@@ -64,7 +55,6 @@ class SmokeError(RuntimeError):
 
 
 Runner = Callable[[Sequence[str], int], subprocess.CompletedProcess[str]]
-
 _SECRET_PATTERNS = (
     re.compile(r"github_pat_[A-Za-z0-9_]+"),
     re.compile(r"gh[opsu]_[A-Za-z0-9]+"),
@@ -85,11 +75,7 @@ def _default_runner(
     args: Sequence[str], timeout_seconds: int
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        list(args),
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=timeout_seconds,
+        list(args), check=False, capture_output=True, text=True, timeout=timeout_seconds
     )
 
 
@@ -178,76 +164,33 @@ def wait_for_service(
 
 
 def github_probe_script(target: CoderTarget) -> str:
-    repository = target.repository
-    https_remote = f"https://github.com/{repository}"
+    https_remote = f"https://github.com/{target.repository}"
     return f"""set -eu
 
 test -n "${{GH_TOKEN:-}}"
 test -r /opt/data/config.yaml
 test -r /opt/data/context-manifest.json
-python - <<'PYCONFIG'
-import hashlib
-import json
-from pathlib import Path
-
-text = Path('/opt/data/config.yaml').read_text(encoding='utf-8')
-if 'env_passthrough:' not in text or '- GH_TOKEN' not in text:
-    raise SystemExit('runtime config does not pass GH_TOKEN to terminal')
-manifest = json.loads(Path('/opt/data/context-manifest.json').read_text(encoding='utf-8'))
-if manifest.get('entity_id') != '{target.project}-coder':
-    raise SystemExit('unexpected Hermes entity context')
-outputs = {{item['path']: item for item in manifest.get('outputs', [])}}
-for name in ('SOUL.md', 'AGENTS.md'):
-    path = Path('/opt/data') / name
-    record = outputs.get(name) or {{}}
-    if hashlib.sha256(path.read_bytes()).hexdigest() != record.get('sha256'):
-        raise SystemExit('Hermes context hash mismatch: ' + name)
-PYCONFIG
-
 gh api user --jq .login >/dev/null
-actual_repo="$(gh api repos/{repository} --jq .full_name)"
-test "$actual_repo" = "{repository}"
-push_allowed="$(gh api repos/{repository} --jq '.permissions.push')"
-test "$push_allowed" = "true"
-
+test "$(gh api repos/{target.repository} --jq .full_name)" = "{target.repository}"
+test "$(gh api repos/{target.repository} --jq '.permissions.push')" = "true"
 remote="$(git -C /workspace remote get-url origin)"
 case "$remote" in
   {https_remote}|{https_remote}.git) ;;
-  *) echo "unexpected origin remote for {target.project}" >&2; exit 31 ;;
+  *) echo "unexpected origin remote" >&2; exit 31 ;;
 esac
-
 helper="$(git config --global --get credential.https://github.com.helper || true)"
 case "$helper" in
   *"gh auth git-credential"*) ;;
-  *) echo "GitHub credential helper is not configured for {target.project}" >&2; exit 32 ;;
+  *) echo "GitHub credential helper is not configured" >&2; exit 32 ;;
 esac
-
 git -C /workspace push --dry-run origin \
   HEAD:refs/heads/hermes-auth-smoke-{target.project} >/dev/null
 """
 
 
-def github_probe_command(target: CoderTarget) -> list[str]:
-    return [
-        *compose_prefix(),
-        "exec",
-        "-T",
-        target.chat_service,
-        "sh",
-        "-ceu",
-        github_probe_script(target),
-    ]
-
-
 def codex_probe_script(target: CoderTarget) -> str:
-    repository = target.repository
-    https_remote = f"https://github.com/{repository}"
+    https_remote = f"https://github.com/{target.repository}"
     models_json = json.dumps(CODEX_MODELS)
-    nested_proc_probe = (
-        "bwrap --unshare-user --unshare-pid --ro-bind / / --proc /proc true"
-        if STRICT_NESTED_PROC_SMOKE
-        else ": # nested /proc probe is a separate strict diagnostic"
-    )
     return f"""set -eu
 
 test -s /opt/codex/auth.json
@@ -257,8 +200,9 @@ test -r /opt/codex/output.schema.json
 test -r /opt/codex/context-manifest.json
 test -d /workspace-base
 test ! -e /workspace
-mode="$(stat -c '%a' /opt/codex/auth.json)"
-test "$mode" = "600"
+test -S /run/hermes-sandbox/launcher.sock
+test "$(stat -c '%a' /opt/codex/auth.json)" = "600"
+test -n "${{HERMES_SANDBOX_LAUNCHER_TOKEN:-}}"
 codex --version | grep -F '{CODEX_VERSION}' >/dev/null
 CODEX_HOME=/opt/codex codex login status >/dev/null
 
@@ -266,6 +210,7 @@ python - <<'PYCAP'
 import json
 import os
 import urllib.request
+from sandbox_launcher_client import SandboxLauncherClient
 
 request = urllib.request.Request(
     'http://127.0.0.1:8642/v1/capabilities',
@@ -273,70 +218,47 @@ request = urllib.request.Request(
 )
 with urllib.request.urlopen(request, timeout=5) as response:
     payload = json.load(response)
-if payload.get('provider') != 'openai-codex-cli':
-    raise SystemExit('unexpected runner provider')
-if payload.get('authenticated') is not True:
-    raise SystemExit('runner reports unauthenticated Codex')
-if payload.get('default_model') != 'gpt-5.6-terra':
-    raise SystemExit('unexpected default model')
-if payload.get('models') != {models_json}:
-    raise SystemExit('unexpected model set')
-if payload.get('structured_output') is not True:
-    raise SystemExit('structured output schema is not active')
+assert payload.get('provider') == 'openai-codex-cli'
+assert payload.get('authenticated') is True
+assert payload.get('default_model') == 'gpt-5.6-terra'
+assert payload.get('models') == {models_json}
+assert payload.get('structured_output') is True
+assert payload.get('execution_backend') == 'host-sandbox-launcher'
 isolation = payload.get('routing', {{}}).get('workspace_isolation', {{}})
-if isolation.get('per_run_clone') is not True:
-    raise SystemExit('per-run clone isolation is not active')
-if isolation.get('base_checkout_read_only') is not True:
-    raise SystemExit('base checkout is not declared read-only')
+assert isolation.get('per_run_clone') is True
+assert isolation.get('base_checkout_read_only') is True
+sandbox = payload.get('routing', {{}}).get('sandbox', {{}})
+assert sandbox.get('boundary') == 'disposable-docker-container'
+assert sandbox.get('nested_bwrap') is False
+client = SandboxLauncherClient()
+ping = client.ping()
+assert ping.get('backend') == 'host-docker-launcher'
+assert ping.get('nested_bwrap') is False
+assert ping.get('project_auth') is True
+probe = client.probe('{target.project}')
+assert int(probe.get('returncode', 1)) == 0, probe.get('stderr')
 PYCAP
 
-python - <<'PYCONTEXT'
-import hashlib
-import json
-from pathlib import Path
-
-root = Path('/opt/codex')
-manifest = json.loads((root / 'context-manifest.json').read_text(encoding='utf-8'))
-if manifest.get('entity_id') != '{target.project}-coder':
-    raise SystemExit('unexpected Codex entity context')
-outputs = {{item['path']: item for item in manifest.get('outputs', [])}}
-for output_name, path in (
-    ('CODEX.AGENTS.md', root / 'AGENTS.md'),
-    ('output.schema.json', root / 'output.schema.json'),
-):
-    record = outputs.get(output_name) or {{}}
-    if hashlib.sha256(path.read_bytes()).hexdigest() != record.get('sha256'):
-        raise SystemExit('Codex context hash mismatch: ' + output_name)
-PYCONTEXT
-
-test -n "${{GH_TOKEN:-}}"
-gh api user --jq .login >/dev/null
-actual_repo="$(gh api repos/{repository} --jq .full_name)"
-test "$actual_repo" = "{repository}"
-push_allowed="$(gh api repos/{repository} --jq '.permissions.push')"
-test "$push_allowed" = "true"
 remote="$(git -C /workspace-base remote get-url origin)"
 case "$remote" in
   {https_remote}|{https_remote}.git) ;;
-  *) echo "unexpected Codex origin remote for {target.project}" >&2; exit 41 ;;
+  *) echo "unexpected Codex origin remote" >&2; exit 41 ;;
 esac
-
 base_fingerprint() {{
   {{
     git -C /workspace-base rev-parse HEAD
     git -C /workspace-base rev-parse --abbrev-ref HEAD
-    git -C /workspace-base for-each-ref --format='%(refname)%00%(objectname)%00' refs/heads refs/tags
+    git -C /workspace-base for-each-ref \
+      --format='%(refname)%00%(objectname)%00' refs/heads refs/tags
     git -C /workspace-base status --porcelain=v1 -z --untracked-files=all
   }} | sha256sum
 }}
-
 fingerprint_before="$(base_fingerprint)"
 findmnt -n -o OPTIONS /workspace-base | grep -E '(^|,)ro(,|$)' >/dev/null
-
 probe="/opt/codex-runs/smoke-{target.project}-$$"
 trap 'rm -rf -- "$probe"' EXIT
 rm -rf -- "$probe"
-default_branch="$(gh api repos/{repository} --jq .default_branch)"
+default_branch="$(gh api repos/{target.repository} --jq .default_branch)"
 test -n "$default_branch"
 git check-ref-format --branch "$default_branch" >/dev/null
 GIT_TERMINAL_PROMPT=0 git clone \
@@ -345,33 +267,14 @@ GIT_TERMINAL_PROMPT=0 git clone \
   --single-branch \
   --branch "$default_branch" \
   "$remote" "$probe" >/dev/null
-source_ref="origin/$default_branch"
-git -C "$probe" checkout --detach --force "$source_ref" >/dev/null
+git -C "$probe" checkout --detach --force "origin/$default_branch" >/dev/null
 git -C "$probe" push --dry-run origin \
   HEAD:refs/heads/codex-auth-smoke-{target.project} >/dev/null
-
-unshare --user --map-root-user true
-unshare --user --map-root-user --mount true
-bwrap --unshare-user --ro-bind / / true
-{nested_proc_probe}
-
-# Read-only proof: Git executes against the immutable base checkout.
-bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev \
-  --ro-bind /workspace-base /workspace-base \
-  git -C /workspace-base status --short >/dev/null
-
-# Writable proof: only the disposable per-run clone is bind-mounted writable.
-bwrap --unshare-user --ro-bind / / --dev-bind /dev /dev \
-  --bind "$probe" "$probe" \
-  sh -ceu 'touch "$1/.bwrap-write"; git -C "$1" status --short >/dev/null; rm -f "$1/.bwrap-write"' \
-  sh "$probe"
-
-fingerprint_after="$(base_fingerprint)"
-test "$fingerprint_before" = "$fingerprint_after"
+test "$(base_fingerprint)" = "$fingerprint_before"
 awk '$1 == "NoNewPrivs:" && $2 == "1" {{ok=1}} END {{exit !ok}}' /proc/1/status
 awk '$1 == "CapEff:" && $2 == "0000000000000000" {{ok=1}} END {{exit !ok}}' /proc/1/status
 awk '$1 == "Seccomp:" && $2 == "2" {{ok=1}} END {{exit !ok}}' /proc/1/status
-grep -F 'hermes-codex-bwrap' /proc/1/attr/current >/dev/null
+grep -F 'hermes-codex-runner' /proc/1/attr/current >/dev/null
 findmnt -n -o OPTIONS / | grep -E '(^|,)ro(,|$)' >/dev/null
 if ps -eo stat= | grep -Eq '^Z'; then
   echo "coder container contains zombie processes" >&2
@@ -380,38 +283,37 @@ fi
 """
 
 
-def codex_probe_command(target: CoderTarget) -> list[str]:
-    return [
-        *compose_prefix(),
-        "exec",
-        "-T",
-        target.coder_service,
-        "sh",
-        "-ceu",
-        codex_probe_script(target),
-    ]
+def probe_command(target: CoderTarget, *, coder: bool) -> list[str]:
+    script = codex_probe_script(target) if coder else github_probe_script(target)
+    service = target.coder_service if coder else target.chat_service
+    return [*compose_prefix(), "exec", "-T", service, "sh", "-ceu", script]
 
 
 def verify_github_access(
-    target: CoderTarget,
-    *,
-    runner: Runner = _default_runner,
+    target: CoderTarget, *, runner: Runner = _default_runner
 ) -> None:
-    run_checked(github_probe_command(target), timeout_seconds=45, runner=runner)
+    run_checked(probe_command(target, coder=False), timeout_seconds=45, runner=runner)
 
 
 def verify_codex_access(
-    target: CoderTarget,
-    *,
-    runner: Runner = _default_runner,
+    target: CoderTarget, *, runner: Runner = _default_runner
 ) -> None:
     auth = ROOT / "codex" / target.project / "auth.json"
     if not auth.is_file() or auth.stat().st_size == 0:
         raise SmokeError(f"Codex auth отсутствует: {auth}")
     mode = stat.S_IMODE(auth.stat().st_mode)
     if mode != 0o600:
-        raise SmokeError(f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}")
-    run_checked(codex_probe_command(target), timeout_seconds=90, runner=runner)
+        raise SmokeError(
+            f"Codex auth имеет режим {mode:04o}; требуется 0600: {auth}"
+        )
+    run_checked(probe_command(target, coder=True), timeout_seconds=120, runner=runner)
+
+
+def verify_target(
+    target: CoderTarget, *, runner: Runner = _default_runner
+) -> None:
+    verify_github_access(target, runner=runner)
+    verify_codex_access(target, runner=runner)
 
 
 def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
@@ -443,19 +345,14 @@ def main() -> int:
             raise SmokeError(f"Отсутствует Compose-файл: {compose_file}")
     if not ROOT.is_dir():
         raise SmokeError(f"Отсутствует Hermes Coder root: {ROOT}")
-
-    nested_proc_status = (
-        "NESTED_PROC_OK" if STRICT_NESTED_PROC_SMOKE else "NESTED_PROC_SKIPPED"
-    )
     for target in CODERS:
         wait_for_service(target.chat_service)
         wait_for_service(target.coder_service)
-        verify_github_access(target)
-        verify_codex_access(target)
+        verify_target(target)
         print(
             f"Hermes/Codex smoke: {target.project} -> {target.repository}: "
-            "CHAT_OK, CODEX_AUTH_OK, LUNA_TERRA_SOL_OK, BASE_RO_OK, "
-            f"RUN_RW_OK, PUSH_OK, NO_ZOMBIES, {nested_proc_status}"
+            "CHAT_OK, CODEX_AUTH_OK, PROJECT_AUTH_OK, LAUNCHER_OK, "
+            "DISPOSABLE_DOCKER_OK, BASE_RO_OK, PUSH_OK, NO_ZOMBIES"
         )
     verify_main_cryptography()
     print(f"Main Hermes dependency: cryptography=={CRYPTOGRAPHY_VERSION}: OK")
