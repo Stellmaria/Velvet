@@ -2,7 +2,7 @@
 
 - Generated from: `working-tree`
 - Production modules: **651**
-- Production LOC: **143647**
+- Production LOC: **143648**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **45**
@@ -55,8 +55,8 @@
 21. `install_auf_charged_queue` from `velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue`; patched symbols: none detected.
 22. `install_auf_generation_receipts` from `install_generation_receipts_with_owner_cost_privacy`; patched symbols: none detected.
 23. `install_krita_remote_worker` from `velvet_bot.app.krita_remote_install.install_krita_remote_worker`; patched symbols: `bootstrap._close_application_resources`, `bootstrap.build_worker_manager`, `workers_module.build_worker_manager`.
-24. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
-25. `install_auf_gpt_image_2` from `velvet_bot.app.auf_gpt_image_2_install.install_auf_gpt_image_2`; patched symbols: `photo_router.handle_auf_photo_command`, `photo_router.handle_auf_photo_input`.
+24. `install_auf_gpt_image_2` from `velvet_bot.app.auf_gpt_image_2_install.install_auf_gpt_image_2`; patched symbols: `photo_router.handle_auf_photo_command`, `photo_router.handle_auf_photo_input`.
+25. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
 
 ## Violation baseline
 

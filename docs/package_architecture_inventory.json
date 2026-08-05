@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "working-tree",
   "production_module_count": 651,
-  "production_loc": 143647,
+  "production_loc": 143648,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -92,7 +92,7 @@
   "installer_graph": [
     {
       "order": 1,
-      "line": 219,
+      "line": 220,
       "call": "install_runtime_stability",
       "origin": "velvet_bot.runtime_stability.install_runtime_stability",
       "owner_module": "velvet_bot.runtime_stability",
@@ -104,7 +104,7 @@
     },
     {
       "order": 2,
-      "line": 220,
+      "line": 221,
       "call": "install_channel_analytics_datetime_compat",
       "origin": "velvet_bot.app.channel_analytics_datetime_compat.install_channel_analytics_datetime_compat",
       "owner_module": "velvet_bot.app.channel_analytics_datetime_compat",
@@ -329,16 +329,6 @@
     },
     {
       "order": 24,
-      "line": 210,
-      "call": "install_auf_branding",
-      "origin": "velvet_bot.app.auf_branding.install_auf_branding",
-      "owner_module": "velvet_bot.app.auf_branding",
-      "patched_symbols": [
-        "Bot.__call__"
-      ]
-    },
-    {
-      "order": 25,
       "line": 212,
       "call": "install_auf_gpt_image_2",
       "origin": "velvet_bot.app.auf_gpt_image_2_install.install_auf_gpt_image_2",
@@ -346,6 +336,16 @@
       "patched_symbols": [
         "photo_router.handle_auf_photo_command",
         "photo_router.handle_auf_photo_input"
+      ]
+    },
+    {
+      "order": 25,
+      "line": 213,
+      "call": "install_auf_branding",
+      "origin": "velvet_bot.app.auf_branding.install_auf_branding",
+      "owner_module": "velvet_bot.app.auf_branding",
+      "patched_symbols": [
+        "Bot.__call__"
       ]
     }
   ],
@@ -11282,11 +11282,11 @@
       "module": "velvet_bot.app.composition",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 232,
+      "loc": 233,
       "function_count": 9,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 115,
+      "max_function_length": 116,
       "branch_count": 3,
       "internal_imports": [
         "velvet_bot.app.auf_active_delivery_fix",
