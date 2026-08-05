@@ -168,8 +168,9 @@ rollback() {
       -f compose.runtime.yaml
       -f compose.security.yaml
     )
-    # Compatibility override is permitted only when the previous live container
-    # proves that the compatibility contract was actually active.
+    # Compatibility override is permitted only in rollback.
+    # The previous live container must prove that the compatibility contract
+    # was actually active before the override can be selected.
     if [[ "$PREVIOUS_USED_OVERRIDE" == 1 && -f "$OVERRIDE_FILE" ]]; then
       rollback_compose+=( -f "$OVERRIDE_FILE" )
     fi
