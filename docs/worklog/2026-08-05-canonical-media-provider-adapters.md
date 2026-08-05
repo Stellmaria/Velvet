@@ -71,8 +71,9 @@ violation retry, balance fallback, worker speedups и Vision fallback завис
   formatting boundary;
 - Ollama discovery ловит только `VisionAnalysisError`, без нового broad
   exception boundary;
-- пересобраны canonical architecture и repository inventories, удалены
-  obsolete provider exemptions и временные issue labels.
+- пересобраны canonical architecture, repository и package inventories;
+- exemption fingerprints обновлены штатным `--bootstrap-exemptions`, без
+  расширения зарегистрированного architecture debt.
 
 ### Миграции и совместимость
 
@@ -100,10 +101,13 @@ clean implementation head `c3156bf2632ab6a34ac1302a6faae25007451a88`:
 - P2 stability inventory возвращён к 106 broad exceptions и 0 unresolved через
   конкретный `VisionAnalysisError` catch;
 - repository layout generator и три P3E tests прошли в run `30998011031`;
-- clean canonical repository commit: `90f9760e36cceae098357662c77de1d2122a1640`.
+- clean canonical repository commit: `90f9760e36cceae098357662c77de1d2122a1640`;
+- package architecture inventory, exemption ledger и canonical `--check`
+  прошли в run `30998513778`;
+- clean canonical package commit: `a439fcc43259bdfc586a4115a95c18494395fd19`.
 
-Полный required CI выполняется на exact PR head перед merge. Отдельный API
-commit используется только для штатного запуска workflow после commit,
+Полный required CI выполняется на следующем exact PR head перед merge. Отдельный
+API commit используется только для штатного запуска workflow после commit,
 созданного `GITHUB_TOKEN`.
 
 ### PR и commit
@@ -112,6 +116,7 @@ commit используется только для штатного запус�
 - implementation commit: `14af196a3258e74bafb783a61d7671223856e36b`;
 - canonical retirement commit: `c3156bf2632ab6a34ac1302a6faae25007451a88`;
 - canonical repository commit: `90f9760e36cceae098357662c77de1d2122a1640`;
+- canonical package commit: `a439fcc43259bdfc586a4115a95c18494395fd19`;
 - final merge commit: ожидается после required CI.
 
 ### Незавершённое
