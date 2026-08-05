@@ -82,23 +82,25 @@ jobs:
 
           path = Path('velvet_bot/workers/manager.py')
           text = path.read_text(encoding='utf-8')
-          old = '''            while True:
-                succeeded, result = await self._execute_once_with_result(spec)
-                controller = spec.wait_controller
-                if controller is None:
-                    await asyncio.sleep(spec.interval_seconds)
-                    continue
-                delay = controller.delay_for(
-'''
-          new = '''            while True:
-                controller = spec.wait_controller
-                if controller is None:
-                    await self._execute_once(spec)
-                    await asyncio.sleep(spec.interval_seconds)
-                    continue
-                succeeded, result = await self._execute_once_with_result(spec)
-                delay = controller.delay_for(
-'''
+          old = '\n'.join((
+              '            while True:',
+              '                succeeded, result = await self._execute_once_with_result(spec)',
+              '                controller = spec.wait_controller',
+              '                if controller is None:',
+              '                    await asyncio.sleep(spec.interval_seconds)',
+              '                    continue',
+              '                delay = controller.delay_for(',
+          )) + '\n'
+          new = '\n'.join((
+              '            while True:',
+              '                controller = spec.wait_controller',
+              '                if controller is None:',
+              '                    await self._execute_once(spec)',
+              '                    await asyncio.sleep(spec.interval_seconds)',
+              '                    continue',
+              '                succeeded, result = await self._execute_once_with_result(spec)',
+              '                delay = controller.delay_for(',
+          )) + '\n'
           if text.count(old) != 1 or new in text:
               raise SystemExit('fixed-loop compatibility replacement mismatch')
           path.write_text(text.replace(old, new), encoding='utf-8')
