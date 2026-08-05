@@ -82,12 +82,14 @@ installer contract.
 - добавлен isolated subprocess smoke, выполняющий все feature installers в
   объявленном порядке вместо прежней проверки только списка stage names;
 - package architecture inventory пересобран штатным генератором на Python 3.13;
+- hard-coded package LOC baseline синхронизирован с generated inventory;
 - временный branch-only workflow генерации удалён из итогового diff.
 
 ### Изменённые модули и контракты
 
 - `velvet_bot/app/workers.py`: compatibility export canonical friendly worker;
 - `tests/test_kie_worker_bootstrap_contract.py`: executable startup regression;
+- `tests/test_package_architecture_inventory.py`: generated LOC baseline;
 - `docs/package_architecture_inventory.json` и `.md`: deterministic import
   fingerprint после изменения public alias;
 - этот worklog: incident, rollback, implementation и validation evidence.
@@ -127,8 +129,23 @@ Initial CI head `ad5cb18d5f10db0b2db503c3ac567d452565c10a`, run
 - type check run `31046201262`: PASS.
 
 Inventory synchronization workflow run `31046368385`: PASS. Генератор выполнил
-`--write`, затем `--check`; временный workflow удалён. Полный required CI на
-чистом exact PR head выполняется перед merge.
+`--write`, затем `--check`; временный workflow удалён.
+
+Exact functional head `55c23bf6197f4189f798985b0337863ba0d09fb3`:
+
+- tests run `31046892337`: preflight PASS, PostgreSQL shards 0/1/2/3 PASS,
+  aggregate `unit-tests` PASS;
+- security run `31046892859`: static security PASS, CodeQL Actions PASS,
+  CodeQL Python PASS, image vulnerability gate/SBOM/provenance PASS,
+  supply-chain contract PASS;
+- Docker build run `31046892220`: PASS;
+- type check run `31046891543`: PASS;
+- project notes run `31046892976`: PASS;
+- branch protection run `31046891564`: branch protection and Docker build
+  contract PASS.
+
+После этой записи запускается финальный exact-head CI только с дополнительным
+worklog evidence; merge разрешён лишь после его завершения.
 
 ### PR и commit
 
@@ -138,16 +155,18 @@ Inventory synchronization workflow run `31046368385`: PASS. Генератор �
 - regression tests: `ad5cb18d5f10db0b2db503c3ac567d452565c10a`;
 - deterministic inventory: `14e08a43c7e5bdcf97bfec26e3653b3607503e65`;
 - temporary workflow removal: `3b1e5d4f66d8fa623ae466deece2df246d333e28`;
-- final merge commit: ожидается после required CI.
+- validation evidence: `31dee84867213eb595fe1181c34a4b7ccd934f10`;
+- LOC baseline sync: `55c23bf6197f4189f798985b0337863ba0d09fb3`;
+- final merge commit: ожидается после final exact-head CI.
 
 ### Незавершённое
 
-- пройти required CI на clean exact PR head;
+- пройти финальный required CI после записи validation evidence;
 - слить PR #647;
 - повторить production deploy и server smoke;
 - после успешного rollout продолжить live acceptance AI queue по #603.
 
 ### Следующий шаг
 
-Проверить exact-head required CI, слить PR #647 и повторить pinned production
-deploy через штатный rollback-capable script.
+Проверить final exact-head required CI, слить PR #647 и повторить pinned
+production deploy через штатный rollback-capable script.
