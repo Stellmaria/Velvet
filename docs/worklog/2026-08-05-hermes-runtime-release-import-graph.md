@@ -3,7 +3,7 @@
 - Дата: `2026-08-05`
 - ID: `hermes-runtime-release-import-graph-20260805`
 - Линия/фаза: `server operations / Hermes coder production release`
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `fix/hermes-coder-runtime-release-graph`
 - Базовый commit: `81cab6e0c0f3cc0cc1fa9a9a0e5338db82e60102`
 - Связанные issue, PR и release evidence: `#592`, `#638`, release run `30983346625`
