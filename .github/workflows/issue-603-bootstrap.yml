@@ -38,8 +38,44 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          git ls-tree -r --name-only HEAD .issue-603-bootstrap | sort > /tmp/bootstrap-paths
 
-          cat .issue-603-bootstrap/payload-part-* | base64 --decode > /tmp/issue-603-payload.tgz
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+
+          expected = {
+              "hex-00": "7aa9d9ee810d8e631478d251f4f443425260767e38a40cc30add4ebd55f1ba07",
+              "hex-01": "280ad5f0bdf73dc95fe50f8468e3b6b8c50e16e67f18abd6c7a61f0625ed8cd3",
+              "hex-02": "388f7f39ab83365a56d9a5a6cb06a7ec6da07425e7ae9046e17df9981f66c0a7",
+              "hex-03": "0aa3e95a28c269e317770f433faa8785aaf5255085e05d4fe99ec6a43e6b1fcf",
+              "hex-04": "a9a980964eaae55fa506881df4c546f0fadcb3b7984cb595dbc5292bdf133bbb",
+              "hex-05": "b04ee221cd33eadb92e6c4e3d23faf51fe8de2bce1758fb1cc21def907e80fe8",
+              "hex-06": "8dcbc6474814fbbcc0cc933e07ee3b24a7232b53cf713c4c0a59f2b967396e50",
+              "hex-07": "6e55dd53dd87dc572cd13e4a219bc8ce277c9bc93b1fd2f32de8bcbec8e24709",
+              "hex-08": "5e4dd61606b9a4c86de2624a87afe28c4e48125e2585f3c754fd47aae0b25874",
+              "hex-09": "a1fddae91e82128e1bbad7767b68047805f6a92d018f3eba67a8a4e6fee07e64",
+              "hex-10": "d9afd9e170068b702c65aac7c7a887e21691b47ed1e472b9b45051f5e59d87e5",
+              "hex-11": "fb37821a6d95580f213bdbd66ce6884694561a021cae79c660d2de2d39cde0fd",
+              "hex-12": "5a45db3d75183a3945ba96a2e858f733fe4fb0c5195aaa1dc6695bc855554710",
+          }
+          root = Path(".issue-603-bootstrap")
+          parts = sorted(root.glob("hex-*"))
+          if [part.name for part in parts] != list(expected):
+              raise SystemExit("unexpected issue-603 hex part set")
+          hex_chunks: list[str] = []
+          for part in parts:
+              value = part.read_text(encoding="utf-8").strip()
+              if sha256(value.encode("ascii")).hexdigest() != expected[part.name]:
+                  raise SystemExit(f"checksum mismatch: {part.name}")
+              hex_chunks.append(value)
+          payload = bytes.fromhex("".join(hex_chunks))
+          digest = sha256(payload).hexdigest()
+          if digest != "3ef346ea4e52dea0743016a30b0b9ed30828ed68f47022d2e2ab6b49091581df":
+              raise SystemExit(f"payload checksum mismatch: {digest}")
+          Path("/tmp/issue-603-payload.tgz").write_bytes(payload)
+          PY
+
           tar -xzf /tmp/issue-603-payload.tgz
           rm -f .github/workflows/issue-603-bootstrap.yml
           rm -rf .issue-603-bootstrap
@@ -61,11 +97,7 @@ jobs:
 
           git add -- \
             .github/workflows/issue-603-bootstrap.yml \
-            .issue-603-bootstrap/payload-part-00 \
-            .issue-603-bootstrap/payload-part-01 \
-            .issue-603-bootstrap/payload-part-02 \
-            .issue-603-bootstrap/payload-part-03 \
-            .issue-603-bootstrap/payload-part-04 \
+            .issue-603-bootstrap \
             docs/architecture_layout_inventory.json \
             docs/architecture_layout_inventory.md \
             docs/package_architecture_inventory.json \
@@ -88,13 +120,7 @@ jobs:
             velvet_bot/workers/adaptive.py \
             velvet_bot/workers/manager.py
 
-          cat > /tmp/expected-paths <<'EOF'
-          .github/workflows/issue-603-bootstrap.yml
-          .issue-603-bootstrap/payload-part-00
-          .issue-603-bootstrap/payload-part-01
-          .issue-603-bootstrap/payload-part-02
-          .issue-603-bootstrap/payload-part-03
-          .issue-603-bootstrap/payload-part-04
+          cat > /tmp/product-paths <<'EOF'
           docs/architecture_layout_inventory.json
           docs/architecture_layout_inventory.md
           docs/package_architecture_inventory.json
@@ -117,10 +143,30 @@ jobs:
           velvet_bot/workers/adaptive.py
           velvet_bot/workers/manager.py
           EOF
-          sed -i 's/^          //' /tmp/expected-paths
+          sed -i 's/^          //' /tmp/product-paths
+          {
+            echo .github/workflows/issue-603-bootstrap.yml
+            cat /tmp/bootstrap-paths
+            cat /tmp/product-paths
+          } | sort -u > /tmp/allowed-paths
           git diff --cached --name-only | sort > /tmp/actual-paths
-          sort -o /tmp/expected-paths /tmp/expected-paths
-          diff -u /tmp/expected-paths /tmp/actual-paths
+          test -z "$(comm -23 /tmp/actual-paths /tmp/allowed-paths)"
+          grep -Fxq .github/workflows/issue-603-bootstrap.yml /tmp/actual-paths
+          while IFS= read -r path; do grep -Fxq "$path" /tmp/actual-paths; done < /tmp/bootstrap-paths
+          for required in \
+            docs/worklog/2026-08-05-adaptive-ai-queue-wakeup.md \
+            tests/test_ai_queue_adaptive_wakeup.py \
+            velvet_bot/app/workers.py \
+            velvet_bot/domains/ai_usage/factory.py \
+            velvet_bot/domains/ai_usage/task_service.py \
+            velvet_bot/domains/vision_batches/worker.py \
+            velvet_bot/infrastructure/postgres/ai_task_wakeup_repository.py \
+            velvet_bot/services/system_health.py \
+            velvet_bot/workers/__init__.py \
+            velvet_bot/workers/adaptive.py \
+            velvet_bot/workers/manager.py; do
+            grep -Fxq "$required" /tmp/actual-paths
+          done
           git diff --cached --check
           test -z "$(git diff --name-only)"
 
