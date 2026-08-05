@@ -1,0 +1,16 @@
+[Unit]
+Description=Hermes per-run sandbox launcher socket
+Before=hermes-coders.service
+
+[Socket]
+ListenStream=/run/hermes-sandbox/launcher.sock
+SocketUser=root
+SocketGroup=hermes-sandbox
+SocketMode=0660
+DirectoryMode=0750
+RemoveOnStop=true
+Accept=no
+Service=hermes-sandbox-launcher.service
+
+[Install]
+WantedBy=sockets.target
