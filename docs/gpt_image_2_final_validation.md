@@ -4,7 +4,8 @@
 
 - P2 stability inventory: schema version 80;
 - unresolved broad exceptions: 0;
-- package architecture inventory: `working-tree`;
+- package architecture inventory: `p1-package-architecture-baseline`;
+- числовые package assertions обновлены из текущего AST-снимка;
 - startup order: GPT Image 2 устанавливается перед финальным Auf branding guard;
 - полный обязательный CI повторно запускается на сгенерированном head.
 
