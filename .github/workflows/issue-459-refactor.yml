@@ -33,6 +33,14 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Synchronize current main
+        shell: bash
+        run: |
+          git config user.name "ChatGPT Codex Connector"
+          git config user.email "chatgpt-codex-connector@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+
       - name: Apply canonical provider refactor
         run: python tools/issue_459_refactor_loader.py
 
@@ -40,7 +48,9 @@ jobs:
         shell: bash
         run: |
           python scripts/inventory_architecture_layout.py --write --label issue-459-provider-adapters
-          python scripts/inventory_telegram_helpers.py --write --label issue-459-provider-adapters
+          python scripts/inventory_telegram_helpers.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md
           python - <<'PY'
           import json
           import sys
@@ -136,8 +146,6 @@ jobs:
       - name: Commit canonical implementation
         shell: bash
         run: |
-          git config user.name "ChatGPT Codex Connector"
-          git config user.email "chatgpt-codex-connector@users.noreply.github.com"
           git add -A
           test -n "$(git status --porcelain)"
           git commit -m "Canonicalize media provider adapters"
