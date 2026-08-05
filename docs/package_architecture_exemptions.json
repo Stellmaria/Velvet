@@ -6,7 +6,7 @@
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",
   "exceptions": [
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_jobs.py:c27013e3a363a01e",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_jobs.py:d79e8863a4f7b800",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -20,7 +20,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality.py:420c593c7c3f61b8",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality.py:2850a6dd2b759ce7",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -45,7 +45,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality_schema_compat.py:812529774d831a82",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_quality_schema_compat.py:4856456e79d9b06c",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -57,7 +57,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ai_vision.py:fc932cd059ae0ecd",
+      "id": "database-acquire-outside-persistence:velvet_bot/ai_vision.py:2f1090eecb207ddc",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -92,7 +92,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/alias_management.py:d3d0da6c1e0f1ae7",
+      "id": "database-acquire-outside-persistence:velvet_bot/alias_management.py:5742990623da58b5",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -105,7 +105,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/analytics_dashboard.py:b27929d1090cbf0b",
+      "id": "database-acquire-outside-persistence:velvet_bot/analytics_dashboard.py:40e1cc0997a3d1b2",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -136,7 +136,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/analytics_reactions.py:1ad72937f01ee1e1",
+      "id": "database-acquire-outside-persistence:velvet_bot/analytics_reactions.py:cb04a6f464f0c917",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -148,7 +148,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/analytics_review.py:13a5ff4f56d3c37c",
+      "id": "database-acquire-outside-persistence:velvet_bot/analytics_review.py:2c434ebda1317909",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -163,7 +163,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_active_delivery_fix.py:fd53cba01e613697",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_active_delivery_fix.py:deaa5c93ad10d263",
       "owner": "media-delivery",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -175,7 +175,7 @@
       "issue": "#457"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_generation_receipt_install.py:7b54a95bbd42d255",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_generation_receipt_install.py:d639138dc1f660b6",
       "owner": "application-composition",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -187,7 +187,7 @@
       "issue": "#455"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:8e2d81879dbb2b4b",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:3e7ec2173bf7cadb",
       "owner": "application-composition",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -199,7 +199,7 @@
       "issue": "#455"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_reference_privacy_install.py:f4e87eec7f67ae73",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_reference_privacy_install.py:2f7de10b9338c009",
       "owner": "application-composition",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -211,7 +211,7 @@
       "issue": "#455"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/public_notifications.py:32b4fea30f2a34e1",
+      "id": "database-acquire-outside-persistence:velvet_bot/app/public_notifications.py:6b014a6f4c0dfb07",
       "owner": "application-composition",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -224,7 +224,7 @@
       "issue": "#455"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/application/workspace_tasks.py:4baf3d17b6ea8e10",
+      "id": "database-acquire-outside-persistence:velvet_bot/application/workspace_tasks.py:7113302df6a9e380",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -240,7 +240,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/archive_topic_links.py:0b885dbf9ccb61fe",
+      "id": "database-acquire-outside-persistence:velvet_bot/archive_topic_links.py:572a062375a65705",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -254,7 +254,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/backup_runtime.py:61b45885f50f4752",
+      "id": "database-acquire-outside-persistence:velvet_bot/backup_runtime.py:38c2a76d7545f420",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -269,7 +269,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/backup_service.py:f0815c4fea41714a",
+      "id": "database-acquire-outside-persistence:velvet_bot/backup_service.py:421dc0191516d0c3",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -282,7 +282,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/channel_analytics.py:e979fcb6e22c1379",
+      "id": "database-acquire-outside-persistence:velvet_bot/channel_analytics.py:625d54bb9f9a3234",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -305,7 +305,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/character_aliases.py:35edf6cb4cb208c7",
+      "id": "database-acquire-outside-persistence:velvet_bot/character_aliases.py:8baa25158d631851",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -322,7 +322,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/character_renaming.py:f005db22bd67ae75",
+      "id": "database-acquire-outside-persistence:velvet_bot/character_renaming.py:4bd5bdcdf1576df1",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -334,7 +334,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/character_resolution.py:8aa20432642ca09b",
+      "id": "database-acquire-outside-persistence:velvet_bot/character_resolution.py:096b1ab08a241dd2",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -355,7 +355,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/discussion_thread_links.py:086f867ff013a19f",
+      "id": "database-acquire-outside-persistence:velvet_bot/discussion_thread_links.py:53de0416726cec9e",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -367,7 +367,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/ledger.py:9886f9f8b17ae0e3",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/ledger.py:7ce03a3f71953f0b",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -381,7 +381,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/tasks.py:4b14154669b01e86",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/ai_usage/tasks.py:6566a08e8b2e7779",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -396,7 +396,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/dispatcher.py:2ac3a5398b72a835",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/dispatcher.py:d22840bbc1ff3f04",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -409,7 +409,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/queue.py:8c153ea20210c55f",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_runtime/queue.py:6b85d7d4bc6399e3",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -423,7 +423,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:84bcaa52458b4963",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/charged_queue.py:036da8a405748180",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -436,7 +436,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:16a439a1983f0b9d",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/economics.py:fcf305e82309e555",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -449,7 +449,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/package_pricing.py:e3edf80c193028e5",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/package_pricing.py:21c51ccd29ad0a72",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -462,7 +462,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:374253b817082e4b",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/pricing.py:f81ba6fb84bb3db8",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -477,7 +477,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/purchase.py:187ad7fa8964f44a",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/auf_wallet/purchase.py:d3cc41288af5fd1d",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -490,7 +490,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:0e863495475d8d3b",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_generation/task_queue.py:6f33519fde8df698",
       "owner": "provider-adapters",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -504,7 +504,7 @@
       "issue": "#459"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_rework/manual.py:7bc8a11db3fa92ef",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/media_rework/manual.py:b7df0adb6e2e9ef7",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -519,7 +519,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/public_archive/story_catalog.py:f3beda1aece1e0da",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/public_archive/story_catalog.py:703cd2beaeeb67c2",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -531,7 +531,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/roleplay/storage.py:83f65ad47f37cd1d",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/roleplay/storage.py:025f586762ba6177",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -544,7 +544,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/telegram_storage/service.py:422c13a6a9566b3e",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/telegram_storage/service.py:d3b13479a63b6957",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -556,7 +556,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/user_registry.py:55bbc3262c884297",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/user_registry.py:dcca5619edd4e4bf",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -570,7 +570,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/cache.py:b7be158a1a143cce",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/cache.py:34245690cda804bc",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -584,7 +584,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/integration.py:0565fddeabd665ed",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/vision_routing/integration.py:b9a0ba05611488ab",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -597,7 +597,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/watermark/remote_worker.py:da174b51f93b4efd",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/watermark/remote_worker.py:8edc2451c868149d",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -610,7 +610,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/administration.py:95d1f8c5d190fbed",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/administration.py:ca02aeeb3a9fd10b",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -623,7 +623,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_access.py:7294bfabb94b63f0",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_access.py:5b010d0a521b0e32",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -636,7 +636,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_ingest.py:4c6973198cfc3e3c",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/analytics_ingest.py:1d2fd5bba471cd2a",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -648,7 +648,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_directory.py:fb94715bdc08a8f2",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_directory.py:ff1e365ef3b3aa1b",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -661,7 +661,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_management.py:7df957418c083930",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_management.py:7ac6dcf5e2bcd7d1",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -680,7 +680,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_topics.py:e8fd48a31e48c2d8",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/character_topics.py:cf031e7cbef5d6ad",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -693,7 +693,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/media_preferences.py:6b9aa66db54eee46",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/media_preferences.py:9da9eee5e7bdd928",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -707,7 +707,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/onboarding.py:3d4ecf2b32b54cf7",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/onboarding.py:9e95b4a0f4154a41",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -727,7 +727,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/publication_access.py:cb4a1e29bb2d704e",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/publication_access.py:3375b2ef86dc6773",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -739,7 +739,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/reference_access.py:588ac68fa5070d59",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/reference_access.py:af14c5d22c8592d7",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -752,7 +752,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_assets.py:d7aef2e8a7e7fa33",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_assets.py:ebc5ab4f98d267ce",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -772,7 +772,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_templates.py:54fae3e0ede4aa67",
+      "id": "database-acquire-outside-persistence:velvet_bot/domains/workspaces/watermark_templates.py:ba051c7ce96ab993",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -785,7 +785,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:7ffeb14955b17d1b",
+      "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:dd573dbb8536b75a",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -802,7 +802,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/media_sets.py:d0c98dacf35a1fcb",
+      "id": "database-acquire-outside-persistence:velvet_bot/media_sets.py:c5a4567b0a5bcbfb",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -819,7 +819,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/ollama_vision.py:75a349fe702c5447",
+      "id": "database-acquire-outside-persistence:velvet_bot/ollama_vision.py:98397abb4843daef",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -831,7 +831,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/palette_composition_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/palette_composition_reports.py:441cc1a2fde0b902",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -843,7 +843,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/archive/save.py:16b321b005b0ee97",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/archive/save.py:de617f98ec2c12a2",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -855,7 +855,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py:4a63b29f3505bb1b",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/core_operations_controllers/watermark.py:6355d358959a07d0",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -868,7 +868,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf.py:880af1a37422285a",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf.py:810dc857727fb7cd",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -900,7 +900,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_balance.py:7c679e7d98e923f3",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_balance.py:03e2ed0354c8d304",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -914,7 +914,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:f8715b2ab9fb49f5",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_photo.py:8e002641a39fc608",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -926,7 +926,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video.py:880af1a37422285a",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video.py:810dc857727fb7cd",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -941,7 +941,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:ea889cf94b297b1e",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py:636d174f57897ecb",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -954,7 +954,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_management.py:9109b0c0eddb3f0e",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_management.py:080162e66f62e43d",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -968,7 +968,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_pickers.py:c9903d77dc436b28",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_pickers.py:f7bf56af24f0ce92",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -981,7 +981,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py:211455d1d4262d46",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_character_topic_creation.py:c7e91f16f470c762",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -993,7 +993,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_owner_controls.py:def5993693e3dd3e",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_owner_controls.py:8fd06eab6e7fe2e1",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1007,7 +1007,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py:70b013d67271b43c",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_taxonomy_admin.py:b5a09aa068bee445",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1020,7 +1020,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_team.py:02233bf77576dea9",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_team.py:9376c3eee4774933",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1032,7 +1032,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark.py:02233bf77576dea9",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark.py:9376c3eee4774933",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1044,7 +1044,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py:be219f8fb8f3870c",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/routers/workspace_watermark_templates.py:4b00dc34b7b87e0b",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1057,7 +1057,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/storage_center.py:81dbf0f9a60f60b4",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/storage_center.py:7607a2cbbd087a41",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1069,7 +1069,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_archive_dashboard.py:7d7d34269e050c4a",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_archive_dashboard.py:c8e81d88253c54ad",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1082,7 +1082,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_deletion_controller.py:c43ee3cce1550ed3",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_deletion_controller.py:c3ed7193b0760162",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1094,7 +1094,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_reference_dashboard.py:ef0e1f62557963c8",
+      "id": "database-acquire-outside-persistence:velvet_bot/presentation/telegram/workspace_reference_dashboard.py:3d84f03c2d22fc10",
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1106,7 +1106,7 @@
       "issue": "#460"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/prompt_result_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/prompt_result_reports.py:441cc1a2fde0b902",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1118,7 +1118,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/public_catalog.py:f833b91ad6ef249e",
+      "id": "database-acquire-outside-persistence:velvet_bot/public_catalog.py:7c8ba522c67429a4",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1138,7 +1138,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/public_directory.py:1f72da18985282b6",
+      "id": "database-acquire-outside-persistence:velvet_bot/public_directory.py:e542c8238aba8658",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1150,7 +1150,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/public_media_lookup.py:71a1d22abdf1f598",
+      "id": "database-acquire-outside-persistence:velvet_bot/public_media_lookup.py:286f4a4a73d0b393",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1163,7 +1163,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_audit.py:4c82fce9f720a393",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_audit.py:a81887f0a0c6c4a3",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1179,7 +1179,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_calibration.py:1cd3378e8fa72b88",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_calibration.py:3ec80d4bf2f47dbf",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1194,7 +1194,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:d0db06e6e1dabdc4",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_operations.py:055152223fb22dd7",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1206,7 +1206,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/quality_set_audit_compat.py:a6727ccb96e00668",
+      "id": "database-acquire-outside-persistence:velvet_bot/quality_set_audit_compat.py:f8da1789f869f790",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1218,7 +1218,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/reference_comparison_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/reference_comparison_reports.py:441cc1a2fde0b902",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1230,7 +1230,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_quality.py:5c0ebb8008e54187",
+      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_quality.py:b58ee315355f5de1",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1242,7 +1242,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_vision.py:5c0ebb8008e54187",
+      "id": "database-acquire-outside-persistence:velvet_bot/resilient_ai_vision.py:b58ee315355f5de1",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1255,7 +1255,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/runtime_stability.py:f27f02b7df2e53e3",
+      "id": "database-acquire-outside-persistence:velvet_bot/runtime_stability.py:4aff8ceaa4bbdc2f",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1267,7 +1267,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/telegram_export_import.py:cdc1bc36ccafd29d",
+      "id": "database-acquire-outside-persistence:velvet_bot/telegram_export_import.py:e9c8531061d3b723",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1280,7 +1280,7 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/velvet_formatting_reports.py:f47aacbdcddc4cb6",
+      "id": "database-acquire-outside-persistence:velvet_bot/velvet_formatting_reports.py:441cc1a2fde0b902",
       "owner": "root-module-migration",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
@@ -1607,7 +1607,7 @@
       "issue": "#459"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_active_delivery_fix.py:380cf54d1bb86fe3",
+      "id": "dynamic-import:velvet_bot/app/auf_active_delivery_fix.py:500b24ecd3ec152a",
       "owner": "media-delivery",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1619,7 +1619,7 @@
       "issue": "#457"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_cancel_ui_install.py:104ec99151d65751",
+      "id": "dynamic-import:velvet_bot/app/auf_cancel_ui_install.py:e9c8aa36634e8f47",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1632,7 +1632,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_charged_queue_install.py:36827ffcdd532802",
+      "id": "dynamic-import:velvet_bot/app/auf_charged_queue_install.py:1401fe820cb1f721",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1644,7 +1644,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_generation_price_privacy_install.py:ff39fbb314fce0c3",
+      "id": "dynamic-import:velvet_bot/app/auf_generation_price_privacy_install.py:ccdc8b049e5603e9",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1656,7 +1656,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:2431a60ffaac2ce3",
+      "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:4d1572cc96dbe9a6",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1668,7 +1668,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:b0be3ae05b737c5d",
+      "id": "dynamic-import:velvet_bot/app/auf_margin_dashboard_install.py:c57d54375959a6ea",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1680,7 +1680,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:899fd76cb0fdb65c",
+      "id": "dynamic-import:velvet_bot/app/auf_owner_cost_privacy/install.py:7d2dd2251f31655f",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1692,7 +1692,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_owner_pricing_ui_install.py:4edb9ee28ebd4255",
+      "id": "dynamic-import:velvet_bot/app/auf_owner_pricing_ui_install.py:c005c43b86ad256c",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1704,7 +1704,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_model_modes.py:ba057cbaa90d80e4",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_model_modes.py:b558de02bcaa1699",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1716,7 +1716,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:38361442a5fe871d",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:98e325bc4c4c4ce6",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1728,7 +1728,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_ui_install.py:be55fd3963194e77",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_ui_install.py:7f8feebb74d34b68",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1740,7 +1740,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_reconciliation_install.py:ef8d0bb1396104ed",
+      "id": "dynamic-import:velvet_bot/app/auf_reconciliation_install.py:6bb88abee33707cc",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1753,7 +1753,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_result_delivery_recovery.py:25a5994630feeef1",
+      "id": "dynamic-import:velvet_bot/app/auf_result_delivery_recovery.py:c3dcdff2b2b162e6",
       "owner": "media-delivery",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1765,7 +1765,7 @@
       "issue": "#457"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_runtime_install.py:89dd4fc204bfbb86",
+      "id": "dynamic-import:velvet_bot/app/auf_runtime_install.py:5a5a4e383d28a6fe",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1778,7 +1778,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_user_portal_install.py:32d3a30d5f52d954",
+      "id": "dynamic-import:velvet_bot/app/auf_user_portal_install.py:b78b51271d775ca4",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1790,7 +1790,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_wallet_ui_install.py:40c9b4cfd7376f35",
+      "id": "dynamic-import:velvet_bot/app/auf_wallet_ui_install.py:2327b3a3e7561f5c",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1803,7 +1803,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_workspace_ui_install.py:8db5969ac94258bc",
+      "id": "dynamic-import:velvet_bot/app/auf_workspace_ui_install.py:94aa8f1ac8f3966e",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1816,7 +1816,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:944186e5de8c82f4",
+      "id": "dynamic-import:velvet_bot/app/media_delivery_ui_install.py:1404f1bad2d1b010",
       "owner": "media-delivery",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -1828,7 +1828,7 @@
       "issue": "#457"
     },
     {
-      "id": "dynamic-import:velvet_bot/domains/media_generation/friendly_worker.py:be634e53226aa595",
+      "id": "dynamic-import:velvet_bot/domains/media_generation/friendly_worker.py:20856149629e4ca9",
       "owner": "media-delivery",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
