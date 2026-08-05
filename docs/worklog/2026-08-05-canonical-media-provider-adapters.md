@@ -102,9 +102,10 @@ clean implementation head `c3156bf2632ab6a34ac1302a6faae25007451a88`:
   конкретный `VisionAnalysisError` catch;
 - repository layout generator и три P3E tests прошли в run `30998011031`;
 - clean canonical repository commit: `90f9760e36cceae098357662c77de1d2122a1640`;
-- package architecture inventory, exemption ledger и canonical `--check`
-  прошли в run `30998513778`;
-- clean canonical package commit: `a439fcc43259bdfc586a4115a95c18494395fd19`.
+- package architecture inventory и exemption ledger пересобраны на Python 3.13,
+  той же версии, что использует required preflight;
+- canonical package `--check` прошёл в run `30998877179`;
+- clean Python 3.13 package commit: `bc0254673fc7038f65fcab3e82958fc47957372a`.
 
 Полный required CI выполняется на следующем exact PR head перед merge. Отдельный
 API commit используется только для штатного запуска workflow после commit,
@@ -116,7 +117,7 @@ API commit используется только для штатного зап�
 - implementation commit: `14af196a3258e74bafb783a61d7671223856e36b`;
 - canonical retirement commit: `c3156bf2632ab6a34ac1302a6faae25007451a88`;
 - canonical repository commit: `90f9760e36cceae098357662c77de1d2122a1640`;
-- canonical package commit: `a439fcc43259bdfc586a4115a95c18494395fd19`;
+- canonical Python 3.13 package commit: `bc0254673fc7038f65fcab3e82958fc47957372a`;
 - final merge commit: ожидается после required CI.
 
 ### Незавершённое
