@@ -30,7 +30,7 @@ test_text = test_text.replace(
     "KieModelAlias.WAN_27_IMAGE",
 )
 test_text = test_text.replace(
-    '"seedream/5-pro-text-to-image",\n                client.provider_route(kie).model_id,',
-    '"wan/2-7-image",\n                client.provider_route(kie).model_id,',
+    '"seedream/5-pro-text-to-image"',
+    '"wan/2-7-image"',
 )
 test_path.write_text(test_text, encoding="utf-8")
