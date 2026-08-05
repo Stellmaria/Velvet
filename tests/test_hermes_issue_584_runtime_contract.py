@@ -166,6 +166,22 @@ class Issue584RuntimeEvidenceTests(unittest.TestCase):
             with self.assertRaises(coder_router.RouterError):
                 router.pull_request("velvet", 640)
 
+    def test_pr_snapshot_fails_closed_without_numeric_changed_files(self) -> None:
+        router = object.__new__(evidence_router.EvidenceTierAwareCoderRouter)
+        router.targets = {"velvet": self.target}
+        router.timeout_seconds = 30
+        with patch.object(
+            tier_router.TierAwareCoderRouter,
+            "pull_request",
+            return_value={"head_sha": "1" * 40},
+        ), patch.object(
+            router,
+            "github_list",
+            return_value=[],
+        ):
+            with self.assertRaises(coder_router.RouterError):
+                router.pull_request("velvet", 640)
+
 
 if __name__ == "__main__":
     unittest.main()
