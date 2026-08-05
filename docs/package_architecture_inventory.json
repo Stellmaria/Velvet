@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 651,
-  "production_loc": 143652,
+  "production_loc": 143653,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -8564,15 +8564,14 @@
       "module": "velvet_bot.app",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 17,
+      "loc": 13,
       "function_count": 0,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 0,
       "branch_count": 0,
       "internal_imports": [
-        "velvet_bot.app.composition",
-        "velvet_bot.app.gpt_image_2_bootstrap"
+        "velvet_bot.app.composition"
       ],
       "external_import_count": 0,
       "aiogram_imports": [],
@@ -8585,12 +8584,7 @@
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
       "install_definitions": [],
-      "install_calls": [
-        {
-          "line": 3,
-          "call": "install_gpt_image_2_bootstrap"
-        }
-      ],
+      "install_calls": [],
       "installed_sentinel_count": 0,
       "package_getattr": false,
       "env_reads": [],
@@ -11288,7 +11282,7 @@
       "module": "velvet_bot.app.composition",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 233,
+      "loc": 238,
       "function_count": 9,
       "class_count": 2,
       "handler_count": 0,
@@ -11316,6 +11310,7 @@
         "velvet_bot.app.auf_workspace_ui_install",
         "velvet_bot.app.bootstrap",
         "velvet_bot.app.channel_analytics_datetime_compat",
+        "velvet_bot.app.gpt_image_2_bootstrap",
         "velvet_bot.app.krita_remote_install",
         "velvet_bot.app.original_image_delivery_hotfix",
         "velvet_bot.app.original_video_delivery_hotfix",
@@ -11344,6 +11339,10 @@
         {
           "line": 63,
           "call": "install_channel_analytics_datetime_compat"
+        },
+        {
+          "line": 237,
+          "call": "install_gpt_image_2_bootstrap"
         },
         {
           "line": 146,
