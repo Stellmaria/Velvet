@@ -26,7 +26,9 @@ from velvet_bot.domains.ai_usage import (
     build_ai_task_queue_service,
     build_ai_usage_service,
 )
-from velvet_bot.domains.media_generation.friendly_worker import FriendlyKieGenerationWorker
+from velvet_bot.domains.media_generation.friendly_worker import (
+    FriendlyKieGenerationWorker as KieGenerationWorker,
+)
 from velvet_bot.domains.media_generation.task_queue import KieTaskQueueService
 from velvet_bot.domains.media_quality import MediaQualityRepository, MediaQualityService
 from velvet_bot.domains.vision_batches import build_vision_batch_consumer
@@ -182,7 +184,7 @@ def build_worker_manager(
                 if slot == 1
                 else f"kie-media-generation-{slot}"
             )
-            kie_worker = FriendlyKieGenerationWorker(
+            kie_worker = KieGenerationWorker(
                 bot=bot,
                 queue=kie_queue,
                 client=kie_client,
