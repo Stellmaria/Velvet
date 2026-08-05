@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "deploy-hermes-coders.yml"
 RELEASE = ROOT / "deploy" / "hermes-coders" / "release.sh"
+INSTALL = ROOT / "deploy" / "hermes-coders" / "install.sh"
+SANDBOX_PREFLIGHT = ROOT / "deploy" / "hermes-coders" / "sandbox_preflight.py"
 
 
 class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
@@ -14,6 +16,8 @@ class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
         cls.release = RELEASE.read_text(encoding="utf-8")
+        cls.install = INSTALL.read_text(encoding="utf-8")
+        cls.sandbox_preflight = SANDBOX_PREFLIGHT.read_text(encoding="utf-8")
 
     def test_release_requires_exact_current_main_ref(self) -> None:
         self.assertIn('release/hermes-coders-*', self.workflow)
@@ -74,12 +78,14 @@ class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
             'actual_runner_sha',
             'container_zombies',
             'host_zombies',
-            'client.probe',
             '.RestartCount',
             '{{json .HostConfig.Init}}',
             'apparmor=hermes-codex-runner',
         ):
             self.assertIn(marker, self.release)
+        self.assertIn('sandbox_preflight.py', self.install)
+        self.assertIn('client.probe(project)', self.sandbox_preflight)
+        self.assertIn('for project in _PROJECTS', self.sandbox_preflight)
 
     def test_release_has_fail_closed_rollback_without_persistent_deletion(self) -> None:
         self.assertIn('rollback()', self.release)
