@@ -12,3 +12,13 @@ payload = "".join(
 source = zlib.decompress(base64.b85decode(payload.encode("ascii"))).decode("utf-8")
 namespace = {"__file__": str(Path(__file__).resolve()), "__name__": "__main__"}
 exec(compile(source, "issue_459_refactor.py", "exec"), namespace)
+
+friendly_path = ROOT / "velvet_bot/domains/media_generation/friendly_worker.py"
+friendly = friendly_path.read_text(encoding="utf-8")
+friendly = friendly.replace(
+    '                "<b>Ауф не смог завершить генерацию</b>\n\n"\n'
+    '                f"{escape(message)}\n\n"\n',
+    '                "<b>Ауф не смог завершить генерацию</b>\\n\\n"\n'
+    '                f"{escape(message)}\\n\\n"\n',
+)
+friendly_path.write_text(friendly, encoding="utf-8")
