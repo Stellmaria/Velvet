@@ -15,6 +15,7 @@ RELEASE_ROOT="$ROOT/releases"
 CURRENT_LINK="$RELEASE_ROOT/current-hermes-coders"
 ROLLBACK_ROOT="$ROOT/rollbacks"
 OVERRIDE_FILE="$ROOT/compose.bwrap.override.yaml"
+LEGACY_DROPIN=/etc/systemd/system/hermes-coders.service.d/20-bwrap-runtime.conf
 VELVET_CONTAINER=hermes-coders-hermes-coder-velvet-1
 MAX_CONTAINER=hermes-coders-hermes-coder-max-1
 
@@ -67,12 +68,15 @@ BACKUP_DIR="$ROLLBACK_ROOT/issue-594-$STAMP-$TARGET_SHA"
 install -d -o root -g root -m 0700 "$BACKUP_DIR/rootfs"
 EXISTING_MANIFEST="$BACKUP_DIR/existing-paths.txt"
 : > "$EXISTING_MANIFEST"
+ROLLBACK_VELVET_TAG="velvet-codex-coder-velvet:rollback-$STAMP"
+ROLLBACK_MAX_TAG="velvet-codex-coder-max:rollback-$STAMP"
 
 ARTIFACT_PATHS=(
   /usr/local/lib/hermes-sandbox-launcher
   /etc/systemd/system/hermes-sandbox-launcher.socket
   /etc/systemd/system/hermes-sandbox-launcher.service
   /etc/systemd/system/hermes-coders.service
+  "$LEGACY_DROPIN"
   /etc/apparmor.d/hermes-codex-runner
   /etc/apparmor.d/hermes-codex-run
   /srv/hermes-coders/launcher.env
@@ -123,6 +127,15 @@ printf '%s\n' "$PREVIOUS_VELVET_IMAGE" > "$BACKUP_DIR/velvet-image.txt"
 printf '%s\n' "$PREVIOUS_MAX_IMAGE" > "$BACKUP_DIR/max-image.txt"
 printf '%s\n' "$PREVIOUS_USED_OVERRIDE" > "$BACKUP_DIR/previous-used-override.txt"
 
+if [[ -n "$PREVIOUS_VELVET_IMAGE" ]]; then
+  docker image inspect "$PREVIOUS_VELVET_IMAGE" >/dev/null
+  docker tag "$PREVIOUS_VELVET_IMAGE" "$ROLLBACK_VELVET_TAG"
+fi
+if [[ -n "$PREVIOUS_MAX_IMAGE" ]]; then
+  docker image inspect "$PREVIOUS_MAX_IMAGE" >/dev/null
+  docker tag "$PREVIOUS_MAX_IMAGE" "$ROLLBACK_MAX_TAG"
+fi
+
 restore_artifacts() {
   local path
   for path in "${ARTIFACT_PATHS[@]}"; do
@@ -136,6 +149,7 @@ restore_artifacts() {
 
 rollback() {
   local exit_code="$?"
+  local rollback_images_ready=1
   trap - ERR INT TERM
   echo "Hermes canonical release failed; restoring previous runtime." >&2
   restore_artifacts || true
@@ -147,10 +161,20 @@ rollback() {
     rm -f -- "$CURRENT_LINK"
   fi
   if [[ -n "$PREVIOUS_VELVET_IMAGE" ]]; then
-    docker tag "$PREVIOUS_VELVET_IMAGE" velvet-codex-coder-velvet:local || true
+    if docker image inspect "$ROLLBACK_VELVET_TAG" >/dev/null 2>&1; then
+      docker tag "$ROLLBACK_VELVET_TAG" velvet-codex-coder-velvet:local \
+        || rollback_images_ready=0
+    else
+      rollback_images_ready=0
+    fi
   fi
   if [[ -n "$PREVIOUS_MAX_IMAGE" ]]; then
-    docker tag "$PREVIOUS_MAX_IMAGE" velvet-codex-coder-max:local || true
+    if docker image inspect "$ROLLBACK_MAX_TAG" >/dev/null 2>&1; then
+      docker tag "$ROLLBACK_MAX_TAG" velvet-codex-coder-max:local \
+        || rollback_images_ready=0
+    else
+      rollback_images_ready=0
+    fi
   fi
   systemctl daemon-reload || true
   systemctl stop hermes-sandbox-launcher.service hermes-sandbox-launcher.socket || true
@@ -159,31 +183,38 @@ rollback() {
     systemctl restart hermes-sandbox-launcher.service || true
   fi
   if [[ -n "$PREVIOUS_COMPOSE_DIR" && -d "$PREVIOUS_COMPOSE_DIR" ]]; then
-    rollback_compose=(
-      docker compose
-      --project-name hermes-coders
-      --profile velvet
-      --profile max
-      -f compose.yaml
-      -f compose.runtime.yaml
-      -f compose.security.yaml
-    )
-    # Compatibility override is permitted only in rollback.
-    # The previous live container must prove that the compatibility contract
-    # was actually active before the override can be selected.
-    if [[ "$PREVIOUS_USED_OVERRIDE" == 1 && -f "$OVERRIDE_FILE" ]]; then
-      rollback_compose+=( -f "$OVERRIDE_FILE" )
+    if [[ "$rollback_images_ready" != 1 ]]; then
+      echo "Previous coder images are unavailable; refusing rollback recreation with incorrect local tags." >&2
+    else
+      rollback_compose=(
+        docker compose
+        --project-name hermes-coders
+        --profile velvet
+        --profile max
+        -f compose.yaml
+        -f compose.runtime.yaml
+        -f compose.security.yaml
+      )
+      # Compatibility override is permitted only in rollback.
+      # The previous live container must prove that the compatibility contract
+      # was actually active before the override can be selected.
+      if [[ "$PREVIOUS_USED_OVERRIDE" == 1 && -f "$OVERRIDE_FILE" ]]; then
+        rollback_compose+=( -f "$OVERRIDE_FILE" )
+      fi
+      (
+        cd "$PREVIOUS_COMPOSE_DIR"
+        HERMES_CODERS_ROOT="$ROOT" \
+        HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
+          "${rollback_compose[@]}" up -d --no-build --force-recreate
+      ) || true
     fi
-    (
-      cd "$PREVIOUS_COMPOSE_DIR"
-      HERMES_CODERS_ROOT="$ROOT" \
-      HERMES_AGENT_CONTROL_NETWORK=hermes-agent-control \
-        "${rollback_compose[@]}" up -d --no-build --force-recreate
-    ) || true
   fi
   exit "$exit_code"
 }
 trap rollback ERR INT TERM
+
+rm -f -- "$LEGACY_DROPIN"
+rmdir --ignore-fail-on-non-empty "$(dirname "$LEGACY_DROPIN")" 2>/dev/null || true
 
 HERMES_RELEASE_ROOT="$REPO_ROOT" \
 HERMES_CODERS_SOURCE_DIR="$SOURCE_DIR" \
@@ -232,6 +263,7 @@ PY
 
 host_zombies="$(ps -eo stat= | awk '$1 ~ /^Z/ {count++} END {print count+0}')"
 test "$host_zombies" -eq 0
+docker image rm "$ROLLBACK_VELVET_TAG" "$ROLLBACK_MAX_TAG" >/dev/null 2>&1 || true
 trap - ERR INT TERM
 
 printf '%s\n' \
