@@ -100,7 +100,12 @@ class EvidenceTierAwareCoderRouter(TierAwareCoderRouter):
             if isinstance(item.get("filename"), str)
         )
         changed_files = result.get("changed_files")
-        if type(changed_files) is int and changed_files != len(files):
+        if type(changed_files) is not int:
+            raise RouterError(
+                HTTPStatus.BAD_GATEWAY,
+                "GitHub changed_files отсутствует в evidence snapshot.",
+            )
+        if changed_files != len(files):
             raise RouterError(
                 HTTPStatus.BAD_GATEWAY,
                 "GitHub changed-file count изменился во время evidence snapshot.",
