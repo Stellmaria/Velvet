@@ -77,15 +77,15 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_inventory_covers_the_complete_current_package(self) -> None:
         modules = self.inventory["modules"]
-        self.assertEqual(648, self.inventory["production_module_count"])
+        self.assertEqual(651, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(142157, self.inventory["production_loc"])
+        self.assertEqual(143648, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
         self.assertEqual(0, self.inventory["router_duplicate_count"])
         self.assertEqual(45, self.inventory["repository_module_count"])
-        self.assertEqual(24, len(self.inventory["installer_graph"]))
+        self.assertEqual(25, len(self.inventory["installer_graph"]))
 
         self.assertEqual(
             self.inventory["production_module_count"],
@@ -107,7 +107,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         observed_ids = [str(item["id"]) for item in violations]
         registered_ids = [str(item["id"]) for item in exceptions]
 
-        self.assertEqual(523, self.inventory["violation_count"])
+        self.assertEqual(536, self.inventory["violation_count"])
         self.assertEqual(self.inventory["violation_count"], len(violations))
         self.assertEqual(len(violations), len(exceptions))
         self.assertEqual(len(observed_ids), len(set(observed_ids)))
@@ -166,7 +166,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_installer_graph_preserves_order_and_patch_evidence(self) -> None:
         graph = self.inventory["installer_graph"]
-        self.assertEqual(list(range(1, 25)), [item["order"] for item in graph])
+        self.assertEqual(list(range(1, 26)), [item["order"] for item in graph])
         self.assertEqual("install_runtime_stability", graph[0]["call"])
         self.assertEqual("install_auf_branding", graph[-1]["call"])
         self.assertTrue(any(item["patched_symbols"] for item in graph))
@@ -180,11 +180,11 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         )
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
-        self.assertIn("Production modules: **648**", self.markdown)
-        self.assertIn("Production LOC: **142157**", self.markdown)
-        self.assertIn("Startup installer stages: **24**", self.markdown)
-        self.assertIn("Registered package violations: **523**", self.markdown)
-        self.assertIn("Registered exemptions: **523**", self.markdown)
+        self.assertIn("Production modules: **651**", self.markdown)
+        self.assertIn("Production LOC: **143648**", self.markdown)
+        self.assertIn("Startup installer stages: **25**", self.markdown)
+        self.assertIn("Registered package violations: **536**", self.markdown)
+        self.assertIn("Registered exemptions: **536**", self.markdown)
         self.assertIn("Every observed file/category fingerprint", self.markdown)
         self.assertFalse(PREVIEW_WORKFLOW.exists())
 
