@@ -22,3 +22,11 @@ friendly = friendly.replace(
     '                f"{escape(message)}\\n\\n"\n',
 )
 friendly_path.write_text(friendly, encoding="utf-8")
+
+test_path = ROOT / "tests/test_media_provider_adapters.py"
+test_text = test_path.read_text(encoding="utf-8")
+test_text = test_text.replace(
+    "KieModelAlias.SEEDREAM_5_PRO",
+    "KieModelAlias.WAN_27_IMAGE",
+)
+test_path.write_text(test_text, encoding="utf-8")
