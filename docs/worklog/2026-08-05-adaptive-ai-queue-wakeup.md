@@ -5,7 +5,7 @@
 - Линия/фаза: P1 PostgreSQL load reduction, issue #603
 - Статус: частично
 - Ветка: feat/603-adaptive-ai-queue-wakeup
-- Базовый commit: 503bf696a4b723b733f8835dcc93cb5c122a7c3e
+- Базовый commit: 6f45f459701b6f996cf5c38f48320f46247d3df2
 
 ## Перед началом
 
@@ -67,8 +67,8 @@
   processed items, wakeups, fallback polls, reconnects, listener errors и oldest queue age;
 - обновлены canonical architecture, package, repository, shared-contract, navigation и P2 inventories;
 - удалён устаревший `Any` exemption для worker manager; границы остальных exemptions не расширялись;
-- текущий `main` с исправлением Telegram Storage #643 синхронизирован обычным
-  двухродительским merge-коммитом без rebase и force-push;
+- текущий `main` с исправлениями Telegram Storage #643 и legacy backup permission
+  repair #644 синхронизирован обычными двухродительскими merge-коммитами без rebase и force-push;
 - canonical status, project memory и architecture audit синхронизированы с
   shared-contract baseline `648 / 3748 / 170 / 0`.
 
@@ -86,6 +86,7 @@ Focused correction, post-main sync и canonical documentation workflows прош
 - `tests.test_phase6_runtime`;
 - `tests.test_ai_queue_adaptive_wakeup`;
 - `tests.test_telegram_storage_backup_permission_isolation`;
+- `tests.test_server_deployment_contract` через inherited #644 CI contract;
 - `tests.test_architecture_layout_inventory`;
 - `tests.test_package_architecture_inventory`;
 - `tests.test_p3e_repository_layout_inventory`;
@@ -99,13 +100,13 @@ Focused correction, post-main sync и canonical documentation workflows прош
 
 Временные bootstrap/correction/sync workflows удалены и отсутствуют в итоговом PR diff.
 Обычный exact-head required CI запускается на owner-authored commit после clean
-canonical-document parent `8d1fb8958985b0c9cb8096a0305edeaf9dacae20`.
+main-sync parent `955acfd05113f04f454d772c5ef7d3108c5f4c07`.
 
 ### PR и commit
 
 - PR: #642;
-- synchronized base `main`: 503bf696a4b723b733f8835dcc93cb5c122a7c3e;
-- clean canonical-document parent: 8d1fb8958985b0c9cb8096a0305edeaf9dacae20;
+- synchronized base `main`: 6f45f459701b6f996cf5c38f48320f46247d3df2;
+- clean main-sync parent: 955acfd05113f04f454d772c5ef7d3108c5f4c07;
 - final exact-head: определяется этим owner-authored worklog commit;
 - merge commit: ожидается после terminal required CI PASS.
 
