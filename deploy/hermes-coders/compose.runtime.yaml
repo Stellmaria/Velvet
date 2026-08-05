@@ -27,6 +27,8 @@ services:
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
     # Mutation, read-only and execution-event fail-closed guards remain mandatory.
     volumes:
+      - ./codex_runner.py:/app/codex_runner.py:ro
+      - ./codex_routed_runner.py:/app/codex_routed_runner.py:ro
       - ./codex_first_runner.py:/app/codex_first_runner.py:ro
       - ./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
@@ -44,6 +46,8 @@ services:
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
     # Mutation, read-only and execution-event fail-closed guards remain mandatory.
     volumes:
+      - ./codex_runner.py:/app/codex_runner.py:ro
+      - ./codex_routed_runner.py:/app/codex_routed_runner.py:ro
       - ./codex_first_runner.py:/app/codex_first_runner.py:ro
       - ./codex_first_safe_runner.py:/app/codex_first_safe_runner.py:ro
       - ./codex_provider_chain_runner.py:/app/codex_provider_chain_runner.py:ro
