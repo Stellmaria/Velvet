@@ -53,8 +53,8 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/domains/telegram_storage/service.py:114` `run`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:166` `_upload_candidate`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/service.py:282` `_migrate_watermarks`: isolate-telegram-storage-operation.
-- `velvet_bot/domains/telegram_storage/service.py:466` `_migrate_backups`: isolate-telegram-storage-operation.
-- `velvet_bot/domains/telegram_storage/service.py:613` `_migrate_codex`: isolate-telegram-storage-operation.
+- `velvet_bot/domains/telegram_storage/service.py:469` `_migrate_backups`: isolate-telegram-storage-operation.
+- `velvet_bot/domains/telegram_storage/service.py:616` `_migrate_codex`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/telegram_storage/uploader.py:229` `upload`: isolate-telegram-storage-operation.
 - `velvet_bot/domains/workspaces/character_topics.py:135` `ensure_character_archive_topic`: cleanup-orphan-character-topic.
 - `velvet_bot/domains/workspaces/watermark_assets.py:226` `store`: cleanup-new-logo-after-db-failure.

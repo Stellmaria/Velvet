@@ -328,7 +328,7 @@
     {
       "path": "velvet_bot/domains/telegram_storage/service.py",
       "function": "_migrate_backups",
-      "line": 466,
+      "line": 469,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-storage-operation"
@@ -336,7 +336,7 @@
     {
       "path": "velvet_bot/domains/telegram_storage/service.py",
       "function": "_migrate_codex",
-      "line": 613,
+      "line": 616,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-telegram-storage-operation"
