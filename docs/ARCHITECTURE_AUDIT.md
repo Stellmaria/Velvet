@@ -326,3 +326,15 @@ Historical migrations, compatibility packages и dual-read `meow_*` FSM/transpor
 <!-- issue-459-shared-baseline -->
 Provider adapter baseline: 648 production Python files, 3748 functions, 170 registered private accesses, 0 blocking contracts.
 <!-- /issue-459-shared-baseline -->
+
+<!-- gpt-image-2-pr-645-architecture-slice -->
+## Срез feature-ветки GPT Image 2 от 5 августа 2026 года
+
+Этот блок фиксирует воспроизводимые числа PR #645 и не означает production rollout или закрытие переходного долга:
+
+- package production modules: **651**;
+- inventoried functions: **3748**;
+- registered transitional private accesses: **170**;
+- blocking known private contracts: **0**;
+- целевая консолидация delivery и provider-routing слоёв остаётся в **#457** и **#459**.
+<!-- /gpt-image-2-pr-645-architecture-slice -->
