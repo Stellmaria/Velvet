@@ -3,7 +3,7 @@
 - Дата: 2026-08-05
 - ID: `2026-08-05-legacy-backup-permission-repair`
 - Линия/фаза: hotfix / server deployment reliability
-- Статус: `в работе`
+- Статус: `частично`
 - Ветка: `fix/legacy-backup-permissions`
 - Базовый commit: `503bf696a4b723b733f8835dcc93cb5c122a7c3e`
 
@@ -42,4 +42,46 @@ Deploy-пользователь не может исправить файл, п�
 
 ## После завершения
 
-Первый guarded patch run `31013502565` остановился до commit: exact-match тестового блока не выдержал YAML indentation normalization. Production-файлы в ветке не изменились. Patcher переведён на структурный диапазон метода и запускается повторно.
+### Фактически сделано
+
+В `deploy/server/deploy.sh` добавлена функция `normalize_backup_permissions`, которая обрабатывает только обычные top-level файлы `*.dump` и `*.dump.json` в server backup directory, устанавливает mode `0644` и завершает deploy с точным путём при неуспешном `chmod`.
+
+Repair запускается после создания обязательных data directories, но до получения target SHA и до early exit для уже установленной revision. Поэтому повторный идемпотентный deploy исправляет legacy artifacts даже без смены кода.
+
+Поиск использует `find -maxdepth 1 -type f -print0`: вложенные каталоги и symlink не затрагиваются, имена с пробелами и переводами строк обрабатываются безопасно.
+
+Deployment contract расширен проверками области поиска, режима `0644`, null-delimited обработки и порядка вызова относительно same-revision early exit.
+
+### Изменённые модули и контракты
+
+- `deploy/server/deploy.sh`: добавлен fail-fast repair legacy backup permissions;
+- `tests/test_server_deployment_contract.py`: закреплён новый deployment contract;
+- `docs/worklog/2026-08-05-legacy-backup-permission-repair.md`: эксплуатационная запись.
+
+Формат dump, PostgreSQL restore contract, Telegram Storage encryption и deletion policy не изменены.
+
+### Проверки
+
+- guarded patch run `31013808979`: success;
+- `bash -n deploy/server/deploy.sh`: success;
+- `python -m unittest tests.test_server_deployment_contract -v`: success;
+- временный branch-only workflow удалён своим successful commit и отсутствует в итоговом PR diff;
+- обязательные PR checks на user-authored head ожидаются.
+
+Два ранних patcher run (`31013502565`, `31013602562`) остановились до commit на генерации тестового текста. Production-файлы ими не изменялись. Финальный patcher использовал явные уровни Python indentation и прошёл собственные guards.
+
+### PR и commit
+
+PR: #644 `Repair legacy backup permissions before deploy`.
+
+Production/test commit: `5d08988881c53f3e9e873fc3a06ed9d541a7b98f`.
+
+### Незавершённое
+
+- обязательные PR checks текущего head ещё не подтверждены;
+- фактический host-файл будет исправлен первым deployment после merge, если принадлежит deploy-пользователю или доступен ему для `chmod`;
+- если файл принадлежит другому UID и mode изменить нельзя, deploy остановится с явной ошибкой и потребуется host-level смена владельца.
+
+### Следующий шаг
+
+Дождаться обязательных checks, зафиксировать проверенный head и слить PR #644 через guarded squash merge. После deployment повторить Telegram Storage Migration.
