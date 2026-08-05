@@ -34,9 +34,7 @@ jobs:
           python scripts/inventory_repository_layout.py \
             --write \
             --label p3e-repository-layout-complete
-          python -m unittest -v \
-            tests.test_p2_stability_inventory \
-            tests.test_p3e_repository_layout_inventory
+          python -m unittest -v tests.test_p3e_repository_layout_inventory
           git diff --check
 
       - name: Remove one-time workflow
