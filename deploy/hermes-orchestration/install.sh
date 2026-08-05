@@ -136,6 +136,26 @@ def set_value(path: Path, name: str, value: str) -> None:
     os.chmod(path, 0o600)
 
 
+def set_value_preserving(path: Path, name: str, value: str) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    output: list[str] = []
+    replaced = False
+    for raw in lines:
+        stripped = raw.strip()
+        key = stripped.split("=", 1)[0].removeprefix("export ").strip() if "=" in stripped else ""
+        if key == name:
+            output.append(f"{name}={value}")
+            replaced = True
+        else:
+            output.append(raw)
+    if not replaced:
+        if output and output[-1].strip():
+            output.append("")
+        output.append(f"{name}={value}")
+    path.write_text("\n".join(output).rstrip() + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+
+
 velvet_path, max_path, operator_path, router_path, hermes_path, server_path, incident_path = map(
     Path, sys.argv[1:]
 )
@@ -161,6 +181,8 @@ if len(client_token) < 24:
     raise SystemExit("HERMES_OPS_CLIENT_TOKEN отсутствует или слишком короткий")
 set_value(velvet_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN", client_token)
 set_value(max_path, "HERMES_CODER_ROUTER_CLIENT_TOKEN", client_token)
+set_value_preserving(server_path, "CODEX_LIMITS_BASE_URL", "http://hermes-coder-router:8878")
+set_value_preserving(server_path, "CODEX_LIMITS_API_KEY", client_token)
 router_values = {
     "HERMES_CODER_ROUTER_CLIENT_TOKEN": client_token,
     "HERMES_CODER_VELVET_TOKEN": velvet["API_SERVER_KEY"],
