@@ -3,9 +3,10 @@
 - Дата: 2026-08-05
 - ID: `2026-08-05-legacy-backup-permission-repair`
 - Линия/фаза: hotfix / server deployment reliability
-- Статус: `частично`
+- Статус: `завершено`
 - Ветка: `fix/legacy-backup-permissions`
 - Базовый commit: `503bf696a4b723b733f8835dcc93cb5c122a7c3e`
+- Проверенный production head: `af37e860b34b1b991a94c0a5852d8e5381adb915`
 
 ## Перед началом
 
@@ -68,11 +69,21 @@ Deployment contract расширен проверками области пои�
 
 ### Проверки
 
-- guarded patch run `31013808979`: success;
+Guarded patch и локальные контракты:
+
+- patch workflow run `31013808979`: success;
 - `bash -n deploy/server/deploy.sh`: success;
 - `python -m unittest tests.test_server_deployment_contract -v`: success;
-- временный branch-only workflow удалён своим successful commit и отсутствует в итоговом PR diff;
-- обязательные PR checks на user-authored head ожидаются.
+- временный branch-only workflow удалён своим successful commit и отсутствует в итоговом PR diff.
+
+Обязательный CI на проверенном production head `af37e860b34b1b991a94c0a5852d8e5381adb915`:
+
+- tests run `31014069116`: success; preflight, compile, fast architecture contracts и четыре test shard прошли;
+- security supply chain run `31014069038`: success; CodeQL Python, static security, ShellCheck и supply-chain contract прошли;
+- docker build run `31014068917`: success;
+- project notes contract run `31014069118`: success;
+- type check run `31014069009`: success;
+- branch protection contract run `31014069020`: success.
 
 Два ранних patcher run (`31013502565`, `31013602562`) остановились до commit на генерации тестового текста. Production-файлы ими не изменялись. Финальный patcher использовал явные уровни Python indentation и прошёл собственные guards.
 
@@ -84,12 +95,12 @@ PR: #644 `Repair legacy backup permissions before deploy`.
 
 Production/test commit: `5d08988881c53f3e9e873fc3a06ed9d541a7b98f`.
 
+PR готов к guarded squash merge после подтверждения checks на финальном documentation head.
+
 ### Незавершённое
 
-- обязательные PR checks текущего head ещё не подтверждены;
-- фактический host-файл будет исправлен первым deployment после merge, если принадлежит deploy-пользователю или доступен ему для `chmod`;
-- если файл принадлежит другому UID и mode изменить нельзя, deploy остановится с явной ошибкой и потребуется host-level смена владельца.
+Repository hotfix завершён. Первый deployment после merge исправит фактический host-файл, если deploy-пользователь может выполнить `chmod`. Если файл принадлежит другому UID и mode изменить нельзя, deploy остановится с явной ошибкой; потребуется отдельная host-level смена владельца, после чего deployment и Telegram Storage Migration следует повторить.
 
 ### Следующий шаг
 
-Дождаться обязательных checks, зафиксировать проверенный head и слить PR #644 через guarded squash merge. После deployment повторить Telegram Storage Migration.
+Слить PR #644 после финальных checks. Затем развернуть merge commit и повторить Telegram Storage Migration.
