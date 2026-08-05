@@ -16,6 +16,7 @@ RUNTIME_SOURCES = (
     "codex_first_safe_runner.py",
     "codex_provider_chain_runner.py",
     "codex_tier_runner.py",
+    "codex_image_runner.py",
     "codex_launcher_runner.py",
     "codex_context_launcher_runner.py",
     "sandbox_launcher_client.py",
@@ -29,6 +30,7 @@ import codex_first_runner
 import codex_first_safe_runner
 import codex_provider_chain_runner
 import codex_tier_runner
+import codex_image_runner
 import sandbox_launcher_client
 import codex_launcher_runner
 import codex_context_launcher_runner
