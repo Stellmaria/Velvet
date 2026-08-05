@@ -97,6 +97,54 @@ class AdaptiveQueueWaitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(3, wait.delay_for(transient, default_interval_seconds=3))
         self.assertEqual(2, wait.snapshot().processed_items)
 
+    async def test_jitter_stays_within_configured_bounds(self) -> None:
+        wakeup = _WakeupStub()
+        values = iter((0.0, 1.0))
+        wait = AdaptiveQueueWait(
+            wakeup,
+            jitter_ratio=0.1,
+            random_value=lambda: next(values),
+        )
+        empty = WorkerIterationResult(WorkerIterationOutcome.EMPTY)
+        self.assertAlmostEqual(
+            2.7, wait.delay_for(empty, default_interval_seconds=3)
+        )
+        self.assertAlmostEqual(
+            5.5, wait.delay_for(empty, default_interval_seconds=3)
+        )
+
+    async def test_manager_failure_is_typed_without_growing_empty_backoff(self) -> None:
+        async def runner() -> WorkerIterationResult:
+            raise ConnectionResetError("database unavailable")
+
+        wakeup = _WakeupStub()
+        manager = WorkerManager()
+        controller = AdaptiveQueueWait(
+            wakeup,
+            empty_delays_seconds=(0.01, 0.02),
+            jitter_ratio=0,
+        )
+        spec = PeriodicWorkerSpec(
+            name="adaptive-failure",
+            description="adaptive failure",
+            interval_seconds=0.01,
+            runner=runner,
+            wait_controller=controller,
+        )
+        manager.register(spec)
+        self.assertFalse(await manager._execute_once(spec))
+        succeeded, result = await manager._execute_once_with_result(spec)
+        self.assertFalse(succeeded)
+        self.assertEqual(
+            WorkerIterationOutcome.TRANSIENT_FAILURE,
+            result.outcome,  # type: ignore[attr-defined]
+        )
+        delay = controller.delay_for(result, default_interval_seconds=0.01)
+        self.assertEqual(0.01, delay)
+        snapshot = controller.snapshot()
+        self.assertEqual("transient_failure", snapshot.last_outcome)
+        self.assertEqual(0, snapshot.empty_runs)
+
     async def test_manager_exposes_adaptive_diagnostics_without_overlapping_runs(self) -> None:
         active = 0
         max_active = 0

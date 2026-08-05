@@ -7254,21 +7254,6 @@
       "removal_condition": "Remove this exemption when #463 retires the fingerprinted debt without behavior regression.",
       "regression_test": "tests/test_package_architecture_inventory.py",
       "issue": "#463"
-    },
-    {
-      "id": "typing-any-usage:velvet_bot/workers/manager.py:a90fff492f411429",
-      "owner": "architecture-governance",
-      "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
-      "consumers": [
-        "velvet_bot/presentation/telegram/routers/system.py",
-        "velvet_bot/services/diagnostic_bundle.py",
-        "velvet_bot/services/system_health.py",
-        "velvet_bot/workers/__init__.py"
-      ],
-      "replacement": "Canonical boundary tracked by #460.",
-      "removal_condition": "Remove this exemption when #460 retires the fingerprinted debt without behavior regression.",
-      "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#460"
     }
   ]
 }

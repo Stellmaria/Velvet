@@ -5,16 +5,20 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
-from typing import Any, Protocol
+from typing import Protocol
 
 from velvet_bot.infrastructure.transient_connections import (
     is_transient_connection_error,
 )
-from velvet_bot.workers.adaptive import WorkerWaitSnapshot
+from velvet_bot.workers.adaptive import (
+    WorkerIterationOutcome,
+    WorkerIterationResult,
+    WorkerWaitSnapshot,
+)
 
 logger = logging.getLogger(__name__)
 
-WorkerRunner = Callable[[], Awaitable[Any]]
+WorkerRunner = Callable[[], Awaitable[object]]
 TransientFailureHandler = Callable[[BaseException], Awaitable[None]]
 _TRANSIENT_ALERT_AFTER = 3
 _TRANSIENT_ALERT_REPEAT = 10
@@ -185,8 +189,7 @@ class WorkerManager:
         if not self._started:
             raise RuntimeError("Менеджер фоновых процессов ещё не запущен.")
         spec = self._require_spec(name)
-        succeeded, _ = await self._execute_once(spec)
-        return succeeded
+        return await self._execute_once(spec)
 
     async def restart(self, name: str) -> None:
         """Cancel and recreate one periodic task while preserving its counters."""
@@ -232,7 +235,15 @@ class WorkerManager:
             error,
         )
 
-    async def _execute_once(self, spec: PeriodicWorkerSpec) -> tuple[bool, Any]:
+    async def _execute_once(self, spec: PeriodicWorkerSpec) -> bool:
+        """Run one iteration and preserve the historical boolean contract."""
+        succeeded, _ = await self._execute_once_with_result(spec)
+        return succeeded
+
+    async def _execute_once_with_result(
+        self,
+        spec: PeriodicWorkerSpec,
+    ) -> tuple[bool, object]:
         async with self._run_locks[spec.name]:
             started_at = datetime.now(UTC)
             current = self._snapshots[spec.name]
@@ -265,9 +276,11 @@ class WorkerManager:
                         error=error,
                         consecutive_failures=consecutive_failures,
                     )
+                    outcome = WorkerIterationOutcome.TRANSIENT_FAILURE
                 else:
                     logger.exception("Background worker failed name=%s", spec.name)
-                return False, None
+                    outcome = WorkerIterationOutcome.TERMINAL_FAILURE
+                return False, WorkerIterationResult(outcome)
 
             completed_at = datetime.now(UTC)
             current = self._snapshots[spec.name]
@@ -312,9 +325,9 @@ class WorkerManager:
             await asyncio.sleep(spec.interval_seconds)
         try:
             while True:
-                succeeded, result = await self._execute_once(spec)
+                succeeded, result = await self._execute_once_with_result(spec)
                 controller = spec.wait_controller
-                if not succeeded or controller is None:
+                if controller is None:
                     await asyncio.sleep(spec.interval_seconds)
                     continue
                 delay = controller.delay_for(
@@ -325,6 +338,9 @@ class WorkerManager:
                     spec,
                     next_run_at=datetime.now(UTC) + timedelta(seconds=delay),
                 )
+                if not succeeded:
+                    await asyncio.sleep(delay)
+                    continue
                 woke = await controller.wait(delay)
                 self._apply_wait_snapshot(
                     spec,

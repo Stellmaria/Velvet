@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "production_python_files": 648,
-  "function_count": 3747,
+  "function_count": 3748,
   "contracts": [
     {
       "family": "safe edit/send fallback",

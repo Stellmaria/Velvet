@@ -847,8 +847,8 @@
     },
     {
       "path": "velvet_bot/workers/manager.py",
-      "function": "_execute_once",
-      "line": 249,
+      "function": "_execute_once_with_result",
+      "line": 260,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-worker-iteration-failure"
@@ -856,7 +856,7 @@
     {
       "path": "velvet_bot/workers/manager.py",
       "function": "_run_periodic",
-      "line": 335,
+      "line": 351,
       "handler_module": false,
       "classification": "approved_boundary",
       "reason": "isolate-worker-loop-failure"

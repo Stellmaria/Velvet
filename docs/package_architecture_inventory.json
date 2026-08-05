@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_from": "issue-603",
+  "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 648,
-  "production_loc": 142137,
+  "production_loc": 142153,
   "layer_counts": {
     "application": 21,
     "composition": 62,
@@ -81,7 +81,7 @@
   ],
   "shared_contract_summary": {
     "production_python_files": 648,
-    "function_count": 3747,
+    "function_count": 3748,
     "private_contract_access_count": 170,
     "blocking_private_contract_access_count": 0,
     "exact_duplicate_group_count": 66,
@@ -338,7 +338,7 @@
       ]
     }
   ],
-  "violation_count": 524,
+  "violation_count": 523,
   "violation_counts": {
     "database-acquire-outside-persistence": 89,
     "domain-aiogram-import": 19,
@@ -353,7 +353,7 @@
     "package-getattr-side-effect": 19,
     "sql-outside-persistence": 108,
     "type-ignore-usage": 13,
-    "typing-any-usage": 109
+    "typing-any-usage": 108
   },
   "violations": [
     {
@@ -7512,16 +7512,6 @@
       "summary": "1 Any references",
       "details": {
         "count": 1
-      }
-    },
-    {
-      "id": "typing-any-usage:velvet_bot/workers/manager.py:a90fff492f411429",
-      "category": "typing-any-usage",
-      "path": "velvet_bot/workers/manager.py",
-      "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
-      "summary": "2 Any references",
-      "details": {
-        "count": 2
       }
     }
   ],
@@ -40899,12 +40889,12 @@
       "module": "velvet_bot.workers.manager",
       "layer": "worker",
       "target_package": "worker",
-      "loc": 350,
-      "function_count": 22,
+      "loc": 366,
+      "function_count": 23,
       "class_count": 4,
       "handler_count": 0,
-      "max_function_length": 49,
-      "branch_count": 25,
+      "max_function_length": 54,
+      "branch_count": 26,
       "internal_imports": [
         "velvet_bot.infrastructure.transient_connections",
         "velvet_bot.workers.adaptive"
@@ -40915,7 +40905,7 @@
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 2,
+      "any_count": 0,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
@@ -40927,23 +40917,17 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 115,
+          "line": 119,
           "owner": "register",
           "call": "WorkerSnapshot"
+        },
+        {
+          "line": 283,
+          "owner": "_execute_once_with_result",
+          "call": "WorkerIterationResult"
         }
       ],
-      "violations": [
-        {
-          "id": "typing-any-usage:velvet_bot/workers/manager.py:a90fff492f411429",
-          "category": "typing-any-usage",
-          "path": "velvet_bot/workers/manager.py",
-          "fingerprint": "a90fff492f4114295ae739f0f3082657ccbd61c6769be216bf784c93b578747a",
-          "summary": "2 Any references",
-          "details": {
-            "count": 2
-          }
-        }
-      ]
+      "violations": []
     },
     {
       "path": "velvet_bot/workspace_team_ui.py",
