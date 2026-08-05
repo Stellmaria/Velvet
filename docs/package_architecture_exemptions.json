@@ -1741,7 +1741,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:98e325bc4c4c4ce6",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:5b77f3b426acf231",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -2461,7 +2461,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_photo_ratio_callback_fix.py:f110ffd40022a2cc",
+      "id": "installed-sentinel:velvet_bot/app/auf_photo_ratio_callback_fix.py:28ed1f86ea0aa58c",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
