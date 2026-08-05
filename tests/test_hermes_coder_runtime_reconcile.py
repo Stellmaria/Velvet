@@ -36,7 +36,7 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertEqual(2, source.count("GIT_CONFIG_GLOBAL: /opt/data/.gitconfig"))
-        self.assertEqual(2, source.count("- /app/codex_tier_runner.py"))
+        self.assertEqual(2, source.count("- /app/codex_launcher_runner.py"))
         self.assertEqual(
             2,
             source.count(
@@ -53,7 +53,21 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             2,
             source.count("./codex_tier_runner.py:/app/codex_tier_runner.py:ro"),
         )
+        self.assertEqual(
+            2,
+            source.count(
+                "./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro"
+            ),
+        )
+        self.assertEqual(2, source.count("CODEX_EXECUTION_BACKEND: launcher"))
+        self.assertEqual(
+            2,
+            source.count(
+                "HERMES_SANDBOX_LAUNCHER_SOCKET: /run/hermes-sandbox/launcher.sock"
+            ),
+        )
         self.assertEqual(2, source.count("command: []"))
+        self.assertNotIn("- /app/codex_tier_runner.py", source)
         self.assertNotIn("/init", source)
 
     def test_systemd_uses_approved_release_reconcile_and_smokes(self) -> None:
@@ -76,12 +90,16 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
         )
         self.assertIn(reconcile_line, source)
         self.assertLess(source.index(reconcile_line), source.index("preflight.py"))
+        self.assertIn("Requires=docker.service hermes-sandbox-launcher.socket", source)
+        self.assertIn("sandbox_preflight.py", source)
         self.assertIn("ExecStartPost=/usr/bin/python3", source)
         self.assertIn("runtime_smoke.py", source)
         self.assertIn("tier_provider_smoke.py", source)
         self.assertIn("runtime_source_guard.py", source)
-        self.assertIn("HERMES_CODEX_STRICT_NESTED_PROC_SMOKE=0", source)
+        self.assertIn("--no-build", source)
+        self.assertNotIn("HERMES_CODEX_STRICT_NESTED_PROC_SMOKE", source)
         self.assertEqual(2, source.count("codex_tier_runner.py"))
+        self.assertEqual(2, source.count("codex_launcher_runner.py"))
 
     def test_release_systemd_reconciler_is_non_destructive_and_scoped(self) -> None:
         source = (
