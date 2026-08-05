@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -19,200 +19,65 @@ jobs:
 
       - name: Apply source and regression tests
         shell: bash
+        env:
+          TEST_B64: ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGxvZ2dpbmcKaW1wb3J0IHVuaXR0ZXN0CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aApmcm9tIHRlbXBmaWxlIGltcG9ydCBUZW1wb3JhcnlEaXJlY3RvcnkKZnJvbSB0eXBlcyBpbXBvcnQgU2ltcGxlTmFtZXNwYWNlCmZyb20gdW5pdHRlc3QubW9jayBpbXBvcnQgcGF0Y2gKCmZyb20gdmVsdmV0X2JvdC5kb21haW5zLnRlbGVncmFtX3N0b3JhZ2UuZGVsZXRpb24gaW1wb3J0ICgKICAgIGJ1aWxkX3N0b3JhZ2VfZGVsZXRpb25fcG9saWN5LAogICAgZGVsZXRlX3BhdGhzLAopCmZyb20gdmVsdmV0X2JvdC5kb21haW5zLnRlbGVncmFtX3N0b3JhZ2UubW9kZWxzIGltcG9ydCBNaWdyYXRpb25TdW1tYXJ5CmZyb20gdmVsdmV0X2JvdC5kb21haW5zLnRlbGVncmFtX3N0b3JhZ2Uuc2VydmljZSBpbXBvcnQgVGVsZWdyYW1TdG9yYWdlTWlncmF0aW9uU2VydmljZQoKCl9MT0dHRVIgPSAidmVsdmV0X2JvdC5kb21haW5zLnRlbGVncmFtX3N0b3JhZ2UuZGVsZXRpb24iCgoKY2xhc3MgVGVsZWdyYW1TdG9yYWdlRGVsZXRpb25Mb2dnaW5nVGVzdHModW5pdHRlc3QuVGVzdENhc2UpOgogICAgZGVmIF9wb2xpY3koc2VsZiwgYmFzZTogUGF0aCk6CiAgICAgICAgcm9vdCA9IGJhc2UgLyAic3RhZ2luZyIKICAgICAgICBwcm9qZWN0ID0gYmFzZSAvICJwcm9qZWN0IgogICAgICAgIHJvb3QubWtkaXIoKQogICAgICAgIHByb2plY3QubWtkaXIoKQogICAgICAgIHJldHVybiByb290LCBidWlsZF9zdG9yYWdlX2RlbGV0aW9uX3BvbGljeSgKICAgICAgICAgICAgbmFtZT0idGVzdC10ZWxlZ3JhbS1zdG9yYWdlIiwKICAgICAgICAgICAgcm9vdHM9KHJvb3QsKSwKICAgICAgICAgICAgcHJvamVjdF9kaXI9cHJvamVjdCwKICAgICAgICApCgogICAgZGVmIHRlc3RfZW1wdHlfZGVsZXRpb25fcmVzdWx0X2lzX2RlYnVnX29ubHkoc2VsZikgLT4gTm9uZToKICAgICAgICB3aXRoIFRlbXBvcmFyeURpcmVjdG9yeSgpIGFzIHRlbXBvcmFyeToKICAgICAgICAgICAgcm9vdCwgcG9saWN5ID0gc2VsZi5fcG9saWN5KFBhdGgodGVtcG9yYXJ5KSkKICAgICAgICAgICAgd2l0aCBzZWxmLmFzc2VydExvZ3MoX0xPR0dFUiwgbGV2ZWw9bG9nZ2luZy5ERUJVRykgYXMgY2FwdHVyZWQ6CiAgICAgICAgICAgICAgICByZXN1bHQgPSBkZWxldGVfcGF0aHMoKHJvb3QgLyAibWlzc2luZy5iaW4iLCksIHBvbGljeT1wb2xpY3kpCgogICAgICAgIHNlbGYuYXNzZXJ0VHJ1ZShyZXN1bHQuY29tcGxldGUpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChsZW4ocmVzdWx0LnBsYW5uZWQpLCAwKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobGVuKGNhcHR1cmVkLnJlY29yZHMpLCAxKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoY2FwdHVyZWQucmVjb3Jkc1swXS5sZXZlbG5vLCBsb2dnaW5nLkRFQlVHKQogICAgICAgIHNlbGYuYXNzZXJ0SW4oInBsYW5uZWQ9MCBkZWxldGVkPTAgaXNzdWVzPTAiLCBjYXB0dXJlZC5yZWNvcmRzWzBdLmdldE1lc3NhZ2UoKSkKCiAgICBkZWYgdGVzdF9ub25fZW1wdHlfZGVsZXRpb25fcmVzdWx0X3JlbWFpbnNfaW5mbyhzZWxmKSAtPiBOb25lOgogICAgICAgIHdpdGggVGVtcG9yYXJ5RGlyZWN0b3J5KCkgYXMgdGVtcG9yYXJ5OgogICAgICAgICAgICByb290LCBwb2xpY3kgPSBzZWxmLl9wb2xpY3koUGF0aCh0ZW1wb3JhcnkpKQogICAgICAgICAgICBjYW5kaWRhdGUgPSByb290IC8gImNhbmRpZGF0ZS5iaW4iCiAgICAgICAgICAgIGNhbmRpZGF0ZS53cml0ZV9ieXRlcyhiInBheWxvYWQiKQogICAgICAgICAgICB3aXRoIHNlbGYuYXNzZXJ0TG9ncyhfTE9HR0VSLCBsZXZlbD1sb2dnaW5nLklORk8pIGFzIGNhcHR1cmVkOgogICAgICAgICAgICAgICAgcmVzdWx0ID0gZGVsZXRlX3BhdGhzKChjYW5kaWRhdGUsKSwgcG9saWN5PXBvbGljeSwgZHJ5X3J1bj1UcnVlKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGxlbihyZXN1bHQucGxhbm5lZCksIDEpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChsZW4oY2FwdHVyZWQucmVjb3JkcyksIDEpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChjYXB0dXJlZC5yZWNvcmRzWzBdLmxldmVsbm8sIGxvZ2dpbmcuSU5GTykKICAgICAgICBzZWxmLmFzc2VydEluKCJwbGFubmVkPTEiLCBjYXB0dXJlZC5yZWNvcmRzWzBdLmdldE1lc3NhZ2UoKSkKCgpjbGFzcyBfQmFja3VwUmVwb3NpdG9yeToKICAgIGRlZiBfX2luaXRfXyhzZWxmLCBpdGVtczogbGlzdFtTaW1wbGVOYW1lc3BhY2VdKSAtPiBOb25lOgogICAgICAgIHNlbGYuaXRlbXMgPSBpdGVtcwoKICAgIGFzeW5jIGRlZiBsaXN0X2JhY2t1cF9iYWNrZmlsbChzZWxmLCBfYmFja3VwX2RpcjogUGF0aCk6CiAgICAgICAgcmV0dXJuIHNlbGYuaXRlbXMKCgpjbGFzcyBUZWxlZ3JhbVN0b3JhZ2VCYWNrdXBJc29sYXRpb25UZXN0cyh1bml0dGVzdC5Jc29sYXRlZEFzeW5jaW9UZXN0Q2FzZSk6CiAgICBhc3luYyBkZWYgdGVzdF9wZXJtaXNzaW9uX2Vycm9yX2lzX3Njb3BlZF9hbmRfbmV4dF9iYWNrdXBfaXNfcHJvY2Vzc2VkKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgd2l0aCBUZW1wb3JhcnlEaXJlY3RvcnkoKSBhcyB0ZW1wb3Jhcnk6CiAgICAgICAgICAgIGJhc2UgPSBQYXRoKHRlbXBvcmFyeSkKICAgICAgICAgICAgYmFja3VwX2RpciA9IGJhc2UgLyAiYmFja3VwcyIKICAgICAgICAgICAgc3RhZ2luZ19kaXIgPSBiYXNlIC8gInN0YWdpbmciCiAgICAgICAgICAgIGJhY2t1cF9kaXIubWtkaXIoKQogICAgICAgICAgICBibG9ja2VkID0gYmFja3VwX2RpciAvICJibG9ja2VkLmR1bXAiCiAgICAgICAgICAgIG5leHRfZmlsZSA9IGJhY2t1cF9kaXIgLyAibmV4dC5kdW1wIgogICAgICAgICAgICBibG9ja2VkLndyaXRlX2J5dGVzKGIiYmxvY2tlZCIpCiAgICAgICAgICAgIG5leHRfZmlsZS53cml0ZV9ieXRlcyhiIm5leHQiKQogICAgICAgICAgICBpdGVtcyA9IFsKICAgICAgICAgICAgICAgIFNpbXBsZU5hbWVzcGFjZSgKICAgICAgICAgICAgICAgICAgICBydW5faWQ9MSwKICAgICAgICAgICAgICAgICAgICBmaWxlX25hbWU9YmxvY2tlZC5uYW1lLAogICAgICAgICAgICAgICAgICAgIHBhdGg9YmxvY2tlZCwKICAgICAgICAgICAgICAgICAgICBzaGEyNTY9Tm9uZSwKICAgICAgICAgICAgICAgICAgICBiYWNrdXBfa2luZD0iZGF0YWJhc2UiLAogICAgICAgICAgICAgICAgICAgIHNjaGVtYV92ZXJzaW9uPSIxIiwKICAgICAgICAgICAgICAgICAgICB2YWxpZGF0aW9uPXt9LAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgIFNpbXBsZU5hbWVzcGFjZSgKICAgICAgICAgICAgICAgICAgICBydW5faWQ9MiwKICAgICAgICAgICAgICAgICAgICBmaWxlX25hbWU9bmV4dF9maWxlLm5hbWUsCiAgICAgICAgICAgICAgICAgICAgcGF0aD1uZXh0X2ZpbGUsCiAgICAgICAgICAgICAgICAgICAgc2hhMjU2PU5vbmUsCiAgICAgICAgICAgICAgICAgICAgYmFja3VwX2tpbmQ9ImRhdGFiYXNlIiwKICAgICAgICAgICAgICAgICAgICBzY2hlbWFfdmVyc2lvbj0iMSIsCiAgICAgICAgICAgICAgICAgICAgdmFsaWRhdGlvbj17fSwKICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgIF0KICAgICAgICAgICAgc2VydmljZSA9IG9iamVjdC5fX25ld19fKFRlbGVncmFtU3RvcmFnZU1pZ3JhdGlvblNlcnZpY2UpCiAgICAgICAgICAgIHNlcnZpY2Uuc2V0dGluZ3MgPSBTaW1wbGVOYW1lc3BhY2UoCiAgICAgICAgICAgICAgICBiYWNrdXBfZGlyPWJhY2t1cF9kaXIsCiAgICAgICAgICAgICAgICBzdGFnaW5nX2Rpcj1zdGFnaW5nX2RpciwKICAgICAgICAgICAgICAgIGVuY3J5cHRpb25fa2V5X2lkPSJ0ZXN0LWtleSIsCiAgICAgICAgICAgICAgICBlbmNyeXB0aW9uX2tleXJpbmc9e30sCiAgICAgICAgICAgICkKICAgICAgICAgICAgc2VydmljZS5yZXBvc2l0b3J5ID0gX0JhY2t1cFJlcG9zaXRvcnkoaXRlbXMpCiAgICAgICAgICAgIHNlcnZpY2UudXBsb2FkZXIgPSBOb25lCiAgICAgICAgICAgIHN1bW1hcnkgPSBNaWdyYXRpb25TdW1tYXJ5KHJ1bl9pZD0xMCwgbWlncmF0aW9uX2tpbmQ9InRlc3QiKQoKICAgICAgICAgICAgZGVmIGZhaWxfZGlnZXN0KHBhdGg6IFBhdGgpIC0+IHN0cjoKICAgICAgICAgICAgICAgIGlmIFBhdGgocGF0aCkgPT0gYmxvY2tlZDoKICAgICAgICAgICAgICAgICAgICByYWlzZSBQZXJtaXNzaW9uRXJyb3IoMTMsICJQZXJtaXNzaW9uIGRlbmllZCIsIHN0cihwYXRoKSkKICAgICAgICAgICAgICAgIHJhaXNlIFJ1bnRpbWVFcnJvcigibmV4dCBiYWNrdXAgcmVhY2hlZCIpCgogICAgICAgICAgICB3aXRoICgKICAgICAgICAgICAgICAgIHBhdGNoKAogICAgICAgICAgICAgICAgICAgICJ2ZWx2ZXRfYm90LmRvbWFpbnMudGVsZWdyYW1fc3RvcmFnZS5zZXJ2aWNlLnNoYTI1Nl9maWxlIiwKICAgICAgICAgICAgICAgICAgICBzaWRlX2VmZmVjdD1mYWlsX2RpZ2VzdCwKICAgICAgICAgICAgICAgICkgYXMgZGlnZXN0LAogICAgICAgICAgICAgICAgcGF0Y2goCiAgICAgICAgICAgICAgICAgICAgInZlbHZldF9ib3QuZG9tYWlucy50ZWxlZ3JhbV9zdG9yYWdlLnNlcnZpY2UucmVtb3ZlX3BhdGhzIiwKICAgICAgICAgICAgICAgICAgICByZXR1cm5fdmFsdWU9KDAsIDApLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgKToKICAgICAgICAgICAgICAgIGF3YWl0IHNlcnZpY2UuX21pZ3JhdGVfYmFja3VwcyhzdW1tYXJ5KQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGRpZ2VzdC5jYWxsX2NvdW50LCAyKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc3VtbWFyeS5kaXNjb3ZlcmVkX2ZpbGVzLCAyKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc3VtbWFyeS5mYWlsZWRfZmlsZXMsIDIpCiAgICAgICAgc2VsZi5hc3NlcnRUcnVlKGFueSgiUGVybWlzc2lvbiBkZW5pZWQiIGluIGl0ZW0gZm9yIGl0ZW0gaW4gc3VtbWFyeS5lcnJvcnMpKQogICAgICAgIHNlbGYuYXNzZXJ0VHJ1ZShhbnkoIm5leHQgYmFja3VwIHJlYWNoZWQiIGluIGl0ZW0gZm9yIGl0ZW0gaW4gc3VtbWFyeS5lcnJvcnMpKQoKCmlmIF9fbmFtZV9fID09ICJfX21haW5fXyI6CiAgICB1bml0dGVzdC5tYWluKCkK
+          WORKLOG_B64: IyBUZWxlZ3JhbSBTdG9yYWdlOiDQv9GA0LDQstCwIGJhY2t1cCDQuCDRiNGD0Lwg0L/Rg9GB0YLRi9GFINGD0LTQsNC70LXQvdC40LkKCiMjINCf0LXRgNC10LQg0L3QsNGH0LDQu9C+0LwKCtCSIHByb2R1Y3Rpb24t0LvQvtCz0LUg0L/QvtGH0LDRgdC+0LLQsNGPINC80LjQs9GA0LDRhtC40Y8g0L/QsNC00LDQu9CwINC90LAgYFBlcm1pc3Npb25FcnJvcmAg0L/RgNC4INGH0YLQtdC90LjQuCBiYWNrdXAt0YTQsNC50LvQsCwg0LAg0L7QtNC40L0g0L/RgNC+0YXQvtC0INC+0LTQvdC+0LLRgNC10LzQtdC90L3QviDRgdC+0LfQtNCw0LLQsNC7INGB0L7RgtC90Lgg0L7QtNC40L3QsNC60L7QstGL0YUgYElORk9gLdGB0L7QsdGL0YLQuNC5IGB0ZWxlZ3JhbV9zdG9yYWdlX2RlbGV0aW9uX3Jlc3VsdGAg0YEg0L3Rg9C70LXQstGL0LzQuCDRgdGH0ZHRgtGH0LjQutCw0LzQuC4KCtCQ0LrRgtGD0LDQu9GM0L3Ri9C5IGBtYWluYCDRg9C20LUg0LjQt9C+0LvQuNGA0YPQtdGCINC+0YjQuNCx0LrRgyDQvtGC0LTQtdC70YzQvdC+0LPQviBiYWNrdXAg0LLQvdGD0YLRgNC4IGBfbWlncmF0ZV9iYWNrdXBzYCwg0L/QvtGN0YLQvtC80YMg0YTQsNGC0LDQu9GM0L3Ri9C5IHRyYWNlYmFjayDRg9C60LDQt9GL0LLQsNC10YIg0L3QsCDQvdC1INC+0LHQvdC+0LLQu9GR0L3QvdGL0LkgcHJvZHVjdGlvbi3QutC+0L3RgtC10LnQvdC10YAuINCd0YPQttC10L0g0YDQtdCz0YDQtdGB0YHQuNC+0L3QvdGL0Lkg0YLQtdGB0YIsINGE0LjQutGBINGD0YDQvtCy0L3RjyDQu9C+0LPQuNGA0L7QstCw0L3QuNGPINC4INC/0L7RgdC70LXQtNGD0Y7RidC10LUg0YDQsNC30LLRkdGA0YLRi9Cy0LDQvdC40LUg0LDQutGC0YPQsNC70YzQvdC+0LPQviDQvtCx0YDQsNC30LAuCgojIyDQn9C+0YHQu9C1INC30LDQstC10YDRiNC10L3QuNGPCgotINC/0YPRgdGC0YvQtSDRgNC10LfRg9C70YzRgtCw0YLRiyDRg9C00LDQu9C10L3QuNGPINC/0LjRiNGD0YLRgdGPINC90LAg0YPRgNC+0LLQvdC1IGBERUJVR2AsINCwINGB0L7QtNC10YDQttCw0YLQtdC70YzQvdGL0LUg0YDQtdC30YPQu9GM0YLQsNGC0Ysg0YHQvtGF0YDQsNC90Y/RjtGCIGBJTkZPYDsKLSDQtNC+0LHQsNCy0LvQtdC9INGC0LXRgdGCLCDQv9C+0LTRgtCy0LXRgNC20LTQsNGO0YnQuNC5LCDRh9GC0L4gYFBlcm1pc3Npb25FcnJvcmAg0L7QtNC90L7Qs9C+IGJhY2t1cCDRhNC40LrRgdC40YDRg9C10YLRgdGPINCyIHN1bW1hcnkg0Lgg0L3QtSDQvNC10YjQsNC10YIg0L7QsdGA0LDQsdC+0YLQsNGC0Ywg0YHQu9C10LTRg9GO0YnQuNC5INGE0LDQudC7OwotINC00L7QsdCw0LLQu9C10L3RiyDRgtC10YHRgtGLINGD0YDQvtCy0L3QtdC5INC70L7Qs9C40YDQvtCy0LDQvdC40Y8g0LTQu9GPINC/0YPRgdGC0L7Qs9C+INC4INC90LXQv9GD0YHRgtC+0LPQviBkZWxldGlvbi1yZXN1bHQ7Ci0g0L/RgNCw0LLQsCDQvdCwINC60L7QvdC60YDQtdGC0L3Ri9C5IGJhY2t1cCDQvtGB0YLQsNGO0YLRgdGPINGB0LXRgNCy0LXRgNC90L7QuSDQvdCw0YHRgtGA0L7QudC60L7QuSDQuCDQvdC1INC/0L7QtNC80LXQvdGP0Y7RgtGB0Y8g0L3QtdCx0LXQt9C+0L/QsNGB0L3Ri9C8INC+0LHRhdC+0LTQvtC8INCyINC60L7QtNC1Lgo=
         run: |
           python - <<'PY'
+          import base64
+          import os
           from pathlib import Path
 
           source = Path("velvet_bot/domains/telegram_storage/deletion.py")
           text = source.read_text(encoding="utf-8")
-          old = '''    logger.info(
-              "telegram_storage_deletion_result "
-              "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",
-              result.policy_name,
-              result.dry_run,
-              len(result.planned),
-              result.deleted_count,
-              len(result.issues),
-              result.freed_bytes,
+          old = "\n".join(
+              (
+                  "    logger.info(",
+                  '        "telegram_storage_deletion_result "',
+                  '        "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",',
+                  "        result.policy_name,",
+                  "        result.dry_run,",
+                  "        len(result.planned),",
+                  "        result.deleted_count,",
+                  "        len(result.issues),",
+                  "        result.freed_bytes,",
+                  "    )",
+                  "",
+              )
           )
-          '''
-          new = '''    level = (
-              logging.INFO
-              if result.planned
-              or result.deleted_paths
-              or result.issues
-              or result.freed_bytes
-              else logging.DEBUG
+          new = "\n".join(
+              (
+                  "    level = (",
+                  "        logging.INFO",
+                  "        if result.planned",
+                  "        or result.deleted_paths",
+                  "        or result.issues",
+                  "        or result.freed_bytes",
+                  "        else logging.DEBUG",
+                  "    )",
+                  "    logger.log(",
+                  "        level,",
+                  '        "telegram_storage_deletion_result "',
+                  '        "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",',
+                  "        result.policy_name,",
+                  "        result.dry_run,",
+                  "        len(result.planned),",
+                  "        result.deleted_count,",
+                  "        len(result.issues),",
+                  "        result.freed_bytes,",
+                  "    )",
+                  "",
+              )
           )
-          logger.log(
-              level,
-              "telegram_storage_deletion_result "
-              "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",
-              result.policy_name,
-              result.dry_run,
-              len(result.planned),
-              result.deleted_count,
-              len(result.issues),
-              result.freed_bytes,
-          )
-          '''
           if old not in text:
               raise SystemExit("deletion audit block not found")
           source.write_text(text.replace(old, new, 1), encoding="utf-8")
-
-          test = Path("tests/test_telegram_storage_permission_noise.py")
-          test.write_text('''from __future__ import annotations
-
-import logging
-import unittest
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from types import SimpleNamespace
-from unittest.mock import patch
-
-from velvet_bot.domains.telegram_storage.deletion import (
-    build_storage_deletion_policy,
-    delete_paths,
-)
-from velvet_bot.domains.telegram_storage.models import MigrationSummary
-from velvet_bot.domains.telegram_storage.service import TelegramStorageMigrationService
-
-
-_LOGGER = "velvet_bot.domains.telegram_storage.deletion"
-
-
-class TelegramStorageDeletionLoggingTests(unittest.TestCase):
-    def _policy(self, base: Path):
-        root = base / "staging"
-        project = base / "project"
-        root.mkdir()
-        project.mkdir()
-        return root, build_storage_deletion_policy(
-            name="test-telegram-storage",
-            roots=(root,),
-            project_dir=project,
-        )
-
-    def test_empty_deletion_result_is_debug_only(self) -> None:
-        with TemporaryDirectory() as temporary:
-            root, policy = self._policy(Path(temporary))
-            with self.assertLogs(_LOGGER, level=logging.DEBUG) as captured:
-                result = delete_paths((root / "missing.bin",), policy=policy)
-
-        self.assertTrue(result.complete)
-        self.assertEqual(len(result.planned), 0)
-        self.assertEqual(len(captured.records), 1)
-        self.assertEqual(captured.records[0].levelno, logging.DEBUG)
-        self.assertIn("planned=0 deleted=0 issues=0", captured.records[0].getMessage())
-
-    def test_non_empty_deletion_result_remains_info(self) -> None:
-        with TemporaryDirectory() as temporary:
-            root, policy = self._policy(Path(temporary))
-            candidate = root / "candidate.bin"
-            candidate.write_bytes(b"payload")
-            with self.assertLogs(_LOGGER, level=logging.INFO) as captured:
-                result = delete_paths((candidate,), policy=policy, dry_run=True)
-
-        self.assertEqual(len(result.planned), 1)
-        self.assertEqual(len(captured.records), 1)
-        self.assertEqual(captured.records[0].levelno, logging.INFO)
-        self.assertIn("planned=1", captured.records[0].getMessage())
-
-
-class _BackupRepository:
-    def __init__(self, items: list[SimpleNamespace]) -> None:
-        self.items = items
-
-    async def list_backup_backfill(self, _backup_dir: Path):
-        return self.items
-
-
-class TelegramStorageBackupIsolationTests(unittest.IsolatedAsyncioTestCase):
-    async def test_permission_error_is_scoped_and_next_backup_is_processed(self) -> None:
-        with TemporaryDirectory() as temporary:
-            base = Path(temporary)
-            backup_dir = base / "backups"
-            staging_dir = base / "staging"
-            backup_dir.mkdir()
-            blocked = backup_dir / "blocked.dump"
-            next_file = backup_dir / "next.dump"
-            blocked.write_bytes(b"blocked")
-            next_file.write_bytes(b"next")
-            items = [
-                SimpleNamespace(
-                    run_id=1,
-                    file_name=blocked.name,
-                    path=blocked,
-                    sha256=None,
-                    backup_kind="database",
-                    schema_version="1",
-                    validation={},
-                ),
-                SimpleNamespace(
-                    run_id=2,
-                    file_name=next_file.name,
-                    path=next_file,
-                    sha256=None,
-                    backup_kind="database",
-                    schema_version="1",
-                    validation={},
-                ),
-            ]
-            service = object.__new__(TelegramStorageMigrationService)
-            service.settings = SimpleNamespace(
-                backup_dir=backup_dir,
-                staging_dir=staging_dir,
-                encryption_key_id="test-key",
-                encryption_keyring={},
-            )
-            service.repository = _BackupRepository(items)
-            service.uploader = None
-            summary = MigrationSummary(run_id=10, migration_kind="test")
-
-            def fail_digest(path: Path) -> str:
-                if Path(path) == blocked:
-                    raise PermissionError(13, "Permission denied", str(path))
-                raise RuntimeError("next backup reached")
-
-            with (
-                patch(
-                    "velvet_bot.domains.telegram_storage.service.sha256_file",
-                    side_effect=fail_digest,
-                ) as digest,
-                patch(
-                    "velvet_bot.domains.telegram_storage.service.remove_paths",
-                    return_value=(0, 0),
-                ),
-            ):
-                await service._migrate_backups(summary)
-
-        self.assertEqual(digest.call_count, 2)
-        self.assertEqual(summary.discovered_files, 2)
-        self.assertEqual(summary.failed_files, 2)
-        self.assertTrue(any("Permission denied" in item for item in summary.errors))
-        self.assertTrue(any("next backup reached" in item for item in summary.errors))
-
-
-if __name__ == "__main__":
-    unittest.main()
-''', encoding="utf-8")
-
-          worklog = Path("docs/worklog/2026-08-05-telegram-storage-permission-noise.md")
-          worklog.write_text('''# Telegram Storage: права backup и шум пустых удалений
-
-## Перед началом
-
-В production-логе почасовая миграция падала на `PermissionError` при чтении backup-файла, а один проход одновременно создавал сотни одинаковых `INFO`-событий `telegram_storage_deletion_result` с нулевыми счётчиками.
-
-Актуальный `main` уже изолирует ошибку отдельного backup внутри `_migrate_backups`, поэтому фатальный traceback указывает на не обновлённый production-контейнер. Нужен регрессионный тест, фикс уровня логирования и последующее развёртывание актуального образа.
-
-## После завершения
-
-- пустые результаты удаления пишутся на уровне `DEBUG`, а содержательные результаты сохраняют `INFO`;
-- добавлен тест, подтверждающий, что `PermissionError` одного backup фиксируется в summary и не мешает обработать следующий файл;
-- добавлены тесты уровней логирования для пустого и непустого deletion-result;
-- права на конкретный backup остаются серверной настройкой и не подменяются небезопасным обходом в коде.
-''', encoding="utf-8")
+          Path("tests/test_telegram_storage_permission_noise.py").write_bytes(
+              base64.b64decode(os.environ["TEST_B64"])
+          )
+          Path("docs/worklog/2026-08-05-telegram-storage-permission-noise.md").write_bytes(
+              base64.b64decode(os.environ["WORKLOG_B64"])
+          )
           PY
 
       - name: Run focused tests
