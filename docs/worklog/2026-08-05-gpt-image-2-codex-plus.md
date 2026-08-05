@@ -51,6 +51,11 @@
 Image-run не получает GitHub token. Результат скачивается ботом, конвертируется в
 целевой JPEG и отправляется пользователю. Feature flag выключен по умолчанию.
 
+Финальный startup-порядок сохраняет `install_auf_branding` последней стадией:
+`install_auf_gpt_image_2` расширяет контроллер, после чего branding guard
+нормализует все новые Telegram-ответы. Hermes compose также сохраняет
+контрактную пометку о выборе provider order из immutable `requested_tier`.
+
 ## Эксплуатация
 
 Для включения нужны:
