@@ -1,6 +1,6 @@
 # Package-wide architecture inventory
 
-- Generated from: `feat/gpt-image-2-codex`
+- Generated from: `working-tree`
 - Production modules: **651**
 - Production LOC: **143647**
 - Root modules: **113**

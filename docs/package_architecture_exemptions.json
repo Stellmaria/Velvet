@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "feat/gpt-image-2-codex",
+  "generated_from": "working-tree",
   "baseline_issue": "#460",
   "shared_private_access_sha256": "9031957aac41727658381924617a0183b045937c8b1e3d2b5000cea61d820e25",
   "root_module_sha256": "84cd6247cad104db3cdd1333d809a224ecc2349dba748b98a37f034ef0d64c40",

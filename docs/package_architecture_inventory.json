@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "feat/gpt-image-2-codex",
+  "generated_from": "working-tree",
   "production_module_count": 651,
   "production_loc": 143647,
   "layer_counts": {
