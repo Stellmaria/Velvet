@@ -42,7 +42,9 @@ jobs:
           git merge --no-edit origin/main
 
       - name: Apply canonical provider refactor
-        run: python tools/issue_459_refactor_loader.py
+        run: |
+          python tools/issue_459_refactor_loader.py
+          python -m compileall -q velvet_bot
 
       - name: Regenerate architecture inventories
         shell: bash
