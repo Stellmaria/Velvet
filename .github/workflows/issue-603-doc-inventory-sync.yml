@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Apply exact generated-document updates
+      - name: Apply exact canonical-document updates
         shell: bash
         run: |
           set -euo pipefail
@@ -50,22 +50,32 @@ jobs:
               raise SystemExit('navigation inventory replacement mismatch')
           navigation.write_text(nav_text.replace(old_nav, new_nav), encoding='utf-8')
 
-          status = Path('docs/development_status.md')
-          status_text = status.read_text(encoding='utf-8')
-          old_status = (
+          old_baseline = (
               'Provider adapter baseline: 646 production Python files, 3725 functions, '
               '170 registered private accesses, 0 blocking contracts.'
           )
-          new_status = (
+          new_baseline = (
               'Provider adapter baseline: 648 production Python files, 3748 functions, '
               '170 registered private accesses, 0 blocking contracts.'
           )
-          if status_text.count(old_status) != 1 or new_status in status_text:
-              raise SystemExit('development status replacement mismatch')
-          status.write_text(
-              status_text.replace(old_status, new_status),
-              encoding='utf-8',
-          )
+          for name in (
+              'docs/development_status.md',
+              'docs/project_memory.md',
+              'docs/ARCHITECTURE_AUDIT.md',
+          ):
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              if text.count(old_baseline) != 1 or new_baseline in text:
+                  raise SystemExit(f'canonical baseline replacement mismatch: {name}')
+              path.write_text(text.replace(old_baseline, new_baseline), encoding='utf-8')
+
+          test_path = Path('tests/test_canonical_docs_sync.py')
+          test_text = test_path.read_text(encoding='utf-8')
+          old_test = 'self.assertIn("Python files scanned: **646**", self.navigation)'
+          new_test = 'self.assertIn("Python files scanned: **648**", self.navigation)'
+          if test_text.count(old_test) != 1 or new_test in test_text:
+              raise SystemExit('canonical docs test replacement mismatch')
+          test_path.write_text(test_text.replace(old_test, new_test), encoding='utf-8')
           PY
 
           python scripts/telegram_navigation_inventory.py \
@@ -80,16 +90,22 @@ jobs:
           rm -f .github/workflows/issue-603-doc-inventory-sync.yml
           git add -- \
             .github/workflows/issue-603-doc-inventory-sync.yml \
+            docs/ARCHITECTURE_AUDIT.md \
             docs/development_status.md \
-            docs/generated/telegram_navigation_inventory.md
+            docs/generated/telegram_navigation_inventory.md \
+            docs/project_memory.md \
+            tests/test_canonical_docs_sync.py
 
           python - <<'PY'
           import subprocess
 
           allowed = {
               '.github/workflows/issue-603-doc-inventory-sync.yml',
+              'docs/ARCHITECTURE_AUDIT.md',
               'docs/development_status.md',
               'docs/generated/telegram_navigation_inventory.md',
+              'docs/project_memory.md',
+              'tests/test_canonical_docs_sync.py',
           }
           staged = set(
               subprocess.check_output(
@@ -107,5 +123,5 @@ jobs:
           test "$(git ls-remote origin refs/heads/feat/603-adaptive-ai-queue-wakeup | cut -f1)" = "${GITHUB_SHA}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Synchronize #603 generated documentation"
+          git commit -m "Synchronize #603 canonical documentation"
           git push origin HEAD:feat/603-adaptive-ai-queue-wakeup
