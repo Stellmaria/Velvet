@@ -1,0 +1,84 @@
+name: refresh GPT Image architecture inventory v3
+
+on:
+  push:
+    branches:
+      - feat/gpt-image-2-codex
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: ${{ !contains(github.event.head_commit.message, '[architecture-refreshed-v3]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feat/gpt-image-2-codex
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+
+      - name: Refresh reviewed package inventory
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts import inventory_package_architecture as inventory
+
+          data = inventory.build_inventory(label="working-tree")
+          exemptions_path = Path("docs/package_architecture_exemptions.json")
+          previous = json.loads(exemptions_path.read_text(encoding="utf-8"))
+          observed = {str(row["id"]): row for row in data["violations"]}
+          previous_rows = {
+              str(row["id"]): row
+              for row in previous.get("exceptions", [])
+              if str(row.get("id", "")) in observed
+          }
+          consumers = inventory._reverse_consumers(list(data["modules"]))
+          rows = [
+              previous_rows.get(row_id)
+              or inventory._suggest_exception(violation, consumers)
+              for row_id, violation in sorted(observed.items())
+          ]
+          exemptions = {
+              **previous,
+              "generated_from": "working-tree",
+              "shared_private_access_sha256": data["shared_contract_summary"]["private_access_sha256"],
+              "root_module_sha256": data["root_module_sha256"],
+              "exceptions": rows,
+          }
+          Path("docs/package_architecture_inventory.json").write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          exemptions_path.write_text(
+              json.dumps(exemptions, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          Path("docs/package_architecture_inventory.md").write_text(
+              inventory.render_markdown(data, exemptions),
+              encoding="utf-8",
+          )
+          Path(".github/workflows/refresh-gpt-image-architecture.yml").unlink()
+          errors = inventory.validate(data, exemptions)
+          if errors:
+              raise SystemExit("\n".join(errors))
+          PY
+
+      - name: Commit generated inventory and remove this workflow
+        run: |
+          git config user.name "Velvet Architecture Bot"
+          git config user.email "velvet-architecture@users.noreply.github.com"
+          git add docs/package_architecture_inventory.json \
+                  docs/package_architecture_inventory.md \
+                  docs/package_architecture_exemptions.json \
+                  .github/workflows/refresh-gpt-image-architecture.yml
+          git commit -m "chore: refresh package architecture inventory [architecture-refreshed-v3]"
+          git push origin HEAD:feat/gpt-image-2-codex
