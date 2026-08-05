@@ -325,11 +325,12 @@ class WorkerManager:
             await asyncio.sleep(spec.interval_seconds)
         try:
             while True:
-                succeeded, result = await self._execute_once_with_result(spec)
                 controller = spec.wait_controller
                 if controller is None:
+                    await self._execute_once(spec)
                     await asyncio.sleep(spec.interval_seconds)
                     continue
+                succeeded, result = await self._execute_once_with_result(spec)
                 delay = controller.delay_for(
                     result,
                     default_interval_seconds=spec.interval_seconds,

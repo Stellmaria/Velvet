@@ -119,7 +119,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/services/workspace_qwen_quality.py:106` `_download_target`: workspace-qwen-file-fallback.
 - `velvet_bot/services/workspace_qwen_quality.py:170` `process_once`: compensate-workspace-qwen-check.
 - `velvet_bot/workers/manager.py:260` `_execute_once_with_result`: isolate-worker-iteration-failure.
-- `velvet_bot/workers/manager.py:351` `_run_periodic`: isolate-worker-loop-failure.
+- `velvet_bot/workers/manager.py:352` `_run_periodic`: isolate-worker-loop-failure.
 
 ## Unresolved broad exceptions by file
 
