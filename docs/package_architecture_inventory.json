@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 651,
-  "production_loc": 143648,
+  "production_loc": 143652,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -8564,14 +8564,15 @@
       "module": "velvet_bot.app",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 13,
+      "loc": 17,
       "function_count": 0,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 0,
       "branch_count": 0,
       "internal_imports": [
-        "velvet_bot.app.composition"
+        "velvet_bot.app.composition",
+        "velvet_bot.app.gpt_image_2_bootstrap"
       ],
       "external_import_count": 0,
       "aiogram_imports": [],
@@ -8584,7 +8585,12 @@
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
       "install_definitions": [],
-      "install_calls": [],
+      "install_calls": [
+        {
+          "line": 3,
+          "call": "install_gpt_image_2_bootstrap"
+        }
+      ],
       "installed_sentinel_count": 0,
       "package_getattr": false,
       "env_reads": [],
