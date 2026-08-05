@@ -3,7 +3,7 @@
 - Дата: 2026-08-05
 - ID: 2026-08-05-canonical-media-provider-adapters
 - Линия/фаза: P1 provider architecture, issue #459
-- Статус: в работе
+- Статус: частично
 - Ветка: fix/459-canonical-provider-adapters
 - Базовый commit: a3c16498b4d92521719881bccc3ea132644f83fd
 
