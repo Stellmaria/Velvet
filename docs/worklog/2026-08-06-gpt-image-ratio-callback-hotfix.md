@@ -45,7 +45,9 @@
 - существующий `auf_photo_ratio_callback_fix` расширен на действие `gpt2_ratio`;
 - GPT Image 2 использует кодирование `1:1 → 1x1` при упаковке;
 - `AufCallback.unpack` восстанавливает provider-facing значение до обработки;
-- добавлен async regression test, который строит реальную клавиатуру, распаковывает все callbacks и сверяет полный набор пропорций.
+- добавлен async regression test, который строит реальную клавиатуру, распаковывает все callbacks и сверяет полный набор пропорций;
+- reviewed architecture fingerprints и generated package inventory синхронизированы;
+- временный inventory workflow удалён из итоговой ветки.
 
 ### Миграции и совместимость
 
@@ -53,20 +55,22 @@
 
 ### Проверки
 
-- type check на head `903f3b6b6011cb9b44377e9b24b6735efb5a137e`: PASS;
-- остальные обязательные GitHub Actions перезапускаются после исправления project-notes contract;
-- regression test покрывает реальную клавиатуру для всех значений `CODEX_IMAGE_RATIOS`.
+- type check на промежуточном head: PASS;
+- четыре PostgreSQL test shards на промежуточном head: PASS;
+- focused package architecture inventory contract после регенерации: PASS;
+- focused GPT Image ratio regression входит в зелёный test shard;
+- полный обязательный CI перезапущен на финальном пользовательском commit после generated inventory commit.
 
 ### PR и commit
 
 - PR: `#650 Fix GPT Image 2 ratio callback packing`;
 - ветка: `fix/gpt-image-ratio-callback`;
-- текущий head до исправления worklog: `903f3b6b6011cb9b44377e9b24b6735efb5a137e`;
+- generated inventory head: `c54d295382d297e003a00e3c2c01451f5649390b`;
 - итоговый merge commit будет записан после зелёного CI и merge.
 
 ### Незавершённое
 
-- дождаться полного CI на обновлённом head;
+- дождаться полного CI на финальном head;
 - слить PR #650;
 - развернуть обновлённый `main` на production;
 - повторить живой путь GPT Image 2 до выбора пропорции.
