@@ -76,7 +76,13 @@ def install_auf_photo_ratio_callback_fix() -> None:
     controller = importlib.import_module(
         "velvet_bot.presentation.telegram.workspace_home_controller"
     )
+    auf_router = importlib.import_module(
+        "velvet_bot.presentation.telegram.routers.workspace_auf"
+    )
+    gpt_image = importlib.import_module("velvet_bot.app.auf_gpt_image_2_install")
     original_action = controller.handle_scoped_auf_action
+    original_gpt_button = gpt_image._button
+    original_unpack = auf_router.AufCallback.unpack
 
     async def handle_scoped_auf_action_with_safe_ratio(
         callback,
@@ -108,7 +114,34 @@ def install_auf_photo_ratio_callback_fix() -> None:
             auf_purchase_service,
         )
 
+    def gpt_button_with_safe_ratio(
+        text,
+        action,
+        *,
+        workspace_id,
+        value="",
+        item_id=0,
+    ):
+        if action == "gpt2_ratio":
+            value = encode_photo_ratio_callback_value(value)
+        return original_gpt_button(
+            text,
+            action,
+            workspace_id=workspace_id,
+            value=value,
+            item_id=item_id,
+        )
+
+    def unpack_with_safe_gpt_ratio(cls, value):
+        callback_data = original_unpack(value)
+        if callback_data.action == "gpt2_ratio":
+            decoded = decode_photo_ratio_callback_value(callback_data.value)
+            callback_data = _copy_callback_value(callback_data, value=decoded)
+        return callback_data
+
     photo_router._ratio_keyboard = build_safe_photo_ratio_keyboard
+    gpt_image._button = gpt_button_with_safe_ratio
+    auf_router.AufCallback.unpack = classmethod(unpack_with_safe_gpt_ratio)
     controller.handle_scoped_auf_action = handle_scoped_auf_action_with_safe_ratio
     _INSTALLED = True
 

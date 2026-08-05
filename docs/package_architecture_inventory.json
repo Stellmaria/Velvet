@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 651,
-  "production_loc": 143664,
+  "production_loc": 143697,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -2434,13 +2434,13 @@
       }
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:98e325bc4c4c4ce6",
+      "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:5b77f3b426acf231",
       "category": "dynamic-import",
       "path": "velvet_bot/app/auf_photo_ratio_callback_fix.py",
-      "fingerprint": "98e325bc4c4c4ce67276611e89d4515a1a0a796d03c249ae8f0e2844bdaa6c1a",
-      "summary": "1 dynamic imports",
+      "fingerprint": "5b77f3b426acf231b09bf0e5c44f8578d39be90f4d27717f365e2d1503fb1a2a",
+      "summary": "3 dynamic imports",
       "details": {
-        "count": 1,
+        "count": 3,
         "calls": [
           "importlib.import_module"
         ]
@@ -3202,10 +3202,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_photo_ratio_callback_fix.py:f110ffd40022a2cc",
+      "id": "installed-sentinel:velvet_bot/app/auf_photo_ratio_callback_fix.py:28ed1f86ea0aa58c",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_photo_ratio_callback_fix.py",
-      "fingerprint": "f110ffd40022a2ccf710a5461e415d81d8c759ce87b5a75900d9c3651933007e",
+      "fingerprint": "28ed1f86ea0aa58c9a11335f7e9ac003533912a514596a2aede30b9f719a90c4",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
@@ -10192,12 +10192,12 @@
       "module": "velvet_bot.app.auf_photo_ratio_callback_fix",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 121,
-      "function_count": 6,
+      "loc": 154,
+      "function_count": 8,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 45,
-      "branch_count": 5,
+      "max_function_length": 78,
+      "branch_count": 7,
       "internal_imports": [
         "velvet_bot.presentation.telegram.routers"
       ],
@@ -10210,7 +10210,7 @@
       "foreign_assignment_targets": [
         "photo_router._ratio_keyboard"
       ],
-      "dynamic_import_count": 1,
+      "dynamic_import_count": 3,
       "any_count": 0,
       "cast_count": 0,
       "type_ignore_count": 0,
@@ -10239,13 +10239,13 @@
           }
         },
         {
-          "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:98e325bc4c4c4ce6",
+          "id": "dynamic-import:velvet_bot/app/auf_photo_ratio_callback_fix.py:5b77f3b426acf231",
           "category": "dynamic-import",
           "path": "velvet_bot/app/auf_photo_ratio_callback_fix.py",
-          "fingerprint": "98e325bc4c4c4ce67276611e89d4515a1a0a796d03c249ae8f0e2844bdaa6c1a",
-          "summary": "1 dynamic imports",
+          "fingerprint": "5b77f3b426acf231b09bf0e5c44f8578d39be90f4d27717f365e2d1503fb1a2a",
+          "summary": "3 dynamic imports",
           "details": {
-            "count": 1,
+            "count": 3,
             "calls": [
               "importlib.import_module"
             ]
@@ -10260,10 +10260,10 @@
           "details": {}
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/auf_photo_ratio_callback_fix.py:f110ffd40022a2cc",
+          "id": "installed-sentinel:velvet_bot/app/auf_photo_ratio_callback_fix.py:28ed1f86ea0aa58c",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/auf_photo_ratio_callback_fix.py",
-          "fingerprint": "f110ffd40022a2ccf710a5461e415d81d8c759ce87b5a75900d9c3651933007e",
+          "fingerprint": "28ed1f86ea0aa58c9a11335f7e9ac003533912a514596a2aede30b9f719a90c4",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
