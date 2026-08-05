@@ -166,13 +166,12 @@ def _ollama_models(client: "VisionClient", *, timeout: int) -> frozenset[str] | 
         headers=client._headers(),
         method="GET",
     )
+    from velvet_bot.ai_vision import VisionAnalysisError
+
     try:
         payload = client._read_json(request, timeout=min(10, timeout))
-    except Exception as error:
-        from velvet_bot.ai_vision import VisionAnalysisError
-        if isinstance(error, VisionAnalysisError):
-            return None
-        raise
+    except VisionAnalysisError:
+        return None
     names: set[str] = set()
     models = payload.get("models")
     if isinstance(models, list):
