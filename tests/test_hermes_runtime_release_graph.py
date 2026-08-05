@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -8,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CODER_ROOT = ROOT / "deploy/hermes-coders"
+SYSTEMD_UNIT = ROOT / "deploy/systemd/hermes-coders.service"
 
 
 def _load_guard():
@@ -20,6 +22,17 @@ def _load_guard():
     return module
 
 
+def _runtime_python_mounts() -> set[str]:
+    source = (CODER_ROOT / "compose.runtime.yaml").read_text(encoding="utf-8")
+    mounts: set[str] = set()
+    pattern = re.compile(r"^\s*-\s+\./([^:/]+\.py):/app/\1:ro\s*$")
+    for line in source.splitlines():
+        match = pattern.match(line)
+        if match:
+            mounts.add(match.group(1))
+    return mounts
+
+
 def test_runtime_compose_mounts_complete_release_graph_for_both_coders() -> None:
     source = (CODER_ROOT / "compose.runtime.yaml").read_text(encoding="utf-8")
 
@@ -30,9 +43,18 @@ def test_runtime_compose_mounts_complete_release_graph_for_both_coders() -> None
         "codex_first_safe_runner.py",
         "codex_provider_chain_runner.py",
         "codex_tier_runner.py",
+        "codex_image_runner.py",
     ):
         mount = f"./{runtime_source}:/app/{runtime_source}:ro"
         assert source.count(mount) == 2
+
+
+def test_every_runtime_python_mount_is_covered_by_permission_guard() -> None:
+    guard = _load_guard()
+    mounted_sources = _runtime_python_mounts()
+
+    assert mounted_sources
+    assert mounted_sources <= set(guard.RUNTIME_SOURCES)
 
 
 def test_runtime_source_guard_covers_base_modules_and_import_graph() -> None:
@@ -40,8 +62,17 @@ def test_runtime_source_guard_covers_base_modules_and_import_graph() -> None:
 
     assert "codex_runner.py" in guard.RUNTIME_SOURCES
     assert "codex_routed_runner.py" in guard.RUNTIME_SOURCES
+    assert "codex_image_runner.py" in guard.RUNTIME_SOURCES
     assert "HERMES_RUNTIME_IMPORT_GRAPH_OK" in guard._IMPORT_PROBE
     assert "codex_tier_runner" in guard._IMPORT_PROBE
+    assert "codex_image_runner" in guard._IMPORT_PROBE
+
+
+def test_systemd_permission_preflight_covers_image_runner() -> None:
+    unit = SYSTEMD_UNIT.read_text(encoding="utf-8")
+    runtime_path = "/deploy/hermes-coders/codex_image_runner.py"
+
+    assert unit.count(runtime_path) == 2
 
 
 def test_runtime_source_guard_accepts_repository_import_graph() -> None:
@@ -56,3 +87,28 @@ def test_runtime_source_guard_accepts_repository_import_graph() -> None:
 
     assert result.returncode == 0, result.stderr
     assert "permissions and imports: OK" in result.stdout
+
+
+def test_canonical_release_preserves_images_and_removes_legacy_dropin() -> None:
+    release = (CODER_ROOT / "release.sh").read_text(encoding="utf-8")
+
+    assert "ROLLBACK_VELVET_TAG=" in release
+    assert "ROLLBACK_MAX_TAG=" in release
+    assert 'docker tag "$PREVIOUS_VELVET_IMAGE" "$ROLLBACK_VELVET_TAG"' in release
+    assert 'docker tag "$PREVIOUS_MAX_IMAGE" "$ROLLBACK_MAX_TAG"' in release
+    assert "refusing rollback recreation with incorrect local tags" in release
+    assert "20-bwrap-runtime.conf" in release
+    assert 'rm -f -- "$LEGACY_DROPIN"' in release
+
+
+def test_canonical_release_shell_syntax() -> None:
+    result = subprocess.run(
+        ["bash", "-n", str(CODER_ROOT / "release.sh")],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr
