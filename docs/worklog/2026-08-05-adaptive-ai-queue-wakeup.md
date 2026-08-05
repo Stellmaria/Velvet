@@ -3,7 +3,7 @@
 - Дата: 2026-08-05
 - ID: 2026-08-05-adaptive-ai-queue-wakeup
 - Линия/фаза: P1 PostgreSQL load reduction, issue #603
-- Статус: repository implementation готова к exact-head CI; rollout остаётся открытым
+- Статус: частично
 - Ветка: feat/603-adaptive-ai-queue-wakeup
 - Базовый commit: 1a56d7b9d2fea7a967ba12c5a119b53d0dfb8e5c
 
