@@ -81,7 +81,9 @@ SQL-миграции и схема PostgreSQL не изменены. Публи�
 - regression-тест проверяет `INFO` для содержательного dry-run;
 - regression-тест проверяет продолжение backup-loop после `PermissionError`;
 - type check прошёл на первом head PR;
-- полный обязательный CI повторно запускается после исправления worklog.
+- package architecture inventory пересчитан штатным генератором с каноническим
+  label `p1-package-architecture-baseline`;
+- полный обязательный CI повторно запущен на итоговом head.
 
 ### PR и commit
 
