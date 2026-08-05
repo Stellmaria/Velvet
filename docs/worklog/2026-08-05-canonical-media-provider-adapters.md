@@ -69,7 +69,10 @@ violation retry, balance fallback, worker speedups и Vision fallback завис
 - owner privacy/progress policy подключена к canonical worker boundary;
 - временный sanitizer facade удалён, функция размещена в существующем
   formatting boundary;
-- пересобраны architecture inventories, удалены obsolete exemptions.
+- Ollama discovery ловит только `VisionAnalysisError`, без нового broad
+  exception boundary;
+- пересобраны canonical architecture и repository inventories, удалены
+  obsolete provider exemptions и временные issue labels.
 
 ### Миграции и совместимость
 
@@ -91,15 +94,24 @@ clean implementation head `c3156bf2632ab6a34ac1302a6faae25007451a88`:
 - 55 focused provider, worker, privacy, routing, composition и architecture tests;
 - удаление временного workflow и sanitizer facade.
 
-Полный required CI выполняется на следующем exact PR head перед merge. Отдельный
-API commit нужен только для штатного запуска workflow после commit, созданного
-`GITHUB_TOKEN`.
+После full-CI findings дополнительно:
+
+- retired installer assertions перенесены на canonical composition stages;
+- P2 stability inventory возвращён к 106 broad exceptions и 0 unresolved через
+  конкретный `VisionAnalysisError` catch;
+- repository layout generator и три P3E tests прошли в run `30998011031`;
+- clean canonical repository commit: `90f9760e36cceae098357662c77de1d2122a1640`.
+
+Полный required CI выполняется на exact PR head перед merge. Отдельный API
+commit используется только для штатного запуска workflow после commit,
+созданного `GITHUB_TOKEN`.
 
 ### PR и commit
 
 - PR: #639 `Canonicalize media provider adapters and retry policy`;
 - implementation commit: `14af196a3258e74bafb783a61d7671223856e36b`;
 - canonical retirement commit: `c3156bf2632ab6a34ac1302a6faae25007451a88`;
+- canonical repository commit: `90f9760e36cceae098357662c77de1d2122a1640`;
 - final merge commit: ожидается после required CI.
 
 ### Незавершённое
@@ -111,5 +123,5 @@ API commit нужен только для штатного запуска workfl
 
 ### Следующий шаг
 
-Запустить и проверить exact-head required CI, затем слить PR #639 в `main` без
-production rollout. Live provider acceptance продолжить отдельно в #412.
+Проверить exact-head required CI, затем слить PR #639 в `main` без production
+rollout. Live provider acceptance продолжить отдельно в #412.
