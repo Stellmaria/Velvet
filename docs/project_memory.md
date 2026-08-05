@@ -352,6 +352,8 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 <!-- gpt-image-2-pr-645-architecture-slice -->
 ## Срез feature-ветки GPT Image 2 от 5 августа 2026 года
 
+Дата среза: `2026-08-05`.
+
 Этот блок фиксирует воспроизводимые числа PR #645 и не означает production rollout или закрытие переходного долга:
 
 - package production modules: **651**;
