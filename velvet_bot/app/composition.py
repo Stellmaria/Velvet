@@ -36,7 +36,6 @@ class ApplicationComposition:
     async def run(self) -> None:
         for stage in self.bootstrap_stages:
             stage.install()
-
         runner = self.runner_factory()
         feature_stages = self.feature_stages_factory()
         actual_names = tuple(stage.name for stage in feature_stages)
@@ -45,10 +44,8 @@ class ApplicationComposition:
                 "Application composition stage order drifted: "
                 f"declared={self.feature_stage_names!r} actual={actual_names!r}"
             )
-
         for stage in feature_stages:
             stage.install()
-
         await runner()
 
 
@@ -95,6 +92,7 @@ _FEATURE_STAGE_NAMES = (
     "install_auf_generation_receipts",
     "install_krita_remote_worker",
     "install_auf_branding",
+    "install_auf_gpt_image_2",
 )
 
 
@@ -106,6 +104,7 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
     from velvet_bot.app.auf_generation_receipt_install import (
         install_auf_generation_receipts,
     )
+    from velvet_bot.app.auf_gpt_image_2_install import install_auf_gpt_image_2
     from velvet_bot.app.auf_margin_dashboard_install import (
         install_auf_margin_dashboard,
     )
@@ -148,7 +147,10 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         install_auf_owner_cost_privacy()
 
     return (
-        CompositionStage("install_friendly_media_worker", install_friendly_media_worker),
+        CompositionStage(
+            "install_friendly_media_worker",
+            install_friendly_media_worker,
+        ),
         CompositionStage(
             "install_telegram_progress_resilience",
             install_telegram_progress_resilience,
@@ -171,8 +173,6 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
             install_auf_photo_ratio_callback_fix,
         ),
         CompositionStage("install_auf_user_portal", install_auf_user_portal),
-        # Install model-first first, then wrap its final screen with the
-        # approved generation pricing policy and owner-only margin controls.
         CompositionStage(
             "install_auf_photo_model_modes",
             install_auf_photo_model_modes,
@@ -207,9 +207,9 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
             install_generation_receipts_with_owner_cost_privacy,
         ),
         CompositionStage("install_krita_remote_worker", install_krita_remote_worker),
-        # Privacy and branding remain last until later bounded slices migrate
-        # their controller replacement contracts.
         CompositionStage("install_auf_branding", install_auf_branding),
+        # Keep GPT Image 2 last: it wraps the final Auf controller contract.
+        CompositionStage("install_auf_gpt_image_2", install_auf_gpt_image_2),
     )
 
 
