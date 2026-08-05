@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_from": "issue-459-provider-adapters",
+  "generated_from": "p3e-repository-layout-complete",
   "repository_module_count": 44,
   "layout_counts": {
     "domain": 37,
