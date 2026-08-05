@@ -65,6 +65,10 @@ violation retry, balance fallback, worker speedups и Vision fallback завис
   `__init__` и `_read_json`;
 - удалены GRS resilience, campaign, speedup и branding installer modules;
 - provider identity для usage/delivery берётся из model contract;
+- Telegram progress resilience отвязана от retired GRS installer modules;
+- owner privacy/progress policy подключена к canonical worker boundary;
+- временный sanitizer facade удалён, функция размещена в существующем
+  formatting boundary;
 - пересобраны architecture inventories, удалены obsolete exemptions.
 
 ### Миграции и совместимость
@@ -76,19 +80,26 @@ contracts не меняются. Unsupported provider cancellation явно во
 ### Проверки
 
 Implementation commit `14af196a3258e74bafb783a61d7671223856e36b`
-прошёл в GitHub Actions run `30991264086`:
+прошёл в GitHub Actions run `30991264086`.
+
+Finalizer job `92268618850` в run `30994195410` успешно проверил и опубликовал
+clean implementation head `c3156bf2632ab6a34ac1302a6faae25007451a88`:
 
 - `python -m compileall -q main.py velvet_bot scripts tests`;
 - `git diff --check`;
-- canonical architecture inventory generation/check;
-- 53 focused provider, worker, routing, composition и architecture tests.
+- canonical architecture, repository, shared-contract и navigation inventories;
+- 55 focused provider, worker, privacy, routing, composition и architecture tests;
+- удаление временного workflow и sanitizer facade.
 
-Полный required CI выполняется на final exact PR head перед merge.
+Полный required CI выполняется на следующем exact PR head перед merge. Отдельный
+API commit нужен только для штатного запуска workflow после commit, созданного
+`GITHUB_TOKEN`.
 
 ### PR и commit
 
 - PR: #639 `Canonicalize media provider adapters and retry policy`;
 - implementation commit: `14af196a3258e74bafb783a61d7671223856e36b`;
+- canonical retirement commit: `c3156bf2632ab6a34ac1302a6faae25007451a88`;
 - final merge commit: ожидается после required CI.
 
 ### Незавершённое
@@ -100,5 +111,5 @@ Implementation commit `14af196a3258e74bafb783a61d7671223856e36b`
 
 ### Следующий шаг
 
-Проверить exact-head required CI, затем слить PR #639 в `main` без production
-rollout. Live provider acceptance продолжить отдельно в #412.
+Запустить и проверить exact-head required CI, затем слить PR #639 в `main` без
+production rollout. Live provider acceptance продолжить отдельно в #412.
