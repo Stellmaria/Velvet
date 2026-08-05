@@ -401,7 +401,7 @@ class OrchestrationDeploymentContractTests(unittest.TestCase):
         router = compose.split("  hermes-coder-router:", 1)[1].split(
             "\nnetworks:", 1
         )[0]
-        self.assertIn('command: ["python", "/app/tier_router.py"]', router)
+        self.assertIn('command: ["python", "/app/evidence_router.py"]', router)
         self.assertIn("read_only: true", router)
         self.assertIn("agent-control", router)
         self.assertIn("velvet-backend", router)
@@ -454,6 +454,7 @@ class OrchestrationDeploymentContractTests(unittest.TestCase):
         for path in (
             ROOT / "deploy/hermes-operator/coder_router.py",
             ROOT / "deploy/hermes-operator/tier_router.py",
+            ROOT / "deploy/hermes-operator/evidence_router.py",
             ROOT / "deploy/hermes-operator/coderctl.py",
             ROOT / "deploy/hermes-orchestration/prepare_router_env.py",
         ):
