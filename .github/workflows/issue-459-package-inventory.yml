@@ -33,6 +33,7 @@ jobs:
         run: |
           python scripts/inventory_package_architecture.py \
             --write \
+            --bootstrap-exemptions \
             --label p1-package-architecture-baseline
           python scripts/inventory_package_architecture.py \
             --check \
