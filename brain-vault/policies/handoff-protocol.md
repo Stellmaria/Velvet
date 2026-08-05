@@ -5,8 +5,8 @@ scope: shared
 status: active
 owner: kael
 sensitivity: internal
-version: 1
-updated: 2026-08-02
+version: 2
+updated: 2026-08-04
 ---
 
 # Протокол передачи задач
@@ -18,11 +18,17 @@ project target и передаёт минимальный безопасный h
 
 ## Состояния
 
-`proposed → accepted → running → completed|blocked|failed|cancelled → verified`
+Execution ledger: `proposed → accepted → running →
+implemented_by_coder|blocked|failed|cancelled`.
+
+Engineering readiness: `implemented_by_coder → review_pending →
+review_changes_requested|review_approved → merge_authorized → merged →
+rollout_pending → rollout_verified → completed`.
 
 Только Каэль сопоставляет coder `run_id` с task ledger. Слово `completed` от
 агента не является доказательством: ветка, PR, head SHA и CI проверяются через
-фиксированный gateway. Merge и production update требуют прав владельца.
+фиксированный gateway. CI не является review approval. Merge и production update
+требуют прав владельца; rollout-only проверки нельзя закрывать локальным отчётом.
 
 ## Минимальный handoff
 
@@ -31,6 +37,8 @@ project target и передаёт минимальный безопасный h
 - разрешённые/запрещённые действия;
 - ожидаемые тесты и формат результата;
 - никаких токенов, `.env`, дампов, соседнего project context или длинных логов.
+- effective workspace передаётся runner непосредственно перед execution и
+  совпадает с `ledger.workspace_path`; статический legacy path запрещён.
 
 Кодер возвращает structured result по `codex-task-output.schema.json`, включая
 ветку, PR, тесты, blocker и необязательные memory candidates. Повтор после

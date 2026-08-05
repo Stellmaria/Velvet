@@ -36,7 +36,7 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertEqual(2, source.count("GIT_CONFIG_GLOBAL: /opt/data/.gitconfig"))
-        self.assertEqual(2, source.count("- /app/codex_launcher_runner.py"))
+        self.assertEqual(2, source.count("- /app/codex_context_launcher_runner.py"))
         self.assertEqual(
             2,
             source.count(
@@ -57,6 +57,12 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
             2,
             source.count(
                 "./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro"
+            ),
+        )
+        self.assertEqual(
+            2,
+            source.count(
+                "./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro"
             ),
         )
         self.assertEqual(2, source.count("CODEX_EXECUTION_BACKEND: launcher"))
@@ -110,6 +116,7 @@ class HermesCoderRuntimeContractTests(unittest.TestCase):
         self.assertNotIn("HERMES_CODEX_STRICT_NESTED_PROC_SMOKE", source)
         self.assertEqual(2, source.count("codex_tier_runner.py"))
         self.assertEqual(2, source.count("codex_launcher_runner.py"))
+        self.assertEqual(2, source.count("codex_context_launcher_runner.py"))
 
     def test_release_systemd_reconciler_is_non_destructive_and_scoped(self) -> None:
         source = (

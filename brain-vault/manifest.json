@@ -1,6 +1,6 @@
 {
   "brain_id": "velvet-brain",
-  "brain_version": 1,
+  "brain_version": 2,
   "entities": {
     "kael": {
       "agents": [
@@ -10,6 +10,7 @@
         "brain-vault/policies/cache-policy.md",
         "brain-vault/policies/memory-policy.md",
         "brain-vault/policies/handoff-protocol.md",
+        "brain-vault/policies/engineering-evidence.md",
         "brain-vault/policies/access-matrix.md"
       ],
       "memory_seed": "brain-vault/memory/kael.seed.md",
@@ -33,6 +34,7 @@
         "brain-vault/policies/cache-policy.md",
         "brain-vault/policies/memory-policy.md",
         "brain-vault/policies/handoff-protocol.md",
+        "brain-vault/policies/engineering-evidence.md",
         "brain-vault/policies/access-matrix.md"
       ],
       "artifacts": {
@@ -58,6 +60,7 @@
         "brain-vault/policies/cache-policy.md",
         "brain-vault/policies/memory-policy.md",
         "brain-vault/policies/handoff-protocol.md",
+        "brain-vault/policies/engineering-evidence.md",
         "brain-vault/policies/access-matrix.md"
       ],
       "artifacts": {

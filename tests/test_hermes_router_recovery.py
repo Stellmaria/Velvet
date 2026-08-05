@@ -92,7 +92,8 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
         self.assertEqual(2, source.count(expected))
         self.assertEqual(2, source.count("/app/codex_provider_chain_runner.py"))
         self.assertEqual(2, source.count("/app/codex_tier_runner.py"))
-        self.assertEqual(4, source.count("/app/codex_launcher_runner.py"))
+        self.assertEqual(2, source.count("/app/codex_launcher_runner.py"))
+        self.assertEqual(4, source.count("/app/codex_context_launcher_runner.py"))
         self.assertIn("Actual order is selected from immutable requested_tier", source)
         self.assertNotIn("CODEX_PROVIDER_FALLBACK_MODEL:", source)
 
@@ -112,6 +113,8 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             "codex_first_safe_runner.py",
             "codex_provider_chain_runner.py",
             "codex_tier_runner.py",
+            "codex_launcher_runner.py",
+            "codex_context_launcher_runner.py",
         ):
             self.assertEqual(2, unit.count(source), source)
 
