@@ -1,0 +1,230 @@
+name: Apply Telegram storage hotfix
+
+on:
+  push:
+    branches:
+      - fix/telegram-storage-permission-noise
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Apply source and regression tests
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path("velvet_bot/domains/telegram_storage/deletion.py")
+          text = source.read_text(encoding="utf-8")
+          old = '''    logger.info(
+              "telegram_storage_deletion_result "
+              "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",
+              result.policy_name,
+              result.dry_run,
+              len(result.planned),
+              result.deleted_count,
+              len(result.issues),
+              result.freed_bytes,
+          )
+          '''
+          new = '''    level = (
+              logging.INFO
+              if result.planned
+              or result.deleted_paths
+              or result.issues
+              or result.freed_bytes
+              else logging.DEBUG
+          )
+          logger.log(
+              level,
+              "telegram_storage_deletion_result "
+              "policy=%s dry_run=%s planned=%s deleted=%s issues=%s freed_bytes=%s",
+              result.policy_name,
+              result.dry_run,
+              len(result.planned),
+              result.deleted_count,
+              len(result.issues),
+              result.freed_bytes,
+          )
+          '''
+          if old not in text:
+              raise SystemExit("deletion audit block not found")
+          source.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          test = Path("tests/test_telegram_storage_permission_noise.py")
+          test.write_text('''from __future__ import annotations
+
+import logging
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from velvet_bot.domains.telegram_storage.deletion import (
+    build_storage_deletion_policy,
+    delete_paths,
+)
+from velvet_bot.domains.telegram_storage.models import MigrationSummary
+from velvet_bot.domains.telegram_storage.service import TelegramStorageMigrationService
+
+
+_LOGGER = "velvet_bot.domains.telegram_storage.deletion"
+
+
+class TelegramStorageDeletionLoggingTests(unittest.TestCase):
+    def _policy(self, base: Path):
+        root = base / "staging"
+        project = base / "project"
+        root.mkdir()
+        project.mkdir()
+        return root, build_storage_deletion_policy(
+            name="test-telegram-storage",
+            roots=(root,),
+            project_dir=project,
+        )
+
+    def test_empty_deletion_result_is_debug_only(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root, policy = self._policy(Path(temporary))
+            with self.assertLogs(_LOGGER, level=logging.DEBUG) as captured:
+                result = delete_paths((root / "missing.bin",), policy=policy)
+
+        self.assertTrue(result.complete)
+        self.assertEqual(len(result.planned), 0)
+        self.assertEqual(len(captured.records), 1)
+        self.assertEqual(captured.records[0].levelno, logging.DEBUG)
+        self.assertIn("planned=0 deleted=0 issues=0", captured.records[0].getMessage())
+
+    def test_non_empty_deletion_result_remains_info(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root, policy = self._policy(Path(temporary))
+            candidate = root / "candidate.bin"
+            candidate.write_bytes(b"payload")
+            with self.assertLogs(_LOGGER, level=logging.INFO) as captured:
+                result = delete_paths((candidate,), policy=policy, dry_run=True)
+
+        self.assertEqual(len(result.planned), 1)
+        self.assertEqual(len(captured.records), 1)
+        self.assertEqual(captured.records[0].levelno, logging.INFO)
+        self.assertIn("planned=1", captured.records[0].getMessage())
+
+
+class _BackupRepository:
+    def __init__(self, items: list[SimpleNamespace]) -> None:
+        self.items = items
+
+    async def list_backup_backfill(self, _backup_dir: Path):
+        return self.items
+
+
+class TelegramStorageBackupIsolationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_permission_error_is_scoped_and_next_backup_is_processed(self) -> None:
+        with TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            backup_dir = base / "backups"
+            staging_dir = base / "staging"
+            backup_dir.mkdir()
+            blocked = backup_dir / "blocked.dump"
+            next_file = backup_dir / "next.dump"
+            blocked.write_bytes(b"blocked")
+            next_file.write_bytes(b"next")
+            items = [
+                SimpleNamespace(
+                    run_id=1,
+                    file_name=blocked.name,
+                    path=blocked,
+                    sha256=None,
+                    backup_kind="database",
+                    schema_version="1",
+                    validation={},
+                ),
+                SimpleNamespace(
+                    run_id=2,
+                    file_name=next_file.name,
+                    path=next_file,
+                    sha256=None,
+                    backup_kind="database",
+                    schema_version="1",
+                    validation={},
+                ),
+            ]
+            service = object.__new__(TelegramStorageMigrationService)
+            service.settings = SimpleNamespace(
+                backup_dir=backup_dir,
+                staging_dir=staging_dir,
+                encryption_key_id="test-key",
+                encryption_keyring={},
+            )
+            service.repository = _BackupRepository(items)
+            service.uploader = None
+            summary = MigrationSummary(run_id=10, migration_kind="test")
+
+            def fail_digest(path: Path) -> str:
+                if Path(path) == blocked:
+                    raise PermissionError(13, "Permission denied", str(path))
+                raise RuntimeError("next backup reached")
+
+            with (
+                patch(
+                    "velvet_bot.domains.telegram_storage.service.sha256_file",
+                    side_effect=fail_digest,
+                ) as digest,
+                patch(
+                    "velvet_bot.domains.telegram_storage.service.remove_paths",
+                    return_value=(0, 0),
+                ),
+            ):
+                await service._migrate_backups(summary)
+
+        self.assertEqual(digest.call_count, 2)
+        self.assertEqual(summary.discovered_files, 2)
+        self.assertEqual(summary.failed_files, 2)
+        self.assertTrue(any("Permission denied" in item for item in summary.errors))
+        self.assertTrue(any("next backup reached" in item for item in summary.errors))
+
+
+if __name__ == "__main__":
+    unittest.main()
+''', encoding="utf-8")
+
+          worklog = Path("docs/worklog/2026-08-05-telegram-storage-permission-noise.md")
+          worklog.write_text('''# Telegram Storage: права backup и шум пустых удалений
+
+## Перед началом
+
+В production-логе почасовая миграция падала на `PermissionError` при чтении backup-файла, а один проход одновременно создавал сотни одинаковых `INFO`-событий `telegram_storage_deletion_result` с нулевыми счётчиками.
+
+Актуальный `main` уже изолирует ошибку отдельного backup внутри `_migrate_backups`, поэтому фатальный traceback указывает на не обновлённый production-контейнер. Нужен регрессионный тест, фикс уровня логирования и последующее развёртывание актуального образа.
+
+## После завершения
+
+- пустые результаты удаления пишутся на уровне `DEBUG`, а содержательные результаты сохраняют `INFO`;
+- добавлен тест, подтверждающий, что `PermissionError` одного backup фиксируется в summary и не мешает обработать следующий файл;
+- добавлены тесты уровней логирования для пустого и непустого deletion-result;
+- права на конкретный backup остаются серверной настройкой и не подменяются небезопасным обходом в коде.
+''', encoding="utf-8")
+          PY
+
+      - name: Run focused tests
+        shell: bash
+        run: python -m unittest tests.test_telegram_storage_permission_noise -v
+
+      - name: Commit hotfix and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/_apply-telegram-storage-hotfix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- velvet_bot/domains/telegram_storage/deletion.py tests/test_telegram_storage_permission_noise.py docs/worklog/2026-08-05-telegram-storage-permission-noise.md .github/workflows/_apply-telegram-storage-hotfix.yml
+          git commit -m "Fix Telegram storage permission isolation logging"
+          git push origin HEAD:fix/telegram-storage-permission-noise
