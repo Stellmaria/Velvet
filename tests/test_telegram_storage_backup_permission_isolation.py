@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from velvet_bot.domains.telegram_storage.models import MigrationSummary
-from velvet_bot.domains.telegram_storage.repository import BackupBackfillItem
 from velvet_bot.domains.telegram_storage.service import TelegramStorageMigrationService
 
 
@@ -21,7 +20,7 @@ class TelegramStorageBackupPermissionIsolationTests(unittest.IsolatedAsyncioTest
             readable.write_bytes(b"available")
 
             items = [
-                BackupBackfillItem(
+                SimpleNamespace(
                     run_id=1,
                     backup_kind="pre_migration",
                     path=unreadable,
@@ -30,7 +29,7 @@ class TelegramStorageBackupPermissionIsolationTests(unittest.IsolatedAsyncioTest
                     schema_version="z032",
                     validation={},
                 ),
-                BackupBackfillItem(
+                SimpleNamespace(
                     run_id=2,
                     backup_kind="daily",
                     path=readable,
