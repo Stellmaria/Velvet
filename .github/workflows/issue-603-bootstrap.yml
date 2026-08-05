@@ -1,0 +1,130 @@
+name: issue 603 bootstrap
+
+on:
+  push:
+    branches:
+      - feat/603-adaptive-ai-queue-wakeup
+    paths:
+      - .github/workflows/issue-603-bootstrap.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-603-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    if: github.repository == 'Stellmaria/Velvet' && github.ref_name == 'feat/603-adaptive-ai-queue-wakeup'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact feature head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feat/603-adaptive-ai-queue-wakeup
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+
+      - name: Materialize exact implementation and inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+          cat .issue-603-bootstrap/payload-part-* | base64 --decode > /tmp/issue-603-payload.tgz
+          tar -xzf /tmp/issue-603-payload.tgz
+          rm -f .github/workflows/issue-603-bootstrap.yml
+          rm -rf .issue-603-bootstrap
+
+          python scripts/inventory_architecture_layout.py --write --label issue-603
+          python scripts/inventory_architecture_layout.py --check --label issue-603
+          python scripts/inventory_repository_layout.py --write --label issue-603
+          python scripts/inventory_repository_layout.py --check --label issue-603
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md \
+            --check
+          python scripts/inventory_package_architecture.py --write --label issue-603
+          python scripts/inventory_package_architecture.py --check --label issue-603
+          python scripts/update_p2_stability_inventory.py \
+            --label issue-603 \
+            --schema-version 79
+          python -m compileall -q velvet_bot tests/test_ai_queue_adaptive_wakeup.py
+
+          git add -- \
+            .github/workflows/issue-603-bootstrap.yml \
+            .issue-603-bootstrap/payload-part-00 \
+            .issue-603-bootstrap/payload-part-01 \
+            .issue-603-bootstrap/payload-part-02 \
+            .issue-603-bootstrap/payload-part-03 \
+            .issue-603-bootstrap/payload-part-04 \
+            docs/architecture_layout_inventory.json \
+            docs/architecture_layout_inventory.md \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/p2_stability_inventory.json \
+            docs/p2_stability_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/shared_contract_inventory.json \
+            docs/shared_contract_inventory.md \
+            docs/worklog/2026-08-05-adaptive-ai-queue-wakeup.md \
+            tests/test_ai_queue_adaptive_wakeup.py \
+            velvet_bot/app/workers.py \
+            velvet_bot/domains/ai_usage/factory.py \
+            velvet_bot/domains/ai_usage/task_service.py \
+            velvet_bot/domains/vision_batches/worker.py \
+            velvet_bot/infrastructure/postgres/ai_task_wakeup_repository.py \
+            velvet_bot/services/system_health.py \
+            velvet_bot/workers/__init__.py \
+            velvet_bot/workers/adaptive.py \
+            velvet_bot/workers/manager.py
+
+          cat > /tmp/expected-paths <<'EOF'
+          .github/workflows/issue-603-bootstrap.yml
+          .issue-603-bootstrap/payload-part-00
+          .issue-603-bootstrap/payload-part-01
+          .issue-603-bootstrap/payload-part-02
+          .issue-603-bootstrap/payload-part-03
+          .issue-603-bootstrap/payload-part-04
+          docs/architecture_layout_inventory.json
+          docs/architecture_layout_inventory.md
+          docs/package_architecture_inventory.json
+          docs/package_architecture_inventory.md
+          docs/p2_stability_inventory.json
+          docs/p2_stability_inventory.md
+          docs/repository_layout_inventory.json
+          docs/repository_layout_inventory.md
+          docs/shared_contract_inventory.json
+          docs/shared_contract_inventory.md
+          docs/worklog/2026-08-05-adaptive-ai-queue-wakeup.md
+          tests/test_ai_queue_adaptive_wakeup.py
+          velvet_bot/app/workers.py
+          velvet_bot/domains/ai_usage/factory.py
+          velvet_bot/domains/ai_usage/task_service.py
+          velvet_bot/domains/vision_batches/worker.py
+          velvet_bot/infrastructure/postgres/ai_task_wakeup_repository.py
+          velvet_bot/services/system_health.py
+          velvet_bot/workers/__init__.py
+          velvet_bot/workers/adaptive.py
+          velvet_bot/workers/manager.py
+          EOF
+          sed -i 's/^          //' /tmp/expected-paths
+          git diff --cached --name-only | sort > /tmp/actual-paths
+          sort -o /tmp/expected-paths /tmp/expected-paths
+          diff -u /tmp/expected-paths /tmp/actual-paths
+          git diff --cached --check
+          test -z "$(git diff --name-only)"
+
+          git config user.name 'Stellmaria'
+          git config user.email 'aam.cheshire@gmail.com'
+          git commit -m 'Add adaptive AI queue backoff and PostgreSQL wake-up for #603'
+          git push origin HEAD:feat/603-adaptive-ai-queue-wakeup
