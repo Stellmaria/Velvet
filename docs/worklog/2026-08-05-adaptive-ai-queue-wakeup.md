@@ -57,6 +57,9 @@
 - добавлены typed `WorkerIterationOutcome` и `WorkerIterationResult`;
 - общий `WorkerManager` получил optional adaptive wait controller, сохранив
   публичный boolean-контракт `_execute_once()` и fixed scheduling остальных workers;
+- legacy fixed-worker loop снова вызывает публичный `_execute_once()`, поэтому
+  существующие тестовые и runtime extensions сохраняют interception contract;
+- adaptive worker отдельно использует `_execute_once_with_result()` и typed outcomes;
 - empty-only backoff использует интервалы 3/5/10/20/30 секунд и bounded jitter;
 - processed iteration и PostgreSQL notification сбрасывают backoff;
 - transient и terminal failures типизированы отдельно и не увеличивают empty-backoff;
@@ -74,15 +77,17 @@
 
 ### Миграции и совместимость
 
-SQL migrations отсутствуют. Existing worker registration, manual run/restart APIs и
-публичный boolean-контракт worker manager сохранены. Adaptive controller применяется
-только к `ai-vision-queue`.
+SQL migrations отсутствуют. Existing worker registration, manual run/restart APIs,
+публичный boolean-контракт `_execute_once()` и fixed-loop interception contract
+сохранены. Adaptive controller применяется только к `ai-vision-queue`.
 
 ### Проверки
 
-Focused correction, post-main sync и canonical documentation workflows прошли:
+Focused correction, post-main sync, canonical documentation и fixed-loop
+compatibility workflows прошли:
 
 - Python compileall;
+- `tests.test_p2_final_stability_boundaries`, включая loop failure/cancellation;
 - `tests.test_phase6_runtime`;
 - `tests.test_ai_queue_adaptive_wakeup`;
 - `tests.test_telegram_storage_backup_permission_isolation`;
@@ -98,15 +103,20 @@ Focused correction, post-main sync и canonical documentation workflows прош
 - real PostgreSQL notification across independent connections;
 - exact staged-path audits и branch race guards.
 
+Exact-head CI `cf6e4c917eade023bcf8a0462c09e0f87c496959` выявил реальный fixed-loop hang:
+shard 2 был отменён job timeout после того, как `_run_periodic()` обошёл patched
+публичный `_execute_once()`. Исправление подтверждено focused suite на clean parent
+`3724884622b1026f0c483f982f27092c9a3def30`.
+
 Временные bootstrap/correction/sync workflows удалены и отсутствуют в итоговом PR diff.
-Обычный exact-head required CI запускается на owner-authored commit после clean
-main-sync parent `955acfd05113f04f454d772c5ef7d3108c5f4c07`.
+Новый exact-head required CI запускается на owner-authored commit после clean
+compatibility parent `3724884622b1026f0c483f982f27092c9a3def30`.
 
 ### PR и commit
 
 - PR: #642;
 - synchronized base `main`: 6f45f459701b6f996cf5c38f48320f46247d3df2;
-- clean main-sync parent: 955acfd05113f04f454d772c5ef7d3108c5f4c07;
+- clean compatibility parent: 3724884622b1026f0c483f982f27092c9a3def30;
 - final exact-head: определяется этим owner-authored worklog commit;
 - merge commit: ожидается после terminal required CI PASS.
 
