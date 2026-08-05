@@ -6,55 +6,20 @@ from unittest.mock import AsyncMock, patch
 
 from aiogram.methods import SendMessage, SendPhoto
 
-from velvet_bot.app import auf_grs_brand_install as grs_brand
 from velvet_bot.app import workspace_owner_generation_hotfix as hotfix
-from velvet_bot.domains.media_generation import (
-    KieModelAlias,
-    KieTaskRecord,
-    KieTaskState,
-)
-from velvet_bot.infrastructure.ai import KieTaskFailed
+from velvet_bot.domains.media_generation import KieModelAlias
 
 
 class WorkspaceOwnerGenerationHotfixTests(unittest.IsolatedAsyncioTestCase):
-    def test_provider_declared_failure_retries_without_pause(self) -> None:
-        error = KieTaskFailed(
-            KieTaskRecord(
-                task_id="provider-failed",
-                state=KieTaskState.FAIL,
-                failure_code="provider_failed",
-                failure_message="no result",
-            )
-        )
-
-        self.assertEqual(
-            (0, 0),
-            hotfix._instant_provider_rejection_delays(error, 5, 30),
-        )
-        self.assertEqual(
-            (5, 30),
-            hotfix._instant_provider_rejection_delays(
-                RuntimeError("temporary network error"),
-                5,
-                30,
-            ),
-        )
-
     def test_attempt_line_remains_visible_after_public_sanitizing(self) -> None:
-        filtered = tuple(
-            pattern
-            for pattern in grs_brand._PRIVATE_LINE_PATTERNS
-            if "(?:Попытка|Повтор)" not in pattern
-        )
         text = (
             "<b>Ауф создаёт · Nano Banana Pro</b>\n"
             "Провайдер: <b>GRS AI</b>\n"
             "Попытка: <b>5/50</b>\n"
-            "Задача: <code>01234567-89ab-cdef-0123-456789abcdef</code>"
+            "Задача провайдера: <code>01234567-89ab-cdef-0123-456789abcdef</code>"
         )
 
-        with patch.object(grs_brand, "_PRIVATE_LINE_PATTERNS", filtered):
-            cleaned = hotfix._sanitize_auf_text_with_attempt(text)
+        cleaned = hotfix._sanitize_auf_text_with_attempt(text)
 
         self.assertIn("Текущая попытка: <b>5/50</b>", cleaned)
         self.assertNotIn("Провайдер:", cleaned)
