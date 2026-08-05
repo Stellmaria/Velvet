@@ -49,9 +49,10 @@ class AufGenerationReceiptTests(unittest.TestCase):
         stage_names = build_application_composition().stage_names
         charged_queue = stage_names.index("install_auf_charged_queue")
         receipts = stage_names.index("install_auf_generation_receipts")
-        grs_brand = stage_names.index("install_auf_grs_brand")
+        branding = stage_names.index("install_auf_branding")
+        self.assertNotIn("install_auf_grs_brand", stage_names)
         self.assertLess(charged_queue, receipts)
-        self.assertLess(receipts, grs_brand)
+        self.assertLess(receipts, branding)
 
     def test_receipt_uses_total_elapsed_provider_attempt_and_capture(self) -> None:
         created = datetime(2026, 7, 30, 16, 0, tzinfo=timezone.utc)
