@@ -20,7 +20,6 @@ from velvet_bot.presentation.telegram.shared.editing import (
 ROOT = Path(__file__).resolve().parents[1]
 AUF_EDITING_CONSUMERS = (
     ROOT / "velvet_bot" / "app" / "auf_photo_ui_install.py",
-    ROOT / "velvet_bot" / "app" / "grs_resilience.py",
     ROOT
     / "velvet_bot"
     / "presentation"
@@ -39,6 +38,9 @@ AUF_EDITING_CONSUMERS = (
     / "telegram"
     / "routers"
     / "workspace_auf_photo_adjustments.py",
+)
+RETIRED_AUF_EDITING_CONSUMERS = (
+    ROOT / "velvet_bot" / "app" / "grs_resilience.py",
 )
 
 
@@ -175,6 +177,12 @@ class AufEditingHookTests(unittest.IsolatedAsyncioTestCase):
                     violations.append(f"{path.name}:{node.lineno}:attribute")
 
         self.assertEqual(violations, [])
+
+    async def test_obsolete_editing_consumers_remain_retired(self) -> None:
+        self.assertEqual(
+            [path for path in RETIRED_AUF_EDITING_CONSUMERS if path.exists()],
+            [],
+        )
 
 
 if __name__ == "__main__":
