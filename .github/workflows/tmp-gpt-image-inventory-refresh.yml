@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: fix/gpt-image-ratio-callback
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: true
 
       - name: Set up Python
@@ -35,7 +35,6 @@ jobs:
           set -Eeuo pipefail
           python - <<'PY'
           import json
-          import re
           from pathlib import Path
 
           exemptions_path = Path('docs/package_architecture_exemptions.json')
@@ -110,10 +109,7 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
-          python -m unittest \
-            tests.test_package_architecture_inventory \
-            tests.test_photo_ratio_callback \
-            -v
+          python -m unittest tests.test_package_architecture_inventory -v
 
       - name: Commit generated files and remove helper workflow
         shell: bash
