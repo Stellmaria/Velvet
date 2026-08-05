@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 651,
-  "production_loc": 143662,
+  "production_loc": 143664,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -12712,7 +12712,7 @@
       "module": "velvet_bot.app.workers",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 352,
+      "loc": 354,
       "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
@@ -12768,7 +12768,7 @@
       "install_definitions": [],
       "install_calls": [
         {
-          "line": 126,
+          "line": 128,
           "call": "install_recoverable_polling_filter"
         }
       ],
@@ -12776,7 +12776,7 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 79,
+          "line": 81,
           "owner": "_env_enabled",
           "call": "os.getenv"
         }
@@ -12784,77 +12784,77 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 122,
+          "line": 124,
           "owner": "build_worker_manager",
           "call": "WorkerManager"
         },
         {
-          "line": 128,
+          "line": 130,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 136,
+          "line": 138,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 144,
+          "line": 146,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 152,
+          "line": 154,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 345,
+          "line": 347,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 185,
+          "line": 187,
           "owner": "build_worker_manager",
-          "call": "FriendlyKieGenerationWorker"
+          "call": "KieGenerationWorker"
         },
         {
-          "line": 212,
-          "owner": "build_worker_manager",
-          "call": "PeriodicWorkerSpec"
-        },
-        {
-          "line": 302,
+          "line": 214,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 310,
+          "line": 304,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 323,
+          "line": 312,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 332,
+          "line": 325,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 195,
+          "line": 334,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 275,
+          "line": 197,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         },
         {
-          "line": 287,
+          "line": 277,
+          "owner": "build_worker_manager",
+          "call": "PeriodicWorkerSpec"
+        },
+        {
+          "line": 289,
           "owner": "build_worker_manager",
           "call": "PeriodicWorkerSpec"
         }
