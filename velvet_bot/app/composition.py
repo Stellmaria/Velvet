@@ -91,8 +91,8 @@ _FEATURE_STAGE_NAMES = (
     "install_auf_charged_queue",
     "install_auf_generation_receipts",
     "install_krita_remote_worker",
-    "install_auf_branding",
     "install_auf_gpt_image_2",
+    "install_auf_branding",
 )
 
 
@@ -207,9 +207,10 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
             install_generation_receipts_with_owner_cost_privacy,
         ),
         CompositionStage("install_krita_remote_worker", install_krita_remote_worker),
-        CompositionStage("install_auf_branding", install_auf_branding),
-        # Keep GPT Image 2 last: it wraps the final Auf controller contract.
+        # GPT Image 2 extends the final Auf controller contract. The branding
+        # guard remains last so every new Telegram response is normalized.
         CompositionStage("install_auf_gpt_image_2", install_auf_gpt_image_2),
+        CompositionStage("install_auf_branding", install_auf_branding),
     )
 
 
