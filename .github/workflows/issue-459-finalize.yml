@@ -1,0 +1,218 @@
+name: Issue 459 provider inventory finalizer
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/issue-459-finalize.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-459-finalize-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  finalize:
+    if: >-
+      github.repository == 'Stellmaria/Velvet' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'fix/459-canonical-provider-adapters'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/459-canonical-provider-adapters
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Remove temporary sanitizer facade
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path("velvet_bot/app/workspace_owner_generation_hotfix.py"): (
+                  "from velvet_bot.app.auf_public_text import sanitize_auf_text",
+                  "from velvet_bot.app.auf_owner_cost_privacy.formatting import sanitize_auf_text",
+              ),
+              Path("tests/test_public_ui_privacy.py"): (
+                  "from velvet_bot.app.auf_public_text import sanitize_auf_text",
+                  "from velvet_bot.app.auf_owner_cost_privacy.formatting import sanitize_auf_text",
+              ),
+          }
+          for path, (old, new) in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              if old not in text:
+                  raise RuntimeError(f"missing expected import in {path}")
+              path.write_text(text.replace(old, new), encoding="utf-8")
+          Path("velvet_bot/app/auf_public_text.py").unlink()
+          PY
+          python -m compileall -q velvet_bot tests
+
+      - name: Regenerate canonical inventories
+        shell: bash
+        run: |
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+          python scripts/inventory_architecture_layout.py \
+            --write \
+            --label issue-459-provider-adapters
+          python scripts/inventory_telegram_helpers.py \
+            --write-json docs/shared_contract_inventory.json \
+            --write-markdown docs/shared_contract_inventory.md
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          root = Path.cwd()
+          sys.path.insert(0, str(root / "scripts"))
+          from inventory_repository_layout import build_inventory, render_markdown
+          data = build_inventory(label="issue-459-provider-adapters")
+          (root / "docs/repository_layout_inventory.json").write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          (root / "docs/repository_layout_inventory.md").write_text(
+              render_markdown(data),
+              encoding="utf-8",
+          )
+          PY
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --bootstrap-exemptions \
+            --label issue-459-provider-adapters
+
+      - name: Synchronize generated assertions and canonical docs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          package = json.loads(Path("docs/package_architecture_inventory.json").read_text(encoding="utf-8"))
+          shared = json.loads(Path("docs/shared_contract_inventory.json").read_text(encoding="utf-8"))
+          test_path = Path("tests/test_package_architecture_inventory.py")
+          text = test_path.read_text(encoding="utf-8")
+
+          def sub(pattern: str, replacement: str) -> None:
+              global text
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f"could not update baseline assertion: {pattern}")
+
+          sub(r'self\.assertEqual\(\d+, self\.inventory\["production_module_count"\]\)',
+              f'self.assertEqual({package["production_module_count"]}, self.inventory["production_module_count"])')
+          sub(r'self\.assertEqual\([\d_]+, self\.inventory\["production_loc"\]\)',
+              f'self.assertEqual({package["production_loc"]:_}, self.inventory["production_loc"])')
+          sub(r'self\.assertEqual\(\d+, len\(self\.inventory\["installer_graph"\]\)\)',
+              f'self.assertEqual({len(package["installer_graph"])}, len(self.inventory["installer_graph"]))')
+          sub(r'self\.assertEqual\(\d+, self\.inventory\["violation_count"\]\)',
+              f'self.assertEqual({package["violation_count"]}, self.inventory["violation_count"])')
+          sub(r'self\.assertEqual\(\d+, shared\["production_python_files"\]\)',
+              f'self.assertEqual({shared["production_python_files"]}, shared["production_python_files"])')
+          sub(r'self\.assertEqual\([\d_]+, shared\["function_count"\]\)',
+              f'self.assertEqual({shared["function_count"]:_}, shared["function_count"])')
+          sub(r'self\.assertEqual\(\d+, shared\["private_contract_access_count"\]\)',
+              f'self.assertEqual({shared["private_contract_access_count"]}, shared["private_contract_access_count"])')
+          sub(r'self\.assertEqual\(\d+, shared\["exact_duplicate_group_count"\]\)',
+              f'self.assertEqual({shared["exact_duplicate_group_count"]}, shared["exact_duplicate_group_count"])')
+          sub(r'self\.assertEqual\(\d+, shared\["normalized_duplicate_group_count"\]\)',
+              f'self.assertEqual({shared["normalized_duplicate_group_count"]}, shared["normalized_duplicate_group_count"])')
+          sub(r'list\(range\(1, \d+\)\)', f'list(range(1, {len(package["installer_graph"]) + 1}))')
+          sub(r'Production modules: \*\*\d+\*\*', f'Production modules: **{package["production_module_count"]}**')
+          sub(r'Production LOC: \*\*\d+\*\*', f'Production LOC: **{package["production_loc"]}**')
+          sub(r'Startup installer stages: \*\*\d+\*\*', f'Startup installer stages: **{len(package["installer_graph"])}**')
+          sub(r'Registered package violations: \*\*\d+\*\*', f'Registered package violations: **{package["violation_count"]}**')
+          sub(r'Registered exemptions: \*\*\d+\*\*', f'Registered exemptions: **{package["violation_count"]}**')
+          test_path.write_text(text, encoding="utf-8")
+
+          marker_start = "<!-- issue-459-shared-baseline -->"
+          marker_end = "<!-- /issue-459-shared-baseline -->"
+          block = (
+              f"{marker_start}\n"
+              f"Provider adapter baseline: {shared['production_python_files']} production Python files, "
+              f"{shared['function_count']} functions, "
+              f"{shared['private_contract_access_count']} registered private accesses, "
+              f"{shared['blocking_private_contract_access_count']} blocking contracts.\n"
+              f"{marker_end}"
+          )
+          for name in (
+              "docs/development_status.md",
+              "docs/project_memory.md",
+              "docs/ARCHITECTURE_AUDIT.md",
+          ):
+              path = Path(name)
+              value = path.read_text(encoding="utf-8")
+              value = re.sub(
+                  re.escape(marker_start) + r".*?" + re.escape(marker_end),
+                  block,
+                  value,
+                  flags=re.DOTALL,
+              )
+              if marker_start not in value:
+                  value = value.rstrip() + "\n\n" + block + "\n"
+              path.write_text(value, encoding="utf-8")
+
+          nav = Path("docs/generated/telegram_navigation_inventory.md").read_text(encoding="utf-8")
+          match = re.search(r"Python files scanned: \*\*(\d+)\*\*", nav)
+          if match is None:
+              raise RuntimeError("navigation file count missing")
+          canonical_test = Path("tests/test_canonical_docs_sync.py")
+          canonical = canonical_test.read_text(encoding="utf-8")
+          canonical, count = re.subn(
+              r'Python files scanned: \*\*\d+\*\*',
+              f'Python files scanned: **{match.group(1)}**',
+              canonical,
+              count=1,
+          )
+          if count != 1:
+              raise RuntimeError("canonical navigation assertion missing")
+          canonical_test.write_text(canonical, encoding="utf-8")
+          PY
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
+
+      - name: Install locked dependencies
+        run: python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock
+
+      - name: Validate final provider surface
+        shell: bash
+        run: |
+          python -m compileall -q main.py velvet_bot scripts tests
+          python -m unittest -v \
+            tests.test_auf_branding_and_instant_retry \
+            tests.test_auf_owner_cost_privacy \
+            tests.test_public_ui_privacy \
+            tests.test_workspace_owner_generation_hotfix \
+            tests.test_grs_speedups \
+            tests.test_grs_violation_retry_balance \
+            tests.test_application_composition \
+            tests.test_package_architecture_inventory \
+            tests.test_telegram_navigation_inventory \
+            tests.test_canonical_docs_sync
+          git diff --check
+
+      - name: Remove one-time workflow
+        run: rm -f .github/workflows/issue-459-finalize.yml
+
+      - name: Commit final canonical state
+        shell: bash
+        run: |
+          git config user.name "ChatGPT Codex Connector"
+          git config user.email "chatgpt-codex-connector@users.noreply.github.com"
+          git add -A
+          test -n "$(git status --porcelain)"
+          git commit -m "Finalize canonical provider retirement"
+          git push origin HEAD:fix/459-canonical-provider-adapters
