@@ -50,7 +50,7 @@ class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
         self.assertIn(marker, self.release)
         override = self.release.index('rollback_compose+=( -f "$OVERRIDE_FILE" )')
         rollback = self.release.index('rollback()')
-        activation = self.release.index('"$SOURCE_DIR/install.sh"')
+        activation = self.release.rindex('"$SOURCE_DIR/install.sh"')
         self.assertGreater(override, rollback)
         self.assertLess(override, activation)
         canonical_slice = self.release[activation:]
