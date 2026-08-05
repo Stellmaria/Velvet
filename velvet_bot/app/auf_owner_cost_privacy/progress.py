@@ -4,9 +4,9 @@ from typing import Any
 
 from velvet_bot.app.auf_owner_cost_privacy.formatting import (
     progress_text_for_user,
+    sanitize_auf_text,
     strip_attempt_details,
 )
-from velvet_bot.app.auf_public_text import sanitize_auf_text
 
 
 def install_owner_aware_progress_policy(worker_class: type[Any]) -> None:
