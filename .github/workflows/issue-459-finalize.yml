@@ -198,6 +198,7 @@ jobs:
             tests.test_workspace_owner_generation_hotfix \
             tests.test_grs_speedups \
             tests.test_grs_violation_retry_balance \
+            tests.test_telegram_progress_resilience \
             tests.test_application_composition \
             tests.test_package_architecture_inventory \
             tests.test_telegram_navigation_inventory \
