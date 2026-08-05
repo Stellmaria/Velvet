@@ -65,10 +65,12 @@
   lazy reconnect и корректное закрытие при cancellation;
 - worker и system-health snapshots публикуют текущий интервал, empty runs,
   processed items, wakeups, fallback polls, reconnects, listener errors и oldest queue age;
-- обновлены canonical architecture, package, repository, shared-contract и P2 inventories;
+- обновлены canonical architecture, package, repository, shared-contract, navigation и P2 inventories;
 - удалён устаревший `Any` exemption для worker manager; границы остальных exemptions не расширялись;
 - текущий `main` с исправлением Telegram Storage #643 синхронизирован обычным
-  двухродительским merge-коммитом без rebase и force-push.
+  двухродительским merge-коммитом без rebase и force-push;
+- canonical status, project memory и architecture audit синхронизированы с
+  shared-contract baseline `648 / 3748 / 170 / 0`.
 
 ### Миграции и совместимость
 
@@ -78,8 +80,7 @@ SQL migrations отсутствуют. Existing worker registration, manual run/
 
 ### Проверки
 
-Focused correction и post-main sync workflows в hash-locked окружении с native
-PostgreSQL прошли:
+Focused correction, post-main sync и canonical documentation workflows прошли:
 
 - Python compileall;
 - `tests.test_phase6_runtime`;
@@ -88,21 +89,23 @@ PostgreSQL прошли:
 - `tests.test_architecture_layout_inventory`;
 - `tests.test_package_architecture_inventory`;
 - `tests.test_p3e_repository_layout_inventory`;
+- `tests.test_telegram_navigation_inventory`;
+- `tests.test_canonical_docs_sync`;
 - canonical inventory write/check gates;
 - deterministic jitter bounds;
 - classifier-backed `ConnectionResetError` transient outcome;
 - real PostgreSQL notification across independent connections;
-- exact staged-path audit и branch race guard.
+- exact staged-path audits и branch race guards.
 
 Временные bootstrap/correction/sync workflows удалены и отсутствуют в итоговом PR diff.
-Обычный exact-head required CI запускается на owner-authored commit после generated
-sync parent `3eb98a7f8860b62f260496d7718cb333a97624ca`.
+Обычный exact-head required CI запускается на owner-authored commit после clean
+canonical-document parent `8d1fb8958985b0c9cb8096a0305edeaf9dacae20`.
 
 ### PR и commit
 
 - PR: #642;
 - synchronized base `main`: 503bf696a4b723b733f8835dcc93cb5c122a7c3e;
-- generated sync parent: 3eb98a7f8860b62f260496d7718cb333a97624ca;
+- clean canonical-document parent: 8d1fb8958985b0c9cb8096a0305edeaf9dacae20;
 - final exact-head: определяется этим owner-authored worklog commit;
 - merge commit: ожидается после terminal required CI PASS.
 
