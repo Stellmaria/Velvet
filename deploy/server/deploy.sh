@@ -96,6 +96,28 @@ if [[ -n "$IMAGE_OVERRIDE" ]]; then
 fi
 compose=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
+normalize_backup_permissions() {
+  local backup_root="$1"
+  local candidate
+  local normalized=0
+
+  while IFS= read -r -d '' candidate; do
+    if ! chmod 0644 -- "$candidate"; then
+      echo "Unable to make backup readable by the bot container: $candidate" >&2
+      return 1
+    fi
+    normalized=$((normalized + 1))
+  done < <(
+    find "$backup_root" -maxdepth 1 -type f \
+      \( -name '*.dump' -o -name '*.dump.json' \) \
+      -print0
+  )
+
+  if (( normalized > 0 )); then
+    echo "Normalized bot-readable permissions for $normalized backup artifact(s)."
+  fi
+}
+
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   echo "Tracked working tree changes detected; deployment aborted." >&2
   git status --short >&2
@@ -110,6 +132,7 @@ mkdir -p \
   "$docker_config"
 chmod 0755 "$data_dir/runtime/supervisor"
 chmod 0700 "$docker_config"
+normalize_backup_permissions "$data_dir/backups"
 if [[ "$krita_server_enabled" == "1" ]]; then
   mkdir -p "$data_dir/runtime/krita"/{sources,requests,responses,outputs,previews,assets}
 fi
