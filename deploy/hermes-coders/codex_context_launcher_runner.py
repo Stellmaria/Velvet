@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from byesu_image_fallback import install_byesu_image_fallback
+from byesu_image_routing_policy import install_byesu_image_routing_policy
 from codex_first_safe_runner import primary_execution_started
 from codex_image_runner import CodexImageSupport, ImageHandler
 from codex_launcher_runner import LauncherTierProviderManager
@@ -108,6 +109,7 @@ class ContextLauncherTierProviderManager(
 
 def build_manager() -> AuditedTierProviderManager:
     install_byesu_image_fallback()
+    install_byesu_image_routing_policy()
     backend = os.environ.get("CODEX_EXECUTION_BACKEND", "launcher").strip()
     if backend == "launcher":
         return ContextLauncherTierProviderManager()
