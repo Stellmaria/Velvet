@@ -17,6 +17,7 @@ RUNTIME_SOURCES = (
     "codex_provider_chain_runner.py",
     "codex_tier_runner.py",
     "codex_image_runner.py",
+    "byesu_image_fallback.py",
     "codex_launcher_runner.py",
     "codex_context_launcher_runner.py",
     "sandbox_launcher_client.py",
@@ -31,6 +32,7 @@ import codex_first_safe_runner
 import codex_provider_chain_runner
 import codex_tier_runner
 import codex_image_runner
+import byesu_image_fallback
 import sandbox_launcher_client
 import codex_launcher_runner
 import codex_context_launcher_runner
@@ -39,6 +41,7 @@ assert codex_first_runner.ThreadingHTTPServer is ThreadingHTTPServer
 assert codex_routed_runner.Handler is Handler
 assert issubclass(codex_launcher_runner.LauncherTierProviderManager, codex_tier_runner.AuditedTierProviderManager)
 assert issubclass(codex_context_launcher_runner.ContextLauncherTierProviderManager, codex_launcher_runner.LauncherTierProviderManager)
+assert callable(byesu_image_fallback.install_byesu_image_fallback)
 print("HERMES_RUNTIME_IMPORT_GRAPH_OK")
 """
 
