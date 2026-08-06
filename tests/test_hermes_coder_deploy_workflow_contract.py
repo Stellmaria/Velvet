@@ -63,7 +63,7 @@ class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
         self.assertNotIn('sudo -n env', self.workflow)
         self.assertNotIn('git worktree add --detach', self.workflow)
         self.assertIn(
-            'git -C "$MIRROR_REPO" worktree add --detach',
+            'root_git -C "$MIRROR_REPO" worktree add --detach',
             self.root_runner,
         )
         self.assertIn(
@@ -75,15 +75,18 @@ class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
             self.root_runner,
         )
 
-    def test_root_runner_does_not_execute_user_owned_release_code(self) -> None:
+    def test_root_runner_does_not_execute_user_writable_release_code(self) -> None:
         for marker in (
             'MIRROR_ROOT=/var/lib/hermes-coders-release',
             'REPOSITORY_URL=https://github.com/Stellmaria/Velvet.git',
-            'release worktree contains non-root-owned paths',
-            'release mirror contains non-root-owned paths',
-            'git -C "$release_dir" diff --quiet',
+            'assert_root_tree "$MIRROR_ROOT" "release mirror"',
+            'assert_root_tree "$release_dir" "release worktree"',
+            '! -user root -o ! -group root -o -perm /022',
+            'fixed directory must not be a symlink',
+            'root_git -C "$release_dir" diff --quiet',
             'ls-files --others --exclude-standard',
             '/usr/bin/env -i',
+            'GIT_CONFIG_NOSYSTEM=1',
         ):
             self.assertIn(marker, self.root_runner)
         self.assertNotIn('git -C "$APP_DIR" fetch', self.root_runner)
@@ -91,6 +94,7 @@ class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
 
     def test_sudoers_installer_is_bounded_to_root_owned_runner(self) -> None:
         for marker in (
+            'APP_USER=velvet',
             'install -o root -g root -m 0755 "$SOURCE" "$RUNNER_TARGET"',
             'Cmnd_Alias HERMES_CODERS_RELEASE = $RUNNER_TARGET',
             'NOPASSWD: HERMES_CODERS_RELEASE',
@@ -99,6 +103,7 @@ class HermesCoderDeployWorkflowContractTests(unittest.TestCase):
             'visudo -cf "$SUDOERS_TARGET"',
         ):
             self.assertIn(marker, self.runner_installer)
+        self.assertNotIn('HERMES_CODERS_APP_USER', self.runner_installer)
         self.assertNotIn('NOPASSWD: ALL', self.runner_installer)
         self.assertNotIn('SETENV', self.runner_installer)
         self.assertNotIn('/bin/bash', self.runner_installer)
