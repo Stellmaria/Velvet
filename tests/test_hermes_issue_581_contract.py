@@ -186,8 +186,6 @@ class Issue581ContractTests(unittest.TestCase):
             "hermes-codex-runner",
             "NoNewPrivs",
             "Seccomp",
-            'CRYPTOGRAPHY_VERSION = "50.0.0"',
-            "docker-compose.server.yml",
             "--filter=blob:none",
             "--single-branch",
             "coder container contains zombie processes",
@@ -197,6 +195,10 @@ class Issue581ContractTests(unittest.TestCase):
             "bwrap --unshare-user",
             "unshare --user",
             "seccomp=unconfined",
+            'CRYPTOGRAPHY_VERSION = "50.0.0"',
+            "docker-compose.server.yml",
+            "/srv/velvet/.env.server",
+            "verify_main_cryptography",
         ):
             self.assertNotIn(forbidden, smoke)
 

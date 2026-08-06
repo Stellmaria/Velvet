@@ -26,7 +26,6 @@ POLL_INTERVAL_SECONDS = max(
 )
 CODEX_VERSION = "0.144.1"
 CODEX_MODELS = ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
-CRYPTOGRAPHY_VERSION = "50.0.0"
 
 
 @dataclass(frozen=True)
@@ -316,29 +315,6 @@ def verify_target(
     verify_codex_access(target, runner=runner)
 
 
-def verify_main_cryptography(*, runner: Runner = _default_runner) -> None:
-    command = [
-        "docker",
-        "compose",
-        "--env-file",
-        "/srv/velvet/.env.server",
-        "-f",
-        "/srv/velvet/docker-compose.server.yml",
-        "exec",
-        "-T",
-        "hermes",
-        "python",
-        "-c",
-        "import importlib.metadata as m; print(m.version('cryptography'))",
-    ]
-    result = run_checked(command, timeout_seconds=30, runner=runner)
-    if result.stdout.strip() != CRYPTOGRAPHY_VERSION:
-        raise SmokeError(
-            "main Hermes cryptography mismatch: expected "
-            f"{CRYPTOGRAPHY_VERSION}, actual {redact(result.stdout.strip())}"
-        )
-
-
 def main() -> int:
     for compose_file in COMPOSE_FILES:
         if not compose_file.is_file():
@@ -354,8 +330,6 @@ def main() -> int:
             "CHAT_OK, CODEX_AUTH_OK, PROJECT_AUTH_OK, LAUNCHER_OK, "
             "DISPOSABLE_DOCKER_OK, BASE_RO_OK, PUSH_OK, NO_ZOMBIES"
         )
-    verify_main_cryptography()
-    print(f"Main Hermes dependency: cryptography=={CRYPTOGRAPHY_VERSION}: OK")
     return 0
 
 
