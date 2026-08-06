@@ -5,6 +5,7 @@ from pathlib import Path
 
 CODER_ROOT = Path("deploy/hermes-coders")
 UNIT_PATH = Path("deploy/systemd/hermes-coders.service")
+RUNTIME_SMOKE_PATH = CODER_ROOT / "runtime_smoke.py"
 
 
 def test_apparmor_allows_git_https_transport_helpers() -> None:
@@ -29,6 +30,17 @@ def test_current_runner_allows_git_helpers_and_codex_temp_only() -> None:
     assert "/opt/codex/** r," in profile
     assert "/opt/codex/tmp/ rw," in profile
     assert "/opt/codex/tmp/** rwk," in profile
+
+
+def test_runtime_smoke_is_bounded_to_coder_release_surface() -> None:
+    source = RUNTIME_SMOKE_PATH.read_text(encoding="utf-8")
+
+    assert "verify_main_cryptography" not in source
+    assert "CRYPTOGRAPHY_VERSION" not in source
+    assert "/srv/velvet/.env.server" not in source
+    assert "/srv/velvet/docker-compose.server.yml" not in source
+    assert "importlib.metadata" not in source
+    assert "cryptography" not in source.casefold()
 
 
 def test_systemd_lifecycle_targets_only_coder_services() -> None:
