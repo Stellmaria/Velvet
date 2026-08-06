@@ -267,3 +267,19 @@ active seccomp, read-only rootfs и `cryptography==50.0.0` в main Hermes.
 Каждый run создаёт отдельный worktree от свежего `origin/main` под
 `codex-runs/<project>/workspaces`; cleanup ограничен каталогом конкретного run и
 не затрагивает auth, ledger, run history, secrets или approved caches.
+
+## Codex subscription rate-limit probe
+
+The coder runner reads ChatGPT subscription windows through Codex app-server
+JSONL over stdio. The reader uses unbuffered binary pipes and drains every
+complete response already held in its byte buffer before waiting for more I/O.
+This prevents a second response from being stranded in a text wrapper buffer.
+
+Provider bucket names are not treated as presentation semantics. Windows are
+ordered by `windowDurationMins`: the shortest bucket is exposed as `primary`
+(the short window), and the longest as `secondary` (the long or weekly window).
+When Codex returns only a day-or-longer bucket, `primary` remains null and that
+bucket is exposed as `secondary`.
+
+A failed probe is retried once. Persistent failures return HTTP 502 with a
+sanitized app-server reason; secrets and authorization material remain redacted.
