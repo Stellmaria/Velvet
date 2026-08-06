@@ -16,6 +16,7 @@ _INSTALLED = False
 _NOT_REACHED_VALUES = frozenset(
     {"", "none", "null", "false", "not_reached", "not-reached"}
 )
+_TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
 
 
 def _enabled() -> bool:
@@ -103,9 +104,42 @@ def _rewrite_preflight_result(
         requested_route="codex_subscription",
         actual_route="byesu_media",
         route_reason="codex_limit_preflight",
+        fallback_reason="subscription_limit",
         codex_generation_skipped=True,
         rate_limits_before=dict(snapshot),
         last_event=event,
+    )
+
+
+def _fail_preflight_route(
+    manager: Any,
+    run_id: str,
+    snapshot: Mapping[str, object],
+    error: Exception,
+) -> None:
+    try:
+        record = manager.store.read(run_id)
+    except Exception:
+        return
+    if str(record.get("status") or "") in _TERMINAL_STATUSES:
+        return
+    manager.store.update(
+        run_id,
+        status="failed",
+        finished_at=fallback.utc_now(),
+        requested_route="codex_subscription",
+        actual_route="byesu_media",
+        route_reason="codex_limit_preflight",
+        fallback_reason="subscription_limit",
+        codex_generation_skipped=True,
+        rate_limits_before=dict(snapshot),
+        error=fallback.redact_text(str(error).strip())[-8_000:]
+        or type(error).__name__,
+        last_event={
+            "type": "codex_limit_preflight_route_failed",
+            "error_type": type(error).__name__,
+            "codex_generation_skipped": True,
+        },
     )
 
 
@@ -136,6 +170,7 @@ def _run_preflight_byesu(
                 requested_route="codex_subscription",
                 actual_route="byesu_media",
                 route_reason="codex_limit_preflight",
+                fallback_reason="subscription_limit",
                 codex_generation_skipped=True,
                 rate_limits_before=dict(snapshot),
                 last_event={
@@ -145,6 +180,8 @@ def _run_preflight_byesu(
             )
             routing._run_byesu(manager, run_id, prompt, staged, direct=True)
             _rewrite_preflight_result(manager, run_id, snapshot)
+        except Exception as error:
+            _fail_preflight_route(manager, run_id, snapshot, error)
         finally:
             if staged is not None:
                 shutil.rmtree(staged, ignore_errors=True)
