@@ -68,7 +68,7 @@ jobs:
 
       - name: Remove temporary automation
         run: |
-          git rm -- .github/scripts/tmp_patch_codex_rate_limits.py
+          git rm -f -- .github/scripts/tmp_patch_codex_rate_limits.py
           git rm -- .github/workflows/tmp-codex-rate-limit-probe.yml
 
       - name: Stage exact product scope
