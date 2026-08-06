@@ -41,7 +41,7 @@ EXPECTED_CATEGORIES = {
     "type-ignore-usage",
     "typing-any-usage",
 }
-EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463"}
+EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463", "#605"}
 
 
 class PackageArchitectureInventoryTests(unittest.TestCase):
