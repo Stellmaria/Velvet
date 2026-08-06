@@ -122,6 +122,34 @@ class AIModelRoutingTests(unittest.TestCase):
         self.assertEqual("flash-explicit", client.model)
         self.assertEqual(("flash-explicit",), client._velvet_model_candidates)
 
+    def test_local_openai_compatible_provider_is_preserved_without_api_key(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            client = DummyCascadeClient(
+                provider="local_openai_compatible",
+                base_url="http://vision-gateway:8080/v1",
+                model="qwen3.5:9b",
+                api_key=None,
+                timeout_seconds=300,
+            )
+
+        self.assertEqual("local_openai_compatible", client.provider)
+        self.assertEqual("http://vision-gateway:8080/v1", client.base_url)
+        self.assertEqual("qwen3.5:9b", client.model)
+        self.assertIsNone(client.api_key)
+        self.assertEqual(300, client.timeout_seconds)
+        self.assertEqual(("qwen3.5:9b",), client._velvet_model_candidates)
+
+    def test_unknown_vision_provider_error_lists_local_provider(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaisesRegex(ValueError, "local_openai_compatible"):
+                DummyCascadeClient(
+                    provider="unsupported",
+                    base_url="http://vision-gateway:8080/v1",
+                    model="qwen3.5:9b",
+                    api_key=None,
+                    timeout_seconds=300,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
