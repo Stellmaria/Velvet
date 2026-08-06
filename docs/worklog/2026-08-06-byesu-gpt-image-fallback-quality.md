@@ -82,9 +82,13 @@ queue task type не меняются.
 
 ## Проверки
 
-Draft PR #663 создан для запуска CI. В текущей execution-среде checkout получить
-не удалось из-за отсутствия DNS к GitHub, поэтому локальные tests, inventory и
-live provider smoke не выполнены.
+Draft PR #663 создан. Для head `cb284dbaedc8be1926f33ee88d6c10009b30bb41`
+GitHub Actions запустил workflows `tests`, `type check`, `docker build`,
+`security supply chain`, `project notes contract` и `branch protection contract`;
+на момент записи они pending/queued, поэтому зелёный статус не заявляется.
+
+В текущей execution-среде checkout получить не удалось из-за отсутствия DNS к
+GitHub, поэтому локальные tests, inventory и live provider smoke не выполнены.
 
 Добавлены unit-контракты:
 
