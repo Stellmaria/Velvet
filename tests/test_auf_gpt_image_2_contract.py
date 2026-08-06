@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import os
 import unittest
@@ -24,36 +25,54 @@ class AufGptImage2ContractTests(unittest.TestCase):
             ("install_auf_gpt_image_2", "install_auf_branding"),
         )
 
-    def test_worker_bootstrap_survives_auf_runtime_wrapper(self) -> None:
-        from velvet_bot.app import auf_runtime_install
+    def test_worker_bootstrap_finalizes_after_feature_wrappers(self) -> None:
         from velvet_bot.app import bootstrap
         from velvet_bot.app import gpt_image_2_bootstrap
         from velvet_bot.app import workers as workers_module
 
+        original_runner = bootstrap.run_application
         original_bootstrap_builder = bootstrap.build_worker_manager
         original_workers_builder = workers_module.build_worker_manager
-        original_gpt_installed = gpt_image_2_bootstrap._INSTALLED
-        original_auf_installed = auf_runtime_install._INSTALLED
-        try:
-            gpt_image_2_bootstrap._INSTALLED = False
-            auf_runtime_install._INSTALLED = False
-            with patch.dict(os.environ, {"CODEX_IMAGE_ENABLED": "true"}):
-                gpt_image_2_bootstrap.install_gpt_image_2_bootstrap()
-                gpt_builder = workers_module.build_worker_manager
-                self.assertIs(bootstrap.build_worker_manager, gpt_builder)
+        original_installed = gpt_image_2_bootstrap._INSTALLED
+        original_finalized = gpt_image_2_bootstrap._FINALIZED
+        observed: list[object] = []
 
-                auf_runtime_install.install_auf_runtime_dispatcher()
-                final_builder = workers_module.build_worker_manager
-                self.assertIs(bootstrap.build_worker_manager, final_builder)
-                closure_values = tuple(
-                    cell.cell_contents for cell in (final_builder.__closure__ or ())
-                )
-                self.assertIn(gpt_builder, closure_values)
-        finally:
+        async def fake_runner() -> None:
+            observed.append(bootstrap.build_worker_manager)
+
+        def later_feature_builder(*args: object, **kwargs: object) -> object:
+            del args, kwargs
+            return object()
+
+        try:
+            bootstrap.run_application = fake_runner
             bootstrap.build_worker_manager = original_bootstrap_builder
             workers_module.build_worker_manager = original_workers_builder
-            gpt_image_2_bootstrap._INSTALLED = original_gpt_installed
-            auf_runtime_install._INSTALLED = original_auf_installed
+            gpt_image_2_bootstrap._INSTALLED = False
+            gpt_image_2_bootstrap._FINALIZED = False
+
+            with patch.dict(os.environ, {"CODEX_IMAGE_ENABLED": "true"}):
+                gpt_image_2_bootstrap.install_gpt_image_2_bootstrap()
+                delayed_runner = bootstrap.run_application
+
+                workers_module.build_worker_manager = later_feature_builder
+                bootstrap.build_worker_manager = later_feature_builder
+                asyncio.run(delayed_runner())
+
+            final_builder = workers_module.build_worker_manager
+            self.assertIs(bootstrap.build_worker_manager, final_builder)
+            self.assertIsNot(final_builder, later_feature_builder)
+            closure_values = tuple(
+                cell.cell_contents for cell in (final_builder.__closure__ or ())
+            )
+            self.assertIn(later_feature_builder, closure_values)
+            self.assertEqual(observed, [final_builder])
+        finally:
+            bootstrap.run_application = original_runner
+            bootstrap.build_worker_manager = original_bootstrap_builder
+            workers_module.build_worker_manager = original_workers_builder
+            gpt_image_2_bootstrap._INSTALLED = original_installed
+            gpt_image_2_bootstrap._FINALIZED = original_finalized
 
     def test_text_mode_accepts_zero_references(self) -> None:
         request = CodexImageRequest(
