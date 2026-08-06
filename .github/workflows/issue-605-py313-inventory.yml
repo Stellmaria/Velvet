@@ -32,7 +32,7 @@ jobs:
       - name: Restore inventory refresh helper
         run: git show c32cc638158c27cd83fbb0c035e0d3af47b9869e:scripts/apply_issue_605.py > scripts/apply_issue_605.py
 
-      - name: Regenerate inventories with CI interpreter
+      - name: Regenerate inventories and register issue debt
         run: |
           python - <<'PY'
           from __future__ import annotations
@@ -51,6 +51,15 @@ jobs:
           sys.modules[spec.name] = module
           spec.loader.exec_module(module)
           module.refresh_architecture_baseline()
+
+          test_path = root / "tests" / "test_package_architecture_inventory.py"
+          tests = test_path.read_text(encoding="utf-8")
+          old = 'EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463"}'
+          new = 'EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463", "#605"}'
+          if tests.count(old) != 1:
+              raise RuntimeError("burn-down issue anchor changed")
+          test_path.write_text(tests.replace(old, new, 1), encoding="utf-8")
+
           helper.unlink()
           shutil.rmtree(root / ".issue605-architecture", ignore_errors=True)
           (root / ".github" / "workflows" / "issue-605-py313-inventory.yml").unlink()
