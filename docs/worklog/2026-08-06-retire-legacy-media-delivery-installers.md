@@ -69,6 +69,7 @@ PR #488 уже поставил durable media delivery repository, result resolv
 - durable repository/resolver/download/original/preview/notification/redelivery ownership сохранён;
 - canonical `media_delivery_ui_install` сохранён;
 - legacy UI tests перенесены на canonical module;
+- image/video/recovery assertions перенесены с удалённых modules на `TelegramMediaDeliveryTransport` и durable use cases;
 - package architecture, shared-contract, stability, repository-layout и Telegram navigation inventories пересобраны;
 - production modules снижены `659 → 655`;
 - startup installer stages снижены `25 → 21`;

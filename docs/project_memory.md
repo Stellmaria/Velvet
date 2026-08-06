@@ -405,7 +405,18 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 <!-- /issue-605-error-center-batching-architecture-slice -->
 
 <!-- issue-457-legacy-delivery-retirement -->
-## Media delivery ownership retirement — 2026-08-06
+## Retirement legacy media delivery installers — 6 августа 2026 года
 
-Канонический delivery contract: durable repository → result resolver → download/original/preview/notification → redelivery. Старые image/video hotfix, Auf recovery и active-worker fix удалены вместе с четырьмя startup stages. Повторная доставка не имеет provider submit/charge boundary. Live acceptance остаётся #410/#412.
+Durable media delivery PR #488 остаётся единственным production ownership path. Четыре neutralized installer слоя удалены из startup composition; runtime method replacement `install_delivery_handler` удалён; active Friendly worker сохраняет явный no-op для inherited legacy delivery phase.
+
+Воспроизводимый baseline current feature head:
+
+- package production modules: **655**;
+- inventoried functions: **3830**;
+- registered transitional private accesses: **180**;
+- blocking known contracts: **0**;
+- startup installer stages: **21**;
+- registered package architecture fingerprints: **521**.
+
+Repository implementation #457 завершена этим срезом, но live provider/Telegram acceptance остаётся #410/#412. Зелёный CI не подтверждает production restart, CDN/expired URL или no-double-charge matrix.
 <!-- /issue-457-legacy-delivery-retirement -->
