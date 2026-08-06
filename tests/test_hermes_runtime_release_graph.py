@@ -45,6 +45,7 @@ def test_runtime_compose_mounts_complete_release_graph_for_both_coders() -> None
         "codex_tier_runner.py",
         "codex_image_runner.py",
         "byesu_image_fallback.py",
+        "byesu_image_routing_policy.py",
     ):
         mount = f"./{runtime_source}:/app/{runtime_source}:ro"
         assert source.count(mount) == 2
@@ -65,16 +66,22 @@ def test_runtime_source_guard_covers_base_modules_and_import_graph() -> None:
     assert "codex_routed_runner.py" in guard.RUNTIME_SOURCES
     assert "codex_image_runner.py" in guard.RUNTIME_SOURCES
     assert "byesu_image_fallback.py" in guard.RUNTIME_SOURCES
+    assert "byesu_image_routing_policy.py" in guard.RUNTIME_SOURCES
     assert "HERMES_RUNTIME_IMPORT_GRAPH_OK" in guard._IMPORT_PROBE
     assert "codex_tier_runner" in guard._IMPORT_PROBE
     assert "codex_image_runner" in guard._IMPORT_PROBE
     assert "byesu_image_fallback" in guard._IMPORT_PROBE
+    assert "byesu_image_routing_policy" in guard._IMPORT_PROBE
 
 
 def test_systemd_permission_preflight_covers_image_runners() -> None:
     unit = SYSTEMD_UNIT.read_text(encoding="utf-8")
 
-    for runtime_source in ("codex_image_runner.py", "byesu_image_fallback.py"):
+    for runtime_source in (
+        "codex_image_runner.py",
+        "byesu_image_fallback.py",
+        "byesu_image_routing_policy.py",
+    ):
         runtime_path = f"/deploy/hermes-coders/{runtime_source}"
         assert unit.count(runtime_path) == 2
 
