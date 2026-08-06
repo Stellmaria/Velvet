@@ -61,23 +61,69 @@ jobs:
               body_end = len(content) if next_step < 0 else next_step + 1
               raw = content[body_start:body_end]
               lines = raw.splitlines()
-              body = '\n'.join(
+              return '\n'.join(
                   line[10:] if line.startswith('          ') else line
                   for line in lines
               ).rstrip() + '\n'
-              return body
 
-          steps = (
-              'Retire legacy delivery ownership layers',
-              'Regenerate architecture and stability inventories',
-              'Update canonical status notes',
-              'Validate focused contracts',
-          )
-          for index, name in enumerate(steps, start=1):
+          def run_step(index: int, name: str) -> None:
               script = Path(f'/tmp/issue457-step-{index}.sh')
               script.write_text('set -euo pipefail\n' + extract_step(name), encoding='utf-8')
               print(f'Executing: {name}', flush=True)
               subprocess.run(['bash', str(script)], check=True)
+
+          run_step(1, 'Retire legacy delivery ownership layers')
+
+          friendly = Path('velvet_bot/domains/media_generation/friendly_worker.py')
+          source = friendly.read_text(encoding='utf-8')
+
+          def replace_exact(old_text: str, new_text: str) -> None:
+              global source
+              if source.count(old_text) != 1:
+                  raise SystemExit(
+                      f'friendly_worker cleanup expected one match, found '
+                      f'{source.count(old_text)}: {old_text[:80]!r}'
+                  )
+              source = source.replace(old_text, new_text, 1)
+
+          replace_exact('from typing import Any\n\n', '')
+          replace_exact(
+              'from aiogram.exceptions import TelegramAPIError, TelegramBadRequest\n',
+              'from aiogram import Bot\nfrom aiogram.exceptions import TelegramAPIError, TelegramBadRequest\n',
+          )
+          replace_exact(
+              'from velvet_bot.domains.ai_usage import AITask\n',
+              'from velvet_bot.domains.ai_usage import AIRequestExecutor, AITask\n',
+          )
+          replace_exact(
+              'from velvet_bot.infrastructure.media_delivery_runtime import (\n',
+              'from velvet_bot.infrastructure.ai import KieClient\n'
+              'from velvet_bot.infrastructure.media_delivery_runtime import (\n',
+          )
+          replace_exact(
+              'from .models import KieGenerationRequest, KieModelAlias, KieTaskRecord\n',
+              'from .models import (\n'
+              '    KieGenerationRequest,\n'
+              '    KieModelAlias,\n'
+              '    KiePricing,\n'
+              '    KieTaskRecord,\n'
+              ')\n'
+              'from .task_queue import KieTaskQueueService\n',
+          )
+          replace_exact('_INSTALLED = False\n', '')
+          replace_exact(
+              '''    def __init__(\n        self,\n        *,\n        media_delivery_runtime: MediaDeliveryRuntime | None = None,\n        **kwargs: Any,\n    ) -> None:\n        super().__init__(**kwargs)\n''',
+              '''    def __init__(\n        self,\n        *,\n        bot: Bot,\n        queue: KieTaskQueueService,\n        client: KieClient,\n        executor: AIRequestExecutor[KieTaskRecord],\n        pricing: KiePricing,\n        usd_to_rub: Decimal,\n        worker_id: str = "kie-media-generation",\n        heartbeat_seconds: int = 60,\n        media_delivery_runtime: MediaDeliveryRuntime | None = None,\n    ) -> None:\n        super().__init__(\n            bot=bot,\n            queue=queue,\n            client=client,\n            executor=executor,\n            pricing=pricing,\n            usd_to_rub=usd_to_rub,\n            worker_id=worker_id,\n            heartbeat_seconds=heartbeat_seconds,\n        )\n''',
+          )
+          replace_exact(
+              '''def install_friendly_media_worker() -> None:\n    """Install the provider-aware worker in the application composition root."""\n\n    global _INSTALLED\n    if _INSTALLED:\n        return\n    from velvet_bot.app.media_delivery_ui_install import install_media_delivery_ui\n\n    install_media_delivery_ui()\n    _INSTALLED = True\n''',
+              '''def install_friendly_media_worker() -> None:\n    """Install the provider-aware worker in the application composition root."""\n\n    from velvet_bot.app.media_delivery_ui_install import install_media_delivery_ui\n\n    install_media_delivery_ui()\n''',
+          )
+          friendly.write_text(source, encoding='utf-8')
+
+          run_step(2, 'Regenerate architecture and stability inventories')
+          run_step(3, 'Update canonical status notes')
+          run_step(4, 'Validate focused contracts')
           PY
 
       - name: Commit product and generated changes
