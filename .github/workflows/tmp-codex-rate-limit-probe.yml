@@ -25,6 +25,14 @@ jobs:
       - name: Apply focused repair
         run: python .github/scripts/tmp_patch_codex_rate_limits.py
 
+      - name: Normalize generated text files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('deploy/hermes-coders/README.md')
+          path.write_text(path.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+          PY
+
       - name: Check patch hygiene
         run: |
           git diff --check
