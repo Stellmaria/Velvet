@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - release/hermes-coders-arthur-20260806
+  workflow_dispatch:
 
 concurrency:
   group: velvet-production
