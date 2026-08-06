@@ -99,54 +99,26 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
           SOURCE_COMMIT: ${{ steps.release.outputs.source_commit }}
         run: |
           set -euo pipefail
           port="${DEPLOY_PORT:-22}"
-          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
           ssh -p "$port" \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            bash -s -- "$SOURCE_COMMIT" "$app_dir" <<'REMOTE'
+            bash -s -- "$SOURCE_COMMIT" <<'REMOTE'
           set -Eeuo pipefail
-          umask 077
 
           target_sha="$1"
-          app_dir="$2"
-          hermes_root=/srv/hermes-coders
-          release_root="$hermes_root/releases"
-          release_dir="$release_root/$target_sha"
+          release_runner=/usr/local/sbin/hermes-coders-release
 
-          cd "$app_dir"
-          test -d .git
-          git fetch --no-tags --prune origin main
-          remote_main="$(git rev-parse origin/main)"
-          if [[ "$remote_main" != "$target_sha" ]]; then
-            echo "Target is no longer current main: $target_sha != $remote_main" >&2
+          if [[ ! "$target_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Remote release target must be an exact SHA." >&2
             exit 2
           fi
-          git cat-file -e "${target_sha}^{commit}"
+          test -x "$release_runner"
+          test "$(stat -c '%U:%G:%a' "$release_runner")" = "root:root:755"
 
-          mkdir -p "$release_root"
-          if [[ -e "$release_dir" ]]; then
-            test "$(git -C "$release_dir" rev-parse HEAD)" = "$target_sha"
-          else
-            git worktree add --detach "$release_dir" "$target_sha"
-          fi
-          release_script="$release_dir/deploy/hermes-coders/release.sh"
-          test -x "$release_script"
-
-          if [[ "$(id -u)" -eq 0 ]]; then
-            env \
-              HERMES_RELEASE_ROOT="$release_dir" \
-              HERMES_CODERS_ROOT="$hermes_root" \
-              "$release_script" "$target_sha" "$app_dir"
-          else
-            sudo -n env \
-              HERMES_RELEASE_ROOT="$release_dir" \
-              HERMES_CODERS_ROOT="$hermes_root" \
-              "$release_script" "$target_sha" "$app_dir"
-          fi
+          sudo -n "$release_runner" "$target_sha"
           REMOTE
