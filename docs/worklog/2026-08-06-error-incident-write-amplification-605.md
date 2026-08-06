@@ -64,7 +64,9 @@
 - Telegram message edit выполняется один раз на batch;
 - `ErrorIncidentCenter.aggregation_metrics()` сообщает received, new groups, aggregated repeats, flush batches, rows updated, suppressions, flush errors, dropped events, pending count и oldest pending age;
 - generated package/shared-contract inventories пересчитаны поверх актуальной базы;
-- canonical architecture slice синхронизирован в `development_status.md`, `project_memory.md` и `ARCHITECTURE_AUDIT.md`.
+- canonical architecture slice синхронизирован в `development_status.md`, `project_memory.md` и `ARCHITECTURE_AUDIT.md`;
+- новые broad-catch boundaries зарегистрированы с точными причинами: сохранение immediate `CRITICAL`, pressure fallback и возврат failed batch в pending;
+- `docs/p2_stability_inventory.json` и `.md` пересчитаны каноническим генератором.
 
 ### Миграции и совместимость
 
@@ -82,7 +84,7 @@
 - monotonic immediate severity;
 - atomic batch SQL без rewrite payload.
 
-Точечная Python compilation прошла. Generated package/shared-contract inventories пересчитаны каноническим Python 3.13; `scripts/ci_preflight.py` прошёл до фиксации итогового inventory commit. Canonical docs sync test и `git diff --check` прошли на commit `46423a1ab20a5ba4454d4591b84a15b394685cc5`. Полный обязательный CI повторно запускается на финальном пользовательском commit.
+Точечная Python compilation прошла. Generated package/shared-contract inventories пересчитаны каноническим Python 3.13; `scripts/ci_preflight.py` прошёл до фиксации итогового inventory commit. Canonical docs sync test и `git diff --check` прошли на commit `46423a1ab20a5ba4454d4591b84a15b394685cc5`. P2 stability regeneration на commit `89888d581c3efb392b3b179e3123ca736c47f414` прошёл `tests.test_p2_stability_inventory`, `tests.test_p2l_discussion_middleware_boundary`, `tests.test_error_incident_aggregation` и `git diff --check`. Полный обязательный CI повторно запускается на финальном пользовательском commit.
 
 ### PR и commit
 
@@ -90,6 +92,7 @@
 - База PR: `dc14c0c5087244e37394655c12aeb0208afa50c8`
 - Канонический inventory commit: `802a12564bcb89b5a71cf2c25383cc5f2abf2814`
 - Canonical docs commit: `46423a1ab20a5ba4454d4591b84a15b394685cc5`
+- P2 stability inventory commit: `89888d581c3efb392b3b179e3123ca736c47f414`
 - Итоговый merge commit определяется после обязательного CI.
 
 ### Незавершённое
