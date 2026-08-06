@@ -3,7 +3,9 @@ name: arthur production rollout v2
 on:
   push:
     branches:
-      - ops/arthur-prod-rollout-20260806
+      - main
+    paths:
+      - .github/workflows/arthur-production-rollout-v2.yml
 
 concurrency:
   group: velvet-production
@@ -41,7 +43,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           current_main="$(git ls-remote https://github.com/Stellmaria/Velvet.git refs/heads/main | awk '{print $1}')"
-          test "$current_main" = "$SOURCE_COMMIT"
+          test "$current_main" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" "$GITHUB_SHA"
           [[ "$IMAGE_DIGEST" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
@@ -89,7 +92,7 @@ jobs:
             "$payload" "$DEPLOY_USER@$DEPLOY_HOST:$remote_payload"
           echo "REMOTE_PAYLOAD=$remote_payload" >> "$GITHUB_ENV"
 
-      - name: Deploy exact main and reconcile Arthur
+      - name: Deploy verified app image and reconcile Arthur
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -101,8 +104,8 @@ jobs:
           port="${DEPLOY_PORT:-22}"
           app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
           printf -v remote_command \
-            'SOURCE_COMMIT=%q IMAGE_DIGEST=%q APP_DIR=%q SECRET_FILE=%q bash -s' \
-            "$SOURCE_COMMIT" "$IMAGE_DIGEST" "$app_dir" "$REMOTE_PAYLOAD"
+            'SOURCE_COMMIT=%q CHECKOUT_COMMIT=%q IMAGE_DIGEST=%q APP_DIR=%q SECRET_FILE=%q bash -s' \
+            "$SOURCE_COMMIT" "$GITHUB_SHA" "$IMAGE_DIGEST" "$app_dir" "$REMOTE_PAYLOAD"
           ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" \
             < .github/ops/arthur-production-rollout.sh
