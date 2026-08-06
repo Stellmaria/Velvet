@@ -92,34 +92,97 @@ GPT Image 2 уже выполняет один Codex/ImageGen запуск с So
 
 ### Фактически сделано
 
-Работа начата. Итог заполняется после реализации и проверок.
+- добавлен `deploy/hermes-coders/byesu_image_fallback.py`;
+- основной Codex Plus route оставлен первым и неизменным;
+- чистый `subscription_limit` до tool execution допускает один Byesu fallback;
+- lifecycle-события Codex не считаются фактическим выполнением инструмента;
+- command/file/MCP/dynamic tool evidence, artifact и mutation evidence блокируют
+  автоматический fallback;
+- существующий `BYESU_HERMES_CODEX_API_KEY` используется только внутри Hermes;
+- перед платными вызовами выполняется capability gate через `/v1/models`;
+- выбранный Sol, Terra или Luna анализирует исходный промт и все референсы с
+  выбранным reasoning effort;
+- `firefly-gpt-image-2` получает нормализованный prompt и те же референсы;
+- image endpoint вызывается один раз через стандартные `/images/generations` или
+  `/images/edits`;
+- 1K, 2K и 4K преобразуются в точный `size` с учётом пропорции;
+- в Telegram возвращён выбор качества с явной маркировкой `резерв Byesu`;
+- основной Codex-путь по-прежнему сохраняет нативный JPEG без искусственного
+  апскейла и не обещает выбранное разрешение;
+- runtime source добавлен в compose mounts, systemd permission preflight и import
+  graph guard;
+- Max импортирует общий runtime-файл, но его image fallback принудительно выключен;
+- добавлены focused unit/contract tests и обновлена эксплуатационная документация;
+- документирован отдельный provider-neutral контракт анализатора внешности для
+  Banana 2/Pro, Seedream и Wan: downstream получает только явно сформированный
+  prompt и исходные референсы, а не скрытое reasoning GPT.
 
 ### Изменённые модули и контракты
 
-Будет заполнено после реализации.
+- `deploy/hermes-coders/byesu_image_fallback.py` — Byesu adapter, capability gate,
+  multimodal analysis, media request и bounded routing guard;
+- `deploy/hermes-coders/codex_context_launcher_runner.py` — установка fallback;
+- `deploy/hermes-coders/compose.runtime.yaml` — mounts и Velvet-only gate;
+- `deploy/hermes-coders/runtime_source_guard.py` — import/readability contract;
+- `deploy/systemd/hermes-coders.service` — production permission preflight;
+- `deploy/hermes-coders/coder.env.example` — операторская конфигурация;
+- `velvet_bot/app/auf_gpt_image_2_quality_install.py` — честный UI качества;
+- `velvet_bot/app/composition.py` — quality patch в существующем GPT Image stage;
+- `docs/gpt_image_2_codex.md` — routing, quality, token group и smoke contract;
+- `tests/test_byesu_image_fallback.py` — routing/capability/analysis/size tests;
+- `tests/test_auf_gpt_image_2_contract.py` — UI и основной export contract;
+- `tests/test_hermes_runtime_release_graph.py` — release graph coverage.
 
 ### Миграции и совместимость
 
-SQL-миграции не планируются. Старые payload продолжают читать внутренний
-совместимый `resolution` со значением по умолчанию `2K`.
+SQL-миграции и схема PostgreSQL не изменены. Старые queued payload продолжают
+читать совместимое `resolution` со значением по умолчанию `2K`. Основной router
+contract и Telegram delivery format сохранены.
 
 ### Проверки
 
-Будет заполнено точными командами и результатами.
+Добавлены проверки для:
+
+- `1K/2K/4K + aspect ratio` size mapping;
+- разрешения fallback после lifecycle-only usage-limit ошибки;
+- блокировки fallback после actual tool execution;
+- обязательной видимости analysis и image models одним token group;
+- передачи всех референсов и выбранного reasoning effort в GPT-анализ;
+- лимита 8 МБ для одного Byesu reference;
+- наличия честного quality selector;
+- runtime mount/import/systemd release graph.
+
+В этой сессии тесты и CI не запускались: ветка создана через GitHub connector,
+а доступная execution-среда не смогла разрешить `raw.githubusercontent.com` для
+получения checkout. GitHub Actions run для текущего branch head отсутствует.
+Поэтому статус остаётся `частично`, а не `завершено`.
+
+Package architecture inventory после добавления нового application installer ещё
+не пересчитан. Это обязательная проверка перед PR и merge.
 
 ### PR и commit
 
-Ветка создана. Commit и PR фиксируются после завершения проверок; merge и deploy
-не выполняются в этой сессии без отдельного разрешения.
+- ветка: `feat/byesu-image-fallback-quality`;
+- base: `7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f`;
+- branch ahead: 13 commits на момент проверки;
+- PR не создавался;
+- merge, deploy и restart не выполнялись.
 
 ### Незавершённое
 
-- реализация Byesu fallback;
-- честный UI выбора качества;
-- tests и docs;
-- capability/live smoke на production token group.
+- запустить focused tests и полный CI на реальном checkout;
+- пересчитать package architecture inventory и оформить необходимые reviewed
+  exemptions без скрытия нового долга;
+- проверить `/v1/models` существующим production Codex token без публикации ключа;
+- live smoke `responses` с Sol/Terra/Luna и всеми выбранными effort;
+- live smoke `firefly-gpt-image-2` для text-only и пяти референсов в 1K/2K/4K;
+- подтвердить, что неуспешный media request не списывается или возвращается;
+- проверить Telegram preview/document и фактические размеры;
+- отдельно реализовать общий анализатор внешности для Banana/Seedream/Wan.
 
 ### Следующий шаг
 
-Реализовать fail-closed Byesu adapter внутри Hermes image runtime, затем вернуть
-качество в GPT Image 2 UI и пройти focused tests.
+Получить checkout ветки, пройти focused tests, runtime source guard и package
+architecture inventory. После зелёных проверок выполнить capability/live smoke на
+существующем Byesu token group, затем только отдельно создавать PR и планировать
+deploy.
