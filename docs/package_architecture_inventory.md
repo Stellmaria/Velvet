@@ -2,7 +2,7 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **659**
-- Production LOC: **145339**
+- Production LOC: **145345**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **46**
@@ -93,7 +93,7 @@
 - `velvet_bot/domains/workspaces/qwen_repository.py`: 909 LOC, 25 functions, max function 78 lines, target `domain`.
 - `velvet_bot/backup_service.py`: 900 LOC, 34 functions, max function 73 lines, target `application/<bounded-use-case>`.
 - `velvet_bot/media_sets.py`: 882 LOC, 20 functions, max function 115 lines, target `domains/<bounded-domain>`.
-- `velvet_bot/error_center.py`: 849 LOC, 37 functions, max function 56 lines, target `application/<bounded-use-case>`.
+- `velvet_bot/error_center.py`: 855 LOC, 37 functions, max function 61 lines, target `application/<bounded-use-case>`.
 - `velvet_bot/domains/media_generation/models.py`: 845 LOC, 38 functions, max function 88 lines, target `domain`.
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py`: 807 LOC, 11 functions, max function 333 lines, target `presentation`.
 - `velvet_bot/ai_vision.py`: 775 LOC, 24 functions, max function 77 lines, target `domains/<bounded-domain>`.

@@ -5922,8 +5922,8 @@
           "path": "velvet_bot/error_center.py",
           "module": "velvet_bot.error_center",
           "name": "mark_digest_sent",
-          "line": 372,
-          "end_line": 382
+          "line": 378,
+          "end_line": 388
         }
       ]
     },
@@ -6665,8 +6665,8 @@
           "path": "velvet_bot/error_center.py",
           "module": "velvet_bot.error_center",
           "name": "set_log_message_id",
-          "line": 269,
-          "end_line": 280
+          "line": 275,
+          "end_line": 286
         }
       ]
     },
@@ -8060,7 +8060,7 @@
       ]
     },
     {
-      "digest": "9213b9ef97300ac5da409a2b56336bc5047792ec42b82ad3a521ea0fe4a69607",
+      "digest": "f37a573702a2f908634ccd64f202bb915165126503be177cbb53916014dda79c",
       "kind": "semantic-near-duplicate",
       "family": "safe edit/send fallback",
       "reason": "shared transport/domain signals despite different names and literals",
@@ -8104,15 +8104,15 @@
           "path": "velvet_bot/error_center.py",
           "module": "velvet_bot.error_center",
           "name": "_publish_to_log_chat",
-          "line": 702,
-          "end_line": 734
+          "line": 708,
+          "end_line": 740
         },
         {
           "path": "velvet_bot/error_center.py",
           "module": "velvet_bot.error_center",
           "name": "acknowledge_incident",
-          "line": 796,
-          "end_line": 816
+          "line": 802,
+          "end_line": 822
         },
         {
           "path": "velvet_bot/presentation/telegram/archive_watermark_storage.py",

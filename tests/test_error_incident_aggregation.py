@@ -241,6 +241,12 @@ class ErrorIncidentAggregationTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(center._pending)
         self.assertEqual(2, repository.incidents[event.fingerprint].occurrence_count)
 
+    def test_repository_immediate_write_never_downgrades_severity(self) -> None:
+        source = inspect.getsource(ErrorIncidentRepository.record)
+        self.assertIn("WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'", source)
+        self.assertIn("WHEN severity = 'ERROR' OR $2 = 'ERROR'", source)
+        self.assertNotIn("SET severity = $2", source)
+
     def test_repository_batch_is_atomic_and_does_not_rewrite_payload(self) -> None:
         source = inspect.getsource(ErrorIncidentRepository.record_batch)
         self.assertIn("occurrence_count = incident.occurrence_count + $3", source)

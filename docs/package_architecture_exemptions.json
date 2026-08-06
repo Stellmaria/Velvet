@@ -3668,7 +3668,7 @@
       "issue": "#460"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/error_center.py:70f2626df045cc8d",
+      "id": "monolithic-module-loc:velvet_bot/error_center.py:ee2462bb0bda246f",
       "owner": "Velvet maintainers",
       "reason": "Bounded Error Center batching required by #605.",
       "consumers": [
@@ -4976,7 +4976,7 @@
       "issue": "#460"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/error_center.py:4e333f03ac0541a3",
+      "id": "sql-outside-persistence:velvet_bot/error_center.py:7fe0fa10172c56d7",
       "owner": "root-module-migration",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [

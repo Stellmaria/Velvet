@@ -190,7 +190,13 @@ class ErrorIncidentRepository:
                 row = await connection.fetchrow(
                     """
                     UPDATE error_incidents
-                    SET severity = $2,
+                    SET severity = CASE
+                            WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'
+                                THEN 'CRITICAL'
+                            WHEN severity = 'ERROR' OR $2 = 'ERROR'
+                                THEN 'ERROR'
+                            ELSE 'WARNING'
+                        END,
                         logger_name = $3,
                         summary = $4,
                         details = $5,
