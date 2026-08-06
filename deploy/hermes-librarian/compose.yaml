@@ -100,6 +100,111 @@ services:
     networks:
       - velvet-backend
 
+  arthur-storage-gateway:
+    image: ${VELVET_IMAGE:-velvet-bot:local}
+    profiles: ["arthur"]
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    command: ["python", "scripts/run_arthur_storage_gateway.py"]
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      ARTHUR_STORAGE_GATEWAY_API_KEY: ${ARTHUR_STORAGE_GATEWAY_API_KEY:-}
+      ARTHUR_STORAGE_GATEWAY_HOST: 0.0.0.0
+      ARTHUR_STORAGE_GATEWAY_PORT: "8786"
+      STORAGE_LIBRARIAN_MAX_OBJECT_BYTES: ${STORAGE_LIBRARIAN_MAX_OBJECT_BYTES:-16777216}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8786/health', timeout=3).read()
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    stop_grace_period: 30s
+    mem_limit: ${ARTHUR_STORAGE_GATEWAY_MEMORY_LIMIT:-512m}
+    cpus: ${ARTHUR_STORAGE_GATEWAY_CPU_LIMIT:-0.5}
+    pids_limit: 128
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - velvet-backend
+
+  arthur:
+    image: ${VELVET_IMAGE:-velvet-bot:local}
+    profiles: ["arthur"]
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    command: ["python", "scripts/run_arthur_librarian.py"]
+    depends_on:
+      ollama-librarian:
+        condition: service_healthy
+      librarian-hermes:
+        condition: service_healthy
+      arthur-storage-gateway:
+        condition: service_healthy
+    environment:
+      ARTHUR_BOT_TOKEN: ${ARTHUR_BOT_TOKEN:-}
+      ARTHUR_ALLOWED_USER_IDS: ${ARTHUR_ALLOWED_USER_IDS:-}
+      ARTHUR_ALLOWED_USERNAMES: ${ARTHUR_ALLOWED_USERNAMES:-}
+      ARTHUR_DATA_DIR: /app/runtime/arthur
+      ARTHUR_HEARTBEAT_PATH: /tmp/arthur-heartbeat
+      ARTHUR_REPORT_CHAT_ID: ${ARTHUR_REPORT_CHAT_ID:-}
+      ARTHUR_REPORT_THREAD_ID: ${ARTHUR_REPORT_THREAD_ID:-}
+      ARTHUR_STORAGE_GATEWAY_BASE_URL: http://arthur-storage-gateway:8786
+      ARTHUR_STORAGE_GATEWAY_API_KEY: ${ARTHUR_STORAGE_GATEWAY_API_KEY:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      STORAGE_LIBRARIAN_ENABLED: ${STORAGE_LIBRARIAN_ENABLED:-false}
+      STORAGE_LIBRARIAN_AUTO_ENQUEUE: "false"
+      STORAGE_LIBRARIAN_HERMES_BASE_URL: http://librarian-hermes:8642
+      STORAGE_LIBRARIAN_HERMES_API_KEY: ${STORAGE_LIBRARIAN_HERMES_API_KEY:-}
+      STORAGE_LIBRARIAN_OLLAMA_BASE_URL: http://ollama-librarian:11434
+      STORAGE_LIBRARIAN_TEXT_MODEL: ${STORAGE_LIBRARIAN_TEXT_MODEL:-velvet-librarian-text:v1}
+      STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH: ${STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH:-8192}
+      STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS: ${STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS:-384}
+      STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE: ${STORAGE_LIBRARIAN_OLLAMA_KEEP_ALIVE:-5m}
+      STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS: ${STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS:-180}
+      STORAGE_LIBRARIAN_MAX_OBJECT_BYTES: ${STORAGE_LIBRARIAN_MAX_OBJECT_BYTES:-16777216}
+      STORAGE_LIBRARIAN_MAX_TEXT_CHARS: ${STORAGE_LIBRARIAN_MAX_TEXT_CHARS:-120000}
+      STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES: ${STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES:-100}
+      STORAGE_LIBRARIAN_MAX_ATTEMPTS: ${STORAGE_LIBRARIAN_MAX_ATTEMPTS:-3}
+      STORAGE_LIBRARIAN_ANALYZER_VERSION: ${STORAGE_LIBRARIAN_ANALYZER_VERSION:-velvet-librarian:qwen3-4b-text:v4}
+      STORAGE_LIBRARIAN_ALLOWED_KINDS: ${STORAGE_LIBRARIAN_ALLOWED_KINDS:-diagnostics,codex,rework,inbox,exports,releases}
+    volumes:
+      - ${VELVET_DATA_DIR:-/srv/velvet/data}/arthur:/app/runtime/arthur
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import os,time; p='/tmp/arthur-heartbeat'; raise SystemExit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p)<90 else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    stop_grace_period: 45s
+    mem_limit: ${ARTHUR_MEMORY_LIMIT:-768m}
+    cpus: ${ARTHUR_CPU_LIMIT:-1.0}
+    pids_limit: 192
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - velvet-backend
+
 volumes:
   librarian-ollama:
     name: ${STORAGE_LIBRARIAN_OLLAMA_VOLUME:-velvet_librarian_ollama}

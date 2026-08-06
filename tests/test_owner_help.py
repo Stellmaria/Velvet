@@ -22,6 +22,9 @@ from velvet_bot.presentation.telegram.routers.core_operations_controllers.owner_
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON_ROOTS = (ROOT / "velvet_bot", ROOT / "velvet_supervisor")
+DEDICATED_TELEGRAM_RUNTIME_FILES = {
+    ROOT / "velvet_bot" / "presentation" / "telegram" / "arthur_librarian.py",
+}
 
 
 def _call_name(node: ast.AST) -> str:
@@ -55,6 +58,8 @@ def _registered_commands() -> set[str]:
     commands: set[str] = set()
     for root in PYTHON_ROOTS:
         for path in root.rglob("*.py"):
+            if path in DEDICATED_TELEGRAM_RUNTIME_FILES:
+                continue
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Call):
@@ -85,6 +90,18 @@ class OwnerHelpTests(unittest.TestCase):
 
     def test_help_lists_every_registered_slash_command(self) -> None:
         self.assertEqual(_registered_commands(), set(OWNER_HELP_COMMANDS))
+
+    def test_dedicated_arthur_commands_stay_out_of_velvet_help(self) -> None:
+        self.assertTrue(
+            {
+                "analyze",
+                "result",
+                "ask",
+                "digest",
+                "queue",
+                "download",
+            }.isdisjoint(OWNER_HELP_COMMANDS)
+        )
 
     def test_help_pages_fit_telegram_and_render_every_command(self) -> None:
         pages = build_owner_help_pages()

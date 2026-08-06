@@ -1,24 +1,24 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **651**
-- Production LOC: **144022**
+- Production modules: **659**
+- Production LOC: **145138**
 - Root modules: **113**
 - Active Router imports: **84**
-- Repository modules: **45**
+- Repository modules: **46**
 - Startup installer stages: **25**
 - Registered package violations: **536**
 - Registered exemptions: **536**
 
 ## Layers
 
-- `application`: **21** modules
+- `application`: **22** modules
 - `composition`: **64** modules
-- `core`: **7** modules
-- `domain`: **186** modules
-- `infrastructure`: **31** modules
+- `core`: **8** modules
+- `domain`: **187** modules
+- `infrastructure`: **33** modules
 - `other`: **1** modules
-- `presentation`: **215** modules
+- `presentation`: **218** modules
 - `root`: **114** modules
 - `service`: **8** modules
 - `worker`: **4** modules
@@ -87,9 +87,9 @@
 - `velvet_bot/presentation/telegram/routers/workspace_character_pickers.py`: 1152 LOC, 24 functions, max function 154 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video.py`: 1102 LOC, 31 functions, max function 140 lines, target `presentation`.
 - `velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py`: 1041 LOC, 37 functions, max function 169 lines, target `presentation`.
+- `velvet_bot/app/auf_gpt_image_2_install.py`: 1024 LOC, 29 functions, max function 265 lines, target `composition`.
 - `velvet_bot/presentation/telegram/routers/workspace_onboarding.py`: 1023 LOC, 31 functions, max function 222 lines, target `presentation`.
 - `velvet_bot/domains/workspaces/character_management.py`: 1013 LOC, 24 functions, max function 117 lines, target `domain`.
-- `velvet_bot/app/auf_gpt_image_2_install.py`: 993 LOC, 29 functions, max function 265 lines, target `composition`.
 - `velvet_bot/domains/workspaces/qwen_repository.py`: 909 LOC, 25 functions, max function 78 lines, target `domain`.
 - `velvet_bot/backup_service.py`: 900 LOC, 34 functions, max function 73 lines, target `application/<bounded-use-case>`.
 - `velvet_bot/media_sets.py`: 882 LOC, 20 functions, max function 115 lines, target `domains/<bounded-domain>`.

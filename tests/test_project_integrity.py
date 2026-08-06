@@ -8,6 +8,9 @@ from pathlib import Path
 
 
 PYTHON_ROOTS = (Path("velvet_bot"), Path("velvet_supervisor"))
+DEDICATED_TELEGRAM_RUNTIME_FILES = {
+    Path("velvet_bot/presentation/telegram/arthur_librarian.py"),
+}
 LEGACY_DUPLICATE_MIGRATIONS = {
     "003": {"003_character_references.sql", "003_public_archive.sql"},
 }
@@ -208,6 +211,8 @@ def _literal_strings(call: ast.Call) -> list[str]:
 def _command_routes() -> dict[str, list[str]]:
     routes: dict[str, list[str]] = defaultdict(list)
     for path in _python_files():
+        if path in DEDICATED_TELEGRAM_RUNTIME_FILES:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):

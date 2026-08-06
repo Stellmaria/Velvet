@@ -77,14 +77,14 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_inventory_covers_the_complete_current_package(self) -> None:
         modules = self.inventory["modules"]
-        self.assertEqual(651, self.inventory["production_module_count"])
+        self.assertEqual(659, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(144022, self.inventory["production_loc"])
+        self.assertEqual(145138, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
         self.assertEqual(0, self.inventory["router_duplicate_count"])
-        self.assertEqual(45, self.inventory["repository_module_count"])
+        self.assertEqual(46, self.inventory["repository_module_count"])
         self.assertEqual(25, len(self.inventory["installer_graph"]))
 
         self.assertEqual(
@@ -180,8 +180,8 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         )
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
-        self.assertIn("Production modules: **651**", self.markdown)
-        self.assertIn("Production LOC: **144022**", self.markdown)
+        self.assertIn("Production modules: **659**", self.markdown)
+        self.assertIn("Production LOC: **145138**", self.markdown)
         self.assertIn("Startup installer stages: **25**", self.markdown)
         self.assertIn("Registered package violations: **536**", self.markdown)
         self.assertIn("Registered exemptions: **536**", self.markdown)

@@ -191,7 +191,7 @@ class StorageLibrarianRepository:
                 raise UnsupportedStorageContent(
                     f"Storage #{object_id} нельзя передать Librarian: kind={kind}."
                 )
-            await connection.execute(
+            result = await connection.execute(
                 """
                 INSERT INTO telegram_storage_analysis_jobs (
                     storage_object_id, status, priority, attempts,
@@ -218,13 +218,13 @@ class StorageLibrarianRepository:
                     worker_id = NULL,
                     hermes_run_id = NULL,
                     finished_at = NULL,
-                    updated_at = NOW()
+                    updated_at = NOW() WHERE telegram_storage_analysis_jobs.status <> 'running'
                 """,
                 int(object_id),
                 int(priority),
                 settings.max_attempts,
             )
-        return True
+        return result.endswith(" 1")
 
     async def claim_next(self, worker_id: str) -> LibrarianJob | None:
         async with self._database.acquire() as connection:

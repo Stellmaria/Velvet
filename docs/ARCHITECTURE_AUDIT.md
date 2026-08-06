@@ -342,3 +342,21 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 - blocking known private contracts: **0**;
 - целевая консолидация delivery и provider-routing слоёв остаётся в **#457** и **#459**.
 <!-- /gpt-image-2-pr-645-architecture-slice -->
+
+<!-- arthur-librarian-phase2-architecture-slice -->
+## Срез Arthur Librarian Phase 2 от 6 августа 2026 года
+
+Дата среза: `2026-08-05`.
+
+Контракт стабильного релиза: `v1.3.0`.
+
+Воспроизводимый package/shared-contract baseline после выделения отдельного runtime Arthur:
+
+- package production modules: **659**;
+- inventoried functions: **3748**;
+- registered transitional private accesses: **170**;
+- blocking known private contracts: **0**;
+- целевая консолидация временных delivery/composition слоёв остаётся в **#457** и **#455**.
+
+Этот срез подтверждает code/CI scope Phase 2 и не означает production rollout или закрытие live obligations #409/#410/#412/#438. Compatibility identifiers `meow_*` остаются временными до отдельного retirement.
+<!-- /arthur-librarian-phase2-architecture-slice -->
