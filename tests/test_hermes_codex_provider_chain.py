@@ -84,7 +84,6 @@ class ProviderChainTests(unittest.TestCase):
                 "gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna"
             ),
             "BYESU_HERMES_CODEX_API_KEY": "a" * 48,
-            "BYESU_HERMES_GPT_PRO_API_KEY": "b" * 48,
         }
         self.patch = patch.dict(os.environ, self.env, clear=False)
         self.patch.start()
@@ -206,6 +205,19 @@ class ProviderChainTests(unittest.TestCase):
         )
         self.assertEqual(
             ["gpt-5.6-terra"], fallback["routes_by_tier"]["high_risk"]
+        )
+        self.assertEqual(
+            [
+                {
+                    "name": "byesu-coder",
+                    "models": [
+                        "gpt-5.4-mini",
+                        "gpt-5.6-terra",
+                        "gpt-5.6-luna",
+                    ],
+                }
+            ],
+            fallback["credential_groups"],
         )
         serialized = str(fallback)
         self.assertNotIn("env_key", serialized)
