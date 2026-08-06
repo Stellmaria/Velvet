@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from byesu_image_fallback import install_byesu_image_fallback
 from codex_first_safe_runner import primary_execution_started
 from codex_image_runner import CodexImageSupport, ImageHandler
 from codex_launcher_runner import LauncherTierProviderManager
@@ -106,6 +107,7 @@ class ContextLauncherTierProviderManager(
 
 
 def build_manager() -> AuditedTierProviderManager:
+    install_byesu_image_fallback()
     backend = os.environ.get("CODEX_EXECUTION_BACKEND", "launcher").strip()
     if backend == "launcher":
         return ContextLauncherTierProviderManager()
@@ -130,7 +132,8 @@ def main() -> int:
     print(
         f"Velvet context-aware launcher runner listening on {host}:{port}; "
         f"backend={os.environ.get('CODEX_EXECUTION_BACKEND', 'launcher')}; "
-        f"default={manager.default_model}; gpt_image_2=enabled",
+        f"default={manager.default_model}; gpt_image_2=enabled; "
+        f"byesu_image_fallback={os.environ.get('CODEX_IMAGE_BYESU_FALLBACK_ENABLED', 'false')}",
         flush=True,
     )
     try:
