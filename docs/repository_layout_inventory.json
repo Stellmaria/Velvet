@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": "p3e-repository-layout-complete",
-  "repository_module_count": 45,
+  "repository_module_count": 46,
   "layout_counts": {
-    "domain": 37,
+    "domain": 38,
     "infrastructure": 8
   },
   "root_module_count": 113,
@@ -14,7 +14,7 @@
     "service": 1,
     "worker": 1
   },
-  "repository_modules_with_production_consumers": 42,
+  "repository_modules_with_production_consumers": 43,
   "repository_modules_with_package_exports": 28,
   "repository_modules_without_runtime_consumers": 3,
   "repository_modules_without_references": 0,
@@ -528,6 +528,21 @@
       ]
     },
     {
+      "module": "velvet_bot.domains.telegram_storage.arthur_repository",
+      "path": "velvet_bot/domains/telegram_storage/arthur_repository.py",
+      "layout": "domain",
+      "domain": "telegram_storage",
+      "production_consumer_count": 1,
+      "test_consumer_count": 0,
+      "package_export_count": 0,
+      "reference_count": 1,
+      "production_consumers": [
+        "velvet_bot/application/arthur_librarian.py"
+      ],
+      "test_consumers": [],
+      "package_exports": []
+    },
+    {
       "module": "velvet_bot.domains.telegram_storage.backup_repository",
       "path": "velvet_bot/domains/telegram_storage/backup_repository.py",
       "layout": "domain",
@@ -581,13 +596,15 @@
       "path": "velvet_bot/domains/telegram_storage/librarian_repository.py",
       "layout": "domain",
       "domain": "telegram_storage",
-      "production_consumer_count": 3,
+      "production_consumer_count": 5,
       "test_consumer_count": 1,
       "package_export_count": 0,
-      "reference_count": 4,
+      "reference_count": 6,
       "production_consumers": [
         "velvet_bot/application/storage_librarian.py",
+        "velvet_bot/domains/telegram_storage/arthur_repository.py",
         "velvet_bot/domains/telegram_storage/librarian_afk_repository.py",
+        "velvet_bot/infrastructure/telegram/arthur_storage_gateway_server.py",
         "velvet_bot/presentation/telegram/storage_librarian.py"
       ],
       "test_consumers": [

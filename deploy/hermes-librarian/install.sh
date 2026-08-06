@@ -134,6 +134,7 @@ LOCAL_BASE_URL="${resolved[4]}"
 LOCAL_CONTEXT_LENGTH="${resolved[5]}"
 SOURCE_CONFIG="$VELVET_DATA_DIR/hermes/config.yaml"
 TARGET_DIR="$VELVET_DATA_DIR/hermes-librarian"
+ARTHUR_TARGET_DIR="$VELVET_DATA_DIR/arthur"
 
 if [[ ! -f "$SOURCE_CONFIG" ]]; then
   echo "Отсутствует config основного Hermes: $SOURCE_CONFIG" >&2
@@ -143,6 +144,7 @@ fi
 source_uid="$(stat -c '%u' "$VELVET_DATA_DIR/hermes")"
 source_gid="$(stat -c '%g' "$VELVET_DATA_DIR/hermes")"
 install -d -m 0750 -o "$source_uid" -g "$source_gid" "$TARGET_DIR"
+install -d -m 0750 -o 10001 -g 10001 "$ARTHUR_TARGET_DIR"
 
 docker run --rm \
   --network none \

@@ -16,7 +16,6 @@ from velvet_bot.presentation.telegram.archive_watermark_storage import (
     register_archive_watermark_storage_handler,
 )
 from velvet_bot.presentation.telegram.storage_center import register_storage_center
-from velvet_bot.presentation.telegram.storage_librarian import register_storage_librarian
 from velvet_bot.presentation.telegram.storage_scheduler import register_storage_scheduler
 from velvet_bot.presentation.telegram.routers.core_operations_controllers.watermark import (
     router as watermark_router,
@@ -92,7 +91,8 @@ async def handle_owner_menu_callback(
 
 register_storage_center(router)
 register_storage_scheduler(router)
-register_storage_librarian(router)
+# Phase 2 replacement: the main bot no longer executes
+# register_storage_librarian(router); Arthur owns this UX.
 register_archive_watermark_storage_handler(router)
 router.include_router(workspace_archive_router)
 router.include_router(workspace_home_hint_router)

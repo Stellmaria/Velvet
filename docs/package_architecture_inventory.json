@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 651,
-  "production_loc": 144022,
+  "production_module_count": 659,
+  "production_loc": 145153,
   "layer_counts": {
-    "application": 21,
+    "application": 22,
     "composition": 64,
-    "core": 7,
-    "domain": 186,
-    "infrastructure": 31,
+    "core": 8,
+    "domain": 187,
+    "infrastructure": 33,
     "other": 1,
-    "presentation": 215,
+    "presentation": 218,
     "root": 114,
     "service": 8,
     "worker": 4
@@ -20,7 +20,7 @@
   "root_unclassified_count": 0,
   "router_count": 84,
   "router_duplicate_count": 0,
-  "repository_module_count": 45,
+  "repository_module_count": 46,
   "runtime_compatibility_components": [
     {
       "component": "ai-quality-schema",
@@ -13027,6 +13027,46 @@
       "violations": []
     },
     {
+      "path": "velvet_bot/application/arthur_librarian.py",
+      "module": "velvet_bot.application.arthur_librarian",
+      "layer": "application",
+      "target_package": "application",
+      "loc": 227,
+      "function_count": 12,
+      "class_count": 4,
+      "handler_count": 0,
+      "max_function_length": 23,
+      "branch_count": 11,
+      "internal_imports": [
+        "velvet_bot.application.storage_librarian",
+        "velvet_bot.core.config.arthur",
+        "velvet_bot.database",
+        "velvet_bot.domains.telegram_storage.arthur_repository",
+        "velvet_bot.domains.telegram_storage.librarian_models",
+        "velvet_bot.infrastructure.ai.storage_librarian_hermes",
+        "velvet_bot.infrastructure.ai.storage_librarian_ollama",
+        "velvet_bot.infrastructure.telegram.arthur_storage_gateway"
+      ],
+      "external_import_count": 4,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/application/media_delivery.py",
       "module": "velvet_bot.application.media_delivery",
       "layer": "application",
@@ -14922,6 +14962,98 @@
       "installed_sentinel_count": 0,
       "package_getattr": false,
       "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/core/config/arthur.py",
+      "module": "velvet_bot.core.config.arthur",
+      "layer": "core",
+      "target_package": "core",
+      "loc": 144,
+      "function_count": 6,
+      "class_count": 2,
+      "handler_count": 0,
+      "max_function_length": 48,
+      "branch_count": 13,
+      "internal_imports": [],
+      "external_import_count": 4,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [
+        {
+          "line": 9,
+          "owner": "_required",
+          "call": "os.getenv"
+        },
+        {
+          "line": 37,
+          "owner": "_parse_optional_int",
+          "call": "os.getenv"
+        },
+        {
+          "line": 66,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 68,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 91,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 126,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 130,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 62,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 88,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 138,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 79,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 99,
+          "owner": "from_env",
+          "call": "os.getenv"
+        }
+      ],
       "polling_values": [],
       "worker_registrations": [],
       "violations": []
@@ -21458,6 +21590,41 @@
       ]
     },
     {
+      "path": "velvet_bot/domains/telegram_storage/arthur_repository.py",
+      "module": "velvet_bot.domains.telegram_storage.arthur_repository",
+      "layer": "domain",
+      "target_package": "domain",
+      "loc": 68,
+      "function_count": 3,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 29,
+      "branch_count": 2,
+      "internal_imports": [
+        "velvet_bot.database",
+        "velvet_bot.domains.telegram_storage.librarian_models",
+        "velvet_bot.domains.telegram_storage.librarian_repository"
+      ],
+      "external_import_count": 1,
+      "aiogram_imports": [],
+      "sql_literal_count": 2,
+      "database_acquire_count": 2,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/domains/telegram_storage/backup_repository.py",
       "module": "velvet_bot.domains.telegram_storage.backup_repository",
       "layer": "domain",
@@ -25953,6 +26120,79 @@
       "violations": []
     },
     {
+      "path": "velvet_bot/infrastructure/telegram/arthur_storage_gateway.py",
+      "module": "velvet_bot.infrastructure.telegram.arthur_storage_gateway",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 77,
+      "function_count": 3,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 40,
+      "branch_count": 5,
+      "internal_imports": [
+        "velvet_bot.domains.telegram_storage.librarian_models"
+      ],
+      "external_import_count": 4,
+      "aiogram_imports": [],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/infrastructure/telegram/arthur_storage_gateway_server.py",
+      "module": "velvet_bot.infrastructure.telegram.arthur_storage_gateway_server",
+      "layer": "infrastructure",
+      "target_package": "infrastructure",
+      "loc": 135,
+      "function_count": 7,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 39,
+      "branch_count": 8,
+      "internal_imports": [
+        "velvet_bot.core.config.arthur",
+        "velvet_bot.database",
+        "velvet_bot.domains.telegram_storage.librarian_models",
+        "velvet_bot.domains.telegram_storage.librarian_repository",
+        "velvet_bot.infrastructure.telegram.storage_librarian_files"
+      ],
+      "external_import_count": 6,
+      "aiogram_imports": [
+        "aiogram",
+        "aiogram.exceptions"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
       "path": "velvet_bot/infrastructure/telegram/discussion_events.py",
       "module": "velvet_bot.infrastructure.telegram.discussion_events",
       "layer": "infrastructure",
@@ -27502,6 +27742,134 @@
         }
       ],
       "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/arthur_librarian.py",
+      "module": "velvet_bot.presentation.telegram.arthur_librarian",
+      "layer": "presentation",
+      "target_package": "presentation",
+      "loc": 307,
+      "function_count": 18,
+      "class_count": 1,
+      "handler_count": 9,
+      "max_function_length": 167,
+      "branch_count": 17,
+      "internal_imports": [
+        "velvet_bot.application.arthur_librarian",
+        "velvet_bot.core.config.arthur",
+        "velvet_bot.domains.telegram_storage.librarian_content",
+        "velvet_bot.domains.telegram_storage.librarian_models"
+      ],
+      "external_import_count": 8,
+      "aiogram_imports": [
+        "aiogram",
+        "aiogram.exceptions",
+        "aiogram.filters",
+        "aiogram.types"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/arthur_report_publisher.py",
+      "module": "velvet_bot.presentation.telegram.arthur_report_publisher",
+      "layer": "presentation",
+      "target_package": "presentation",
+      "loc": 69,
+      "function_count": 3,
+      "class_count": 1,
+      "handler_count": 0,
+      "max_function_length": 21,
+      "branch_count": 2,
+      "internal_imports": [
+        "velvet_bot.domains.telegram_storage.librarian_models"
+      ],
+      "external_import_count": 3,
+      "aiogram_imports": [
+        "aiogram"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": []
+    },
+    {
+      "path": "velvet_bot/presentation/telegram/arthur_runtime.py",
+      "module": "velvet_bot.presentation.telegram.arthur_runtime",
+      "layer": "presentation",
+      "target_package": "presentation",
+      "loc": 104,
+      "function_count": 3,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 51,
+      "branch_count": 3,
+      "internal_imports": [
+        "velvet_bot.application.arthur_librarian",
+        "velvet_bot.core.config.arthur",
+        "velvet_bot.database",
+        "velvet_bot.domains.telegram_storage.librarian_models",
+        "velvet_bot.presentation.telegram.arthur_librarian",
+        "velvet_bot.presentation.telegram.arthur_report_publisher"
+      ],
+      "external_import_count": 9,
+      "aiogram_imports": [
+        "aiogram",
+        "aiogram.client.default",
+        "aiogram.enums",
+        "aiogram.types"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [],
+      "install_calls": [],
+      "installed_sentinel_count": 0,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [
+        {
+          "line": 44,
+          "owner": "_heartbeat",
+          "call": "asyncio.sleep",
+          "values": [
+            20
+          ]
+        }
+      ],
       "worker_registrations": [],
       "violations": []
     },
@@ -30414,7 +30782,6 @@
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_home_hint_controller",
         "velvet_bot.presentation.telegram.routers.core_operations_controllers.workspace_watermark_draft_controller",
         "velvet_bot.presentation.telegram.storage_center",
-        "velvet_bot.presentation.telegram.storage_librarian",
         "velvet_bot.presentation.telegram.storage_scheduler"
       ],
       "external_import_count": 5,
