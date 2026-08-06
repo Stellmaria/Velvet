@@ -4,8 +4,8 @@ AST-инвентаризация широких исключений и callback
 
 ## Сводка
 
-- raw broad exceptions: **107** в **61** файлах;
-- approved boundaries: **107**;
+- raw broad exceptions: **111** в **61** файлах;
+- approved boundaries: **111**;
 - unresolved broad exceptions: **0** в **0** файлах;
 - callback handlers: **132**;
 - late/missing callbacks: **0**;
@@ -43,7 +43,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/backup_service.py:898` `run_backup_worker`: isolate-backup-worker-iteration.
 - `velvet_bot/calibrated_ai_quality.py:121` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/discussion_analytics_middleware.py:36` `__call__`: isolate-discussion-analytics-ingest.
-- `velvet_bot/domains/codex_image.py:278` `process_once`: isolate-codex-image-task-failure.
+- `velvet_bot/domains/codex_image.py:538` `process_once`: isolate-codex-image-task-failure.
 - `velvet_bot/domains/media_generation/friendly_worker.py:143` `_recover_durable_delivery`: isolate-durable-recovery-tick.
 - `velvet_bot/domains/media_generation/task_queue.py:204` `complete`: isolate-post-completion-delivery.
 - `velvet_bot/domains/media_generation/task_queue.py:299` `_record_submission_best_effort`: isolate-provider-submission-registration.
@@ -60,9 +60,13 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/domains/workspaces/character_topics.py:135` `ensure_character_archive_topic`: cleanup-orphan-character-topic.
 - `velvet_bot/domains/workspaces/watermark_assets.py:226` `store`: cleanup-new-logo-after-db-failure.
 - `velvet_bot/error_center.py:99` `capture_log_record`: fallback-log-record-message.
-- `velvet_bot/error_center.py:337` `_is_recoverable_aiogram_polling_record`: fallback-polling-record-message.
-- `velvet_bot/error_center.py:364` `emit`: isolate-error-logging-handler.
-- `velvet_bot/error_center.py:462` `_consume`: isolate-error-incident-item.
+- `velvet_bot/error_center.py:396` `_is_recoverable_aiogram_polling_record`: fallback-polling-record-message.
+- `velvet_bot/error_center.py:423` `emit`: isolate-error-logging-handler.
+- `velvet_bot/error_center.py:552` `_consume`: isolate-error-incident-item.
+- `velvet_bot/error_center.py:564` `_process`: preserve-critical-immediate-path.
+- `velvet_bot/error_center.py:581` `_process`: fallback-immediate-under-aggregate-pressure.
+- `velvet_bot/error_center.py:621` `_flush_one`: restore-pending-after-batch-failure.
+- `velvet_bot/error_center.py:646` `flush_pending`: retry-next-aggregate-flush.
 - `velvet_bot/infrastructure/media_delivery_runtime.py:188` `redeliver_owned_task`: report-redelivery-failure.
 - `velvet_bot/infrastructure/telegram/archive_previews.py:84` `resolve`: fallback-full-quality-archive-preview.
 - `velvet_bot/media_quality.py:103` `run_media_quality_worker`: isolate-media-quality-worker-iteration.

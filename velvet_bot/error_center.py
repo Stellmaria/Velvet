@@ -561,7 +561,7 @@ class ErrorIncidentCenter:
         if captured.severity == "CRITICAL" or known is None:
             try:
                 await self._flush_one(captured.fingerprint)
-            except Exception as error:
+            except Exception as error:  # p2-approved-boundary: preserve-critical-immediate-path
                 logger.warning("Pre-immediate aggregate flush failed: %s", error)
             recorded = await self._repository.record(captured)
             self._remember(recorded.incident)
@@ -578,7 +578,7 @@ class ErrorIncidentCenter:
         if pending is None and len(self._pending) >= self._aggregate_limit:
             try:
                 await self._flush_one(next(iter(self._pending)))
-            except Exception:
+            except Exception:  # p2-approved-boundary: fallback-immediate-under-aggregate-pressure
                 recorded = await self._repository.record(captured)
                 self._remember(recorded.incident)
                 await self._publish_to_log_chat(recorded.incident)
@@ -618,7 +618,7 @@ class ErrorIncidentCenter:
                 count=count,
                 last_seen_at=last_seen_at,
             )
-        except Exception:
+        except Exception:  # p2-approved-boundary: restore-pending-after-batch-failure
             current = self._pending.get(fingerprint)
             if current is not None:
                 count += current[1]
