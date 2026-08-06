@@ -31,11 +31,10 @@ services:
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-      # GPT Image 2 uses Byesu only after a clean subscription limit before
-      # actual tool execution. The same coder token is reused fail closed.
+      # 1K stays Codex-first. 2K/4K go directly to Byesu. A clean Codex
+      # subscription limit before tool execution falls back once to Byesu.
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "${CODEX_IMAGE_BYESU_FALLBACK_ENABLED:-false}"
       CODEX_IMAGE_BYESU_BASE_URL: "${CODEX_IMAGE_BYESU_BASE_URL:-https://byesu.com/v1}"
-      CODEX_IMAGE_BYESU_MODEL: "${CODEX_IMAGE_BYESU_MODEL:-firefly-gpt-image-2}"
       CODEX_IMAGE_BYESU_TIMEOUT_SECONDS: "${CODEX_IMAGE_BYESU_TIMEOUT_SECONDS:-600}"
     volumes:
       - ./codex_runner.py:/app/codex_runner.py:ro
@@ -47,6 +46,7 @@ services:
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
       - ./codex_image_runner.py:/app/codex_image_runner.py:ro
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
+      - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
       - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
       - ./sandbox_launcher_client.py:/app/sandbox_launcher_client.py:ro
       - /run/hermes-sandbox/launcher.sock:/run/hermes-sandbox/launcher.sock
@@ -67,8 +67,8 @@ services:
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-      # Max imports the shared runtime module but never enables Velvet's image
-      # fallback route.
+      # Max imports the shared runtime modules but never enables Velvet's image
+      # provider route.
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "false"
     volumes:
       - ./codex_runner.py:/app/codex_runner.py:ro
@@ -80,6 +80,7 @@ services:
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
       - ./codex_image_runner.py:/app/codex_image_runner.py:ro
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
+      - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
       - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
       - ./sandbox_launcher_client.py:/app/sandbox_launcher_client.py:ro
       - /run/hermes-sandbox/launcher.sock:/run/hermes-sandbox/launcher.sock
