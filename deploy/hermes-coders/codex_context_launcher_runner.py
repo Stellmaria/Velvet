@@ -10,6 +10,7 @@ from typing import Any
 from byesu_image_fallback import install_byesu_image_fallback
 from byesu_image_routing_policy import install_byesu_image_routing_policy
 from codex_first_safe_runner import primary_execution_started
+from codex_image_limit_preflight import install_codex_image_limit_preflight
 from codex_image_runner import CodexImageSupport, ImageHandler
 from codex_launcher_runner import LauncherTierProviderManager
 from codex_tier_runner import AuditedTierProviderManager
@@ -110,6 +111,7 @@ class ContextLauncherTierProviderManager(
 def build_manager() -> AuditedTierProviderManager:
     install_byesu_image_fallback()
     install_byesu_image_routing_policy()
+    install_codex_image_limit_preflight()
     backend = os.environ.get("CODEX_EXECUTION_BACKEND", "launcher").strip()
     if backend == "launcher":
         return ContextLauncherTierProviderManager()
@@ -135,7 +137,8 @@ def main() -> int:
         f"Velvet context-aware launcher runner listening on {host}:{port}; "
         f"backend={os.environ.get('CODEX_EXECUTION_BACKEND', 'launcher')}; "
         f"default={manager.default_model}; gpt_image_2=enabled; "
-        f"byesu_image_fallback={os.environ.get('CODEX_IMAGE_BYESU_FALLBACK_ENABLED', 'false')}",
+        f"byesu_image_fallback={os.environ.get('CODEX_IMAGE_BYESU_FALLBACK_ENABLED', 'false')}; "
+        f"codex_image_limit_preflight={os.environ.get('CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED', 'true')}",
         flush=True,
     )
     try:
