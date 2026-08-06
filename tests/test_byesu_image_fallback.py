@@ -16,7 +16,7 @@ import byesu_image_fallback as fallback  # noqa: E402
 class StubByesuClient(fallback.ByesuImageClient):
     def __init__(self) -> None:
         self.base_url = "https://byesu.invalid/v1"
-        self.api_key = "sk-test-key-with-enough-characters"
+        self.api_key = "fixture"
         self.image_model = "firefly-gpt-image-2"
         self.timeout_seconds = 60
         self.calls: list[tuple[str, str, Mapping[str, object] | None]] = []
