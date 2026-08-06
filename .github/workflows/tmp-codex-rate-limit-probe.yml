@@ -22,6 +22,25 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Fix temporary template quoting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/tmp_patch_codex_rate_limits.py')
+          source = path.read_text(encoding='utf-8')
+          source = source.replace(
+              "_FAKE_CODEX = r'''#!/usr/bin/env python3",
+              '_FAKE_CODEX = r"""#!/usr/bin/env python3',
+              1,
+          )
+          source = source.replace(
+              "        os.write(sys.stdout.fileno(), payload.encode())\n'''\n\n\nclass CodexRateLimitProbeTests",
+              '        os.write(sys.stdout.fileno(), payload.encode())\n"""\n\n\nclass CodexRateLimitProbeTests',
+              1,
+          )
+          path.write_text(source, encoding='utf-8')
+          PY
+
       - name: Apply focused repair
         run: python .github/scripts/tmp_patch_codex_rate_limits.py
 
