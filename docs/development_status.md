@@ -275,3 +275,24 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 
 Этот срез подтверждает code/CI scope Phase 2 и не означает production rollout или закрытие live obligations #409/#410/#412/#438. Compatibility identifiers `meow_*` остаются временными до отдельного retirement.
 <!-- /arthur-librarian-phase2-architecture-slice -->
+
+<!-- issue-605-error-center-batching-architecture-slice -->
+## Срез Error Incident Center batching от 6 августа 2026 года
+
+Дата среза: `2026-08-05`.
+
+Контракт стабильного релиза: `v1.3.0`.
+
+Воспроизводимый package/shared-contract baseline implementation-среза #605:
+
+- package production modules: **659**;
+- package production LOC: **145345**;
+- inventoried functions: **3860**;
+- registered transitional private accesses: **184**;
+- blocking known contracts: **0**;
+- exact / normalized / semantic duplicate groups: **68 / 98 / 9**;
+- registered package architecture fingerprints: **537**;
+- целевая консолидация media delivery и переходных persistence/composition boundaries остаётся в **#457** и **#455**.
+
+Этот срез подтверждает только code/CI scope #605. Production storm acceptance, `pg_stat_statements`, WAL/IO, latency и Telegram rate требуют live-доступа и не закрываются зелёным CI. Обязательства #409/#410/#412/#438 и временные `meow_*` compatibility layers остаются открытыми.
+<!-- /issue-605-error-center-batching-architecture-slice -->

@@ -2,13 +2,13 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **659**
-- Production LOC: **145153**
+- Production LOC: **145345**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **46**
 - Startup installer stages: **25**
-- Registered package violations: **536**
-- Registered exemptions: **536**
+- Registered package violations: **537**
+- Registered exemptions: **537**
 
 ## Layers
 
@@ -25,10 +25,10 @@
 
 ## Shared/private baseline
 
-- private cross-module accesses: **170**
+- private cross-module accesses: **184**
 - blocking known private contracts: **0**
-- exact / normalized / semantic duplicate groups: **66 / 96 / 9**
-- private access fingerprint: `9031957aac41727658381924617a0183b045937c8b1e3d2b5000cea61d820e25`
+- exact / normalized / semantic duplicate groups: **68 / 98 / 9**
+- private access fingerprint: `d6281cecfbea34f8bec5d2081389916e152da1797050607651a0970d893e10b0`
 
 ## Installer graph
 
@@ -69,7 +69,7 @@
 - `installer-like-module`: **26**
 - `method-assign-ignore`: **5**
 - `monolithic-function`: **25**
-- `monolithic-module-loc`: **18**
+- `monolithic-module-loc`: **19**
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **109**
 - `type-ignore-usage`: **13**
@@ -93,10 +93,10 @@
 - `velvet_bot/domains/workspaces/qwen_repository.py`: 909 LOC, 25 functions, max function 78 lines, target `domain`.
 - `velvet_bot/backup_service.py`: 900 LOC, 34 functions, max function 73 lines, target `application/<bounded-use-case>`.
 - `velvet_bot/media_sets.py`: 882 LOC, 20 functions, max function 115 lines, target `domains/<bounded-domain>`.
+- `velvet_bot/error_center.py`: 855 LOC, 37 functions, max function 61 lines, target `application/<bounded-use-case>`.
 - `velvet_bot/domains/media_generation/models.py`: 845 LOC, 38 functions, max function 88 lines, target `domain`.
 - `velvet_bot/presentation/telegram/routers/analytics_controllers/discussion_overrides.py`: 807 LOC, 11 functions, max function 333 lines, target `presentation`.
 - `velvet_bot/ai_vision.py`: 775 LOC, 24 functions, max function 77 lines, target `domains/<bounded-domain>`.
-- `velvet_bot/ai_quality.py`: 744 LOC, 23 functions, max function 82 lines, target `domains/<bounded-domain>`.
 
 ## Compatibility components
 

@@ -52,9 +52,10 @@ class ErrorCenterBoundaryTests(unittest.IsolatedAsyncioTestCase):
         source = inspect.getsource(ErrorIncidentRepository)
 
         self.assertNotIn("._require_pool()", source)
-        self.assertEqual(source.count("self._database.acquire()"), 8)
+        self.assertEqual(source.count("self._database.acquire()"), 9)
         for method_name in (
             "record",
+            "record_batch",
             "set_log_message_id",
             "acknowledge",
             "acknowledge_all",

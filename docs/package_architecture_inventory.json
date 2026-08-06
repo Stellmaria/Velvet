@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 659,
-  "production_loc": 145153,
+  "production_loc": 145345,
   "layer_counts": {
     "application": 22,
     "composition": 64,
@@ -80,14 +80,14 @@
     }
   ],
   "shared_contract_summary": {
-    "production_python_files": 648,
-    "function_count": 3748,
-    "private_contract_access_count": 170,
+    "production_python_files": 659,
+    "function_count": 3860,
+    "private_contract_access_count": 184,
     "blocking_private_contract_access_count": 0,
-    "exact_duplicate_group_count": 66,
-    "normalized_duplicate_group_count": 96,
+    "exact_duplicate_group_count": 68,
+    "normalized_duplicate_group_count": 98,
     "semantic_near_duplicate_group_count": 9,
-    "private_access_sha256": "9031957aac41727658381924617a0183b045937c8b1e3d2b5000cea61d820e25"
+    "private_access_sha256": "d6281cecfbea34f8bec5d2081389916e152da1797050607651a0970d893e10b0"
   },
   "installer_graph": [
     {
@@ -349,7 +349,7 @@
       ]
     }
   ],
-  "violation_count": 536,
+  "violation_count": 537,
   "violation_counts": {
     "database-acquire-outside-persistence": 89,
     "domain-aiogram-import": 20,
@@ -360,7 +360,7 @@
     "installer-like-module": 26,
     "method-assign-ignore": 5,
     "monolithic-function": 25,
-    "monolithic-module-loc": 18,
+    "monolithic-module-loc": 19,
     "package-getattr-side-effect": 19,
     "sql-outside-persistence": 109,
     "type-ignore-usage": 13,
@@ -1363,13 +1363,13 @@
       }
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:dd573dbb8536b75a",
+      "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:65911e89f84a1028",
       "category": "database-acquire-outside-persistence",
       "path": "velvet_bot/error_center.py",
-      "fingerprint": "dd573dbb8536b75a42cd0b98c5f7882a400954be56345c672297b070a38620e3",
-      "summary": "8 acquire calls outside persistence",
+      "fingerprint": "65911e89f84a10287d5247760bfad602fb7d604ff03c4ffc0e729fee0c38b242",
+      "summary": "9 acquire calls outside persistence",
       "details": {
-        "count": 8,
+        "count": 9,
         "calls": [
           "self._database.acquire"
         ],
@@ -1379,6 +1379,7 @@
           "digest_due",
           "mark_digest_sent",
           "record",
+          "record_batch",
           "set_log_message_id",
           "unacknowledged",
           "unacknowledged_counts"
@@ -4103,6 +4104,17 @@
       }
     },
     {
+      "id": "monolithic-module-loc:velvet_bot/error_center.py:ee2462bb0bda246f",
+      "category": "monolithic-module-loc",
+      "path": "velvet_bot/error_center.py",
+      "fingerprint": "ee2462bb0bda246f829dc55d240d660e47ef9920638b9c8d27e7cc55ee5b6889",
+      "summary": "855 LOC exceeds 800",
+      "details": {
+        "loc": 855,
+        "limit": 800
+      }
+    },
+    {
       "id": "monolithic-module-loc:velvet_bot/media_sets.py:d0b5fb4d79a576f3",
       "category": "monolithic-module-loc",
       "path": "velvet_bot/media_sets.py",
@@ -5547,13 +5559,13 @@
       }
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/error_center.py:1c5dce1d1bc32005",
+      "id": "sql-outside-persistence:velvet_bot/error_center.py:7fe0fa10172c56d7",
       "category": "sql-outside-persistence",
       "path": "velvet_bot/error_center.py",
-      "fingerprint": "1c5dce1d1bc320056a595b9535b070bf0c15c6811464740e0cc93c0e276d73f6",
-      "summary": "11 SQL literals outside persistence",
+      "fingerprint": "7fe0fa10172c56d72566364c71e0bab1b3414af279c03bcb2482dc1c4f1841cf",
+      "summary": "12 SQL literals outside persistence",
       "details": {
-        "count": 11,
+        "count": 12,
         "keywords": [
           "INSERT INTO",
           "SELECT",
@@ -5565,6 +5577,7 @@
           "digest_due",
           "mark_digest_sent",
           "record",
+          "record_batch",
           "set_log_message_id",
           "unacknowledged",
           "unacknowledged_counts"
@@ -24872,12 +24885,12 @@
       "module": "velvet_bot.error_center",
       "layer": "root",
       "target_package": "application/<bounded-use-case>",
-      "loc": 663,
-      "function_count": 32,
+      "loc": 855,
+      "function_count": 37,
       "class_count": 6,
       "handler_count": 0,
-      "max_function_length": 56,
-      "branch_count": 48,
+      "max_function_length": 61,
+      "branch_count": 70,
       "internal_imports": [
         "velvet_bot.database"
       ],
@@ -24887,8 +24900,8 @@
         "aiogram.exceptions",
         "aiogram.types"
       ],
-      "sql_literal_count": 11,
-      "database_acquire_count": 8,
+      "sql_literal_count": 12,
+      "database_acquire_count": 9,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
       "any_count": 1,
@@ -24900,17 +24913,27 @@
       "installed_sentinel_count": 0,
       "package_getattr": false,
       "env_reads": [],
-      "polling_values": [],
+      "polling_values": [
+        {
+          "line": 491,
+          "owner": "stop",
+          "call": "asyncio.sleep",
+          "values": [
+            0.2,
+            1
+          ]
+        }
+      ],
       "worker_registrations": [],
       "violations": [
         {
-          "id": "sql-outside-persistence:velvet_bot/error_center.py:1c5dce1d1bc32005",
+          "id": "sql-outside-persistence:velvet_bot/error_center.py:7fe0fa10172c56d7",
           "category": "sql-outside-persistence",
           "path": "velvet_bot/error_center.py",
-          "fingerprint": "1c5dce1d1bc320056a595b9535b070bf0c15c6811464740e0cc93c0e276d73f6",
-          "summary": "11 SQL literals outside persistence",
+          "fingerprint": "7fe0fa10172c56d72566364c71e0bab1b3414af279c03bcb2482dc1c4f1841cf",
+          "summary": "12 SQL literals outside persistence",
           "details": {
-            "count": 11,
+            "count": 12,
             "keywords": [
               "INSERT INTO",
               "SELECT",
@@ -24922,6 +24945,7 @@
               "digest_due",
               "mark_digest_sent",
               "record",
+              "record_batch",
               "set_log_message_id",
               "unacknowledged",
               "unacknowledged_counts"
@@ -24929,13 +24953,13 @@
           }
         },
         {
-          "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:dd573dbb8536b75a",
+          "id": "database-acquire-outside-persistence:velvet_bot/error_center.py:65911e89f84a1028",
           "category": "database-acquire-outside-persistence",
           "path": "velvet_bot/error_center.py",
-          "fingerprint": "dd573dbb8536b75a42cd0b98c5f7882a400954be56345c672297b070a38620e3",
-          "summary": "8 acquire calls outside persistence",
+          "fingerprint": "65911e89f84a10287d5247760bfad602fb7d604ff03c4ffc0e729fee0c38b242",
+          "summary": "9 acquire calls outside persistence",
           "details": {
-            "count": 8,
+            "count": 9,
             "calls": [
               "self._database.acquire"
             ],
@@ -24945,6 +24969,7 @@
               "digest_due",
               "mark_digest_sent",
               "record",
+              "record_batch",
               "set_log_message_id",
               "unacknowledged",
               "unacknowledged_counts"
@@ -24959,6 +24984,17 @@
           "summary": "1 Any references",
           "details": {
             "count": 1
+          }
+        },
+        {
+          "id": "monolithic-module-loc:velvet_bot/error_center.py:ee2462bb0bda246f",
+          "category": "monolithic-module-loc",
+          "path": "velvet_bot/error_center.py",
+          "fingerprint": "ee2462bb0bda246f829dc55d240d660e47ef9920638b9c8d27e7cc55ee5b6889",
+          "summary": "855 LOC exceeds 800",
+          "details": {
+            "loc": 855,
+            "limit": 800
           }
         }
       ]

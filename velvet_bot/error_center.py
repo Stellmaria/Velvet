@@ -190,7 +190,13 @@ class ErrorIncidentRepository:
                 row = await connection.fetchrow(
                     """
                     UPDATE error_incidents
-                    SET severity = $2,
+                    SET severity = CASE
+                            WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'
+                                THEN 'CRITICAL'
+                            WHEN severity = 'ERROR' OR $2 = 'ERROR'
+                                THEN 'ERROR'
+                            ELSE 'WARNING'
+                        END,
                         logger_name = $3,
                         summary = $4,
                         details = $5,
@@ -212,6 +218,59 @@ class ErrorIncidentRepository:
                     captured.details,
                 )
                 return RecordedIncident(self._from_row(row), opened=reopened)
+
+    async def record_batch(
+        self,
+        captured: CapturedLog,
+        *,
+        count: int,
+        last_seen_at: datetime,
+    ) -> RecordedIncident:
+        safe_count = max(1, int(count))
+        async with self._database.acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                WITH target AS (
+                    SELECT id, acknowledged_at IS NOT NULL AS reopened
+                    FROM error_incidents
+                    WHERE fingerprint = $1::CHAR(64)
+                    FOR UPDATE
+                )
+                UPDATE error_incidents AS incident
+                SET severity = CASE
+                        WHEN incident.severity = 'CRITICAL' OR $2 = 'CRITICAL'
+                            THEN 'CRITICAL'
+                        WHEN incident.severity = 'ERROR' OR $2 = 'ERROR'
+                            THEN 'ERROR'
+                        ELSE 'WARNING'
+                    END,
+                    occurrence_count = incident.occurrence_count + $3,
+                    last_seen_at = GREATEST(incident.last_seen_at, $4),
+                    log_chat_message_id = CASE
+                        WHEN target.reopened THEN NULL
+                        ELSE incident.log_chat_message_id
+                    END,
+                    acknowledged_at = NULL,
+                    acknowledged_by = NULL
+                FROM target
+                WHERE incident.id = target.id
+                RETURNING incident.*, target.reopened
+                """,
+                captured.fingerprint,
+                captured.severity,
+                safe_count,
+                last_seen_at,
+            )
+        if row is None:
+            recorded = await self.record(captured)
+            if safe_count == 1:
+                return recorded
+            return await self.record_batch(
+                captured,
+                count=safe_count - 1,
+                last_seen_at=last_seen_at,
+            )
+        return RecordedIncident(self._from_row(row), opened=bool(row["reopened"]))
 
     async def set_log_message_id(self, incident_id: int, message_id: int) -> None:
         async with self._database.acquire() as connection:
@@ -314,7 +373,7 @@ class ErrorIncidentRepository:
             )
         if value is None:
             return True
-        return datetime.now(UTC) - value >= timedelta(seconds=max(1, cooldown_seconds))
+        return datetime.now(UTC) - value >= timedelta(seconds=max(0, cooldown_seconds))
 
     async def mark_digest_sent(self) -> None:
         async with self._database.acquire() as connection:
@@ -384,6 +443,23 @@ class ErrorIncidentCenter:
         self._consumer_task: asyncio.Task[None] | None = None
         self._handler: ErrorLoggingHandler | None = None
         self._dropped = 0
+        self._aggregate_interval = 2.0
+        self._aggregate_limit = 500
+        self._known_limit = 2000
+        self._known: dict[str, ErrorIncident] = {}
+        self._pending: dict[
+            str,
+            tuple[CapturedLog, int, datetime, datetime],
+        ] = {}
+        self._aggregation_metrics = {
+            "received": 0,
+            "new_groups": 0,
+            "aggregated_repeats": 0,
+            "flush_batches": 0,
+            "rows_updated": 0,
+            "notification_suppressions": 0,
+            "flush_errors": 0,
+        }
 
     async def start(self) -> None:
         if self._consumer_task is not None:
@@ -408,6 +484,13 @@ class ErrorIncidentCenter:
             self._consumer_task.cancel()
             await asyncio.gather(self._consumer_task, return_exceptions=True)
             self._consumer_task = None
+        for attempt in range(3):
+            await self.flush_pending()
+            if not self._pending:
+                break
+            await asyncio.sleep(0.2 * (attempt + 1))
+        if self._pending:
+            logger.error("Unflushed error aggregates on shutdown: %s", len(self._pending))
         self._loop = None
 
     def enqueue_threadsafe(self, captured: CapturedLog) -> None:
@@ -454,7 +537,14 @@ class ErrorIncidentCenter:
 
     async def _consume(self) -> None:
         while True:
-            captured = await self._queue.get()
+            try:
+                captured = await asyncio.wait_for(
+                    self._queue.get(),
+                    timeout=self._aggregate_interval,
+                )
+            except TimeoutError:
+                await self.flush_pending()
+                continue
             try:
                 await self._process(captured)
             except asyncio.CancelledError:
@@ -465,11 +555,108 @@ class ErrorIncidentCenter:
                 self._queue.task_done()
 
     async def _process(self, captured: CapturedLog) -> None:
-        recorded = await self._repository.record(captured)
-        incident = recorded.incident
-        await self._publish_to_log_chat(incident)
+        self._aggregation_metrics["received"] += 1
+        known = self._known.get(captured.fingerprint)
+        previous_severity = known.severity if known is not None else None
+        if captured.severity == "CRITICAL" or known is None:
+            try:
+                await self._flush_one(captured.fingerprint)
+            except Exception as error:  # p2-approved-boundary: preserve-critical-immediate-path
+                logger.warning("Pre-immediate aggregate flush failed: %s", error)
+            recorded = await self._repository.record(captured)
+            self._remember(recorded.incident)
+            if recorded.incident.occurrence_count == 1:
+                self._aggregation_metrics["new_groups"] += 1
+            await self._publish_to_log_chat(recorded.incident)
+            if recorded.opened:
+                await self._send_owner_digest(cooldown_seconds=120)
+            elif captured.severity == "CRITICAL" and previous_severity != "CRITICAL":
+                await self._send_owner_digest(cooldown_seconds=0)
+            return
+
+        pending = self._pending.get(captured.fingerprint)
+        if pending is None and len(self._pending) >= self._aggregate_limit:
+            try:
+                await self._flush_one(next(iter(self._pending)))
+            except Exception:  # p2-approved-boundary: fallback-immediate-under-aggregate-pressure
+                recorded = await self._repository.record(captured)
+                self._remember(recorded.incident)
+                await self._publish_to_log_chat(recorded.incident)
+                if recorded.opened:
+                    await self._send_owner_digest(cooldown_seconds=120)
+                return
+        now = datetime.now(UTC)
+        first_seen_at = now if pending is None else pending[2]
+        count = 1 if pending is None else pending[1] + 1
+        selected = captured
+        if pending is not None:
+            rank = {"WARNING": 1, "ERROR": 2, "CRITICAL": 3}
+            selected = max((pending[0], captured), key=lambda item: rank[item.severity])
+        self._pending[captured.fingerprint] = (
+            selected,
+            count,
+            first_seen_at,
+            now,
+        )
+        self._aggregation_metrics["aggregated_repeats"] += 1
+        self._aggregation_metrics["notification_suppressions"] += 1
+
+    def _remember(self, incident: ErrorIncident) -> None:
+        self._known.pop(incident.fingerprint, None)
+        self._known[incident.fingerprint] = incident
+        while len(self._known) > self._known_limit:
+            self._known.pop(next(iter(self._known)))
+
+    async def _flush_one(self, fingerprint: str) -> None:
+        batch = self._pending.pop(fingerprint, None)
+        if batch is None:
+            return
+        captured, count, first_seen_at, last_seen_at = batch
+        try:
+            recorded = await self._repository.record_batch(
+                captured,
+                count=count,
+                last_seen_at=last_seen_at,
+            )
+        except Exception:  # p2-approved-boundary: restore-pending-after-batch-failure
+            current = self._pending.get(fingerprint)
+            if current is not None:
+                count += current[1]
+                first_seen_at = min(first_seen_at, current[2])
+                last_seen_at = max(last_seen_at, current[3])
+            self._pending[fingerprint] = (
+                captured,
+                count,
+                first_seen_at,
+                last_seen_at,
+            )
+            self._aggregation_metrics["flush_errors"] += 1
+            raise
+        self._aggregation_metrics["flush_batches"] += 1
+        self._aggregation_metrics["rows_updated"] += 1
+        self._remember(recorded.incident)
+        await self._publish_to_log_chat(recorded.incident)
         if recorded.opened:
             await self._send_owner_digest(cooldown_seconds=120)
+
+    async def flush_pending(self) -> None:
+        for fingerprint in tuple(self._pending):
+            try:
+                await self._flush_one(fingerprint)
+            except Exception as error:  # p2-approved-boundary: retry-next-aggregate-flush
+                logger.warning("Could not flush error aggregate %s: %s", fingerprint, error)
+
+    def aggregation_metrics(self) -> dict[str, int | float]:
+        snapshot: dict[str, int | float] = dict(self._aggregation_metrics)
+        snapshot["dropped_queue_events"] = self._dropped
+        snapshot["pending_fingerprints"] = len(self._pending)
+        snapshot["oldest_pending_age_seconds"] = max(
+            (
+                datetime.now(UTC) - row[2]
+            ).total_seconds()
+            for row in self._pending.values()
+        ) if self._pending else 0.0
+        return snapshot
 
     @staticmethod
     def _incident_markup(incident_id: int) -> InlineKeyboardMarkup:
@@ -613,9 +800,11 @@ class ErrorIncidentCenter:
         return await self._send_owner_digest(cooldown_seconds=1800)
 
     async def acknowledge_incident(self, incident_id: int, user_id: int) -> bool:
+        await self.flush_pending()
         incident = await self._repository.acknowledge(incident_id, user_id)
         if incident is None:
             return False
+        self._known.clear()
         if self._log_chat_id is not None and incident.log_chat_message_id is not None:
             try:
                 await self._bot.edit_message_text(
@@ -633,7 +822,10 @@ class ErrorIncidentCenter:
         return True
 
     async def acknowledge_all(self, user_id: int) -> int:
+        await self.flush_pending()
         incidents = await self._repository.acknowledge_all(user_id)
+        if incidents:
+            self._known.clear()
         for incident in incidents:
             if self._log_chat_id is None or incident.log_chat_message_id is None:
                 continue
