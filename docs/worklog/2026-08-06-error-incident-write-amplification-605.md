@@ -1,43 +1,75 @@
 # Error Incident write amplification (#605)
 
-## Статус
+- Дата: 2026-08-06
+- ID: #605
+- Линия/фаза: P1 production performance / Error Incident Center
+- Статус: `частично`
+- Ветка: `feat/issue-605-error-incident-batching-v2`
+- Базовый commit: `dc14c0c5087244e37394655c12aeb0208afa50c8`
 
-Implementation slice готовится в ветке `feat/issue-605-error-incident-batching`. Production acceptance остаётся отдельным шагом, поскольку в текущей сессии нет доступа к VPS и PostgreSQL runtime metrics.
+## Перед началом
 
-## Проблема
+### Цель
 
-Повтор одного fingerprint обрабатывался как отдельная транзакция `SELECT ... FOR UPDATE` + `UPDATE`, после чего для каждого события выполнялась попытка обновить Telegram-сообщение. Error storm тем самым создавал собственную нагрузку на PostgreSQL и Telegram именно в момент деградации системы.
+Снизить write amplification Error Incident Center при массовом повторении одного fingerprint, сохранив немедленную регистрацию новых инцидентов и `CRITICAL`, корректные acknowledge/reopen semantics и bounded использование памяти.
 
-## Решение
+### Исходный контекст
 
-- первый fingerprint сохраняется и публикуется немедленно;
+Каждый повтор одного fingerprint выполнял отдельную транзакцию `SELECT ... FOR UPDATE` + `UPDATE`, а затем инициировал обновление Telegram-сообщения. Во время error storm диагностическая подсистема тем самым усиливала нагрузку на PostgreSQL и Telegram именно в момент деградации.
+
+### Планируемый объём
+
+- добавить bounded aggregation повторов по fingerprint;
+- сохранять первый occurrence и `CRITICAL` немедленно;
+- выполнять atomic PostgreSQL batch update `occurrence_count += N`;
+- не переписывать `summary` и `details` при batch update;
+- не допускать понижения severity;
+- обеспечить flush по интервалу, pressure limit и graceful shutdown;
+- сохранить acknowledge/reopen semantics;
+- сократить Telegram edits до одного на batch;
+- добавить наблюдаемые counters и regression tests;
+- пересчитать generated architecture inventories.
+
+### Критерии готовности
+
+- первый occurrence регистрируется без ожидания batch window;
+- тысяча одинаковых повторов агрегируется в одну batch write;
+- `CRITICAL` и escalation до `CRITICAL` проходят немедленно;
+- severity монотонна в immediate и batch paths;
+- неудачный flush не теряет pending count и допускает повтор;
+- acknowledge выполняется после flush, следующий occurrence корректно reopen-ит incident;
+- shutdown делает final flush;
+- память имеет явные пределы;
+- focused tests и обязательный CI проходят;
+- production acceptance отделён от implementation slice и не подменяется предположениями.
+
+### Риски и ограничения
+
+В текущей сессии нет доступа к VPS и PostgreSQL runtime metrics. Поэтому невозможно честно выполнить synthetic production storm и сравнить `pg_stat_statements`, WAL/IO, latency и Telegram rate. Graceful shutdown flush-ит pending batches, но принудительное завершение процесса без shutdown может потерять события внутри текущего двухсекундного окна; это осознанный компромисс между write amplification и durability повторов, при этом первый occurrence всегда уже сохранён.
+
+## После завершения
+
+### Фактически сделано
+
+- первый fingerprint и все `CRITICAL` сохраняются и публикуются немедленно;
 - известные `WARNING`/`ERROR` агрегируются в памяти по fingerprint;
-- flush выполняется каждые 2 секунды, при достижении bounded map limit и при graceful shutdown;
+- flush выполняется каждые 2 секунды, при достижении pending limit и при graceful shutdown;
 - batch использует один atomic PostgreSQL update `occurrence_count += N`;
-- `summary` и `details` на повторном batch update не переписываются;
-- severity не понижается;
-- `CRITICAL` и escalation до `CRITICAL` не ждут batch window;
-- acknowledge сначала flush-ит pending counts, затем фиксирует acknowledgement;
+- batch update не переписывает `summary` и `details`;
+- immediate и batch paths сохраняют максимальную severity;
+- escalation до `CRITICAL` обходит digest cooldown;
+- acknowledge сначала flush-ит pending counts и сбрасывает known cache;
 - неудачный flush возвращает batch в память и учитывается в metrics;
 - память ограничена queue `1000`, pending fingerprints `500`, known fingerprints `2000`;
-- Telegram message edit выполняется один раз на batch вместо одного раза на occurrence.
+- Telegram message edit выполняется один раз на batch;
+- `ErrorIncidentCenter.aggregation_metrics()` сообщает received, new groups, aggregated repeats, flush batches, rows updated, suppressions, flush errors, dropped events, pending count и oldest pending age;
+- generated package/shared-contract inventories пересчитаны поверх актуальной базы.
 
-## Метрики
+### Миграции и совместимость
 
-`ErrorIncidentCenter.aggregation_metrics()` возвращает:
+Миграция схемы не требуется. Существующая таблица `error_incidents` и публичные интерфейсы сохраняются. Изменяется только стратегия записи повторов и частота Telegram updates. Первый occurrence, acknowledge и reopen остаются совместимыми с прежним поведением.
 
-- received events;
-- new incident groups;
-- aggregated repeats;
-- flush batches;
-- rows updated;
-- notification suppressions;
-- flush errors;
-- dropped queue events;
-- pending fingerprint count;
-- oldest pending age.
-
-## Проверки
+### Проверки
 
 Добавлены regression tests для:
 
@@ -46,8 +78,21 @@ Implementation slice готовится в ветке `feat/issue-605-error-inci
 - retry без потери pending count после ошибки flush;
 - корректного acknowledge/reopen;
 - final flush при shutdown;
-- atomic SQL contract без rewrite payload.
+- monotonic immediate severity;
+- atomic batch SQL без rewrite payload.
 
-## Production acceptance
+Точечная Python compilation и пересчёт generated inventories прошли. Type check PR прошёл; полный обязательный CI повторно запускается после приведения worklog к контракту.
 
-После появления доступа к VPS требуется synthetic storm на staging/production-like окружении и сравнение `pg_stat_statements`, WAL/IO, Telegram rate и latency до/после. Issue #605 не должен закрываться до фиксации этих evidence.
+### PR и commit
+
+- PR: #661
+- База PR: `dc14c0c5087244e37394655c12aeb0208afa50c8`
+- Итоговый head и merge commit определяются после обязательного CI.
+
+### Незавершённое
+
+Не выполнено production acceptance из Definition of Done: synthetic storm на VPS или production-like окружении, сравнение `pg_stat_statements`, WAL/IO, latency и Telegram notification rate. Issue #605 остаётся открытым после merge implementation slice.
+
+### Следующий шаг
+
+Дождаться зелёного обязательного CI и слить PR #661 в `main`. После восстановления доступа к VPS провести production storm acceptance, приложить измерения к #605 и только затем решать вопрос о закрытии issue.
