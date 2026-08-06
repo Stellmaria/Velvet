@@ -81,13 +81,14 @@
 - monotonic immediate severity;
 - atomic batch SQL без rewrite payload.
 
-Точечная Python compilation и пересчёт generated inventories прошли. Type check PR прошёл; полный обязательный CI повторно запускается после приведения worklog к контракту.
+Точечная Python compilation прошла. Generated package/shared-contract inventories пересчитаны каноническим Python 3.13; `scripts/ci_preflight.py` прошёл до фиксации итогового inventory commit. Type check и project notes contract проходили на предыдущем кодовом head; полный обязательный CI повторно запускается на финальном пользовательском commit.
 
 ### PR и commit
 
 - PR: #661
 - База PR: `dc14c0c5087244e37394655c12aeb0208afa50c8`
-- Итоговый head и merge commit определяются после обязательного CI.
+- Канонический inventory commit: `802a12564bcb89b5a71cf2c25383cc5f2abf2814`
+- Итоговый merge commit определяется после обязательного CI.
 
 ### Незавершённое
 
