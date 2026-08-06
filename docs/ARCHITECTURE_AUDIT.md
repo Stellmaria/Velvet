@@ -381,3 +381,9 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 
 Этот срез подтверждает только code/CI scope #605. Production storm acceptance, `pg_stat_statements`, WAL/IO, latency и Telegram rate требуют live-доступа и не закрываются зелёным CI. Обязательства #409/#410/#412/#438 и временные `meow_*` compatibility layers остаются открытыми.
 <!-- /issue-605-error-center-batching-architecture-slice -->
+
+<!-- issue-457-legacy-delivery-retirement -->
+## #457: retirement legacy delivery ownership — 2026-08-06
+
+После PR #488 durable media delivery уже владел state machine, но composition продолжал перечислять четыре neutralized installer. Они удалены, `install_delivery_handler` runtime mutation hook удалён, canonical UI остаётся `media_delivery_ui_install`, а active Friendly worker не вызывает inherited best-effort transport send. Это repository-level closure legacy ownership; external delivery matrix остаётся #410/#412.
+<!-- /issue-457-legacy-delivery-retirement -->

@@ -296,3 +296,9 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 
 Этот срез подтверждает только code/CI scope #605. Production storm acceptance, `pg_stat_statements`, WAL/IO, latency и Telegram rate требуют live-доступа и не закрываются зелёным CI. Обязательства #409/#410/#412/#438 и временные `meow_*` compatibility layers остаются открытыми.
 <!-- /issue-605-error-center-batching-architecture-slice -->
+
+<!-- issue-457-legacy-delivery-retirement -->
+## Retirement legacy media delivery installers — 6 августа 2026 года
+
+Durable media delivery PR #488 остаётся единственным production ownership path. Четыре neutralized installer слоя удалены из startup composition; runtime method replacement `install_delivery_handler` удалён; active Friendly worker сохраняет явный no-op для inherited legacy delivery phase. Generated inventories пересобраны. Live provider/Telegram acceptance остаётся #410/#412.
+<!-- /issue-457-legacy-delivery-retirement -->

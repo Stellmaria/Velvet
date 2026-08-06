@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
 import logging
 import time
 from collections import OrderedDict
@@ -30,7 +29,6 @@ from .models import KieGenerationRequest, KieModelAlias, KieTaskRecord
 from .worker import ProgressMessage, optional_int, render_progress_bar
 
 logger = logging.getLogger(__name__)
-_INSTALLED = False
 _MONEY_QUANTUM = Decimal("0.01")
 _GRS_CREDITS = {
     KieModelAlias.NANO_BANANA_2: Decimal("1200"),
@@ -119,12 +117,21 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         )
         self._provider_balances: dict[str, Decimal | None] = {}
 
-    def __getattribute__(self, name: str) -> Any:
-        if name == "_deliver_best_effort":
-            # Compatibility installers may still assign this method to subclasses.
-            # Delivery ownership is deliberately non-overridable during migration.
-            return object.__getattribute__(self, "_durable_delivery_guard")
-        return super().__getattribute__(name)
+    async def _deliver_best_effort(
+        self,
+        *,
+        chat_id: int | None,
+        request: KieGenerationRequest,
+        record: KieTaskRecord,
+    ) -> None:
+        """Disable the legacy worker delivery phase.
+
+        Provider completion is persisted by the queue and delivered only by the
+        durable media-delivery use case. Keeping this explicit override prevents
+        the inherited best-effort transport path from sending a duplicate result.
+        """
+
+        del chat_id, request, record
 
     async def process_once(self) -> bool:
         await self._recover_durable_delivery(phase="before-generation")
@@ -485,18 +492,6 @@ class FriendlyKieGenerationWorker(EconomyKieGenerationWorker):
         finally:
             self._provider_balances.pop(str(task.id), None)
 
-    async def _durable_delivery_guard(
-        self,
-        *,
-        chat_id: int | None,
-        request: KieGenerationRequest,
-        record: KieTaskRecord,
-    ) -> None:
-        """Generation workers never deliver; the durable use case owns that phase."""
-
-        del chat_id, request, record
-
-
 
 def friendly_stage(request: KieGenerationRequest, stage: str) -> str:
     text = str(stage or "").strip()
@@ -543,28 +538,9 @@ def friendly_error(
 def install_friendly_media_worker() -> None:
     """Install the provider-aware worker in the application composition root."""
 
-    global _INSTALLED
-    if _INSTALLED:
-        return
     from velvet_bot.app.media_delivery_ui_install import install_media_delivery_ui
 
     install_media_delivery_ui()
-    _disable_legacy_delivery_installers()
-    _INSTALLED = True
-
-
-def _disable_legacy_delivery_installers() -> None:
-    """Keep old composition stages inert while deployments migrate safely."""
-
-    for module_name in (
-        "velvet_bot.app.original_image_delivery_hotfix",
-        "velvet_bot.app.original_video_delivery_hotfix",
-        "velvet_bot.app.auf_result_delivery_recovery",
-        "velvet_bot.app.auf_active_delivery_fix",
-    ):
-        module = importlib.import_module(module_name)
-        if hasattr(module, "_INSTALLED"):
-            module._INSTALLED = True
 
 
 def _request_from_payload(payload: Mapping[str, object]) -> KieGenerationRequest | None:

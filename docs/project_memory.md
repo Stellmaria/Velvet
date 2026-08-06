@@ -403,3 +403,9 @@ Provider adapter baseline: 648 production Python files, 3748 functions, 170 regi
 
 Этот срез подтверждает только code/CI scope #605. Production storm acceptance, `pg_stat_statements`, WAL/IO, latency и Telegram rate требуют live-доступа и не закрываются зелёным CI. Обязательства #409/#410/#412/#438 и временные `meow_*` compatibility layers остаются открытыми.
 <!-- /issue-605-error-center-batching-architecture-slice -->
+
+<!-- issue-457-legacy-delivery-retirement -->
+## Media delivery ownership retirement — 2026-08-06
+
+Канонический delivery contract: durable repository → result resolver → download/original/preview/notification → redelivery. Старые image/video hotfix, Auf recovery и active-worker fix удалены вместе с четырьмя startup stages. Повторная доставка не имеет provider submit/charge boundary. Live acceptance остаётся #410/#412.
+<!-- /issue-457-legacy-delivery-retirement -->
