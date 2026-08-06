@@ -1,0 +1,48 @@
+name: Apply issue 605 batching
+
+on:
+  push:
+    branches:
+      - feat/issue-605-error-incident-batching
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-605-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/issue-605-error-incident-batching
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply bounded aggregation and refresh inventories
+        run: python scripts/apply_issue_605.py
+
+      - name: Verify transformed source
+        run: |
+          python -m py_compile velvet_bot/error_center.py
+          test ! -e scripts/apply_issue_605.py
+          test ! -e .github/workflows/issue-605-apply.yml
+          git diff --check
+
+      - name: Commit generated implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: batch repeated error incidents (#605)"
+          git push origin HEAD:feat/issue-605-error-incident-batching
