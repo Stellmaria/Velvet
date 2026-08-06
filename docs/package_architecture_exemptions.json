@@ -873,6 +873,7 @@
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_active_delivery_fix.py",
+        "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
@@ -1995,11 +1996,11 @@
       "issue": "#455"
     },
     {
-      "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:55e6d7f1c6d6dcf3",
+      "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:6403cf3a3af132ac",
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/gpt_image_2_bootstrap.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -2585,11 +2586,11 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:662dadbee45ab024",
+      "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:06ddb0d3ec4240b0",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/gpt_image_2_bootstrap.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
@@ -3399,6 +3400,7 @@
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_active_delivery_fix.py",
+        "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
@@ -3700,6 +3702,7 @@
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_active_delivery_fix.py",
+        "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
@@ -5160,6 +5163,7 @@
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/auf_active_delivery_fix.py",
+        "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
         "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
@@ -6115,7 +6119,7 @@
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/gpt_image_2_bootstrap.py"
+        "velvet_bot/app/composition.py"
       ],
       "replacement": "Canonical boundary tracked by #455.",
       "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
