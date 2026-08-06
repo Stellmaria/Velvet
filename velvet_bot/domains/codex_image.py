@@ -6,6 +6,7 @@ import io
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 from typing import Any, Mapping
@@ -220,6 +221,119 @@ def _limit_line(before: object, after: object, label: str, key: str) -> str:
     return f"{label}: {before_value:.1f}% → {after_value:.1f}% ({after_value - before_value:+.1f} п.п.)"
 
 
+def _parse_timestamp(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        raw = str(value or "").strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _format_clock(value: datetime | None) -> str:
+    if value is None:
+        return "—"
+    return value.astimezone(timezone.utc).strftime("%H:%M:%S UTC")
+
+
+def _format_duration(value: object) -> str:
+    try:
+        total = max(0, int(round(float(value))))
+    except (TypeError, ValueError):
+        return "—"
+    hours, remainder = divmod(total, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours} ч {minutes} мин {seconds} сек"
+    if minutes:
+        return f"{minutes} мин {seconds} сек"
+    return f"{seconds} сек"
+
+
+def _seconds_between(start: datetime | None, end: datetime | None) -> int | None:
+    if start is None or end is None:
+        return None
+    return max(0, int(round((end - start).total_seconds())))
+
+
+def _progress_bar(progress: int) -> str:
+    bounded = max(0, min(100, int(progress)))
+    filled = min(10, max(0, round(bounded / 10)))
+    return "█" * filled + "░" * (10 - filled)
+
+
+def render_codex_image_progress(
+    request: CodexImageRequest,
+    *,
+    task_id: object,
+    progress: int,
+    stage: str,
+    queued_at: datetime,
+    started_at: datetime | None = None,
+    finished_at: datetime | None = None,
+    rate_limits_before: object = None,
+    rate_limits_after: object = None,
+) -> str:
+    bounded = max(0, min(100, int(progress)))
+    current = finished_at or datetime.now(timezone.utc)
+    queue_wait = _seconds_between(queued_at, started_at)
+    execution = _seconds_between(started_at, current)
+    total = _seconds_between(queued_at, current) if started_at is not None else None
+    primary = _limit_line(
+        rate_limits_before,
+        rate_limits_after,
+        "Короткое окно",
+        "primary",
+    )
+    secondary = _limit_line(
+        rate_limits_before,
+        rate_limits_after,
+        "Недельное окно",
+        "secondary",
+    )
+    if bounded == 0 and rate_limits_before is None and rate_limits_after is None:
+        primary = "Короткое окно: снимок при запуске"
+        secondary = "Недельное окно: снимок при запуске"
+    lines = [
+        f"<b>Ауф · {GPT_IMAGE_2_NAME}</b>",
+        "",
+        f"Статус: <b>{escape(stage)} · {bounded}%</b>",
+        f"<code>{_progress_bar(bounded)}</code>",
+        "",
+        f"Экспорт: <b>{request.resolution} JPEG · {request.aspect_ratio}</b>",
+        f"Референсов: <b>{len(request.references)}</b>",
+        "",
+        "<b>Лимит Codex</b>",
+        primary,
+        secondary,
+        "",
+        "<b>Время</b>",
+        f"Поставлено: <code>{_format_clock(queued_at)}</code>",
+        f"Старт: <code>{_format_clock(started_at)}</code>",
+        f"Завершено: <code>{_format_clock(finished_at)}</code>",
+    ]
+    if started_at is None:
+        lines.append("В очереди: <b>ожидание запуска</b>")
+    else:
+        lines.extend(
+            [
+                f"В очереди: <b>{_format_duration(queue_wait)}</b>",
+                f"Выполнение: <b>{_format_duration(execution)}</b>",
+                f"Всего: <b>{_format_duration(total)}</b>",
+            ]
+        )
+    if task_id:
+        lines.extend(("", f"Задача: <code>{escape(str(task_id))}</code>"))
+    return "\n".join(lines)
+
+
 class CodexImageWorker:
     def __init__(self, *, bot: Bot, queue: AITaskQueueService, client: CodexImageClient, worker_id: str = "codex-image-generation") -> None:
         self._bot = bot
@@ -235,15 +349,88 @@ class CodexImageWorker:
         )
         if task is None:
             return 0
+        chat_id = _optional_int(task.payload.get("chat_id"))
+        message_id = _optional_int(task.payload.get("progress_message_id"))
+        started_at = datetime.now(timezone.utc)
+        queued_at = (
+            _parse_timestamp(task.payload.get("queued_at"))
+            or _parse_timestamp(task.created_at)
+            or started_at
+        )
+        request: CodexImageRequest | None = None
+        status: dict[str, Any] = {}
         try:
-            request = CodexImageRequest.from_payload(_mapping(task.payload.get("request")))
-            chat_id = _optional_int(task.payload.get("chat_id"))
-            message_id = await self._progress(chat_id, "GPT Image 2: подготовка референсов · 5%")
+            request = CodexImageRequest.from_payload(
+                _mapping(task.payload.get("request"))
+            )
+            initial = render_codex_image_progress(
+                request,
+                task_id=task.id,
+                progress=5,
+                stage="подготовка референсов",
+                queued_at=queued_at,
+                started_at=started_at,
+            )
+            if message_id is None:
+                message_id = await self._progress(chat_id, initial)
+            else:
+                await self._edit_progress(chat_id, message_id, initial)
             refs = await self._download_references(request)
-            await self._edit_progress(chat_id, message_id, "GPT Image 2: анализ и генерация · 20%")
-            run_id = await self._client.submit(request, refs, session_id=f"auf-{task.id}")
-            status = await self._wait(task.id, run_id, chat_id, message_id)
+            await self._edit_progress(
+                chat_id,
+                message_id,
+                render_codex_image_progress(
+                    request,
+                    task_id=task.id,
+                    progress=20,
+                    stage="анализ и генерация",
+                    queued_at=queued_at,
+                    started_at=started_at,
+                ),
+            )
+            run_id = await self._client.submit(
+                request,
+                refs,
+                session_id=f"auf-{task.id}",
+            )
+            status = await self._wait(
+                task.id,
+                run_id,
+                chat_id,
+                message_id,
+                request=request,
+                queued_at=queued_at,
+                started_at=started_at,
+            )
+            await self._edit_progress(
+                chat_id,
+                message_id,
+                render_codex_image_progress(
+                    request,
+                    task_id=task.id,
+                    progress=92,
+                    stage="получение результата",
+                    queued_at=queued_at,
+                    started_at=started_at,
+                    rate_limits_before=status.get("rate_limits_before"),
+                    rate_limits_after=status.get("rate_limits_after"),
+                ),
+            )
             original = await self._client.content(run_id)
+            await self._edit_progress(
+                chat_id,
+                message_id,
+                render_codex_image_progress(
+                    request,
+                    task_id=task.id,
+                    progress=96,
+                    stage="подготовка JPEG",
+                    queued_at=queued_at,
+                    started_at=started_at,
+                    rate_limits_before=status.get("rate_limits_before"),
+                    rate_limits_after=status.get("rate_limits_after"),
+                ),
+            )
             exported, dimensions = await asyncio.to_thread(
                 export_jpeg,
                 original,
@@ -251,6 +438,10 @@ class CodexImageWorker:
                 aspect_ratio=request.aspect_ratio,
             )
             preview = await asyncio.to_thread(preview_jpeg, exported)
+            finished_at = datetime.now(timezone.utc)
+            queue_wait_seconds = _seconds_between(queued_at, started_at) or 0
+            execution_seconds = _seconds_between(started_at, finished_at) or 0
+            total_seconds = _seconds_between(queued_at, finished_at) or 0
             result: dict[str, object] = {
                 "provider": "codex_subscription",
                 "model_alias": GPT_IMAGE_2_ALIAS,
@@ -268,10 +459,34 @@ class CodexImageWorker:
                 "rate_limits_before": status.get("rate_limits_before"),
                 "rate_limits_after": status.get("rate_limits_after"),
                 "usage": status.get("usage"),
+                "queued_at": queued_at.isoformat(),
+                "started_at": started_at.isoformat(),
+                "finished_at": finished_at.isoformat(),
+                "queue_wait_seconds": queue_wait_seconds,
+                "execution_seconds": execution_seconds,
+                "total_seconds": total_seconds,
                 "generation_attempts": 1,
             }
-            await self._queue.complete(task_id=task.id, worker_id=self._worker_id, result=result)
-            await self._edit_progress(chat_id, message_id, "GPT Image 2: готово · 100%")
+            await self._queue.complete(
+                task_id=task.id,
+                worker_id=self._worker_id,
+                result=result,
+            )
+            await self._edit_progress(
+                chat_id,
+                message_id,
+                render_codex_image_progress(
+                    request,
+                    task_id=task.id,
+                    progress=100,
+                    stage="завершено",
+                    queued_at=queued_at,
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    rate_limits_before=status.get("rate_limits_before"),
+                    rate_limits_after=status.get("rate_limits_after"),
+                ),
+            )
             await self._deliver(chat_id, request, result, preview, exported)
         except asyncio.CancelledError:
             raise
@@ -283,7 +498,24 @@ class CodexImageWorker:
                 base_delay_seconds=0,
                 max_delay_seconds=0,
             )
-            await self._notify_failure(_optional_int(task.payload.get("chat_id")), error)
+            if request is not None:
+                finished_at = datetime.now(timezone.utc)
+                await self._edit_progress(
+                    chat_id,
+                    message_id,
+                    render_codex_image_progress(
+                        request,
+                        task_id=task.id,
+                        progress=0,
+                        stage="ошибка",
+                        queued_at=queued_at,
+                        started_at=started_at,
+                        finished_at=finished_at,
+                        rate_limits_before=status.get("rate_limits_before"),
+                        rate_limits_after=status.get("rate_limits_after"),
+                    ),
+                )
+            await self._notify_failure(chat_id, error)
         return 1
 
     async def _download_references(self, request: CodexImageRequest) -> list[dict[str, object]]:
@@ -303,7 +535,17 @@ class CodexImageWorker:
             )
         return values
 
-    async def _wait(self, task_id: UUID, run_id: str, chat_id: int | None, message_id: int | None) -> dict[str, Any]:
+    async def _wait(
+        self,
+        task_id: UUID,
+        run_id: str,
+        chat_id: int | None,
+        message_id: int | None,
+        *,
+        request: CodexImageRequest,
+        queued_at: datetime,
+        started_at: datetime,
+    ) -> dict[str, Any]:
         deadline = asyncio.get_running_loop().time() + self._client.timeout_seconds
         progress = 20
         while True:
@@ -314,10 +556,28 @@ class CodexImageWorker:
             if state == "completed":
                 return status
             if state in {"failed", "cancelled"}:
-                raise RuntimeError(str(status.get("error") or f"GPT Image 2: {state}"))
+                raise RuntimeError(
+                    str(status.get("error") or f"GPT Image 2: {state}")
+                )
             progress = min(90, progress + 3)
-            await self._edit_progress(chat_id, message_id, f"GPT Image 2: анализ и генерация · {progress}%")
-            await self._queue.heartbeat(task_id=task_id, worker_id=self._worker_id)
+            await self._edit_progress(
+                chat_id,
+                message_id,
+                render_codex_image_progress(
+                    request,
+                    task_id=task_id,
+                    progress=progress,
+                    stage="анализ и генерация",
+                    queued_at=queued_at,
+                    started_at=started_at,
+                    rate_limits_before=status.get("rate_limits_before"),
+                    rate_limits_after=status.get("rate_limits_after"),
+                ),
+            )
+            await self._queue.heartbeat(
+                task_id=task_id,
+                worker_id=self._worker_id,
+            )
             await asyncio.sleep(5)
 
     async def _deliver(
@@ -344,6 +604,11 @@ class CodexImageWorker:
                 "<b>Лимит Codex</b>",
                 _limit_line(before, after, "Короткое окно", "primary"),
                 _limit_line(before, after, "Недельное окно", "secondary"),
+                "",
+                "<b>Время</b>",
+                f"В очереди: <b>{_format_duration(result.get('queue_wait_seconds'))}</b>",
+                f"Выполнение: <b>{_format_duration(result.get('execution_seconds'))}</b>",
+                f"Всего: <b>{_format_duration(result.get('total_seconds'))}</b>",
             )
         )
         await self._bot.send_photo(
@@ -415,4 +680,5 @@ __all__ = (
     "MAX_CODEX_IMAGE_REFERENCES",
     "export_dimensions",
     "export_jpeg",
+    "render_codex_image_progress",
 )

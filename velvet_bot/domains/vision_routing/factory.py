@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
+from urllib.parse import urlsplit
 
 from velvet_bot.core.config import Settings
 from velvet_bot.core.config.settings import (
@@ -146,6 +147,11 @@ def _route_config(
         os.getenv(f"{prefix}_BASE_URL", "").strip().rstrip("/")
         or settings.ai_vision_base_url
     )
+    if (
+        provider == "openai_compatible"
+        and urlsplit(base_url).hostname == "vision-gateway"
+    ):
+        provider = LOCAL_OPENAI_COMPATIBLE_PROVIDER
     validate_local_vision_base_url(
         provider,
         base_url,
