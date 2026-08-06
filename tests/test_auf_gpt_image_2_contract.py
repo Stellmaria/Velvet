@@ -8,8 +8,10 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 from velvet_bot.app import auf_gpt_image_2_install
+from velvet_bot.app import auf_gpt_image_2_quality_install
 from velvet_bot.app.composition import build_application_composition
 from velvet_bot.domains.codex_image import (
+    CODEX_IMAGE_RESOLUTIONS,
     CODEX_IMAGE_TASK_TYPE,
     CodexImageRequest,
     GPT_IMAGE_2_NAME,
@@ -24,6 +26,11 @@ class AufGptImage2ContractTests(unittest.TestCase):
             composition.feature_stage_names[-2:],
             ("install_auf_gpt_image_2", "install_auf_branding"),
         )
+        stage_source = inspect.getsource(
+            composition.feature_stages_factory
+        )
+        self.assertIn("install_gpt_image_with_byesu_quality", stage_source)
+        self.assertIn("install_auf_gpt_image_2_quality", stage_source)
 
     def test_worker_bootstrap_finalizes_after_feature_wrappers(self) -> None:
         from velvet_bot.app import bootstrap
@@ -94,7 +101,7 @@ class AufGptImage2ContractTests(unittest.TestCase):
             "media.generate.codex_image",
         )
 
-    def test_progress_card_shows_codex_delta_and_elapsed_time(self) -> None:
+    def test_progress_card_keeps_primary_codex_export_honest(self) -> None:
         request = CodexImageRequest(
             prompt="Нарисуй персонажа",
             references=(),
@@ -133,19 +140,18 @@ class AufGptImage2ContractTests(unittest.TestCase):
         self.assertIn("Выполнение: <b>1 мин 29 сек</b>", text)
         self.assertIn("Всего: <b>1 мин 44 сек</b>", text)
 
-    def test_quality_selector_is_hidden_and_internal_profile_is_fixed(self) -> None:
-        module_source = inspect.getsource(auf_gpt_image_2_install)
-        final_source = inspect.getsource(auf_gpt_image_2_install._show_final)
-        request_source = inspect.getsource(auf_gpt_image_2_install._request)
-        resolution_source = inspect.getsource(
-            auf_gpt_image_2_install._show_resolutions
-        )
+    def test_quality_selector_is_restored_only_for_byesu_fallback(self) -> None:
+        base_source = inspect.getsource(auf_gpt_image_2_install)
+        patch_source = inspect.getsource(auf_gpt_image_2_quality_install)
 
-        self.assertNotIn("экспорт 1K, 2K или 4K", module_source)
-        self.assertNotIn('"Размер"', final_source)
-        self.assertNotIn("request.resolution", final_source)
-        self.assertIn("resolution=_INTERNAL_EXPORT_PROFILE", request_source)
-        self.assertIn("await _show_ratios(callback, state)", resolution_source)
+        self.assertIn("_INTERNAL_EXPORT_PROFILE", base_source)
+        self.assertEqual(CODEX_IMAGE_RESOLUTIONS, ("1K", "2K", "4K"))
+        self.assertIn("качество резерва Byesu", patch_source)
+        self.assertIn("gpt2_resolution", patch_source)
+        self.assertIn("gpt2_choose_resolution", patch_source)
+        self.assertIn("resolution=resolution", patch_source)
+        self.assertIn("нативный размер без апскейла", patch_source)
+        self.assertNotIn("апскейл до выбранного качества", patch_source)
 
     def test_enqueue_persists_progress_message_and_timestamp(self) -> None:
         source = inspect.getsource(auf_gpt_image_2_install._enqueue)
