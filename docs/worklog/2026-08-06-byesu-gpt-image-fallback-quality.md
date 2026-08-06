@@ -27,9 +27,14 @@
 
 ### 1K
 
-Codex Plus запускается первым. Если он вызывает `image_gen`, дальнейший
-provider fallback запрещён. Только чистый `subscription_limit` до первого tool
-execution разрешает один Byesu-route:
+Перед запуском runtime читает свежие окна подписки через Codex app-server.
+Только явное активное исчерпание, `rate_limit_reached_type` либо 100% до будущего
+`resets_at`, пропускает Codex и сразу запускает подходящий Byesu-route.
+
+Если preflight недоступен, неоднозначен, показывает меньше 100% или уже прошедший
+reset, поведение fail-open: Codex Plus запускается первым. Если он вызывает
+`image_gen`, дальнейший provider fallback запрещён. Чистый `subscription_limit`
+до первого tool execution остаётся страховочным Byesu-route:
 
 - 0–3 референса → `gpt-image-2`;
 - 4–6 референсов → `firefly-gpt-image-2`.
@@ -56,14 +61,18 @@ tokens не эквивалентны, а перевод способен мен�
   multimodal analysis и one-shot media call;
 - `deploy/hermes-coders/byesu_image_routing_policy.py` — выбор image-модели,
   Codex-first 1K, прямой Byesu для 2K/4K и compact-prompt contract;
-- `deploy/hermes-coders/codex_context_launcher_runner.py` — установка двух
-  runtime policies;
-- `deploy/hermes-coders/compose.runtime.yaml` — bind mounts и Velvet-only gate;
+- `deploy/hermes-coders/codex_image_limit_preflight.py` — свежий limit probe,
+  fail-open классификация и пропуск заведомо обречённого Codex generation;
+- `deploy/hermes-coders/codex_context_launcher_runner.py` — установка runtime
+  policies в порядке fallback → parameter routing → limit preflight;
+- `deploy/hermes-coders/compose.runtime.yaml` — bind mounts, preflight settings и
+  Velvet-only provider gate;
 - `deploy/hermes-coders/runtime_source_guard.py` и systemd unit — release graph;
 - `velvet_bot/app/auf_gpt_image_2_quality_install.py` — UI качества, маршрута,
   лимита 6 референсов и 8 МБ;
 - `docs/gpt_image_2_codex.md` — операторский и продуктовый контракт;
-- focused tests для model selection, prompt contract, UI и runtime graph.
+- focused tests для model selection, prompt contract, limit classification, UI и
+  runtime graph.
 
 ## Совместимость
 
@@ -77,16 +86,28 @@ Draft PR #663 создан для запуска CI. В текущей execution
 не удалось из-за отсутствия DNS к GitHub, поэтому локальные tests, inventory и
 live provider smoke не выполнены.
 
+Добавлены unit-контракты:
+
+- `rate_limit_reached_type` пропускает запуск Codex;
+- активное окно 100% пропускает запуск Codex;
+- 99%, прошедший reset и неизвестный snapshot работают fail-open;
+- probe failure возвращает управление обычному Codex-route;
+- preflight installer применяется после parameter routing;
+- новый runtime source покрыт compose, import guard и systemd permissions.
+
 Обязательные live-проверки перед production:
 
 1. 1K через доступный Codex Plus;
-2. clean subscription limit до tool execution;
-3. fallback 1K с 0, 3, 4 и 6 референсами;
-4. прямые 2K и 4K через firefly;
-5. Sol/Terra/Luna и разрешённые effort;
-6. capability mismatch без generation charge;
-7. блокировка fallback после synthetic tool execution;
-8. Telegram preview, original document и фактические размеры.
+2. preflight с 99% продолжает Codex-route;
+3. preflight с активными 100% сразу выбирает Byesu;
+4. недоступный preflight fail-open запускает Codex;
+5. clean subscription limit до tool execution после неубедительного preflight;
+6. fallback 1K с 0, 3, 4 и 6 референсами;
+7. прямые 2K и 4K через firefly;
+8. Sol/Terra/Luna и разрешённые effort;
+9. capability mismatch без generation charge;
+10. блокировка fallback после synthetic tool execution;
+11. Telegram preview, original document и фактические размеры.
 
 ## Незавершённое
 
