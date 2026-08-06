@@ -1,0 +1,72 @@
+name: Refresh issue 605 inventories on Python 3.13
+
+on:
+  push:
+    branches:
+      - feat/issue-605-error-incident-batching-v2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-605-py313-inventory
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/issue-605-error-incident-batching-v2
+          fetch-depth: 0
+
+      - name: Set up canonical Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Restore inventory refresh helper
+        run: git show c32cc638158c27cd83fbb0c035e0d3af47b9869e:scripts/apply_issue_605.py > scripts/apply_issue_605.py
+
+      - name: Regenerate inventories with CI interpreter
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import importlib.util
+          import shutil
+          import sys
+          from pathlib import Path
+
+          root = Path.cwd()
+          helper = root / "scripts" / "apply_issue_605.py"
+          spec = importlib.util.spec_from_file_location("_issue605_inventory", helper)
+          if spec is None or spec.loader is None:
+              raise RuntimeError("could not load inventory helper")
+          module = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = module
+          spec.loader.exec_module(module)
+          module.refresh_architecture_baseline()
+          helper.unlink()
+          shutil.rmtree(root / ".issue605-architecture", ignore_errors=True)
+          (root / ".github" / "workflows" / "issue-605-py313-inventory.yml").unlink()
+          PY
+
+      - name: Verify canonical preflight
+        run: |
+          python scripts/ci_preflight.py
+          test ! -e scripts/apply_issue_605.py
+          test ! -e .github/workflows/issue-605-py313-inventory.yml
+          git diff --check
+
+      - name: Commit canonical inventories
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: regenerate issue 605 inventories on Python 3.13"
+          git push origin HEAD:feat/issue-605-error-incident-batching-v2
