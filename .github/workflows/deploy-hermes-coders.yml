@@ -5,6 +5,15 @@ on:
     branches:
       - release/hermes-coders-arthur-20260806
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type DEPLOY_HERMES to run the prepared Arthur rollout"
+        required: true
+        type: string
+      source_commit:
+        description: "Exact current main commit"
+        required: true
+        type: string
 
 concurrency:
   group: velvet-production
@@ -15,12 +24,14 @@ permissions:
 
 jobs:
   deploy-arthur:
+    if: github.event_name == 'push' || inputs.confirmation == 'DEPLOY_HERMES'
     runs-on: ubuntu-latest
     timeout-minutes: 55
     environment: production
     env:
       SOURCE_COMMIT: 7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f
       IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:32f1ef415fb3dac4d02a8cc0a21895d74d8eb70c50596f1b279226fcd30080ca
+      MANUAL_SOURCE_COMMIT: ${{ inputs.source_commit }}
     steps:
       - name: Checkout exact release executor
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,6 +44,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$GITHUB_REF" = "refs/heads/release/hermes-coders-arthur-20260806"
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            test "$MANUAL_SOURCE_COMMIT" = "$SOURCE_COMMIT"
+          fi
           current_main="$(git ls-remote https://github.com/Stellmaria/Velvet.git refs/heads/main | awk '{print $1}')"
           test "$current_main" = "$SOURCE_COMMIT"
           git merge-base --is-ancestor "$SOURCE_COMMIT" "$GITHUB_SHA"
