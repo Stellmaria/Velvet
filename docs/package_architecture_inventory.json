@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 651,
-  "production_loc": 143981,
+  "production_loc": 143986,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -2720,15 +2720,16 @@
       }
     },
     {
-      "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:55e6d7f1c6d6dcf3",
+      "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:6403cf3a3af132ac",
       "category": "foreign-assignment",
       "path": "velvet_bot/app/gpt_image_2_bootstrap.py",
-      "fingerprint": "55e6d7f1c6d6dcf3b406074e6e4b1bc39079a4ce3edbae281a9e3bddc89c39ac",
-      "summary": "1 assignments to imported owners",
+      "fingerprint": "6403cf3a3af132ac5566c180ea846b788f803a1fb5aaaf4964e7885ed4543655",
+      "summary": "2 assignments to imported owners",
       "details": {
-        "count": 1,
+        "count": 2,
         "targets": [
-          "bootstrap.build_worker_manager"
+          "bootstrap.build_worker_manager",
+          "workers_module.build_worker_manager"
         ]
       }
     },
@@ -3302,10 +3303,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:662dadbee45ab024",
+      "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:06ddb0d3ec4240b0",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/gpt_image_2_bootstrap.py",
-      "fingerprint": "662dadbee45ab024dc02143868b1cf55ce246faced95f45a81c79de1c2b52787",
+      "fingerprint": "06ddb0d3ec4240b02a3ebdfbd97bd24485ecc2f6ec9fc2ae8ee5dccc0e70b092",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
@@ -11670,11 +11671,11 @@
       "module": "velvet_bot.app.gpt_image_2_bootstrap",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 58,
+      "loc": 63,
       "function_count": 3,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 34,
+      "max_function_length": 39,
       "branch_count": 3,
       "internal_imports": [
         "velvet_bot.app",
@@ -11686,7 +11687,8 @@
       "sql_literal_count": 0,
       "database_acquire_count": 0,
       "foreign_assignment_targets": [
-        "bootstrap.build_worker_manager"
+        "bootstrap.build_worker_manager",
+        "workers_module.build_worker_manager"
       ],
       "dynamic_import_count": 0,
       "any_count": 2,
@@ -11709,27 +11711,28 @@
       "polling_values": [],
       "worker_registrations": [
         {
-          "line": 39,
+          "line": 43,
           "owner": "build_worker_manager_with_gpt_image_2",
           "call": "CodexImageWorker"
         },
         {
-          "line": 45,
+          "line": 49,
           "owner": "build_worker_manager_with_gpt_image_2",
           "call": "PeriodicWorkerSpec"
         }
       ],
       "violations": [
         {
-          "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:55e6d7f1c6d6dcf3",
+          "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:6403cf3a3af132ac",
           "category": "foreign-assignment",
           "path": "velvet_bot/app/gpt_image_2_bootstrap.py",
-          "fingerprint": "55e6d7f1c6d6dcf3b406074e6e4b1bc39079a4ce3edbae281a9e3bddc89c39ac",
-          "summary": "1 assignments to imported owners",
+          "fingerprint": "6403cf3a3af132ac5566c180ea846b788f803a1fb5aaaf4964e7885ed4543655",
+          "summary": "2 assignments to imported owners",
           "details": {
-            "count": 1,
+            "count": 2,
             "targets": [
-              "bootstrap.build_worker_manager"
+              "bootstrap.build_worker_manager",
+              "workers_module.build_worker_manager"
             ]
           }
         },
@@ -11744,10 +11747,10 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:662dadbee45ab024",
+          "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:06ddb0d3ec4240b0",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/gpt_image_2_bootstrap.py",
-          "fingerprint": "662dadbee45ab024dc02143868b1cf55ce246faced95f45a81c79de1c2b52787",
+          "fingerprint": "06ddb0d3ec4240b02a3ebdfbd97bd24485ecc2f6ec9fc2ae8ee5dccc0e70b092",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
