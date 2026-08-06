@@ -8,6 +8,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 
+from velvet_bot.core.config.settings import LOCAL_OPENAI_COMPATIBLE_PROVIDER
+
 if TYPE_CHECKING:
     from velvet_bot.ai_vision import VisionClient
 
@@ -15,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 _CACHE_TTL_SECONDS = 5.0
 _TEXT_CLIENT_NAMES = frozenset({"VelvetFormattingClient"})
+_VISION_PROVIDERS = frozenset(
+    {"ollama", "openai_compatible", LOCAL_OPENAI_COMPATIBLE_PROVIDER}
+)
 _MODEL_CACHE: dict[tuple[str, str], tuple[float, frozenset[str]]] = {}
 
 
@@ -111,8 +116,11 @@ def configure_client(
         timeout_seconds=timeout_seconds,
     )
     cleaned_provider = route.provider.strip().casefold()
-    if cleaned_provider not in {"ollama", "openai_compatible"}:
-        raise ValueError("AI_VISION_PROVIDER должен быть ollama или openai_compatible.")
+    if cleaned_provider not in _VISION_PROVIDERS:
+        raise ValueError(
+            "AI_VISION_PROVIDER должен быть ollama, openai_compatible или "
+            "local_openai_compatible."
+        )
     client.provider = cleaned_provider
     client.base_url = route.base_url.strip().rstrip("/")
     client.model = route.model.strip()
