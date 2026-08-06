@@ -1,0 +1,127 @@
+name: Harden issue 605 severity contract
+
+on:
+  push:
+    branches:
+      - feat/issue-605-error-incident-batching-v2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-605-monotonic
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/issue-605-error-incident-batching-v2
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Restore inventory helper
+        run: git show c32cc638158c27cd83fbb0c035e0d3af47b9869e:scripts/apply_issue_605.py > scripts/apply_issue_605.py
+
+      - name: Preserve severity and refresh generated contracts
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import importlib.util
+          import sys
+          from pathlib import Path
+
+          root = Path.cwd()
+          source_path = root / "velvet_bot" / "error_center.py"
+          source = source_path.read_text(encoding="utf-8")
+          old = """                    UPDATE error_incidents
+                    SET severity = $2,
+                        logger_name = $3,
+          """
+          new = """                    UPDATE error_incidents
+                    SET severity = CASE
+                            WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'
+                                THEN 'CRITICAL'
+                            WHEN severity = 'ERROR' OR $2 = 'ERROR'
+                                THEN 'ERROR'
+                            ELSE 'WARNING'
+                        END,
+                        logger_name = $3,
+          """
+          if source.count(old) != 1:
+              raise RuntimeError("immediate severity SQL anchor changed")
+          source_path.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+          test_path = root / "tests" / "test_error_incident_aggregation.py"
+          tests = test_path.read_text(encoding="utf-8")
+          anchor = """    def test_repository_batch_is_atomic_and_does_not_rewrite_payload(self) -> None:
+              source = inspect.getsource(ErrorIncidentRepository.record_batch)
+          """
+          replacement = """    def test_repository_immediate_write_never_downgrades_severity(self) -> None:
+              source = inspect.getsource(ErrorIncidentRepository.record)
+              self.assertIn(\"WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'\", source)
+              self.assertIn(\"WHEN severity = 'ERROR' OR $2 = 'ERROR'\", source)
+
+              severity_clause = source.split(\"SET severity\", 1)[1].split(
+                  \"logger_name = $3\",
+                  1,
+              )[0]
+              self.assertNotIn(\"SET severity = $2\", severity_clause)
+
+              async def scenario() -> None:
+                  repository = FakeRepository()
+                  center = QuietCenter(repository)
+                  event = captured(severity=\"CRITICAL\")
+                  await center._process(event)
+                  center._known.clear()
+                  await center._process(captured(severity=\"ERROR\"))
+                  self.assertEqual(
+                      \"CRITICAL\",
+                      repository.incidents[event.fingerprint].severity,
+                  )
+
+              import asyncio
+              asyncio.run(scenario())
+
+              source = inspect.getsource(ErrorIncidentRepository.record_batch)
+          """
+          if tests.count(anchor) != 1:
+              raise RuntimeError("repository test anchor changed")
+          test_path.write_text(tests.replace(anchor, replacement, 1), encoding="utf-8")
+
+          helper_path = root / "scripts" / "apply_issue_605.py"
+          spec = importlib.util.spec_from_file_location("_issue605_refresh", helper_path)
+          if spec is None or spec.loader is None:
+              raise RuntimeError("could not load inventory helper")
+          module = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = module
+          spec.loader.exec_module(module)
+          module.refresh_architecture_baseline()
+          module.cleanup()
+          (root / ".github" / "workflows" / "issue-605-monotonic.yml").unlink()
+          PY
+
+      - name: Verify hardened implementation
+        run: |
+          python -m py_compile velvet_bot/error_center.py tests/test_error_incident_aggregation.py
+          test ! -e scripts/apply_issue_605.py
+          test ! -e .github/workflows/issue-605-monotonic.yml
+          git diff --check
+
+      - name: Commit hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: preserve peak incident severity (#605)"
+          git push origin HEAD:feat/issue-605-error-incident-batching-v2
