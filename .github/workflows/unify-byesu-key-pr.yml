@@ -1,0 +1,216 @@
+name: unify Byesu key in PR 663
+
+on:
+  pull_request:
+    types:
+      - reopened
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  unify:
+    if: github.event.pull_request.number == 663 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/byesu-image-fallback-quality'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/byesu-image-fallback-quality
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Retire the split Byesu secret
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+
+          import re
+          from pathlib import Path
+
+          OLD = "BYESU_HERMES_GPT_PRO_API_KEY"
+          NEW = "BYESU_HERMES_CODEX_API_KEY"
+
+          def read(path: str) -> str:
+              return Path(path).read_text(encoding="utf-8")
+
+          def write(path: str, text: str) -> None:
+              Path(path).write_text(text, encoding="utf-8")
+
+          path = "deploy/hermes-coders/coder.env.example"
+          text = read(path).replace(f"{OLD}=\n", "")
+          write(path, text)
+
+          path = "deploy/hermes-coders/install.sh"
+          text = read(path)
+          text, first = re.subn(
+              rf'\n        "{OLD}": \(\n'
+              rf'            existing\.get\("{OLD}", ""\)\n'
+              rf'            or model_values\["{OLD}"\]\n'
+              rf'        \),',
+              "",
+              text,
+              count=1,
+          )
+          text, second = re.subn(
+              rf'\n    "{OLD}": \(\n'
+              rf'        source\.get\("{OLD}", ""\)\n'
+              rf'        or source\.get\("BYESU_HERMES_API_KEY", ""\)\n'
+              rf'        or source\.get\("OPENAI_API_KEY", ""\)\n'
+              rf'    \),',
+              "",
+              text,
+              count=1,
+          )
+          if (first, second) != (1, 1):
+              raise SystemExit(f"install.sh key blocks changed unexpectedly: {(first, second)}")
+          write(path, text)
+
+          path = "deploy/hermes-coders/sandbox_entrypoint.py"
+          text = read(path)
+          text, first = re.subn(
+              rf'    env_key = \(\n'
+              rf'        "{OLD}"\n'
+              rf'        if model == "gpt-5\.6-luna"\n'
+              rf'        else "{NEW}"\n'
+              rf'    \)',
+              f'    env_key = "{NEW}"',
+              text,
+              count=1,
+          )
+          text, second = re.subn(
+              rf'        key_name = \(\n'
+              rf'            "{OLD}"\n'
+              rf'            if model == "gpt-5\.6-luna"\n'
+              rf'            else "{NEW}"\n'
+              rf'        \)',
+              f'        key_name = "{NEW}"',
+              text,
+              count=1,
+          )
+          text = text.replace(f'  "{OLD}",\n', "")
+          if (first, second) != (1, 1):
+              raise SystemExit(f"sandbox_entrypoint.py routing blocks changed unexpectedly: {(first, second)}")
+          write(path, text)
+
+          for path in (
+              "deploy/hermes-coders/preflight.py",
+              "deploy/hermes-coders/install-codex.sh",
+              "deploy/hermes-coders/codex_first_runner.py",
+          ):
+              text = read(path).replace(f'        "{OLD}",\n', "")
+              text = text.replace(f'  "{OLD}",\n', "")
+              write(path, text)
+
+          path = "deploy/hermes-coders/tier_provider_smoke.py"
+          write(path, read(path).replace(OLD, NEW))
+
+          path = "deploy/hermes-coders/config.yaml"
+          write(path, read(path).replace(OLD, NEW))
+
+          path = "deploy/hermes-coders/codex_provider_chain_runner.py"
+          text = read(path).replace(
+              f'"gpt-5.6-luna", "{OLD}", "byesu-gpt-pro"',
+              f'"gpt-5.6-luna", "{NEW}", "byesu-gpt-pro"',
+          )
+          text = text.replace(f'  "{OLD}",\n', "")
+          write(path, text)
+
+          path = "deploy/hermes-sandbox-launcher/launcher_contract.py"
+          text = read(path)
+          text, count = re.subn(
+              rf'        provider_key = \(\n'
+              rf'            "{OLD}"\n'
+              rf'            if model == "gpt-5\.6-luna"\n'
+              rf'            else "{NEW}"\n'
+              rf'        \)',
+              f'        provider_key = "{NEW}"',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("launcher provider-key routing block changed unexpectedly")
+          write(path, text)
+
+          path = "tests/test_hermes_sandbox_launcher.py"
+          write(
+              path,
+              read(path).replace(
+                  f'                "{OLD}=pro\\n"\n',
+                  "",
+              ),
+          )
+
+          path = "tests/test_hermes_codex_provider_chain.py"
+          write(
+              path,
+              read(path).replace(
+                  f'            "{OLD}": "b" * 48,\n',
+                  "",
+              ),
+          )
+
+          path = ".github/workflows/docker-build.yml"
+          write(path, read(path).replace(f"          {OLD}=test_pro_key\n", ""))
+
+          offenders: list[str] = []
+          for candidate in Path(".").rglob("*"):
+              if not candidate.is_file() or ".git" in candidate.parts:
+                  continue
+              try:
+                  body = candidate.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              if OLD in body:
+                  offenders.append(str(candidate))
+          if offenders:
+              raise SystemExit("legacy Byesu key remains in: " + ", ".join(offenders))
+          PY
+
+      - name: Validate focused contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n deploy/hermes-coders/install.sh
+          bash -n deploy/hermes-coders/install-codex.sh
+          python -m py_compile \
+            deploy/hermes-coders/sandbox_entrypoint.py \
+            deploy/hermes-coders/preflight.py \
+            deploy/hermes-coders/tier_provider_smoke.py \
+            deploy/hermes-coders/codex_first_runner.py \
+            deploy/hermes-coders/codex_provider_chain_runner.py \
+            deploy/hermes-sandbox-launcher/launcher_contract.py
+          python -m unittest \
+            tests.test_hermes_sandbox_launcher \
+            tests.test_hermes_codex_provider_chain
+          git diff --check
+
+      - name: Commit cleanup to PR head
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -- .github/workflows/one-shot-unify-byesu-key.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            .github/workflows/docker-build.yml \
+            .github/workflows/one-shot-unify-byesu-key.yml \
+            deploy/hermes-coders/coder.env.example \
+            deploy/hermes-coders/install.sh \
+            deploy/hermes-coders/sandbox_entrypoint.py \
+            deploy/hermes-coders/preflight.py \
+            deploy/hermes-coders/install-codex.sh \
+            deploy/hermes-coders/tier_provider_smoke.py \
+            deploy/hermes-coders/config.yaml \
+            deploy/hermes-coders/codex_first_runner.py \
+            deploy/hermes-coders/codex_provider_chain_runner.py \
+            deploy/hermes-sandbox-launcher/launcher_contract.py \
+            tests/test_hermes_sandbox_launcher.py \
+            tests/test_hermes_codex_provider_chain.py
+          git diff --cached --check
+          git commit -m "Unify Byesu credentials on one key"
+          git push origin HEAD:feat/byesu-image-fallback-quality
