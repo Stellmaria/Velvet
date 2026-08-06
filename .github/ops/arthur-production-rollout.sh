@@ -4,6 +4,8 @@ umask 077
 trap 'rm -f -- "$SECRET_FILE"' EXIT
 cd "$APP_DIR"
 
+test -n "$SOURCE_COMMIT"
+test -n "$CHECKOUT_COMMIT"
 test -f "$SECRET_FILE"
 chmod 600 "$SECRET_FILE"
 test -f "$APP_DIR/.env.server"
@@ -84,9 +86,15 @@ VELVET_DEPLOY_TARGET_SHA="$SOURCE_COMMIT" \
 VELVET_DEPLOY_IMAGE="$IMAGE_DIGEST" \
   bash "$APP_DIR/deploy/server/deploy.sh"
 
+# SOURCE_COMMIT owns the verified application image. CHECKOUT_COMMIT differs
+# only by this one-time ops workflow and must be restored before reconcile so
+# the host bridge sees a clean checkout exactly matching origin/main.
+git fetch --prune origin main
+test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
+git merge-base --is-ancestor "$SOURCE_COMMIT" "$CHECKOUT_COMMIT"
+git reset --hard "$CHECKOUT_COMMIT"
 test "$(git symbolic-ref --short HEAD)" = main
-test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-test "$(git rev-parse refs/remotes/origin/main)" = "$SOURCE_COMMIT"
+test "$(git rev-parse HEAD)" = "$CHECKOUT_COMMIT"
 test -z "$(git status --porcelain --untracked-files=all)"
 
 if ! docker exec velvet-hermes-1 test -f /opt/data/tools/reconcilectl.py; then
@@ -160,6 +168,7 @@ result = payload.get("result") or {}
 assert result.get("is_bot") is True, result
 PY
 
-test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+test "$(git rev-parse HEAD)" = "$CHECKOUT_COMMIT"
+test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
 test -z "$(git status --porcelain --untracked-files=all)"
-echo "Arthur production rollout verified at $SOURCE_COMMIT task=$task_id"
+echo "Arthur production rollout verified at app=$SOURCE_COMMIT checkout=$CHECKOUT_COMMIT task=$task_id"
