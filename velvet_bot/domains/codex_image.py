@@ -16,7 +16,7 @@ import aiohttp
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import BufferedInputFile
-from PIL import Image, ImageFilter, ImageOps
+from PIL import Image, ImageOps
 
 from velvet_bot.core.ai_budget import AIBudgetScope
 from velvet_bot.domains.ai_usage import AITaskQueueService
@@ -177,16 +177,61 @@ def export_dimensions(resolution: str, aspect_ratio: str) -> tuple[int, int]:
     return width - width % 2, height - height % 2
 
 
-def export_jpeg(payload: bytes, *, resolution: str, aspect_ratio: str) -> tuple[bytes, tuple[int, int]]:
-    target = export_dimensions(resolution, aspect_ratio)
+def native_export_dimensions(
+    source_width: int,
+    source_height: int,
+    aspect_ratio: str,
+) -> tuple[int, int]:
+    """Return the largest even crop matching the ratio without upscaling."""
+    if source_width < 2 or source_height < 2:
+        raise ValueError("GPT Image 2 вернул изображение слишком малого размера.")
+    left, right = (int(value) for value in aspect_ratio.split(":", 1))
+    target_ratio = left / right
+    source_ratio = source_width / source_height
+    if source_ratio > target_ratio:
+        width = round(source_height * target_ratio)
+        height = source_height
+    else:
+        width = source_width
+        height = round(source_width / target_ratio)
+    width = min(source_width, max(2, width))
+    height = min(source_height, max(2, height))
+    return width - width % 2, height - height % 2
+
+
+def export_jpeg(
+    payload: bytes,
+    *,
+    resolution: str,
+    aspect_ratio: str,
+) -> tuple[bytes, tuple[int, int]]:
+    # ``resolution`` remains in the persisted/provider contract so old queued
+    # tasks and Hermes releases stay readable. It is no longer treated as a
+    # quality promise and never causes the bot to invent pixels.
+    del resolution
     with Image.open(io.BytesIO(payload)) as source:
         image = ImageOps.exif_transpose(source).convert("RGB")
-        upscaled = image.width < target[0] or image.height < target[1]
-        image = ImageOps.fit(image, target, method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
-        if upscaled:
-            image = image.filter(ImageFilter.UnsharpMask(radius=1.2, percent=80, threshold=3))
+        target = native_export_dimensions(
+            image.width,
+            image.height,
+            aspect_ratio,
+        )
+        if image.size != target:
+            image = ImageOps.fit(
+                image,
+                target,
+                method=Image.Resampling.LANCZOS,
+                centering=(0.5, 0.5),
+            )
         destination = io.BytesIO()
-        image.save(destination, format="JPEG", quality=95, subsampling=0, optimize=True, progressive=True)
+        image.save(
+            destination,
+            format="JPEG",
+            quality=95,
+            subsampling=0,
+            optimize=True,
+            progressive=True,
+        )
     return destination.getvalue(), target
 
 
@@ -307,7 +352,7 @@ def render_codex_image_progress(
         f"Статус: <b>{escape(stage)} · {bounded}%</b>",
         f"<code>{_progress_bar(bounded)}</code>",
         "",
-        f"Экспорт: <b>{request.resolution} JPEG · {request.aspect_ratio}</b>",
+        f"Экспорт: <b>JPEG · {request.aspect_ratio}</b>",
         f"Референсов: <b>{len(request.references)}</b>",
         "",
         "<b>Лимит Codex</b>",
@@ -598,7 +643,7 @@ class CodexImageWorker:
                 f"<b>Ауф · {GPT_IMAGE_2_NAME}</b>",
                 f"Анализ: <b>{escape(model_name)} · {escape(effort_name)}</b>",
                 f"Референсов: <b>{len(request.references)}</b>",
-                f"Экспорт: <b>{request.resolution} JPEG · {result['width']}×{result['height']}</b>",
+                f"Файл: <b>JPEG · {result['width']}×{result['height']}</b>",
                 "Генераций: <b>1</b>",
                 "",
                 "<b>Лимит Codex</b>",
@@ -618,7 +663,7 @@ class CodexImageWorker:
         )
         await self._bot.send_document(
             chat_id,
-            document=BufferedInputFile(document, filename=f"gpt-image-2-{request.resolution.casefold()}.jpg"),
+            document=BufferedInputFile(document, filename="gpt-image-2.jpg"),
             caption="Оригинальный JPEG-файл без Telegram-сжатия.\n\n" + caption,
         )
 
@@ -680,5 +725,6 @@ __all__ = (
     "MAX_CODEX_IMAGE_REFERENCES",
     "export_dimensions",
     "export_jpeg",
+    "native_export_dimensions",
     "render_codex_image_progress",
 )
