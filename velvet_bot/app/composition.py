@@ -105,6 +105,9 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         install_auf_generation_receipts,
     )
     from velvet_bot.app.auf_gpt_image_2_install import install_auf_gpt_image_2
+    from velvet_bot.app.auf_gpt_image_2_quality_install import (
+        install_auf_gpt_image_2_quality,
+    )
     from velvet_bot.app.auf_margin_dashboard_install import (
         install_auf_margin_dashboard,
     )
@@ -145,6 +148,10 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
     def install_generation_receipts_with_owner_cost_privacy() -> None:
         install_auf_generation_receipts()
         install_auf_owner_cost_privacy()
+
+    def install_gpt_image_with_byesu_quality() -> None:
+        install_auf_gpt_image_2()
+        install_auf_gpt_image_2_quality()
 
     return (
         CompositionStage(
@@ -207,9 +214,13 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
             install_generation_receipts_with_owner_cost_privacy,
         ),
         CompositionStage("install_krita_remote_worker", install_krita_remote_worker),
-        # GPT Image 2 extends the final Auf controller contract. The branding
-        # guard remains last so every new Telegram response is normalized.
-        CompositionStage("install_auf_gpt_image_2", install_auf_gpt_image_2),
+        # GPT Image 2 extends the final Auf controller contract. The Byesu
+        # quality patch belongs to the same bounded stage and does not add a new
+        # installer-order surface. Branding remains last.
+        CompositionStage(
+            "install_auf_gpt_image_2",
+            install_gpt_image_with_byesu_quality,
+        ),
         CompositionStage("install_auf_branding", install_auf_branding),
     )
 
