@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import os
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -22,6 +23,7 @@ from velvet_bot.domains.codex_image import (
     GPT_IMAGE_2_NAME,
     MAX_CODEX_IMAGE_PROMPT,
     MAX_CODEX_IMAGE_REFERENCES,
+    render_codex_image_progress,
 )
 from velvet_bot.domains.media_generation import KieReferenceImage
 from velvet_bot.presentation.telegram.auf_editing import edit_or_answer_auf_callback
@@ -564,6 +566,12 @@ async def _enqueue(
     request = _request(data)
     workspace_id = int(_state_value(data, "auf_workspace_id") or 0)
     chat_id = callback.message.chat.id if isinstance(callback.message, Message) else None
+    progress_message_id = (
+        callback.message.message_id
+        if isinstance(callback.message, Message)
+        else None
+    )
+    queued_at = datetime.now(timezone.utc)
     result = await queue.enqueue(
         AITaskRequest(
             scope=AIBudgetScope.VISION,
@@ -573,6 +581,8 @@ async def _enqueue(
                 "chat_id": chat_id,
                 "user_id": callback.from_user.id,
                 "workspace_id": workspace_id,
+                "progress_message_id": progress_message_id,
+                "queued_at": queued_at.isoformat(),
             },
             priority=35,
             max_attempts=1,
@@ -582,12 +592,12 @@ async def _enqueue(
     await state.clear()
     await edit_or_answer_auf_callback(
         callback,
-        text=(
-            f"<b>Ауф · {GPT_IMAGE_2_NAME}</b>\n\n"
-            "Задача поставлена в очередь. Будет выполнена ровно одна генерация.\n\n"
-            f"Экспорт: <b>{request.resolution} JPEG · {request.aspect_ratio}</b>\n"
-            f"Референсов: <b>{len(request.references)}</b>\n"
-            f"Задача: <code>{result.task.id}</code>"
+        text=render_codex_image_progress(
+            request,
+            task_id=result.task.id,
+            progress=0,
+            stage="ожидание запуска",
+            queued_at=queued_at,
         ),
         reply_markup=build_auf_root_keyboard(
             workspace_id=workspace_id,

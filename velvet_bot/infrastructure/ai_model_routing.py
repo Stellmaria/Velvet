@@ -111,6 +111,8 @@ def configure_client(
         timeout_seconds=timeout_seconds,
     )
     cleaned_provider = route.provider.strip().casefold()
+    if cleaned_provider == "local_openai_compatible":
+        cleaned_provider = "openai_compatible"
     if cleaned_provider not in {"ollama", "openai_compatible"}:
         raise ValueError("AI_VISION_PROVIDER должен быть ollama или openai_compatible.")
     client.provider = cleaned_provider

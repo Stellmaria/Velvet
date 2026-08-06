@@ -2401,7 +2401,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_install.py:76e3719de4eacfe1",
+      "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_install.py:429b67740bf135b9",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
@@ -3569,7 +3569,7 @@
       "issue": "#463"
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/app/auf_gpt_image_2_install.py:cebe68830d696fc0",
+      "id": "monolithic-module-loc:velvet_bot/app/auf_gpt_image_2_install.py:e2f8dcb1823ab511",
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
@@ -6408,7 +6408,7 @@
       "issue": "#460"
     },
     {
-      "id": "typing-any-usage:velvet_bot/domains/codex_image.py:143bb3b5c3f17619",
+      "id": "typing-any-usage:velvet_bot/domains/codex_image.py:7b70b55ee50a4d58",
       "owner": "architecture-governance",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [

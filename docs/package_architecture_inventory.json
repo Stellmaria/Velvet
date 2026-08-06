@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 651,
-  "production_loc": 143697,
+  "production_loc": 143981,
   "layer_counts": {
     "application": 21,
     "composition": 64,
@@ -3152,10 +3152,10 @@
       }
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_install.py:76e3719de4eacfe1",
+      "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_install.py:429b67740bf135b9",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_gpt_image_2_install.py",
-      "fingerprint": "76e3719de4eacfe19f8fdde6be292f8caa9490328026a4475881b77c325abb25",
+      "fingerprint": "429b67740bf135b9469aa0098ea5d2203baa5b32f0b05da7b1ee9a4e7bf02bf6",
       "summary": "4 _INSTALLED references",
       "details": {
         "count": 4
@@ -4035,13 +4035,13 @@
       }
     },
     {
-      "id": "monolithic-module-loc:velvet_bot/app/auf_gpt_image_2_install.py:cebe68830d696fc0",
+      "id": "monolithic-module-loc:velvet_bot/app/auf_gpt_image_2_install.py:e2f8dcb1823ab511",
       "category": "monolithic-module-loc",
       "path": "velvet_bot/app/auf_gpt_image_2_install.py",
-      "fingerprint": "cebe68830d696fc0ed38820a85d4d888253b2298a322543a95c080a086daf726",
-      "summary": "1014 LOC exceeds 800",
+      "fingerprint": "e2f8dcb1823ab511306984ddf6cb137c52d214a9629cebf603f81cfe71996ca9",
+      "summary": "1024 LOC exceeds 800",
       "details": {
-        "loc": 1014,
+        "loc": 1024,
         "limit": 800
       }
     },
@@ -6956,13 +6956,13 @@
       }
     },
     {
-      "id": "typing-any-usage:velvet_bot/domains/codex_image.py:143bb3b5c3f17619",
+      "id": "typing-any-usage:velvet_bot/domains/codex_image.py:7b70b55ee50a4d58",
       "category": "typing-any-usage",
       "path": "velvet_bot/domains/codex_image.py",
-      "fingerprint": "143bb3b5c3f17619e03a9a3db6b0e6da857eed42cdba1d5bfdfec35ffa0ee83c",
-      "summary": "3 Any references",
+      "fingerprint": "7b70b55ee50a4d58a230e6e9fe5e551e7c9db8f84a686ffb8314e3e55d71ba9c",
+      "summary": "4 Any references",
       "details": {
-        "count": 3
+        "count": 4
       }
     },
     {
@@ -9353,7 +9353,7 @@
       "module": "velvet_bot.app.auf_gpt_image_2_install",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 1014,
+      "loc": 1024,
       "function_count": 29,
       "class_count": 0,
       "handler_count": 0,
@@ -9369,7 +9369,7 @@
         "velvet_bot.presentation.telegram.routers.workspace_auf",
         "velvet_bot.reference_media"
       ],
-      "external_import_count": 8,
+      "external_import_count": 9,
       "aiogram_imports": [
         "aiogram.fsm.context",
         "aiogram.types"
@@ -9393,7 +9393,7 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 37,
+          "line": 39,
           "owner": "_enabled",
           "call": "os.getenv"
         }
@@ -9447,23 +9447,23 @@
           }
         },
         {
-          "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_install.py:76e3719de4eacfe1",
+          "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_install.py:429b67740bf135b9",
           "category": "installed-sentinel",
           "path": "velvet_bot/app/auf_gpt_image_2_install.py",
-          "fingerprint": "76e3719de4eacfe19f8fdde6be292f8caa9490328026a4475881b77c325abb25",
+          "fingerprint": "429b67740bf135b9469aa0098ea5d2203baa5b32f0b05da7b1ee9a4e7bf02bf6",
           "summary": "4 _INSTALLED references",
           "details": {
             "count": 4
           }
         },
         {
-          "id": "monolithic-module-loc:velvet_bot/app/auf_gpt_image_2_install.py:cebe68830d696fc0",
+          "id": "monolithic-module-loc:velvet_bot/app/auf_gpt_image_2_install.py:e2f8dcb1823ab511",
           "category": "monolithic-module-loc",
           "path": "velvet_bot/app/auf_gpt_image_2_install.py",
-          "fingerprint": "cebe68830d696fc0ed38820a85d4d888253b2298a322543a95c080a086daf726",
-          "summary": "1014 LOC exceeds 800",
+          "fingerprint": "e2f8dcb1823ab511306984ddf6cb137c52d214a9629cebf603f81cfe71996ca9",
+          "summary": "1024 LOC exceeds 800",
           "details": {
-            "loc": 1014,
+            "loc": 1024,
             "limit": 800
           }
         },
@@ -17718,18 +17718,18 @@
       "module": "velvet_bot.domains.codex_image",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 418,
-      "function_count": 24,
+      "loc": 684,
+      "function_count": 30,
       "class_count": 3,
       "handler_count": 0,
-      "max_function_length": 58,
-      "branch_count": 40,
+      "max_function_length": 176,
+      "branch_count": 54,
       "internal_imports": [
         "velvet_bot.core.ai_budget",
         "velvet_bot.domains.ai_usage",
         "velvet_bot.domains.media_generation"
       ],
-      "external_import_count": 16,
+      "external_import_count": 17,
       "aiogram_imports": [
         "aiogram",
         "aiogram.exceptions",
@@ -17739,7 +17739,7 @@
       "database_acquire_count": 0,
       "foreign_assignment_targets": [],
       "dynamic_import_count": 0,
-      "any_count": 3,
+      "any_count": 4,
       "cast_count": 0,
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
@@ -17749,24 +17749,24 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 108,
-          "owner": "__init__",
-          "call": "os.getenv"
-        },
-        {
           "line": 109,
           "owner": "__init__",
           "call": "os.getenv"
         },
         {
-          "line": 107,
+          "line": 110,
+          "owner": "__init__",
+          "call": "os.getenv"
+        },
+        {
+          "line": 108,
           "owner": "__init__",
           "call": "os.getenv"
         }
       ],
       "polling_values": [
         {
-          "line": 321,
+          "line": 581,
           "owner": "_wait",
           "call": "asyncio.sleep",
           "values": [
@@ -17807,13 +17807,13 @@
           }
         },
         {
-          "id": "typing-any-usage:velvet_bot/domains/codex_image.py:143bb3b5c3f17619",
+          "id": "typing-any-usage:velvet_bot/domains/codex_image.py:7b70b55ee50a4d58",
           "category": "typing-any-usage",
           "path": "velvet_bot/domains/codex_image.py",
-          "fingerprint": "143bb3b5c3f17619e03a9a3db6b0e6da857eed42cdba1d5bfdfec35ffa0ee83c",
-          "summary": "3 Any references",
+          "fingerprint": "7b70b55ee50a4d58a230e6e9fe5e551e7c9db8f84a686ffb8314e3e55d71ba9c",
+          "summary": "4 Any references",
           "details": {
-            "count": 3
+            "count": 4
           }
         }
       ]
@@ -22673,12 +22673,12 @@
       "module": "velvet_bot.domains.vision_routing.factory",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 233,
+      "loc": 239,
       "function_count": 5,
       "class_count": 0,
       "handler_count": 0,
       "max_function_length": 101,
-      "branch_count": 7,
+      "branch_count": 8,
       "internal_imports": [
         "velvet_bot.core.config",
         "velvet_bot.core.config.settings",
@@ -22690,7 +22690,7 @@
         "velvet_bot.domains.vision_routing.profile_contract",
         "velvet_bot.domains.vision_routing.service"
       ],
-      "external_import_count": 3,
+      "external_import_count": 4,
       "aiogram_imports": [],
       "sql_literal_count": 0,
       "database_acquire_count": 0,
@@ -22706,37 +22706,32 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 44,
+          "line": 45,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 67,
+          "line": 68,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 88,
+          "line": 89,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 121,
+          "line": 122,
           "owner": "build_vision_cascade_router",
           "call": "os.getenv"
         },
         {
-          "line": 154,
+          "line": 160,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
-          "line": 156,
-          "owner": "_route_config",
-          "call": "os.getenv"
-        },
-        {
-          "line": 175,
+          "line": 162,
           "owner": "_route_config",
           "call": "os.getenv"
         },
@@ -22746,17 +22741,22 @@
           "call": "os.getenv"
         },
         {
-          "line": 204,
-          "owner": "_env_flag",
-          "call": "os.getenv"
-        },
-        {
-          "line": 142,
+          "line": 187,
           "owner": "_route_config",
           "call": "os.getenv"
         },
         {
-          "line": 146,
+          "line": 210,
+          "owner": "_env_flag",
+          "call": "os.getenv"
+        },
+        {
+          "line": 143,
+          "owner": "_route_config",
+          "call": "os.getenv"
+        },
+        {
+          "line": 147,
           "owner": "_route_config",
           "call": "os.getenv"
         }
@@ -25134,12 +25134,12 @@
       "module": "velvet_bot.infrastructure.ai_model_routing",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 263,
+      "loc": 265,
       "function_count": 10,
       "class_count": 1,
       "handler_count": 0,
       "max_function_length": 61,
-      "branch_count": 25,
+      "branch_count": 26,
       "internal_imports": [
         "velvet_bot.ai_vision"
       ],
