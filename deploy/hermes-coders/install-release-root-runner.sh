@@ -8,12 +8,12 @@ fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 SOURCE="${HERMES_RELEASE_RUNNER_SOURCE:-$SCRIPT_DIR/release-root-runner.sh}"
-APP_USER="${HERMES_CODERS_APP_USER:-velvet}"
+APP_USER=velvet
 RUNNER_TARGET=/usr/local/sbin/hermes-coders-release
 SUDOERS_TARGET=/etc/sudoers.d/hermes-coders-release
 
-if [[ ! "$APP_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || ! id "$APP_USER" >/dev/null 2>&1; then
-  echo "Invalid Hermes deployment user: $APP_USER" >&2
+if ! id "$APP_USER" >/dev/null 2>&1; then
+  echo "Hermes deployment user is missing: $APP_USER" >&2
   exit 2
 fi
 if [[ ! -f "$SOURCE" || -L "$SOURCE" ]]; then
