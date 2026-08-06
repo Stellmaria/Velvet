@@ -6,7 +6,7 @@
 - Статус: частично
 - Ветка: feat/arthur-librarian-phase2
 - Базовый commit: 5cd04ae20bb0bb6099cc5be920eb1f844cf5b54d
-- Синхронизировано с main: cf4df6868ac6e4c7ccfba6d87909fd782892cbc4
+- Синхронизировано с main: 0022b7404b9419ed73869f4a4e9c6a3d53bd8bd8
 
 ## Перед началом
 
@@ -98,6 +98,7 @@
 - dependency-free final baseline workflow синхронизировал все package inventory counters, исключил команды отдельного Arthur runtime только из Velvet route inventory и удалил временный workflow после зелёной проверки;
 - Telegram polling и report publisher перенесены из `application` в `presentation`, поэтому application layer остаётся framework-neutral и не импортирует `aiogram`;
 - финальные boundary и canonical workflows прошли зелёными и удалили собственные временные workflow-файлы до protected CI;
+- branch пересобрана поверх current main `0022b7404b9419ed73869f4a4e9c6a3d53bd8bd8` с сохранением honest GPT Image export contract PR #659;
 - полный protected-branch CI и exact-head review являются последним merge gate для PR #657;
 - production Telegram/PostgreSQL smoke сознательно не выполнялся в GitHub-сессии.
 
