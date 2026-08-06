@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Merge-triggered CI marker for the one-time Arthur production rollout.
 set -Eeuo pipefail
 umask 077
 trap 'rm -f -- "$SECRET_FILE"' EXIT
