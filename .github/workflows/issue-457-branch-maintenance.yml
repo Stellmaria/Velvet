@@ -1,0 +1,260 @@
+name: Issue 457 branch maintenance
+
+on:
+  push:
+    branches:
+      - feat/457-retire-legacy-delivery-installers
+
+permissions:
+  contents: write
+
+jobs:
+  retire-legacy-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Retire legacy delivery ownership layers
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          ROOT = Path('.')
+
+          def read(path: str) -> str:
+              return (ROOT / path).read_text(encoding='utf-8')
+
+          def write(path: str, content: str) -> None:
+              (ROOT / path).write_text(content, encoding='utf-8')
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              content = read(path)
+              count = content.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one replacement, found {count}: {old[:80]!r}')
+              write(path, content.replace(old, new, 1))
+
+          def replace_section(path: str, start: str, end: str, replacement: str) -> None:
+              content = read(path)
+              start_at = content.find(start)
+              if start_at < 0:
+                  raise SystemExit(f'{path}: missing section start {start!r}')
+              end_at = content.find(end, start_at)
+              if end_at < 0:
+                  raise SystemExit(f'{path}: missing section end {end!r}')
+              write(path, content[:start_at] + replacement + content[end_at:])
+
+          composition = 'velvet_bot/app/composition.py'
+          for stage_name in (
+              'install_original_image_delivery_hotfix',
+              'install_original_video_delivery_hotfix',
+              'install_auf_result_delivery_recovery',
+              'install_auf_active_delivery_fix',
+          ):
+              replace_once(composition, f'    "{stage_name}",\n', '')
+
+          for block in (
+              '    from velvet_bot.app.auf_active_delivery_fix import install_auf_active_delivery_fix\n',
+              '    from velvet_bot.app.auf_result_delivery_recovery import (\n        install_auf_result_delivery_recovery,\n    )\n',
+              '    from velvet_bot.app.original_image_delivery_hotfix import (\n        install_original_image_delivery_hotfix,\n    )\n',
+              '    from velvet_bot.app.original_video_delivery_hotfix import (\n        install_original_video_delivery_hotfix,\n    )\n',
+              '        CompositionStage(\n            "install_original_image_delivery_hotfix",\n            install_original_image_delivery_hotfix,\n        ),\n',
+              '        CompositionStage(\n            "install_original_video_delivery_hotfix",\n            install_original_video_delivery_hotfix,\n        ),\n',
+              '        CompositionStage(\n            "install_auf_result_delivery_recovery",\n            install_auf_result_delivery_recovery,\n        ),\n',
+              '        CompositionStage(\n            "install_auf_active_delivery_fix",\n            install_auf_active_delivery_fix,\n        ),\n',
+          ):
+              replace_once(composition, block, '')
+
+          friendly = 'velvet_bot/domains/media_generation/friendly_worker.py'
+          replace_once(friendly, 'import importlib\n', '')
+          replace_section(
+              friendly,
+              '    def __getattribute__(self, name: str) -> Any:\n',
+              '    async def process_once(self) -> bool:\n',
+              '''    async def _deliver_best_effort(\n        self,\n        *,\n        chat_id: int | None,\n        request: KieGenerationRequest,\n        record: KieTaskRecord,\n    ) -> None:\n        """Disable the legacy worker delivery phase.\n\n        Provider completion is persisted by the queue and delivered only by the\n        durable media-delivery use case. Keeping this explicit override prevents\n        the inherited best-effort transport path from sending a duplicate result.\n        """\n\n        del chat_id, request, record\n\n''',
+          )
+          replace_section(
+              friendly,
+              '    async def _durable_delivery_guard(\n',
+              '\ndef friendly_stage(request: KieGenerationRequest, stage: str) -> str:\n',
+              '',
+          )
+          replace_once(friendly, '    _disable_legacy_delivery_installers()\n', '')
+          replace_section(
+              friendly,
+              'def _disable_legacy_delivery_installers() -> None:\n',
+              'def _request_from_payload(payload: Mapping[str, object]) -> KieGenerationRequest | None:\n',
+              '',
+          )
+
+          base_worker = 'velvet_bot/domains/media_generation/file_delivery_worker.py'
+          replace_section(
+              base_worker,
+              '    @classmethod\n    def install_delivery_handler(cls, handler) -> None:\n',
+              '    async def _download_reference(self, reference: KieReferenceImage) -> bytes:\n',
+              '',
+          )
+
+          composition_test = 'tests/test_application_composition.py'
+          for stage_name in (
+              'install_original_image_delivery_hotfix',
+              'install_original_video_delivery_hotfix',
+              'install_auf_result_delivery_recovery',
+              'install_auf_active_delivery_fix',
+          ):
+              replace_once(composition_test, f'    "{stage_name}",\n', '')
+          replace_once(
+              composition_test,
+              '        self.assertEqual(23, len(composition.feature_stage_names))\n',
+              '        self.assertEqual(19, len(composition.feature_stage_names))\n',
+          )
+
+          durable_test = 'tests/test_durable_media_delivery.py'
+          replace_section(
+              durable_test,
+              '    async def test_legacy_worker_override_cannot_steal_delivery_ownership(self) -> None:\n',
+              '    def test_compatibility_installer_stages_are_explicitly_neutralized(self) -> None:\n',
+              '''    async def test_active_worker_disables_inherited_best_effort_delivery(self) -> None:\n        worker = object.__new__(FriendlyKieGenerationWorker)\n        handler = FriendlyKieGenerationWorker.__dict__["_deliver_best_effort"]\n\n        self.assertEqual("_deliver_best_effort", handler.__name__)\n        await handler(worker, chat_id=None, request=None, record=None)  # type: ignore[arg-type]\n\n''',
+          )
+          replace_section(
+              durable_test,
+              '    def test_compatibility_installer_stages_are_explicitly_neutralized(self) -> None:\n',
+              '    def test_migration_models_independent_delivery_channels_and_resolution(self) -> None:\n',
+              '''    def test_legacy_delivery_installers_are_retired(self) -> None:\n        retired = (\n            "velvet_bot/app/original_image_delivery_hotfix.py",\n            "velvet_bot/app/original_video_delivery_hotfix.py",\n            "velvet_bot/app/auf_result_delivery_recovery.py",\n            "velvet_bot/app/auf_active_delivery_fix.py",\n        )\n        for path in retired:\n            self.assertFalse(Path(path).exists(), path)\n\n        composition = Path("velvet_bot/app/composition.py").read_text(encoding="utf-8")\n        friendly = Path("velvet_bot/domains/media_generation/friendly_worker.py").read_text(\n            encoding="utf-8"\n        )\n        base_worker = Path(\n            "velvet_bot/domains/media_generation/file_delivery_worker.py"\n        ).read_text(encoding="utf-8")\n        for token in (\n            "install_original_image_delivery_hotfix",\n            "install_original_video_delivery_hotfix",\n            "install_auf_result_delivery_recovery",\n            "install_auf_active_delivery_fix",\n        ):\n            self.assertNotIn(token, composition)\n            self.assertNotIn(token, friendly)\n        self.assertIn("install_media_delivery_ui()", friendly)\n        self.assertNotIn("_disable_legacy_delivery_installers", friendly)\n        self.assertNotIn("install_delivery_handler", base_worker)\n\n''',
+          )
+
+          old_test = ROOT / 'tests/test_auf_active_delivery_fix.py'
+          old_test.unlink()
+          write(
+              'tests/test_media_delivery_ui_install.py',
+              '''from __future__ import annotations\n\nimport unittest\nfrom datetime import datetime\nfrom uuid import uuid4\n\nfrom velvet_bot.app.media_delivery_ui_install import (\n    MediaTaskDeliveryView,\n    task_card_keyboard,\n    task_card_text,\n)\nfrom velvet_bot.presentation.telegram.routers.workspace_auf import AufCallback\n\n\ndef _row(*, status: str = "success") -> dict[str, object]:\n    return {\n        "id": uuid4(),\n        "status": status,\n        "payload": {\n            "request": {\n                "model": "nano_banana_pro",\n                "input_mode": "photo_text",\n                "resolution": "2K",\n                "duration_seconds": 6,\n            }\n        },\n        "created_at": datetime(2026, 7, 30, 4, 12),\n        "quoted_units": 0,\n        "charge_status": None,\n    }\n\n\nclass MediaDeliveryUIInstallTests(unittest.TestCase):\n    def test_success_image_is_rendered_as_one_clear_card(self) -> None:\n        row = _row()\n        view = MediaTaskDeliveryView.from_row(row)\n        text = task_card_text(view, offset=0)\n\n        self.assertIn("Последняя задача", text)\n        self.assertIn("Nano Banana Pro", text)\n        self.assertIn("Тип: <b>Изображение</b>", text)\n        self.assertIn("Режим: <b>Фото + текст</b>", text)\n        self.assertIn("Качество: <b>2K</b>", text)\n        self.assertIn(str(row["id"])[:8], text)\n        self.assertIn("Получить результат", text)\n        self.assertIn("Новая генерация и новое списание не запускаются", text)\n        self.assertNotIn("6 сек", text)\n\n    def test_success_card_has_one_unambiguous_result_button(self) -> None:\n        row = _row()\n        view = MediaTaskDeliveryView.from_row(row)\n        markup = task_card_keyboard(\n            view=view,\n            workspace_id=1,\n            offset=2,\n            has_older=True,\n        )\n\n        labels = [button.text for line in markup.inline_keyboard for button in line]\n        self.assertEqual(1, labels.count("📥 Получить результат"))\n        self.assertIn("← Новее", labels)\n        self.assertIn("Старее →", labels)\n        self.assertIn("🔄 Обновить карточку", labels)\n\n        delivery = markup.inline_keyboard[0][0]\n        parsed = AufCallback.unpack(delivery.callback_data or "")\n        self.assertEqual("deliver", parsed.action)\n        self.assertEqual(str(row["id"]), parsed.value)\n        self.assertLessEqual(len(delivery.callback_data or ""), 64)\n\n    def test_unfinished_task_does_not_offer_result(self) -> None:\n        view = MediaTaskDeliveryView.from_row(_row(status="running"))\n        markup = task_card_keyboard(\n            view=view,\n            workspace_id=1,\n            offset=0,\n            has_older=False,\n        )\n        labels = [button.text for line in markup.inline_keyboard for button in line]\n        self.assertNotIn("📥 Получить результат", labels)\n        self.assertIn("🔄 Обновить карточку", labels)\n\n\nif __name__ == "__main__":\n    unittest.main()\n''',
+          )
+
+          for path in (
+              'velvet_bot/app/original_image_delivery_hotfix.py',
+              'velvet_bot/app/original_video_delivery_hotfix.py',
+              'velvet_bot/app/auf_result_delivery_recovery.py',
+              'velvet_bot/app/auf_active_delivery_fix.py',
+          ):
+              (ROOT / path).unlink()
+
+          worklog = '''# Сессия: retirement legacy media delivery installers\n\n- Дата: `2026-08-06`\n- ID: `issue-457-retire-legacy-delivery-installers`\n- Линия: `P0 media delivery / architecture retirement`\n- Статус: `repository implementation complete; live acceptance pending`\n- Базовый commit: `7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f`\n- Связанные issue: `#457`, `#410`, `#412`, `#455`, `#458`, `#514`\n\n## Цель\n\nУдалить четыре neutralized runtime installer, которые продолжали числиться в startup graph после перехода на durable media delivery PR #488.\n\n## Сделано\n\n- удалены image/video delivery hotfix layers;\n- удалены Auf result recovery и active-worker delivery fix layers;\n- удалены четыре composition stages;\n- удалён runtime `install_delivery_handler` mutation hook;\n- active Friendly worker явно отключает inherited best-effort transport phase;\n- canonical durable repository/resolver/delivery/redelivery и canonical UI сохранены;\n- legacy UI tests перенесены на `media_delivery_ui_install`;\n- architecture, stability, shared-contract, repository-layout и navigation inventories пересобраны.\n\n## Гарантии\n\n- provider submit и charging не доступны redelivery path;\n- provider success сохраняется до Telegram delivery;\n- active worker не выполняет второй legacy transport send;\n- UI использует `redeliver_owned_task` и durable state;\n- runtime behavior больше не зависит от четырёх retired installer stages.\n\n## Проверки\n\nBranch maintenance выполняет focused unit contracts, generated inventory checks, project preflight и `git diff --check`. Полная required CI матрица выполняется на PR exact head до merge.\n\n## Не выполнено без production access\n\nLive provider/Telegram matrix, restart/CDN/expired URL scenarios и no-double-charge evidence остаются в #410/#412. Issue #457 после merge остаётся открытой только для этой внешней приёмки.\n'''
+          write('docs/worklog/2026-08-06-retire-legacy-media-delivery-installers.md', worklog)
+          PY
+
+      - name: Regenerate architecture and stability inventories
+        shell: bash
+        run: |
+          python scripts/shared_contract_inventory.py \
+            --write-json docs/shared_contract_inventory.json \
+            --check
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts import inventory_package_architecture as inventory
+
+          label = 'issue-457-retire-legacy-delivery'
+          data = inventory.build_inventory(label=label)
+          path = Path('docs/package_architecture_exemptions.json')
+          exemptions = json.loads(path.read_text(encoding='utf-8'))
+          observed = {str(row['id']) for row in data['violations']}
+          previous = list(exemptions.get('exceptions', []))
+          exemptions['exceptions'] = [
+              row for row in previous if str(row.get('id')) in observed
+          ]
+          exemptions['shared_private_access_sha256'] = data['shared_contract_summary'][
+              'private_access_sha256'
+          ]
+          exemptions['root_module_sha256'] = data['root_module_sha256']
+          path.write_text(
+              json.dumps(exemptions, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          removed = len(previous) - len(exemptions['exceptions'])
+          print(f'Removed {removed} stale architecture exemptions')
+          PY
+          python scripts/inventory_package_architecture.py \
+            --label issue-457-retire-legacy-delivery \
+            --write
+          python scripts/inventory_package_architecture.py \
+            --label issue-457-retire-legacy-delivery \
+            --check
+          python scripts/update_p2_stability_inventory.py \
+            --label issue-457-retire-legacy-delivery \
+            --schema-version 82
+          python scripts/inventory_repository_layout.py \
+            --label issue-457-retire-legacy-delivery \
+            --write
+          python scripts/inventory_repository_layout.py \
+            --label issue-457-retire-legacy-delivery \
+            --check
+          python scripts/telegram_navigation_inventory.py \
+            --markdown docs/generated/telegram_navigation_inventory.md \
+            --check
+
+      - name: Update canonical status notes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          marker = 'issue-457-legacy-delivery-retirement'
+          blocks = {
+              'docs/development_status.md': '''## Retirement legacy media delivery installers — 6 августа 2026 года\n\nDurable media delivery PR #488 остаётся единственным production ownership path. Четыре neutralized installer слоя удалены из startup composition; runtime method replacement `install_delivery_handler` удалён; active Friendly worker сохраняет явный no-op для inherited legacy delivery phase. Generated inventories пересобраны. Live provider/Telegram acceptance остаётся #410/#412.\n''',
+              'docs/project_memory.md': '''## Media delivery ownership retirement — 2026-08-06\n\nКанонический delivery contract: durable repository → result resolver → download/original/preview/notification → redelivery. Старые image/video hotfix, Auf recovery и active-worker fix удалены вместе с четырьмя startup stages. Повторная доставка не имеет provider submit/charge boundary. Live acceptance остаётся #410/#412.\n''',
+              'docs/ARCHITECTURE_AUDIT.md': '''## #457: retirement legacy delivery ownership — 2026-08-06\n\nПосле PR #488 durable media delivery уже владел state machine, но composition продолжал перечислять четыре neutralized installer. Они удалены, `install_delivery_handler` runtime mutation hook удалён, canonical UI остаётся `media_delivery_ui_install`, а active Friendly worker не вызывает inherited best-effort transport send. Это repository-level closure legacy ownership; external delivery matrix остаётся #410/#412.\n''',
+          }
+          for path_text, body in blocks.items():
+              path = Path(path_text)
+              content = path.read_text(encoding='utf-8').rstrip() + '\n\n'
+              start = f'<!-- {marker} -->'
+              if start in content:
+                  raise SystemExit(f'{path}: marker already exists')
+              content += f'{start}\n{body}<!-- /{marker} -->\n'
+              path.write_text(content, encoding='utf-8')
+          PY
+
+      - name: Validate focused contracts
+        shell: bash
+        run: |
+          python -m unittest \
+            tests.test_application_composition \
+            tests.test_durable_media_delivery \
+            tests.test_media_delivery_ui_install \
+            tests.test_kie_file_delivery_worker \
+            tests.test_friendly_grs_file_delivery
+          python scripts/shared_contract_inventory.py --check
+          python scripts/inventory_package_architecture.py \
+            --label issue-457-retire-legacy-delivery \
+            --check
+          python scripts/inventory_repository_layout.py \
+            --label issue-457-retire-legacy-delivery \
+            --check
+          python scripts/ci_preflight.py
+          git diff --check
+
+      - name: Commit generated cleanup and remove maintenance workflow
+        shell: bash
+        run: |
+          rm .github/workflows/issue-457-branch-maintenance.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor: retire legacy media delivery installers (#457)"
+          git push origin HEAD:feat/457-retire-legacy-delivery-installers
