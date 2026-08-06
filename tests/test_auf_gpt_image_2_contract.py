@@ -140,17 +140,20 @@ class AufGptImage2ContractTests(unittest.TestCase):
         self.assertIn("Выполнение: <b>1 мин 29 сек</b>", text)
         self.assertIn("Всего: <b>1 мин 44 сек</b>", text)
 
-    def test_quality_selector_is_restored_only_for_byesu_fallback(self) -> None:
+    def test_quality_selector_uses_codex_first_and_parameter_routing(self) -> None:
         base_source = inspect.getsource(auf_gpt_image_2_install)
         patch_source = inspect.getsource(auf_gpt_image_2_quality_install)
 
         self.assertIn("_INTERNAL_EXPORT_PROFILE", base_source)
         self.assertEqual(CODEX_IMAGE_RESOLUTIONS, ("1K", "2K", "4K"))
-        self.assertIn("качество резерва Byesu", patch_source)
+        self.assertIn("1K: сначала Codex Plus", patch_source)
+        self.assertIn("gpt-image-2", patch_source)
+        self.assertIn("firefly-gpt-image-2", patch_source)
+        self.assertIn("от 1 до 6 общих референсов", patch_source)
+        self.assertIn("Один файл: до 8 МБ", patch_source)
         self.assertIn("gpt2_resolution", patch_source)
         self.assertIn("gpt2_choose_resolution", patch_source)
         self.assertIn("resolution=resolution", patch_source)
-        self.assertIn("нативный размер без апскейла", patch_source)
         self.assertNotIn("апскейл до выбранного качества", patch_source)
 
     def test_enqueue_persists_progress_message_and_timestamp(self) -> None:
