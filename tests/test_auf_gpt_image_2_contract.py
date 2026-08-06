@@ -125,11 +125,27 @@ class AufGptImage2ContractTests(unittest.TestCase):
             },
         )
         self.assertIn("завершено · 100%", text)
+        self.assertIn("Экспорт: <b>JPEG · 9:16</b>", text)
+        self.assertNotIn("4K JPEG", text)
         self.assertIn("82.0% → 79.0% (-3.0 п.п.)", text)
         self.assertIn("65.0% → 64.0% (-1.0 п.п.)", text)
         self.assertIn("В очереди: <b>15 сек</b>", text)
         self.assertIn("Выполнение: <b>1 мин 29 сек</b>", text)
         self.assertIn("Всего: <b>1 мин 44 сек</b>", text)
+
+    def test_quality_selector_is_hidden_and_internal_profile_is_fixed(self) -> None:
+        module_source = inspect.getsource(auf_gpt_image_2_install)
+        final_source = inspect.getsource(auf_gpt_image_2_install._show_final)
+        request_source = inspect.getsource(auf_gpt_image_2_install._request)
+        resolution_source = inspect.getsource(
+            auf_gpt_image_2_install._show_resolutions
+        )
+
+        self.assertNotIn("экспорт 1K, 2K или 4K", module_source)
+        self.assertNotIn('"Размер"', final_source)
+        self.assertNotIn("request.resolution", final_source)
+        self.assertIn("resolution=_INTERNAL_EXPORT_PROFILE", request_source)
+        self.assertIn("await _show_ratios(callback, state)", resolution_source)
 
     def test_enqueue_persists_progress_message_and_timestamp(self) -> None:
         source = inspect.getsource(auf_gpt_image_2_install._enqueue)

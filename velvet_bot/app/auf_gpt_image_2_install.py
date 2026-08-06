@@ -33,6 +33,7 @@ from velvet_bot.reference_media import validate_reference_document
 
 _INSTALLED = False
 _MAX_PROMPT_MESSAGES = 2
+_INTERNAL_EXPORT_PROFILE = "2K"
 
 
 def _enabled() -> bool:
@@ -165,7 +166,8 @@ async def _show_modes(callback: CallbackQuery, state: FSMContext) -> None:
             "Фото + текст: от 1 до 5 общих референсов.\n"
             "Каэль сам анализирует персонажа, одежду, сцену и остальные детали.\n"
             "Промт: до 8000 символов двумя сообщениями.\n"
-            "Результат: один JPEG, экспорт 1K, 2K или 4K."
+            "Результат: один JPEG без выбора условного качества. "
+            "Фактический размер показывается после генерации."
         ),
         reply_markup=_markup(
             [
@@ -335,36 +337,8 @@ async def _show_review(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 async def _show_resolutions(callback: CallbackQuery, state: FSMContext) -> None:
-    workspace_id = int(
-        _state_value(await state.get_data(), "auf_workspace_id") or 0
-    )
-    await state.set_state(photo_router.AufPhotoForm.choosing_resolution)
-    rows = [
-        [
-            _button(
-                value,
-                "gpt2_resolution",
-                workspace_id=workspace_id,
-                value=value,
-            )
-        ]
-        for value in CODEX_IMAGE_RESOLUTIONS
-    ]
-    rows.extend(
-        [
-            [_button("К вводу", "gpt2_input_back", workspace_id=workspace_id)],
-            [_button("Отмена", "cancel", workspace_id=workspace_id)],
-        ]
-    )
-    await edit_or_answer_auf_callback(
-        callback,
-        text=(
-            "<b>GPT Image 2 · размер экспорта</b>\n\n"
-            "1K, 2K и 4K задают размер итогового JPEG. Если исходник меньше, "
-            "он аккуратно масштабируется без растягивания пропорций."
-        ),
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
-    )
+    """Redirect stale size-selection keyboards to aspect ratio selection."""
+    await _show_ratios(callback, state)
 
 
 async def _show_ratios(callback: CallbackQuery, state: FSMContext) -> None:
@@ -388,8 +362,8 @@ async def _show_ratios(callback: CallbackQuery, state: FSMContext) -> None:
         [
             [
                 _button(
-                    "К размеру",
-                    "gpt2_choose_resolution",
+                    "К проверке",
+                    "gpt2_review",
                     workspace_id=workspace_id,
                 )
             ],
@@ -489,7 +463,7 @@ def _request(data: Mapping[str, object]) -> CodexImageRequest:
         references=_references(data),
         input_mode=str(_state_value(data, "auf_input_mode") or "text"),
         aspect_ratio=str(_state_value(data, "auf_aspect_ratio") or "9:16"),
-        resolution=str(_state_value(data, "auf_resolution") or "2K").upper(),
+        resolution=_INTERNAL_EXPORT_PROFILE,
         analysis_model=str(
             _state_value(data, "auf_analysis_model") or "gpt-5.6-terra"
         ),
@@ -513,7 +487,7 @@ async def _show_final(callback: CallbackQuery, state: FSMContext) -> None:
             f"Модель: <b>{GPT_IMAGE_2_NAME}</b>\n"
             f"Анализ: <b>{escape(model_name)} · {escape(effort_name)}</b>\n"
             f"Референсы: <b>{len(request.references)}</b>\n"
-            f"Экспорт: <b>{request.resolution} JPEG</b>\n"
+            "Экспорт: <b>JPEG без искусственного апскейла</b>\n"
             f"Соотношение: <b>{request.aspect_ratio}</b>\n"
             "Результатов: <b>1</b>\n"
             "Автоперегенерация: <b>нет</b>\n\n"
@@ -523,15 +497,10 @@ async def _show_final(callback: CallbackQuery, state: FSMContext) -> None:
             [_button("Да, создать", "gpt2_generate", workspace_id=workspace_id)],
             [
                 _button(
-                    "Размер",
-                    "gpt2_choose_resolution",
-                    workspace_id=workspace_id,
-                ),
-                _button(
                     "Пропорция",
                     "gpt2_choose_ratio",
                     workspace_id=workspace_id,
-                ),
+                )
             ],
             [
                 _button(
@@ -936,7 +905,7 @@ def install_auf_gpt_image_2() -> None:
         elif action == "gpt2_review":
             await _show_review(callback, state)
         elif action == "gpt2_input_confirm":
-            await _show_resolutions(callback, state)
+            await _show_ratios(callback, state)
         elif action == "gpt2_choose_resolution":
             await _show_resolutions(callback, state)
         elif action == "gpt2_resolution":
