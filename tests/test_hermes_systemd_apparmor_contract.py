@@ -17,6 +17,20 @@ def test_apparmor_allows_git_https_transport_helpers() -> None:
     assert "/usr/lib/git-core/git-remote-https ix," in profile
 
 
+def test_current_runner_allows_git_helpers_and_codex_temp_only() -> None:
+    profile = (CODER_ROOT / "security/apparmor-hermes-codex-runner").read_text(
+        encoding="utf-8"
+    )
+
+    assert "/usr/lib/git-core/git ix," in profile
+    assert "/usr/lib/git-core/git-remote-http ix," in profile
+    assert "/usr/lib/git-core/git-remote-https ix," in profile
+    assert "/usr/lib/git-core/** ix," not in profile
+    assert "/opt/codex/** r," in profile
+    assert "/opt/codex/tmp/ rw," in profile
+    assert "/opt/codex/tmp/** rwk," in profile
+
+
 def test_systemd_lifecycle_targets_only_coder_services() -> None:
     source = UNIT_PATH.read_text(encoding="utf-8")
     lines = source.splitlines()
