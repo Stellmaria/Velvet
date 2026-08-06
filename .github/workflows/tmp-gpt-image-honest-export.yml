@@ -1,0 +1,66 @@
+name: tmp gpt image honest export
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/gpt-image-honest-export
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements.lock
+
+      - name: Apply product patch
+        run: python .github/scripts/tmp_patch_gpt_image_honest_export.py patch
+
+      - name: Regenerate architecture baseline
+        run: >-
+          python scripts/inventory_package_architecture.py
+          --write
+          --bootstrap-exemptions
+          --label p1-package-architecture-baseline
+
+      - name: Synchronize exact inventory assertions
+        run: python .github/scripts/tmp_patch_gpt_image_honest_export.py sync-inventory
+
+      - name: Run focused tests
+        run: >-
+          python -m unittest
+          tests.test_codex_image_export
+          tests.test_auf_gpt_image_2_contract
+          tests.test_package_architecture_inventory
+
+      - name: Compile changed Python
+        run: >-
+          python -m compileall -q
+          velvet_bot/app/auf_gpt_image_2_install.py
+          velvet_bot/domains/codex_image.py
+          tests/test_codex_image_export.py
+          tests/test_auf_gpt_image_2_contract.py
+
+      - name: Remove temporary automation
+        run: >-
+          git rm
+          .github/scripts/tmp_patch_gpt_image_honest_export.py
+          .github/workflows/tmp-gpt-image-honest-export.yml
+
+      - name: Commit product changes
+        run: |
+          git config user.name "Velvet Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Remove misleading GPT Image quality selector"
+          git push origin HEAD:fix/gpt-image-honest-export
