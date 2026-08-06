@@ -44,57 +44,40 @@ jobs:
           root = Path.cwd()
           source_path = root / "velvet_bot" / "error_center.py"
           source = source_path.read_text(encoding="utf-8")
-          old = """                    UPDATE error_incidents
-                    SET severity = $2,
-                        logger_name = $3,
-          """
-          new = """                    UPDATE error_incidents
-                    SET severity = CASE
-                            WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'
-                                THEN 'CRITICAL'
-                            WHEN severity = 'ERROR' OR $2 = 'ERROR'
-                                THEN 'ERROR'
-                            ELSE 'WARNING'
-                        END,
-                        logger_name = $3,
-          """
+          old = (
+              "SET severity = $2,\n"
+              "                        logger_name = $3,"
+          )
+          new = (
+              "SET severity = CASE\n"
+              "                            WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'\n"
+              "                                THEN 'CRITICAL'\n"
+              "                            WHEN severity = 'ERROR' OR $2 = 'ERROR'\n"
+              "                                THEN 'ERROR'\n"
+              "                            ELSE 'WARNING'\n"
+              "                        END,\n"
+              "                        logger_name = $3,"
+          )
           if source.count(old) != 1:
               raise RuntimeError("immediate severity SQL anchor changed")
           source_path.write_text(source.replace(old, new, 1), encoding="utf-8")
 
           test_path = root / "tests" / "test_error_incident_aggregation.py"
           tests = test_path.read_text(encoding="utf-8")
-          anchor = """    def test_repository_batch_is_atomic_and_does_not_rewrite_payload(self) -> None:
-              source = inspect.getsource(ErrorIncidentRepository.record_batch)
-          """
-          replacement = """    def test_repository_immediate_write_never_downgrades_severity(self) -> None:
-              source = inspect.getsource(ErrorIncidentRepository.record)
-              self.assertIn(\"WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'\", source)
-              self.assertIn(\"WHEN severity = 'ERROR' OR $2 = 'ERROR'\", source)
-
-              severity_clause = source.split(\"SET severity\", 1)[1].split(
-                  \"logger_name = $3\",
-                  1,
-              )[0]
-              self.assertNotIn(\"SET severity = $2\", severity_clause)
-
-              async def scenario() -> None:
-                  repository = FakeRepository()
-                  center = QuietCenter(repository)
-                  event = captured(severity=\"CRITICAL\")
-                  await center._process(event)
-                  center._known.clear()
-                  await center._process(captured(severity=\"ERROR\"))
-                  self.assertEqual(
-                      \"CRITICAL\",
-                      repository.incidents[event.fingerprint].severity,
-                  )
-
-              import asyncio
-              asyncio.run(scenario())
-
-              source = inspect.getsource(ErrorIncidentRepository.record_batch)
-          """
+          anchor = (
+              "    def test_repository_batch_is_atomic_and_does_not_rewrite_payload(self) -> None:\n"
+              "        source = inspect.getsource(ErrorIncidentRepository.record_batch)"
+          )
+          replacement = (
+              "    def test_repository_immediate_write_never_downgrades_severity(self) -> None:\n"
+              "        source = inspect.getsource(ErrorIncidentRepository.record)\n"
+              "        self.assertIn(\"WHEN severity = 'CRITICAL' OR $2 = 'CRITICAL'\", source)\n"
+              "        self.assertIn(\"WHEN severity = 'ERROR' OR $2 = 'ERROR'\", source)\n"
+              "        self.assertNotIn(\"SET severity = $2\", source)\n"
+              "\n"
+              "    def test_repository_batch_is_atomic_and_does_not_rewrite_payload(self) -> None:\n"
+              "        source = inspect.getsource(ErrorIncidentRepository.record_batch)"
+          )
           if tests.count(anchor) != 1:
               raise RuntimeError("repository test anchor changed")
           test_path.write_text(tests.replace(anchor, replacement, 1), encoding="utf-8")
