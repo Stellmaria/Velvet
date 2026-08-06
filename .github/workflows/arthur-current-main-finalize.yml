@@ -1,0 +1,249 @@
+name: arthur current main finalize
+
+on:
+  push:
+    branches:
+      - feat/arthur-librarian-phase2
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6.0.2
+        with:
+          ref: feat/arthur-librarian-phase2
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6.1.0
+        with:
+          python-version: "3.13"
+      - name: Regenerate combined inventories
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --write \
+            --label p1-package-architecture-baseline
+          python scripts/inventory_repository_layout.py \
+            --write \
+            --label p3e-repository-layout-complete
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --markdown docs/generated/telegram_navigation_inventory.md
+      - name: Synchronize generated assertions and canonical slices
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          package = json.loads(
+              Path("docs/package_architecture_inventory.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          exemptions = json.loads(
+              Path("docs/package_architecture_exemptions.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          modules = int(package["production_module_count"])
+          loc = int(package["production_loc"])
+          functions = int(package["shared_contract_summary"]["function_count"])
+          private = int(
+              package["shared_contract_summary"]["private_contract_access_count"]
+          )
+          blocking = sum(
+              1
+              for row in exemptions["exceptions"]
+              if row.get("blocking") is True
+          )
+
+          package_test = Path("tests/test_package_architecture_inventory.py")
+          source = package_test.read_text(encoding="utf-8")
+          for field in (
+              "production_module_count",
+              "production_loc",
+              "root_module_count",
+              "root_unclassified_count",
+              "router_count",
+              "router_duplicate_count",
+              "repository_module_count",
+              "violation_count",
+          ):
+              value = int(package[field])
+              pattern = rf'self\.assertEqual\(\d+, self\.inventory\["{field}"\]\)'
+              replacement = f'self.assertEqual({value}, self.inventory["{field}"])'
+              source, count = re.subn(pattern, replacement, source, count=1)
+              if count != 1:
+                  raise SystemExit(f"missing package assertion: {field}")
+          for label, value in (
+              ("Production modules", modules),
+              ("Production LOC", loc),
+          ):
+              source, count = re.subn(
+                  rf'{re.escape(label)}: \*\*\d+\*\*',
+                  f"{label}: **{value}**",
+                  source,
+                  count=1,
+              )
+              if count != 1:
+                  raise SystemExit(f"missing package human assertion: {label}")
+          package_test.write_text(source, encoding="utf-8")
+
+          navigation = Path(
+              "docs/generated/telegram_navigation_inventory.md"
+          ).read_text(encoding="utf-8")
+          nav_values = {}
+          for label in (
+              "Python files scanned",
+              "Files with buttons",
+              "Buttons",
+              "Inline buttons",
+              "Reply buttons",
+              "Violations",
+          ):
+              match = re.search(rf'- {re.escape(label)}: \*\*(\d+)\*\*', navigation)
+              if match is None:
+                  raise SystemExit(f"missing navigation metric: {label}")
+              nav_values[label] = int(match.group(1))
+
+          canonical_test = Path("tests/test_canonical_docs_sync.py")
+          canonical = canonical_test.read_text(encoding="utf-8")
+          for label in (
+              "Files with buttons",
+              "Buttons",
+              "Inline buttons",
+              "Reply buttons",
+          ):
+              canonical, count = re.subn(
+                  rf'{re.escape(label)}: \*\*\d+\*\*',
+                  f"{label}: **{nav_values[label]}**",
+                  canonical,
+                  count=1,
+              )
+              if count != 1:
+                  raise SystemExit(f"missing canonical navigation assertion: {label}")
+          canonical_test.write_text(canonical, encoding="utf-8")
+
+          start = "<!-- arthur-librarian-phase2-architecture-slice -->"
+          end = "<!-- /arthur-librarian-phase2-architecture-slice -->"
+          replacements = (
+              (
+                  r"- package production modules: \*\*\d+\*\*;",
+                  f"- package production modules: **{modules}**;",
+              ),
+              (
+                  r"- inventoried functions: \*\*\d+\*\*;",
+                  f"- inventoried functions: **{functions}**;",
+              ),
+              (
+                  r"- registered transitional private accesses: \*\*\d+\*\*;",
+                  f"- registered transitional private accesses: **{private}**;",
+              ),
+              (
+                  r"- blocking known private contracts: \*\*\d+\*\*;",
+                  f"- blocking known private contracts: **{blocking}**;",
+              ),
+          )
+          for path in (
+              Path("docs/development_status.md"),
+              Path("docs/project_memory.md"),
+              Path("docs/ARCHITECTURE_AUDIT.md"),
+          ):
+              text = path.read_text(encoding="utf-8")
+              if text.count(start) != 1 or text.count(end) != 1:
+                  raise SystemExit(f"Arthur canonical markers changed: {path}")
+              before, tail = text.split(start, 1)
+              block, after = tail.split(end, 1)
+              for pattern, replacement in replacements:
+                  block, count = re.subn(pattern, replacement, block, count=1)
+                  if count != 1:
+                      raise SystemExit(f"Arthur canonical field missing: {path}")
+              path.write_text(
+                  before + start + block + end + after,
+                  encoding="utf-8",
+              )
+
+          worklog_path = Path(
+              "docs/worklog/2026-08-06-arthur-librarian-phase2.md"
+          )
+          worklog = worklog_path.read_text(encoding="utf-8")
+          worklog = re.sub(
+              r"- Синхронизировано с main: [0-9a-f]{40}",
+              "- Синхронизировано с main: 0022b7404b9419ed73869f4a4e9c6a3d53bd8bd8",
+              worklog,
+              count=1,
+          )
+          worklog = re.sub(
+              r"baseline `\d+ / \d+ / \d+ / \d+`",
+              f"baseline `{modules} / {functions} / {private} / {blocking}`",
+              worklog,
+              count=1,
+          )
+          note = (
+              "- branch пересобрана поверх current main `0022b7404b9419ed73869f4a4e9c6a3d53bd8bd8` "
+              "с сохранением honest GPT Image export contract PR #659;\n"
+          )
+          anchor = (
+              "- финальные boundary и canonical workflows прошли зелёными и "
+              "удалили собственные временные workflow-файлы до protected CI;\n"
+          )
+          if note not in worklog:
+              if anchor not in worklog:
+                  raise SystemExit("worklog current-main anchor changed")
+              worklog = worklog.replace(anchor, anchor + note, 1)
+          worklog_path.write_text(worklog, encoding="utf-8")
+
+          print(
+              json.dumps(
+                  {
+                      "modules": modules,
+                      "loc": loc,
+                      "functions": functions,
+                      "private": private,
+                      "blocking": blocking,
+                      "navigation": nav_values,
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+      - name: Verify combined dependency-free contracts
+        run: |
+          python scripts/inventory_package_architecture.py \
+            --check \
+            --label p1-package-architecture-baseline
+          python scripts/inventory_repository_layout.py \
+            --check \
+            --label p3e-repository-layout-complete
+          python scripts/telegram_navigation_inventory.py \
+            --root velvet_bot \
+            --check
+          python -m unittest \
+            tests.test_project_integrity \
+            tests.test_package_architecture_inventory \
+            tests.test_p3e_repository_layout_inventory \
+            tests.test_telegram_navigation_inventory \
+            tests.test_canonical_docs_sync
+      - name: Commit combined baseline and remove workflow
+        run: |
+          rm -- .github/workflows/arthur-current-main-finalize.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/generated/telegram_navigation_inventory.md \
+            docs/development_status.md \
+            docs/project_memory.md \
+            docs/ARCHITECTURE_AUDIT.md \
+            docs/worklog/2026-08-06-arthur-librarian-phase2.md \
+            tests/test_package_architecture_inventory.py \
+            tests/test_canonical_docs_sync.py
+          git add -u -- .github/workflows
+          git commit -m "docs: finalize Arthur against current main"
+          git push origin HEAD:feat/arthur-librarian-phase2
