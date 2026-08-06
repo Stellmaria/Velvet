@@ -32,6 +32,12 @@ _EXPECTED_ROUTES = {
     "complex": ["gpt-5.6-terra"],
     "high_risk": ["gpt-5.6-terra"],
 }
+_EXPECTED_CREDENTIAL_GROUPS = [
+    {
+        "name": "byesu-coder",
+        "models": ["gpt-5.4-mini", "gpt-5.6-terra", "gpt-5.6-luna"],
+    }
+]
 _SECRET = re.compile(
     r"(?i)(authorization\s*:\s*bearer\s+|"
     r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)[A-Z0-9_]*\s*[=:]\s*)"
@@ -83,13 +89,9 @@ capabilities = request_json(
 result = {
     "capabilities": capabilities,
     "availability": {
-        "byesu-coder": model_access(
+        "byesu-shared": model_access(
             "BYESU_HERMES_CODEX_API_KEY",
-            ("gpt-5.4-mini", "gpt-5.6-terra"),
-        ),
-        "byesu-gpt-pro": model_access(
-            "BYESU_HERMES_GPT_PRO_API_KEY",
-            ("gpt-5.6-luna",),
+            ("gpt-5.4-mini", "gpt-5.6-terra", "gpt-5.6-luna"),
         ),
     },
 }
@@ -128,6 +130,8 @@ def validate_payload(project: str, payload: dict[str, Any]) -> str:
         raise TierProviderSmokeError(f"{project}: provider fallback disabled")
     if fallback.get("routes_by_tier") != _EXPECTED_ROUTES:
         raise TierProviderSmokeError(f"{project}: unexpected routes_by_tier")
+    if fallback.get("credential_groups") != _EXPECTED_CREDENTIAL_GROUPS:
+        raise TierProviderSmokeError(f"{project}: credentials are not unified")
     if fallback.get("after_mutation") is not False:
         raise TierProviderSmokeError(f"{project}: mutation retry is not blocked")
     if fallback.get("after_execution_event") is not False:
@@ -145,19 +149,15 @@ def validate_payload(project: str, payload: dict[str, Any]) -> str:
     availability = payload.get("availability")
     if not isinstance(availability, dict):
         raise TierProviderSmokeError(f"{project}: provider availability missing")
-    coder = availability.get("byesu-coder")
-    pro = availability.get("byesu-gpt-pro")
-    if not isinstance(coder, dict) or coder.get("configured") is not True:
-        raise TierProviderSmokeError(f"{project}: coder credential group unavailable")
-    if not isinstance(pro, dict) or pro.get("configured") is not True:
-        raise TierProviderSmokeError(f"{project}: GPT Pro credential group unavailable")
-    coder_models = coder.get("models") if isinstance(coder.get("models"), dict) else {}
-    pro_models = pro.get("models") if isinstance(pro.get("models"), dict) else {}
-    if coder_models.get("gpt-5.6-terra") is not True:
-        raise TierProviderSmokeError(f"{project}: Terra unavailable to coder key")
-    if pro_models.get("gpt-5.6-luna") is not True:
-        raise TierProviderSmokeError(f"{project}: Luna unavailable to GPT Pro key")
-    mini = coder_models.get("gpt-5.4-mini") is True
+    shared = availability.get("byesu-shared")
+    if not isinstance(shared, dict) or shared.get("configured") is not True:
+        raise TierProviderSmokeError(f"{project}: shared Byesu credential unavailable")
+    models = shared.get("models") if isinstance(shared.get("models"), dict) else {}
+    if models.get("gpt-5.6-terra") is not True:
+        raise TierProviderSmokeError(f"{project}: Terra unavailable to shared key")
+    if models.get("gpt-5.6-luna") is not True:
+        raise TierProviderSmokeError(f"{project}: Luna unavailable to shared key")
+    mini = models.get("gpt-5.4-mini") is True
     return "MINI_AVAILABLE" if mini else "MINI_UNAVAILABLE_FAIL_CLOSED"
 
 
@@ -191,7 +191,7 @@ def main() -> int:
         outcomes.append(mini_state)
         print(
             f"{project}: TIER_ROUTES_OK, TERRA_OK, LUNA_OK, {mini_state}, "
-            "NO_DOWNGRADE_OK, RETRY_GUARDS_OK, MUTATION_AUDIT_OK"
+            "ONE_BYESU_KEY_OK, NO_DOWNGRADE_OK, RETRY_GUARDS_OK, MUTATION_AUDIT_OK"
         )
     if len(set(outcomes)) != 1:
         raise TierProviderSmokeError(
