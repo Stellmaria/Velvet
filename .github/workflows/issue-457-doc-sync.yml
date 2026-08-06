@@ -1,0 +1,101 @@
+name: Issue 457 canonical docs sync
+
+on:
+  push:
+    branches:
+      - feat/457-retire-legacy-delivery-installers
+
+permissions:
+  contents: write
+
+jobs:
+  sync-docs:
+    if: contains(github.event.head_commit.message, 'trigger issue 457 docs sync')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Synchronize canonical issue 457 block
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          start = '<!-- issue-457-legacy-delivery-retirement -->'
+          end = '<!-- /issue-457-legacy-delivery-retirement -->'
+          block = '''<!-- issue-457-legacy-delivery-retirement -->
+## Retirement legacy media delivery installers — 6 августа 2026 года
+
+Durable media delivery PR #488 остаётся единственным production ownership path. Четыре neutralized installer слоя удалены из startup composition; runtime method replacement `install_delivery_handler` удалён; active Friendly worker сохраняет явный no-op для inherited legacy delivery phase.
+
+Воспроизводимый baseline current feature head:
+
+- package production modules: **655**;
+- inventoried functions: **3830**;
+- registered transitional private accesses: **180**;
+- blocking known contracts: **0**;
+- startup installer stages: **21**;
+- registered package architecture fingerprints: **521**.
+
+Repository implementation #457 завершена этим срезом, но live provider/Telegram acceptance остаётся #410/#412. Зелёный CI не подтверждает production restart, CDN/expired URL или no-double-charge matrix.
+<!-- /issue-457-legacy-delivery-retirement -->'''
+
+          for path_text in (
+              'docs/development_status.md',
+              'docs/project_memory.md',
+              'docs/ARCHITECTURE_AUDIT.md',
+          ):
+              path = Path(path_text)
+              content = path.read_text(encoding='utf-8')
+              left = content.find(start)
+              right = content.find(end, left)
+              if left < 0 or right < 0:
+                  raise SystemExit(f'{path}: issue-457 marker block missing')
+              right += len(end)
+              path.write_text(content[:left] + block + content[right:], encoding='utf-8')
+
+          worklog = Path('docs/worklog/2026-08-06-retire-legacy-media-delivery-installers.md')
+          content = worklog.read_text(encoding='utf-8')
+          old = '- legacy UI tests перенесены на canonical module;\n'
+          new = (
+              '- legacy UI tests перенесены на canonical module;\n'
+              '- image/video/recovery assertions перенесены с удалённых modules на '
+              '`TelegramMediaDeliveryTransport` и durable use cases;\n'
+          )
+          if content.count(old) != 1:
+              raise SystemExit('worklog test migration marker missing')
+          worklog.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Validate canonical docs and delivery contracts
+        run: |
+          python -m unittest \
+            tests.test_canonical_docs_sync \
+            tests.test_durable_media_delivery \
+            tests.test_media_delivery_telegram \
+            tests.test_media_delivery_ui_install
+          python scripts/ci_preflight.py
+          git diff --check
+
+      - name: Commit synchronized docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          git commit -m "docs: synchronize issue 457 canonical baseline"
+          git push origin HEAD:feat/457-retire-legacy-delivery-installers
