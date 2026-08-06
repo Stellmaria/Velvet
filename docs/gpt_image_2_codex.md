@@ -23,20 +23,42 @@ GPT-5.6 Sol/Terra/Luna, reasoning effort, качества и пропорции
 
 ### 1K
 
-1. Сначала запускается Codex Plus.
-2. Выбранный Sol/Terra/Luna и reasoning effort анализируют пользовательский
+1. Перед генерацией runtime читает свежие окна подписки через Codex app-server.
+2. Если ответ явно сообщает активное исчерпание, Codex generation не запускается:
+   запрос сразу идёт в подходящий Byesu-route.
+3. Если лимит не исчерпан либо preflight недоступен/неоднозначен, запускается
+   Codex Plus.
+4. Выбранный Sol/Terra/Luna и reasoning effort анализируют пользовательский
    промт и все референсы внутри Codex.
-3. Если Codex вызывает `image_gen`, любой последующий сбой завершает задачу без
+5. Если Codex вызывает `image_gen`, любой последующий сбой завершает задачу без
    второго генерационного запроса.
-4. Если Codex возвращает подтверждённый `subscription_limit` до первого tool
+6. Если Codex возвращает подтверждённый `subscription_limit` до первого tool
    execution, выполняется один fallback Byesu.
-5. Byesu автоматически выбирает самый дешёвый совместимый генератор:
+7. Byesu автоматически выбирает самый дешёвый совместимый генератор:
    - 0–3 референса: `gpt-image-2`, 1K, $0.01 за изображение;
    - 4–6 референсов: `firefly-gpt-image-2`, 1K, $0.04 за изображение.
 
 Lifecycle-события `thread.started` и `turn.started` не считаются tool execution.
 Command/file/MCP/dynamic tool execution, существующий artifact или неизвестный
 результат генерационного запроса блокируют fallback.
+
+### Что считается исчерпанным лимитом на preflight
+
+Preflight переключает на Byesu только при одном из явных сигналов:
+
+- `rate_limit_reached_type` содержит активный тип достигнутого окна;
+- окно `primary` или `secondary` имеет `used_percent >= 100`, а `resets_at`
+  отсутствует либо находится в будущем.
+
+Значение ниже 100%, уже прошедшее время сброса, неизвестный JSON, timeout или
+недоступный app-server не включают платный маршрут. Такой результат работает
+fail-open: задача всё равно пробует Codex, а прежний error-driven fallback
+остаётся страховкой от гонки между проверкой и фактическим запуском.
+
+Это чтение выполняется напрямую через `account/rateLimits/read`, а не из
+долгоживущего кеша. Нормальный probe обычно короче запуска Codex-задачи; его
+операционный timeout ограничен, чтобы проблема app-server не задерживала каждую
+генерацию бесконечностью, любимым значением распределённых систем.
 
 ### 2K и 4K
 
@@ -104,6 +126,8 @@ Hermes. Перед анализом и генерацией `GET /v1/models` д�
 
 ```env
 BYESU_HERMES_CODEX_API_KEY=<existing Byesu token>
+CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED=true
+CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS=3
 CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true
 CODEX_IMAGE_BYESU_BASE_URL=https://byesu.com/v1
 CODEX_IMAGE_BYESU_TIMEOUT_SECONDS=600
@@ -118,13 +142,16 @@ CODEX_IMAGE_BYESU_TIMEOUT_SECONDS=600
 production включения обязательны:
 
 1. 1K через доступный Codex Plus;
-2. clean `subscription_limit` до tool execution;
-3. fallback 1K с 0, 3, 4 и 6 референсами;
-4. прямые Byesu 2K и 4K;
-5. Sol/Terra/Luna со всеми разрешёнными reasoning effort;
-6. capability mismatch без generation charge;
-7. блокировка fallback после synthetic tool execution;
-8. проверка preview, оригинала и фактических пикселей.
+2. preflight с 99% должен продолжить Codex-route;
+3. preflight с активными 100% должен пропустить запуск Codex;
+4. недоступный preflight должен fail-open в Codex;
+5. clean `subscription_limit` до tool execution после неубедительного preflight;
+6. fallback 1K с 0, 3, 4 и 6 референсами;
+7. прямые Byesu 2K и 4K;
+8. Sol/Terra/Luna со всеми разрешёнными reasoning effort;
+9. capability mismatch без generation charge;
+10. блокировка fallback после synthetic tool execution;
+11. проверка preview, оригинала и фактических пикселей.
 
 CI не подтверждает доступность подписки, token group, реальную цену или возврат
 провайдера; это остаётся live-smoke контрактом.
