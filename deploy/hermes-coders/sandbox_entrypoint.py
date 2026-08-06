@@ -58,11 +58,7 @@ def prepare_codex_home(source: Path, target: Path, *, route: str) -> None:
 
 
 def provider_config(model: str) -> str:
-    env_key = (
-        "BYESU_HERMES_GPT_PRO_API_KEY"
-        if model == "gpt-5.6-luna"
-        else "BYESU_HERMES_CODEX_API_KEY"
-    )
+    env_key = "BYESU_HERMES_CODEX_API_KEY"
     return f'''model = "{model}"
 model_provider = "byesu"
 model_reasoning_effort = "high"
@@ -85,7 +81,6 @@ ignore_default_excludes = true
 exclude = [
   "API_SERVER_KEY",
   "BYESU_HERMES_CODEX_API_KEY",
-  "BYESU_HERMES_GPT_PRO_API_KEY",
   "CODEX_RUNNER_API_KEY",
   "DATABASE_URL",
   "PGPASSWORD",
@@ -186,11 +181,7 @@ def execution_env(
     if not image_run:
         allowed["GH_TOKEN"] = required_env("GH_TOKEN")
     if route == "byesu_provider":
-        key_name = (
-            "BYESU_HERMES_GPT_PRO_API_KEY"
-            if model == "gpt-5.6-luna"
-            else "BYESU_HERMES_CODEX_API_KEY"
-        )
+        key_name = "BYESU_HERMES_CODEX_API_KEY"
         allowed[key_name] = required_env(key_name)
     return allowed
 
