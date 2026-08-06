@@ -19,10 +19,25 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout feature branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: feat/issue-605-error-incident-batching-v2
           fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-dependency-glob: requirements.lock
+
+      - name: Install locked dependencies
+        run: uv pip install --system --require-hashes -r requirements.lock
 
       - name: Register boundaries and regenerate inventory
         run: |
