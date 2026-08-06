@@ -87,9 +87,9 @@ class CanonicalDocsSyncTests(unittest.TestCase):
             f"Python files scanned: **{production_files}**",
             self.navigation,
         )
-        self.assertIn("Files with buttons: **106**", self.navigation)
-        self.assertIn("Buttons: **1067**", self.navigation)
-        self.assertIn("Inline buttons: **1063**", self.navigation)
+        self.assertIn("Files with buttons: **104**", self.navigation)
+        self.assertIn("Buttons: **1061**", self.navigation)
+        self.assertIn("Inline buttons: **1057**", self.navigation)
         self.assertIn("Reply buttons: **4**", self.navigation)
         self.assertIn("Violations: **0**", self.navigation)
 
