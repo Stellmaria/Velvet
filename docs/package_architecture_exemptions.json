@@ -1996,7 +1996,7 @@
       "issue": "#455"
     },
     {
-      "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:6403cf3a3af132ac",
+      "id": "foreign-assignment:velvet_bot/app/gpt_image_2_bootstrap.py:4d0f66008ca37acf",
       "owner": "application-composition",
       "reason": "Existing foreign-assignment debt captured by the reviewed baseline.",
       "consumers": [
@@ -2586,7 +2586,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:06ddb0d3ec4240b0",
+      "id": "installed-sentinel:velvet_bot/app/gpt_image_2_bootstrap.py:3c723e695c51d423",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
