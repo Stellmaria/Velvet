@@ -1,124 +1,122 @@
-name: deploy Hermes coders
+name: Arthur production rollout executor
 
 on:
   push:
     branches:
-      - "release/hermes-coders-*"
-  workflow_dispatch:
-    inputs:
-      confirmation:
-        description: "Type DEPLOY_HERMES to release the current main commit"
-        required: true
-        type: string
-      source_commit:
-        description: "Exact 40-character current main commit"
-        required: true
-        type: string
+      - release/hermes-coders-arthur-20260806
 
 concurrency:
-  group: velvet-hermes-coder-production
+  group: velvet-production
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
-    if: github.event_name == 'push' || inputs.confirmation == 'DEPLOY_HERMES'
+  deploy-arthur:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 55
     environment: production
+    env:
+      SOURCE_COMMIT: 7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f
+      IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:32f1ef415fb3dac4d02a8cc0a21895d74d8eb70c50596f1b279226fcd30080ca
     steps:
-      - name: Checkout exact release ref
+      - name: Checkout exact release executor
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Validate exact current main release
-        id: release
+      - name: Validate immutable release surface
         shell: bash
-        env:
-          MANUAL_SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: |
-          set -euo pipefail
-          source_commit="${GITHUB_SHA,,}"
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            source_commit="${MANUAL_SOURCE_COMMIT,,}"
-            if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
-              echo "source_commit must be an exact 40-character SHA" >&2
-              exit 2
-            fi
-            if [[ "$source_commit" != "${GITHUB_SHA,,}" ]]; then
-              echo "Manual release must execute from the exact requested main commit" >&2
-              exit 2
-            fi
-          else
-            expected_ref="refs/heads/release/hermes-coders-${source_commit}"
-            if [[ "$GITHUB_REF" != "$expected_ref" ]]; then
-              echo "Release branch must be named release/hermes-coders-<exact SHA>" >&2
-              exit 2
-            fi
-          fi
-          git fetch --no-tags origin main
-          main_sha="$(git rev-parse origin/main)"
-          if [[ "$source_commit" != "${main_sha,,}" ]]; then
-            echo "Hermes release must point to the current main commit" >&2
-            exit 2
-          fi
-          printf 'source_commit=%s\n' "$source_commit" >> "$GITHUB_OUTPUT"
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = "refs/heads/release/hermes-coders-arthur-20260806"
+          current_main="$(git ls-remote https://github.com/Stellmaria/Velvet.git refs/heads/main | awk '{print $1}')"
+          test "$current_main" = "$SOURCE_COMMIT"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" "$GITHUB_SHA"
+          [[ "$IMAGE_DIGEST" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]
+          mapfile -t changed < <(git diff --name-only "$SOURCE_COMMIT" "$GITHUB_SHA")
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = ".github/ops/arthur-production-release.sh"
+          test "${changed[1]}" = ".github/workflows/deploy-hermes-coders.yml"
+          bash -n .github/ops/arthur-production-release.sh
 
-      - name: Validate deployment secrets
+      - name: Configure SSH and transfer Arthur credentials
+        shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          ARTHUR_BOT_TOKEN: ${{ secrets.ARTHUR_BOT_TOKEN }}
+          ARTHUR_ALLOWED_USER_IDS: ${{ secrets.ARTHUR_ALLOWED_USER_IDS }}
+          ARTHUR_ALLOWED_USERNAMES: ${{ secrets.ARTHUR_ALLOWED_USERNAMES }}
+          ARTHUR_STORAGE_GATEWAY_API_KEY: ${{ secrets.ARTHUR_STORAGE_GATEWAY_API_KEY }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
           test -n "$DEPLOY_SSH_KEY"
           test -n "$DEPLOY_KNOWN_HOSTS"
+          test -n "$ARTHUR_BOT_TOKEN"
+          test "${#ARTHUR_STORAGE_GATEWAY_API_KEY}" -ge 24
+          if [[ -z "$ARTHUR_ALLOWED_USER_IDS" && -z "$ARTHUR_ALLOWED_USERNAMES" ]]; then
+            echo "Arthur owner allowlist is missing" >&2
+            exit 2
+          fi
 
-      - name: Configure SSH
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-        run: |
-          set -euo pipefail
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Release exact Hermes sandbox and coder runtime
+          payload="$(mktemp)"
+          trap 'rm -f "$payload"' EXIT
+          python3 - "$payload" <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          names = (
+              "ARTHUR_BOT_TOKEN",
+              "ARTHUR_ALLOWED_USER_IDS",
+              "ARTHUR_ALLOWED_USERNAMES",
+              "ARTHUR_STORAGE_GATEWAY_API_KEY",
+          )
+          values = {name: os.environ.get(name, "") for name in names}
+          for name, value in values.items():
+              if "\n" in value or "\x00" in value:
+                  raise SystemExit(f"{name} contains an invalid character")
+          path = Path(sys.argv[1])
+          path.write_text(json.dumps(values), encoding="utf-8")
+          path.chmod(0o600)
+          PY
+
+          port="${DEPLOY_PORT:-22}"
+          remote_payload="/tmp/velvet-arthur-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+          scp -P "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$payload" "$DEPLOY_USER@$DEPLOY_HOST:$remote_payload"
+          echo "REMOTE_PAYLOAD=$remote_payload" >> "$GITHUB_ENV"
+
+      - name: Deploy verified main image and reconcile Arthur
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          SOURCE_COMMIT: ${{ steps.release.outputs.source_commit }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
         run: |
-          set -euo pipefail
-          port="${DEPLOY_PORT:-22}"
-          ssh -p "$port" \
-            -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            bash -s -- "$SOURCE_COMMIT" <<'REMOTE'
           set -Eeuo pipefail
-
-          target_sha="$1"
-          release_runner=/usr/local/sbin/hermes-coders-release
-
-          if [[ ! "$target_sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Remote release target must be an exact SHA." >&2
-            exit 2
-          fi
-          test -x "$release_runner"
-          test "$(stat -c '%U:%G:%a' "$release_runner")" = "root:root:755"
-
-          sudo -n "$release_runner" "$target_sha"
-          REMOTE
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command \
+            'SOURCE_COMMIT=%q IMAGE_DIGEST=%q APP_DIR=%q SECRET_FILE=%q bash -s' \
+            "$SOURCE_COMMIT" "$IMAGE_DIGEST" "$app_dir" "$REMOTE_PAYLOAD"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" \
+            < .github/ops/arthur-production-release.sh
