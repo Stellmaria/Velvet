@@ -1,11 +1,11 @@
 # Shared contract inventory
 
-- Production Python files: **648**
-- Functions inventoried: **3748**
-- Registered private cross-module debt: **170**
+- Production Python files: **659**
+- Functions inventoried: **3860**
+- Registered private cross-module debt: **184**
 - Blocking known private contracts: **0**
-- Exact duplicate groups: **66**
-- Normalized near-duplicate groups: **96**
+- Exact duplicate groups: **68**
+- Normalized near-duplicate groups: **98**
 - Semantic near-duplicate groups: **9**
 
 ## Contract ownership
@@ -48,6 +48,20 @@
 - `velvet_bot/app/auf_generation_price_privacy_install.py:228` `photo_ui.photo_router._truncate` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_generation_price_privacy_install.py:274` `portal._video_request_from_state` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_generation_receipt_install.py:412` `active._load_provider_urls` (module-attribute, media download/preview/original delivery).
+- `velvet_bot/app/auf_gpt_image_2_install.py:118` `model_modes._model_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:317` `photo_router._truncate` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:494` `photo_router._truncate` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:672` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:687` `photo_router._load_character_reference_rows` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:722` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:755` `controller._require_auf_callback` (module-attribute, callback navigation and back buttons).
+- `velvet_bot/app/auf_gpt_image_2_install.py:812` `controller._require_auf_callback` (module-attribute, callback navigation and back buttons).
+- `velvet_bot/app/auf_gpt_image_2_install.py:849` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:852` `photo_router._save_references` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:855` `photo_router._load_sources` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:863` `photo_router._source_keyboard` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:876` `photo_router._load_characters` (module-attribute, state compatibility accessors).
+- `velvet_bot/app/auf_gpt_image_2_install.py:883` `photo_router._character_keyboard` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_margin_dashboard_install.py:23` `wallet_ui._wallet_keyboard` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_margin_dashboard_install.py:49` `wallet_ui._callback` (module-attribute, callback navigation and back buttons).
 - `velvet_bot/app/auf_margin_dashboard_install.py:88` `wallet_ui._callback` (module-attribute, callback navigation and back buttons).
@@ -89,7 +103,7 @@
 - `velvet_bot/app/auf_photo_model_modes.py:1687` `photo_router._resolution_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/app/auf_photo_model_modes.py:1688` `photo_router._final_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/app/auf_photo_model_modes.py:1705` `KieClient._create_grs_task` (assignment, other repeated implementation).
-- `velvet_bot/app/auf_photo_ratio_callback_fix.py:111` `photo_router._ratio_keyboard` (assignment, state compatibility accessors).
+- `velvet_bot/app/auf_photo_ratio_callback_fix.py:142` `photo_router._ratio_keyboard` (assignment, state compatibility accessors).
 - `velvet_bot/app/auf_photo_ui_install.py:42` `photo_router._final_keyboard` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_photo_ui_install.py:115` `photo_router._truncate` (module-attribute, state compatibility accessors).
 - `velvet_bot/app/auf_photo_ui_install.py:152` `photo_router._budget_block_reason` (module-attribute, state compatibility accessors).
@@ -212,12 +226,12 @@
 
 ## Semantic near-duplicate families
 
-- **media download/preview/original delivery**: 25 functions; shared transport/domain signals despite different names and literals.
+- **media download/preview/original delivery**: 26 functions; shared transport/domain signals despite different names and literals.
 - **pagination keyboards**: 76 functions; shared transport/domain signals despite different names and literals.
-- **provider/model labels**: 62 functions; shared transport/domain signals despite different names and literals.
-- **repeated progress-card updates**: 5 functions; shared transport/domain signals despite different names and literals.
+- **provider/model labels**: 63 functions; shared transport/domain signals despite different names and literals.
+- **repeated progress-card updates**: 7 functions; shared transport/domain signals despite different names and literals.
 - **retry/backoff policies**: 6 functions; shared transport/domain signals despite different names and literals.
-- **safe edit/send fallback**: 59 functions; shared transport/domain signals despite different names and literals.
+- **safe edit/send fallback**: 60 functions; shared transport/domain signals despite different names and literals.
 - **state compatibility accessors**: 3 functions; shared transport/domain signals despite different names and literals.
 - **task payload/result mapping/formatting**: 26 functions; shared transport/domain signals despite different names and literals.
 - **workspace task history/ownership queries**: 16 functions; shared transport/domain signals despite different names and literals.

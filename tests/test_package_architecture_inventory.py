@@ -79,7 +79,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         modules = self.inventory["modules"]
         self.assertEqual(659, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(145153, self.inventory["production_loc"])
+        self.assertEqual(145339, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
@@ -107,7 +107,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         observed_ids = [str(item["id"]) for item in violations]
         registered_ids = [str(item["id"]) for item in exceptions]
 
-        self.assertEqual(536, self.inventory["violation_count"])
+        self.assertEqual(537, self.inventory["violation_count"])
         self.assertEqual(self.inventory["violation_count"], len(violations))
         self.assertEqual(len(violations), len(exceptions))
         self.assertEqual(len(observed_ids), len(set(observed_ids)))
@@ -148,12 +148,12 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_shared_private_and_duplicate_fingerprints_are_linked(self) -> None:
         shared = self.inventory["shared_contract_summary"]
-        self.assertEqual(648, shared["production_python_files"])
-        self.assertEqual(3748, shared["function_count"])
-        self.assertEqual(170, shared["private_contract_access_count"])
+        self.assertEqual(659, shared["production_python_files"])
+        self.assertEqual(3860, shared["function_count"])
+        self.assertEqual(184, shared["private_contract_access_count"])
         self.assertEqual(0, shared["blocking_private_contract_access_count"])
-        self.assertEqual(66, shared["exact_duplicate_group_count"])
-        self.assertEqual(96, shared["normalized_duplicate_group_count"])
+        self.assertEqual(68, shared["exact_duplicate_group_count"])
+        self.assertEqual(98, shared["normalized_duplicate_group_count"])
         self.assertEqual(9, shared["semantic_near_duplicate_group_count"])
         self.assertEqual(
             shared["private_access_sha256"],
@@ -181,10 +181,10 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
         self.assertIn("Production modules: **659**", self.markdown)
-        self.assertIn("Production LOC: **145153**", self.markdown)
+        self.assertIn("Production LOC: **145339**", self.markdown)
         self.assertIn("Startup installer stages: **25**", self.markdown)
-        self.assertIn("Registered package violations: **536**", self.markdown)
-        self.assertIn("Registered exemptions: **536**", self.markdown)
+        self.assertIn("Registered package violations: **537**", self.markdown)
+        self.assertIn("Registered exemptions: **537**", self.markdown)
         self.assertIn("Every observed file/category fingerprint", self.markdown)
         self.assertFalse(PREVIEW_WORKFLOW.exists())
 
