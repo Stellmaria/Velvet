@@ -58,7 +58,6 @@ class ContractTests(unittest.TestCase):
             (secrets / f"{project}.env").write_text(
                 "GH_TOKEN=ghp_test\n"
                 "BYESU_HERMES_CODEX_API_KEY=codex\n"
-                "BYESU_HERMES_GPT_PRO_API_KEY=pro\n"
                 "HERMES_SANDBOX_LAUNCHER_TOKEN=must-not-pass\n",
                 encoding="utf-8",
             )
@@ -176,8 +175,10 @@ class ContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, joined)
         self.contract.cleanup_codex_projection(projection)
 
-    def test_route_secret_file_never_contains_launcher_token(self) -> None:
-        normalized = self.contract.validate_run(self.payload())
+    def test_route_secret_file_uses_shared_byesu_key_only(self) -> None:
+        normalized = self.contract.validate_run(
+            self.payload(model="gpt-5.6-luna", route="byesu_provider")
+        )
         runtime_dir = Path(self.temp.name) / "runtime"
         runtime_dir.mkdir()
         real_path = Path
@@ -192,6 +193,7 @@ class ContractTests(unittest.TestCase):
         try:
             body = path.read_text()
             self.assertIn("GH_TOKEN=", body)
+            self.assertIn("BYESU_HERMES_CODEX_API_KEY=codex", body)
             self.assertNotIn("HERMES_SANDBOX_LAUNCHER_TOKEN", body)
             self.assertNotIn("must-not-pass", body)
         finally:
