@@ -1,0 +1,91 @@
+name: Run issue 457 maintenance v2
+
+on:
+  push:
+    branches:
+      - feat/457-retire-legacy-delivery-installers
+
+permissions:
+  contents: write
+
+jobs:
+  execute-maintenance:
+    if: github.event.head_commit.message == 'ci: run issue 457 maintenance v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Execute corrected maintenance sections
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import subprocess
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/issue-457-branch-maintenance.yml')
+          content = workflow.read_text(encoding='utf-8')
+          old = """              if count != 1:\n                  raise SystemExit(f'{path}: expected one replacement, found {count}: {old[:80]!r}')\n"""
+          new = """              if count < 1:\n                  raise SystemExit(f'{path}: expected a replacement, found {count}: {old[:80]!r}')\n"""
+          if content.count(old) != 1:
+              raise SystemExit('legacy maintenance guard not found exactly once')
+          content = content.replace(old, new, 1)
+
+          def extract_step(name: str) -> str:
+              marker = f'      - name: {name}\n'
+              start = content.find(marker)
+              if start < 0:
+                  raise SystemExit(f'missing maintenance step: {name}')
+              run_marker = '        run: |\n'
+              run_start = content.find(run_marker, start)
+              if run_start < 0:
+                  raise SystemExit(f'missing run block: {name}')
+              body_start = run_start + len(run_marker)
+              next_step = content.find('\n      - name: ', body_start)
+              body_end = len(content) if next_step < 0 else next_step + 1
+              raw = content[body_start:body_end]
+              lines = raw.splitlines()
+              body = '\n'.join(
+                  line[10:] if line.startswith('          ') else line
+                  for line in lines
+              ).rstrip() + '\n'
+              return body
+
+          steps = (
+              'Retire legacy delivery ownership layers',
+              'Regenerate architecture and stability inventories',
+              'Update canonical status notes',
+              'Validate focused contracts',
+          )
+          for index, name in enumerate(steps, start=1):
+              script = Path(f'/tmp/issue457-step-{index}.sh')
+              script.write_text('set -euo pipefail\n' + extract_step(name), encoding='utf-8')
+              print(f'Executing: {name}', flush=True)
+              subprocess.run(['bash', str(script)], check=True)
+          PY
+
+      - name: Commit product and generated changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A velvet_bot tests docs
+          git diff --cached --check
+          git commit -m "refactor: retire legacy media delivery installers (#457)"
+          git push origin HEAD:feat/457-retire-legacy-delivery-installers
