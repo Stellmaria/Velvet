@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import inspect
+import os
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 from velvet_bot.app import auf_gpt_image_2_install
 from velvet_bot.app.composition import build_application_composition
@@ -21,6 +23,37 @@ class AufGptImage2ContractTests(unittest.TestCase):
             composition.feature_stage_names[-2:],
             ("install_auf_gpt_image_2", "install_auf_branding"),
         )
+
+    def test_worker_bootstrap_survives_auf_runtime_wrapper(self) -> None:
+        from velvet_bot.app import auf_runtime_install
+        from velvet_bot.app import bootstrap
+        from velvet_bot.app import gpt_image_2_bootstrap
+        from velvet_bot.app import workers as workers_module
+
+        original_bootstrap_builder = bootstrap.build_worker_manager
+        original_workers_builder = workers_module.build_worker_manager
+        original_gpt_installed = gpt_image_2_bootstrap._INSTALLED
+        original_auf_installed = auf_runtime_install._INSTALLED
+        try:
+            gpt_image_2_bootstrap._INSTALLED = False
+            auf_runtime_install._INSTALLED = False
+            with patch.dict(os.environ, {"CODEX_IMAGE_ENABLED": "true"}):
+                gpt_image_2_bootstrap.install_gpt_image_2_bootstrap()
+                gpt_builder = workers_module.build_worker_manager
+                self.assertIs(bootstrap.build_worker_manager, gpt_builder)
+
+                auf_runtime_install.install_auf_runtime_dispatcher()
+                final_builder = workers_module.build_worker_manager
+                self.assertIs(bootstrap.build_worker_manager, final_builder)
+                closure_values = tuple(
+                    cell.cell_contents for cell in (final_builder.__closure__ or ())
+                )
+                self.assertIn(gpt_builder, closure_values)
+        finally:
+            bootstrap.build_worker_manager = original_bootstrap_builder
+            workers_module.build_worker_manager = original_workers_builder
+            gpt_image_2_bootstrap._INSTALLED = original_gpt_installed
+            auf_runtime_install._INSTALLED = original_auf_installed
 
     def test_text_mode_accepts_zero_references(self) -> None:
         request = CodexImageRequest(
@@ -41,7 +74,6 @@ class AufGptImage2ContractTests(unittest.TestCase):
             CODEX_IMAGE_TASK_TYPE,
             "media.generate.codex_image",
         )
-
 
     def test_progress_card_shows_codex_delta_and_elapsed_time(self) -> None:
         request = CodexImageRequest(

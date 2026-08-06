@@ -25,8 +25,12 @@ def install_gpt_image_2_bootstrap() -> None:
     if _INSTALLED:
         return
     from velvet_bot.app import bootstrap
+    from velvet_bot.app import workers as workers_module
 
-    original = bootstrap.build_worker_manager
+    # The production feature installers compose worker-manager wrappers through
+    # velvet_bot.app.workers. Patch both references so later wrappers preserve
+    # the GPT Image 2 worker instead of replacing it with the stale base builder.
+    original = workers_module.build_worker_manager
 
     def build_worker_manager_with_gpt_image_2(*args: Any, **kwargs: Any):
         manager = original(*args, **kwargs)
@@ -51,6 +55,7 @@ def install_gpt_image_2_bootstrap() -> None:
         )
         return manager
 
+    workers_module.build_worker_manager = build_worker_manager_with_gpt_image_2
     bootstrap.build_worker_manager = build_worker_manager_with_gpt_image_2
     _INSTALLED = True
 
