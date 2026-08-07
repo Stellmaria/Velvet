@@ -1,0 +1,103 @@
+name: repair production coder checkout modes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/repair-production-coder-checkout-modes.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  repair-coder-modes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Repair verified mode-only coder checkout drift
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          EXPECTED_PROD_HEAD: 0dceb104a8d5c6a1a25dda07c708b916f2e9439f
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command 'APP_DIR=%q EXPECTED_PROD_HEAD=%q bash -s' "$app_dir" "$EXPECTED_PROD_HEAD"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$APP_DIR"
+
+          paths=(
+            deploy/hermes-coders/codex_context_launcher_runner.py
+            deploy/hermes-coders/codex_launcher_runner.py
+            deploy/hermes-coders/sandbox_launcher_client.py
+            deploy/hermes-coders/sandbox_preflight.py
+          )
+
+          branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+          head="$(git rev-parse HEAD)"
+          printf 'branch=%s\nhead=%s\n' "$branch" "$head"
+          test "$branch" = main
+          test "$head" = "$EXPECTED_PROD_HEAD"
+
+          mapfile -t dirty < <(GIT_OPTIONAL_LOCKS=0 git status --porcelain=v1 --untracked-files=all)
+          printf 'dirty_path_count_before=%s\n' "${#dirty[@]}"
+          test "${#dirty[@]}" -eq "${#paths[@]}"
+
+          for path in "${paths[@]}"; do
+            printf '%s\n' "${dirty[@]}" | grep -Fqx " M $path"
+
+            tracked_mode="$(git ls-files -s -- "$path" | awk '{print $1}')"
+            worktree_mode="$(stat -c '%a' "$path")"
+            tracked_blob="$(git rev-parse "HEAD:$path")"
+            worktree_blob="$(git hash-object "$path")"
+
+            printf '%s tracked_mode=%s worktree_mode=%s content_match=%s\n' \
+              "$path" "$tracked_mode" "$worktree_mode" \
+              "$([[ "$tracked_blob" = "$worktree_blob" ]] && echo true || echo false)"
+
+            test "$tracked_mode" = 100755
+            test "$worktree_mode" = 644
+            test "$tracked_blob" = "$worktree_blob"
+          done
+
+          chmod 0755 -- "${paths[@]}"
+
+          after="$(GIT_OPTIONAL_LOCKS=0 git status --porcelain=v1 --untracked-files=all)"
+          if [[ -n "$after" ]]; then
+            echo 'working_tree_after=dirty'
+            printf '%s\n' "$after" | sed -n '1,20p'
+            exit 1
+          fi
+
+          echo 'working_tree_after=clean'
+          echo 'repair_result=success'
+          REMOTE
