@@ -51,6 +51,17 @@ class CodexAvailabilityRuntimeContractTests(unittest.TestCase):
         self.assertIn('source="periodic_5h"', availability)
         self.assertIn('source="provider_reset_at"', availability)
 
+    def test_codex_sqlite_runtime_is_split_from_protected_auth_home(self) -> None:
+        compose = (CODERS / "compose.yaml").read_text(encoding="utf-8")
+        apparmor = (
+            CODERS / "security" / "apparmor-hermes-codex-runner"
+        ).read_text(encoding="utf-8")
+        self.assertIn("CODEX_HOME: /opt/codex", compose)
+        self.assertIn("CODEX_SQLITE_HOME: /opt/codex-runs/sqlite", compose)
+        self.assertNotIn("CODEX_SQLITE_HOME: /opt/codex\n", compose)
+        self.assertIn("/opt/codex/** r,", apparmor)
+        self.assertIn("/opt/codex-runs/** rwk,", apparmor)
+
     def test_operator_cli_can_read_refresh_hold_and_clear_without_restart(self) -> None:
         cli = (CODERS / "codex_availability_ctl.py").read_text(encoding="utf-8")
         for command in ("status", "refresh", "hold", "clear"):
