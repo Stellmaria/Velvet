@@ -27,6 +27,11 @@ profile hermes-codex-runner flags=(attach_disconnected,mediate_deleted) {
 
   /opt/codex/ r,
   /opt/codex/** r,
+  # Codex app-server always opens its machine installation identity read/write
+  # and older pinned CLIs persist it through a same-directory temporary file.
+  # Keep the rest of CODEX_HOME read-only and permit only this local identity.
+  /opt/codex/installation_id rwk,
+  /opt/codex/.tmp* rwk,
   /opt/codex/tmp/ rw,
   /opt/codex/tmp/** rwk,
   /opt/codex-runs/ rw,

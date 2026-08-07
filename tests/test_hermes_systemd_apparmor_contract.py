@@ -28,8 +28,12 @@ def test_current_runner_allows_git_helpers_and_codex_temp_only() -> None:
     assert "/usr/lib/git-core/git-remote-https ix," in profile
     assert "/usr/lib/git-core/** ix," not in profile
     assert "/opt/codex/** r," in profile
+    assert "/opt/codex/installation_id rwk," in profile
+    assert "/opt/codex/.tmp* rwk," in profile
     assert "/opt/codex/tmp/ rw," in profile
     assert "/opt/codex/tmp/** rwk," in profile
+    assert "/opt/codex/** rw" not in profile
+    assert "/opt/codex/** wk" not in profile
 
 
 def test_current_runner_allows_native_modules_only_in_hermes_venv() -> None:
