@@ -57,12 +57,13 @@ Existing Telegram duplicate cleanup не выполняется этим PR: с�
 
 ### Фактически сделано
 
-- добавлен `integrity_service.py`, расширяющий migration service stable semantic dedupe для backups и rework;
-- package entry point переключён на integrity service, сохраняя codec-independent backup repository;
-- при найденном existing backup новый ciphertext не создаётся, а tracked `backup_run` связывается с existing object;
+- stable semantic dedupe добавлен непосредственно в `TelegramStorageMigrationService` для backups и rework;
+- repository lookup расширен так, чтобы проверять существующий object по stable `(storage_kind, logical_key)` до создания нового generated artifact;
+- при найденном existing backup новый ZIP/ciphertext не создаётся, а tracked `backup_run` связывается с existing object;
 - неизменный Rework snapshot считается skipped до записи нового JSON;
 - Arthur при пустых `ARTHUR_REPORT_CHAT_ID`/`ARTHUR_REPORT_THREAD_ID` использует canonical Storage chat и `Hermes Reports` thread, сохраняя явные overrides;
-- добавлены focused regression tests.
+- обновлены regression fixtures и focused tests для semantic dedupe, permission isolation и report destination;
+- generated package/repository/P2 inventories синхронизированы с финальной реализацией.
 
 ### Миграции и совместимость
 
@@ -76,7 +77,7 @@ Protected CI запускается на exact PR head. Production acceptance п
 
 PR: `#692 Fix Telegram storage semantic dedupe and Arthur reports`.
 
-Feature implementation commit: `69bc000400ab43bbdef156cb84e1e3f838057f9a`; ветка затем синхронизирована с актуальным `main` и дополнена этой worklog записью.
+Feature implementation commit: `69bc000400ab43bbdef156cb84e1e3f838057f9a`; ветка затем синхронизирована с актуальным `main`, архитектурными inventory и regression fixtures.
 
 ### Незавершённое
 
