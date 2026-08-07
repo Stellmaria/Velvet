@@ -139,15 +139,23 @@ verification. Это позволяет обновить код и ключи б
 - runtime release/import graph;
 - preflight install order и coverage всех quality.
 
-Protected CI должен выполняться на head PR после публикации ветки. Live provider
-availability и реальные Codex windows проверяются только после production secret
-rotation.
+Protected CI запущен на PR #699. Первый прогон `type check` прошёл. `project notes contract`
+корректно потребовал этот канонический раздел `### PR и commit`; запись обновлена без
+изменения runtime-кода. Live provider availability и реальные Codex windows
+проверяются только после production secret rotation.
+
+### PR и commit
+
+- PR: #699 `Fix GPT Image 2 Codex-first routing and split Byesu keys`.
+- Ветка: `fix/gpt-image-codex-first-two-keys`.
+- Ветка синхронизирована с `main` merge-коммитом `9e748361712d1082192153a8d95fa1360e2e94a1` перед открытием PR.
+- Следующие commit SHA фиксируют только CI/contract corrections на этой же ветке.
+- Merge допустим только для exact reviewed head после terminal green protected CI и `behind_by=0`.
 
 ### Незавершённое
 
-- проверить полный branch diff относительно current `main`;
-- открыть PR и дождаться terminal protected CI;
-- исправить любые CI regressions без ослабления security/provider gates;
+- дождаться terminal protected CI и исправить CI regressions без ослабления security/provider gates;
+- перед merge снова подтвердить `behind_by=0` относительно current `main`;
 - merge только exact reviewed head;
 - обновить production checkout с текущего устаревшего SHA до merge commit;
 - заменить production Hermes-Codex physical key на правильную token group и записать его в оба alias;
@@ -161,6 +169,6 @@ rotation.
 
 ### Следующий шаг
 
-Проверить diff ветки `fix/gpt-image-codex-first-two-keys`, открыть PR в `main` и
-довести protected CI до terminal green. Production secrets и activation не менять,
-пока merge commit не зафиксирован и capability plan не готов.
+Довести protected CI PR #699 до terminal green, повторно синхронизировать ветку при
+движении `main` и объединить только exact head. Production secrets и activation не
+менять, пока merge commit не зафиксирован и capability plan не готов.
