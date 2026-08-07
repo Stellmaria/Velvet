@@ -9,11 +9,13 @@ from typing import Any
 
 from byesu_image_fallback import install_byesu_image_fallback
 from byesu_image_routing_policy import install_byesu_image_routing_policy
+from codex_availability import CodexAvailabilityGate
 from codex_first_safe_runner import primary_execution_started
 from codex_image_high_res_export import install_codex_image_high_res_export
 from codex_image_limit_preflight import install_codex_image_limit_preflight
 from codex_image_runner import CodexImageSupport, ImageHandler
 from codex_launcher_runner import LauncherTierProviderManager
+from codex_runner import read_codex_subscription_rate_limits
 from codex_tier_runner import AuditedTierProviderManager
 
 
@@ -40,7 +42,53 @@ class ContextLauncherTierProviderManager(
     CodexImageSupport,
     LauncherTierProviderManager,
 ):
-    """Add trusted runtime evidence and one-shot GPT Image 2 support."""
+    """Add trusted runtime evidence, GPT Image 2 and one dynamic Codex gate."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.codex_availability = CodexAvailabilityGate(
+            root=self.store.root,
+            probe=self._probe_codex_availability,
+        )
+
+    def _probe_codex_availability(self) -> dict[str, Any]:
+        return read_codex_subscription_rate_limits(
+            self.codex_bin,
+            self.codex_home,
+            timeout_seconds=12,
+        )
+
+    def _cooling_down(self) -> bool:
+        # ProviderChainManager already routes directly to its Byesu catalog when
+        # this hook is true. The dynamic persisted flag therefore becomes the
+        # single permission to attempt primary Codex execution.
+        return not self.codex_availability.codex_available
+
+    def _open_cooldown(self) -> None:
+        # A key-scoped primary failure used to start an in-memory 30 minute
+        # cooldown. Persist it instead and immediately ask Codex for resets_at.
+        self.codex_availability.note_subscription_failure(
+            "subscription_unavailable"
+        )
+
+    def _safe_rate_limits(self) -> dict[str, Any] | None:
+        # GPT Image records use the cached dynamic snapshot. Routing no longer
+        # performs a separate live quota request for every image generation.
+        snapshot = self.codex_availability.status().get("rate_limits")
+        return dict(snapshot) if isinstance(snapshot, dict) else None
+
+    def capabilities(self) -> dict[str, Any]:
+        payload = super().capabilities()
+        routing = payload.get("routing")
+        if not isinstance(routing, dict):
+            routing = {}
+        return {
+            **payload,
+            "routing": {
+                **routing,
+                "codex_availability": self.codex_availability.status(),
+            },
+        }
 
     def _prepare_workspace(self, run_id: str) -> tuple[Path, str]:
         target, source_ref = super()._prepare_workspace(run_id)
@@ -127,6 +175,9 @@ def build_manager() -> AuditedTierProviderManager:
 
 def main() -> int:
     manager = build_manager()
+    availability = getattr(manager, "codex_availability", None)
+    if availability is not None:
+        availability.start_background()
     host = os.environ.get("CODEX_RUNNER_HOST", "0.0.0.0").strip() or "0.0.0.0"
     port = int(os.environ.get("CODEX_RUNNER_PORT", "8642"))
     if not 1024 <= port <= 65535:
@@ -140,7 +191,7 @@ def main() -> int:
         f"backend={os.environ.get('CODEX_EXECUTION_BACKEND', 'launcher')}; "
         f"default={manager.default_model}; gpt_image_2=enabled; "
         f"byesu_image_fallback={os.environ.get('CODEX_IMAGE_BYESU_FALLBACK_ENABLED', 'false')}; "
-        f"codex_image_limit_preflight={os.environ.get('CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED', 'true')}; "
+        "codex_availability=dynamic; codex_availability_refresh=5h; "
         "codex_high_res_export=enabled",
         flush=True,
     )
