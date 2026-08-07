@@ -152,6 +152,8 @@ class HermesEntityDeploymentTests(unittest.TestCase):
         self.assertIn("install_context_pack.py", source)
         self.assertIn("verify_installed_context.py", source)
         self.assertIn("--profile kael", source)
+        self.assertIn('"$OPERATOR_SOURCE/review_gate.py"', source)
+        self.assertIn('"$hermes_data/tools/review_gate.py"', source)
 
     def test_runctl_targets_only_loopback_main_runs_api(self) -> None:
         runctl = load_module(
