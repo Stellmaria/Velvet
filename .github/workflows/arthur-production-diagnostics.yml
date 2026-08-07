@@ -1,0 +1,133 @@
+name: arthur production diagnostics
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/arthur-production-diagnostics.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-librarian:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Read redacted Librarian runtime evidence
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command 'APP_DIR=%q bash -s' "$app_dir"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+
+          redact() {
+            python3 -c '
+          import re
+          import sys
+
+          value = sys.stdin.read()
+          patterns = (
+              (r"(?i)(authorization\s*:\s*bearer\s+)\S+", r"\1[redacted]"),
+              (r"(?i)((?:api[_-]?key|token|password)\s*[=:]\s*)\S+", r"\1[redacted]"),
+              (r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b", "[telegram-token-redacted]"),
+              (r"(?i)postgres(?:ql)?://[^@\s]+@", "postgresql://[redacted]@"),
+              (r"github_pat_[A-Za-z0-9_]+", "[github-token-redacted]"),
+              (r"gh[opsu]_[A-Za-z0-9]+", "[github-token-redacted]"),
+          )
+          for pattern, replacement in patterns:
+              value = re.sub(pattern, replacement, value)
+          sys.stdout.write(value)
+          '
+          }
+
+          cd "$APP_DIR"
+          echo "=== checkout ==="
+          printf 'branch=%s\n' "$(git symbolic-ref --short HEAD 2>/dev/null || echo detached)"
+          printf 'head=%s\n' "$(git rev-parse HEAD)"
+          printf 'origin_main=%s\n' "$(git rev-parse refs/remotes/origin/main)"
+          if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+            echo "working_tree=dirty"
+          else
+            echo "working_tree=clean"
+          fi
+
+          echo "=== systemd properties ==="
+          systemctl show velvet-librarian.service \
+            --property=LoadState \
+            --property=ActiveState \
+            --property=SubState \
+            --property=Result \
+            --property=ExecMainCode \
+            --property=ExecMainStatus \
+            --property=StateChangeTimestamp \
+            2>&1 | redact || true
+
+          echo "=== systemd status ==="
+          systemctl --no-pager --full status velvet-librarian.service 2>&1 | redact || true
+
+          echo "=== recent unit journal ==="
+          journalctl --no-pager -o cat -u velvet-librarian.service -n 160 2>&1 | redact || true
+
+          compose=(
+            docker compose
+            --env-file "$APP_DIR/.env.server"
+            -f "$APP_DIR/deploy/hermes-librarian/compose.yaml"
+            --profile arthur
+          )
+
+          echo "=== compose state ==="
+          "${compose[@]}" ps 2>&1 | redact || true
+
+          echo "=== container state ==="
+          for service in ollama-librarian librarian-hermes arthur-storage-gateway arthur; do
+            cid="$("${compose[@]}" ps -q "$service" 2>/dev/null || true)"
+            if [[ -z "$cid" ]]; then
+              echo "$service: absent"
+              continue
+            fi
+            docker inspect --format \
+              "$service: status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} restart={{.RestartCount}} image={{.Image}}" \
+              "$cid" 2>&1 | redact || true
+          done
+
+          echo "=== Ollama models ==="
+          "${compose[@]}" exec -T ollama-librarian ollama list 2>&1 | redact || true
+
+          echo "=== resources ==="
+          df -h "$APP_DIR" 2>&1 | redact || true
+          free -m 2>&1 | redact || true
+          swapon --show --bytes 2>&1 | redact || true
+          REMOTE
