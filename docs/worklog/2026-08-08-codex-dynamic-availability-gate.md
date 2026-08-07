@@ -3,7 +3,7 @@
 - Дата: 2026-08-08
 - ID: codex-dynamic-availability-gate-20260808
 - Линия/фаза: Hermes Coder / unified subscription availability control
-- Статус: частично
+- Статус: завершено
 - Ветка: fix/codex-dynamic-availability-gate
 - Базовый commit: 328749227e26a8bfc8fc39447bf9782b9b040f2a
 
@@ -78,6 +78,8 @@
 
 - добавлен `codex_availability.py` с атомарным JSON-state и file lock;
 - startup state fail-closed относительно Codex: unknown означает `codex_available=false`;
+- startup live probe выполняется синхронно до открытия HTTP server, поэтому persisted stale true не может использоваться до свежей проверки;
+- неудачный startup probe сбрасывает persisted provider decision в `unknown/false`, а не сохраняет старое true;
 - обязательный periodic provider probe настроен на `18000` секунд отдельно для Velvet и Max;
 - ad-hoc refresh и recovery probe не изменяют `next_periodic_check_at`;
 - `codex_available_at` вычисляется из latest blocking future `resets_at`;
@@ -95,24 +97,25 @@
 
 - добавлены `tests/test_codex_availability.py` и `tests/test_codex_availability_runtime_contract.py`;
 - обновлены image preflight/runtime-env regression tests;
-- type-check на первом PR head прошёл;
-- project-notes contract на первом head выявил только недостающие worklog metadata/sections, исправленные этим commit;
-- полный tests/docker/security/branch-protection CI ожидается на новом head.
+- regression покрывает fixed 5h cadence, ранний weekly reset, persisted manual hold, clear-with-live-refresh, explicit execution failure, stale true после неудачного startup probe и локальный state poll;
+- на implementation head `aac63d1c2ec3a0d3e1c76f07804743536883e532` зелёные все 6 required checks: project notes contract, type check, tests, security supply chain, docker build и branch protection contract;
+- Docker CI валидировал Compose и собрал изменённые Hermes Coder surfaces.
 
 ### PR и commit
 
 - PR: #705 `Unify Codex routing behind dynamic availability state`;
 - ветка: `fix/codex-dynamic-availability-gate`;
 - базовый commit: `328749227e26a8bfc8fc39447bf9782b9b040f2a`;
-- exact implementation head и merge commit фиксируются после зелёных required checks.
+- проверенный implementation head: `aac63d1c2ec3a0d3e1c76f07804743536883e532`;
+- финальный documentation head и merge commit фиксируются GitHub после последнего protected CI.
 
 ### Незавершённое
 
-- дождаться полного protected CI на исправленном worklog head;
-- синхронизировать branch с `main`, если `main` сдвинется до merge;
 - production rollout через штатный Velvet update + Hermes orchestration installer;
-- live smoke persisted state, пятичасового schedule metadata, coder route и GPT Image 2 route.
+- live smoke persisted state и `18000`-секундного schedule metadata для Velvet и Max;
+- live smoke coder route при фактическом `codex_available=true/false`;
+- live GPT Image 2 smoke через тот же gate.
 
 ### Следующий шаг
 
-Дождаться CI PR #705, исправить только подтверждённые regression failures, затем выполнить exact-head merge и controlled production rollout.
+Дождаться protected CI на финальном documentation head, выполнить exact-head merge PR #705, затем controlled production rollout и live routing smoke.
