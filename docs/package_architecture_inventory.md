@@ -2,13 +2,13 @@
 
 - Generated from: `p1-package-architecture-baseline`
 - Production modules: **655**
-- Production LOC: **144015**
+- Production LOC: **143720**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **46**
 - Startup installer stages: **21**
-- Registered package violations: **521**
-- Registered exemptions: **521**
+- Registered package violations: **519**
+- Registered exemptions: **519**
 
 ## Layers
 
@@ -56,7 +56,7 @@
 
 ## Violation baseline
 
-- `database-acquire-outside-persistence`: **88**
+- `database-acquire-outside-persistence`: **87**
 - `domain-aiogram-import`: **20**
 - `domain-layer-import`: **3**
 - `dynamic-import`: **17**
@@ -67,7 +67,7 @@
 - `monolithic-function`: **25**
 - `monolithic-module-loc`: **19**
 - `package-getattr-side-effect`: **19**
-- `sql-outside-persistence`: **108**
+- `sql-outside-persistence`: **107**
 - `type-ignore-usage`: **13**
 - `typing-any-usage`: **110**
 

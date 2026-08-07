@@ -41,7 +41,7 @@ EXPECTED_CATEGORIES = {
     "type-ignore-usage",
     "typing-any-usage",
 }
-EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463", "#605"}
+EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463"}
 
 
 class PackageArchitectureInventoryTests(unittest.TestCase):
@@ -79,7 +79,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         modules = self.inventory["modules"]
         self.assertEqual(655, self.inventory["production_module_count"])
         self.assertEqual(self.inventory["production_module_count"], len(modules))
-        self.assertEqual(144015, self.inventory["production_loc"])
+        self.assertEqual(143720, self.inventory["production_loc"])
         self.assertEqual(113, self.inventory["root_module_count"])
         self.assertEqual(0, self.inventory["root_unclassified_count"])
         self.assertEqual(84, self.inventory["router_count"])
@@ -107,7 +107,7 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
         observed_ids = [str(item["id"]) for item in violations]
         registered_ids = [str(item["id"]) for item in exceptions]
 
-        self.assertEqual(521, self.inventory["violation_count"])
+        self.assertEqual(519, self.inventory["violation_count"])
         self.assertEqual(self.inventory["violation_count"], len(violations))
         self.assertEqual(len(violations), len(exceptions))
         self.assertEqual(len(observed_ids), len(set(observed_ids)))
@@ -181,10 +181,10 @@ class PackageArchitectureInventoryTests(unittest.TestCase):
 
     def test_human_inventory_and_temporary_generator_contract(self) -> None:
         self.assertIn("Production modules: **655**", self.markdown)
-        self.assertIn("Production LOC: **144015**", self.markdown)
+        self.assertIn("Production LOC: **143720**", self.markdown)
         self.assertIn("Startup installer stages: **21**", self.markdown)
-        self.assertIn("Registered package violations: **521**", self.markdown)
-        self.assertIn("Registered exemptions: **521**", self.markdown)
+        self.assertIn("Registered package violations: **519**", self.markdown)
+        self.assertIn("Registered exemptions: **519**", self.markdown)
         self.assertIn("Every observed file/category fingerprint", self.markdown)
         self.assertFalse(PREVIEW_WORKFLOW.exists())
 

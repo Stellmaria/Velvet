@@ -163,18 +163,6 @@
       "issue": "#463"
     },
     {
-      "id": "database-acquire-outside-persistence:velvet_bot/app/auf_generation_receipt_install.py:d639138dc1f660b6",
-      "owner": "application-composition",
-      "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
-      "consumers": [
-        "velvet_bot/app/composition.py"
-      ],
-      "replacement": "Canonical boundary tracked by #455.",
-      "removal_condition": "Remove this exemption when #455 retires the fingerprinted debt without behavior regression.",
-      "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#455"
-    },
-    {
       "id": "database-acquire-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:3e7ec2173bf7cadb",
       "owner": "application-composition",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
@@ -216,9 +204,6 @@
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
-        "velvet_bot/app/auf_generation_receipt_install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_user_portal_install.py",
         "velvet_bot/infrastructure/media_delivery_runtime.py"
       ],
@@ -860,10 +845,8 @@
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
         "velvet_bot/app/auf_wallet_currency_ui.py",
@@ -919,7 +902,6 @@
       "owner": "architecture-governance",
       "reason": "Existing database-acquire-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py",
         "velvet_bot/presentation/telegram/routers/workspace_meow_video.py"
@@ -1310,9 +1292,6 @@
       "owner": "media-delivery",
       "reason": "Existing domain-aiogram-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_result_delivery_recovery.py",
-        "velvet_bot/app/original_image_delivery_hotfix.py",
-        "velvet_bot/app/original_video_delivery_hotfix.py",
         "velvet_bot/domains/media_generation/economy_worker.py",
         "velvet_bot/infrastructure/media_delivery_telegram.py"
       ],
@@ -1328,10 +1307,7 @@
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_owner_cost_privacy/install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
-        "velvet_bot/app/original_image_delivery_hotfix.py",
-        "velvet_bot/app/original_video_delivery_hotfix.py",
         "velvet_bot/app/telegram_progress_resilience.py",
         "velvet_bot/app/workers.py"
       ],
@@ -1564,9 +1540,6 @@
       "owner": "media-delivery",
       "reason": "Existing domain-layer-import debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_result_delivery_recovery.py",
-        "velvet_bot/app/original_image_delivery_hotfix.py",
-        "velvet_bot/app/original_video_delivery_hotfix.py",
         "velvet_bot/domains/media_generation/economy_worker.py",
         "velvet_bot/infrastructure/media_delivery_telegram.py"
       ],
@@ -1582,10 +1555,7 @@
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_owner_cost_privacy/install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
-        "velvet_bot/app/original_image_delivery_hotfix.py",
-        "velvet_bot/app/original_video_delivery_hotfix.py",
         "velvet_bot/app/telegram_progress_resilience.py",
         "velvet_bot/app/workers.py"
       ],
@@ -1646,7 +1616,7 @@
       "issue": "#455"
     },
     {
-      "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:4d1572cc96dbe9a6",
+      "id": "dynamic-import:velvet_bot/app/auf_generation_receipt_install.py:bbf88cd493d8d670",
       "owner": "application-composition",
       "reason": "Existing dynamic-import debt captured by the reviewed baseline.",
       "consumers": [
@@ -2299,7 +2269,7 @@
       "issue": "#455"
     },
     {
-      "id": "installed-sentinel:velvet_bot/app/auf_generation_receipt_install.py:1ddd54ba803871a0",
+      "id": "installed-sentinel:velvet_bot/app/auf_generation_receipt_install.py:f127480ff302465a",
       "owner": "application-composition",
       "reason": "Existing installed-sentinel debt captured by the reviewed baseline.",
       "consumers": [
@@ -3085,7 +3055,6 @@
       "owner": "architecture-governance",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_workspace_ui_install.py",
         "velvet_bot/app/bootstrap.py",
@@ -3217,10 +3186,8 @@
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-function debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
         "velvet_bot/app/auf_wallet_currency_ui.py",
@@ -3430,10 +3397,8 @@
       "owner": "provider-adapters",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_generation_receipt_install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/telegram_progress_resilience.py",
         "velvet_bot/domains/auf_runtime/cancellable_worker.py",
         "velvet_bot/domains/auf_runtime/dispatcher.py",
@@ -3487,8 +3452,8 @@
     },
     {
       "id": "monolithic-module-loc:velvet_bot/error_center.py:ee2462bb0bda246f",
-      "owner": "Velvet maintainers",
-      "reason": "Bounded Error Center batching required by #605.",
+      "owner": "root-module-migration",
+      "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
         "velvet_bot/app/bootstrap.py",
         "velvet_bot/app/dispatcher.py",
@@ -3497,10 +3462,10 @@
         "velvet_bot/runtime_stability.py",
         "velvet_bot/services/diagnostic_bundle.py"
       ],
-      "replacement": "Remove this exemption when the Error Center repository moves to a dedicated persistence boundary.",
-      "removal_condition": "Complete the repository boundary migration and rerun the package inventory.",
+      "replacement": "Canonical boundary tracked by #463.",
+      "removal_condition": "Remove this exemption when #463 retires the fingerprinted debt without behavior regression.",
       "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#605"
+      "issue": "#463"
     },
     {
       "id": "monolithic-module-loc:velvet_bot/media_sets.py:d0b5fb4d79a576f3",
@@ -3536,10 +3501,8 @@
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
         "velvet_bot/app/auf_wallet_currency_ui.py",
@@ -3581,7 +3544,6 @@
       "owner": "auf-application-presentation",
       "reason": "Existing monolithic-module-loc debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py",
         "velvet_bot/presentation/telegram/routers/workspace_meow_video.py"
@@ -4084,18 +4046,6 @@
       "issue": "#463"
     },
     {
-      "id": "sql-outside-persistence:velvet_bot/app/auf_generation_receipt_install.py:4ab5b31ef8b233d7",
-      "owner": "auf-application-presentation",
-      "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
-      "consumers": [
-        "velvet_bot/app/composition.py"
-      ],
-      "replacement": "Canonical boundary tracked by #458.",
-      "removal_condition": "Remove this exemption when #458 retires the fingerprinted debt without behavior regression.",
-      "regression_test": "tests/test_package_architecture_inventory.py",
-      "issue": "#458"
-    },
-    {
       "id": "sql-outside-persistence:velvet_bot/app/auf_photo_model_modes.py:55127d056daa1ff2",
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
@@ -4161,9 +4111,6 @@
       "owner": "architecture-governance",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
-        "velvet_bot/app/auf_generation_receipt_install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_user_portal_install.py",
         "velvet_bot/infrastructure/media_delivery_runtime.py"
       ],
@@ -4441,10 +4388,7 @@
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_owner_cost_privacy/install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
-        "velvet_bot/app/original_image_delivery_hotfix.py",
-        "velvet_bot/app/original_video_delivery_hotfix.py",
         "velvet_bot/app/telegram_progress_resilience.py",
         "velvet_bot/app/workers.py"
       ],
@@ -4985,10 +4929,8 @@
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_gpt_image_2_install.py",
         "velvet_bot/app/auf_photo_model_modes.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/auf_user_portal_install.py",
         "velvet_bot/app/auf_wallet_currency_ui.py",
@@ -5044,7 +4986,6 @@
       "owner": "auf-application-presentation",
       "reason": "Existing sql-outside-persistence debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/presentation/telegram/routers/workspace_auf_video_simple.py",
         "velvet_bot/presentation/telegram/routers/workspace_meow_video.py"
@@ -5522,7 +5463,7 @@
       "issue": "#455"
     },
     {
-      "id": "type-ignore-usage:velvet_bot/app/auf_generation_receipt_install.py:32c1c96c1dc92a13",
+      "id": "type-ignore-usage:velvet_bot/app/auf_generation_receipt_install.py:7fd1a9125f5539e3",
       "owner": "application-composition",
       "reason": "Existing type-ignore-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -5787,7 +5728,7 @@
       "issue": "#455"
     },
     {
-      "id": "typing-any-usage:velvet_bot/app/auf_generation_receipt_install.py:d1f1461090064fd1",
+      "id": "typing-any-usage:velvet_bot/app/auf_generation_receipt_install.py:72c70a4a56f323a8",
       "owner": "application-composition",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
@@ -6242,10 +6183,7 @@
       "consumers": [
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_owner_cost_privacy/install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/composition.py",
-        "velvet_bot/app/original_image_delivery_hotfix.py",
-        "velvet_bot/app/original_video_delivery_hotfix.py",
         "velvet_bot/app/telegram_progress_resilience.py",
         "velvet_bot/app/workers.py"
       ],
@@ -6259,10 +6197,8 @@
       "owner": "provider-adapters",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_cancel_ui_install.py",
         "velvet_bot/app/auf_generation_receipt_install.py",
-        "velvet_bot/app/auf_result_delivery_recovery.py",
         "velvet_bot/app/telegram_progress_resilience.py",
         "velvet_bot/domains/auf_runtime/cancellable_worker.py",
         "velvet_bot/domains/auf_runtime/dispatcher.py",
@@ -6552,7 +6488,6 @@
       "owner": "architecture-governance",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
-        "velvet_bot/app/auf_active_delivery_fix.py",
         "velvet_bot/app/auf_photo_model_modes.py",
         "velvet_bot/app/auf_runtime_install.py",
         "velvet_bot/app/workers.py",
@@ -6647,6 +6582,7 @@
       "owner": "media-delivery",
       "reason": "Existing typing-any-usage debt captured by the reviewed baseline.",
       "consumers": [
+        "velvet_bot/app/auf_generation_receipt_install.py",
         "velvet_bot/app/media_delivery_ui_install.py",
         "velvet_bot/domains/media_generation/friendly_worker.py"
       ],
