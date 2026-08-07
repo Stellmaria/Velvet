@@ -1,0 +1,111 @@
+name: arthur production rollout v2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/arthur-production-rollout-v2.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-and-reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    environment: production
+    env:
+      SOURCE_COMMIT: e6571062af2c963297c17f94685490fa054c90ca
+      IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0
+    steps:
+      - name: Checkout rollout payload
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify immutable target and prepare credentials
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          ARTHUR_BOT_TOKEN: ${{ secrets.ARTHUR_BOT_TOKEN }}
+          ARTHUR_ALLOWED_USER_IDS: ${{ secrets.ARTHUR_ALLOWED_USER_IDS }}
+          ARTHUR_ALLOWED_USERNAMES: ${{ secrets.ARTHUR_ALLOWED_USERNAMES }}
+          ARTHUR_STORAGE_GATEWAY_API_KEY: ${{ secrets.ARTHUR_STORAGE_GATEWAY_API_KEY }}
+        run: |
+          set -Eeuo pipefail
+          current_main="$(git ls-remote https://github.com/Stellmaria/Velvet.git refs/heads/main | awk '{print $1}')"
+          test "$current_main" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" "$GITHUB_SHA"
+          [[ "$IMAGE_DIGEST" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          test -n "$ARTHUR_BOT_TOKEN"
+          test ${#ARTHUR_STORAGE_GATEWAY_API_KEY} -ge 24
+          if [[ -z "$ARTHUR_ALLOWED_USER_IDS" && -z "$ARTHUR_ALLOWED_USERNAMES" ]]; then
+            echo "Arthur owner allowlist is missing" >&2
+            exit 2
+          fi
+
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          payload="$(mktemp)"
+          trap 'rm -f "$payload"' EXIT
+          python3 - "$payload" <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          names = (
+              "ARTHUR_BOT_TOKEN",
+              "ARTHUR_ALLOWED_USER_IDS",
+              "ARTHUR_ALLOWED_USERNAMES",
+              "ARTHUR_STORAGE_GATEWAY_API_KEY",
+          )
+          values = {name: os.environ.get(name, "") for name in names}
+          for name, value in values.items():
+              if "\n" in value or "\x00" in value:
+                  raise SystemExit(f"{name} contains an invalid character")
+          path = Path(sys.argv[1])
+          path.write_text(json.dumps(values), encoding="utf-8")
+          path.chmod(0o600)
+          PY
+
+          port="${DEPLOY_PORT:-22}"
+          remote_payload="/tmp/velvet-arthur-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+          scp -P "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$payload" "$DEPLOY_USER@$DEPLOY_HOST:$remote_payload"
+          echo "REMOTE_PAYLOAD=$remote_payload" >> "$GITHUB_ENV"
+
+      - name: Deploy verified app image and reconcile Arthur
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+        run: |
+          set -Eeuo pipefail
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command \
+            'SOURCE_COMMIT=%q CHECKOUT_COMMIT=%q IMAGE_DIGEST=%q APP_DIR=%q SECRET_FILE=%q bash -s' \
+            "$SOURCE_COMMIT" "$GITHUB_SHA" "$IMAGE_DIGEST" "$app_dir" "$REMOTE_PAYLOAD"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" \
+            < .github/ops/arthur-production-rollout.sh
