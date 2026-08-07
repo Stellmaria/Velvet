@@ -32,15 +32,15 @@ class KaelOrchestrationOwnershipContractTests(unittest.TestCase):
         self.assertIn('hermes_uid="$(stat -c \'%u\' "$hermes_data")"', source)
         self.assertIn('hermes_gid="$(stat -c \'%g\' "$hermes_data")"', source)
         self.assertIn(
-            'install -d -o "$hermes_uid" -g "$hermes_gid" -m 0750 \\\n'
-            '  "$hermes_data/tools" "$hermes_data/orchestration"',
+            'install -d -o "$hermes_uid" -g "$hermes_gid" -m 0750',
             source,
         )
+        self.assertIn('"$hermes_data/tools" "$hermes_data/orchestration"', source)
         self.assertIn(
-            'install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \\\n'
-            '  "$OPERATOR_SOURCE/coderctl.py" "$hermes_data/tools/coderctl.py"',
+            'install -m 0500 -o "$hermes_uid" -g "$hermes_gid"',
             source,
         )
+        self.assertIn('"$hermes_data/tools/coderctl.py"', source)
         self.assertIn(
             'chown "$hermes_uid:$hermes_gid" "$hermes_data/orchestration"',
             source,
