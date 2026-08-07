@@ -9,7 +9,9 @@ WORKFLOW = ROOT / ".github" / "workflows" / "reconcile-production-librarian.yml"
 
 
 class ProductionLibrarianReconcileWorkflowContractTests(unittest.TestCase):
-    def test_workflow_is_manual_main_only_and_uses_production_environment(self) -> None:
+    def test_workflow_is_manual_main_only_and_uses_production_environment(
+        self,
+    ) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn("workflow_dispatch:", source)
@@ -24,16 +26,24 @@ class ProductionLibrarianReconcileWorkflowContractTests(unittest.TestCase):
         self.assertNotIn("pull_request:", source)
         self.assertNotIn("push:\n", source)
 
-    def test_workflow_requires_exact_deployed_commit_and_verified_digest(self) -> None:
+    def test_workflow_requires_exact_deployed_commit_and_verified_digest(
+        self,
+    ) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
         digest_pattern = "ghcr\\.io/stellmaria/velvet@sha256:[0-9a-f]{64}"
 
         self.assertIn("source_commit must equal the current main commit", source)
         self.assertIn(digest_pattern, source)
         self.assertIn('git rev-parse HEAD)" = "$SOURCE_COMMIT"', source)
-        self.assertIn('git rev-parse refs/remotes/origin/main)" = "$SOURCE_COMMIT"', source)
+        self.assertIn(
+            'git rev-parse refs/remotes/origin/main)" = "$SOURCE_COMMIT"',
+            source,
+        )
         self.assertIn("org.opencontainers.image.revision", source)
-        self.assertIn('docker inspect --format \'{{.Config.Image}}\' "$bot_cid"', source)
+        self.assertIn(
+            'docker inspect --format \'{{.Config.Image}}\' "$bot_cid"',
+            source,
+        )
         self.assertIn('docker image inspect "$IMAGE_DIGEST"', source)
 
     def test_workflow_pins_image_before_librarian_only_reconcile(self) -> None:
@@ -65,7 +75,7 @@ class ProductionLibrarianReconcileWorkflowContractTests(unittest.TestCase):
 
         self.assertIn("repair_git_index", source)
         self.assertIn("--cap-add CHOWN", source)
-        self.assertIn("working tree", source.lower()) if False else None
+        self.assertIn("--untracked-files=all", source)
         self.assertNotIn("git push --force", source)
         self.assertNotIn("git reset --hard", source)
         self.assertNotIn("enqueue-all", source)
