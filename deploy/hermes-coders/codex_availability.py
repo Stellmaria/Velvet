@@ -301,6 +301,7 @@ class CodexAvailabilityGate:
         self,
         reason: str = "subscription_limit",
     ) -> dict[str, Any]:
+        """Make a real execution failure authoritative before probing metadata."""
         now = int(self.clock())
 
         def blocked(state: dict[str, Any]) -> None:
@@ -310,9 +311,33 @@ class CodexAvailabilityGate:
             state["last_check_source"] = "execution_failure"
             state["last_error"] = None
         self._update(blocked)
-        # Best effort live read obtains the provider's real resets_at. The flag
-        # is already false before this potentially failing diagnostic call.
-        return self.refresh(source="execution_failure_refresh")
+
+        # Do not call refresh(): an immediately inconsistent provider snapshot
+        # must not turn the flag true after Codex itself just rejected execution.
+        try:
+            snapshot = self.probe()
+            provider_available, available_at = classify_rate_limits(
+                snapshot,
+                now_epoch=now,
+            )
+        except Exception as error:
+            def failed(state: dict[str, Any]) -> None:
+                state["last_error"] = str(error)[:1000] or type(error).__name__
+            return self._update(failed)
+
+        def enriched(state: dict[str, Any]) -> None:
+            state["rate_limits"] = snapshot
+            state["codex_available_at"] = available_at
+            state["last_checked_at"] = now
+            state["last_check_source"] = "execution_failure_refresh"
+            state["last_error"] = (
+                "rate-limit probe disagreed with explicit execution failure"
+                if provider_available
+                else None
+            )
+            state["provider_available"] = False
+            state["provider_reason"] = reason or "subscription_unavailable"
+        return self._update(enriched)
 
     def hold(self, until: str) -> dict[str, Any]:
         raw = until.strip()
