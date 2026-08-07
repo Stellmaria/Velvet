@@ -4,8 +4,6 @@ import importlib.util
 import unittest
 from pathlib import Path
 
-import yaml
-
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "deploy" / "hermes-librarian" / "compose.yaml"
@@ -13,15 +11,22 @@ COMPOSE = ROOT / "deploy" / "hermes-librarian" / "compose.yaml"
 
 class ArthurComposeEntrypointTests(unittest.TestCase):
     def test_arthur_services_use_module_execution_from_image_workdir(self) -> None:
-        payload = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
-        services = payload["services"]
-        self.assertEqual(
-            ["python", "-m", "scripts.run_arthur_storage_gateway"],
-            services["arthur-storage-gateway"]["command"],
+        compose = COMPOSE.read_text(encoding="utf-8")
+        self.assertIn(
+            'command: ["python", "-m", "scripts.run_arthur_storage_gateway"]',
+            compose,
         )
-        self.assertEqual(
-            ["python", "-m", "scripts.run_arthur_librarian"],
-            services["arthur"]["command"],
+        self.assertIn(
+            'command: ["python", "-m", "scripts.run_arthur_librarian"]',
+            compose,
+        )
+        self.assertNotIn(
+            'command: ["python", "scripts/run_arthur_storage_gateway.py"]',
+            compose,
+        )
+        self.assertNotIn(
+            'command: ["python", "scripts/run_arthur_librarian.py"]',
+            compose,
         )
 
     def test_arthur_modules_and_velvet_package_are_resolvable_from_repo_root(self) -> None:
