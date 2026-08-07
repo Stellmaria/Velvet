@@ -25,6 +25,7 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
             "\n".join(
                 (
                     "BYESU_HERMES_CODEX_API_KEY=do-not-project",
+                    "BYESU_HERMES_MEDIA_API_KEY=also-do-not-project",
                     "OPENAI_API_KEY=also-do-not-project",
                     "CODEX_IMAGE_BYESU_FALLBACK_ENABLED=yes",
                     "CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED=0",
@@ -46,6 +47,7 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         self.assertEqual(projected["CODEX_IMAGE_BYESU_BASE_URL"], "https://byesu.com/v1")
         self.assertEqual(projected["CODEX_IMAGE_BYESU_TIMEOUT_SECONDS"], "900")
         self.assertNotIn("BYESU_HERMES_CODEX_API_KEY", projected)
+        self.assertNotIn("BYESU_HERMES_MEDIA_API_KEY", projected)
         self.assertNotIn("OPENAI_API_KEY", projected)
 
     def test_missing_image_settings_leave_compose_defaults_in_control(self) -> None:
