@@ -29,6 +29,8 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
                     "OPENAI_API_KEY=also-do-not-project",
                     "BYESU_MEDIA_GEN_API_KEY=" + media,
                     "CODEX_IMAGE_BYESU_FALLBACK_ENABLED=yes",
+                    # Obsolete per-request preflight settings must not leak into
+                    # Compose now that routing uses persisted dynamic availability.
                     "CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED=0",
                     "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS=4",
                     "CODEX_IMAGE_BYESU_BASE_URL=https://byesu.com/v1/",
@@ -42,12 +44,10 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         self.assertEqual(projected["KEEP_ME"], "1")
         self.assertEqual(projected["BYESU_MEDIA_GEN_API_KEY"], media)
         self.assertEqual(projected["CODEX_IMAGE_BYESU_FALLBACK_ENABLED"], "true")
-        self.assertEqual(projected["CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED"], "false")
-        self.assertEqual(
-            projected["CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS"], "4"
-        )
         self.assertEqual(projected["CODEX_IMAGE_BYESU_BASE_URL"], "https://byesu.com/v1")
         self.assertEqual(projected["CODEX_IMAGE_BYESU_TIMEOUT_SECONDS"], "900")
+        self.assertNotIn("CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED", projected)
+        self.assertNotIn("CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS", projected)
         self.assertNotIn("BYESU_HERMES_CODEX_API_KEY", projected)
         self.assertNotIn("OPENAI_API_KEY", projected)
 
@@ -68,7 +68,6 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         invalid = {
             "BYESU_MEDIA_GEN_API_KEY": "short",
             "CODEX_IMAGE_BYESU_FALLBACK_ENABLED": "maybe",
-            "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS": "2",
             "CODEX_IMAGE_BYESU_TIMEOUT_SECONDS": "1801",
             "CODEX_IMAGE_BYESU_BASE_URL": "http://byesu.com/v1",
         }
@@ -95,6 +94,12 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         self.assertIn("BYESU_MEDIA_GEN_API_KEY", velvet_coder)
         self.assertNotIn("BYESU_MEDIA_GEN_API_KEY", maximum)
         self.assertNotIn("velvet-media.env", compose)
+
+    def test_dynamic_availability_is_five_hours_for_both_coders(self) -> None:
+        compose = (CODERS / "compose.runtime.yaml").read_text(encoding="utf-8")
+        self.assertEqual(2, compose.count('CODEX_AVAILABILITY_REFRESH_SECONDS: "18000"'))
+        self.assertEqual(2, compose.count("codex_availability.py:/app/codex_availability.py:ro"))
+        self.assertNotIn("CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED:", compose)
 
     def test_systemd_wraps_every_compose_lifecycle_command(self) -> None:
         unit = (ROOT / "deploy" / "systemd" / "hermes-coders.service").read_text(
