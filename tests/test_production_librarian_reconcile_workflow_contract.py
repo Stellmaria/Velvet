@@ -26,25 +26,45 @@ class ProductionLibrarianReconcileWorkflowContractTests(unittest.TestCase):
         self.assertNotIn("pull_request:", source)
         self.assertNotIn("push:\n", source)
 
-    def test_workflow_requires_exact_deployed_commit_and_verified_digest(
+    def test_workflow_separates_application_source_from_current_checkout(
         self,
     ) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
         digest_pattern = "ghcr\\.io/stellmaria/velvet@sha256:[0-9a-f]{64}"
 
-        self.assertIn("source_commit must equal the current main commit", source)
+        self.assertIn("Exact deployed application source commit", source)
         self.assertIn(digest_pattern, source)
-        self.assertIn('git rev-parse HEAD)" = "$SOURCE_COMMIT"', source)
+        self.assertIn("CHECKOUT_COMMIT: ${{ github.sha }}", source)
         self.assertIn(
-            'git rev-parse refs/remotes/origin/main)" = "$SOURCE_COMMIT"',
+            'git merge-base --is-ancestor "$SOURCE_COMMIT" "$CHECKOUT_COMMIT"',
             source,
         )
         self.assertIn("org.opencontainers.image.revision", source)
+        self.assertIn('test "${image_revision,,}" = "${SOURCE_COMMIT,,}"', source)
+        self.assertNotIn("source_commit must equal the current main commit", source)
+
+    def test_workflow_allows_only_control_plane_checkout_drift(self) -> None:
+        source = WORKFLOW.read_text(encoding="utf-8")
+
+        safe_diff_index = source.index(".github/*|docs/*|tests/*")
+        reset_index = source.index('git reset --hard "$CHECKOUT_COMMIT"')
+        self.assertLess(safe_diff_index, reset_index)
+        self.assertIn("runtime/deploy change after the verified application source", source)
+        self.assertIn("Run the normal verified production deploy", source)
+        self.assertIn('"$SOURCE_COMMIT"|"$CHECKOUT_COMMIT"', source)
+        self.assertIn("--untracked-files=all", source)
+        self.assertIn('git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"', source)
+
+    def test_workflow_requires_the_core_bot_to_prove_image_provenance(self) -> None:
+        source = WORKFLOW.read_text(encoding="utf-8")
+
         self.assertIn(
             'docker inspect --format \'{{.Config.Image}}\' "$bot_cid"',
             source,
         )
         self.assertIn('docker image inspect "$IMAGE_DIGEST"', source)
+        self.assertIn("expected_image_id", source)
+        self.assertIn("Verified healthy production bot", source)
 
     def test_workflow_pins_image_before_librarian_only_reconcile(self) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
@@ -75,9 +95,7 @@ class ProductionLibrarianReconcileWorkflowContractTests(unittest.TestCase):
 
         self.assertIn("repair_git_index", source)
         self.assertIn("--cap-add CHOWN", source)
-        self.assertIn("--untracked-files=all", source)
         self.assertNotIn("git push --force", source)
-        self.assertNotIn("git reset --hard", source)
         self.assertNotIn("enqueue-all", source)
         self.assertNotIn("mass enqueue", source.lower())
 
