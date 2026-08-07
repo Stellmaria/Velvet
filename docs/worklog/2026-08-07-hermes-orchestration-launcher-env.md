@@ -57,12 +57,26 @@ SQL, application env schema и secret values не меняются. Existing `/s
 
 Protected CI требуется на финальном PR head. Production повторный orchestration reconcile выполняется только после merge terminal-green head. До этого текущие healthy coders/router не перезапускаются этим hotfix.
 
+### PR и commit
+
+- PR: #704 `Fix Hermes orchestration launcher env reuse`.
+- Ветка: `fix/hermes-orchestration-launcher-env`.
+- Кодовый commit: `86f3a07c024dd72676077966824f436cbcb2018a`.
+- Regression-test commit: `9c2120a14219c59c7f4cbbab78a5b3629247afad`.
+- Worklog commit обновляется этим изменением.
+- Merge допустим только для exact terminal-green head после проверки `behind_by=0` относительно current `main`.
+
+### Незавершённое
+
+- дождаться terminal protected CI PR #704;
+- перед merge подтвердить `behind_by=0`;
+- merge exact green head;
+- выполнить штатный production `velvet update`;
+- повторить `sudo bash deploy/hermes-orchestration/install.sh` и получить terminal success;
+- отдельно включить `CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true`;
+- перезапустить canonical coder service и подтвердить split-key image provider smoke;
+- выполнить controlled live GPT Image 2 tests для 1K, 2K и 4K.
+
 ### Следующий шаг
 
-- открыть PR;
-- дождаться terminal green required checks;
-- подтвердить `behind_by=0`;
-- merge exact head;
-- штатно обновить production;
-- повторить orchestration installer и получить его terminal success;
-- после этого отдельно включить `CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true`, перезапустить canonical coder service и подтвердить split-key image provider smoke перед live GPT Image 2 тестами.
+После merge и успешного production orchestration rerun включить image fallback отдельным изменением runtime env, не смешивая его с installer hotfix. Затем проверить provider capability smoke и только после этого переходить к live generation.
