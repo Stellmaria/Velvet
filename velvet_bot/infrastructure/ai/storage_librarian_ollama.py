@@ -14,6 +14,7 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
     StorageLibrarianError,
     StorageLibrarianSettings,
     TerminalStorageLibrarianError,
+    storage_librarian_text_prompt_char_limit,
 )
 
 STORAGE_LIBRARIAN_ANALYSIS_SCHEMA: JsonObject = {
@@ -162,18 +163,15 @@ def _usage_count(payload: dict[object, object], name: str) -> int:
 
 
 def _max_prompt_chars(settings: StorageLibrarianSettings) -> int:
-    # Russian and mixed diagnostic text can tokenize densely. Reserve output,
-    # system/schema overhead and then use a conservative two chars per token.
-    available_tokens = (
-        settings.text_context_length
-        - settings.text_max_output_tokens
-        - 1024
-    )
-    if available_tokens < 512:
+    try:
+        return storage_librarian_text_prompt_char_limit(
+            context_length=settings.text_context_length,
+            max_output_tokens=settings.text_max_output_tokens,
+        )
+    except ValueError as error:
         raise _terminal(
             "Ollama analysis configuration leaves insufficient input context."
-        )
-    return available_tokens * 2
+        ) from error
 
 
 class OllamaStorageAnalysisClient:

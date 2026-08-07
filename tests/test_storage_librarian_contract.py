@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,6 +20,9 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
     LibrarianAnalysis,
     LibrarianObject,
     StorageLibrarianSettings,
+    TerminalStorageLibrarianError,
+    storage_librarian_text_prompt_char_limit,
+    storage_librarian_text_source_char_limit,
 )
 from velvet_bot.infrastructure.telegram.storage_librarian_reports import (
     build_storage_librarian_report,
@@ -130,6 +134,11 @@ class StorageLibrarianMigrationContractTests(unittest.TestCase):
         self.assertIn('"STORAGE_LIBRARIAN_VISION_MODEL"', start)
         self.assertNotIn('os.environ["STORAGE_LIBRARIAN_LOCAL_MODEL"]', installer)
         self.assertNotIn('os.environ["STORAGE_LIBRARIAN_LOCAL_BASE_URL"]', installer)
+        self.assertNotIn("STORAGE_LIBRARIAN_MAX_TEXT_CHARS:-120000", compose)
+        self.assertIn(
+            'STORAGE_LIBRARIAN_MAX_TEXT_CHARS: "${STORAGE_LIBRARIAN_MAX_TEXT_CHARS:-}"',
+            compose,
+        )
 
     def test_kael_installer_checks_runtime_user_not_root_exec(self) -> None:
         installer = (
@@ -185,6 +194,35 @@ class StorageLibrarianSettingsTests(unittest.TestCase):
             settings.analyzer_version,
         )
         self.assertEqual(180, settings.run_timeout_seconds)
+        self.assertEqual(13_568, storage_librarian_text_prompt_char_limit(
+            context_length=8192,
+            max_output_tokens=384,
+        ))
+        self.assertEqual(11_520, storage_librarian_text_source_char_limit(
+            context_length=8192,
+            max_output_tokens=384,
+        ))
+        self.assertEqual(11_520, settings.max_text_chars)
+
+    def test_text_limit_tracks_context_and_rejects_oversized_override(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH": "4096",
+                "STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS": "256",
+            },
+            clear=True,
+        ):
+            settings = StorageLibrarianSettings.from_env()
+        self.assertEqual(3584, settings.max_text_chars)
+
+        with patch.dict(
+            os.environ,
+            {"STORAGE_LIBRARIAN_MAX_TEXT_CHARS": "120000"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "11520"):
+                StorageLibrarianSettings.from_env()
 
     def test_protected_storage_kinds_are_rejected(self) -> None:
         with patch.dict(
@@ -290,6 +328,24 @@ class StorageLibrarianPayloadTests(unittest.TestCase):
         self.assertIn('"error": "timeout"', result)
         self.assertIn('"source": "test"', result)
         self.assertIn("Storage ID: 7", result)
+
+    def test_oversized_source_fails_closed_instead_of_truncating(self) -> None:
+        settings = replace(self.settings, max_text_chars=2000)
+        payload = ("x" * 2500).encode("utf-8")
+        item = LibrarianObject(
+            object_id=8,
+            storage_kind="diagnostics",
+            logical_key="diagnostics:oversized:8",
+            original_name="oversized.log",
+            mime_type="text/plain",
+            size_bytes=len(payload),
+            sha256="c" * 64,
+            encrypted=False,
+            manifest={},
+            parts=(),
+        )
+        with self.assertRaisesRegex(TerminalStorageLibrarianError, "silent truncation"):
+            extract_storage_text(item, payload, settings=settings)
 
     def test_analysis_json_is_normalized(self) -> None:
         result = parse_librarian_analysis(
