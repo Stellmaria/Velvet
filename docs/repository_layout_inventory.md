@@ -65,7 +65,7 @@
 - `velvet_bot.domains.telegram_storage.key_repository` · domain `telegram_storage`: production 1, tests 0, exports 0, refs 1.
 - `velvet_bot.domains.telegram_storage.librarian_afk_repository` · domain `telegram_storage`: production 1, tests 1, exports 0, refs 2.
 - `velvet_bot.domains.telegram_storage.librarian_repository` · domain `telegram_storage`: production 5, tests 1, exports 0, refs 6.
-- `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 0, exports 1, refs 4.
+- `velvet_bot.domains.telegram_storage.repository` · domain `telegram_storage`: production 3, tests 1, exports 1, refs 5.
 - `velvet_bot.domains.watermark.repository` · domain `watermark`: production 5, tests 2, exports 1, refs 8.
 - `velvet_bot.domains.workspaces.product_repository` · domain `workspaces`: production 3, tests 2, exports 0, refs 5.
 - `velvet_bot.domains.workspaces.qwen_repository` · domain `workspaces`: production 3, tests 1, exports 0, refs 4.
