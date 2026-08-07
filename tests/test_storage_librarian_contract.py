@@ -194,17 +194,23 @@ class StorageLibrarianSettingsTests(unittest.TestCase):
             settings.analyzer_version,
         )
         self.assertEqual(180, settings.run_timeout_seconds)
-        self.assertEqual(13_568, storage_librarian_text_prompt_char_limit(
-            context_length=8192,
-            max_output_tokens=384,
-        ))
-        self.assertEqual(11_520, storage_librarian_text_source_char_limit(
-            context_length=8192,
-            max_output_tokens=384,
-        ))
+        self.assertEqual(
+            13_568,
+            storage_librarian_text_prompt_char_limit(
+                context_length=8192,
+                max_output_tokens=384,
+            ),
+        )
+        self.assertEqual(
+            11_520,
+            storage_librarian_text_source_char_limit(
+                context_length=8192,
+                max_output_tokens=384,
+            ),
+        )
         self.assertEqual(11_520, settings.max_text_chars)
 
-    def test_text_limit_tracks_context_and_rejects_oversized_override(self) -> None:
+    def test_text_limit_tracks_context_and_clamps_legacy_override(self) -> None:
         with patch.dict(
             os.environ,
             {
@@ -221,8 +227,16 @@ class StorageLibrarianSettingsTests(unittest.TestCase):
             {"STORAGE_LIBRARIAN_MAX_TEXT_CHARS": "120000"},
             clear=True,
         ):
-            with self.assertRaisesRegex(ValueError, "11520"):
-                StorageLibrarianSettings.from_env()
+            settings = StorageLibrarianSettings.from_env()
+        self.assertEqual(11_520, settings.max_text_chars)
+
+        with patch.dict(
+            os.environ,
+            {"STORAGE_LIBRARIAN_MAX_TEXT_CHARS": "8000"},
+            clear=True,
+        ):
+            settings = StorageLibrarianSettings.from_env()
+        self.assertEqual(8000, settings.max_text_chars)
 
     def test_protected_storage_kinds_are_rejected(self) -> None:
         with patch.dict(
