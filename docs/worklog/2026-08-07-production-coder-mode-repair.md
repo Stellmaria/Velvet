@@ -70,3 +70,12 @@ PR создаётся после проверки полного branch diff. Me
 ### Следующий шаг
 
 После успешного production repair подтвердить `dirty=false`, обновить Velvet production checkout до текущего merged `main`, затем выполнить owner-authorized `reconcile coders` и end-to-end Kael coder canary.
+
+### Незавершённое
+
+- дождаться terminal green protected CI на PR;
+- слить exact reviewed head в `main`;
+- получить merge-triggered production repair evidence;
+- подтвердить `working_tree_after=clean`;
+- через Kael выполнить canonical production update и `reconcile coders`;
+- завершить `coderctl health all` и typed read-only canary.
