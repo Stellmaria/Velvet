@@ -149,6 +149,30 @@ class CodexAvailabilityTests(unittest.TestCase):
         self.assertIn("offline", state["last_error"])
         self.assertEqual(19_000, state["next_periodic_check_at"])
 
+    def test_failed_startup_probe_invalidates_persisted_true(self) -> None:
+        probe = MutableProbe(
+            {
+                "rate_limit_reached_type": None,
+                "primary": {"used_percent": 10, "resets_at": 8_000},
+            }
+        )
+        clock = FakeClock(1_000)
+        _, gate = self.make_gate(probe, clock)
+        first = gate.refresh(source="startup", periodic=True)
+        self.assertTrue(first["codex_available"])
+        self.assertIsNotNone(first["rate_limits"])
+
+        clock.value = 2_000
+        probe.error = RuntimeError("startup network failure")
+        restarted = gate.refresh(source="startup", periodic=True)
+        self.assertFalse(restarted["codex_available"])
+        self.assertIsNone(restarted["provider_available"])
+        self.assertEqual("unknown", restarted["reason"])
+        self.assertIsNone(restarted["codex_available_at"])
+        self.assertIsNone(restarted["rate_limits"])
+        self.assertIn("startup network failure", restarted["last_error"])
+        self.assertEqual(20_000, restarted["next_periodic_check_at"])
+
     def test_explicit_execution_limit_stays_false_if_probe_disagrees(self) -> None:
         probe = MutableProbe(
             {
