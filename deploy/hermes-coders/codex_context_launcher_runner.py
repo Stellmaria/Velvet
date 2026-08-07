@@ -60,13 +60,12 @@ class ContextLauncherTierProviderManager(
 
     def _cooling_down(self) -> bool:
         # ProviderChainManager already routes directly to its Byesu catalog when
-        # this hook is true. The dynamic persisted flag therefore becomes the
-        # single permission to attempt primary Codex execution.
+        # this hook is true. The persisted flag is therefore the single
+        # permission to attempt primary Codex execution.
         return not self.codex_availability.codex_available
 
     def _open_cooldown(self) -> None:
-        # A key-scoped primary failure used to start an in-memory 30 minute
-        # cooldown. Persist it instead and immediately ask Codex for resets_at.
+        # Replace the legacy in-memory cooldown with persisted subscription state.
         self.codex_availability.note_subscription_failure(
             "subscription_unavailable"
         )
@@ -82,10 +81,18 @@ class ContextLauncherTierProviderManager(
         routing = payload.get("routing")
         if not isinstance(routing, dict):
             routing = {}
+        provider_fallback = routing.get("provider_fallback")
+        if isinstance(provider_fallback, dict):
+            provider_fallback = {
+                **provider_fallback,
+                "cooldown_seconds": 0,
+                "gated_by": "codex_availability",
+            }
         return {
             **payload,
             "routing": {
                 **routing,
+                "provider_fallback": provider_fallback,
                 "codex_availability": self.codex_availability.status(),
             },
         }
