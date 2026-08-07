@@ -55,6 +55,9 @@ x-codex-runner: &codex-runner
   environment:
     HOME: /opt/codex
     CODEX_HOME: /opt/codex
+    # Keep auth/config in the protected Codex home while app-server SQLite
+    # runtime state lives in the existing per-project writable run volume.
+    CODEX_SQLITE_HOME: /opt/codex-runs/sqlite
     CODEX_WORKSPACE: /workspace-base
     CODEX_WORKSPACE_BASE: /workspace-base
     CODEX_ISOLATED_WORKSPACE_ROOT: /opt/codex-runs/workspaces
