@@ -21,6 +21,10 @@ profile hermes-codex-runner flags=(attach_disconnected,mediate_deleted) {
   /lib/** mr,
   /lib64/** mr,
 
+  # Hermes Agent keeps Python packages in this venv. Native extension modules
+  # need mmap permission (`m`) to load shared objects, but no write/ix access.
+  /opt/hermes/.venv/** mr,
+
   /opt/codex/ r,
   /opt/codex/** r,
   /opt/codex/tmp/ rw,
