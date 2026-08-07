@@ -24,3 +24,4 @@ jobs:
             docs/package_architecture_inventory.json
             docs/package_architecture_inventory.md
           retention-days: 1
+# Temporary branch-only helper; remove before merge.
