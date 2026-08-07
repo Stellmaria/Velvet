@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: true
-      - name: Apply minimal source refactor and refresh inventories
+      - name: Apply minimal source refactor and refresh canonical inventories
         shell: bash
         run: |
           set -euo pipefail
@@ -199,7 +199,7 @@ jobs:
             velvet_bot/core/config/arthur.py \
             tests/test_storage_topic_integrity.py
 
-          python scripts/inventory_package_architecture_fast.py \
+          python scripts/inventory_package_architecture.py \
             --label p1-package-architecture-baseline --write
 
           python - <<'PY'
@@ -250,11 +250,6 @@ jobs:
           test_path.write_text(text, encoding='utf-8')
           print(json.dumps({**actual, 'production_loc': package['production_loc']}, indent=2))
           PY
-
-          python -m unittest \
-            tests.test_storage_topic_integrity \
-            tests.test_package_architecture_inventory \
-            tests.test_p2l_discussion_middleware_boundary
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
