@@ -90,14 +90,19 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         enable = (ROOT / "deploy/hermes-librarian/enable_afk.sh").read_text(
             encoding="utf-8"
         )
+        full_archive = (
+            ROOT / "deploy/hermes-librarian/enable_full_archive.sh"
+        ).read_text(encoding="utf-8")
         disable = (ROOT / "deploy/hermes-librarian/disable_afk.sh").read_text(
             encoding="utf-8"
         )
 
         self.assertIn("STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID", presentation)
+        self.assertIn("STORAGE_LIBRARIAN_AUTO_BACKFILL", presentation)
         self.assertIn("StorageLibrarianAfkRepository", presentation)
         self.assertIn("service.repository = repository", presentation)
         self.assertIn("enqueue_newer_than", presentation)
+        self.assertIn("enqueue_pending", presentation)
         self.assertIn("process_once(auto_enqueue=False)", presentation)
         self.assertIn("auto_enqueue: bool = False", application)
         self.assertIn("await asyncio.sleep(settings.scan_interval_seconds)", presentation)
@@ -106,8 +111,32 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         self.assertIn("ON CONFLICT (storage_object_id) DO NOTHING", repository)
         self.assertIn("SELECT COALESCE(MAX(id), 0)", enable)
         self.assertIn('"STORAGE_LIBRARIAN_AUTO_ENQUEUE": "true"', enable)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_BACKFILL": "false"', enable)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_ENQUEUE": "true"', full_archive)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_BACKFILL": "true"', full_archive)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID": "0"', full_archive)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_BATCH_SIZE": str(batch_size)', full_archive)
+        self.assertIn("http://ollama-librarian:11434", full_archive)
         self.assertIn("STORAGE_LIBRARIAN_AUTO_ENQUEUE=false", disable)
-        self.assertNotIn("enqueue_pending(settings=settings)", presentation)
+        self.assertIn("STORAGE_LIBRARIAN_AUTO_BACKFILL", disable)
+
+    def test_full_archive_mode_is_explicit_bounded_and_local(self) -> None:
+        presentation = (
+            ROOT / "velvet_bot/presentation/telegram/storage_librarian.py"
+        ).read_text(encoding="utf-8")
+        full_archive = (
+            ROOT / "deploy/hermes-librarian/enable_full_archive.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('full_archive = _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False)', presentation)
+        self.assertIn("if full_archive:", presentation)
+        self.assertIn("repository.enqueue_pending(", presentation)
+        self.assertIn("limit=batch_size", presentation)
+        self.assertIn("Full-archive режим требует STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID=0", presentation)
+        self.assertIn("AFK full-archive: <b>активен</b>", presentation)
+        self.assertIn('AUTO_BATCH_SIZE="${STORAGE_LIBRARIAN_AUTO_BATCH_SIZE:-1}"', full_archive)
+        self.assertIn('SCAN_INTERVAL="${STORAGE_LIBRARIAN_SCAN_INTERVAL_SECONDS:-60}"', full_archive)
+        self.assertIn("local Ollama only", full_archive)
 
     def test_terminal_failure_report_is_redacted_and_non_mutating(self) -> None:
         item = LibrarianObject(
