@@ -1,0 +1,159 @@
+name: arthur reconcile failure diagnostics
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/arthur-production-reconcile-failure-diagnostics.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Read redacted failure evidence
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+        run: |
+          set -Eeuo pipefail
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command 'APP_DIR=%q IMAGE_DIGEST=%q bash -s' "$app_dir" "$IMAGE_DIGEST"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+
+          redact() {
+            python3 -c '
+          import re
+          import sys
+          value = sys.stdin.read()
+          patterns = (
+              (r"(?i)(authorization\s*:\s*bearer\s+)\S+", r"\1[redacted]"),
+              (r"(?i)((?:api[_-]?key|token|password)\s*[=:]\s*)\S+", r"\1[redacted]"),
+              (r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b", "[telegram-token-redacted]"),
+              (r"(?i)postgres(?:ql)?://[^@\s]+@", "postgresql://[redacted]@"),
+              (r"github_pat_[A-Za-z0-9_]+", "[github-token-redacted]"),
+              (r"gh[opsu]_[A-Za-z0-9]+", "[github-token-redacted]"),
+          )
+          for pattern, replacement in patterns:
+              value = re.sub(pattern, replacement, value)
+          sys.stdout.write(value)
+          '
+          }
+
+          cd "$APP_DIR"
+          echo "=== checkout ==="
+          printf 'head=%s\n' "$(git rev-parse HEAD)"
+          printf 'origin_main=%s\n' "$(git rev-parse refs/remotes/origin/main)"
+          stat -c '.git/index uid=%u gid=%g mode=%a type=%F' "$APP_DIR/.git/index"
+          if [[ -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)" ]]; then
+            echo "working_tree=clean"
+          else
+            echo "working_tree=dirty"
+          fi
+
+          python3 - "$APP_DIR/.env.server" "$IMAGE_DIGEST" <<'PY'
+          from pathlib import Path
+          import sys
+          from scripts.server_preflight import parse_env_file
+
+          env = parse_env_file(Path(sys.argv[1]))
+          expected = sys.argv[2]
+          print("velvet_image_pin=match" if env.get("VELVET_IMAGE", "").strip() == expected else "velvet_image_pin=mismatch")
+          print("auto_enqueue=false" if env.get("STORAGE_LIBRARIAN_AUTO_ENQUEUE", "false").strip().casefold() == "false" else "auto_enqueue=unexpected")
+          PY
+
+          echo "=== systemd properties ==="
+          systemctl show velvet-librarian.service \
+            --property=LoadState \
+            --property=ActiveState \
+            --property=SubState \
+            --property=Result \
+            --property=ExecMainCode \
+            --property=ExecMainStatus \
+            --property=StateChangeTimestamp \
+            2>&1 | redact || true
+
+          echo "=== systemd status ==="
+          systemctl --no-pager --full status velvet-librarian.service 2>&1 | redact || true
+
+          echo "=== recent unit journal ==="
+          journalctl --no-pager -o cat -u velvet-librarian.service -n 220 2>&1 | redact || true
+
+          compose=(
+            docker compose
+            --env-file "$APP_DIR/.env.server"
+            -f "$APP_DIR/deploy/hermes-librarian/compose.yaml"
+            --profile arthur
+          )
+
+          echo "=== compose state ==="
+          "${compose[@]}" ps 2>&1 | redact || true
+
+          echo "=== container identity ==="
+          for service in ollama-librarian librarian-hermes arthur-storage-gateway arthur; do
+            cid="$("${compose[@]}" ps -q "$service" 2>/dev/null || true)"
+            if [[ -z "$cid" ]]; then
+              echo "$service: absent"
+              continue
+            fi
+            docker inspect --format \
+              "$service: status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} restart={{.RestartCount}} config_image={{.Config.Image}} image_id={{.Image}}" \
+              "$cid" 2>&1 | redact || true
+          done
+
+          echo "=== gateway logs ==="
+          gateway_cid="$("${compose[@]}" ps -q arthur-storage-gateway 2>/dev/null || true)"
+          if [[ -n "$gateway_cid" ]]; then
+            docker logs --tail 180 "$gateway_cid" 2>&1 | redact || true
+          else
+            echo "arthur-storage-gateway: absent"
+          fi
+
+          echo "=== Arthur logs ==="
+          arthur_cid="$("${compose[@]}" ps -q arthur 2>/dev/null || true)"
+          if [[ -n "$arthur_cid" ]]; then
+            docker logs --tail 180 "$arthur_cid" 2>&1 | redact || true
+          else
+            echo "arthur: absent"
+          fi
+
+          echo "=== Ollama models ==="
+          "${compose[@]}" exec -T ollama-librarian ollama list 2>&1 | redact || true
+
+          echo "=== resources ==="
+          df -h "$APP_DIR" 2>&1 | redact || true
+          free -m 2>&1 | redact || true
+          swapon --show --bytes 2>&1 | redact || true
+          REMOTE
