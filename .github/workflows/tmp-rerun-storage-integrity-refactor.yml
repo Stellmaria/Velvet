@@ -28,78 +28,76 @@ jobs:
 
           root = Path('.')
 
+          def insert_after_match(text: str, pattern: re.Pattern[str], rows: list[tuple[int, str]]) -> str:
+              match = pattern.search(text)
+              if match is None:
+                  raise SystemExit(f'anchor not found: {pattern.pattern}')
+              indent = match.group('indent')
+              block = ''.join(indent + (' ' * (level * 4)) + code + '\n' for level, code in rows)
+              return text[:match.end()] + block + text[match.end():]
+
           service = root / 'velvet_bot/domains/telegram_storage/service.py'
           text = service.read_text(encoding='utf-8')
-          source_digest_block = '''                source_digest = item.sha256 or await asyncio.to_thread(
-                      sha256_file,
-                      item.path,
-                  )
-          '''
-          if text.count(source_digest_block) != 1:
-              raise SystemExit(f'source digest anchor count={text.count(source_digest_block)}')
-          semantic_backup = source_digest_block + '''                logical_key = f"backup:{item.run_id or item.file_name}:{source_digest}"
-                  existing = await self.repository.get_existing("backups", logical_key, None)
-                  if existing is not None:
-                      summary.skipped_files += 1
-                      summary.bump("backups", "skipped")
-                      if item.run_id is not None:
-                          await self.repository.mark_backup_offloaded(item.run_id, existing.object_id)
-                      if self.settings.delete_after_upload:
-                          result = await asyncio.to_thread(
-                              remove_paths,
-                              tuple(
-                                  path
-                                  for path in (item.path, manifest_path)
-                                  if path.exists()
-                              ),
-                              policy=self.settings.deletion_policy_for("backups"),
-                          )
-                          summary.deleted_files += result.deleted_count
-                          summary.freed_bytes += result.freed_bytes
-                          summary.bump("backups", "deleted", result.deleted_count)
-                          if result.complete and result.deleted_count:
-                              await self.repository.mark_local_deleted(existing.object_id)
-                      continue
-          '''
-          text = text.replace(source_digest_block, semantic_backup, 1)
+          backup_pattern = re.compile(
+              r'(?P<indent> +)source_digest = item\.sha256 or await asyncio\.to_thread\(\n'
+              r'(?P=indent)    sha256_file,\n'
+              r'(?P=indent)    item\.path,\n'
+              r'(?P=indent)\)\n'
+          )
+          text = insert_after_match(text, backup_pattern, [
+              (0, 'logical_key = f"backup:{item.run_id or item.file_name}:{source_digest}"'),
+              (0, 'existing = await self.repository.get_existing("backups", logical_key, None)'),
+              (0, 'if existing is not None:'),
+              (1, 'summary.skipped_files += 1'),
+              (1, 'summary.bump("backups", "skipped")'),
+              (1, 'if item.run_id is not None:'),
+              (2, 'await self.repository.mark_backup_offloaded(item.run_id, existing.object_id)'),
+              (1, 'if self.settings.delete_after_upload:'),
+              (2, 'result = await asyncio.to_thread('),
+              (3, 'remove_paths,'),
+              (3, 'tuple(path for path in (item.path, manifest_path) if path.exists()),'),
+              (3, 'policy=self.settings.deletion_policy_for("backups"),'),
+              (2, ')'),
+              (2, 'summary.deleted_files += result.deleted_count'),
+              (2, 'summary.freed_bytes += result.freed_bytes'),
+              (2, 'summary.bump("backups", "deleted", result.deleted_count)'),
+              (2, 'if result.complete and result.deleted_count:'),
+              (3, 'await self.repository.mark_local_deleted(existing.object_id)'),
+              (1, 'continue'),
+          ])
           old_backup_key = '                    logical_key=f"backup:{item.run_id or item.file_name}:{source_digest}",'
           if text.count(old_backup_key) != 1:
-              raise SystemExit(f'backup candidate key anchor count={text.count(old_backup_key)}')
+              raise SystemExit(f'backup key count={text.count(old_backup_key)}')
           text = text.replace(old_backup_key, '                    logical_key=logical_key,', 1)
 
-          content_hash_block = '''        content_hash = hashlib.sha256(
-              json.dumps(rows, ensure_ascii=False, sort_keys=True).encode("utf-8")
-          ).hexdigest()
-          '''
-          if text.count(content_hash_block) != 1:
-              raise SystemExit(f'rework hash anchor count={text.count(content_hash_block)}')
-          semantic_rework = content_hash_block + '''        logical_key = f"rework:snapshot:{content_hash}"
-              if await self.repository.get_existing("rework", logical_key, None) is not None:
-                  self._record_discovered(summary, "rework")
-                  summary.skipped_files += 1
-                  summary.bump("rework", "skipped")
-                  return
-          '''
-          text = text.replace(content_hash_block, semantic_rework, 1)
+          rework_pattern = re.compile(
+              r'(?P<indent> +)content_hash = hashlib\.sha256\(\n'
+              r'(?P=indent)    json\.dumps\(rows, ensure_ascii=False, sort_keys=True\)\.encode\("utf-8"\)\n'
+              r'(?P=indent)\)\.hexdigest\(\)\n'
+          )
+          text = insert_after_match(text, rework_pattern, [
+              (0, 'logical_key = f"rework:snapshot:{content_hash}"'),
+              (0, 'if await self.repository.get_existing("rework", logical_key, None) is not None:'),
+              (1, 'self._record_discovered(summary, "rework")'),
+              (1, 'summary.skipped_files += 1'),
+              (1, 'summary.bump("rework", "skipped")'),
+              (1, 'return'),
+          ])
           old_rework_key = '            logical_key=f"rework:snapshot:{content_hash}",'
           if text.count(old_rework_key) != 1:
-              raise SystemExit(f'rework candidate key anchor count={text.count(old_rework_key)}')
+              raise SystemExit(f'rework key count={text.count(old_rework_key)}')
           text = text.replace(old_rework_key, '            logical_key=logical_key,', 1)
           service.write_text(text, encoding='utf-8')
 
           repository = root / 'velvet_bot/domains/telegram_storage/repository.py'
           text = repository.read_text(encoding='utf-8')
-          signature = '''        sha256: str,
-              ) -> StoredObject | None:
-          '''
+          signature = '        sha256: str,\n    ) -> StoredObject | None:'
           if text.count(signature) != 1:
-              raise SystemExit(f'get_existing signature anchor count={text.count(signature)}')
-          text = text.replace(signature, '''        sha256: str | None,
-              ) -> StoredObject | None:
-          ''', 1)
+              raise SystemExit(f'get_existing signature count={text.count(signature)}')
+          text = text.replace(signature, '        sha256: str | None,\n    ) -> StoredObject | None:', 1)
           sha_clause = '                  AND sha256 = $3::CHAR(64)\n'
           if text.count(sha_clause) != 1:
-              raise SystemExit(f'get_existing sha anchor count={text.count(sha_clause)}')
+              raise SystemExit(f'get_existing sha clause count={text.count(sha_clause)}')
           text = text.replace(
               sha_clause,
               '                  AND ($3::CHAR(64) IS NULL OR sha256 = $3::CHAR(64))\n'
@@ -124,14 +122,14 @@ jobs:
 
           init_path = root / 'velvet_bot/domains/telegram_storage/__init__.py'
           text = init_path.read_text(encoding='utf-8')
-          old_import = '''from velvet_bot.domains.telegram_storage.integrity_service import (  # noqa: E402
-              TelegramStorageMigrationService,
-          )'''
-          if old_import not in text:
-              raise SystemExit('integrity service import anchor missing')
-          text = text.replace(old_import, '''from velvet_bot.domains.telegram_storage.service import (  # noqa: E402
-              TelegramStorageMigrationService,
-          )''', 1)
+          old_import = 'from velvet_bot.domains.telegram_storage.integrity_service import (  # noqa: E402\n    TelegramStorageMigrationService,\n)'
+          if text.count(old_import) != 1:
+              raise SystemExit(f'integrity import count={text.count(old_import)}')
+          text = text.replace(
+              old_import,
+              'from velvet_bot.domains.telegram_storage.service import (  # noqa: E402\n    TelegramStorageMigrationService,\n)',
+              1,
+          )
           init_path.write_text(text, encoding='utf-8')
           (root / 'velvet_bot/domains/telegram_storage/integrity_service.py').unlink()
 
@@ -253,7 +251,10 @@ jobs:
           print(json.dumps({**actual, 'production_loc': package['production_loc']}, indent=2))
           PY
 
-          python -m unittest tests.test_storage_topic_integrity tests.test_package_architecture_inventory tests.test_p2l_discussion_middleware_boundary
+          python -m unittest \
+            tests.test_storage_topic_integrity \
+            tests.test_package_architecture_inventory \
+            tests.test_p2l_discussion_middleware_boundary
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
