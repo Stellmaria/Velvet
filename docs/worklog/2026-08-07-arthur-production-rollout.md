@@ -115,3 +115,9 @@ PR #671 был merge-коммитом `48b6026fa452195369c0d1b0d04a408fd0022dfd`
 Поскольку production deploy-пользователь уже имеет Docker control как часть канонического server deploy contract, следующий bounded repair не расширяет sudoers и не даёт Arthur новых прав. Он запускает тот же verified immutable application image без сети, от root UID внутри одноразового контейнера, с bind mount только каталога backups и capabilities только `CHOWN`/`FOWNER`. Контейнер меняет ownership/mode исключительно top-level regular `*.dump` и `*.dump.json`; symlink не принимаются. После контейнера host-side assertions требуют точный deploy UID/GID и `0644` для каждого кандидата, затем выполняется неизменённый `deploy/server/deploy.sh`.
 
 Дополнительно workflow удаляет stale `/tmp/velvet-arthur-*.json` payloads текущего deploy user, кроме payload текущего run, и всегда удаляет текущий transferred credential payload отдельным cleanup step. Это закрывает остаток от run `31188082291`, где deploy bridge не стартовал и его cleanup trap не мог выполниться. Secret values не выводятся.
+
+## Продолжение: backup directory traversal
+
+PR #673 был merge-коммитом `895c1f67f97184043f571dbee4d5c0ccfdf2856c`. Rollout run `31188708573` снова остановился до canonical deploy. Verified immutable image был успешно получен по ожидаемому digest, но repair container получил `PermissionError` при открытии bind root `/repair`: после `--cap-drop ALL` capabilities `CHOWN`/`FOWNER` не дают обход DAC для traversal host backup directory.
+
+Credential cleanup step при этом выполнился, а production checkout оставался `77bdfb8306615da479746449bea62cddbb9a652c`. Следующая минимальная корректировка добавляет только `DAC_OVERRIDE` к bounded repair container. Сеть остаётся отключена, mount остаётся только backup directory, canonical deploy/reconcile не меняются, application source/image pair не меняется.
