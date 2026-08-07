@@ -193,15 +193,23 @@ jobs:
           set -Eeuo pipefail
           port="${DEPLOY_PORT:-22}"
           app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
-          printf -v remote_command \
-            'SOURCE_COMMIT=%q CHECKOUT_COMMIT=%q IMAGE_DIGEST=%q APP_DIR=%q SECRET_FILE=%q bash -s' \
-            "$SOURCE_COMMIT" "$GITHUB_SHA" "$IMAGE_DIGEST" "$app_dir" "$REMOTE_PAYLOAD"
+          remote_script="/tmp/velvet-arthur-rollout-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.sh"
+          echo "REMOTE_SCRIPT=$remote_script" >> "$GITHUB_ENV"
+
+          printf -v install_command 'umask 077; cat > %q; chmod 700 %q' \
+            "$remote_script" "$remote_script"
           ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$install_command" \
             < .github/ops/arthur-production-rollout.sh
 
-      - name: Remove transferred credential payload
-        if: ${{ always() && env.REMOTE_PAYLOAD != '' }}
+          printf -v remote_command \
+            'SOURCE_COMMIT=%q CHECKOUT_COMMIT=%q IMAGE_DIGEST=%q APP_DIR=%q SECRET_FILE=%q bash %q </dev/null' \
+            "$SOURCE_COMMIT" "$GITHUB_SHA" "$IMAGE_DIGEST" "$app_dir" "$REMOTE_PAYLOAD" "$remote_script"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command"
+
+      - name: Remove transferred rollout payloads
+        if: ${{ always() && (env.REMOTE_PAYLOAD != '' || env.REMOTE_SCRIPT != '') }}
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -210,6 +218,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           port="${DEPLOY_PORT:-22}"
-          printf -v remote_command 'rm -f -- %q' "$REMOTE_PAYLOAD"
+          payload="${REMOTE_PAYLOAD:-/tmp/velvet-arthur-no-payload}"
+          script="${REMOTE_SCRIPT:-/tmp/velvet-arthur-no-script}"
+          printf -v remote_command 'rm -f -- %q %q' "$payload" "$script"
           ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command"
