@@ -1,4 +1,4 @@
-# GPT Image 2: Codex-first, live limit gate и двухключевой Byesu fallback
+# GPT Image 2: Codex-first через dynamic availability и двухключевой Byesu fallback
 
 Функция добавляет в Ауф модель `GPT Image 2` с пользовательским выбором
 GPT-5.6 Sol/Terra/Luna, reasoning effort, качества и пропорции.
@@ -9,39 +9,110 @@ GPT-5.6 Sol/Terra/Luna, reasoning effort, качества и пропорции
 - режим `Фото + текст`: от 1 до 6 референсов;
 - один референс: JPG, PNG или WEBP до 8 МБ;
 - пользовательский промт: до 8000 символов;
-- Codex всегда является первым маршрутом для 1K, 2K и 4K;
-- Byesu допускается только при явно подтверждённом `subscription_limit` Codex;
+- 1K, 2K и 4K используют один и тот же динамический Codex availability gate;
+- primary Codex route разрешён только когда persisted `codex_available=true`;
+- при `codex_available=false` Codex не запускается, запрос сразу использует настроенный Byesu fallback;
 - после начала creative tool execution автоматическая смена провайдера запрещена;
 - Byesu использует два разных физических API key: один для анализа, второй для генерации.
 
-## Маршрутизация
+## Единый Codex availability state
 
-### Шаг 1. Live preflight Codex до генерации
+Каждый coder project хранит собственный state в writable `/opt/codex-runs`:
 
-Перед creative generation runtime читает свежие окна подписки через Codex
-app-server. Проверка выполняется для любого выбранного качества: 1K, 2K или 4K.
+```json
+{
+  "codex_available": true,
+  "codex_available_at": null,
+  "provider_available": true,
+  "reason": "available",
+  "last_checked_at": 0,
+  "next_periodic_check_at": 0,
+  "manual_hold": false,
+  "manual_hold_until": null,
+  "rate_limits": {}
+}
+```
 
-Codex считается явно исчерпанным только при одном из подтверждённых сигналов:
+State хранится отдельно для Velvet и Max, потому что они используют отдельные
+Codex auth homes. Один общий subscription pool между ними не предполагается без
+отдельного доказательства идентичности аккаунта.
 
-- `rate_limit_reached_type` содержит активный тип достигнутого окна;
-- окно `primary` или `secondary` имеет `used_percent >= 100`, а `resets_at`
-  отсутствует либо находится в будущем.
+Environment variable не является источником runtime-state: environment уже
+запущенного процесса нельзя безопасно переключить из отдельной operator command.
+JSON-state пишется атомарно и читается непосредственно перед решением о маршруте.
 
-Если snapshot неизвестен, timeout-ится, возвращает нераспознанный JSON или окно
-меньше 100%, preflight работает fail-open и задача пробует Codex. Это сохраняет
-Codex-first семантику и не превращает кратковременную проблему limit probe в
-платную генерацию.
+## Как обновляется dynamic flag
 
-### Шаг 2A. Codex доступен
+### Обязательная пятичасовая проверка
 
-Если активное исчерпание не подтверждено:
+При старте coder runtime выполняет live `account/rateLimits/read`, затем такой же
+тихий probe выполняется **каждые 5 часов независимо от известного `resets_at`**.
+Дополнительные operator refresh или проверки в момент ожидаемого восстановления
+не сдвигают этот пятичасовой цикл.
+
+Это намеренно. Если provider раньше указанного срока сбросил недельную квоту,
+следующая обязательная пятичасовая проверка увидит фактическое состояние и
+немедленно вернёт `codex_available=true`.
+
+Локально watcher перечитывает state-файл раз в минуту, чтобы замечать изменения
+от operator CLI. Это чтение файла не вызывает OpenAI и не увеличивает частоту
+provider quota probes.
+
+### Проверка в `codex_available_at`
+
+Если live snapshot показывает активный limit и содержит будущий `resets_at`,
+runtime сохраняет ожидаемое время как `codex_available_at`. Когда это время
+наступает, выполняется дополнительный live probe. Если квота восстановлена,
+флаг становится `true` сразу, не дожидаясь следующего пятичасового цикла.
+
+Если исчерпаны несколько окон, ожидаемое восстановление берётся по более позднему
+из блокирующих `resets_at`, потому что восстановление только одного окна ещё не
+делает subscription доступной.
+
+### Реальный `subscription_limit`
+
+Если `codex_available=true`, но сам Codex execution всё же возвращает
+`subscription_limit` до начала запрещающего fallback execution evidence:
+
+1. persisted flag немедленно становится `false`;
+2. следующая задача уже не пытается запускать Codex;
+3. runtime делает best-effort live quota probe, чтобы сохранить актуальный
+   `resets_at` в `codex_available_at`;
+4. этот диагностический probe не имеет права немедленно вернуть flag в `true`,
+   если он противоречит только что полученному execution failure;
+5. вернуть `true` сможет следующая независимая успешная проверка: periodic 5h,
+   provider-reset probe или operator refresh.
+
+## Ручное управление
+
+Внутри каждого coder runtime доступна команда:
+
+```bash
+python /app/codex_availability_ctl.py status
+python /app/codex_availability_ctl.py refresh
+python /app/codex_availability_ctl.py hold --until auto
+python /app/codex_availability_ctl.py hold --until 2026-08-09T05:00:00Z
+python /app/codex_availability_ctl.py clear
+```
+
+`hold --until auto` выполняет live probe и берёт реальный provider `resets_at`.
+Если provider не сообщает активный limit или дату восстановления, команда требует
+явный ISO-8601/Unix timestamp.
+
+`clear` не выставляет `true` вслепую. Он снимает manual hold, временно переводит
+provider-state в unknown и сразу выполняет live refresh. Codex разрешается только
+если этот refresh подтверждает доступность.
+
+## Маршрутизация GPT Image 2
+
+### `codex_available=true`
 
 1. выбранный Sol/Terra/Luna получает пользовательский промт и все референсы;
 2. Codex вызывает встроенный `image_gen` ровно один раз для creative generation;
 3. если выбран 1K, полученный artifact является финальным;
-4. если выбран 2K или 4K, запускается **второй Codex/GPT pass уже после creative generation**;
+4. если выбран 2K или 4K, запускается второй Codex/GPT pass после creative generation;
 5. второй pass не вызывает `image_gen`, не создаёт новую сцену и не меняет визуальный замысел;
-6. второй pass запускает подготовленный локальный Pillow export и проверяет точный размер итогового файла;
+6. второй pass запускает локальный Pillow export и проверяет точный размер итогового файла;
 7. пользователю выдаётся artifact только после успешного high-resolution export.
 
 Целевые размеры high-resolution export используют длинную сторону:
@@ -52,20 +123,31 @@ Codex-first семантику и не превращает кратковрем
 Вторая сторона вычисляется из выбранной пропорции и приводится к чётному числу
 пикселей. Например, 2K 16:9 даёт 2048×1152, а 4K 16:9 даёт 3840×2160.
 
-Второй pass является export pass, а не второй creative generation. Это важно:
-пользователь получает одну сгенерированную фотографию, а не вторую интерпретацию
-того же промта с привычным модельным сюрпризом в лице, одежде или композиции.
+Второй pass является export pass, а не второй creative generation.
 
-### Шаг 2B. Codex явно исчерпан
+### `codex_available=false`
 
-Если live preflight подтверждает активный subscription limit, Codex creative
-run не запускается. Запрос сразу идёт в Byesu fallback.
+Codex creative run не запускается. Если Byesu image fallback включён, запрос
+сразу идёт в Byesu. Если fallback отключён, задача fail-closed завершается без
+попытки Codex.
 
-Если preflight был неубедителен, но сам Codex возвращает подтверждённый
-`subscription_limit` **до первого tool execution**, разрешается один такой же
-Byesu fallback. Lifecycle-события `thread.started` и `turn.started` не считаются
-tool execution. Command/file/MCP/dynamic tool execution, существующий artifact
-или неизвестный результат creative request блокируют fallback.
+Причиной false может быть подтверждённый subscription limit, operator manual
+hold или ещё не подтверждённое состояние после старта/ошибки probe. Это новое
+правило сознательно делает persisted dynamic flag единственным разрешением на
+primary Codex route.
+
+## Kael и coder-задачи
+
+Тот же state используется обычным provider-chain, поэтому coder delegation Каэля,
+Velvet coder и Max coder подчиняются той же развилке:
+
+```text
+codex_available=true  -> Codex subscription first
+codex_available=false -> skip Codex -> configured Byesu coder route
+```
+
+Таким образом GPT Image 2 и coder-задачи больше не имеют независимых представлений
+о доступности подписки.
 
 ## Два Byesu ключа
 
@@ -79,19 +161,12 @@ BYESU_HERMES_CODEX_API_KEY=...
 
 Этот физический API key используется для:
 
-- Hermes / Kael / coder provider fallback после лимита Codex;
+- Hermes / Kael / coder provider fallback;
 - Sol/Terra/Luna анализа GPT Image 2 при Byesu image fallback;
 - `/v1/responses` image analysis.
 
 Основной Hermes пока также читает legacy-переменную `OPENAI_API_KEY`, поэтому в
-production обе переменные должны содержать **одно и то же физическое значение**:
-
-```env
-OPENAI_API_KEY=<Hermes-Codex key>
-BYESU_HERMES_CODEX_API_KEY=<тот же Hermes-Codex key>
-```
-
-Это два env alias, но один физический ключ.
+production обе переменные должны содержать одно и то же физическое значение.
 
 ### Media Gen key
 
@@ -109,11 +184,7 @@ image endpoints Byesu:
 
 Runtime fail-closed проверяет, что Hermes-Codex и Media Gen keys различаются.
 Media Gen хранится только в operator `.env.hermes`. Узкий
-`compose_image_runtime_env.py` читает его перед canonical Compose lifecycle и
-передаёт как interpolation variable. `compose.runtime.yaml` объявляет эту
-переменную только у `hermes-coder-velvet`; `hermes-chat-velvet`, Max и другие
-services её не получают. Дополнительного secret env-файла нет, поэтому обычный
-`docker compose config` не зависит от предварительного host hook.
+`compose_image_runtime_env.py` передаёт его только `hermes-coder-velvet`.
 
 ## Capability gate Byesu
 
@@ -123,11 +194,10 @@ services её не получают. Дополнительного secret env-�
 - Hermes-Codex key должен видеть выбранный `gpt-5.6-sol`, `gpt-5.6-terra` или `gpt-5.6-luna`;
 - Media Gen key должен видеть выбранный `gpt-image-2` или `firefly-gpt-image-2`.
 
-Один ключ больше не обязан видеть одновременно текстовые и image-модели.
-Именно это разделение устраняет прежний ложный blocker, при котором Media key
-пытались использовать как общий Hermes credential или наоборот.
+Coder provider catalog того же Hermes-Codex key дополнительно содержит
+`gpt-5.4-mini`, Terra и Luna для tier-aware fallback.
 
-## Выбор Byesu generator после Codex limit
+## Выбор Byesu generator
 
 | Качество | Референсы | Генератор |
 |---|---:|---|
@@ -136,60 +206,41 @@ services её не получают. Дополнительного secret env-�
 | 2K | 0–6 | `firefly-gpt-image-2` |
 | 4K | 0–6 | `firefly-gpt-image-2` |
 
-Эта таблица применяется **только после решения перейти на Byesu из-за Codex
-subscription limit**. Качество 2K/4K само по себе никогда не выбирает провайдера.
-
-## Byesu analysis → generation
-
-При fallback выбранный Sol/Terra/Luna на Hermes-Codex key анализирует исходный
-промт и все референсы и возвращает один финальный generation prompt. Он должен:
-
-- сохранить сцену, действие, стиль и ограничения пользователя;
-- добавить устойчивые признаки внешности и разрешить противоречия референсов;
-- не содержать рассуждения, варианты и отчёт об анализе;
-- целиться максимум в 6500 символов;
-- никогда не превышать 8000 символов.
-
-После этого Media Gen key выполняет ровно одну image generation/edit операцию.
-Если анализатор возвращает больше 8000 символов, generation не запускается.
+Качество 2K/4K само по себе никогда не переключает provider. Выбор provider
+происходит только по dynamic availability flag.
 
 ## Production-конфигурация
 
 ```env
-# Один физический Hermes-Codex key в двух совместимых alias:
 OPENAI_API_KEY=<Hermes-Codex key>
 BYESU_HERMES_CODEX_API_KEY=<тот же Hermes-Codex key>
-
-# Второй физический ключ только для image generation:
 BYESU_MEDIA_GEN_API_KEY=<Media Gen key>
 
-CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED=true
-CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS=3
-CODEX_IMAGE_BYESU_FALLBACK_ENABLED=false
+CODEX_AVAILABILITY_REFRESH_SECONDS=18000
+CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true
 CODEX_IMAGE_BYESU_BASE_URL=https://byesu.com/v1
 CODEX_IMAGE_BYESU_TIMEOUT_SECONDS=600
 ```
 
-Fallback остаётся выключенным до успешного live capability smoke обоих ключей.
-После этого оператор явно включает `CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true` и
-штатно reconciles coder runtime.
-
 ## Обязательные live smoke после rollout
 
-1. Codex preflight ниже 100% продолжает Codex route для 1K, 2K и 4K.
-2. Активные 100% пропускают Codex creative launch и выбирают Byesu.
-3. Недоступный preflight fail-open пробует Codex.
-4. Clean `subscription_limit` до tool execution разрешает ровно один fallback.
-5. После любого creative tool execution Byesu fallback блокируется.
-6. Codex 1K выполняет одну creative generation без high-res pass.
-7. Codex 2K выполняет одну creative generation + отдельный non-creative GPT export pass и выдаёт фактические 2K pixels.
-8. Codex 4K выполняет одну creative generation + отдельный non-creative GPT export pass и выдаёт фактические 4K pixels.
-9. Hermes-Codex key видит Sol/Terra/Luna, Media Gen key видит обе image-модели.
-10. Два физических Byesu key различаются.
-11. Byesu fallback 1K проверяется с 0, 3, 4 и 6 референсами.
-12. Byesu fallback 2K/4K проверяется как единая generation без Codex post-export.
-13. Preview, оригинал и фактические пиксели сверяются после каждого high-res smoke.
+1. Startup live probe создаёт persisted state отдельно для Velvet и Max.
+2. `next_periodic_check_at - last_periodic_check_at` равен 18000 секунд.
+3. Ручной `refresh` не сдвигает `next_periodic_check_at`.
+4. При `codex_available=true` обычная coder-задача идёт Codex-first.
+5. При `codex_available=false` обычная coder-задача пропускает Codex и идёт в configured Byesu route.
+6. При `codex_available=true` GPT Image 2 1K/2K/4K использует Codex-first.
+7. При `codex_available=false` GPT Image 2 не запускает Codex и использует Byesu image fallback.
+8. Реальный `subscription_limit` немедленно переводит flag в false до следующего запроса.
+9. Provider `resets_at` сохраняется как `codex_available_at`, когда он известен.
+10. Дополнительный reset-time probe не сдвигает пятичасовой cadence.
+11. Пятичасовой probe способен заметить ранний weekly reset и вернуть true раньше старого `resets_at`.
+12. `hold --until auto` использует provider reset; explicit hold сохраняется между процессами.
+13. `clear` выполняет live refresh и не форсирует true.
+14. Codex 1K выполняет одну creative generation без high-res pass.
+15. Codex 2K/4K выполняет одну creative generation + отдельный non-creative GPT export pass.
+16. Hermes-Codex key видит Mini/Sol/Terra/Luna по соответствующим capability checks, Media Gen key видит обе image-модели.
+17. Два физических Byesu key различаются.
 
-CI может проверить routing, secret boundaries, exact export dimensions и lifecycle,
-но не может доказать живой баланс подписки или provider model availability. Эти
-пункты остаются production smoke-контрактом.
+CI проверяет state machine, routing contract, secret boundaries и export lifecycle.
+Фактический provider quota state и ранний reset подтверждаются production smoke.
