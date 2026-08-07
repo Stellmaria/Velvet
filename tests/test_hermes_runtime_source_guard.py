@@ -60,6 +60,16 @@ class HermesRuntimeSourceGuardTests(unittest.TestCase):
             with self.assertRaises(GUARD.RuntimeSourceError):
                 GUARD.ensure_runtime_sources_container_readable(root)
 
+    def test_import_probe_stubs_container_only_pillow(self) -> None:
+        self.assertIn('types.ModuleType("PIL")', GUARD._IMPORT_PROBE)
+        self.assertIn('sys.modules["PIL"] = pil', GUARD._IMPORT_PROBE)
+        self.assertIn('sys.modules["PIL.Image"] = pil_image', GUARD._IMPORT_PROBE)
+
+    def test_real_runtime_import_graph_passes_host_guard(self) -> None:
+        GUARD.validate_runtime_import_graph(
+            ROOT / "deploy" / "hermes-coders"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
