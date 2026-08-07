@@ -28,6 +28,19 @@ RUNTIME_SOURCES = (
     "compose.runtime.yaml",
 )
 _IMPORT_PROBE = """
+import sys
+import types
+
+# The guard executes with host Python before Docker Compose activation. Pillow is
+# intentionally installed only in the coder image, so expose the smallest import
+# stub required to validate our internal monkey-patch graph without widening the
+# VPS Python dependency surface. Runtime/container smoke still imports real PIL.
+pil = types.ModuleType("PIL")
+pil_image = types.ModuleType("PIL.Image")
+pil.Image = pil_image
+sys.modules["PIL"] = pil
+sys.modules["PIL.Image"] = pil_image
+
 from codex_runner import Handler, ThreadingHTTPServer
 import codex_routed_runner
 import codex_first_runner
