@@ -93,3 +93,9 @@ Verified application image для source commit `e6571062af2c963297c17f94685490f
 ### Следующий шаг
 
 Довести required checks PR #667 до полностью зелёного состояния на закреплённой verified source/digest pair и оставить PR готовым к отдельному production merge без запуска rollout в рамках текущей подготовки.
+
+## Продолжение: исправление shallow checkout
+
+После merge #667 workflow run `31183410920` завершился до SSH/deploy на проверке `git merge-base --is-ancestor`: стандартный shallow checkout не содержал `SOURCE_COMMIT=e6571062af2c963297c17f94685490fa054c90ca`. Production этим run не изменён.
+
+PR #670 исправляет только этот дефект: в шаг `Checkout rollout payload` добавлен `fetch-depth: 0`. Проверка диапазона `e6571062...77bdfb83` подтвердила, что последующие изменения затрагивают только rollout ops/workflow, Hermes host env wiring, docs и tests и не попадают в image build paths `publish-image.yml`; поэтому verified source/image pair остаётся без изменений.
