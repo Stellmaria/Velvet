@@ -8,7 +8,6 @@ from typing import Mapping
 from urllib.parse import urlparse
 
 _ALLOWED_KEYS = (
-    "BYESU_MEDIA_GEN_API_KEY",
     "CODEX_IMAGE_BYESU_FALLBACK_ENABLED",
     "CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED",
     "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS",
@@ -23,7 +22,6 @@ _INTEGER_RANGES = {
     "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS": (3, 10),
     "CODEX_IMAGE_BYESU_TIMEOUT_SECONDS": (60, 1_800),
 }
-_SECRET_KEYS = {"BYESU_MEDIA_GEN_API_KEY"}
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on", "да"})
 _FALSE_VALUES = frozenset({"0", "false", "no", "off", "нет"})
 
@@ -55,11 +53,6 @@ def parse_env(path: Path) -> dict[str, str]:
 def normalize_value(name: str, value: str) -> str:
     if "\n" in value or "\x00" in value:
         raise ImageRuntimeEnvError(f"{name} содержит недопустимый символ")
-    if name in _SECRET_KEYS:
-        normalized = value.strip()
-        if len(normalized) < 20:
-            raise ImageRuntimeEnvError(f"{name} отсутствует или слишком короткий")
-        return normalized
     if name in _BOOLEAN_KEYS:
         normalized = value.strip().casefold()
         if normalized in _TRUE_VALUES:
