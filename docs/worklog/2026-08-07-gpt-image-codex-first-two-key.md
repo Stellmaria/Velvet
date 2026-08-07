@@ -52,7 +52,7 @@ Bot получил `Temporary failure in name resolution` для `hermes-coder-r
 - до creative generation активные 100% Codex windows переключают на Byesu, неопределённый preflight fail-open пробует Codex;
 - Hermes-Codex key и Media Gen key обязаны быть физически различными;
 - analysis `/responses` использует Hermes-Codex key, image endpoints используют Media Gen key;
-- Max не получает Media Gen secret;
+- Max и chat runtime не получают Media Gen secret;
 - Codex 2K/4K имеет отдельный GPT export pass над уже созданным изображением и точную pixel verification;
 - post-generation export не вызывает `image_gen` повторно;
 - provider/image smoke fail-closed при неверном key capability;
@@ -64,7 +64,8 @@ Bot получил `Temporary failure in name resolution` для `hermes-coder-r
 - live Codex subscription state и реальные Byesu model grants нельзя доказать CI;
 - post-generation high-res pass может столкнуться с лимитом уже после успешной creative generation; в этом случае runtime не должен создавать второе изображение через Byesu;
 - resize/export увеличивает количество пикселей, но не изобретает истинную нативную детализацию отсутствующего исходника;
-- Media Gen secret нельзя проецировать через общий Compose wrapper, иначе расширится secret surface systemd lifecycle;
+- Compose wrapper должен проецировать только Media Gen secret и разрешённые image runtime flags, не Hermes/GitHub/Telegram credentials;
+- `compose.runtime.yaml` должен объявлять Media Gen interpolation только у `hermes-coder-velvet`, иначе расширится secret surface;
 - существующий production Hermes-Codex credential должен быть заменён на ключ, который действительно видит требуемые coder/analysis модели.
 
 ## После завершения
@@ -84,13 +85,13 @@ Runtime проверяет, что два ключа различаются, и 
 для каждого. Один token group больше не обязан видеть текстовые и image-модели
 одновременно.
 
-Media secret не передаётся через `compose_image_runtime_env.py`. Добавлен
-`prepare_image_secret_env.py`, который атомарно синхронизирует только
-`BYESU_MEDIA_GEN_API_KEY` в уже существующий mode `0600`
-`/srv/hermes-coders/secrets/velvet.env`, сохраняя остальные project secrets.
-`max.env` не затрагивается. При включённом fallback отсутствие Media Gen key
-блокирует lifecycle fail-closed. Дополнительный обязательный env-файл не создаётся,
-поэтому standalone three-layer `docker compose config` остаётся валидным.
+Media Gen key остаётся только в operator `.env.hermes`. `compose_image_runtime_env.py`
+проецирует его в environment дочернего Docker Compose process вместе с узким
+allowlist image runtime flags. `compose.runtime.yaml` объявляет
+`BYESU_MEDIA_GEN_API_KEY` только у `hermes-coder-velvet`; chat Velvet, Max и прочие
+services эту переменную не получают. Дополнительного обязательного env-файла нет,
+поэтому standalone three-layer `docker compose config` остаётся валидным. При
+включённом fallback отсутствие Media Gen key блокирует wrapper fail-closed.
 
 Добавлен `image_provider_smoke.py`: при выключенном fallback он не требует media
 credential; при включённом проверяет distinct keys, Sol/Terra/Luna на
@@ -106,9 +107,8 @@ Hermes-Codex key и `gpt-image-2`/`firefly-gpt-image-2` на Media Gen key.
 - Byesu-generated 2K/4K не проходят через дополнительный Codex export.
 
 Coder image дополнен `python3-pil`. Runtime source/import graph и systemd permission
-contract включают новый module. Systemd start/reload синхронизирует Media Gen key
-в существующий Velvet project env, затем запускает Compose и после основных smoke
-выполняет image provider smoke.
+contract включают новый module. Systemd start/reload выполняет Compose через
+image-runtime wrapper и после основных smoke выполняет image provider smoke.
 
 Legacy provider alias `byesu-gpt-pro` удалён из `deploy/hermes-coders/config.yaml`;
 Luna использует единый `byesu-coder` provider на Hermes-Codex physical key.
@@ -137,7 +137,7 @@ verification. Это позволяет обновить код и ключи б
 - split credential contract и independent capability gates;
 - exact 2K/4K dimensions и prohibition второго `image_gen`;
 - high-res status/content guard;
-- Media Gen secret isolation и mode `0600`;
+- Media Gen interpolation только в Velvet coder;
 - standalone three-layer Compose без второго обязательного secret env;
 - image provider smoke lifecycle;
 - runtime release/import graph;
@@ -145,9 +145,10 @@ verification. Это позволяет обновить код и ключи б
 
 На промежуточном head после устранения отдельного `velvet-media.env` все четыре
 test shard прошли зелёными, включая issue-581 three-layer Compose contract. Type
-check и project notes contract также проходили. Финальный protected CI требуется
-повторно на последнем документированном head. Live provider availability и реальные
-Codex windows проверяются только после production secret rotation.
+check, project notes contract и security также проходили на промежуточных heads.
+Финальный protected CI требуется повторно на последнем документированном head.
+Live provider availability и реальные Codex windows проверяются только после
+production secret rotation.
 
 ### PR и commit
 
