@@ -22,6 +22,7 @@ for path in \
   "$VELVET_APP_DIR/brain-vault/manifest.json" \
   "$CODERS_SOURCE/ensure_runtime_config.py" \
   "$OPERATOR_SOURCE/coderctl.py" \
+  "$OPERATOR_SOURCE/review_gate.py" \
   "$OPERATOR_SOURCE/runctl.py" \
   "$KAEL_CODER_PLUGIN_SOURCE/plugin.yaml" \
   "$KAEL_CODER_PLUGIN_SOURCE/__init__.py" \
@@ -99,6 +100,9 @@ python3 "$CODERS_SOURCE/ensure_runtime_config.py" \
 install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \
   "$OPERATOR_SOURCE/coderctl.py" \
   "$hermes_data/tools/coderctl.py"
+install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \
+  "$OPERATOR_SOURCE/review_gate.py" \
+  "$hermes_data/tools/review_gate.py"
 install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \
   "$OPERATOR_SOURCE/runctl.py" \
   "$hermes_data/tools/runctl.py"
