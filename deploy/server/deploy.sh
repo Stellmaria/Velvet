@@ -294,7 +294,13 @@ if [[ -n "$IMAGE_OVERRIDE" ]]; then
     false
   fi
 else
-  echo "No verified image digest supplied; building local rollback image."
+  local_build_image="velvet-bot:deploy-${target_sha:0:12}"
+  echo "No verified image digest supplied; building local application image $local_build_image."
+  # .env.server may intentionally pin VELVET_IMAGE to an immutable @sha256
+  # reference for normal production starts. Docker Compose cannot use a digest
+  # reference as a build output tag, so override it only for this fallback
+  # build and keep the same local tag for the subsequent bot activation.
+  export VELVET_IMAGE="$local_build_image"
   "${compose[@]}" build --pull bot
 fi
 
