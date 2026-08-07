@@ -184,13 +184,20 @@ if [[ "$healthy" != "true" ]]; then
   exit 5
 fi
 
-# Expansion is intentionally deferred to the shell running inside Hermes.
-# shellcheck disable=SC2016
+# Docker Compose exec defaults to the container's configured user, which is root
+# for the s6-overlay Hermes image. Verify the mounted reconcile client as the
+# actual owner of the Hermes data volume instead of mistaking exec uid=0 for a
+# failed runtime privilege drop.
 runuser -u "$SERVICE_USER" -- \
   docker compose --env-file "$VELVET_ENV_FILE" -f "$VELVET_COMPOSE_FILE" \
-    --profile agent exec -T hermes \
+    --profile agent exec -T \
+    --user "$hermes_uid:$hermes_gid" \
+    -e EXPECTED_UID="$hermes_uid" \
+    -e EXPECTED_GID="$hermes_gid" \
+    hermes \
     sh -ceu '
-      test "$(id -u)" = "10000"
+      test "$(id -u)" = "$EXPECTED_UID"
+      test "$(id -g)" = "$EXPECTED_GID"
       test -x /opt/data/tools/reconcilectl.py
       python /opt/data/tools/reconcilectl.py --help >/dev/null
     '
