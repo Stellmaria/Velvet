@@ -1,0 +1,49 @@
+name: Refresh PR 662 architecture inventories
+
+on:
+  push:
+    branches:
+      - feat/457-retire-legacy-delivery-installers
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+
+      - name: Refresh repository layout
+        run: python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+
+      - name: Refresh package architecture
+        run: python scripts/inventory_package_architecture.py --write --bootstrap-exemptions --label p1-package-architecture-baseline
+
+      - name: Verify inventory contracts
+        run: |
+          python -m unittest tests.test_p3e_repository_layout_inventory
+          python -m unittest tests.test_package_architecture_inventory
+
+      - name: Upload refreshed inventories
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pr-662-architecture-inventories
+          path: |
+            docs/repository_layout_inventory.json
+            docs/repository_layout_inventory.md
+            docs/package_architecture_inventory.json
+            docs/package_architecture_inventory.md
+            docs/package_architecture_exemptions.json
+          retention-days: 1
+          if-no-files-found: error
