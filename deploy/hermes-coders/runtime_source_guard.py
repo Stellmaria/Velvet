@@ -16,6 +16,8 @@ RUNTIME_SOURCES = (
     "codex_first_safe_runner.py",
     "codex_provider_chain_runner.py",
     "codex_tier_runner.py",
+    "codex_availability.py",
+    "codex_availability_ctl.py",
     "codex_image_runner.py",
     "byesu_image_fallback.py",
     "byesu_image_routing_policy.py",
@@ -47,6 +49,8 @@ import codex_first_runner
 import codex_first_safe_runner
 import codex_provider_chain_runner
 import codex_tier_runner
+import codex_availability
+import codex_availability_ctl
 import codex_image_runner
 import byesu_image_fallback
 import byesu_image_routing_policy
@@ -60,6 +64,8 @@ assert codex_first_runner.ThreadingHTTPServer is ThreadingHTTPServer
 assert codex_routed_runner.Handler is Handler
 assert issubclass(codex_launcher_runner.LauncherTierProviderManager, codex_tier_runner.AuditedTierProviderManager)
 assert issubclass(codex_context_launcher_runner.ContextLauncherTierProviderManager, codex_launcher_runner.LauncherTierProviderManager)
+assert callable(codex_availability.CodexAvailabilityGate)
+assert callable(codex_availability_ctl.main)
 assert callable(byesu_image_fallback.install_byesu_image_fallback)
 assert callable(byesu_image_routing_policy.install_byesu_image_routing_policy)
 assert callable(codex_image_limit_preflight.install_codex_image_limit_preflight)
