@@ -22,6 +22,7 @@ jobs:
     env:
       SOURCE_COMMIT: e6571062af2c963297c17f94685490fa054c90ca
       IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0
+      ROLLOUT_REVISION: pin-verified-arthur-image
     steps:
       - name: Checkout rollout payload
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
