@@ -42,7 +42,7 @@ _PROVIDER_CATALOG: dict[str, ProviderModel] = {
         "gpt-5.6-terra", "BYESU_HERMES_CODEX_API_KEY", "byesu-coder"
     ),
     "gpt-5.6-luna": ProviderModel(
-        "gpt-5.6-luna", "BYESU_HERMES_GPT_PRO_API_KEY", "byesu-gpt-pro"
+        "gpt-5.6-luna", "BYESU_HERMES_CODEX_API_KEY", "byesu-coder"
     ),
 }
 _DEFAULT_PROVIDER_MODELS = (
@@ -213,7 +213,6 @@ ignore_default_excludes = true
 exclude = [
   "API_SERVER_KEY",
   "BYESU_HERMES_CODEX_API_KEY",
-  "BYESU_HERMES_GPT_PRO_API_KEY",
   "CODEX_RUNNER_API_KEY",
   "DATABASE_URL",
   "PGPASSWORD",

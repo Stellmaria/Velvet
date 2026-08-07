@@ -141,6 +141,7 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
                 "provider_fallback": {
                     "enabled": True,
                     "routes_by_tier": dict(tier_smoke._EXPECTED_ROUTES),
+                    "credential_groups": list(tier_smoke._EXPECTED_CREDENTIAL_GROUPS),
                     "after_mutation": False,
                     "after_execution_event": False,
                     "model_access_failure": "fail_closed",
@@ -150,16 +151,13 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
         payload = {
             "capabilities": capabilities,
             "availability": {
-                "byesu-coder": {
+                "byesu-shared": {
                     "configured": True,
                     "models": {
                         "gpt-5.4-mini": False,
                         "gpt-5.6-terra": True,
+                        "gpt-5.6-luna": True,
                     },
-                },
-                "byesu-gpt-pro": {
-                    "configured": True,
-                    "models": {"gpt-5.6-luna": True},
                 },
             },
         }
@@ -167,7 +165,7 @@ class HermesRouterRecoveryContractTests(unittest.TestCase):
             "MINI_UNAVAILABLE_FAIL_CLOSED",
             tier_smoke.validate_payload("velvet", payload),
         )
-        payload["availability"]["byesu-coder"]["models"]["gpt-5.4-mini"] = True
+        payload["availability"]["byesu-shared"]["models"]["gpt-5.4-mini"] = True
         self.assertEqual(
             "MINI_AVAILABLE",
             tier_smoke.validate_payload("velvet", payload),

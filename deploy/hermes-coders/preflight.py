@@ -183,7 +183,6 @@ def validate_codex_home(path: Path, *, entity: str) -> None:
     for secret in (
         "API_SERVER_KEY",
         "BYESU_HERMES_CODEX_API_KEY",
-        "BYESU_HERMES_GPT_PRO_API_KEY",
         "CODEX_RUNNER_API_KEY",
         "DATABASE_URL",
         "PGPASSWORD",
@@ -214,7 +213,6 @@ def main() -> int:
 
     required = (
         "BYESU_HERMES_CODEX_API_KEY",
-        "BYESU_HERMES_GPT_PRO_API_KEY",
         "TELEGRAM_BOT_TOKEN",
         "TELEGRAM_ALLOWED_USERS",
         "GH_TOKEN",

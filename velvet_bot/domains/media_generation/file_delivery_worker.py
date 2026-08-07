@@ -78,12 +78,6 @@ class _DownloadedResult:
 class KieGenerationWorker(BaseKieGenerationWorker):
     """Download Kie results, then send Telegram preview and original file."""
 
-    @classmethod
-    def install_delivery_handler(cls, handler) -> None:
-        """Install a delivery implementation through an explicit class hook."""
-
-        cls._deliver_best_effort = handler
-
     async def _download_reference(self, reference: KieReferenceImage) -> bytes:
         errors: list[BaseException] = []
         for attempt in range(1, _RETRY_ATTEMPTS + 1):

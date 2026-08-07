@@ -372,18 +372,13 @@ def write_env_file(request: dict[str, Any]) -> Path:
     project = str(request["project"])
     run_id = str(request["run_id"])
     route = str(request["route"])
-    model = str(request["model"])
     source = ROOT / "secrets" / f"{project}.env"
     if source.is_symlink() or not source.is_file():
         raise LauncherProtocolError("project secret environment is missing")
     values = parse_env(source)
     selected = {"GH_TOKEN": values.get("GH_TOKEN", "")}
     if route == "byesu_provider":
-        provider_key = (
-            "BYESU_HERMES_GPT_PRO_API_KEY"
-            if model == "gpt-5.6-luna"
-            else "BYESU_HERMES_CODEX_API_KEY"
-        )
+        provider_key = "BYESU_HERMES_CODEX_API_KEY"
         selected[provider_key] = values.get(provider_key, "")
         if not selected[provider_key]:
             raise LauncherProtocolError("selected provider credential is missing")

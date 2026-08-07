@@ -139,7 +139,6 @@ ignore_default_excludes = true
 exclude = [
   "API_SERVER_KEY",
   "BYESU_HERMES_CODEX_API_KEY",
-  "BYESU_HERMES_GPT_PRO_API_KEY",
   "CODEX_RUNNER_API_KEY",
   "DATABASE_URL",
   "PGPASSWORD",

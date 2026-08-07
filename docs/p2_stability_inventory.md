@@ -44,7 +44,7 @@ AST-инвентаризация широких исключений и callback
 - `velvet_bot/calibrated_ai_quality.py:121` `process_once`: compensate-claimed-calibrated-quality.
 - `velvet_bot/discussion_analytics_middleware.py:36` `__call__`: isolate-discussion-analytics-ingest.
 - `velvet_bot/domains/codex_image.py:538` `process_once`: isolate-codex-image-task-failure.
-- `velvet_bot/domains/media_generation/friendly_worker.py:143` `_recover_durable_delivery`: isolate-durable-recovery-tick.
+- `velvet_bot/domains/media_generation/friendly_worker.py:150` `_recover_durable_delivery`: isolate-durable-recovery-tick.
 - `velvet_bot/domains/media_generation/task_queue.py:204` `complete`: isolate-post-completion-delivery.
 - `velvet_bot/domains/media_generation/task_queue.py:299` `_record_submission_best_effort`: isolate-provider-submission-registration.
 - `velvet_bot/domains/media_generation/task_queue.py:340` `_record_success_best_effort`: isolate-provider-success-registration.
