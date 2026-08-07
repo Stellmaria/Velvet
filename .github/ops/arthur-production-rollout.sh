@@ -87,6 +87,46 @@ VELVET_DEPLOY_TARGET_SHA="$SOURCE_COMMIT" \
 VELVET_DEPLOY_IMAGE="$IMAGE_DIGEST" \
   bash "$APP_DIR/deploy/server/deploy.sh"
 
+# The canonical server deploy receives the immutable image as a process-local
+# override. Persist the same verified digest only after deploy success so the
+# separately started Librarian/Arthur Compose profile cannot fall back to a
+# stale `velvet-bot:local` image during reconcile or a later systemd restart.
+python3 - "$APP_DIR/.env.server" "$IMAGE_DIGEST" <<'PY'
+from __future__ import annotations
+
+import os
+import re
+import sys
+from pathlib import Path
+
+env_path = Path(sys.argv[1])
+image = sys.argv[2].strip()
+if re.fullmatch(r"ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}", image) is None:
+    raise SystemExit("Arthur runtime image must be the verified immutable Velvet digest")
+
+lines = env_path.read_text(encoding="utf-8-sig").splitlines()
+result: list[str] = []
+seen = False
+for raw in lines:
+    if "=" in raw and raw.split("=", 1)[0].strip() == "VELVET_IMAGE":
+        if not seen:
+            result.append(f"VELVET_IMAGE={image}")
+            seen = True
+        continue
+    result.append(raw)
+if not seen:
+    if result and result[-1].strip():
+        result.append("")
+    result.append(f"VELVET_IMAGE={image}")
+
+temporary = env_path.with_name(env_path.name + ".arthur-image.tmp")
+temporary.write_text("\n".join(result).rstrip() + "\n", encoding="utf-8")
+os.chmod(temporary, 0o600)
+temporary.replace(env_path)
+os.chmod(env_path, 0o600)
+print("Arthur runtime image pinned to the verified immutable deployment image.")
+PY
+
 # SOURCE_COMMIT owns the verified application image. CHECKOUT_COMMIT differs
 # only by this one-time rollout payload and its worklog; it must be restored
 # before reconcile so the host bridge sees a clean checkout matching origin/main.
@@ -137,6 +177,15 @@ for service in ollama-librarian librarian-hermes arthur-storage-gateway arthur; 
   case "$state" in
     healthy|running) ;;
     *) echo "$service is not healthy: $state" >&2; exit 1 ;;
+  esac
+  case "$service" in
+    arthur-storage-gateway|arthur)
+      runtime_image="$(docker inspect --format '{{.Config.Image}}' "$cid")"
+      if [[ "$runtime_image" != "$IMAGE_DIGEST" ]]; then
+        echo "$service is not running the verified immutable Velvet image" >&2
+        exit 1
+      fi
+      ;;
   esac
   ports="$(docker inspect --format '{{json .NetworkSettings.Ports}}' "$cid")"
   python3 -c '
