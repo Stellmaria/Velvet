@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
-  "production_module_count": 655,
-  "production_loc": 143720,
+  "production_module_count": 656,
+  "production_loc": 144054,
   "layer_counts": {
     "application": 22,
-    "composition": 60,
+    "composition": 61,
     "core": 8,
     "domain": 187,
     "infrastructure": 33,
@@ -92,7 +92,7 @@
   "installer_graph": [
     {
       "order": 1,
-      "line": 190,
+      "line": 201,
       "call": "install_runtime_stability",
       "origin": "velvet_bot.runtime_stability.install_runtime_stability",
       "owner_module": "velvet_bot.runtime_stability",
@@ -104,7 +104,7 @@
     },
     {
       "order": 2,
-      "line": 191,
+      "line": 202,
       "call": "install_channel_analytics_datetime_compat",
       "origin": "velvet_bot.app.channel_analytics_datetime_compat.install_channel_analytics_datetime_compat",
       "owner_module": "velvet_bot.app.channel_analytics_datetime_compat",
@@ -114,7 +114,7 @@
     },
     {
       "order": 3,
-      "line": 136,
+      "line": 143,
       "call": "install_friendly_media_worker",
       "origin": "velvet_bot.domains.media_generation.friendly_worker.install_friendly_media_worker",
       "owner_module": "velvet_bot.domains.media_generation.friendly_worker",
@@ -122,7 +122,7 @@
     },
     {
       "order": 4,
-      "line": 140,
+      "line": 147,
       "call": "install_telegram_progress_resilience",
       "origin": "velvet_bot.app.telegram_progress_resilience.install_telegram_progress_resilience",
       "owner_module": "velvet_bot.app.telegram_progress_resilience",
@@ -132,7 +132,7 @@
     },
     {
       "order": 5,
-      "line": 144,
+      "line": 151,
       "call": "install_auf_cancel_ui",
       "origin": "velvet_bot.app.auf_cancel_ui_install.install_auf_cancel_ui",
       "owner_module": "velvet_bot.app.auf_cancel_ui_install",
@@ -144,7 +144,7 @@
     },
     {
       "order": 6,
-      "line": 145,
+      "line": 152,
       "call": "install_auf_runtime_dispatcher",
       "origin": "velvet_bot.app.auf_runtime_install.install_auf_runtime_dispatcher",
       "owner_module": "velvet_bot.app.auf_runtime_install",
@@ -152,7 +152,7 @@
     },
     {
       "order": 7,
-      "line": 149,
+      "line": 156,
       "call": "install_auf_reconciliation",
       "origin": "velvet_bot.app.auf_reconciliation_install.install_auf_reconciliation",
       "owner_module": "velvet_bot.app.auf_reconciliation_install",
@@ -160,7 +160,7 @@
     },
     {
       "order": 8,
-      "line": 150,
+      "line": 157,
       "call": "install_auf_workspace_ui",
       "origin": "velvet_bot.app.auf_workspace_ui_install.install_auf_workspace_ui",
       "owner_module": "velvet_bot.app.auf_workspace_ui_install",
@@ -170,7 +170,7 @@
     },
     {
       "order": 9,
-      "line": 151,
+      "line": 158,
       "call": "install_auf_wallet_ui",
       "origin": "velvet_bot.app.auf_wallet_ui_install.install_auf_wallet_ui",
       "owner_module": "velvet_bot.app.auf_wallet_ui_install",
@@ -178,7 +178,7 @@
     },
     {
       "order": 10,
-      "line": 152,
+      "line": 159,
       "call": "install_auf_photo_ui",
       "origin": "velvet_bot.app.auf_photo_ui_install.install_auf_photo_ui",
       "owner_module": "velvet_bot.app.auf_photo_ui_install",
@@ -186,7 +186,7 @@
     },
     {
       "order": 11,
-      "line": 153,
+      "line": 160,
       "call": "install_auf_reference_privacy",
       "origin": "velvet_bot.app.auf_reference_privacy_install.install_auf_reference_privacy",
       "owner_module": "velvet_bot.app.auf_reference_privacy_install",
@@ -200,7 +200,7 @@
     },
     {
       "order": 12,
-      "line": 157,
+      "line": 164,
       "call": "install_auf_photo_ratio_callback_fix",
       "origin": "velvet_bot.app.auf_photo_ratio_callback_fix.install_auf_photo_ratio_callback_fix",
       "owner_module": "velvet_bot.app.auf_photo_ratio_callback_fix",
@@ -210,7 +210,7 @@
     },
     {
       "order": 13,
-      "line": 161,
+      "line": 168,
       "call": "install_auf_user_portal",
       "origin": "velvet_bot.app.auf_user_portal_install.install_auf_user_portal",
       "owner_module": "velvet_bot.app.auf_user_portal_install",
@@ -221,7 +221,7 @@
     },
     {
       "order": 14,
-      "line": 162,
+      "line": 169,
       "call": "install_auf_photo_model_modes",
       "origin": "velvet_bot.app.auf_photo_model_modes.install_auf_photo_model_modes",
       "owner_module": "velvet_bot.app.auf_photo_model_modes",
@@ -247,7 +247,7 @@
     },
     {
       "order": 15,
-      "line": 166,
+      "line": 173,
       "call": "install_auf_owner_pricing_ui",
       "origin": "velvet_bot.app.auf_owner_pricing_ui_install.install_auf_owner_pricing_ui",
       "owner_module": "velvet_bot.app.auf_owner_pricing_ui_install",
@@ -255,7 +255,7 @@
     },
     {
       "order": 16,
-      "line": 170,
+      "line": 177,
       "call": "install_auf_margin_dashboard",
       "origin": "velvet_bot.app.auf_margin_dashboard_install.install_auf_margin_dashboard",
       "owner_module": "velvet_bot.app.auf_margin_dashboard_install",
@@ -263,7 +263,7 @@
     },
     {
       "order": 17,
-      "line": 174,
+      "line": 181,
       "call": "install_auf_charged_queue",
       "origin": "velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue",
       "owner_module": "velvet_bot.app.auf_charged_queue_install",
@@ -271,7 +271,7 @@
     },
     {
       "order": 18,
-      "line": 175,
+      "line": 182,
       "call": "install_auf_generation_receipts",
       "origin": "install_generation_receipts_with_owner_cost_privacy",
       "owner_module": "install_generation_receipts_with_owner_cost_privacy",
@@ -279,7 +279,7 @@
     },
     {
       "order": 19,
-      "line": 179,
+      "line": 186,
       "call": "install_krita_remote_worker",
       "origin": "velvet_bot.app.krita_remote_install.install_krita_remote_worker",
       "owner_module": "velvet_bot.app.krita_remote_install",
@@ -291,18 +291,15 @@
     },
     {
       "order": 20,
-      "line": 182,
+      "line": 190,
       "call": "install_auf_gpt_image_2",
-      "origin": "velvet_bot.app.auf_gpt_image_2_install.install_auf_gpt_image_2",
-      "owner_module": "velvet_bot.app.auf_gpt_image_2_install",
-      "patched_symbols": [
-        "photo_router.handle_auf_photo_command",
-        "photo_router.handle_auf_photo_input"
-      ]
+      "origin": "install_gpt_image_with_byesu_quality",
+      "owner_module": "install_gpt_image_with_byesu_quality",
+      "patched_symbols": []
     },
     {
       "order": 21,
-      "line": 183,
+      "line": 194,
       "call": "install_auf_branding",
       "origin": "velvet_bot.app.auf_branding.install_auf_branding",
       "owner_module": "velvet_bot.app.auf_branding",
@@ -311,17 +308,17 @@
       ]
     }
   ],
-  "violation_count": 519,
+  "violation_count": 523,
   "violation_counts": {
     "database-acquire-outside-persistence": 87,
     "domain-aiogram-import": 20,
     "domain-layer-import": 3,
     "dynamic-import": 17,
-    "foreign-assignment": 34,
-    "installed-sentinel": 37,
-    "installer-like-module": 23,
+    "foreign-assignment": 35,
+    "installed-sentinel": 38,
+    "installer-like-module": 24,
     "method-assign-ignore": 5,
-    "monolithic-function": 25,
+    "monolithic-function": 26,
     "monolithic-module-loc": 19,
     "package-getattr-side-effect": 19,
     "sql-outside-persistence": 107,
@@ -2513,6 +2510,28 @@
       }
     },
     {
+      "id": "foreign-assignment:velvet_bot/app/auf_gpt_image_2_quality_install.py:d6624fb0528907de",
+      "category": "foreign-assignment",
+      "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+      "fingerprint": "d6624fb0528907dee24b3ca81a8e5930a74bfd41d207027a3f45f45fc7a28bdb",
+      "summary": "10 assignments to imported owners",
+      "details": {
+        "count": 10,
+        "targets": [
+          "codex_domain.MAX_CODEX_IMAGE_REFERENCES",
+          "codex_domain.MAX_CODEX_IMAGE_REFERENCE_BYTES",
+          "gpt.MAX_CODEX_IMAGE_REFERENCES",
+          "gpt._handle_input",
+          "gpt._request",
+          "gpt._show_final",
+          "gpt._show_input",
+          "gpt._show_modes",
+          "gpt._show_ratios",
+          "gpt._show_resolutions"
+        ]
+      }
+    },
+    {
       "id": "foreign-assignment:velvet_bot/app/auf_photo_model_modes.py:e3e26ab0842a3274",
       "category": "foreign-assignment",
       "path": "velvet_bot/app/auf_photo_model_modes.py",
@@ -3018,6 +3037,16 @@
       }
     },
     {
+      "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_quality_install.py:ec4be73673815e95",
+      "category": "installed-sentinel",
+      "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+      "fingerprint": "ec4be73673815e95ba0680ca988f939cee1df43db30c02db3550aac6f41082d1",
+      "summary": "4 _INSTALLED references",
+      "details": {
+        "count": 4
+      }
+    },
+    {
       "id": "installed-sentinel:velvet_bot/app/auf_margin_dashboard_install.py:7eeb5d8f99cd8695",
       "category": "installed-sentinel",
       "path": "velvet_bot/app/auf_margin_dashboard_install.py",
@@ -3358,6 +3387,14 @@
       "details": {}
     },
     {
+      "id": "installer-like-module:velvet_bot/app/auf_gpt_image_2_quality_install.py:3585e9d7b28793b7",
+      "category": "installer-like-module",
+      "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+      "fingerprint": "3585e9d7b28793b74b5a02b406fab0e9fb19b4ea4c29a6346f425859f8a71e0a",
+      "summary": "installer/hotfix/fix module requires explicit retirement",
+      "details": {}
+    },
+    {
       "id": "installer-like-module:velvet_bot/app/auf_margin_dashboard_install.py:a6099df5a5bfa3f2",
       "category": "installer-like-module",
       "path": "velvet_bot/app/auf_margin_dashboard_install.py",
@@ -3559,6 +3596,17 @@
       "summary": "max function 265 lines exceeds 180",
       "details": {
         "max_function_length": 265,
+        "limit": 180
+      }
+    },
+    {
+      "id": "monolithic-function:velvet_bot/app/auf_gpt_image_2_quality_install.py:82acdadca114b76f",
+      "category": "monolithic-function",
+      "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+      "fingerprint": "82acdadca114b76f1155d8450488d6a7239c45aa7f4e2af57ad744ee33a90a87",
+      "summary": "max function 290 lines exceeds 180",
+      "details": {
+        "max_function_length": 290,
         "limit": 180
       }
     },
@@ -9050,6 +9098,111 @@
       ]
     },
     {
+      "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+      "module": "velvet_bot.app.auf_gpt_image_2_quality_install",
+      "layer": "composition",
+      "target_package": "composition",
+      "loc": 323,
+      "function_count": 9,
+      "class_count": 0,
+      "handler_count": 0,
+      "max_function_length": 290,
+      "branch_count": 13,
+      "internal_imports": [
+        "velvet_bot.app",
+        "velvet_bot.domains",
+        "velvet_bot.domains.codex_image",
+        "velvet_bot.presentation.telegram.auf_editing",
+        "velvet_bot.presentation.telegram.routers"
+      ],
+      "external_import_count": 5,
+      "aiogram_imports": [
+        "aiogram.fsm.context",
+        "aiogram.types"
+      ],
+      "sql_literal_count": 0,
+      "database_acquire_count": 0,
+      "foreign_assignment_targets": [
+        "codex_domain.MAX_CODEX_IMAGE_REFERENCES",
+        "codex_domain.MAX_CODEX_IMAGE_REFERENCE_BYTES",
+        "gpt.MAX_CODEX_IMAGE_REFERENCES",
+        "gpt._handle_input",
+        "gpt._request",
+        "gpt._show_final",
+        "gpt._show_input",
+        "gpt._show_modes",
+        "gpt._show_ratios",
+        "gpt._show_resolutions"
+      ],
+      "dynamic_import_count": 0,
+      "any_count": 0,
+      "cast_count": 0,
+      "type_ignore_count": 0,
+      "method_assign_ignore_count": 0,
+      "install_definitions": [
+        "install_auf_gpt_image_2_quality"
+      ],
+      "install_calls": [],
+      "installed_sentinel_count": 4,
+      "package_getattr": false,
+      "env_reads": [],
+      "polling_values": [],
+      "worker_registrations": [],
+      "violations": [
+        {
+          "id": "foreign-assignment:velvet_bot/app/auf_gpt_image_2_quality_install.py:d6624fb0528907de",
+          "category": "foreign-assignment",
+          "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+          "fingerprint": "d6624fb0528907dee24b3ca81a8e5930a74bfd41d207027a3f45f45fc7a28bdb",
+          "summary": "10 assignments to imported owners",
+          "details": {
+            "count": 10,
+            "targets": [
+              "codex_domain.MAX_CODEX_IMAGE_REFERENCES",
+              "codex_domain.MAX_CODEX_IMAGE_REFERENCE_BYTES",
+              "gpt.MAX_CODEX_IMAGE_REFERENCES",
+              "gpt._handle_input",
+              "gpt._request",
+              "gpt._show_final",
+              "gpt._show_input",
+              "gpt._show_modes",
+              "gpt._show_ratios",
+              "gpt._show_resolutions"
+            ]
+          }
+        },
+        {
+          "id": "installer-like-module:velvet_bot/app/auf_gpt_image_2_quality_install.py:3585e9d7b28793b7",
+          "category": "installer-like-module",
+          "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+          "fingerprint": "3585e9d7b28793b74b5a02b406fab0e9fb19b4ea4c29a6346f425859f8a71e0a",
+          "summary": "installer/hotfix/fix module requires explicit retirement",
+          "details": {}
+        },
+        {
+          "id": "installed-sentinel:velvet_bot/app/auf_gpt_image_2_quality_install.py:ec4be73673815e95",
+          "category": "installed-sentinel",
+          "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+          "fingerprint": "ec4be73673815e95ba0680ca988f939cee1df43db30c02db3550aac6f41082d1",
+          "summary": "4 _INSTALLED references",
+          "details": {
+            "count": 4
+          }
+        },
+        {
+          "id": "monolithic-function:velvet_bot/app/auf_gpt_image_2_quality_install.py:82acdadca114b76f",
+          "category": "monolithic-function",
+          "path": "velvet_bot/app/auf_gpt_image_2_quality_install.py",
+          "fingerprint": "82acdadca114b76f1155d8450488d6a7239c45aa7f4e2af57ad744ee33a90a87",
+          "summary": "max function 290 lines exceeds 180",
+          "details": {
+            "max_function_length": 290,
+            "limit": 180
+          }
+        }
+      ]
+    },
+    {
       "path": "velvet_bot/app/auf_margin_dashboard_install.py",
       "module": "velvet_bot.app.auf_margin_dashboard_install",
       "layer": "composition",
@@ -10761,11 +10914,11 @@
       "module": "velvet_bot.app.composition",
       "layer": "composition",
       "target_package": "composition",
-      "loc": 208,
-      "function_count": 9,
+      "loc": 219,
+      "function_count": 10,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 90,
+      "max_function_length": 101,
       "branch_count": 3,
       "internal_imports": [
         "velvet_bot.app.auf_branding",
@@ -10773,6 +10926,7 @@
         "velvet_bot.app.auf_charged_queue_install",
         "velvet_bot.app.auf_generation_receipt_install",
         "velvet_bot.app.auf_gpt_image_2_install",
+        "velvet_bot.app.auf_gpt_image_2_quality_install",
         "velvet_bot.app.auf_margin_dashboard_install",
         "velvet_bot.app.auf_owner_cost_privacy_install",
         "velvet_bot.app.auf_owner_pricing_ui_install",
@@ -10804,7 +10958,8 @@
       "type_ignore_count": 0,
       "method_assign_ignore_count": 0,
       "install_definitions": [
-        "install_generation_receipts_with_owner_cost_privacy"
+        "install_generation_receipts_with_owner_cost_privacy",
+        "install_gpt_image_with_byesu_quality"
       ],
       "install_calls": [
         {
@@ -10816,16 +10971,24 @@
           "call": "install_channel_analytics_datetime_compat"
         },
         {
-          "line": 207,
+          "line": 218,
           "call": "install_gpt_image_2_bootstrap"
         },
         {
-          "line": 132,
+          "line": 135,
           "call": "install_auf_generation_receipts"
         },
         {
-          "line": 133,
+          "line": 136,
           "call": "install_auf_owner_cost_privacy"
+        },
+        {
+          "line": 139,
+          "call": "install_auf_gpt_image_2"
+        },
+        {
+          "line": 140,
+          "call": "install_auf_gpt_image_2_quality"
         }
       ],
       "installed_sentinel_count": 0,
