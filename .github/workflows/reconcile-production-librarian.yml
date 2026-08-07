@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       source_commit:
-        description: "Exact 40-character current main commit already deployed to production"
+        description: "Exact deployed application source commit recorded in image provenance"
         required: true
         type: string
       image_digest:
@@ -41,10 +41,6 @@ jobs:
           image_digest="${IMAGE_DIGEST,,}"
           if [[ ! "$source_commit" =~ ^[0-9a-f]{40}$ ]]; then
             echo "source_commit must be an exact 40-character SHA" >&2
-            exit 2
-          fi
-          if [[ "$source_commit" != "${GITHUB_SHA,,}" ]]; then
-            echo "source_commit must equal the current main commit executing this workflow" >&2
             exit 2
           fi
           if [[ ! "$image_digest" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]; then
@@ -86,13 +82,14 @@ jobs:
           DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           IMAGE_DIGEST: ${{ inputs.image_digest }}
+          CHECKOUT_COMMIT: ${{ github.sha }}
         run: |
           set -Eeuo pipefail
           port="${DEPLOY_PORT:-22}"
           app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
           printf -v remote_command \
-            'APP_DIR=%q SOURCE_COMMIT=%q IMAGE_DIGEST=%q bash -s' \
-            "$app_dir" "$SOURCE_COMMIT" "$IMAGE_DIGEST"
+            'APP_DIR=%q SOURCE_COMMIT=%q IMAGE_DIGEST=%q CHECKOUT_COMMIT=%q bash -s' \
+            "$app_dir" "$SOURCE_COMMIT" "$IMAGE_DIGEST" "$CHECKOUT_COMMIT"
           ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
           set -Eeuo pipefail
@@ -101,10 +98,35 @@ jobs:
           test -d "$APP_DIR/.git"
           test ! -L "$APP_DIR/.git"
           test "$(git symbolic-ref --short HEAD)" = main
-          git fetch --no-tags --prune origin main
-          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          test "$(git rev-parse refs/remotes/origin/main)" = "$SOURCE_COMMIT"
+          current_head="$(git rev-parse HEAD)"
           test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
+
+          git fetch --no-tags --prune origin main
+          test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
+          git cat-file -e "${SOURCE_COMMIT}^{commit}"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" "$CHECKOUT_COMMIT"
+
+          case "$current_head" in
+            "$SOURCE_COMMIT"|"$CHECKOUT_COMMIT") ;;
+            *)
+              echo "Production checkout is neither the deployed source nor current main: $current_head" >&2
+              exit 3
+              ;;
+          esac
+
+          unsafe_path=""
+          while IFS= read -r changed_path; do
+            case "$changed_path" in
+              .github/*|docs/*|tests/*) ;;
+              *) unsafe_path="$changed_path"; break ;;
+            esac
+          done < <(git diff --name-only "$SOURCE_COMMIT..$CHECKOUT_COMMIT")
+          if [[ -n "$unsafe_path" ]]; then
+            echo "Current main contains a runtime/deploy change after the verified application source: $unsafe_path" >&2
+            echo "Run the normal verified production deploy before Librarian reconcile." >&2
+            exit 4
+          fi
+          echo "Verified control-plane-only checkout drift from application source to current main."
 
           env_file="$APP_DIR/.env.server"
           test -f "$env_file"
@@ -124,7 +146,17 @@ jobs:
           test "$expected_image_id" = "$(docker inspect --format '{{.Image}}' "$bot_cid")"
           image_revision="$(docker image inspect "$IMAGE_DIGEST" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
           test "${image_revision,,}" = "${SOURCE_COMMIT,,}"
-          echo "Verified healthy production bot on requested immutable image."
+          echo "Verified healthy production bot on requested immutable application image."
+
+          if [[ "$current_head" != "$CHECKOUT_COMMIT" ]]; then
+            (
+              umask 022
+              git reset --hard "$CHECKOUT_COMMIT"
+            )
+          fi
+          test "$(git rev-parse HEAD)" = "$CHECKOUT_COMMIT"
+          test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
+          test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
 
           python3 - "$env_file" "$IMAGE_DIGEST" <<'PY'
           from __future__ import annotations
@@ -254,8 +286,8 @@ jobs:
               raise SystemExit("librarian reconcile did not complete successfully")
           ' <<<"$wait_json"
 
-          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          test "$(git rev-parse refs/remotes/origin/main)" = "$SOURCE_COMMIT"
+          test "$(git rev-parse HEAD)" = "$CHECKOUT_COMMIT"
+          test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
           test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
 
           compose=(
@@ -314,5 +346,5 @@ jobs:
             ollama show velvet-librarian-text:v1 >/dev/null
           test "$(stat -c '%u:%g' "$git_index")" = "$deploy_uid:$deploy_gid"
           test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
-          echo "Production Librarian reconcile verified: checkout=$SOURCE_COMMIT task=$task_id image=$IMAGE_DIGEST"
+          echo "Production Librarian reconcile verified: app=$SOURCE_COMMIT checkout=$CHECKOUT_COMMIT task=$task_id image=$IMAGE_DIGEST"
           REMOTE
