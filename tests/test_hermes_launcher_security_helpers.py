@@ -111,6 +111,36 @@ class LauncherIdleGateTests(unittest.TestCase):
         ):
             self.assertEqual([], self.module.active_sandbox_containers())
 
+    def test_codex_availability_state_is_not_a_run_ledger(self) -> None:
+        for project in ("velvet", "max"):
+            target = self.root / "codex-runs" / project
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "codex-availability.json").write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "codex_available": False,
+                        "provider_available": None,
+                        "reason": "unknown",
+                    }
+                ),
+                encoding="utf-8",
+            )
+        self.assertEqual([], self.module.active_ledger_runs())
+
+    def test_nonterminal_ledger_still_blocks_with_availability_state_present(self) -> None:
+        target = self.root / "codex-runs" / "velvet"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "codex-availability.json").write_text(
+            json.dumps({"version": 1, "reason": "unknown"}),
+            encoding="utf-8",
+        )
+        self.write_run("velvet", "a" * 32, "running")
+        self.assertEqual(
+            ["velvet:" + "a" * 32 + ":running"],
+            self.module.active_ledger_runs(),
+        )
+
     def test_nonterminal_ledger_blocks_rollout(self) -> None:
         self.write_run("velvet", "a" * 32, "running")
         self.assertEqual(

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(os.environ.get("HERMES_CODERS_ROOT", "/srv/hermes-coders")).resolve()
 _TERMINAL = frozenset({"completed", "failed", "cancelled"})
 _PROJECTS = ("velvet", "max")
+_NON_RUN_STATE_FILES = frozenset({"codex-availability.json"})
 
 
 class IdleError(RuntimeError):
@@ -23,6 +24,8 @@ def active_ledger_runs() -> list[str]:
         if not run_root.exists():
             continue
         for path in sorted(run_root.glob("*.json")):
+            if path.name in _NON_RUN_STATE_FILES:
+                continue
             if path.is_symlink() or not path.is_file():
                 raise IdleError(f"unsafe run ledger entry: {path}")
             try:
