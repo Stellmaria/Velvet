@@ -18,7 +18,7 @@
 
 PR #667 был создан как эксплуатационный мост для production rollout и намеренно не меняет application runtime. Ветка изначально была привязана к commit `7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f` и к заранее опубликованному immutable image digest.
 
-После создания PR в `main` были объединены #666 и #662, а #663 находится в подготовке. Поэтому исходный `SOURCE_COMMIT` и image digest в rollout workflow уже считаются устаревшими и не должны использоваться для production. Финальный provenance обязан быть обновлён только после merge всех предшествующих application PR и успешного штатного `publish-image.yml` для точного нового `main`.
+После создания PR в `main` были объединены #666, #662 и #663. Исходный `SOURCE_COMMIT` и image digest стали устаревшими, поэтому rollout не запускался с промежуточным provenance. После merge #663 ветка #667 синхронизирована с актуальным `main`, а финальная application provenance взята только из успешного штатного `publish-image.yml` для точного merge commit.
 
 ### Планируемый объём
 
@@ -33,7 +33,7 @@ PR #667 был создан как эксплуатационный мост д�
 
 ### Критерии готовности
 
-- rollout source commit совпадает с проверенным актуальным `main`;
+- rollout source commit совпадает с проверенным актуальным application `main`;
 - image digest получен из успешного `publish-image.yml` для этого же source commit;
 - required GitHub checks PR #667 зелёные;
 - workflow не печатает production credentials или токены;
@@ -55,36 +55,41 @@ PR #667 был создан как эксплуатационный мост д�
 
 Подготовлен one-time workflow `.github/workflows/arthur-production-rollout-v2.yml` и серверный bridge `.github/ops/arthur-production-rollout.sh`. Контракт предусматривает immutable application deploy, отдельную установку Arthur credentials, восстановление checkout на итоговый merge commit, fixed-target Librarian reconcile и post-deploy health checks.
 
-На текущем этапе rollout не запускался. Обнаружено, что исходные provenance-значения PR устарели после движения `main`; они намеренно не заменяются промежуточным образом после #662, потому что #663 ещё должен завершить protected CI и, после merge, пройти штатный image publish. Таким образом исключается deployment заведомо промежуточного состояния.
+PR #663 успешно прошёл protected CI и был объединён в `main` commit `e6571062af2c963297c17f94685490fa054c90ca`. Штатный `publish-image.yml` run `31179477871` для этого exact commit успешно выполнил build, Trivy HIGH/CRITICAL gate, CycloneDX SBOM и GHCR publish. Из его publish evidence зафиксирован immutable application target `ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0`.
+
+Ветка #667 синхронизирована с этим `main`. Rollout workflow теперь использует exact `SOURCE_COMMIT=e6571062af2c963297c17f94685490fa054c90ca` и соответствующий immutable digest. Provenance-комментарий server bridge уточнён: `CHECKOUT_COMMIT` отличается от application source одноразовым rollout payload и worklog, после deploy checkout восстанавливается на точный merge commit до reconcile.
+
+Production rollout на этом этапе не запускался.
 
 ### Миграции и совместимость
 
-SQL-миграций в PR нет. Application runtime PR напрямую не меняет. Совместимость зависит от строгого совпадения final `SOURCE_COMMIT` и immutable image digest, опубликованного для этого commit штатным pipeline.
+SQL-миграций в PR нет. Application runtime PR напрямую не меняет. Совместимость обеспечивается строгим совпадением `SOURCE_COMMIT` и immutable image digest, опубликованного для этого commit штатным pipeline. Checkout после application deploy намеренно восстанавливается на итоговый rollout merge commit, чтобы fixed-target host bridge работал из чистого `origin/main`.
 
 ### Проверки
 
 Проверена структура rollout workflow и server bridge: deployment идёт через существующий канонический deploy script, secret values не должны печататься, предусмотрены container health, no-published-ports, queue mode, Ollama, heartbeat и Telegram identity checks.
 
-Финальный protected CI, точный provenance и production live-smoke ещё не заявляются выполненными. Они должны быть выполнены после синхронизации ветки с итоговым `main` и обновления verified image digest.
+Verified application image для source commit `e6571062af2c963297c17f94685490fa054c90ca` опубликован штатным pipeline после успешного Trivy gate и SBOM generation. Ветка rollout синхронизирована с этим `main` без конфликтов.
+
+Финальный protected CI самого PR #667 и production live-smoke ещё не заявляются выполненными. Live-smoke возможен только после отдельного решения на merge, потому что merge этого PR является trigger production rollout.
 
 ### PR и commit
 
 - PR: #667 `Ops: one-time Arthur production rollout`.
 - Ветка: `ops/arthur-prod-rollout-20260806`.
 - Исходный базовый commit: `7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f`.
-- Финальный rollout source commit и image digest будут зафиксированы отдельной правкой после завершения зависимых application PR.
+- Финальный application source commit: `e6571062af2c963297c17f94685490fa054c90ca`.
+- Publish evidence: workflow run `31179477871`.
+- Immutable image digest закреплён в one-time rollout workflow.
 
 ### Незавершённое
 
-- дождаться полного зелёного protected CI и merge PR #663;
-- дождаться успешного `publish-image.yml` для точного merge commit нового `main`;
-- получить published immutable digest из артефакта pipeline;
-- синхронизировать #667 с актуальным `main`;
-- обновить rollout provenance и формулировки PR;
-- прогнать required checks #667;
+- дождаться полного required CI PR #667 на финальном rollout payload;
+- исправить только реальные найденные CI-проблемы, не менять verified provenance без нового application commit;
 - остановиться перед merge, поскольку merge запускает production rollout;
-- после отдельного решения на rollout проверить фактический production result.
+- после отдельного решения на rollout проверить фактический deploy, Librarian reconcile, container health, ports, heartbeat, queue mode, Ollama model и Telegram `getMe`;
+- после successful rollout зафиксировать production result отдельной эксплуатационной записью.
 
 ### Следующий шаг
 
-Завершить #663, получить verified immutable image для нового `main`, затем обновить #667 до точного source/digest pair и довести его required CI до зелёного состояния без запуска production.
+Довести required checks PR #667 до полностью зелёного состояния на закреплённой verified source/digest pair и оставить PR готовым к отдельному production merge без запуска rollout в рамках текущей подготовки.
