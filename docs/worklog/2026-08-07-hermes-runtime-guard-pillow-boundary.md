@@ -38,6 +38,13 @@ Production успешно обновлён до merge commit `5bcfe3b0f4e725274b
 - protected CI зелёный;
 - production `hermes-coders.service` проходит host guard после rollout.
 
+### Риски и ограничения
+
+- host stub проверяет только внутреннюю import/monkey-patch совместимость и намеренно не доказывает работоспособность Pillow API;
+- реальная доступность Pillow остаётся обязанностью coder image build и container runtime smoke;
+- hotfix не должен добавлять `python3-pil` или pip dependency на VPS;
+- production остаётся на предыдущем merge commit до terminal green CI и merge PR #701.
+
 ## После завершения
 
 ### Фактически сделано
@@ -47,6 +54,10 @@ Production успешно обновлён до merge commit `5bcfe3b0f4e725274b
 Настоящий Pillow остаётся dependency `Dockerfile.coder` и используется `codex_image_high_res_export.py` во время high-resolution export. Container build/runtime smoke сохраняют ответственность за фактическую доступность Pillow.
 
 `tests/test_hermes_runtime_source_guard.py` дополнен контрактом container-only Pillow stub и запуском реального internal import graph через guard.
+
+### Миграции и совместимость
+
+SQL, data и secret migrations отсутствуют. `.env.hermes`, `.env.server`, Byesu credentials и Docker Compose secret boundary не меняются. Hotfix совместим с уже собранными coder images, но production activation всё равно выполняется через штатный update и canonical orchestration installer, чтобы release graph и systemd source совпали с новым `main`.
 
 ### Проверки
 
@@ -58,7 +69,7 @@ Protected CI требуется на финальном head PR #701. Production
 - Ветка: `fix/hermes-runtime-guard-pillow-boundary`.
 - Кодовый commit: `91e44ccbe64514db3a923a3a9e4aad8a08d7ad99`.
 - Regression-test commit: `9001d6be5d590b04319b890570882200a615e5b0`.
-- Документирующий commit создаётся этим изменением.
+- Worklog commits фиксируют production evidence и обязательный project-notes contract.
 - Merge допустим только для exact reviewed head после terminal green protected CI и `behind_by=0`.
 
 ### Незавершённое
@@ -70,3 +81,7 @@ Protected CI требуется на финальном head PR #701. Production
 - повторить `sudo bash deploy/hermes-orchestration/install.sh`;
 - подтвердить `hermes-coders.service`, `hermes-coder-router.service`, provider smoke и bot-to-router DNS;
 - только после этого включать Byesu image fallback и выполнять live GPT Image 2 smoke.
+
+### Следующий шаг
+
+Дождаться полного protected CI на финальном head PR #701. При terminal green проверить, что ветка не отстаёт от `main`, слить exact head, затем обновить production через Supervisor и повторить canonical Hermes orchestration install без ручной установки Pillow на host.
