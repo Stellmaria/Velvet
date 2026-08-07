@@ -25,6 +25,37 @@ Codex runners не получают production Docker socket, systemd, productio
 
 Значения передаются через `coderctl -> tier_router -> coder runner` без повторной классификации после fallback.
 
+### Dynamic Codex availability gate
+
+Перед выбором primary route runner читает persisted runtime-state каждого project.
+Codex можно запускать только при `codex_available=true`. При `false` primary Codex
+полностью пропускается и задача сразу использует настроенный Byesu provider route.
+
+State хранится в `/opt/codex-runs/codex-availability.json` отдельно для Velvet и
+Max. Runtime делает live `account/rateLimits/read` при старте и затем каждые
+`18000` секунд, то есть каждые 5 часов, независимо от известного provider
+`resets_at`. Если `codex_available_at` наступает раньше следующей периодической
+проверки, выполняется дополнительный probe, который не сдвигает пятичасовой цикл.
+
+Реальный subscription failure немедленно переводит persisted state в false.
+Диагностический probe после такого failure может обогатить state `resets_at`, но
+не может тут же вернуть true при противоречивом snapshot. Следующий независимый
+успешный refresh восстанавливает true, если provider действительно доступен.
+
+Manual operator control выполняется внутри соответствующего coder:
+
+```bash
+python /app/codex_availability_ctl.py status
+python /app/codex_availability_ctl.py refresh
+python /app/codex_availability_ctl.py hold --until auto
+python /app/codex_availability_ctl.py hold --until 2026-08-09T05:00:00Z
+python /app/codex_availability_ctl.py clear
+```
+
+`clear` всегда делает live refresh и не форсирует true. Watcher перечитывает
+локальный state раз в минуту, чтобы заметить изменения другого operator process;
+это локальное чтение не является OpenAI probe.
+
 ### Codex subscription
 
 | Tier | Primary model | Допустимое infrastructure-only повышение |
@@ -95,7 +126,10 @@ Runner и orchestration ledger сохраняют:
 - `fallback_reason`;
 - `mutation_started`.
 
-`GET /v1/capabilities` публикует безопасную `routes_by_tier`. Имена env keys, tokens и secret values не публикуются.
+`GET /v1/capabilities` публикует безопасную `routes_by_tier` и текущий
+`routing.codex_availability`. Legacy in-memory cooldown больше не является
+routing authority и публикуется как `cooldown_seconds=0`, `gated_by=codex_availability`.
+Имена env keys, tokens и secret values не публикуются.
 
 ## Граница прав моделей
 
@@ -152,6 +186,9 @@ sudo env HERMES_CODERS_ROOT=/srv/hermes-coders \
 ```bash
 python /opt/data/tools/coderctl.py health all
 ```
+
+После rollout для обоих coder project нужно проверить dynamic state и убедиться,
+что `next_periodic_check_at` отстоит от `last_periodic_check_at` на 18000 секунд.
 
 Read-only Telegram handoff должен показывать `requested_tier`, `selected_primary_model`, `actual_route` и отсутствие production privileges.
 
