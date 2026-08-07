@@ -88,8 +88,8 @@ VELVET_DEPLOY_IMAGE="$IMAGE_DIGEST" \
   bash "$APP_DIR/deploy/server/deploy.sh"
 
 # SOURCE_COMMIT owns the verified application image. CHECKOUT_COMMIT differs
-# only by this one-time ops workflow and must be restored before reconcile so
-# the host bridge sees a clean checkout exactly matching origin/main.
+# only by this one-time rollout payload and its worklog; it must be restored
+# before reconcile so the host bridge sees a clean checkout matching origin/main.
 git fetch --prune origin main
 test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
 git merge-base --is-ancestor "$SOURCE_COMMIT" "$CHECKOUT_COMMIT"
