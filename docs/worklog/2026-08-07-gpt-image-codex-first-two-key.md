@@ -85,10 +85,12 @@ Runtime проверяет, что два ключа различаются, и 
 одновременно.
 
 Media secret не передаётся через `compose_image_runtime_env.py`. Добавлен
-`prepare_image_secret_env.py`, который атомарно создаёт mode `0600`
-`/srv/hermes-coders/secrets/velvet-media.env` только с Media Gen key. Этот env
-подключён только к `hermes-coder-velvet`; Max его не получает. При включённом
-fallback отсутствие Media Gen key блокирует lifecycle fail-closed.
+`prepare_image_secret_env.py`, который атомарно синхронизирует только
+`BYESU_MEDIA_GEN_API_KEY` в уже существующий mode `0600`
+`/srv/hermes-coders/secrets/velvet.env`, сохраняя остальные project secrets.
+`max.env` не затрагивается. При включённом fallback отсутствие Media Gen key
+блокирует lifecycle fail-closed. Дополнительный обязательный env-файл не создаётся,
+поэтому standalone three-layer `docker compose config` остаётся валидным.
 
 Добавлен `image_provider_smoke.py`: при выключенном fallback он не требует media
 credential; при включённом проверяет distinct keys, Sol/Terra/Luna на
@@ -104,8 +106,9 @@ Hermes-Codex key и `gpt-image-2`/`firefly-gpt-image-2` на Media Gen key.
 - Byesu-generated 2K/4K не проходят через дополнительный Codex export.
 
 Coder image дополнен `python3-pil`. Runtime source/import graph и systemd permission
-contract включают новый module. Systemd start/reload готовит isolated media env,
-затем запускает Compose и после основных smoke выполняет image provider smoke.
+contract включают новый module. Systemd start/reload синхронизирует Media Gen key
+в существующий Velvet project env, затем запускает Compose и после основных smoke
+выполняет image provider smoke.
 
 Legacy provider alias `byesu-gpt-pro` удалён из `deploy/hermes-coders/config.yaml`;
 Luna использует единый `byesu-coder` provider на Hermes-Codex physical key.
@@ -135,21 +138,23 @@ verification. Это позволяет обновить код и ключи б
 - exact 2K/4K dimensions и prohibition второго `image_gen`;
 - high-res status/content guard;
 - Media Gen secret isolation и mode `0600`;
+- standalone three-layer Compose без второго обязательного secret env;
 - image provider smoke lifecycle;
 - runtime release/import graph;
 - preflight install order и coverage всех quality.
 
-Protected CI запущен на PR #699. Первый прогон `type check` прошёл. `project notes contract`
-корректно потребовал этот канонический раздел `### PR и commit`; запись обновлена без
-изменения runtime-кода. Live provider availability и реальные Codex windows
-проверяются только после production secret rotation.
+На промежуточном head после устранения отдельного `velvet-media.env` все четыре
+test shard прошли зелёными, включая issue-581 three-layer Compose contract. Type
+check и project notes contract также проходили. Финальный protected CI требуется
+повторно на последнем документированном head. Live provider availability и реальные
+Codex windows проверяются только после production secret rotation.
 
 ### PR и commit
 
 - PR: #699 `Fix GPT Image 2 Codex-first routing and split Byesu keys`.
 - Ветка: `fix/gpt-image-codex-first-two-keys`.
 - Ветка синхронизирована с `main` merge-коммитом `9e748361712d1082192153a8d95fa1360e2e94a1` перед открытием PR.
-- Следующие commit SHA фиксируют только CI/contract corrections на этой же ветке.
+- Следующие commit SHA фиксируют CI/contract corrections и финальную secret boundary на этой же ветке.
 - Merge допустим только для exact reviewed head после terminal green protected CI и `behind_by=0`.
 
 ### Незавершённое
