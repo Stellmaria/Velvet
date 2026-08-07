@@ -1,30 +1,86 @@
-# Arthur production rollout run 6: deploy succeeded, post-deploy bridge truncated
+# Сессия: Arthur production rollout run 6 и stdin boundary
 
-- Date: 2026-08-07
-- Scope: Arthur Librarian Phase 2 production acceptance (#586)
-- Workflow run: `31190120224`
-- Rollout merge SHA: `3696e266bae37b5df13bc90317fc5237d6d41ea5`
-- Verified application source: `e6571062af2c963297c17f94685490fa054c90ca`
-- Verified immutable image: `ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0`
+- Дата: 2026-08-07
+- ID: `2026-08-07-arthur-production-rollout-run6`
+- Линия/фаза: Arthur Librarian Phase 2 / production acceptance (#586)
+- Статус: частично
+- Ветка: `ops/arthur-rollout-isolate-deploy-stdin`
+- Базовый commit: `3696e266bae37b5df13bc90317fc5237d6d41ea5`
+- PR: #679
 
-## Evidence
+## Перед началом
 
-Run 6 passed full-history checkout, immutable target/credential preflight, and the bounded legacy backup ownership repair. The repair normalized the intended backup ownership/mode contract and reported `files=38`.
+### Цель
 
-Canonical `deploy/server/deploy.sh` then executed successfully using the verified application source/image pair. It created and verified a pre-deploy PostgreSQL dump (`migrations=92`, `tables=105`, `characters=96`), reset the application checkout to the verified source commit, pulled the exact immutable image digest, started the core services and bot, and passed server smoke. The log explicitly reported `Velvet deployment succeeded: e6571062af2c963297c17f94685490fa054c90ca`.
+Зафиксировать фактический результат production rollout run `31190120224`, не засчитать ложноположительный workflow success как Arthur acceptance и устранить границу stdin между streamed rollout bridge и canonical deploy.
 
-Production therefore was changed by run 6. This is no longer a pre-deploy failure case.
+### Исходный контекст
 
-## Missing post-deploy acceptance
+Run `31190120224` впервые успешно прошёл bounded backup ownership repair и реально запустил canonical `deploy/server/deploy.sh`. Verified application source остаётся `e6571062af2c963297c17f94685490fa054c90ca`, verified immutable image остаётся `ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0`.
 
-Despite the Actions step concluding `success`, the job log contains no `reconcilectl` submit/wait output and no final `Arthur production rollout verified ...` marker. Execution ends immediately after the canonical deploy output and proceeds to credential-payload cleanup.
+Canonical deploy завершился успешно, однако Actions job не содержит `reconcilectl` submit/wait output и финального `Arthur production rollout verified ...` marker. Поэтому run 6 изменил production application runtime, но не доказывает выполнение post-deploy Arthur reconcile/health acceptance.
 
-The rollout bridge was supplied to the remote shell as stdin via `ssh ... bash -s < .github/ops/arthur-production-rollout.sh`. The canonical deploy launched inside that streamed bridge inherited the same stdin. A child command in the deploy path could therefore consume the unread remainder of the bridge, causing the parent `bash -s` to reach EOF after the deploy and exit successfully without executing checkout restoration, fixed-target Librarian reconcile, or Arthur health checks.
+### Планируемый объём
 
-Accordingly run 6 is **not** Arthur production acceptance. The deployed application image is verified and healthy, but the final production checkout is not yet accepted as the rollout merge SHA and the Arthur stack/reconcile checks from the bridge must be rerun and evidenced.
+- сохранить verified application source/image pair без изменений;
+- отделить transport rollout bridge от его remote execution;
+- передавать exact checked-out bridge во временный private host file;
+- выполнять bridge как файл с stdin `/dev/null`;
+- сохранить canonical `deploy/server/deploy.sh` и существующий fixed-target Librarian reconcile;
+- удалять remote bridge и credential payload независимо от результата;
+- повторить rollout и требовать явный final Arthur verification marker.
 
-## Bounded fix
+### Критерии готовности
 
-The next rollout workflow transfers the exact checked-out bridge into a private temporary file on the production host and executes that file with stdin redirected from `/dev/null`. This separates script transport from execution so canonical deploy commands cannot consume the remaining bridge body. The remote script and credential payload are both removed in the workflow's unconditional cleanup step.
+- protected CI PR #679 полностью зелёный;
+- следующий production run выполняет canonical deploy и продолжает execution после него;
+- checkout восстанавливается на exact rollout merge SHA;
+- `reconcilectl submit librarian` принят и wait завершается `completed`;
+- Arthur runtime checks проходят до финального verification marker;
+- secrets не выводятся и временные payload files удаляются.
 
-The application source/image pair is unchanged. No mass enqueue, auto-enqueue, vision scope, cloud/provider use, or alternative deployment path is introduced. The next rollout still uses canonical `deploy/server/deploy.sh` followed by the existing fixed-target Librarian reconcile and Arthur runtime checks.
+### Риски и ограничения
+
+Run 6 уже изменил production, поэтому дальнейшие запуски должны проверять rollback/final health и exact checkout SHA. Нельзя считать успешный основной Velvet deploy эквивалентом Arthur acceptance. Mass enqueue, `STORAGE_LIBRARIAN_AUTO_ENQUEUE=true`, vision/VLM scope, cloud/provider execution и альтернативный deployment path не допускаются.
+
+## После завершения
+
+### Фактически сделано
+
+Run 6 прошёл full-history checkout, immutable target/credential preflight и bounded legacy backup ownership repair. Repair сообщил `files=38`.
+
+Canonical `deploy/server/deploy.sh` создал и проверил pre-deploy PostgreSQL dump (`migrations=92`, `tables=105`, `characters=96`), reset-нул application checkout на verified source commit, pulled exact immutable image, запустил core services и bot, прошёл server smoke и явно сообщил `Velvet deployment succeeded: e6571062af2c963297c17f94685490fa054c90ca`.
+
+Production application runtime этим run был изменён. Однако сразу после canonical deploy output Actions перешёл к cleanup step. В job log отсутствуют `reconcilectl` output и final Arthur verification marker.
+
+PR #679 меняет workflow execution boundary: exact bridge сначала записывается во временный private file на host, затем выполняется этим же deploy user как file с stdin перенаправленным из `/dev/null`. Credential payload и remote bridge удаляются unconditional cleanup step.
+
+### Миграции и совместимость
+
+SQL-миграций и application runtime changes в PR #679 нет. Verified application source/image pair не меняется. Canonical server deploy и fixed-target Librarian reconcile logic внутри `.github/ops/arthur-production-rollout.sh` не изменяются.
+
+### Проверки
+
+Run 6 подтвердил healthy canonical Velvet deployment и server smoke для verified image. Отдельно проверено отсутствие в его job log строк `librarian reconcile` и `Arthur production rollout verified`, поэтому этот run намеренно не считается Arthur acceptance.
+
+Новый workflow сохраняет SSH BatchMode/IdentitiesOnly boundaries, private temporary filenames и cleanup обоих transferred artifacts. Полный protected CI и повторный production rollout ещё должны завершиться.
+
+### PR и commit
+
+- PR: #679 `Ops: isolate Arthur rollout bridge stdin`.
+- Базовый rollout merge SHA: `3696e266bae37b5df13bc90317fc5237d6d41ea5`.
+- Run 6: `31190120224`.
+- Verified application source: `e6571062af2c963297c17f94685490fa054c90ca`.
+- Verified image digest: `sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0`.
+
+### Незавершённое
+
+- получить полностью зелёный protected CI #679;
+- проверить current `main` перед merge и не смешать provenance при новом application commit;
+- merge #679 и разобрать повторный production rollout;
+- подтвердить exact final checkout, completed Librarian reconcile и Arthur automated health gates;
+- после этого выполнить live/manual acceptance #586: Telegram commands, persisted result, zero-provider evidence, latency/resources и restart persistence.
+
+### Следующий шаг
+
+Довести PR #679 до зелёного CI, затем повторить production rollout той же verified application pair и принять run только при наличии явного completed reconcile и финального `Arthur production rollout verified ...` marker.
