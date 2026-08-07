@@ -42,7 +42,7 @@ jobs:
           if count != 1:
               raise SystemExit(f"repository get_existing regex replacements={count}")
           repository.write_text(text, encoding='utf-8')'''
-          script, count = pattern.subn(replacement, script, count=1)
+          script, count = pattern.subn(lambda _match: replacement, script, count=1)
           if count != 1:
               raise SystemExit(f'workflow SQL patch replacements={count}')
           exec(compile(script, '<storage-integrity-refactor>', 'exec'), {})
