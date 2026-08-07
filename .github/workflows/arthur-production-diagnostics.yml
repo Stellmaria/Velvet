@@ -108,6 +108,14 @@ jobs:
           fi
           rm -f /tmp/arthur-git-status.out /tmp/arthur-git-status.err
 
+          echo "=== reconcile installer sudo capability ==="
+          if sudo -n -l /usr/bin/bash "$APP_DIR/deploy/hermes-reconcile/install.sh" \
+            >/dev/null 2>&1; then
+            echo "reconcile_installer_sudo=allowed"
+          else
+            echo "reconcile_installer_sudo=denied"
+          fi
+
           echo "=== systemd properties ==="
           systemctl show velvet-librarian.service \
             --property=LoadState \
