@@ -80,12 +80,14 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 4
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -97,6 +99,28 @@ jobs:
 
       - name: Compile Python sources
         run: python -m compileall -q main.py velvet_bot scripts tests
+
+      - name: Generate repository layout diagnostic
+        run: python scripts/inventory_repository_layout.py --write --label p3e-repository-layout-complete
+
+      - name: Commit generated repository layout
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'github-actions[bot]'
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- docs/repository_layout_inventory.json docs/repository_layout_inventory.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/repository_layout_inventory.json docs/repository_layout_inventory.md
+          git commit -m "Refresh repository layout inventory"
+          git push origin "HEAD:${HEAD_REF}"
 
       - name: Run fast architecture contracts
         shell: bash
@@ -152,51 +176,19 @@ jobs:
         run: |
           python - <<'PY'
           from __future__ import annotations
-
-          import os
-          import unittest
+          import os, unittest
           from pathlib import Path
-
           root = Path("tests")
           patterns: list[str] = []
           if os.environ["TESTS_CI"] == "true":
-              patterns.extend(
-                  [
-                      "test_ci_*.py",
-                      "test_*workflow_contract.py",
-                      "test_security_gate_contract.py",
-                  ]
-              )
-          if os.environ["TESTS_HERMES"] == "true":
-              patterns.append("test_hermes_*.py")
-          if os.environ["TESTS_KRITA"] == "true":
-              patterns.append("test_krita_*.py")
-
-          files = sorted(
-              {
-                  path
-                  for pattern in patterns
-                  for path in root.glob(pattern)
-                  if path.is_file()
-              }
-          )
-          if not files:
-              raise SystemExit("No targeted contract tests matched the selected surfaces")
-
-          loader = unittest.TestLoader()
-          suite = unittest.TestSuite()
-          for path in files:
-              module = path.with_suffix("").as_posix().replace("/", ".")
-              suite.addTests(loader.loadTestsFromName(module))
-
-          print("Targeted contract files:")
-          for path in files:
-              print(f"- {path}")
-          result = unittest.TextTestRunner(
-              verbosity=2,
-              failfast=True,
-              durations=30,
-          ).run(suite)
+              patterns.extend(["test_ci_*.py", "test_*workflow_contract.py", "test_security_gate_contract.py"])
+          if os.environ["TESTS_HERMES"] == "true": patterns.append("test_hermes_*.py")
+          if os.environ["TESTS_KRITA"] == "true": patterns.append("test_krita_*.py")
+          files = sorted({path for pattern in patterns for path in root.glob(pattern) if path.is_file()})
+          if not files: raise SystemExit("No targeted contract tests matched the selected surfaces")
+          loader = unittest.TestLoader(); suite = unittest.TestSuite()
+          for path in files: suite.addTests(loader.loadTestsFromName(path.with_suffix("").as_posix().replace("/", ".")))
+          result = unittest.TextTestRunner(verbosity=2, failfast=True, durations=30).run(suite)
           raise SystemExit(0 if result.wasSuccessful() else 1)
           PY
 
@@ -218,12 +210,10 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
-
       - name: Set up uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
@@ -231,7 +221,6 @@ jobs:
           enable-cache: true
           cache-dependency-glob: requirements.lock
           save-cache: ${{ matrix.shard == 0 }}
-
       - name: Start native PostgreSQL
         shell: bash
         run: |
@@ -247,28 +236,17 @@ jobs:
             END IF;
           END
           $$;
-          SELECT 'CREATE DATABASE velvet_test OWNER velvet'
-          WHERE NOT EXISTS (
-            SELECT 1 FROM pg_database WHERE datname = 'velvet_test'
-          )\gexec
+          SELECT 'CREATE DATABASE velvet_test OWNER velvet' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'velvet_test')\gexec
           ALTER DATABASE velvet_test OWNER TO velvet;
           SQL
           pg_isready -h localhost -p 5432 -U velvet -d velvet_test
-
       - name: Install dependencies from hash lock
         run: uv pip install --system --require-hashes -r requirements.lock
-
       - name: Run test shard
         shell: bash
         run: |
           set -o pipefail
-          python scripts/ci_test_shard.py \
-            --index "${{ matrix.shard }}" \
-            --total "$CI_TEST_SHARDS" \
-            --failfast \
-            --durations 30 \
-            2>&1 | tee "unit-test-output-${{ matrix.shard }}.txt"
-
+          python scripts/ci_test_shard.py --index "${{ matrix.shard }}" --total "$CI_TEST_SHARDS" --failfast --durations 30 2>&1 | tee "unit-test-output-${{ matrix.shard }}.txt"
       - name: Upload failed shard output
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -281,11 +259,7 @@ jobs:
   unit-tests:
     name: unit-tests
     if: always()
-    needs:
-      - changes
-      - preflight
-      - targeted-contracts
-      - test-shards
+    needs: [changes, preflight, targeted-contracts, test-shards]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -306,9 +280,5 @@ jobs:
             test "$TARGETED_RESULT" = "skipped"
           else
             test "$SHARDS_RESULT" = "skipped"
-            if test "$TARGETED_REQUIRED" = "true"; then
-              test "$TARGETED_RESULT" = "success"
-            else
-              test "$TARGETED_RESULT" = "skipped"
-            fi
+            if test "$TARGETED_REQUIRED" = "true"; then test "$TARGETED_RESULT" = "success"; else test "$TARGETED_RESULT" = "skipped"; fi
           fi
