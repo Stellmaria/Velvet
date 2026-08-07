@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 656,
-  "production_loc": 144054,
+  "production_loc": 144094,
   "layer_counts": {
     "application": 22,
     "composition": 61,
@@ -14457,11 +14457,11 @@
       "module": "velvet_bot.core.config.arthur",
       "layer": "core",
       "target_package": "core",
-      "loc": 144,
+      "loc": 156,
       "function_count": 6,
       "class_count": 2,
       "handler_count": 0,
-      "max_function_length": 48,
+      "max_function_length": 58,
       "branch_count": 13,
       "internal_imports": [],
       "external_import_count": 4,
@@ -14480,18 +14480,13 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 9,
+          "line": 11,
           "owner": "_required",
           "call": "os.getenv"
         },
         {
-          "line": 37,
+          "line": 39,
           "owner": "_parse_optional_int",
-          "call": "os.getenv"
-        },
-        {
-          "line": 66,
-          "owner": "from_env",
           "call": "os.getenv"
         },
         {
@@ -14500,27 +14495,12 @@
           "call": "os.getenv"
         },
         {
-          "line": 91,
+          "line": 70,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 126,
-          "owner": "from_env",
-          "call": "os.getenv"
-        },
-        {
-          "line": 130,
-          "owner": "from_env",
-          "call": "os.getenv"
-        },
-        {
-          "line": 62,
-          "owner": "from_env",
-          "call": "os.getenv"
-        },
-        {
-          "line": 88,
+          "line": 93,
           "owner": "from_env",
           "call": "os.getenv"
         },
@@ -14530,12 +14510,32 @@
           "call": "os.getenv"
         },
         {
-          "line": 79,
+          "line": 142,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 99,
+          "line": 64,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 90,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 150,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 81,
+          "owner": "from_env",
+          "call": "os.getenv"
+        },
+        {
+          "line": 111,
           "owner": "from_env",
           "call": "os.getenv"
         }
@@ -21090,7 +21090,7 @@
       "module": "velvet_bot.domains.telegram_storage.backup_repository",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 114,
+      "loc": 115,
       "function_count": 2,
       "class_count": 1,
       "handler_count": 0,
@@ -21585,7 +21585,7 @@
       "module": "velvet_bot.domains.telegram_storage.repository",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 545,
+      "loc": 547,
       "function_count": 15,
       "class_count": 4,
       "handler_count": 0,
@@ -21630,12 +21630,12 @@
       "module": "velvet_bot.domains.telegram_storage.service",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 739,
+      "loc": 764,
       "function_count": 23,
       "class_count": 1,
       "handler_count": 0,
-      "max_function_length": 109,
-      "branch_count": 63,
+      "max_function_length": 119,
+      "branch_count": 68,
       "internal_imports": [
         "velvet_bot.database",
         "velvet_bot.domains.public_archive.watermark_repository",

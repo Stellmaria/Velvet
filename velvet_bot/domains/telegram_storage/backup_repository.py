@@ -51,6 +51,7 @@ def decode_json_object(value: Any) -> dict[str, Any]:
 class TelegramStorageRepository(BaseTelegramStorageRepository):
     """Storage repository with codec-independent backup metadata decoding."""
 
+
     async def list_backup_backfill(
         self,
         backup_dir: Path,

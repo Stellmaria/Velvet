@@ -119,7 +119,7 @@ class TelegramStorageRepository:
         self,
         kind: StorageKind,
         logical_key: str,
-        sha256: str,
+        sha256: str | None,
     ) -> StoredObject | None:
         async with self._database.acquire() as connection:
             row = await connection.fetchrow(
@@ -129,7 +129,9 @@ class TelegramStorageRepository:
                 FROM telegram_storage_objects
                 WHERE storage_kind = $1::VARCHAR
                   AND logical_key = $2::TEXT
-                  AND sha256 = $3::CHAR(64)
+                  AND ($3::CHAR(64) IS NULL OR sha256 = $3::CHAR(64))
+                ORDER BY migrated_at DESC, id DESC
+                LIMIT 1
                 """,
                 kind,
                 logical_key,

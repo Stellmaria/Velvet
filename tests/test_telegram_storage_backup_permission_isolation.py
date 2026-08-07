@@ -41,6 +41,7 @@ class TelegramStorageBackupPermissionIsolationTests(unittest.IsolatedAsyncioTest
             ]
             repository = SimpleNamespace(
                 list_backup_backfill=AsyncMock(return_value=items),
+                get_existing=AsyncMock(return_value=None),
                 mark_backup_offloaded=AsyncMock(),
             )
             uploader = SimpleNamespace(

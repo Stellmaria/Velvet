@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+
+
 def _required(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
@@ -90,6 +92,16 @@ class ArthurSettings:
         heartbeat_path = Path(
             os.getenv("ARTHUR_HEARTBEAT_PATH", "/tmp/arthur-heartbeat")
         )
+        report_chat_id = (
+            _parse_optional_int("ARTHUR_REPORT_CHAT_ID")
+            or _parse_optional_int("TELEGRAM_STORAGE_CHAT_ID")
+            or -1004459280894
+        )
+        report_thread_id = (
+            _parse_optional_int("ARTHUR_REPORT_THREAD_ID")
+            or _parse_optional_int("STORAGE_THREAD_ANALYSIS")
+            or 2478
+        )
         return cls(
             bot_token=bot_token,
             database_url=_required("DATABASE_URL"),
@@ -101,8 +113,8 @@ class ArthurSettings:
                 "http://arthur-storage-gateway:8786",
             ).strip().rstrip("/"),
             storage_gateway_api_key=api_key,
-            report_chat_id=_parse_optional_int("ARTHUR_REPORT_CHAT_ID"),
-            report_thread_id=_parse_optional_int("ARTHUR_REPORT_THREAD_ID"),
+            report_chat_id=report_chat_id,
+            report_thread_id=report_thread_id,
             heartbeat_path=heartbeat_path,
         )
 
