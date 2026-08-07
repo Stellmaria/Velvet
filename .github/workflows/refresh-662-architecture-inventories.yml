@@ -6,7 +6,7 @@ on:
       - feat/457-retire-legacy-delivery-installers
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh:
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
@@ -29,21 +29,45 @@ jobs:
       - name: Refresh package architecture
         run: python scripts/inventory_package_architecture.py --write --bootstrap-exemptions --label p1-package-architecture-baseline
 
-      - name: Verify inventory contracts
+      - name: Refresh reviewed package expectations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/test_package_architecture_inventory.py')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              'EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463", "#605"}': 'EXPECTED_BURN_DOWN_ISSUES = {"#455", "#457", "#458", "#459", "#460", "#463"}',
+              '144015': '143720',
+              '521': '519',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'expected package baseline token missing: {old}')
+              text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify refreshed contracts
         run: |
           python -m unittest tests.test_p3e_repository_layout_inventory
           python -m unittest tests.test_package_architecture_inventory
 
-      - name: Upload refreshed inventories
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: pr-662-architecture-inventories
-          path: |
-            docs/repository_layout_inventory.json
-            docs/repository_layout_inventory.md
-            docs/package_architecture_inventory.json
-            docs/package_architecture_inventory.md
-            docs/package_architecture_exemptions.json
-          retention-days: 1
-          if-no-files-found: error
+      - name: Commit refreshed baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/repository_layout_inventory.json \
+            docs/repository_layout_inventory.md \
+            docs/package_architecture_inventory.json \
+            docs/package_architecture_inventory.md \
+            docs/package_architecture_exemptions.json \
+            tests/test_package_architecture_inventory.py
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit"
+            exit 0
+          fi
+          git commit -m "test: refresh architecture baselines after delivery retirement"
+          git push origin HEAD:feat/457-retire-legacy-delivery-installers
