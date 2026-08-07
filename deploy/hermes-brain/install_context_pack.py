@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import sys
 import tempfile
 from pathlib import Path
@@ -34,6 +35,101 @@ def _atomic_copy(source: Path, target: Path, *, uid: int, gid: int, mode: int) -
         os.chown(temporary, uid, gid)
         os.chmod(temporary, mode)
         os.replace(temporary, target)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def _yaml_code(line: str) -> str:
+    return line.split("#", 1)[0].rstrip()
+
+
+def _indent_width(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def _meaningful(line: str) -> bool:
+    stripped = line.strip()
+    return bool(stripped and not stripped.startswith("#"))
+
+
+def _sync_kael_system_prompt(target: Path, soul: str, *, uid: int, gid: int) -> None:
+    """Mirror verified Kael identity into gateway-compatible system_prompt.
+
+    Older Hermes gateway builds can skip SOUL.md when constructing Telegram
+    sessions. agent.system_prompt is supported by those builds, so keeping the
+    same verified identity in both system-level slots makes the persona stable
+    without broadening permissions or changing any coder profile.
+    """
+
+    config = target / "config.yaml"
+    if not config.exists():
+        return
+    if config.is_symlink() or not config.is_file():
+        raise InstallError(f"Hermes config должен быть обычным файлом: {config}")
+
+    original = config.read_text(encoding="utf-8")
+    lines = original.splitlines()
+    agent_indexes = [
+        index
+        for index, line in enumerate(lines)
+        if _indent_width(line) == 0 and _yaml_code(line).strip() == "agent:"
+    ]
+    if len(agent_indexes) > 1:
+        raise InstallError("Hermes config содержит несколько top-level agent sections")
+
+    rendered = json.dumps(soul.rstrip() + "\n", ensure_ascii=False)
+    desired = f"  system_prompt: {rendered}"
+
+    if not agent_indexes:
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.extend(("agent:", desired))
+    else:
+        start = agent_indexes[0]
+        end = len(lines)
+        for index in range(start + 1, len(lines)):
+            if _meaningful(lines[index]) and _indent_width(lines[index]) == 0:
+                end = index
+                break
+
+        prompt_indexes: list[int] = []
+        for index in range(start + 1, end):
+            line = lines[index]
+            if _indent_width(line) != 2:
+                continue
+            code = _yaml_code(line).strip()
+            key, separator, _value = code.partition(":")
+            if separator and key == "system_prompt":
+                prompt_indexes.append(index)
+        if len(prompt_indexes) > 1:
+            raise InstallError("Hermes config содержит несколько agent.system_prompt keys")
+
+        if not prompt_indexes:
+            lines.insert(end, desired)
+        else:
+            prompt_index = prompt_indexes[0]
+            continuation_end = prompt_index + 1
+            while continuation_end < end:
+                candidate = lines[continuation_end]
+                if _meaningful(candidate) and _indent_width(candidate) <= 2:
+                    break
+                continuation_end += 1
+            lines[prompt_index:continuation_end] = [desired]
+
+    updated = "\n".join(lines).rstrip() + "\n"
+    mode = stat.S_IMODE(config.stat().st_mode)
+    fd, temporary = tempfile.mkstemp(prefix=".config-persona.", dir=config.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(updated)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chown(temporary, uid, gid)
+        os.chmod(temporary, mode)
+        os.replace(temporary, config)
     finally:
         try:
             os.unlink(temporary)
@@ -120,7 +216,15 @@ def install_pack(pack: Path, target: Path, *, entity: str, mode: str) -> dict[st
     gid = target.stat().st_gid
 
     if mode == "hermes":
-        _atomic_copy(pack / "SOUL.md", target / "SOUL.md", uid=uid, gid=gid, mode=0o600)
+        soul_source = pack / "SOUL.md"
+        _atomic_copy(soul_source, target / "SOUL.md", uid=uid, gid=gid, mode=0o600)
+        if entity == "kael":
+            _sync_kael_system_prompt(
+                target,
+                soul_source.read_text(encoding="utf-8"),
+                uid=uid,
+                gid=gid,
+            )
         _atomic_copy(pack / "AGENTS.md", target / "AGENTS.md", uid=uid, gid=gid, mode=0o600)
         for seed_name, runtime_name in (
             ("MEMORY.seed.md", "MEMORY.md"),

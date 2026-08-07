@@ -155,6 +155,70 @@ class BrainRuntimeInstallationTests(unittest.TestCase):
                     stat.S_IMODE((target / name).stat().st_mode),
                 )
 
+    def test_kael_install_mirrors_verified_soul_into_gateway_system_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pack = root / "pack"
+            target = root / "target"
+            target.mkdir()
+            config = target / "config.yaml"
+            config.write_text(
+                "model:\n"
+                "  default: test-model\n"
+                "agent:\n"
+                "  system_prompt: \"stale identity\"\n"
+                "  max_iterations: 24\n",
+                encoding="utf-8",
+            )
+            config.chmod(0o640)
+            compiler.compile_entity(ROOT, "kael", pack)
+
+            installer.install_pack(pack, target, entity="kael", mode="hermes")
+
+            text = config.read_text(encoding="utf-8")
+            prompt_lines = [
+                line for line in text.splitlines() if line.startswith("  system_prompt: ")
+            ]
+            self.assertEqual(1, len(prompt_lines))
+            prompt = json.loads(prompt_lines[0].split(": ", 1)[1])
+            self.assertEqual((target / "SOUL.md").read_text(encoding="utf-8"), prompt)
+            self.assertIn("Каэль Велвет", prompt)
+            self.assertIn("  max_iterations: 24", text)
+            self.assertIn("  default: test-model", text)
+            self.assertEqual(0o640, stat.S_IMODE(config.stat().st_mode))
+
+    def test_kael_install_replaces_stale_gateway_block_prompt_without_losing_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pack = root / "pack"
+            target = root / "target"
+            target.mkdir()
+            config = target / "config.yaml"
+            config.write_text(
+                "agent:\n"
+                "  system_prompt: |-\n"
+                "    You are Hermes Agent.\n"
+                "    stale gateway identity\n"
+                "  max_iterations: 31\n"
+                "compression:\n"
+                "  enabled: true\n",
+                encoding="utf-8",
+            )
+            compiler.compile_entity(ROOT, "kael", pack)
+
+            installer.install_pack(pack, target, entity="kael", mode="hermes")
+
+            text = config.read_text(encoding="utf-8")
+            prompt_lines = [
+                line for line in text.splitlines() if line.startswith("  system_prompt: ")
+            ]
+            self.assertEqual(1, len(prompt_lines))
+            prompt = json.loads(prompt_lines[0].split(": ", 1)[1])
+            self.assertIn("# Каэль Велвет", prompt)
+            self.assertNotIn("stale gateway identity", text)
+            self.assertIn("  max_iterations: 31", text)
+            self.assertIn("compression:\n  enabled: true", text)
+
     def test_installed_verifier_rejects_group_readable_context(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
