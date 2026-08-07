@@ -183,6 +183,7 @@ def validate_codex_home(path: Path, *, entity: str) -> None:
     for secret in (
         "API_SERVER_KEY",
         "BYESU_HERMES_CODEX_API_KEY",
+        "BYESU_HERMES_MEDIA_API_KEY",
         "CODEX_RUNNER_API_KEY",
         "DATABASE_URL",
         "PGPASSWORD",
@@ -221,6 +222,18 @@ def main() -> int:
     )
     require_values(velvet_env_path, velvet_env, required)
     require_values(max_env_path, max_env, required)
+
+    media_key = velvet_env.get("BYESU_HERMES_MEDIA_API_KEY", "")
+    if media_key:
+        validate_api_key(
+            velvet_env_path,
+            velvet_env,
+            "BYESU_HERMES_MEDIA_API_KEY",
+        )
+    if max_env.get("BYESU_HERMES_MEDIA_API_KEY", ""):
+        raise PreflightError(
+            "Max не должен получать BYESU_HERMES_MEDIA_API_KEY: image route принадлежит Velvet"
+        )
 
     if velvet_env["TELEGRAM_BOT_TOKEN"] == max_env["TELEGRAM_BOT_TOKEN"]:
         raise PreflightError("Два coder-контейнера не могут использовать один Telegram bot token")
@@ -275,6 +288,7 @@ def main() -> int:
     print("- Runs API keys: distinct")
     print("- PostgreSQL identities: read-only")
     print("- Codex routing: luna -> terra -> sol")
+    print("- Byesu media credential: Velvet-only when configured")
     print("- Codex CLI minimum: 0.144.0; image pin: 0.144.1")
     print("- Codex sandbox: workspace-write + GitHub network")
     print("- Velvet Brain manifests and context hashes: verified")
