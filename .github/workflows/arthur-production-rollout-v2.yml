@@ -20,8 +20,8 @@ jobs:
     timeout-minutes: 55
     environment: production
     env:
-      SOURCE_COMMIT: 7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f
-      IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:32f1ef415fb3dac4d02a8cc0a21895d74d8eb70c50596f1b279226fcd30080ca
+      SOURCE_COMMIT: e6571062af2c963297c17f94685490fa054c90ca
+      IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0
     steps:
       - name: Checkout rollout payload
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
