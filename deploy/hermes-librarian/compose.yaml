@@ -106,7 +106,7 @@ services:
     restart: unless-stopped
     init: true
     user: "10001:10001"
-    command: ["python", "scripts/run_arthur_storage_gateway.py"]
+    command: ["python", "-m", "scripts.run_arthur_storage_gateway"]
     environment:
       BOT_TOKEN: ${BOT_TOKEN:-}
       DATABASE_URL: ${DATABASE_URL:-}
@@ -144,7 +144,7 @@ services:
     restart: unless-stopped
     init: true
     user: "10001:10001"
-    command: ["python", "scripts/run_arthur_librarian.py"]
+    command: ["python", "-m", "scripts.run_arthur_librarian"]
     depends_on:
       ollama-librarian:
         condition: service_healthy
