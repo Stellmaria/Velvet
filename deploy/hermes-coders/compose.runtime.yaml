@@ -20,6 +20,8 @@ services:
       - python
       - /app/codex_context_launcher_runner.py
     command: []
+    env_file:
+      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/velvet-media.env
     group_add:
       - "${HERMES_SANDBOX_GID:?HERMES_SANDBOX_GID is required}"
     environment:
@@ -38,9 +40,6 @@ services:
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "${CODEX_IMAGE_BYESU_FALLBACK_ENABLED:-false}"
       CODEX_IMAGE_BYESU_BASE_URL: "${CODEX_IMAGE_BYESU_BASE_URL:-https://byesu.com/v1}"
       CODEX_IMAGE_BYESU_TIMEOUT_SECONDS: "${CODEX_IMAGE_BYESU_TIMEOUT_SECONDS:-600}"
-      # This second physical key is generation-only and is projected only into
-      # the Velvet coder. Analysis stays on BYESU_HERMES_CODEX_API_KEY from env_file.
-      BYESU_MEDIA_GEN_API_KEY: "${BYESU_MEDIA_GEN_API_KEY:-}"
     volumes:
       - ./codex_runner.py:/app/codex_runner.py:ro
       - ./codex_routed_runner.py:/app/codex_routed_runner.py:ro
