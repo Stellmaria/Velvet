@@ -277,10 +277,14 @@ print(values.get("VELVET_DATA_DIR", "/srv/velvet/data"))
 PY
 )"
 hermes_data="$velvet_data_dir/hermes"
-velvet_uid="$(stat -c '%u' "$velvet_data_dir")"
-velvet_gid="$(stat -c '%g' "$velvet_data_dir")"
-install -d -o "$velvet_uid" -g "$velvet_gid" -m 0750 \
-  "$hermes_data" "$hermes_data/tools" "$hermes_data/orchestration"
+if [[ ! -d "$hermes_data" ]]; then
+  echo "Отсутствует data directory основного Hermes: $hermes_data" >&2
+  exit 4
+fi
+hermes_uid="$(stat -c '%u' "$hermes_data")"
+hermes_gid="$(stat -c '%g' "$hermes_data")"
+install -d -o "$hermes_uid" -g "$hermes_gid" -m 0750 \
+  "$hermes_data/tools" "$hermes_data/orchestration"
 
 pack_root="$(mktemp -d)"
 trap 'rm -rf -- "$pack_root"' EXIT
@@ -297,9 +301,9 @@ python3 "$BRAIN_SOURCE/verify_installed_context.py" \
   --entity kael \
   --mode hermes
 
-install -m 0500 -o "$velvet_uid" -g "$velvet_gid" \
+install -m 0500 -o "$hermes_uid" -g "$hermes_gid" \
   "$OPERATOR_SOURCE/coderctl.py" "$hermes_data/tools/coderctl.py"
-chown "$velvet_uid:$velvet_gid" "$hermes_data/orchestration"
+chown "$hermes_uid:$hermes_gid" "$hermes_data/orchestration"
 chmod 0750 "$hermes_data/orchestration"
 
 runuser -u "$SERVICE_USER" -- env HERMES_CODERS_ROOT="$CODERS_ROOT" \
