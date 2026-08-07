@@ -74,15 +74,39 @@ jobs:
           }
 
           cd "$APP_DIR"
-          echo "=== checkout ==="
+          echo "=== checkout identity ==="
+          printf 'deploy_uid=%s deploy_gid=%s\n' "$(id -u)" "$(id -g)"
           printf 'branch=%s\n' "$(git symbolic-ref --short HEAD 2>/dev/null || echo detached)"
           printf 'head=%s\n' "$(git rev-parse HEAD)"
           printf 'origin_main=%s\n' "$(git rev-parse refs/remotes/origin/main)"
-          if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
-            echo "working_tree=dirty"
+
+          echo "=== git metadata ownership ==="
+          for candidate in "$APP_DIR" "$APP_DIR/.git" "$APP_DIR/.git/index"; do
+            if [[ -e "$candidate" || -L "$candidate" ]]; then
+              stat -c '%n uid=%u gid=%g mode=%a type=%F' "$candidate"
+            else
+              printf '%s missing\n' "$candidate"
+            fi
+          done
+          find "$APP_DIR/.git" -maxdepth 1 -type f -printf '%f uid=%U gid=%G mode=%m\n' \
+            2>/dev/null | sort
+
+          set +e
+          GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all >/tmp/arthur-git-status.out 2>/tmp/arthur-git-status.err
+          status_rc=$?
+          set -e
+          printf 'git_status_rc=%s\n' "$status_rc"
+          if [[ "$status_rc" == "0" ]]; then
+            if [[ -s /tmp/arthur-git-status.out ]]; then
+              echo "working_tree=dirty"
+            else
+              echo "working_tree=clean"
+            fi
           else
-            echo "working_tree=clean"
+            echo "working_tree=unavailable"
+            sed -n '1,5p' /tmp/arthur-git-status.err | redact
           fi
+          rm -f /tmp/arthur-git-status.out /tmp/arthur-git-status.err
 
           echo "=== systemd properties ==="
           systemctl show velvet-librarian.service \
