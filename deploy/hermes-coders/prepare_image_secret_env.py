@@ -7,13 +7,15 @@ from pathlib import Path
 
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on", "да"})
 _FALSE_VALUES = frozenset({"0", "false", "no", "off", "нет"})
+_MEDIA_KEY = "BYESU_MEDIA_GEN_API_KEY"
+_FALLBACK_KEY = "CODEX_IMAGE_BYESU_FALLBACK_ENABLED"
 
 
 class ImageSecretEnvError(RuntimeError):
     pass
 
 
-def parse_env(path: Path) -> dict[str, str]:
+def parse_operator_env(path: Path) -> dict[str, str]:
     if not path.is_file() or path.is_symlink():
         raise ImageSecretEnvError(f"operator env отсутствует или небезопасен: {path}")
     values: dict[str, str] = {}
@@ -25,7 +27,7 @@ def parse_env(path: Path) -> dict[str, str]:
             line = line[7:].lstrip()
         key, value = line.split("=", 1)
         key = key.strip()
-        if key not in {"BYESU_MEDIA_GEN_API_KEY", "CODEX_IMAGE_BYESU_FALLBACK_ENABLED"}:
+        if key not in {_MEDIA_KEY, _FALLBACK_KEY}:
             continue
         if key in values:
             raise ImageSecretEnvError(f"duplicate operator env key: {key}")
@@ -34,36 +36,54 @@ def parse_env(path: Path) -> dict[str, str]:
 
 
 def fallback_enabled(values: dict[str, str]) -> bool:
-    raw = values.get("CODEX_IMAGE_BYESU_FALLBACK_ENABLED", "false").strip().casefold()
+    raw = values.get(_FALLBACK_KEY, "false").strip().casefold()
     if raw in _TRUE_VALUES:
         return True
     if raw in _FALSE_VALUES:
         return False
-    raise ImageSecretEnvError(
-        "CODEX_IMAGE_BYESU_FALLBACK_ENABLED должен быть boolean"
-    )
+    raise ImageSecretEnvError(f"{_FALLBACK_KEY} должен быть boolean")
 
 
-def render(values: dict[str, str]) -> str:
-    key = values.get("BYESU_MEDIA_GEN_API_KEY", "").strip()
+def validated_media_key(values: dict[str, str]) -> str:
+    key = values.get(_MEDIA_KEY, "").strip()
     if key and len(key) < 20:
-        raise ImageSecretEnvError("BYESU_MEDIA_GEN_API_KEY слишком короткий")
+        raise ImageSecretEnvError(f"{_MEDIA_KEY} слишком короткий")
     if fallback_enabled(values) and not key:
         raise ImageSecretEnvError(
-            "BYESU_MEDIA_GEN_API_KEY обязателен при включённом Byesu image fallback"
+            f"{_MEDIA_KEY} обязателен при включённом Byesu image fallback"
         )
-    if not key:
-        return ""
     if any(marker in key for marker in ("\n", "\r", "\x00")):
-        raise ImageSecretEnvError("BYESU_MEDIA_GEN_API_KEY содержит недопустимый символ")
-    return f"BYESU_MEDIA_GEN_API_KEY={key}\n"
+        raise ImageSecretEnvError(f"{_MEDIA_KEY} содержит недопустимый символ")
+    return key
+
+
+def rewrite_project_env(body: str, media_key: str) -> str:
+    output: list[str] = []
+    replaced = False
+    for raw_line in body.splitlines():
+        stripped = raw_line.strip()
+        key = ""
+        if "=" in stripped and not stripped.startswith("#"):
+            candidate = stripped[7:].lstrip() if stripped.startswith("export ") else stripped
+            key = candidate.split("=", 1)[0].strip()
+        if key == _MEDIA_KEY:
+            if not replaced and media_key:
+                output.append(f"{_MEDIA_KEY}={media_key}")
+                replaced = True
+            continue
+        output.append(raw_line)
+    if media_key and not replaced:
+        if output and output[-1].strip():
+            output.append("")
+        output.append(f"{_MEDIA_KEY}={media_key}")
+    return "\n".join(output).rstrip() + "\n"
 
 
 def write_secret_env(source: Path, target: Path) -> None:
-    body = render(parse_env(source))
-    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if target.exists() and target.is_symlink():
-        raise ImageSecretEnvError(f"target secret env является symlink: {target}")
+    media_key = validated_media_key(parse_operator_env(source))
+    if not target.is_file() or target.is_symlink():
+        raise ImageSecretEnvError(f"Velvet project secret env отсутствует или небезопасен: {target}")
+    body = rewrite_project_env(target.read_text(encoding="utf-8"), media_key)
     descriptor, temporary = tempfile.mkstemp(
         prefix=f".{target.name}.",
         dir=target.parent,
@@ -87,11 +107,11 @@ def main() -> int:
     target = Path(
         os.environ.get(
             "HERMES_IMAGE_SECRET_ENV",
-            "/srv/hermes-coders/secrets/velvet-media.env",
+            "/srv/hermes-coders/secrets/velvet.env",
         )
     )
     write_secret_env(source, target)
-    print("Velvet Media Gen secret projection prepared without printing values.")
+    print("Velvet Media Gen credential synchronized without printing values.")
     return 0
 
 
