@@ -20,8 +20,6 @@ services:
       - python
       - /app/codex_context_launcher_runner.py
     command: []
-    env_file:
-      - ${HERMES_CODERS_ROOT:-/srv/hermes-coders}/secrets/velvet-media.env
     group_add:
       - "${HERMES_SANDBOX_GID:?HERMES_SANDBOX_GID is required}"
     environment:
