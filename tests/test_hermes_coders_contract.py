@@ -96,6 +96,22 @@ class HermesCodersContractTests(unittest.TestCase):
         self.assertLess(source.index(start), source.index(smoke))
         self.assertNotIn(" up -d --build", source)
 
+    def test_systemd_preserves_tracked_executable_runtime_modes(self) -> None:
+        source = Path("deploy/systemd/hermes-coders.service").read_text(encoding="utf-8")
+        mode_0644_lines = [line for line in source.splitlines() if "chmod 0644" in line]
+        mode_0755_lines = [line for line in source.splitlines() if "chmod 0755" in line]
+        executable_names = (
+            "codex_context_launcher_runner.py",
+            "codex_launcher_runner.py",
+            "sandbox_launcher_client.py",
+            "sandbox_preflight.py",
+        )
+        self.assertEqual(2, len(mode_0644_lines))
+        self.assertEqual(2, len(mode_0755_lines))
+        for name in executable_names:
+            self.assertFalse(any(name in line for line in mode_0644_lines), name)
+            self.assertEqual(2, sum(name in line for line in mode_0755_lines), name)
+
     def test_python_and_bash_sources_parse(self) -> None:
         for path in (
             ROOT / "codex_runner.py",
