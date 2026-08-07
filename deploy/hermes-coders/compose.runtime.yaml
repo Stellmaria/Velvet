@@ -31,15 +31,16 @@ services:
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-      # 1K stays Codex-first. Before launching it, read the live subscription
-      # windows. An explicit active exhaustion skips Codex and uses Byesu.
+      # Every image quality is Codex-first. A fresh live subscription check runs
+      # before creative generation; only an explicit exhaustion enters Byesu.
       CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED: "${CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED:-true}"
       CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS: "${CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS:-3}"
-      # 2K/4K go directly to Byesu. A clean Codex subscription limit before
-      # tool execution still falls back once when the preflight was inconclusive.
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "${CODEX_IMAGE_BYESU_FALLBACK_ENABLED:-false}"
       CODEX_IMAGE_BYESU_BASE_URL: "${CODEX_IMAGE_BYESU_BASE_URL:-https://byesu.com/v1}"
       CODEX_IMAGE_BYESU_TIMEOUT_SECONDS: "${CODEX_IMAGE_BYESU_TIMEOUT_SECONDS:-600}"
+      # Secret interpolation is supplied only by compose_image_runtime_env.py;
+      # chat/max services never declare or receive this credential.
+      BYESU_MEDIA_GEN_API_KEY: "${BYESU_MEDIA_GEN_API_KEY:-}"
     volumes:
       - ./codex_runner.py:/app/codex_runner.py:ro
       - ./codex_routed_runner.py:/app/codex_routed_runner.py:ro
@@ -52,6 +53,7 @@ services:
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
       - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
       - ./codex_image_limit_preflight.py:/app/codex_image_limit_preflight.py:ro
+      - ./codex_image_high_res_export.py:/app/codex_image_high_res_export.py:ro
       - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
       - ./sandbox_launcher_client.py:/app/sandbox_launcher_client.py:ro
       - /run/hermes-sandbox/launcher.sock:/run/hermes-sandbox/launcher.sock
@@ -72,8 +74,8 @@ services:
       # Actual order is selected from immutable requested_tier.
       CODEX_PROVIDER_FALLBACK_MODELS: gpt-5.4-mini,gpt-5.6-terra,gpt-5.6-luna
       CODEX_PRIMARY_COOLDOWN_SECONDS: "1800"
-      # Max imports the shared runtime modules but never enables Velvet's image
-      # provider route or its limit preflight.
+      # Max imports shared modules but has neither image provider fallback nor
+      # Media Gen credential.
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "false"
       CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED: "false"
     volumes:
@@ -88,6 +90,7 @@ services:
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
       - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
       - ./codex_image_limit_preflight.py:/app/codex_image_limit_preflight.py:ro
+      - ./codex_image_high_res_export.py:/app/codex_image_high_res_export.py:ro
       - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
       - ./sandbox_launcher_client.py:/app/sandbox_launcher_client.py:ro
       - /run/hermes-sandbox/launcher.sock:/run/hermes-sandbox/launcher.sock

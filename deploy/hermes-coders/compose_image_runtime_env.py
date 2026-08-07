@@ -7,15 +7,18 @@ from pathlib import Path
 from typing import Mapping
 from urllib.parse import urlparse
 
+_MEDIA_KEY = "BYESU_MEDIA_GEN_API_KEY"
+_FALLBACK_KEY = "CODEX_IMAGE_BYESU_FALLBACK_ENABLED"
 _ALLOWED_KEYS = (
-    "CODEX_IMAGE_BYESU_FALLBACK_ENABLED",
+    _MEDIA_KEY,
+    _FALLBACK_KEY,
     "CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED",
     "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS",
     "CODEX_IMAGE_BYESU_BASE_URL",
     "CODEX_IMAGE_BYESU_TIMEOUT_SECONDS",
 )
 _BOOLEAN_KEYS = {
-    "CODEX_IMAGE_BYESU_FALLBACK_ENABLED",
+    _FALLBACK_KEY,
     "CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED",
 }
 _INTEGER_RANGES = {
@@ -51,8 +54,13 @@ def parse_env(path: Path) -> dict[str, str]:
 
 
 def normalize_value(name: str, value: str) -> str:
-    if "\n" in value or "\x00" in value:
+    if "\n" in value or "\r" in value or "\x00" in value:
         raise ImageRuntimeEnvError(f"{name} содержит недопустимый символ")
+    if name == _MEDIA_KEY:
+        normalized = value.strip()
+        if len(normalized) < 20:
+            raise ImageRuntimeEnvError(f"{_MEDIA_KEY} отсутствует или слишком короткий")
+        return normalized
     if name in _BOOLEAN_KEYS:
         normalized = value.strip().casefold()
         if normalized in _TRUE_VALUES:
@@ -94,9 +102,15 @@ def build_environment(
 ) -> dict[str, str]:
     source = parse_env(source_path)
     environment = dict(base_environment or {})
+    normalized: dict[str, str] = {}
     for name in _ALLOWED_KEYS:
         if name in source and source[name].strip():
-            environment[name] = normalize_value(name, source[name])
+            normalized[name] = normalize_value(name, source[name])
+    if normalized.get(_FALLBACK_KEY) == "true" and _MEDIA_KEY not in normalized:
+        raise ImageRuntimeEnvError(
+            f"{_MEDIA_KEY} обязателен при включённом Byesu image fallback"
+        )
+    environment.update(normalized)
     return environment
 
 

@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import base64
-import shutil
-from pathlib import Path
+import hmac
+import json
+import os
 from typing import Any, Mapping, Sequence
+from urllib.request import Request
 
 import byesu_image_fallback as base
 import codex_image_runner as image_runner
@@ -33,11 +35,13 @@ def select_image_model(resolution: str, reference_count: int) -> str:
 
 
 def uses_codex_primary(resolution: str) -> bool:
-    """Codex is the primary route only for the native 1K product contract."""
-    return resolution.strip().upper() == "1K"
+    """Every supported quality is Codex-first; Byesu is limit fallback only."""
+    return resolution.strip().upper() in base._RESOLUTIONS
 
 
 class RoutedByesuImageClient(base.ByesuImageClient):
+    """Split analysis and generation across two distinct Byesu credentials."""
+
     def __init__(self, *, image_model: str) -> None:
         super().__init__()
         if image_model not in {_CHEAP_IMAGE_MODEL, _EXTENDED_IMAGE_MODEL}:
@@ -45,6 +49,102 @@ class RoutedByesuImageClient(base.ByesuImageClient):
                 "Недоступная модель генерации Byesu для GPT Image 2"
             )
         self.image_model = image_model
+        self.analysis_api_key = self.api_key
+        self.media_api_key = os.environ.get("BYESU_MEDIA_GEN_API_KEY", "").strip()
+        if len(self.media_api_key) < 20:
+            raise base.ByesuImageFallbackError(
+                "BYESU_MEDIA_GEN_API_KEY не настроен для image generation"
+            )
+        if hmac.compare_digest(self.analysis_api_key, self.media_api_key):
+            raise base.ByesuImageFallbackError(
+                "Hermes/Codex и Media Gen должны использовать разные Byesu API keys"
+            )
+
+    @property
+    def _authorization(self) -> str:
+        """Generation endpoints always use the Media Gen credential."""
+        return f"Bearer {self.media_api_key}"
+
+    def _json_with_key(
+        self,
+        path: str,
+        *,
+        api_key: str,
+        method: str = "GET",
+        data: Mapping[str, object] | None = None,
+    ) -> dict[str, Any]:
+        body = None
+        headers = {"Authorization": f"Bearer {api_key}"}
+        if data is not None:
+            body = json.dumps(
+                data,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        payload = self._open(
+            Request(
+                f"{self.base_url}{path}",
+                data=body,
+                headers=headers,
+                method=method,
+            )
+        )
+        try:
+            result = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise base.ByesuImageFallbackError(
+                "Byesu вернул повреждённый JSON"
+            ) from error
+        if not isinstance(result, dict):
+            raise base.ByesuImageFallbackError(
+                "Byesu вернул неожиданный JSON"
+            )
+        return result
+
+    def _json(
+        self,
+        path: str,
+        *,
+        method: str = "GET",
+        data: Mapping[str, object] | None = None,
+    ) -> dict[str, Any]:
+        """Analysis /responses and analysis capability checks use Hermes key."""
+        return self._json_with_key(
+            path,
+            api_key=self.analysis_api_key,
+            method=method,
+            data=data,
+        )
+
+    def _available_models(self, api_key: str) -> set[str]:
+        response = self._json_with_key("/models", api_key=api_key)
+        raw_models = response.get("data")
+        if not isinstance(raw_models, Sequence):
+            return set()
+        return {
+            str(item.get("id") or "").strip()
+            for item in raw_models
+            if isinstance(item, Mapping) and item.get("id")
+        }
+
+    def assert_capabilities(self, analysis_model: str) -> None:
+        if analysis_model not in base._ANALYSIS_MODELS:
+            raise base.ByesuImageFallbackError(
+                "Недоступная GPT-5.6 модель анализа для Byesu fallback"
+            )
+        analysis_models = self._available_models(self.analysis_api_key)
+        if analysis_model not in analysis_models:
+            raise base.ByesuImageFallbackError(
+                "Hermes/Codex Byesu key не видит модель анализа: "
+                + analysis_model
+            )
+        media_models = self._available_models(self.media_api_key)
+        if self.image_model not in media_models:
+            raise base.ByesuImageFallbackError(
+                "Media Gen Byesu key не видит модель генерации: "
+                + self.image_model
+            )
 
     def analyze(
         self,
@@ -174,16 +274,14 @@ def _attempted_routes(
     record: Mapping[str, object],
     *,
     image_model: str,
-    direct: bool,
 ) -> list[str]:
     attempted = [str(value) for value in record.get("attempted_routes") or []]
-    if not direct and not attempted:
-        attempted.append(
-            f"codex_subscription:{record.get('model') or 'unknown'}"
-        )
-    route = f"byesu_media:{image_model}"
-    if route not in attempted:
-        attempted.append(route)
+    codex_route = f"codex_subscription:{record.get('model') or 'unknown'}"
+    if codex_route not in attempted:
+        attempted.append(codex_route)
+    media_route = f"byesu_media:{image_model}"
+    if media_route not in attempted:
+        attempted.append(media_route)
     return attempted
 
 
@@ -191,40 +289,36 @@ def _run_byesu(
     manager: Any,
     run_id: str,
     prompt: str,
-    staged: Path,
+    staged: Any,
     *,
     direct: bool,
 ) -> None:
+    """Run Byesu only because Codex subscription is explicitly unavailable."""
     record = manager.store.read(run_id)
     references = base._load_references(record, staged)
     resolution = str(record.get("resolution") or "1K").strip().upper()
     image_model = select_image_model(resolution, len(references))
-    attempted = _attempted_routes(
-        record,
-        image_model=image_model,
-        direct=direct,
+    attempted = _attempted_routes(record, image_model=image_model)
+    route_reason = "codex_limit_preflight" if direct else "subscription_limit"
+    event_prefix = (
+        "byesu_image_limit_preflight" if direct else "byesu_image_fallback"
     )
-    requested_route = "byesu_media" if direct else "codex_subscription"
-    route_reason = (
-        "selected_quality_requires_byesu" if direct else "subscription_limit"
-    )
-    event_prefix = "byesu_image_direct" if direct else "byesu_image_fallback"
-    update: dict[str, object] = {
-        "status": "running",
-        "actual_route": "byesu_media",
-        "requested_route": requested_route,
-        "attempted_routes": attempted,
-        "route_reason": route_reason,
-        "last_event": {
+    manager.store.update(
+        run_id,
+        status="running",
+        actual_route="byesu_media",
+        requested_route="codex_subscription",
+        attempted_routes=attempted,
+        route_reason=route_reason,
+        fallback_reason="subscription_limit",
+        codex_generation_skipped=bool(direct),
+        last_event={
             "type": f"{event_prefix}_started",
             "analysis_model": record.get("model"),
             "image_model": image_model,
             "automatic_retry": False,
         },
-    }
-    if not direct:
-        update["fallback_reason"] = "subscription_limit"
-    manager.store.update(run_id, **update)
+    )
     try:
         client = RoutedByesuImageClient(image_model=image_model)
         result = client.run(
@@ -238,116 +332,71 @@ def _run_byesu(
         artifact = manager._image_artifacts_root() / f"{run_id}{result.suffix}"
         artifact.write_bytes(result.payload)
         artifact.chmod(0o600)
-        completed: dict[str, object] = {
-            "status": "completed",
-            "finished_at": base.utc_now(),
-            "artifact_path": str(artifact),
-            "artifact_name": f"gpt-image-2-byesu-{run_id[:8]}{result.suffix}",
-            "artifact_mime_type": result.mime_type,
-            "artifact_bytes": len(result.payload),
-            "actual_route": "byesu_media",
-            "requested_route": requested_route,
-            "attempted_routes": attempted,
-            "route_reason": route_reason,
-            "provider_model": result.image_model,
-            "provider_size": result.size,
-            "analysis_provider": "byesu",
-            "analysis_usage": dict(result.analysis_usage or {}),
-            "enhanced_prompt_chars": len(result.enhanced_prompt),
-            "generation_attempts": 1,
-            "last_event": {
+        manager.store.update(
+            run_id,
+            status="completed",
+            finished_at=base.utc_now(),
+            artifact_path=str(artifact),
+            artifact_name=f"gpt-image-2-byesu-{run_id[:8]}{result.suffix}",
+            artifact_mime_type=result.mime_type,
+            artifact_bytes=len(result.payload),
+            actual_route="byesu_media",
+            requested_route="codex_subscription",
+            attempted_routes=attempted,
+            route_reason=route_reason,
+            fallback_reason="subscription_limit",
+            codex_generation_skipped=bool(direct),
+            provider_model=result.image_model,
+            provider_size=result.size,
+            analysis_provider="byesu_hermes_codex",
+            generation_provider="byesu_media",
+            analysis_usage=dict(result.analysis_usage or {}),
+            enhanced_prompt_chars=len(result.enhanced_prompt),
+            generation_attempts=1,
+            last_event={
                 "type": f"{event_prefix}_completed",
                 "analysis_model": record.get("model"),
                 "image_model": result.image_model,
                 "size": result.size,
                 "automatic_retry": False,
             },
-        }
-        if not direct:
-            completed["fallback_reason"] = "subscription_limit"
-        manager.store.update(run_id, **completed)
+        )
     except Exception as error:
-        failed: dict[str, object] = {
-            "status": "failed",
-            "finished_at": base.utc_now(),
-            "actual_route": "byesu_media",
-            "requested_route": requested_route,
-            "attempted_routes": attempted,
-            "route_reason": route_reason,
-            "error": base.redact_text(str(error).strip())[-8_000:]
+        manager.store.update(
+            run_id,
+            status="failed",
+            finished_at=base.utc_now(),
+            actual_route="byesu_media",
+            requested_route="codex_subscription",
+            attempted_routes=attempted,
+            route_reason=route_reason,
+            fallback_reason="subscription_limit",
+            codex_generation_skipped=bool(direct),
+            error=base.redact_text(str(error).strip())[-8_000:]
             or type(error).__name__,
-            "last_event": {
+            last_event={
                 "type": f"{event_prefix}_failed",
                 "error_type": type(error).__name__,
                 "automatic_retry": False,
             },
-        }
-        if not direct:
-            failed["fallback_reason"] = "subscription_limit"
-        manager.store.update(run_id, **failed)
+        )
 
 
-def _run_fallback(manager: Any, run_id: str, prompt: str, staged: Path) -> None:
+def _run_fallback(manager: Any, run_id: str, prompt: str, staged: Any) -> None:
     _run_byesu(manager, run_id, prompt, staged, direct=False)
 
 
 def install_byesu_image_routing_policy() -> None:
-    """Install Codex-first 1K and parameter-driven Byesu generator routing."""
+    """Make every quality Codex-first and install one limit-only Byesu fallback."""
     global _INSTALLED
     if _INSTALLED:
         return
-
     image_runner.MAX_IMAGE_REFERENCES = _MAX_REFERENCES
     image_runner.MAX_IMAGE_REFERENCE_BYTES = _MAX_REFERENCE_BYTES
     image_runner.MAX_IMAGE_TOTAL_REFERENCE_BYTES = (
         _MAX_REFERENCES * _MAX_REFERENCE_BYTES
     )
     base._run_fallback = _run_fallback
-
-    original = image_runner.CodexImageSupport._execute_image
-
-    def execute_with_parameter_routing(
-        self: Any,
-        run_id: str,
-        prompt: str,
-    ) -> None:
-        if not base._enabled():
-            original(self, run_id, prompt)
-            return
-        record = self.store.read(run_id)
-        if uses_codex_primary(str(record.get("resolution") or "1K")):
-            original(self, run_id, prompt)
-            return
-
-        staged: Path | None = None
-        with self._isolation_lock:
-            try:
-                record = self.store.read(run_id)
-                if record.get("stop_requested"):
-                    self.store.update(
-                        run_id,
-                        status="cancelled",
-                        finished_at=base.utc_now(),
-                        last_event={"type": "image_cancelled_before_start"},
-                    )
-                    return
-                staged = base._stage_references(self, run_id)
-                self.store.update(
-                    run_id,
-                    status="running",
-                    started_at=base.utc_now(),
-                    requested_route="byesu_media",
-                    actual_route="byesu_media",
-                    route_reason="selected_quality_requires_byesu",
-                    last_event={"type": "byesu_image_direct_preparation_started"},
-                )
-                _run_byesu(self, run_id, prompt, staged, direct=True)
-            finally:
-                if staged is not None:
-                    shutil.rmtree(staged, ignore_errors=True)
-                self._cleanup_image_inputs(run_id)
-
-    image_runner.CodexImageSupport._execute_image = execute_with_parameter_routing
     _INSTALLED = True
 
 

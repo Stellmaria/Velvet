@@ -20,12 +20,14 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         path.write_text(body, encoding="utf-8")
         return path
 
-    def test_projection_exposes_only_allowlisted_image_settings(self) -> None:
+    def test_projection_exposes_media_key_and_nonsecret_image_settings_only(self) -> None:
+        media = "m" * 32
         source = self._source(
             "\n".join(
                 (
                     "BYESU_HERMES_CODEX_API_KEY=do-not-project",
                     "OPENAI_API_KEY=also-do-not-project",
+                    "BYESU_MEDIA_GEN_API_KEY=" + media,
                     "CODEX_IMAGE_BYESU_FALLBACK_ENABLED=yes",
                     "CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED=0",
                     "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS=4",
@@ -38,6 +40,7 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         projected = image_env.build_environment(source, {"KEEP_ME": "1"})
 
         self.assertEqual(projected["KEEP_ME"], "1")
+        self.assertEqual(projected["BYESU_MEDIA_GEN_API_KEY"], media)
         self.assertEqual(projected["CODEX_IMAGE_BYESU_FALLBACK_ENABLED"], "true")
         self.assertEqual(projected["CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED"], "false")
         self.assertEqual(
@@ -48,6 +51,14 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         self.assertNotIn("BYESU_HERMES_CODEX_API_KEY", projected)
         self.assertNotIn("OPENAI_API_KEY", projected)
 
+    def test_enabled_fallback_requires_media_key(self) -> None:
+        source = self._source("CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true\n")
+        with self.assertRaisesRegex(
+            image_env.ImageRuntimeEnvError,
+            "BYESU_MEDIA_GEN_API_KEY",
+        ):
+            image_env.build_environment(source, {})
+
     def test_missing_image_settings_leave_compose_defaults_in_control(self) -> None:
         source = self._source("BYESU_HERMES_CODEX_API_KEY=secret\n")
         projected = image_env.build_environment(source, {"KEEP_ME": "1"})
@@ -55,6 +66,7 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
 
     def test_invalid_image_settings_fail_closed(self) -> None:
         invalid = {
+            "BYESU_MEDIA_GEN_API_KEY": "short",
             "CODEX_IMAGE_BYESU_FALLBACK_ENABLED": "maybe",
             "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS": "2",
             "CODEX_IMAGE_BYESU_TIMEOUT_SECONDS": "1801",
@@ -74,6 +86,15 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         linked.symlink_to(actual)
         with self.assertRaises(image_env.ImageRuntimeEnvError):
             image_env.build_environment(linked, {})
+
+    def test_media_key_is_declared_only_on_velvet_coder(self) -> None:
+        compose = (CODERS / "compose.runtime.yaml").read_text(encoding="utf-8")
+        chat_prefix, coder_tail = compose.split("  hermes-coder-velvet:", 1)
+        velvet_coder, maximum = coder_tail.split("  hermes-coder-max:", 1)
+        self.assertNotIn("BYESU_MEDIA_GEN_API_KEY", chat_prefix)
+        self.assertIn("BYESU_MEDIA_GEN_API_KEY", velvet_coder)
+        self.assertNotIn("BYESU_MEDIA_GEN_API_KEY", maximum)
+        self.assertNotIn("velvet-media.env", compose)
 
     def test_systemd_wraps_every_compose_lifecycle_command(self) -> None:
         unit = (ROOT / "deploy" / "systemd" / "hermes-coders.service").read_text(

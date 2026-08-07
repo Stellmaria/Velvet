@@ -8,10 +8,6 @@ custom_providers:
     base_url: https://byesu.com/v1
     key_env: BYESU_HERMES_CODEX_API_KEY
     api_mode: chat_completions
-  - name: byesu-gpt-pro
-    base_url: https://byesu.com/v1
-    key_env: BYESU_HERMES_CODEX_API_KEY
-    api_mode: chat_completions
 
 fallback_providers:
   - provider: custom
@@ -33,7 +29,7 @@ model_aliases:
     provider: custom:byesu-coder
     model: gpt-5.6-terra
   luna:
-    provider: custom:byesu-gpt-pro
+    provider: custom:byesu-coder
     model: gpt-5.6-luna
 
 terminal:

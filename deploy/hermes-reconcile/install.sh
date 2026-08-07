@@ -103,6 +103,7 @@ chown "$SERVICE_USER:$SERVICE_USER" "$OPERATOR_ENV"
 chmod 0600 "$OPERATOR_ENV"
 
 install -d -m 0755 /usr/local/libexec
+install -d -m 0755 -o root -g root /usr/local/lib/hermes-sandbox-launcher
 install -d -m 0770 -o root -g "$SERVICE_USER" \
   /srv/hermes-operator-control/reconcile-docker-config
 install -d -m 0700 -o root -g root \
