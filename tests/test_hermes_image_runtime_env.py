@@ -20,7 +20,7 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         path.write_text(body, encoding="utf-8")
         return path
 
-    def test_projection_exposes_media_key_and_allowlisted_image_settings_only(self) -> None:
+    def test_projection_exposes_only_nonsecret_image_settings(self) -> None:
         source = self._source(
             "\n".join(
                 (
@@ -39,7 +39,6 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         projected = image_env.build_environment(source, {"KEEP_ME": "1"})
 
         self.assertEqual(projected["KEEP_ME"], "1")
-        self.assertEqual(projected["BYESU_MEDIA_GEN_API_KEY"], "m" * 32)
         self.assertEqual(projected["CODEX_IMAGE_BYESU_FALLBACK_ENABLED"], "true")
         self.assertEqual(projected["CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED"], "false")
         self.assertEqual(
@@ -49,6 +48,7 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         self.assertEqual(projected["CODEX_IMAGE_BYESU_TIMEOUT_SECONDS"], "900")
         self.assertNotIn("BYESU_HERMES_CODEX_API_KEY", projected)
         self.assertNotIn("OPENAI_API_KEY", projected)
+        self.assertNotIn("BYESU_MEDIA_GEN_API_KEY", projected)
 
     def test_missing_image_settings_leave_compose_defaults_in_control(self) -> None:
         source = self._source("BYESU_HERMES_CODEX_API_KEY=secret\n")
@@ -57,7 +57,6 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
 
     def test_invalid_image_settings_fail_closed(self) -> None:
         invalid = {
-            "BYESU_MEDIA_GEN_API_KEY": "short",
             "CODEX_IMAGE_BYESU_FALLBACK_ENABLED": "maybe",
             "CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS": "2",
             "CODEX_IMAGE_BYESU_TIMEOUT_SECONDS": "1801",
@@ -78,11 +77,12 @@ class HermesImageRuntimeEnvTests(unittest.TestCase):
         with self.assertRaises(image_env.ImageRuntimeEnvError):
             image_env.build_environment(linked, {})
 
-    def test_media_key_is_exposed_only_to_velvet_coder(self) -> None:
+    def test_media_secret_file_is_scoped_only_to_velvet_coder(self) -> None:
         compose = (CODERS / "compose.runtime.yaml").read_text(encoding="utf-8")
         velvet, maximum = compose.split("  hermes-coder-max:", 1)
-        self.assertIn("BYESU_MEDIA_GEN_API_KEY", velvet)
-        self.assertNotIn("BYESU_MEDIA_GEN_API_KEY", maximum)
+        self.assertIn("secrets/velvet-media.env", velvet)
+        self.assertNotIn("secrets/velvet-media.env", maximum)
+        self.assertNotIn("BYESU_MEDIA_GEN_API_KEY:", compose)
 
     def test_systemd_wraps_every_compose_lifecycle_command(self) -> None:
         unit = (ROOT / "deploy" / "systemd" / "hermes-coders.service").read_text(
