@@ -123,6 +123,30 @@ class Ledger:
             raise CoderApiError("Журнал задач должен содержать JSON-массив.")
         return [item for item in payload if isinstance(item, dict)]
 
+    def ensure_writable(self) -> None:
+        temp_name: str | None = None
+        try:
+            self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.lock_path.open("a+", encoding="utf-8") as lock:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                self._load_unlocked()
+                fd, temp_name = tempfile.mkstemp(
+                    prefix=".coderctl-write-check-",
+                    dir=str(self.path.parent),
+                    text=True,
+                )
+                os.close(fd)
+        except OSError as error:
+            raise CoderApiError(
+                f"Журнал coder-задач недоступен для записи: {error}"
+            ) from error
+        finally:
+            if temp_name is not None:
+                try:
+                    os.unlink(temp_name)
+                except FileNotFoundError:
+                    pass
+
     def _write_unlocked(self, records: list[dict[str, Any]]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         fd, temp_name = tempfile.mkstemp(
@@ -363,7 +387,7 @@ def pr_evidence_findings(
     labels = {
         "head_sha": "PR head SHA differs from ledger final_head",
         "head_ref": "PR head ref differs from ledger final_branch",
-        "base_ref": "PR base ref differs from ledger workspace source ref",
+        "base_ref": "PR base ref differs from workspace source ref",
         "repository": "PR repository differs from task repository",
     }
     return tuple(labels[field] for field, value in expected.items() if pull.get(field) != value)
@@ -463,6 +487,7 @@ def main(argv: list[str] | None = None) -> int:
                 "mutation_policy": args.mutation_policy,
                 "requested_tier": args.requested_tier,
             }
+            ledger.ensure_writable()
             response = client.submit(
                 args.project,
                 task_id=task_id,
