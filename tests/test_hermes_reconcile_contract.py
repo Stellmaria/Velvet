@@ -209,6 +209,16 @@ class HermesReconcileStaticContractTests(unittest.TestCase):
         self.assertIn("ProtectSystem=strict", self.host_unit)
         self.assertIn("NoNewPrivileges=true", self.host_unit)
         self.assertIn("RuntimeDirectory=hermes-operator-reconcile", self.host_unit)
+        read_write_line = next(
+            line
+            for line in self.host_unit.splitlines()
+            if line.startswith("ReadWritePaths=")
+        )
+        read_write_paths = read_write_line.removeprefix("ReadWritePaths=").split()
+        self.assertIn("/usr/local/lib/hermes-sandbox-launcher", read_write_paths)
+        self.assertIn("/etc/apparmor.d", read_write_paths)
+        self.assertNotIn("/usr/local", read_write_paths)
+        self.assertNotIn("/etc", read_write_paths)
         self.assertIn(
             "/usr/local/libexec/velvet-hermes-operator-reconcile-entrypoint.py",
             self.host_unit,
@@ -227,6 +237,10 @@ class HermesReconcileStaticContractTests(unittest.TestCase):
         self.assertIn("reconcilectl.py", self.installer)
         self.assertIn("HOST_ENTRYPOINT_TARGET", self.installer)
         self.assertIn("host_reconcile_entrypoint.py", self.installer)
+        self.assertIn(
+            "install -d -m 0755 -o root -g root /usr/local/lib/hermes-sandbox-launcher",
+            self.installer,
+        )
         self.assertNotIn("TELEGRAM_BOT_TOKEN", self.installer)
         self.assertNotIn("SUPERVISOR_TOKEN", self.installer)
 
