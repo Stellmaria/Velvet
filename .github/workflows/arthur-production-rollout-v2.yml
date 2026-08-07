@@ -93,6 +93,59 @@ jobs:
             "$payload" "$DEPLOY_USER@$DEPLOY_HOST:$remote_payload"
           echo "REMOTE_PAYLOAD=$remote_payload" >> "$GITHUB_ENV"
 
+      - name: Repair legacy backup ownership contract
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+        run: |
+          set -Eeuo pipefail
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command 'APP_DIR=%q bash -s' "$app_dir"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$APP_DIR"
+          test "$(git symbolic-ref --short HEAD)" = main
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "Initial production checkout: $(git rev-parse HEAD)"
+
+          data_dir="$(python3 - .env.server <<'PY'
+          from pathlib import Path
+          import sys
+          from scripts.server_preflight import parse_env_file
+
+          env = parse_env_file(Path(sys.argv[1]))
+          value = env.get("VELVET_DATA_DIR", "").strip()
+          if not value:
+              raise SystemExit("VELVET_DATA_DIR is missing")
+          print(value)
+          PY
+          )"
+          backup_root="$data_dir/backups"
+          deploy_uid="$(id -u)"
+          deploy_gid="$(id -g)"
+          repaired=0
+
+          while IFS= read -r -d '' candidate; do
+            owner_uid="$(stat -c '%u' "$candidate")"
+            mode="$(stat -c '%a' "$candidate")"
+            if [[ "$owner_uid" != "$deploy_uid" || "$mode" != "644" ]]; then
+              sudo -n chown "$deploy_uid:$deploy_gid" -- "$candidate"
+              sudo -n chmod 0644 -- "$candidate"
+              repaired=$((repaired + 1))
+            fi
+          done < <(
+            find "$backup_root" -maxdepth 1 -type f \
+              \( -name '*.dump' -o -name '*.dump.json' \) \
+              -print0
+          )
+          echo "Legacy backup ownership repair complete: files=$repaired"
+          REMOTE
+
       - name: Deploy verified app image and reconcile Arthur
         shell: bash
         env:

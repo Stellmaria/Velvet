@@ -99,3 +99,11 @@ Verified application image для source commit `e6571062af2c963297c17f94685490f
 После merge #667 workflow run `31183410920` завершился до SSH/deploy на проверке `git merge-base --is-ancestor`: стандартный shallow checkout не содержал `SOURCE_COMMIT=e6571062af2c963297c17f94685490fa054c90ca`. Production этим run не изменён.
 
 PR #670 исправляет только этот дефект: в шаг `Checkout rollout payload` добавлен `fetch-depth: 0`. Проверка диапазона `e6571062...77bdfb83` подтвердила, что последующие изменения затрагивают только rollout ops/workflow, Hermes host env wiring, docs и tests и не попадают в image build paths `publish-image.yml`; поэтому verified source/image pair остаётся без изменений.
+
+## Продолжение: host ownership blocker после PR #670
+
+PR #670 прошёл все required checks и был merge-коммитом `b178257fa4998a885a4bcc05da8f7526e0e5f3aa`. Rollout run `31187581956` успешно прошёл full-history checkout и immutable target/credential preflight, затем вошёл в SSH stage.
+
+Canonical `deploy/server/deploy.sh` остановился до `deployment_started=1` на legacy backup manifest, которому deploy-пользователь не мог выполнить `chmod 0644`: `Operation not permitted`. До `git fetch/reset`, image pull и container recreation выполнение не дошло, поэтому application/runtime этим run не переключались; Arthur credentials в `.env.server` были установлены без вывода значений.
+
+Это соответствует известному contract PR #644: если top-level `*.dump`/`*.dump.json` принадлежит другому UID, deploy должен fail-fast до mutation, а дальнейший operational step требует host-level смены владельца. Следующий bounded rollout payload выполняет только этот repair для той же области файлов: переводит ownership к текущему deploy UID/GID и mode к `0644` через `sudo -n`, затем запускает неизменённый canonical deploy. При отсутствии разрешённого sudo repair падает до deploy. Application source/image pair остаётся `e6571062...` + `sha256:517165...`.
