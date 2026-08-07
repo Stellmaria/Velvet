@@ -117,8 +117,8 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
         self.assertIn('"STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID": "0"', full_archive)
         self.assertIn('"STORAGE_LIBRARIAN_AUTO_BATCH_SIZE": str(batch_size)', full_archive)
         self.assertIn("http://ollama-librarian:11434", full_archive)
-        self.assertIn("STORAGE_LIBRARIAN_AUTO_ENQUEUE=false", disable)
-        self.assertIn("STORAGE_LIBRARIAN_AUTO_BACKFILL", disable)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_ENQUEUE": "false"', disable)
+        self.assertIn('"STORAGE_LIBRARIAN_AUTO_BACKFILL": "false"', disable)
 
     def test_full_archive_mode_is_explicit_bounded_and_local(self) -> None:
         presentation = (
@@ -128,14 +128,26 @@ class StorageLibrarianAfkContractTests(unittest.TestCase):
             ROOT / "deploy/hermes-librarian/enable_full_archive.sh"
         ).read_text(encoding="utf-8")
 
-        self.assertIn('full_archive = _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False)', presentation)
+        self.assertIn(
+            'full_archive = _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False)',
+            presentation,
+        )
         self.assertIn("if full_archive:", presentation)
         self.assertIn("repository.enqueue_pending(", presentation)
         self.assertIn("limit=batch_size", presentation)
-        self.assertIn("Full-archive режим требует STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID=0", presentation)
+        self.assertIn(
+            "Full-archive режим требует STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID=0",
+            presentation,
+        )
         self.assertIn("AFK full-archive: <b>активен</b>", presentation)
-        self.assertIn('AUTO_BATCH_SIZE="${STORAGE_LIBRARIAN_AUTO_BATCH_SIZE:-1}"', full_archive)
-        self.assertIn('SCAN_INTERVAL="${STORAGE_LIBRARIAN_SCAN_INTERVAL_SECONDS:-60}"', full_archive)
+        self.assertIn(
+            'AUTO_BATCH_SIZE="${STORAGE_LIBRARIAN_AUTO_BATCH_SIZE:-1}"',
+            full_archive,
+        )
+        self.assertIn(
+            'SCAN_INTERVAL="${STORAGE_LIBRARIAN_SCAN_INTERVAL_SECONDS:-60}"',
+            full_archive,
+        )
         self.assertIn("local Ollama only", full_archive)
 
     def test_terminal_failure_report_is_redacted_and_non_mutating(self) -> None:
