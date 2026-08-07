@@ -104,7 +104,9 @@ jobs:
           set -Eeuo pipefail
           port="${DEPLOY_PORT:-22}"
           app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
-          printf -v remote_command 'APP_DIR=%q bash -s' "$app_dir"
+          printf -v remote_command \
+            'APP_DIR=%q IMAGE_DIGEST=%q REMOTE_PAYLOAD=%q bash -s' \
+            "$app_dir" "$IMAGE_DIGEST" "$REMOTE_PAYLOAD"
           ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
           set -Eeuo pipefail
@@ -112,6 +114,9 @@ jobs:
           test "$(git symbolic-ref --short HEAD)" = main
           test -z "$(git status --porcelain --untracked-files=all)"
           echo "Initial production checkout: $(git rev-parse HEAD)"
+
+          find /tmp -maxdepth 1 -type f -user "$(id -u)" \
+            -name 'velvet-arthur-*.json' ! -path "$REMOTE_PAYLOAD" -delete
 
           data_dir="$(python3 - .env.server <<'PY'
           from pathlib import Path
@@ -126,24 +131,50 @@ jobs:
           PY
           )"
           backup_root="$data_dir/backups"
+          test -d "$backup_root"
+          test ! -L "$backup_root"
           deploy_uid="$(id -u)"
           deploy_gid="$(id -g)"
-          repaired=0
+
+          docker run --rm -i \
+            --network none \
+            --user 0:0 \
+            --cap-drop ALL \
+            --cap-add CHOWN \
+            --cap-add FOWNER \
+            --security-opt no-new-privileges \
+            --env TARGET_UID="$deploy_uid" \
+            --env TARGET_GID="$deploy_gid" \
+            --mount "type=bind,src=$backup_root,dst=/repair" \
+            "$IMAGE_DIGEST" \
+            python - <<'PY'
+          import os
+          from pathlib import Path
+
+          root = Path("/repair")
+          target_uid = int(os.environ["TARGET_UID"])
+          target_gid = int(os.environ["TARGET_GID"])
+          repaired = 0
+          for entry in os.scandir(root):
+              if not entry.is_file(follow_symlinks=False):
+                  continue
+              if not (entry.name.endswith(".dump") or entry.name.endswith(".dump.json")):
+                  continue
+              stat = entry.stat(follow_symlinks=False)
+              if stat.st_uid != target_uid or (stat.st_mode & 0o777) != 0o644:
+                  os.chown(entry.path, target_uid, target_gid, follow_symlinks=False)
+                  os.chmod(entry.path, 0o644, follow_symlinks=False)
+                  repaired += 1
+          print(f"Legacy backup ownership repair complete: files={repaired}")
+          PY
 
           while IFS= read -r -d '' candidate; do
-            owner_uid="$(stat -c '%u' "$candidate")"
-            mode="$(stat -c '%a' "$candidate")"
-            if [[ "$owner_uid" != "$deploy_uid" || "$mode" != "644" ]]; then
-              sudo -n chown "$deploy_uid:$deploy_gid" -- "$candidate"
-              sudo -n chmod 0644 -- "$candidate"
-              repaired=$((repaired + 1))
-            fi
+            test "$(stat -c '%u:%g:%a' "$candidate")" = "$deploy_uid:$deploy_gid:644"
           done < <(
             find "$backup_root" -maxdepth 1 -type f \
               \( -name '*.dump' -o -name '*.dump.json' \) \
               -print0
           )
-          echo "Legacy backup ownership repair complete: files=$repaired"
           REMOTE
 
       - name: Deploy verified app image and reconcile Arthur
@@ -163,3 +194,17 @@ jobs:
           ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" \
             < .github/ops/arthur-production-rollout.sh
+
+      - name: Remove transferred credential payload
+        if: ${{ always() && env.REMOTE_PAYLOAD != '' }}
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -Eeuo pipefail
+          port="${DEPLOY_PORT:-22}"
+          printf -v remote_command 'rm -f -- %q' "$REMOTE_PAYLOAD"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command"
