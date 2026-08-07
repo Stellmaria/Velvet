@@ -89,10 +89,13 @@ def test_systemd_permission_preflight_covers_image_runners() -> None:
         "byesu_image_routing_policy.py",
         "codex_image_limit_preflight.py",
         "codex_image_high_res_export.py",
-        "image_provider_smoke.py",
+        "prepare_image_secret_env.py",
     ):
         runtime_path = f"/deploy/hermes-coders/{runtime_source}"
         assert unit.count(runtime_path) == 2
+
+    # The provider smoke is normalized twice and also executed after start/reload.
+    assert unit.count("/deploy/hermes-coders/image_provider_smoke.py") == 4
 
 
 def test_runtime_source_guard_accepts_repository_import_graph() -> None:
