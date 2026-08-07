@@ -1,0 +1,258 @@
+name: arthur production reconcile continuation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/arthur-production-reconcile-continuation.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      SOURCE_COMMIT: e6571062af2c963297c17f94685490fa054c90ca
+      IMAGE_DIGEST: ghcr.io/stellmaria/velvet@sha256:517165ef91701ec7138ddb11a0138e6a2375d22a3a7683737b15ef7ea46c98d0
+    steps:
+      - name: Checkout continuation payload
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify immutable lineage and prepare SSH
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          current_main="$(git ls-remote https://github.com/Stellmaria/Velvet.git refs/heads/main | awk '{print $1}')"
+          test "$current_main" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" "$GITHUB_SHA"
+          [[ "$IMAGE_DIGEST" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Continue fixed-target Librarian reconcile and verify Arthur
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+        run: |
+          set -Eeuo pipefail
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command \
+            'SOURCE_COMMIT=%q CHECKOUT_COMMIT=%q IMAGE_DIGEST=%q APP_DIR=%q bash -s' \
+            "$SOURCE_COMMIT" "$GITHUB_SHA" "$IMAGE_DIGEST" "$app_dir"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$APP_DIR"
+
+          test "$(stat -c '%u' "$APP_DIR")" = "$(id -u)"
+          test "$(stat -c '%g' "$APP_DIR")" = "$(id -g)"
+          test "$(git symbolic-ref --short HEAD)" = main
+
+          (
+            umask 022
+            git fetch --prune origin main
+            test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
+            git merge-base --is-ancestor "$SOURCE_COMMIT" "$CHECKOUT_COMMIT"
+            git reset --hard "$CHECKOUT_COMMIT"
+          )
+          test "$(git rev-parse HEAD)" = "$CHECKOUT_COMMIT"
+          test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
+
+          python3 - "$APP_DIR/.env.server" "$IMAGE_DIGEST" <<'PY'
+          from pathlib import Path
+          import sys
+          from scripts.server_preflight import parse_env_file
+
+          env = parse_env_file(Path(sys.argv[1]))
+          expected = sys.argv[2]
+          actual = env.get("VELVET_IMAGE", "").strip()
+          if actual != expected:
+              raise SystemExit("Persisted VELVET_IMAGE does not match the verified immutable rollout image")
+          if env.get("STORAGE_LIBRARIAN_AUTO_ENQUEUE", "false").strip().casefold() != "false":
+              raise SystemExit("STORAGE_LIBRARIAN_AUTO_ENQUEUE must remain false")
+          print("Verified persisted immutable Arthur image pin and manual-only queue mode.")
+          PY
+
+          server_compose=(
+            docker compose
+            --env-file "$APP_DIR/.env.server"
+            -f "$APP_DIR/docker-compose.server.yml"
+          )
+          bot_cid="$("${server_compose[@]}" ps -q bot)"
+          test -n "$bot_cid"
+          bot_state="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$bot_cid")"
+          test "$bot_state" = healthy
+          test "$(docker inspect --format '{{.Config.Image}}' "$bot_cid")" = "$IMAGE_DIGEST"
+          echo "Verified healthy core bot on the immutable application image from rollout run 31195032933."
+
+          deploy_uid="$(id -u)"
+          deploy_gid="$(id -g)"
+          git_index="$APP_DIR/.git/index"
+          reconcile_started=0
+
+          repair_git_index() {
+            test -f "$git_index"
+            test ! -L "$git_index"
+            if [[ "$(stat -c '%u:%g' "$git_index")" != "$deploy_uid:$deploy_gid" ]]; then
+              docker run --rm -i \
+                --network none \
+                --user 0:0 \
+                --cap-drop ALL \
+                --cap-add CHOWN \
+                --security-opt no-new-privileges \
+                --env TARGET_UID="$deploy_uid" \
+                --env TARGET_GID="$deploy_gid" \
+                --mount "type=bind,src=$APP_DIR/.git,dst=/repair" \
+                "$IMAGE_DIGEST" \
+                python - <<'PY'
+          import os
+          import stat
+
+          path = "/repair/index"
+          value = os.lstat(path)
+          if not stat.S_ISREG(value.st_mode):
+              raise SystemExit("Git index is not a regular file")
+          os.chown(
+              path,
+              int(os.environ["TARGET_UID"]),
+              int(os.environ["TARGET_GID"]),
+              follow_symlinks=False,
+          )
+          print("Restored production Git index ownership after root reconcile.")
+          PY
+            fi
+            test "$(stat -c '%u:%g' "$git_index")" = "$deploy_uid:$deploy_gid"
+            test -r "$git_index"
+            test -w "$git_index"
+          }
+
+          on_exit() {
+            rc=$?
+            trap - EXIT
+            if (( reconcile_started )); then
+              repair_git_index || rc=1
+            fi
+            exit "$rc"
+          }
+          trap on_exit EXIT
+
+          docker exec velvet-hermes-1 test -x /opt/data/tools/reconcilectl.py
+          submit_json="$(docker exec velvet-hermes-1 \
+            python /opt/data/tools/reconcilectl.py submit librarian)"
+          printf '%s\n' "$submit_json"
+          task_id="$(python3 -c '
+          import json, sys
+          payload = json.load(sys.stdin)
+          if payload.get("ok") is not True or not payload.get("task_id"):
+              raise SystemExit("librarian reconcile was not accepted")
+          print(payload["task_id"])
+          ' <<<"$submit_json")"
+          reconcile_started=1
+
+          wait_json="$(docker exec velvet-hermes-1 \
+            python /opt/data/tools/reconcilectl.py wait "$task_id" --interval 5)"
+          printf '%s\n' "$wait_json"
+
+          repair_git_index
+          reconcile_started=0
+          test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD)" = "$CHECKOUT_COMMIT"
+          test "$(git rev-parse refs/remotes/origin/main)" = "$CHECKOUT_COMMIT"
+
+          python3 -c '
+          import json, sys
+          payload = json.load(sys.stdin)
+          if payload.get("ok") is not True or payload.get("status") != "completed":
+              raise SystemExit("librarian reconcile did not complete successfully")
+          ' <<<"$wait_json"
+
+          compose=(
+            docker compose
+            --env-file "$APP_DIR/.env.server"
+            -f "$APP_DIR/deploy/hermes-librarian/compose.yaml"
+            --profile arthur
+          )
+
+          for service in ollama-librarian librarian-hermes arthur-storage-gateway arthur; do
+            cid="$("${compose[@]}" ps -q "$service")"
+            test -n "$cid"
+            state="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid")"
+            case "$state" in
+              healthy|running) ;;
+              *) echo "$service is not healthy: $state" >&2; exit 1 ;;
+            esac
+            case "$service" in
+              arthur-storage-gateway|arthur)
+                test "$(docker inspect --format '{{.Config.Image}}' "$cid")" = "$IMAGE_DIGEST"
+                ;;
+            esac
+            ports="$(docker inspect --format '{{json .NetworkSettings.Ports}}' "$cid")"
+            python3 -c '
+          import json, sys
+          ports = json.loads(sys.stdin.read()) or {}
+          if any(value for value in ports.values()):
+              raise SystemExit("unexpected published port")
+          ' <<<"$ports"
+          done
+
+          for _ in $(seq 1 30); do
+            if "${compose[@]}" exec -T arthur \
+              python -c "from pathlib import Path; raise SystemExit(0 if Path('/tmp/arthur-heartbeat').exists() else 1)"; then
+              break
+            fi
+            sleep 2
+          done
+          "${compose[@]}" exec -T arthur \
+            python -c "from pathlib import Path; raise SystemExit(0 if Path('/tmp/arthur-heartbeat').exists() else 1)"
+          "${compose[@]}" exec -T arthur \
+            python -c "import os; raise SystemExit(0 if os.getenv('STORAGE_LIBRARIAN_AUTO_ENQUEUE','').lower() == 'false' else 1)"
+          "${compose[@]}" exec -T ollama-librarian \
+            ollama show velvet-librarian-text:v1 >/dev/null
+          "${compose[@]}" exec -T arthur python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          token = os.environ["ARTHUR_BOT_TOKEN"]
+          with urllib.request.urlopen(
+              f"https://api.telegram.org/bot{token}/getMe",
+              timeout=10,
+          ) as response:
+              payload = json.load(response)
+          assert payload.get("ok") is True, payload
+          result = payload.get("result") or {}
+          assert result.get("is_bot") is True, result
+          PY
+
+          test "$(stat -c '%u:%g' "$git_index")" = "$deploy_uid:$deploy_gid"
+          test -z "$(GIT_OPTIONAL_LOCKS=0 git status --porcelain --untracked-files=all)"
+          echo "Arthur reconcile continuation verified at app=$SOURCE_COMMIT checkout=$CHECKOUT_COMMIT task=$task_id"
+          REMOTE
