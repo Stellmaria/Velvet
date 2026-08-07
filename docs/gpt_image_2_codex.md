@@ -108,9 +108,11 @@ image endpoints Byesu:
 - `/v1/images/edits`.
 
 Runtime fail-closed проверяет, что Hermes-Codex и Media Gen keys различаются.
-Media key помещается в отдельный `velvet-media.env` и подключается только к
-`hermes-coder-velvet`. Max этот секрет не получает. Несекретный Compose wrapper
-не проецирует ни один API key.
+Перед canonical Compose lifecycle Media Gen key синхронизируется в уже
+существующий `/srv/hermes-coders/secrets/velvet.env`; остальные project secrets
+сохраняются. Max использует отдельный `max.env` и Media Gen key не получает.
+Несекретный Compose wrapper по-прежнему не проецирует ни один API key и не
+требует дополнительного env-файла для обычного `docker compose config`.
 
 ## Capability gate Byesu
 
