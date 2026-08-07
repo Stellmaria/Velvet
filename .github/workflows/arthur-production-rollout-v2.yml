@@ -142,6 +142,7 @@ jobs:
             --cap-drop ALL \
             --cap-add CHOWN \
             --cap-add FOWNER \
+            --cap-add DAC_OVERRIDE \
             --security-opt no-new-privileges \
             --env TARGET_UID="$deploy_uid" \
             --env TARGET_GID="$deploy_gid" \
