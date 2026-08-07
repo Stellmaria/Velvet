@@ -17,6 +17,9 @@ DEFAULT_ALLOWED_KINDS = (
     "inbox",
 )
 PROTECTED_KINDS = frozenset({"backups", "analysis", "watermarks"})
+TEXT_CONTEXT_RESERVED_TOKENS = 1024
+TEXT_CHARS_PER_TOKEN = 2
+TEXT_ANALYSIS_WRAPPER_RESERVED_CHARS = 2048
 
 
 class StorageLibrarianError(RuntimeError):
@@ -48,6 +51,46 @@ def _int_env(name: str, default: int, *, minimum: int, maximum: int) -> int:
     if not minimum <= value <= maximum:
         raise ValueError(f"{name} должен быть от {minimum} до {maximum}.")
     return value
+
+
+def storage_librarian_text_prompt_char_limit(
+    *,
+    context_length: int,
+    max_output_tokens: int,
+) -> int:
+    """Return the conservative total prompt-character budget for local Ollama."""
+
+    available_tokens = (
+        context_length
+        - max_output_tokens
+        - TEXT_CONTEXT_RESERVED_TOKENS
+    )
+    if available_tokens < 512:
+        raise ValueError(
+            "Storage Librarian text context оставляет недостаточно места для входа."
+        )
+    return available_tokens * TEXT_CHARS_PER_TOKEN
+
+
+def storage_librarian_text_source_char_limit(
+    *,
+    context_length: int,
+    max_output_tokens: int,
+) -> int:
+    """Return the safe source-envelope budget after prompt wrapper reservation."""
+
+    source_limit = (
+        storage_librarian_text_prompt_char_limit(
+            context_length=context_length,
+            max_output_tokens=max_output_tokens,
+        )
+        - TEXT_ANALYSIS_WRAPPER_RESERVED_CHARS
+    )
+    if source_limit < 2000:
+        raise ValueError(
+            "Storage Librarian text context оставляет недостаточно места для source envelope."
+        )
+    return source_limit
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +155,24 @@ class StorageLibrarianSettings:
             raise ValueError(
                 "STORAGE_LIBRARIAN_HERMES_API_KEY должен содержать минимум 8 символов."
             )
+
+        text_context_length = _int_env(
+            "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH",
+            8192,
+            minimum=2048,
+            maximum=65536,
+        )
+        text_max_output_tokens = _int_env(
+            "STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS",
+            384,
+            minimum=64,
+            maximum=4096,
+        )
+        max_text_chars_limit = storage_librarian_text_source_char_limit(
+            context_length=text_context_length,
+            max_output_tokens=text_max_output_tokens,
+        )
+
         return cls(
             enabled=enabled,
             hermes_base_url=base_url,
@@ -140,11 +201,14 @@ class StorageLibrarianSettings:
                 minimum=1024,
                 maximum=48 * 1024 * 1024,
             ),
-            max_text_chars=_int_env(
-                "STORAGE_LIBRARIAN_MAX_TEXT_CHARS",
-                120_000,
-                minimum=2000,
-                maximum=500_000,
+            max_text_chars=min(
+                _int_env(
+                    "STORAGE_LIBRARIAN_MAX_TEXT_CHARS",
+                    max_text_chars_limit,
+                    minimum=2000,
+                    maximum=500_000,
+                ),
+                max_text_chars_limit,
             ),
             max_zip_entries=_int_env(
                 "STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES",
@@ -187,18 +251,8 @@ class StorageLibrarianSettings:
                 ).strip()
                 or "velvet-librarian-vision:v1"
             ),
-            text_context_length=_int_env(
-                "STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH",
-                8192,
-                minimum=2048,
-                maximum=65536,
-            ),
-            text_max_output_tokens=_int_env(
-                "STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS",
-                384,
-                minimum=64,
-                maximum=4096,
-            ),
+            text_context_length=text_context_length,
+            text_max_output_tokens=text_max_output_tokens,
             vision_context_length=_int_env(
                 "STORAGE_LIBRARIAN_VISION_CONTEXT_LENGTH",
                 16384,
@@ -281,4 +335,6 @@ __all__ = (
     "StorageLibrarianSettings",
     "TerminalStorageLibrarianError",
     "UnsupportedStorageContent",
+    "storage_librarian_text_prompt_char_limit",
+    "storage_librarian_text_source_char_limit",
 )

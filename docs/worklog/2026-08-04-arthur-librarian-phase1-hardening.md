@@ -91,3 +91,20 @@ SQL migration не требуется: поле `analyzer` уже являетс
 ### Следующий шаг
 
 После повторного зелёного required-check run выполнить merge PR #610. Затем выполнить канонический rollout через `opsctl`/`reconcilectl`, сохранить `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` и провести один manual text smoke.
+
+## Follow-up 2026-08-07: context-budget configuration
+
+Production acceptance #586 подтвердил, что runtime prompt guard корректно fail-closed отклоняет oversized text, но выявил конфигурационный mismatch: `STORAGE_LIBRARIAN_MAX_TEXT_CHARS=120000` существенно превышал реально достижимый prompt budget при `num_ctx=8192` и `num_predict=384`.
+
+Follow-up исправляет именно этот mismatch без изменения model context, timeout, auto-enqueue или vision scope:
+
+- общий prompt-character budget вычисляется одной функцией из context/output с прежними conservative reservations;
+- source-envelope limit дополнительно резервирует `2048` символов под analysis wrapper;
+- при стандартных `8192/384` derived source limit равен `11520`, а общий prompt limit остаётся `13568`;
+- Compose больше не навязывает статический `120000`: пустое значение позволяет приложению вычислить безопасный default;
+- explicit `STORAGE_LIBRARIAN_MAX_TEXT_CHARS` остаётся поддержанным: меньший override действует как tighter cap, а legacy завышенное значение безопасно clamp-ится до derived limit, чтобы existing production env не ломал rollout;
+- `extract_storage_text()` больше не режет envelope через slice: превышение effective limit становится terminal fail-closed до Ollama HTTP;
+- chunking по-прежнему намеренно не реализован;
+- `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` и `STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=180` не меняются.
+
+Regression coverage добавляется в существующие Librarian tests, поэтому новый test path и repository-layout baseline не требуются. Protected CI должен пройти на отдельной ветке `fix/librarian-context-budget` перед любым merge или production rollout.

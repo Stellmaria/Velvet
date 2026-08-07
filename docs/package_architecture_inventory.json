@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "p1-package-architecture-baseline",
   "production_module_count": 656,
-  "production_loc": 144094,
+  "production_loc": 144156,
   "layer_counts": {
     "application": 22,
     "composition": 61,
@@ -21319,12 +21319,12 @@
       "module": "velvet_bot.domains.telegram_storage.librarian_content",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 294,
+      "loc": 302,
       "function_count": 11,
       "class_count": 0,
       "handler_count": 0,
-      "max_function_length": 48,
-      "branch_count": 36,
+      "max_function_length": 53,
+      "branch_count": 37,
       "internal_imports": [
         "velvet_bot.domains.telegram_storage.librarian_models"
       ],
@@ -21352,12 +21352,12 @@
       "module": "velvet_bot.domains.telegram_storage.librarian_models",
       "layer": "domain",
       "target_package": "domain",
-      "loc": 284,
-      "function_count": 3,
+      "loc": 340,
+      "function_count": 5,
       "class_count": 9,
       "handler_count": 0,
-      "max_function_length": 142,
-      "branch_count": 7,
+      "max_function_length": 153,
+      "branch_count": 9,
       "internal_imports": [],
       "external_import_count": 4,
       "aiogram_imports": [],
@@ -21375,62 +21375,62 @@
       "package_getattr": false,
       "env_reads": [
         {
-          "line": 78,
+          "line": 121,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 46,
+          "line": 49,
           "owner": "_int_env",
           "call": "os.getenv"
         },
         {
-          "line": 35,
+          "line": 38,
           "owner": "_bool_env",
           "call": "os.getenv"
         },
         {
-          "line": 101,
+          "line": 144,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 96,
+          "line": 139,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 103,
+          "line": 146,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 98,
+          "line": 141,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 162,
+          "line": 226,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 177,
+          "line": 241,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 184,
+          "line": 248,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 215,
+          "line": 269,
           "owner": "from_env",
           "call": "os.getenv"
         },
         {
-          "line": 170,
+          "line": 234,
           "owner": "from_env",
           "call": "os.getenv"
         }
@@ -24763,7 +24763,7 @@
       "module": "velvet_bot.infrastructure.ai.storage_librarian_ollama",
       "layer": "infrastructure",
       "target_package": "infrastructure",
-      "loc": 293,
+      "loc": 291,
       "function_count": 9,
       "class_count": 3,
       "handler_count": 0,

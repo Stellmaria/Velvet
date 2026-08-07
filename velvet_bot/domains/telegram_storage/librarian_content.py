@@ -14,6 +14,7 @@ from velvet_bot.domains.telegram_storage.librarian_models import (
     LibrarianAnalysis,
     LibrarianObject,
     StorageLibrarianSettings,
+    TerminalStorageLibrarianError,
     UnsupportedStorageContent,
 )
 
@@ -145,7 +146,7 @@ def extract_storage_text(
         content = _zip_text(
             data,
             max_entries=settings.max_zip_entries,
-            max_chars=settings.max_text_chars,
+            max_chars=settings.max_text_chars + 1,
             max_uncompressed_bytes=settings.max_object_bytes,
         )
     elif suffix in _TEXT_SUFFIXES or (
@@ -176,10 +177,17 @@ def extract_storage_text(
         f"Original name: {item.original_name}\n"
         f"MIME: {item.mime_type or 'unknown'}\n"
         f"SHA256: {item.sha256}\n"
-        f"Manifest:\n{manifest[:12000]}\n\n"
+        f"Manifest:\n{manifest}\n\n"
         f"Content:\n{content}"
     )
-    return redact_sensitive(envelope)[: settings.max_text_chars]
+    redacted = redact_sensitive(envelope)
+    if len(redacted) > settings.max_text_chars:
+        raise TerminalStorageLibrarianError(
+            "Storage Librarian text input exceeds the configured bounded source limit: "
+            f"chars={len(redacted)}, limit={settings.max_text_chars}. "
+            "Chunking is not implemented; silent truncation is forbidden."
+        )
+    return redacted
 
 
 def _json_object_from_output(output: str) -> JsonObject:

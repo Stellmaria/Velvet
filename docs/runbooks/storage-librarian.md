@@ -93,10 +93,12 @@ STORAGE_LIBRARIAN_SCAN_INTERVAL_SECONDS=300
 STORAGE_LIBRARIAN_POLL_INTERVAL_SECONDS=2
 STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=180
 STORAGE_LIBRARIAN_MAX_OBJECT_BYTES=12582912
-STORAGE_LIBRARIAN_MAX_TEXT_CHARS=120000
+# STORAGE_LIBRARIAN_MAX_TEXT_CHARS=11520
 STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES=40
 STORAGE_LIBRARIAN_MAX_ATTEMPTS=3
 ```
+
+`STORAGE_LIBRARIAN_MAX_TEXT_CHARS` намеренно является необязательным tighter cap. Если переменная не задана, приложение вычисляет безопасный source-envelope limit из `STORAGE_LIBRARIAN_TEXT_CONTEXT_LENGTH` и `STORAGE_LIBRARIAN_TEXT_MAX_OUTPUT_TOKENS`. Для стандартных `8192/384` лимит равен `11520`: из context резервируются output и `1024` токена system/schema overhead, применяется консервативная оценка `2 chars/token`, затем ещё `2048` символов резервируются под analysis wrapper. Явный меньший override сохраняется как tighter cap. Legacy завышенное значение, включая ранее использовавшееся `120000`, безопасно ограничивается derived limit, поэтому rollout не требует предварительной ручной правки production env. Oversized source envelope завершается terminal error до HTTP: chunking пока не реализован, silent truncation запрещён.
 
 Generic `HERMES_BASE_URL`/`HERMES_API_KEY` принадлежат Каэлю и incident/Supervisor-интеграции. Storage Librarian использует dedicated variables и не должен подменять основной Hermes endpoint.
 
