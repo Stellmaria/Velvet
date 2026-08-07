@@ -42,6 +42,7 @@ for required in \
   "$SOURCE_DIR/config.yaml" \
   "$SOURCE_DIR/SOUL.velvet.md" \
   "$SOURCE_DIR/SOUL.max.md" \
+  "$SOURCE_DIR/byesu_image_credentials.py" \
   "$SOURCE_DIR/ensure_runtime_config.py" \
   "$SOURCE_DIR/ensure_idle.py" \
   "$SOURCE_DIR/ensure_launcher_tokens.py" \
@@ -158,6 +159,13 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
             "HERMES_SANDBOX_LAUNCHER_TOKEN", ""
         ),
     }
+    # Only Velvet owns the image route. Keep the media credential out of Max's
+    # environment even if a stale copy existed from a previous experiment.
+    if path.name == "velvet.env":
+        values["BYESU_HERMES_MEDIA_API_KEY"] = (
+            model_values["BYESU_HERMES_MEDIA_API_KEY"]
+            or existing.get("BYESU_HERMES_MEDIA_API_KEY", "")
+        )
     body = "\n".join(
         f"{key}={value}"
         for key, value in values.items()
@@ -170,10 +178,13 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
 source = parse_env(Path(sys.argv[1]))
 operator = parse_env(Path(sys.argv[2]))
 model_values = {
-    "BYESU_HERMES_CODEX_API_KEY": (
-        source.get("BYESU_HERMES_CODEX_API_KEY", "")
-        or source.get("BYESU_HERMES_API_KEY", "")
-        or source.get("OPENAI_API_KEY", "")
+    # Hermes credentials are explicit. Do not fall back to the generic
+    # BYESU_HERMES_API_KEY or OPENAI_API_KEY namespaces.
+    "BYESU_HERMES_CODEX_API_KEY": source.get(
+        "BYESU_HERMES_CODEX_API_KEY", ""
+    ),
+    "BYESU_HERMES_MEDIA_API_KEY": source.get(
+        "BYESU_HERMES_MEDIA_API_KEY", ""
     ),
     "HERMES_CODER_ROUTER_CLIENT_TOKEN": operator.get("HERMES_OPS_CLIENT_TOKEN", ""),
 }
