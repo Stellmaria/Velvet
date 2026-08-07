@@ -12,6 +12,7 @@ VELVET_COMPOSE_FILE="${VELVET_COMPOSE_FILE:-$VELVET_APP_DIR/docker-compose.serve
 HERMES_ENV_FILE="${HERMES_ENV_FILE:-$VELVET_APP_DIR/.env.hermes}"
 SERVICE_USER="${HERMES_ORCHESTRATION_SERVICE_USER:-velvet}"
 CODERS_ROOT="${HERMES_CODERS_ROOT:-/srv/hermes-coders}"
+CODERS_LAUNCHER_ENV="$CODERS_ROOT/launcher.env"
 CODERS_SOURCE="$VELVET_APP_DIR/deploy/hermes-coders"
 BRAIN_SOURCE="$VELVET_APP_DIR/deploy/hermes-brain"
 BRAIN_MANIFEST="$VELVET_APP_DIR/brain-vault/manifest.json"
@@ -256,6 +257,11 @@ env \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
   "$CODERS_SOURCE/install.sh"
 
+if [[ ! -f "$CODERS_LAUNCHER_ENV" || -L "$CODERS_LAUNCHER_ENV" ]]; then
+  echo "Canonical coder launcher env отсутствует или небезопасен: $CODERS_LAUNCHER_ENV" >&2
+  exit 4
+fi
+
 velvet_data_dir="$(python3 - "$VELVET_ENV_FILE" <<'PY'
 from pathlib import Path
 import sys
@@ -298,7 +304,8 @@ chmod 0750 "$hermes_data/orchestration"
 
 runuser -u "$SERVICE_USER" -- env HERMES_CODERS_ROOT="$CODERS_ROOT" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
-  docker compose --profile velvet --profile max \
+  docker compose --env-file "$CODERS_LAUNCHER_ENV" \
+  --profile velvet --profile max \
   -f "$CODERS_SOURCE/compose.yaml" -f "$CODERS_SOURCE/compose.runtime.yaml" \
   -f "$CODERS_SOURCE/compose.security.yaml" config --quiet
 
@@ -373,7 +380,8 @@ systemctl --no-pager --full status velvet-hermes-incident-monitor.service
 runuser -u "$SERVICE_USER" -- env \
   HERMES_CODERS_ROOT="$CODERS_ROOT" \
   HERMES_AGENT_CONTROL_NETWORK="$AGENT_CONTROL_NETWORK" \
-  docker compose --profile velvet --profile max \
+  docker compose --env-file "$CODERS_LAUNCHER_ENV" \
+  --profile velvet --profile max \
   -f "$CODERS_SOURCE/compose.yaml" -f "$CODERS_SOURCE/compose.runtime.yaml" \
   -f "$CODERS_SOURCE/compose.security.yaml" ps
 runuser -u "$SERVICE_USER" -- env \
