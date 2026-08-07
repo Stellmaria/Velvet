@@ -136,9 +136,12 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
     api_key = existing.get("API_SERVER_KEY", "")
     runner_key = existing.get("CODEX_RUNNER_API_KEY", "") or api_key
     values = {
+        # The operator credential is canonical when present so normal install
+        # propagates an intentional rotation to both project-scoped env files.
+        # Preserve the existing key only when operator config supplies none.
         "BYESU_HERMES_CODEX_API_KEY": (
-            existing.get("BYESU_HERMES_CODEX_API_KEY", "")
-            or model_values["BYESU_HERMES_CODEX_API_KEY"]
+            model_values["BYESU_HERMES_CODEX_API_KEY"]
+            or existing.get("BYESU_HERMES_CODEX_API_KEY", "")
         ),
         "TELEGRAM_BOT_TOKEN": existing.get("TELEGRAM_BOT_TOKEN", ""),
         "TELEGRAM_ALLOWED_USERS": existing.get("TELEGRAM_ALLOWED_USERS", ""),
