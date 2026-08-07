@@ -32,6 +32,18 @@ def test_current_runner_allows_git_helpers_and_codex_temp_only() -> None:
     assert "/opt/codex/tmp/** rwk," in profile
 
 
+def test_current_runner_allows_native_modules_only_in_hermes_venv() -> None:
+    profile = (CODER_ROOT / "security/apparmor-hermes-codex-runner").read_text(
+        encoding="utf-8"
+    )
+
+    assert "/opt/hermes/.venv/** mr," in profile
+    assert "/opt/** mr," not in profile
+    assert "/opt/hermes/** mr," not in profile
+    assert "/opt/hermes/.venv/** rw" not in profile
+    assert "/opt/hermes/.venv/** ix" not in profile
+
+
 def test_runtime_smoke_is_bounded_to_coder_release_surface() -> None:
     source = RUNTIME_SMOKE_PATH.read_text(encoding="utf-8")
 
