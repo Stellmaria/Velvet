@@ -87,7 +87,7 @@ class HermesReconcileCheckoutEntrypointTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "got release"):
                 runtime._verify_checkout()
 
-    def test_git_commands_pin_safe_directory_to_exact_checkout(self) -> None:
+    def test_git_commands_pin_safe_directory_and_disable_optional_locks(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             runtime = self.patched_runtime(temporary)
             runtime._run = mock.Mock(
@@ -97,8 +97,13 @@ class HermesReconcileCheckoutEntrypointTests(unittest.TestCase):
             self.assertEqual(runtime._git("rev-parse", "HEAD"), "abc")
             command = runtime._run.call_args.args[0]
             self.assertEqual(
-                command[0:3],
-                ["/usr/bin/git", "-c", f"safe.directory={runtime.app_dir}"],
+                command[0:4],
+                [
+                    "/usr/bin/git",
+                    "--no-optional-locks",
+                    "-c",
+                    f"safe.directory={runtime.app_dir}",
+                ],
             )
             self.assertNotIn("safe.directory=*", command)
 

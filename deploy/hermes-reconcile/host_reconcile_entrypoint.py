@@ -32,6 +32,7 @@ def _patch_runtime(host: ModuleType) -> None:
             return self._run(
                 [
                     "/usr/bin/git",
+                    "--no-optional-locks",
                     "-c",
                     f"safe.directory={self.app_dir}",
                     "-C",
