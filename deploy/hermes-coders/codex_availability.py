@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 DEFAULT_REFRESH_SECONDS = 5 * 60 * 60
+STATE_POLL_SECONDS = 60
 _NOT_REACHED_VALUES = frozenset(
     {"", "none", "null", "false", "not_reached", "not-reached"}
 )
@@ -373,11 +374,20 @@ class CodexAvailabilityGate:
             now = self.clock()
             due = self._next_due(state, now)
             if due > now:
-                self._wake.wait(timeout=max(1.0, due - now))
+                # The one-minute wake is a local state-file poll only. It does
+                # not call OpenAI. This lets an external operator CLI move a
+                # manual hold/clear deadline without waiting for the old sleep.
+                timeout = min(max(1.0, due - now), float(STATE_POLL_SECONDS))
+                self._wake.wait(timeout=timeout)
                 if self._wake.is_set():
                     continue
+                # Re-read persisted state because another process may have
+                # changed it. If the real due time is still in the future, the
+                # loop sleeps again without performing a provider request.
                 state = self.status()
                 now = self.clock()
+                if self._next_due(state, now) > now:
+                    continue
 
             last_checked = _epoch(state.get("last_checked_at")) or 0
             hold_until = _epoch(state.get("manual_hold_until"))
@@ -421,6 +431,7 @@ __all__ = (
     "CodexAvailabilityError",
     "CodexAvailabilityGate",
     "DEFAULT_REFRESH_SECONDS",
+    "STATE_POLL_SECONDS",
     "classify_rate_limits",
     "parse_until",
 )
