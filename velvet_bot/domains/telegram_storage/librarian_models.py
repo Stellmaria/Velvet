@@ -201,11 +201,14 @@ class StorageLibrarianSettings:
                 minimum=1024,
                 maximum=48 * 1024 * 1024,
             ),
-            max_text_chars=_int_env(
-                "STORAGE_LIBRARIAN_MAX_TEXT_CHARS",
+            max_text_chars=min(
+                _int_env(
+                    "STORAGE_LIBRARIAN_MAX_TEXT_CHARS",
+                    max_text_chars_limit,
+                    minimum=2000,
+                    maximum=500_000,
+                ),
                 max_text_chars_limit,
-                minimum=2000,
-                maximum=max_text_chars_limit,
             ),
             max_zip_entries=_int_env(
                 "STORAGE_LIBRARIAN_MAX_ZIP_ENTRIES",
