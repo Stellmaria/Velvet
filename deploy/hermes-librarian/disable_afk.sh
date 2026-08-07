@@ -26,19 +26,26 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 lines = path.read_text(encoding="utf-8-sig").splitlines()
+updates = {
+    "STORAGE_LIBRARIAN_AUTO_ENQUEUE": "false",
+    "STORAGE_LIBRARIAN_AUTO_BACKFILL": "false",
+}
 result: list[str] = []
-seen = False
+seen: set[str] = set()
 for raw in lines:
-    if "=" in raw and raw.split("=", 1)[0].strip() == "STORAGE_LIBRARIAN_AUTO_ENQUEUE":
-        if not seen:
-            result.append("STORAGE_LIBRARIAN_AUTO_ENQUEUE=false")
-            seen = True
-        continue
+    if "=" in raw:
+        name = raw.split("=", 1)[0].strip()
+        if name in updates:
+            if name not in seen:
+                result.append(f"{name}={updates[name]}")
+                seen.add(name)
+            continue
     result.append(raw)
-if not seen:
-    if result and result[-1].strip():
-        result.append("")
-    result.append("STORAGE_LIBRARIAN_AUTO_ENQUEUE=false")
+if result and result[-1].strip():
+    result.append("")
+for name, value in updates.items():
+    if name not in seen:
+        result.append(f"{name}={value}")
 path.write_text("\n".join(result).rstrip() + "\n", encoding="utf-8")
 os.chmod(path, 0o600)
 PY
@@ -47,4 +54,4 @@ cd "$APP_DIR"
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
   up -d --force-recreate bot
 
-echo "Storage Librarian AFK disabled. Manual commands remain available."
+echo "Storage Librarian AFK/backfill disabled. Manual commands remain available."
