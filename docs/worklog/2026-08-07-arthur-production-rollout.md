@@ -121,3 +121,9 @@ PR #671 был merge-коммитом `48b6026fa452195369c0d1b0d04a408fd0022dfd`
 PR #673 был merge-коммитом `895c1f67f97184043f571dbee4d5c0ccfdf2856c`. Rollout run `31188708573` снова остановился до canonical deploy. Verified immutable image был успешно получен по ожидаемому digest, но repair container получил `PermissionError` при открытии bind root `/repair`: после `--cap-drop ALL` capabilities `CHOWN`/`FOWNER` не дают обход DAC для traversal host backup directory.
 
 Credential cleanup step при этом выполнился, а production checkout оставался `77bdfb8306615da479746449bea62cddbb9a652c`. Следующая минимальная корректировка добавляет только `DAC_OVERRIDE` к bounded repair container. Сеть остаётся отключена, mount остаётся только backup directory, canonical deploy/reconcile не меняются, application source/image pair не меняется.
+
+## Продолжение: точное выравнивание GID
+
+PR #675 был merge-коммитом `99fb1cb3d61fd5787179014e3b1659e2a0276e26`. Rollout run `31189099824` успешно прошёл immutable preflight и bounded repair container с `DAC_OVERRIDE`; контейнер изменил два legacy backup файла. После этого host-side exact assertion `uid:gid:644` завершился ошибкой, поэтому canonical deploy/reconcile снова были skipped, credential payload был удалён, production checkout оставался `77bdfb8306615da479746449bea62cddbb9a652c`.
+
+Причина локальна в repair-коде: решение о `chown` сравнивало UID и mode, но не GID, тогда как post-repair assertion требует точный deploy UID/GID. Следующий минимальный fix добавляет `stat.st_gid != target_gid` в условие repair. Границы контейнера, application source/image pair и canonical deploy/reconcile не меняются.
