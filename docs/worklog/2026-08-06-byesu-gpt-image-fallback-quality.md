@@ -5,101 +5,85 @@
 - Линия/фаза: Ауф media generation / provider reliability
 - Статус: частично
 - Ветка: `feat/byesu-image-fallback-quality`
-- PR: #663, draft
 - Базовый commit: `7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f`
+- PR: #663
 - Архитектурные обязательства: #458, #459
 
-## Цель
+## Перед началом
 
-Добавить для существующего GPT Image 2 определённый Codex-first маршрут и ровно
-две Byesu image-модели с автоматическим выбором по параметрам запроса. Сохранить
-пользовательский выбор Sol/Terra/Luna и reasoning effort, исключить двойную
-генерацию и ложное обещание качества.
+### Цель
 
-## Итоговый продуктовый контракт
+Добавить для существующего GPT Image 2 определённый Codex-first маршрут и ровно две Byesu image-модели с автоматическим выбором по параметрам запроса. Сохранить пользовательский выбор Sol/Terra/Luna и reasoning effort, исключить двойную генерацию и ложное обещание качества.
+
+### Исходный контекст
+
+До этой работы GPT Image 2 не имел полного единого контракта для Codex-first 1K, прямого Byesu-маршрута для 2K/4K, лимитного preflight и выбора image-модели по числу референсов. Hermes runtime при этом уже имел tier-aware routing, release graph и fail-closed требования, которые нельзя было обходить отдельным ad-hoc provider path.
+
+После начала PR в `main` были дополнительно слиты #666 и #662. Поэтому ветка была синхронизирована с актуальным `main`, а конфликт в `velvet_bot/app/composition.py` разрешён с сохранением retirement legacy delivery installers из #662 и нового GPT Image quality stage из #663.
+
+### Планируемый объём
+
+- добавить Byesu image adapter и детерминированную routing policy;
+- добавить Codex subscription-limit preflight для 1K;
+- поддержать 1K, 2K и 4K без двойной media generation;
+- сохранить Sol/Terra/Luna и разрешённые reasoning effort;
+- ограничить промт 8000 символами, референсы шестью файлами по 8 МБ;
+- включить runtime sources в compose, release graph, source guard и systemd contracts;
+- добавить Telegram quality UI без отдельной новой composition stage;
+- обновить operator/product docs и focused tests;
+- синхронизировать архитектурные inventories и canonical docs после добавления нового production-модуля.
+
+### Критерии готовности
+
+- 1K сначала использует Codex, кроме доказанного активного исчерпания подписки;
+- 2K/4K идут через Byesu `firefly-gpt-image-2`;
+- fallback после фактического tool execution запрещён;
+- один запрос создаёт не более одного изображения;
+- provider credential contract согласован для Mini/Terra/Luna;
+- package, repository и Telegram navigation inventories воспроизводимы;
+- required GitHub checks зелёные;
+- production rollout не выполняется в рамках merge этого PR без отдельной эксплуатационной процедуры.
+
+### Риски и ограничения
+
+- live provider availability и биллинг нельзя доказать только unit-тестами;
+- stale subscription snapshot должен работать fail-open, иначе возможен ложный отказ от Codex;
+- fallback после начала tool execution создаёт риск двойного списания и поэтому запрещён;
+- новый installer-like UI-модуль увеличивает зарегистрированный архитектурный debt и обязан быть отражён в baseline, а не скрыт ослаблением тестов;
+- production credentials и значения токенов не должны попадать в логи, worklog или repository artifacts.
+
+## После завершения
+
+### Фактически сделано
+
+Реализованы `byesu_image_fallback.py`, `byesu_image_routing_policy.py` и `codex_image_limit_preflight.py`; обновлены Hermes runners, compose runtime, source guard, sandbox contract и systemd release graph. В Telegram добавлен `auf_gpt_image_2_quality_install.py`, а composition сохраняет единый bounded GPT Image stage.
+
+Итоговый продуктовый контракт:
 
 - пользовательский промт: до 8000 символов;
-- референсы: от 0 до 6, каждый до 8 МБ;
+- референсы: 0–6, каждый до 8 МБ;
 - анализатор: `gpt-5.6-luna`, `gpt-5.6-terra` или `gpt-5.6-sol`;
 - reasoning effort: low, medium, high, xhigh или max;
 - качество: 1K, 2K или 4K;
 - фактических генераций: ровно одна.
 
-### 1K
+Для 1K свежий активный limit snapshot с 100% usage или явным rate-limit пропускает Codex и выбирает Byesu. Неоднозначный, устаревший или недоступный preflight работает fail-open. До первого tool execution чистый subscription limit остаётся допустимым fallback-сигналом. При 0–3 референсах используется `gpt-image-2`, при 4–6 используется `firefly-gpt-image-2`.
 
-Перед запуском runtime читает свежие окна подписки через Codex app-server.
-Только явное активное исчерпание, `rate_limit_reached_type` либо 100% до будущего
-`resets_at`, пропускает Codex и сразу запускает подходящий Byesu-route.
+Для 2K/4K Codex пропускается: выбранная GPT-5.6 модель формирует компактный generation prompt, затем `firefly-gpt-image-2` выполняет одну media generation. Silent truncation и автоматический перевод промта ради длины не используются.
 
-Если preflight недоступен, неоднозначен, показывает меньше 100% или уже прошедший
-reset, поведение fail-open: Codex Plus запускается первым. Если он вызывает
-`image_gen`, дальнейший provider fallback запрещён. Чистый `subscription_limit`
-до первого tool execution остаётся страховочным Byesu-route:
+После синхронизации с #662 сохранено удаление legacy delivery installers. Hermes tier smoke обновлён под единый `byesu-shared` credential group без ослабления fail-closed проверок. Package architecture baseline пересчитан штатным генератором: 656 production modules, 144054 LOC и 523 зарегистрированных package violations; shared-contract summary остаётся 3830 функций, 180 transitional private accesses и 0 blocking known contracts.
 
-- 0–3 референса → `gpt-image-2`;
-- 4–6 референсов → `firefly-gpt-image-2`.
+### Миграции и совместимость
 
-### 2K и 4K
+SQL-миграций нет. Старые payload продолжают читать поле `resolution`; stale payload без значения используют 1K в новом UI-contract. Telegram delivery и queue task type не меняются. Изменения Hermes runtime входят в существующий release graph и не создают отдельный долговечный provider lifecycle.
 
-Codex пропускается. Выбранная GPT-5.6 модель анализирует промт и референсы через
-Byesu, затем `firefly-gpt-image-2` создаёт одно изображение выбранного качества.
+### Проверки
 
-## Промт после анализа
+Выполнены и прошли focused contracts для Byesu model selection, routing policy, prompt contract, image limit classification, Telegram GPT Image UI, Hermes release graph и unified tier-provider smoke. Package architecture и repository layout inventories пересчитаны штатными генераторами; их focused tests прошли.
 
-Исходный промт и отчёт анализатора не конкатенируются. GPT-анализатор создаёт
-один финальный generation prompt, сохраняя пользовательскую сцену и добавляя
-только устойчивые признаки внешности. Целевой размер — до 6500 символов,
-абсолютный предел — 8000. Превышение завершает задачу до media generation;
-silent truncation не используется.
+Полный protected CI после этих исправлений выявил только оставшиеся синхронизации generated Telegram navigation inventory, canonical architecture docs и данного worklog contract. Security checks, branch-protection contract и mypy на проверенном head проходили. После следующего commit полный required CI должен быть запущен заново; зелёный финальный статус до его завершения не заявляется.
 
-Перевод всего промта на китайский ради числа символов запрещён: Unicode chars и
-tokens не эквивалентны, а перевод способен менять смысл и приоритеты.
-
-## Реализация
-
-- `deploy/hermes-coders/byesu_image_fallback.py` — API adapter, capability gate,
-  multimodal analysis и one-shot media call;
-- `deploy/hermes-coders/byesu_image_routing_policy.py` — выбор image-модели,
-  Codex-first 1K, прямой Byesu для 2K/4K и compact-prompt contract;
-- `deploy/hermes-coders/codex_image_limit_preflight.py` — свежий limit probe,
-  fail-open классификация и пропуск заведомо обречённого Codex generation;
-- `deploy/hermes-coders/codex_context_launcher_runner.py` — установка runtime
-  policies в порядке fallback → parameter routing → limit preflight;
-- `deploy/hermes-coders/compose.runtime.yaml` — bind mounts, preflight settings и
-  Velvet-only provider gate;
-- `deploy/hermes-coders/runtime_source_guard.py` и systemd unit — release graph;
-- `velvet_bot/app/auf_gpt_image_2_quality_install.py` — UI качества, маршрута,
-  лимита 6 референсов и 8 МБ;
-- `docs/gpt_image_2_codex.md` — операторский и продуктовый контракт;
-- focused tests для model selection, prompt contract, limit classification, UI и
-  runtime graph.
-
-## Совместимость
-
-SQL-миграций нет. Старые payload продолжают читать поле `resolution`; stale
-payload без значения используют 1K в новом UI-contract. Telegram delivery и
-queue task type не меняются.
-
-## Проверки
-
-Draft PR #663 создан. GitHub Actions запустил workflows `tests`, `type check`,
-`docker build`, `security supply chain`, `project notes contract` и
-`branch protection contract`; на момент записи они pending/queued, поэтому
-зелёный статус не заявляется.
-
-В текущей execution-среде checkout получить не удалось из-за отсутствия DNS к
-GitHub, поэтому локальные tests, inventory и live provider smoke не выполнены.
-
-Добавлены unit-контракты:
-
-- `rate_limit_reached_type` пропускает запуск Codex;
-- активное окно 100% пропускает запуск Codex;
-- 99%, прошедший reset и неизвестный snapshot работают fail-open;
-- probe failure возвращает управление обычному Codex-route;
-- preflight installer применяется после parameter routing;
-- новый runtime source покрыт compose, import guard и systemd permissions.
-
-Обязательные live-проверки перед production:
+Обязательные live-проверки перед production остаются отдельными:
 
 1. 1K через доступный Codex Plus;
 2. preflight с 99% продолжает Codex-route;
@@ -113,10 +97,22 @@ GitHub, поэтому локальные tests, inventory и live provider smok
 10. блокировка fallback после synthetic tool execution;
 11. Telegram preview, original document и фактические размеры.
 
-## Незавершённое
+### PR и commit
 
-- дождаться CI и исправить failures;
-- пересчитать package architecture inventory, если required check потребует;
-- выполнить capability smoke существующим production token без публикации ключа;
-- выполнить live media smoke и подтвердить списание/возврат;
-- merge, deploy и restart не выполнять до зелёных проверок.
+- PR: #663 `GPT Image 2: Codex-first routing with Byesu model selection`.
+- Ветка: `feat/byesu-image-fallback-quality`.
+- Базовый commit сессии: `7b561b0bb2d04b7d5fd4fa3ae084d9af830c424f`.
+- Ветка дополнительно синхронизирована с `main` после merge #666 и #662; конфликт composition разрешён вручную с сохранением обоих контрактов.
+- Финальный squash commit определяется только после прохождения protected CI.
+
+### Незавершённое
+
+- пересобрать generated Telegram navigation inventory для 656 Python-файлов;
+- синхронизировать текущий архитектурный срез в `development_status`, `project_memory` и `ARCHITECTURE_AUDIT`;
+- дождаться полного required CI после этих изменений;
+- выполнить live provider/media smoke существующими production credentials без публикации секретов;
+- production deploy и restart не входят в текущую незавершённую CI-работу.
+
+### Следующий шаг
+
+Синхронизировать generated navigation и canonical docs, повторно прогнать protected CI и только при полностью зелёном required наборе выполнить squash merge PR #663. После merge дождаться штатного `publish-image.yml`, чтобы следующий production rollout использовал immutable digest, построенный именно из нового `main`.
