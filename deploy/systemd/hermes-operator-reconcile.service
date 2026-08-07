@@ -34,7 +34,7 @@ ProtectControlGroups=true
 RestrictRealtime=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
-ReadWritePaths=/srv/velvet /srv/hermes-coders /srv/hermes-operator-control/reconcile-docker-config /srv/hermes-operator-control/reconcile-state /etc/systemd/system /run/hermes-operator-reconcile
+ReadWritePaths=/srv/velvet /srv/hermes-coders /srv/hermes-operator-control/reconcile-docker-config /srv/hermes-operator-control/reconcile-state /etc/systemd/system /usr/local/lib/hermes-sandbox-launcher /etc/apparmor.d /run/hermes-operator-reconcile
 
 [Install]
 WantedBy=multi-user.target
