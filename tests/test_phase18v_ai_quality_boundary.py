@@ -78,7 +78,7 @@ class AIQualityBoundaryTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
         connection = SimpleNamespace(
-            execute=AsyncMock(side_effect=["INSERT 0 1", "UPDATE 1", "UPDATE 1"]),
+            execute=AsyncMock(side_effect=["UPDATE 1", "UPDATE 1"]),
             fetch=AsyncMock(return_value=rows),
             transaction=Mock(),
         )
@@ -103,20 +103,20 @@ class AIQualityBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(acquire_context.exited)
         self.assertTrue(transaction_context.entered)
         self.assertTrue(transaction_context.exited)
-        self.assertEqual(connection.execute.await_count, 3)
-        self.assertIn(
+        self.assertEqual(connection.execute.await_count, 2)
+        self.assertNotIn(
             "INSERT INTO media_ai_quality_checks",
             connection.execute.await_args_list[0].args[0],
         )
         self.assertIn(
             "status = 'pending'",
-            connection.execute.await_args_list[1].args[0],
+            connection.execute.await_args_list[0].args[0],
         )
         connection.fetch.assert_awaited_once()
         claim_sql, safe_attempts, safe_limit = connection.fetch.await_args.args
         self.assertIn("FOR UPDATE OF q SKIP LOCKED", claim_sql)
-        self.assertEqual((safe_attempts, safe_limit), (10, 2))
-        batch_call = connection.execute.await_args_list[2]
+        self.assertEqual((safe_attempts, safe_limit), (1, 2))
+        batch_call = connection.execute.await_args_list[1]
         self.assertIn("status = 'processing'", batch_call.args[0])
         self.assertEqual(batch_call.args[1], [41])
         self.assertEqual(batch_call.args[2], provider[:64])
