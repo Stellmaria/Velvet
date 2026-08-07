@@ -122,6 +122,21 @@ class HermesReconcileCheckoutEntrypointTests(unittest.TestCase):
             unit,
         )
 
+    def test_private_tmp_keeps_docker_bind_sources_host_visible(self) -> None:
+        entrypoint = ENTRYPOINT.read_text(encoding="utf-8")
+        unit = UNIT.read_text(encoding="utf-8")
+
+        self.assertIn('self.reconcile_tmp_dir = Path(state_dir) / "tmp"', entrypoint)
+        self.assertIn('env["TMPDIR"] = str(reconcile_tmp_dir)', entrypoint)
+        self.assertIn("PrivateTmp=true", unit)
+        read_write_line = next(
+            line for line in unit.splitlines() if line.startswith("ReadWritePaths=")
+        )
+        self.assertIn(
+            "/srv/hermes-operator-control/reconcile-state",
+            read_write_line.split(),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
