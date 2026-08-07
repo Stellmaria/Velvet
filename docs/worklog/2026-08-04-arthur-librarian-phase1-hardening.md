@@ -102,8 +102,8 @@ Follow-up исправляет именно этот mismatch без измен�
 - source-envelope limit дополнительно резервирует `2048` символов под analysis wrapper;
 - при стандартных `8192/384` derived source limit равен `11520`, а общий prompt limit остаётся `13568`;
 - Compose больше не навязывает статический `120000`: пустое значение позволяет приложению вычислить безопасный default;
-- explicit `STORAGE_LIBRARIAN_MAX_TEXT_CHARS` разрешён только как tighter cap и отклоняется при старте, если превышает derived limit;
-- `extract_storage_text()` больше не режет envelope через slice: превышение лимита становится terminal fail-closed до Ollama HTTP;
+- explicit `STORAGE_LIBRARIAN_MAX_TEXT_CHARS` остаётся поддержанным: меньший override действует как tighter cap, а legacy завышенное значение безопасно clamp-ится до derived limit, чтобы existing production env не ломал rollout;
+- `extract_storage_text()` больше не режет envelope через slice: превышение effective limit становится terminal fail-closed до Ollama HTTP;
 - chunking по-прежнему намеренно не реализован;
 - `STORAGE_LIBRARIAN_AUTO_ENQUEUE=false` и `STORAGE_LIBRARIAN_RUN_TIMEOUT_SECONDS=180` не меняются.
 
