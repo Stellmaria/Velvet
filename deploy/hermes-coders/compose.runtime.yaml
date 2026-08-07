@@ -50,6 +50,7 @@ services:
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
       - ./codex_image_runner.py:/app/codex_image_runner.py:ro
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
+      - ./byesu_image_credentials.py:/app/byesu_image_credentials.py:ro
       - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
       - ./codex_image_limit_preflight.py:/app/codex_image_limit_preflight.py:ro
       - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
@@ -86,6 +87,7 @@ services:
       - ./codex_launcher_runner.py:/app/codex_launcher_runner.py:ro
       - ./codex_image_runner.py:/app/codex_image_runner.py:ro
       - ./byesu_image_fallback.py:/app/byesu_image_fallback.py:ro
+      - ./byesu_image_credentials.py:/app/byesu_image_credentials.py:ro
       - ./byesu_image_routing_policy.py:/app/byesu_image_routing_policy.py:ro
       - ./codex_image_limit_preflight.py:/app/codex_image_limit_preflight.py:ro
       - ./codex_context_launcher_runner.py:/app/codex_context_launcher_runner.py:ro
