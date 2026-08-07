@@ -1,0 +1,88 @@
+name: temporary rerun storage integrity refactor
+
+on:
+  push:
+    branches:
+      - fix/storage-topic-integrity
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: true
+      - name: Apply corrected bounded refactor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import re
+          import textwrap
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/tmp-apply-storage-integrity-refactor.yml').read_text(encoding='utf-8')
+          marker = "python - <<'PY'\n"
+          script = workflow.split(marker, 1)[1].split('\n          PY', 1)[0]
+          script = textwrap.dedent(script)
+          pattern = re.compile(
+              r"old = '''.*?repository\.write_text\(text\.replace\(old, new, 1\), encoding='utf-8'\)",
+              re.DOTALL,
+          )
+          replacement = '''text, count = re.subn(
+              r"(\\s+AND logical_key = \\$2::TEXT)\\n\\s+AND sha256 = \\$3::CHAR\\(64\\)",
+              r"\\1\\n                  AND ($3::CHAR(64) IS NULL OR sha256 = $3::CHAR(64))\\n                ORDER BY migrated_at DESC, id DESC\\n                LIMIT 1",
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"repository get_existing regex replacements={count}")
+          repository.write_text(text, encoding='utf-8')'''
+          script, count = pattern.subn(replacement, script, count=1)
+          if count != 1:
+              raise SystemExit(f'workflow SQL patch replacements={count}')
+          exec(compile(script, '<storage-integrity-refactor>', 'exec'), {})
+          PY
+
+          python scripts/inventory_package_architecture_fast.py --label p1-package-architecture-baseline --write
+          python - <<'PY'
+          import json
+          import re
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          p2 = json.loads(Path('docs/p2_stability_inventory.json').read_text(encoding='utf-8'))
+          subprocess.run([
+              sys.executable,
+              'scripts/update_p2_stability_inventory.py',
+              '--label', str(p2['generated_from_commit']),
+              '--schema-version', str(p2['schema_version']),
+          ], check=True)
+
+          package = json.loads(Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8'))
+          if package['production_module_count'] != 656:
+              raise SystemExit(f"unexpected module count: {package['production_module_count']}")
+          test_path = Path('tests/test_package_architecture_inventory.py')
+          text = test_path.read_text(encoding='utf-8')
+          text = re.sub(r'self\.assertEqual\(\d+, self\.inventory\["production_loc"\]\)', f'self.assertEqual({package["production_loc"]}, self.inventory["production_loc"])', text)
+          text = re.sub(r'self\.assertEqual\(\d+, self\.inventory\["violation_count"\]\)', f'self.assertEqual({package["violation_count"]}, self.inventory["violation_count"])', text)
+          text = re.sub(r'Production LOC: \*\*\d+\*\*', f'Production LOC: **{package["production_loc"]}**', text)
+          test_path.write_text(text, encoding='utf-8')
+          print(json.dumps({
+              'production_module_count': package['production_module_count'],
+              'production_loc': package['production_loc'],
+              'violation_count': package['violation_count'],
+              'repository_module_count': package['repository_module_count'],
+          }, indent=2))
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add velvet_bot docs/package_architecture_inventory.json docs/package_architecture_inventory.md docs/p2_stability_inventory.json docs/p2_stability_inventory.md tests/test_storage_topic_integrity.py tests/test_package_architecture_inventory.py
+          git commit -m "Refine Telegram storage integrity fix in existing boundaries"
+          git push origin HEAD:"$GITHUB_REF_NAME"
