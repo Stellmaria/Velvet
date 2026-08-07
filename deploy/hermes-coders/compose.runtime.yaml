@@ -38,6 +38,9 @@ services:
       CODEX_IMAGE_BYESU_FALLBACK_ENABLED: "${CODEX_IMAGE_BYESU_FALLBACK_ENABLED:-false}"
       CODEX_IMAGE_BYESU_BASE_URL: "${CODEX_IMAGE_BYESU_BASE_URL:-https://byesu.com/v1}"
       CODEX_IMAGE_BYESU_TIMEOUT_SECONDS: "${CODEX_IMAGE_BYESU_TIMEOUT_SECONDS:-600}"
+      # Secret interpolation is supplied only by compose_image_runtime_env.py;
+      # chat/max services never declare or receive this credential.
+      BYESU_MEDIA_GEN_API_KEY: "${BYESU_MEDIA_GEN_API_KEY:-}"
     volumes:
       - ./codex_runner.py:/app/codex_runner.py:ro
       - ./codex_routed_runner.py:/app/codex_routed_runner.py:ro
