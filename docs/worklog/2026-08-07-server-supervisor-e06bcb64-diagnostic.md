@@ -4,11 +4,18 @@
 - ID: `server-supervisor-e06bcb64-diagnostic-20260807`
 - Линия/фаза: `Velvet / production diagnostics`
 - Статус: `частично`
+- Ветка: `diag/server-supervisor-e06bcb64-20260807`
+- Базовый commit: `056242d2ffdb3b8696d6d78c8f975459acba077d`
 - Production HEAD после rollback: `0dceb104a8d5c6a1a25dda07c708b916f2e9439f`
-- Целевой main commit: `056242d2ffdb3b8696d6d78c8f975459acba077d`
 - Failed operation: `e06bcb64c2764cba`
 
-## Перед изменением
+## Перед началом
+
+### Цель
+
+Получить bounded redacted evidence из protected `server-supervisor.log` для failed production update operation `e06bcb64c2764cba`, локализовать exact failing command/stage и исключить blind retry.
+
+### Исходный контекст
 
 После merge PR #696 повторный owner-authorized `velvet update` дошёл до целевого checkout и перевёл bot через `starting`, но завершился terminal `error`:
 
@@ -19,36 +26,54 @@
 
 После ошибки production checkout снова находится на `0dceb104a8d5c6a1a25dda07c708b916f2e9439f`, `remote_head_sha=056242d2ffdb3b8696d6d78c8f975459acba077d`, `dirty=false`.
 
-Предыдущий подтверждённый blocker `build tag cannot contain a digest` исправлен PR #696, поэтому новый terminal error требует отдельного evidence из protected Server Supervisor log, без blind retry.
+Предыдущий blocker `build tag cannot contain a digest` уже исправлен PR #696, поэтому этот terminal error рассматривается как отдельная причина.
 
-## Что сделано
+### Планируемый объём
 
-Обновлён `.github/workflows/production-server-supervisor-log-diagnostic.yml` для bounded read-only диагностики operation `e06bcb64c2764cba`.
+- retarget существующего read-only production diagnostic workflow на окно `2026-08-07 18:52:50-18:54:45 UTC`;
+- предпочитать exact log record с marker `Server Supervisor operation failed kind=update`;
+- использовать bounded fallback window только если marker не найден;
+- возвращать максимум 180 строк после redaction;
+- проверять production branch `main`, expected rollback HEAD `0dceb104...` и clean tracked checkout;
+- не выполнять update, rollback, restart, reconcile, Docker/systemd mutations или Git writes на production.
 
-Workflow после merge:
+### Критерии готовности
 
-- проверяет production branch `main`, ожидаемый rollback HEAD `0dceb104...` и clean tracked checkout;
-- читает только `server-supervisor.log`;
-- ограничивает поиск окном `2026-08-07 18:52:50-18:54:45 UTC`;
-- предпочитает exact log record с marker `Server Supervisor operation failed kind=update`;
-- если marker не найден, использует bounded fallback window;
-- возвращает максимум 180 строк;
-- redacts authorization bearer, API key, token, password, secret, credential, PostgreSQL credentials и распространённые token formats;
-- не выполняет update, rollback, restart, reconcile, Docker/systemd mutations или Git writes на production.
+- protected PR CI green на exact head;
+- merge-triggered diagnostic workflow terminal;
+- output содержит exact failure record/traceback либо явный bounded fallback/no-match;
+- production checkout остаётся неизменным;
+- следующий hotfix строится только по полученному failure evidence.
 
-## Acceptance
+### Риски и ограничения
 
-1. protected PR CI green на exact head;
-2. merge-triggered diagnostic workflow terminal;
-3. output содержит exact failure record/traceback либо явный bounded fallback/no-match;
-4. production checkout остаётся неизменным;
-5. следующий hotfix строится только по полученному failure evidence.
+Workflow получает read-only SSH доступ к production log contour, поэтому output должен оставаться bounded и redacted. Диагностика не должна менять production state и не должна превращаться в постоянный обход Kael permission model.
 
-## Решения
+## После завершения
 
-- Не повторять `velvet update`, пока operation `e06bcb64c2764cba` не локализована по protected log.
-- Не запускать `reconcile coders` до terminal успешного production update на exact target SHA.
-- Не расширять постоянные права Каэля ради чтения protected host log, если достаточно одноразового GitHub Actions diagnostic contour.
+### Фактически сделано
+
+- `.github/workflows/production-server-supervisor-log-diagnostic.yml` retargeted на operation `e06bcb64c2764cba`;
+- добавлен exact failure-record marker filter;
+- добавлен bounded fallback window;
+- redaction расширен на credential-like assignments;
+- production expected HEAD сохранён на подтверждённом rollback commit `0dceb104...`.
+
+### Миграции и совместимость
+
+Миграций данных и runtime config нет. Production services, `.env.server`, checkout и Docker/systemd state workflow не изменяет.
+
+### Проверки
+
+До merge требуется полный protected CI. После merge требуется terminal success diagnostic workflow и разбор redacted evidence.
+
+### PR и commit
+
+PR #697. Exact PR head после правки worklog определяется GitHub и merge допускается только после terminal green protected CI.
+
+### Следующий шаг
+
+После merge получить protected Server Supervisor failure record для `e06bcb64c2764cba`, определить exact failing command/stage и подготовить минимальный отдельный hotfix, если он требуется.
 
 ### Незавершённое
 
