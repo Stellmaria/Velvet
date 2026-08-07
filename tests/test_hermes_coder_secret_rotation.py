@@ -75,7 +75,7 @@ class HermesCoderSecretRotationTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         return velvet, _read_env(velvet), max_env, _read_env(max_env)
 
-    def test_operator_byesu_key_rotates_existing_project_keys(self) -> None:
+    def test_operator_codex_key_rotates_existing_project_keys(self) -> None:
         velvet_path, velvet, max_path, max_env = self._run_sync(
             source_values={"BYESU_HERMES_CODEX_API_KEY": "new-canonical-byesu-key"},
             velvet_values={
@@ -118,7 +118,7 @@ class HermesCoderSecretRotationTests(unittest.TestCase):
         self.assertEqual(0o600, velvet_path.stat().st_mode & 0o777)
         self.assertEqual(0o600, max_path.stat().st_mode & 0o777)
 
-    def test_missing_operator_byesu_key_preserves_existing_project_keys(self) -> None:
+    def test_missing_operator_codex_key_preserves_existing_project_keys(self) -> None:
         _, velvet, _, max_env = self._run_sync(
             source_values={},
             velvet_values={"BYESU_HERMES_CODEX_API_KEY": "existing-velvet-key"},
@@ -128,15 +128,53 @@ class HermesCoderSecretRotationTests(unittest.TestCase):
         self.assertEqual("existing-velvet-key", velvet["BYESU_HERMES_CODEX_API_KEY"])
         self.assertEqual("existing-max-key", max_env["BYESU_HERMES_CODEX_API_KEY"])
 
-    def test_legacy_operator_alias_can_rotate_existing_project_keys(self) -> None:
+    def test_generic_operator_aliases_do_not_rotate_hermes_codex_key(self) -> None:
         _, velvet, _, max_env = self._run_sync(
-            source_values={"BYESU_HERMES_API_KEY": "alias-byesu-key"},
+            source_values={
+                "BYESU_HERMES_API_KEY": "legacy-alias-key",
+                "OPENAI_API_KEY": "generic-openai-key",
+            },
             velvet_values={"BYESU_HERMES_CODEX_API_KEY": "existing-velvet-key"},
             max_values={"BYESU_HERMES_CODEX_API_KEY": "existing-max-key"},
         )
 
-        self.assertEqual("alias-byesu-key", velvet["BYESU_HERMES_CODEX_API_KEY"])
-        self.assertEqual("alias-byesu-key", max_env["BYESU_HERMES_CODEX_API_KEY"])
+        self.assertEqual("existing-velvet-key", velvet["BYESU_HERMES_CODEX_API_KEY"])
+        self.assertEqual("existing-max-key", max_env["BYESU_HERMES_CODEX_API_KEY"])
+        self.assertNotIn("BYESU_HERMES_API_KEY", velvet)
+        self.assertNotIn("OPENAI_API_KEY", velvet)
+        self.assertNotIn("BYESU_HERMES_API_KEY", max_env)
+        self.assertNotIn("OPENAI_API_KEY", max_env)
+
+    def test_media_key_rotates_only_velvet_and_is_removed_from_max(self) -> None:
+        _, velvet, _, max_env = self._run_sync(
+            source_values={"BYESU_HERMES_MEDIA_API_KEY": "new-media-key"},
+            velvet_values={
+                "BYESU_HERMES_CODEX_API_KEY": "velvet-codex-key",
+                "BYESU_HERMES_MEDIA_API_KEY": "old-media-key",
+            },
+            max_values={
+                "BYESU_HERMES_CODEX_API_KEY": "max-codex-key",
+                "BYESU_HERMES_MEDIA_API_KEY": "stale-max-media-key",
+            },
+        )
+
+        self.assertEqual("new-media-key", velvet["BYESU_HERMES_MEDIA_API_KEY"])
+        self.assertNotIn("BYESU_HERMES_MEDIA_API_KEY", max_env)
+
+    def test_missing_operator_media_key_preserves_existing_velvet_media_key(self) -> None:
+        _, velvet, _, max_env = self._run_sync(
+            source_values={},
+            velvet_values={
+                "BYESU_HERMES_CODEX_API_KEY": "velvet-codex-key",
+                "BYESU_HERMES_MEDIA_API_KEY": "existing-media-key",
+            },
+            max_values={
+                "BYESU_HERMES_CODEX_API_KEY": "max-codex-key",
+            },
+        )
+
+        self.assertEqual("existing-media-key", velvet["BYESU_HERMES_MEDIA_API_KEY"])
+        self.assertNotIn("BYESU_HERMES_MEDIA_API_KEY", max_env)
 
 
 if __name__ == "__main__":
