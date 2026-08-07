@@ -17,8 +17,13 @@ ROOT = Path(__file__).resolve().parents[1]
 class KieWorkerBootstrapContractTests(unittest.TestCase):
     def test_app_workers_exports_canonical_friendly_worker(self) -> None:
         self.assertIs(workers.KieGenerationWorker, FriendlyKieGenerationWorker)
-        self.assertTrue(
-            callable(workers.KieGenerationWorker.install_delivery_handler)
+        self.assertNotIn(
+            "install_delivery_handler",
+            workers.KieGenerationWorker.__dict__,
+        )
+        self.assertIn(
+            "_deliver_best_effort",
+            workers.KieGenerationWorker.__dict__,
         )
 
     def test_feature_installers_execute_in_declared_order(self) -> None:

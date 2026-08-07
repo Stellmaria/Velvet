@@ -84,10 +84,6 @@ _FEATURE_STAGE_NAMES = (
     "install_auf_photo_model_modes",
     "install_auf_owner_pricing_ui",
     "install_auf_margin_dashboard",
-    "install_original_image_delivery_hotfix",
-    "install_original_video_delivery_hotfix",
-    "install_auf_result_delivery_recovery",
-    "install_auf_active_delivery_fix",
     "install_auf_charged_queue",
     "install_auf_generation_receipts",
     "install_krita_remote_worker",
@@ -97,7 +93,6 @@ _FEATURE_STAGE_NAMES = (
 
 
 def _build_feature_stages() -> tuple[CompositionStage, ...]:
-    from velvet_bot.app.auf_active_delivery_fix import install_auf_active_delivery_fix
     from velvet_bot.app.auf_branding import install_auf_branding
     from velvet_bot.app.auf_cancel_ui_install import install_auf_cancel_ui
     from velvet_bot.app.auf_charged_queue_install import install_auf_charged_queue
@@ -121,20 +116,11 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
     from velvet_bot.app.auf_reference_privacy_install import (
         install_auf_reference_privacy,
     )
-    from velvet_bot.app.auf_result_delivery_recovery import (
-        install_auf_result_delivery_recovery,
-    )
     from velvet_bot.app.auf_runtime_install import install_auf_runtime_dispatcher
     from velvet_bot.app.auf_user_portal_install import install_auf_user_portal
     from velvet_bot.app.auf_wallet_ui_install import install_auf_wallet_ui
     from velvet_bot.app.auf_workspace_ui_install import install_auf_workspace_ui
     from velvet_bot.app.krita_remote_install import install_krita_remote_worker
-    from velvet_bot.app.original_image_delivery_hotfix import (
-        install_original_image_delivery_hotfix,
-    )
-    from velvet_bot.app.original_video_delivery_hotfix import (
-        install_original_video_delivery_hotfix,
-    )
     from velvet_bot.app.telegram_progress_resilience import (
         install_telegram_progress_resilience,
     )
@@ -184,22 +170,6 @@ def _build_feature_stages() -> tuple[CompositionStage, ...]:
         CompositionStage(
             "install_auf_margin_dashboard",
             install_auf_margin_dashboard,
-        ),
-        CompositionStage(
-            "install_original_image_delivery_hotfix",
-            install_original_image_delivery_hotfix,
-        ),
-        CompositionStage(
-            "install_original_video_delivery_hotfix",
-            install_original_video_delivery_hotfix,
-        ),
-        CompositionStage(
-            "install_auf_result_delivery_recovery",
-            install_auf_result_delivery_recovery,
-        ),
-        CompositionStage(
-            "install_auf_active_delivery_fix",
-            install_auf_active_delivery_fix,
         ),
         CompositionStage("install_auf_charged_queue", install_auf_charged_queue),
         CompositionStage(

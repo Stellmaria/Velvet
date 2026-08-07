@@ -289,29 +289,41 @@ class DurableMediaQueueContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("grs:already-paid", runtime["active_provider_task_id"])
         self.assertEqual("running", runtime["status"])
 
-    async def test_legacy_worker_override_cannot_steal_delivery_ownership(self) -> None:
-        class LegacyOverride(FriendlyKieGenerationWorker):
-            async def _deliver_best_effort(self, **kwargs) -> None:
-                raise AssertionError("legacy delivery override executed")
+    async def test_active_worker_disables_inherited_best_effort_delivery(self) -> None:
+        worker = object.__new__(FriendlyKieGenerationWorker)
+        handler = FriendlyKieGenerationWorker.__dict__["_deliver_best_effort"]
 
-        worker = object.__new__(LegacyOverride)
-        guarded = worker._deliver_best_effort
+        self.assertEqual("_deliver_best_effort", handler.__name__)
+        await handler(worker, chat_id=None, request=None, record=None)  # type: ignore[arg-type]
 
-        self.assertEqual("_durable_delivery_guard", guarded.__name__)
-        await guarded(chat_id=None, request=None, record=None)  # type: ignore[arg-type]
+    def test_legacy_delivery_installers_are_retired(self) -> None:
+        retired = (
+            "velvet_bot/app/original_image_delivery_hotfix.py",
+            "velvet_bot/app/original_video_delivery_hotfix.py",
+            "velvet_bot/app/auf_result_delivery_recovery.py",
+            "velvet_bot/app/auf_active_delivery_fix.py",
+        )
+        for path in retired:
+            self.assertFalse(Path(path).exists(), path)
 
-    def test_compatibility_installer_stages_are_explicitly_neutralized(self) -> None:
-        source = Path(
-            "velvet_bot/domains/media_generation/friendly_worker.py"
+        composition = Path("velvet_bot/app/composition.py").read_text(encoding="utf-8")
+        friendly = Path("velvet_bot/domains/media_generation/friendly_worker.py").read_text(
+            encoding="utf-8"
+        )
+        base_worker = Path(
+            "velvet_bot/domains/media_generation/file_delivery_worker.py"
         ).read_text(encoding="utf-8")
-        for module_name in (
-            "original_image_delivery_hotfix",
-            "original_video_delivery_hotfix",
-            "auf_result_delivery_recovery",
-            "auf_active_delivery_fix",
+        for token in (
+            "install_original_image_delivery_hotfix",
+            "install_original_video_delivery_hotfix",
+            "install_auf_result_delivery_recovery",
+            "install_auf_active_delivery_fix",
         ):
-            self.assertIn(module_name, source)
-        self.assertIn("module._INSTALLED = True", source)
+            self.assertNotIn(token, composition)
+            self.assertNotIn(token, friendly)
+        self.assertIn("install_media_delivery_ui()", friendly)
+        self.assertNotIn("_disable_legacy_delivery_installers", friendly)
+        self.assertNotIn("install_delivery_handler", base_worker)
 
     def test_migration_models_independent_delivery_channels_and_resolution(self) -> None:
         migration = Path("migrations/z029_durable_media_delivery.sql").read_text(
