@@ -1,0 +1,58 @@
+name: Diagnose PR 663 package architecture
+
+on:
+  push:
+    branches:
+      - feat/byesu-image-fallback-quality
+    paths:
+      - .github/workflows/diag-663-package-inventory.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+
+      - name: Generate package architecture baseline in workspace
+        run: python scripts/inventory_package_architecture.py --write --bootstrap-exemptions --label p1-package-architecture-baseline
+
+      - name: Print reviewed baseline metrics
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          inventory = json.loads(Path('docs/package_architecture_inventory.json').read_text(encoding='utf-8'))
+          exemptions = json.loads(Path('docs/package_architecture_exemptions.json').read_text(encoding='utf-8'))
+          summary = {
+              'production_module_count': inventory['production_module_count'],
+              'production_loc': inventory['production_loc'],
+              'root_module_count': inventory['root_module_count'],
+              'root_unclassified_count': inventory['root_unclassified_count'],
+              'router_count': inventory['router_count'],
+              'router_duplicate_count': inventory['router_duplicate_count'],
+              'repository_module_count': inventory['repository_module_count'],
+              'installer_graph_count': len(inventory['installer_graph']),
+              'violation_count': inventory['violation_count'],
+              'shared_contract_summary': inventory['shared_contract_summary'],
+              'burn_down_issues': sorted({str(item['issue']) for item in exemptions['exceptions']}),
+              'baseline_issue': exemptions['baseline_issue'],
+          }
+          print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+
+      - name: Show remaining hard-coded expectation drift
+        continue-on-error: true
+        run: python -m unittest tests.test_package_architecture_inventory
