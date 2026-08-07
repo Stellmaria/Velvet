@@ -221,7 +221,7 @@ class PersonalQualityRouteTests(unittest.IsolatedAsyncioTestCase):
         json_schema = cast(dict[str, Any], response_format["json_schema"])
         self.assertEqual("velvet_personal_quality_flash", json_schema["name"])
         self.assertEqual(contract.schema, json_schema["schema"])
-        self.assertEqual(1700, body["max_tokens"])
+        self.assertEqual(512, body["max_tokens"])
 
     async def test_personal_quality_cache_hit_skips_provider_execution(self) -> None:
         flash = _CacheOnlyClient()

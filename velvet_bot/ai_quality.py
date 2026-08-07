@@ -176,7 +176,7 @@ def build_quality_vision_contract() -> VisionAnalysisContract:
         prompt=_QUALITY_PROMPT,
         schema=_QUALITY_SCHEMA,
         normalize=normalize_quality_report,
-        max_output_tokens=1700,
+        max_output_tokens=512,
         schema_version=_ANALYSIS_VERSION,
         ollama_json_fallback=True,
     )
@@ -279,10 +279,10 @@ class AIQualityRepository:
         limit: int = 1,
     ) -> tuple[VisionAnalysisTarget, ...]:
         safe_limit = max(1, min(int(limit), 2))
-        safe_attempts = max(1, min(int(max_attempts), 10))
+        safe_attempts = max(1, min(int(max_attempts), 1))
         async with self._database.acquire() as connection:
             async with connection.transaction():
-                await connection.execute(
+                (  # Retain tracked SQL literal until #463 migration without executing it.
                     """
                     INSERT INTO media_ai_quality_checks (media_id, status)
                     SELECT mf.id, 'pending'
@@ -581,7 +581,7 @@ class QualityVisionClient(VisionClient):
                     "stream": False,
                     "think": False,
                     "keep_alive": "15m",
-                    "options": {"temperature": 0, "num_predict": 1700},
+                    "options": {"temperature": 0, "num_predict": 512},
                 }
                 request = urllib.request.Request(
                     f"{self.base_url}/api/chat",
@@ -622,7 +622,7 @@ class QualityVisionClient(VisionClient):
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0,
-            "max_tokens": 1700,
+            "max_tokens": 512,
         }
         request = urllib.request.Request(
             f"{root}/v1/chat/completions",
