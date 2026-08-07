@@ -1,0 +1,134 @@
+name: bootstrap verified production deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/bootstrap-verified-production-deploy.yml
+
+concurrency:
+  group: velvet-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/stellmaria/velvet
+  EXPECTED_PROD_HEAD: 0dceb104a8d5c6a1a25dda07c708b916f2e9439f
+
+jobs:
+  bootstrap-verified-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - name: Checkout exact main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build revision-labelled application image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --tag "${IMAGE_REPOSITORY}:${GITHUB_SHA}" .
+
+      - name: Block high and critical findings
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # 0.35.0
+        with:
+          image-ref: ghcr.io/stellmaria/velvet:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Authenticate to GHCR
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish image and resolve immutable digest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tag="${IMAGE_REPOSITORY}:${GITHUB_SHA}"
+          docker push "$tag"
+          digest_ref="$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')"
+          if [[ ! "$digest_ref" =~ ^ghcr\.io/stellmaria/velvet@sha256:[0-9a-f]{64}$ ]]; then
+            echo "Registry did not return an immutable Velvet digest: $digest_ref" >&2
+            exit 1
+          fi
+          revision="$(docker image inspect "$digest_ref" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+          if [[ "$revision" != "$GITHUB_SHA" ]]; then
+            echo "Published image revision mismatch: expected $GITHUB_SHA, got ${revision:-<missing>}" >&2
+            exit 1
+          fi
+          printf 'IMAGE_DIGEST=%s\n' "$digest_ref" >> "$GITHUB_ENV"
+          printf 'source_commit=%s\nimage_digest=%s\n' "$GITHUB_SHA" "$digest_ref"
+
+      - name: Prepare SSH
+        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy exact main commit with verified image
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$IMAGE_DIGEST"
+          port="${DEPLOY_PORT:-22}"
+          app_dir="${DEPLOY_APP_DIR:-/srv/velvet}"
+          printf -v remote_command \
+            'APP_DIR=%q EXPECTED_PROD_HEAD=%q TARGET_SHA=%q IMAGE_DIGEST=%q bash -s' \
+            "$app_dir" "$EXPECTED_PROD_HEAD" "$TARGET_SHA" "$IMAGE_DIGEST"
+          ssh -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$remote_command" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$APP_DIR"
+
+          branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+          head="$(git rev-parse HEAD)"
+          dirty="$(git status --porcelain --untracked-files=no)"
+          printf 'pre_branch=%s\npre_head=%s\n' "$branch" "$head"
+          test "$branch" = main
+          test "$head" = "$EXPECTED_PROD_HEAD"
+          test -z "$dirty"
+
+          VELVET_APP_DIR="$APP_DIR" \
+          VELVET_DEPLOY_TARGET_SHA="$TARGET_SHA" \
+          VELVET_DEPLOY_IMAGE="$IMAGE_DIGEST" \
+            bash "$APP_DIR/deploy/server/deploy.sh"
+
+          deployed_head="$(git rev-parse HEAD)"
+          dirty_after="$(git status --porcelain --untracked-files=no)"
+          printf 'deployed_head=%s\n' "$deployed_head"
+          test "$deployed_head" = "$TARGET_SHA"
+          test -z "$dirty_after"
+          REMOTE
