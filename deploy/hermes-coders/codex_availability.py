@@ -390,9 +390,6 @@ class CodexAvailabilityGate:
         return min(candidates) if candidates else now + self.refresh_seconds
 
     def _background_loop(self) -> None:
-        # Startup probe establishes the first real dynamic value and starts the
-        # independent five-hour cadence.
-        self.refresh(source="startup", periodic=True)
         while True:
             self._wake.clear()
             state = self.status()
@@ -444,6 +441,10 @@ class CodexAvailabilityGate:
         with self._background_lock:
             if self._background_started:
                 return
+            # Establish a fresh route decision before the HTTP server starts.
+            # This prevents a persisted stale true from being used during the
+            # tiny window between process start and the first background probe.
+            self.refresh(source="startup", periodic=True)
             self._background_started = True
             threading.Thread(
                 target=self._background_loop,
