@@ -268,11 +268,19 @@ class CodexAvailabilityGate:
                 state["last_checked_at"] = now
                 state["last_check_source"] = source
                 state["last_error"] = str(error)[:1000] or type(error).__name__
+                if source == "startup":
+                    # A persisted true from the previous process is stale until
+                    # the new process proves availability. Startup probe failure
+                    # must therefore fail closed before the HTTP server opens.
+                    state["provider_available"] = None
+                    state["provider_reason"] = "unknown"
+                    state["codex_available_at"] = None
+                    state["rate_limits"] = None
                 if periodic:
                     state["last_periodic_check_at"] = now
                     state["next_periodic_check_at"] = now + self.refresh_seconds
-                # Unknown startup remains false. A transient probe error does not
-                # invent a different value over an already-known provider state.
+                # Non-startup transient probe errors preserve the last known
+                # provider decision and never invent a different value.
             return self._update(failed)
 
         def observed(state: dict[str, Any]) -> None:
