@@ -1,19 +1,19 @@
 # Package-wide architecture inventory
 
 - Generated from: `p1-package-architecture-baseline`
-- Production modules: **655**
-- Production LOC: **143720**
+- Production modules: **656**
+- Production LOC: **144054**
 - Root modules: **113**
 - Active Router imports: **84**
 - Repository modules: **46**
 - Startup installer stages: **21**
-- Registered package violations: **519**
-- Registered exemptions: **519**
+- Registered package violations: **523**
+- Registered exemptions: **523**
 
 ## Layers
 
 - `application`: **22** modules
-- `composition`: **60** modules
+- `composition`: **61** modules
 - `core`: **8** modules
 - `domain`: **187** modules
 - `infrastructure`: **33** modules
@@ -51,7 +51,7 @@
 17. `install_auf_charged_queue` from `velvet_bot.app.auf_charged_queue_install.install_auf_charged_queue`; patched symbols: none detected.
 18. `install_auf_generation_receipts` from `install_generation_receipts_with_owner_cost_privacy`; patched symbols: none detected.
 19. `install_krita_remote_worker` from `velvet_bot.app.krita_remote_install.install_krita_remote_worker`; patched symbols: `bootstrap._close_application_resources`, `bootstrap.build_worker_manager`, `workers_module.build_worker_manager`.
-20. `install_auf_gpt_image_2` from `velvet_bot.app.auf_gpt_image_2_install.install_auf_gpt_image_2`; patched symbols: `photo_router.handle_auf_photo_command`, `photo_router.handle_auf_photo_input`.
+20. `install_auf_gpt_image_2` from `install_gpt_image_with_byesu_quality`; patched symbols: none detected.
 21. `install_auf_branding` from `velvet_bot.app.auf_branding.install_auf_branding`; patched symbols: `Bot.__call__`.
 
 ## Violation baseline
@@ -60,11 +60,11 @@
 - `domain-aiogram-import`: **20**
 - `domain-layer-import`: **3**
 - `dynamic-import`: **17**
-- `foreign-assignment`: **34**
-- `installed-sentinel`: **37**
-- `installer-like-module`: **23**
+- `foreign-assignment`: **35**
+- `installed-sentinel`: **38**
+- `installer-like-module`: **24**
 - `method-assign-ignore`: **5**
-- `monolithic-function`: **25**
+- `monolithic-function`: **26**
 - `monolithic-module-loc`: **19**
 - `package-getattr-side-effect`: **19**
 - `sql-outside-persistence`: **107**

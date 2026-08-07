@@ -140,10 +140,6 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
             existing.get("BYESU_HERMES_CODEX_API_KEY", "")
             or model_values["BYESU_HERMES_CODEX_API_KEY"]
         ),
-        "BYESU_HERMES_GPT_PRO_API_KEY": (
-            existing.get("BYESU_HERMES_GPT_PRO_API_KEY", "")
-            or model_values["BYESU_HERMES_GPT_PRO_API_KEY"]
-        ),
         "TELEGRAM_BOT_TOKEN": existing.get("TELEGRAM_BOT_TOKEN", ""),
         "TELEGRAM_ALLOWED_USERS": existing.get("TELEGRAM_ALLOWED_USERS", ""),
         "GH_TOKEN": existing.get("GH_TOKEN", ""),
@@ -171,9 +167,8 @@ def write_env(path: Path, model_values: dict[str, str]) -> None:
 source = parse_env(Path(sys.argv[1]))
 operator = parse_env(Path(sys.argv[2]))
 model_values = {
-    "BYESU_HERMES_CODEX_API_KEY": source.get("BYESU_HERMES_CODEX_API_KEY", ""),
-    "BYESU_HERMES_GPT_PRO_API_KEY": (
-        source.get("BYESU_HERMES_GPT_PRO_API_KEY", "")
+    "BYESU_HERMES_CODEX_API_KEY": (
+        source.get("BYESU_HERMES_CODEX_API_KEY", "")
         or source.get("BYESU_HERMES_API_KEY", "")
         or source.get("OPENAI_API_KEY", "")
     ),
