@@ -84,7 +84,10 @@ class HermesCodersContractTests(unittest.TestCase):
         source = Path("deploy/systemd/hermes-coders.service").read_text(encoding="utf-8")
         preflight = f"ExecStartPre=+/usr/bin/python3 {RELEASE_PREFIX}/preflight.py"
         sandbox = f"ExecStartPre=+/usr/bin/python3 {RELEASE_PREFIX}/sandbox_preflight.py"
-        start = "ExecStart=/usr/bin/docker compose --project-name hermes-coders"
+        start = (
+            f"ExecStart=/usr/bin/python3 {RELEASE_PREFIX}/compose_image_runtime_env.py "
+            "/usr/bin/docker compose --project-name hermes-coders"
+        )
         smoke = f"ExecStartPost=/usr/bin/python3 {RELEASE_PREFIX}/runtime_smoke.py"
         for marker in (preflight, sandbox, start, smoke, "--no-build"):
             self.assertIn(marker, source)
@@ -98,6 +101,7 @@ class HermesCodersContractTests(unittest.TestCase):
             ROOT / "codex_runner.py",
             ROOT / "runtime_smoke.py",
             ROOT / "codex_launcher_runner.py",
+            ROOT / "compose_image_runtime_env.py",
             ROOT / "sandbox_launcher_client.py",
             ROOT / "sandbox_preflight.py",
             LAUNCHER / "launcher_contract.py",
