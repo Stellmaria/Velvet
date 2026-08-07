@@ -10,6 +10,7 @@ CODERS = ROOT / "deploy" / "hermes-coders"
 if str(CODERS) not in sys.path:
     sys.path.insert(0, str(CODERS))
 
+import byesu_image_routing_policy as routing  # noqa: E402
 import codex_image_limit_preflight as preflight  # noqa: E402
 
 
@@ -94,13 +95,19 @@ class CodexImageLimitPreflightTests(unittest.TestCase):
         ):
             self.assertIsNone(preflight._fresh_snapshot(manager))
 
-    def test_runtime_installs_preflight_after_parameter_routing(self) -> None:
+    def test_preflight_applies_to_every_supported_quality(self) -> None:
+        for resolution in ("1K", "2K", "4K"):
+            self.assertTrue(routing.uses_codex_primary(resolution), resolution)
+
+    def test_runtime_install_order_is_routing_then_preflight_then_high_res(self) -> None:
         source = (
             CODERS / "codex_context_launcher_runner.py"
         ).read_text(encoding="utf-8")
-        routing = source.index("install_byesu_image_routing_policy()")
-        limit = source.index("install_codex_image_limit_preflight()")
-        self.assertLess(routing, limit)
+        routing_index = source.index("install_byesu_image_routing_policy()")
+        limit_index = source.index("install_codex_image_limit_preflight()")
+        high_res_index = source.index("install_codex_image_high_res_export()")
+        self.assertLess(routing_index, limit_index)
+        self.assertLess(limit_index, high_res_index)
 
 
 if __name__ == "__main__":
