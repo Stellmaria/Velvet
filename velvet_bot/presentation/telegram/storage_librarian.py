@@ -140,29 +140,41 @@ async def _librarian_scheduler_loop(
     min_object_id: int,
     allowed_kinds: tuple[str, ...],
     batch_size: int,
+    full_archive: bool,
 ) -> None:
     service = _build_service(
         bot=bot,
         database=database,
         settings=settings,
     )
-    repository = StorageLibrarianAfkRepository(
-        database,
-        min_object_id=min_object_id,
-    )
+    repository: StorageLibrarianRepository
+    if full_archive:
+        repository = StorageLibrarianRepository(database)
+    else:
+        repository = StorageLibrarianAfkRepository(
+            database,
+            min_object_id=min_object_id,
+        )
     service.repository = repository
     while True:
         try:
-            queued = await repository.enqueue_newer_than(
-                settings=settings,
-                min_object_id=min_object_id,
-                allowed_kinds=allowed_kinds,
-                limit=batch_size,
-            )
+            if full_archive:
+                queued = await repository.enqueue_pending(
+                    settings=settings,
+                    limit=batch_size,
+                )
+            else:
+                queued = await repository.enqueue_newer_than(
+                    settings=settings,
+                    min_object_id=min_object_id,
+                    allowed_kinds=allowed_kinds,
+                    limit=batch_size,
+                )
             processed = await service.process_once(auto_enqueue=False)
             if queued or processed:
                 logger.info(
-                    "Storage Librarian AFK cycle queued=%s processed=%s cutoff=%s kinds=%s",
+                    "Storage Librarian AFK cycle mode=%s queued=%s processed=%s cutoff=%s kinds=%s",
+                    "full-archive" if full_archive else "new-only",
                     queued,
                     processed,
                     min_object_id,
@@ -197,6 +209,7 @@ async def start_storage_librarian(bot: Bot, database: Database) -> None:
         logger.info("Storage Librarian is manual-only; background queue is disabled")
         return
     try:
+        full_archive = _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False)
         min_object_id = _env_int(
             "STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID",
             0,
@@ -209,15 +222,24 @@ async def start_storage_librarian(bot: Bot, database: Database) -> None:
             minimum=1,
             maximum=10,
         )
-        allowed_kinds = _auto_allowed_kinds(settings)
-        if min_object_id <= 0:
+        allowed_kinds = (
+            settings.allowed_kinds
+            if full_archive
+            else _auto_allowed_kinds(settings)
+        )
+        if full_archive:
+            if min_object_id != 0:
+                raise ValueError(
+                    "Full-archive режим требует STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID=0."
+                )
+        elif min_object_id <= 0:
             raise ValueError(
-                "AFK-режим требует STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID > 0. "
+                "AFK new-only требует STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID > 0. "
                 "Используйте deploy/hermes-librarian/enable_afk.sh."
             )
         if not allowed_kinds:
             raise ValueError(
-                "STORAGE_LIBRARIAN_AUTO_ALLOWED_KINDS не содержит разрешённых категорий."
+                "Storage Librarian background mode не содержит разрешённых категорий."
             )
     except ValueError as error:
         logger.error("Storage Librarian AFK configuration invalid: %s", error)
@@ -230,6 +252,7 @@ async def start_storage_librarian(bot: Bot, database: Database) -> None:
             min_object_id=min_object_id,
             allowed_kinds=allowed_kinds,
             batch_size=batch_size,
+            full_archive=full_archive,
         ),
         name="telegram-storage-librarian",
     )
@@ -255,6 +278,7 @@ async def handle_storage_librarian_status(
     try:
         settings = StorageLibrarianSettings.from_env()
         counts = await StorageLibrarianRepository(database).counts()
+        auto_backfill = _env_enabled("STORAGE_LIBRARIAN_AUTO_BACKFILL", False)
         auto_min_object_id = _env_int(
             "STORAGE_LIBRARIAN_AUTO_MIN_OBJECT_ID",
             0,
@@ -267,7 +291,11 @@ async def handle_storage_librarian_status(
             minimum=1,
             maximum=10,
         )
-        auto_kinds = _auto_allowed_kinds(settings)
+        auto_kinds = (
+            settings.allowed_kinds
+            if auto_backfill
+            else _auto_allowed_kinds(settings)
+        )
     except (ValueError, asyncpg.PostgresError) as error:
         await message.answer(
             "<b>Storage Librarian недоступен</b>\n\n" + escape(str(error))
@@ -302,6 +330,18 @@ async def handle_storage_librarian_status(
                 "",
                 "Режим manual-first активен: старый архив не анализируется массово и "
                 "не расходует токены без ручной команды.",
+            )
+        )
+    elif settings.enabled and auto_backfill:
+        lines.extend(
+            (
+                "",
+                "AFK full-archive: <b>активен</b>",
+                "Анализ: <b>локальный Ollama</b>",
+                "Категории: <code>" + escape(", ".join(auto_kinds)) + "</code>",
+                f"За цикл: <b>{auto_batch_size}</b>; интервал: "
+                f"<b>{settings.scan_interval_seconds} сек.</b>",
+                "Архив обходится постепенно; encrypted, unsupported и oversized объекты исключаются.",
             )
         )
     elif settings.enabled:
