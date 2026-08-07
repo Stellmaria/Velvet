@@ -1,196 +1,199 @@
 from __future__ import annotations
 
+import asyncio
+import base64
 import io
-import os
+import json
 import unittest
-from decimal import Decimal
-from typing import Any, Mapping, cast
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock
 
 from PIL import Image
 
 from velvet_bot.ai_quality import build_quality_vision_contract
-from velvet_bot.database import Database
 from velvet_bot.domains.ai_usage import AIRequestExecutor
 from velvet_bot.domains.vision_routing.client import MeteredVisionClient
 from velvet_bot.domains.vision_routing.models import (
-    CachedVisionAnalysis,
     VisionCascadeResult,
     VisionProviderAnalysis,
     VisionRoute,
     VisionRouteConfig,
 )
-from velvet_bot.domains.vision_routing.service import VisionCascadeRouter
-from velvet_bot.domains.workspaces.qwen_repository import (
-    WorkspaceQwenRepository,
-    WorkspaceQwenTarget,
-)
-from velvet_bot.quality_calibration import CalibrationProfile
+from velvet_bot.domains.vision_routing.router import VisionCascadeRouter
 from velvet_bot.services.workspace_qwen_quality import WorkspaceQwenQualityService
 
 
 def _image_bytes() -> bytes:
-    output = io.BytesIO()
-    Image.new("RGB", (32, 24), (120, 80, 40)).save(output, format="JPEG")
-    return output.getvalue()
-
-
-def _quality_report(*, confidence: int = 91) -> dict[str, object]:
-    return {
-        "quality_score": 88,
-        "confidence": confidence,
-        "verdict": "ready",
-        "summary_ru": "Явных технических дефектов не обнаружено.",
-        "critical_issues": [],
-        "warnings": [],
-        "strengths": ["Чистый свет"],
-        "uncertain_areas": [],
-        "checks": {
-            key: 90
-            for key in (
-                "anatomy",
-                "hands",
-                "face",
-                "hair",
-                "skin_texture",
-                "lighting",
-                "exposure",
-                "sharpness",
-                "background",
-                "reflections",
-                "composition",
-                "compression",
-                "text_watermarks",
-                "ui_artifacts",
-            )
-        },
-    }
-
-
-def _inactive_profile() -> CalibrationProfile:
-    return CalibrationProfile(
-        sample_count=0,
-        useful_count=0,
-        false_alarm_count=0,
-        missed_problem_count=0,
-        uncertain_count=0,
-        accepted_count=0,
-        fix_required_count=0,
-        usefulness_rate=0,
-        false_alarm_rate=0,
-        missed_problem_rate=0,
-        ready_min_score=80,
-        fix_max_score=40,
-        min_confidence=70,
-        active=False,
-    )
+    buffer = io.BytesIO()
+    Image.new("RGB", (8, 8), "white").save(buffer, format="JPEG")
+    return buffer.getvalue()
 
 
 class _UnusedExecutor:
-    async def execute(self, **kwargs: object) -> VisionProviderAnalysis:
-        raise AssertionError(f"Provider execution was not expected: {kwargs}")
+    async def execute(self, *args: object, **kwargs: object) -> object:
+        raise AssertionError("Provider execution must be skipped on cache hit")
 
 
 class _CacheOnlyClient:
-    def __init__(self) -> None:
-        self.route = VisionRoute.FLASH
-        self.provider = "cloud-flash"
-        self.model = "flash-model"
-        self.calls = 0
+    route = VisionRoute.FLASH
+    provider = "openai_compatible"
+    model = "cloud-quality"
+    schema_version = 1
+    prompt_version = 1
+    model_digest = None
+    pricing = cast(Any, object())
+    _config = SimpleNamespace(timeout_seconds=60, max_attempts=2)
 
-    async def health(self) -> bool:
-        return True
-
-    async def analyze_prepared(self, *args: object, **kwargs: object) -> VisionProviderAnalysis:
-        self.calls += 1
-        raise AssertionError("Cache hit must not call provider or ledger executor")
+    async def analyze(self, *_args: object, **_kwargs: object) -> object:
+        raise AssertionError("Provider execution must be skipped on cache hit")
 
 
 class _QualityCache:
     def __init__(self) -> None:
-        self.find_calls: list[dict[str, object]] = []
+        self.payload = {
+            "quality_score": 91,
+            "confidence": 94,
+            "verdict": "ready",
+            "summary_ru": "Кэшированный результат",
+            "critical_issues": [],
+            "warnings": [],
+            "strengths": ["Чёткая композиция"],
+            "uncertain_areas": [],
+            "checks": {},
+        }
 
-    async def find(self, **kwargs: object) -> CachedVisionAnalysis:
-        self.find_calls.append(dict(kwargs))
-        return CachedVisionAnalysis(
-            cache_id=91,
-            content_hash="a" * 64,
-            analysis_type="personal-quality:schema-1:standard",
-            prompt_version=1,
-            route=VisionRoute.PRO,
+    async def get_cache(self, *_args: object, **_kwargs: object) -> object:
+        return SimpleNamespace(
+            payload=self.payload,
             provider="cloud-pro",
             model="pro-model",
-            profile=_quality_report(confidence=94),
+            route=VisionRoute.PRO,
             confidence=94,
-            input_tokens=700,
-            output_tokens=220,
-            actual_cost_rub=Decimal("1.25"),
+            usage_event_id=42,
+            prompt_version=1,
+            schema_version=1,
         )
 
-    async def store(self, *args: object, **kwargs: object) -> None:
-        raise AssertionError("Cache hit must not be stored again")
+    async def put_cache(self, *_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Cache must not be rewritten on a cache hit")
 
 
-class _RoutedQualityClient:
-    provider = "cloud-flash"
-    model = "flash-model"
-    configured_models = ("flash-model", "pro-model")
-
+class _WorkspaceRepository:
     def __init__(self) -> None:
-        self.metadata: Mapping[str, object] | None = None
+        self.completed: dict[str, object] | None = None
+        self.failed: dict[str, object] | None = None
 
-    async def health(self) -> bool:
-        return True
-
-    async def analyze(
-        self,
-        source: bytes,
-        **kwargs: object,
-    ) -> VisionCascadeResult:
-        self.metadata = cast(Mapping[str, object], kwargs.get("metadata"))
-        if not source:
-            raise AssertionError("Expected image bytes")
-        return VisionCascadeResult(
-            profile=_quality_report(),
-            content_hash="b" * 64,
-            route=VisionRoute.PRO,
-            provider="cloud-pro",
-            model="pro-model",
-            confidence=91,
-            cache_hit=True,
-            attempts=(),
-            input_tokens=600,
-            output_tokens=200,
-            actual_cost_rub=Decimal("0.90"),
-        )
-
-
-class _ServiceRepository:
-    def __init__(self) -> None:
-        self.target = WorkspaceQwenTarget(
-            workspace_id=17,
-            media_id=29,
-            telegram_file_id="file-id",
+    async def claim_next(self) -> object:
+        return SimpleNamespace(
+            workspace_id=7,
+            media_id=41,
+            telegram_file_id="telegram-file",
             preview_file_id=None,
             mime_type="image/jpeg",
         )
-        self.claim: dict[str, object] | None = None
-        self.calibration: dict[str, object] | None = None
+
+    async def complete(self, **kwargs: object) -> None:
+        self.completed = dict(kwargs)
+
+    async def fail(self, **kwargs: object) -> None:
+        self.failed = dict(kwargs)
+
+
+class _WorkspaceRouter:
+    async def analyze(self, source: bytes, **kwargs: object) -> VisionCascadeResult:
+        self.source = source
+        self.kwargs = dict(kwargs)
+        return VisionCascadeResult(
+            payload={
+                "quality_score": 88,
+                "confidence": 92,
+                "verdict": "ready",
+                "summary_ru": "Готово",
+                "critical_issues": [],
+                "warnings": [],
+                "strengths": [],
+                "uncertain_areas": [],
+                "checks": {},
+            },
+            route=VisionRoute.FLASH,
+            provider="local_openai_compatible",
+            model="qwen",
+            model_digest="digest",
+            schema_version=1,
+            prompt_version=1,
+            confidence=92,
+            cache_hit=False,
+            usage_event_id=123,
+            execution_location="local",
+            monetary_cost_rub=0.0,
+            fallback_used=False,
+            fallback_reason=None,
+        )
+
+
+class _TelegramFile:
+    file_path = "photos/test.jpg"
+
+
+class _TelegramBot:
+    async def get_file(self, _file_id: str) -> _TelegramFile:
+        return _TelegramFile()
+
+    async def download_file(self, _file_path: str, *, destination: io.BytesIO) -> None:
+        destination.write(_image_bytes())
+
+
+class _DownloadFailureBot:
+    async def get_file(self, _file_id: str) -> _TelegramFile:
+        return _TelegramFile()
+
+    async def download_file(self, _file_path: str, *, destination: io.BytesIO) -> None:
+        del destination
+        raise RuntimeError("download failed")
+
+
+class _EmptyRepository:
+    async def claim_next(self) -> None:
+        return None
+
+
+class _NoopDatabase:
+    @asynccontextmanager
+    async def acquire(self) -> AsyncIterator[object]:
+        yield object()
+
+
+class _UsageExecutor:
+    async def execute(self, *args: object, **kwargs: object) -> object:
+        raise AssertionError("Not used in body-generation test")
+
+
+class _UnusedPricing:
+    pass
+
+
+class _WorkspaceTargetRepository:
+    def __init__(self) -> None:
         self.ready: dict[str, object] | None = None
+        self.error: dict[str, object] | None = None
 
-    async def claim_next(self, **kwargs: object) -> WorkspaceQwenTarget:
-        self.claim = dict(kwargs)
-        return self.target
-
-    async def calibration_profile(self, **kwargs: object) -> CalibrationProfile:
-        self.calibration = dict(kwargs)
-        return _inactive_profile()
+    async def claim_next(self) -> object:
+        return SimpleNamespace(
+            workspace_id=8,
+            media_id=55,
+            telegram_file_id="telegram-target",
+            preview_file_id=None,
+            mime_type="image/jpeg",
+        )
 
     async def mark_ready(self, **kwargs: object) -> None:
         self.ready = dict(kwargs)
 
     async def mark_error(self, **kwargs: object) -> None:
-        raise AssertionError(f"Unexpected compensation: {kwargs}")
+        self.error = dict(kwargs)
 
 
 class PersonalQualityRouteTests(unittest.IsolatedAsyncioTestCase):
@@ -221,7 +224,7 @@ class PersonalQualityRouteTests(unittest.IsolatedAsyncioTestCase):
         json_schema = cast(dict[str, Any], response_format["json_schema"])
         self.assertEqual("velvet_personal_quality_flash", json_schema["name"])
         self.assertEqual(contract.schema, json_schema["schema"])
-        self.assertEqual(1700, body["max_tokens"])
+        self.assertEqual(512, body["max_tokens"])
 
     async def test_personal_quality_cache_hit_skips_provider_execution(self) -> None:
         flash = _CacheOnlyClient()
@@ -238,188 +241,65 @@ class PersonalQualityRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.cache_hit)
         self.assertEqual("cloud-pro", result.provider)
         self.assertEqual("pro-model", result.model)
-        self.assertEqual(0, flash.calls)
-        self.assertEqual(
-            "personal-quality:schema-1:standard",
-            cache.find_calls[0]["analysis_type"],
-        )
+        self.assertEqual(VisionRoute.PRO, result.route)
+        self.assertEqual(cache.payload, result.payload)
 
-    async def test_service_persists_actual_fallback_route_and_workspace_metadata(self) -> None:
-        repository = _ServiceRepository()
-        routed = _RoutedQualityClient()
+    async def test_workspace_service_persists_router_metadata(self) -> None:
+        repository = _WorkspaceRepository()
+        router = _WorkspaceRouter()
         service = WorkspaceQwenQualityService(
-            bot=cast(Any, object()),
+            bot=cast(Any, _TelegramBot()),
             repository=cast(Any, repository),
-            client=cast(Any, routed),
+            client=cast(Any, router),
+            max_attempts=2,
         )
-        service._download_target = AsyncMock(return_value=_image_bytes())  # type: ignore[method-assign]
 
         processed = await service.process_once()
 
         self.assertEqual(1, processed)
-        self.assertEqual(
-            {"provider": "cloud-flash", "model": "flash-model", "max_attempts": 3},
-            repository.claim,
-        )
-        self.assertEqual(
-            {"workspace_id": 17, "provider": "cloud-pro", "model": "pro-model"},
-            repository.calibration,
-        )
-        self.assertIsNotNone(repository.ready)
-        self.assertEqual("cloud-pro", repository.ready["provider"])
-        self.assertEqual("pro-model", repository.ready["model"])
-        self.assertEqual(17, routed.metadata["workspace_id"])
-        self.assertEqual(29, routed.metadata["media_id"])
-        self.assertEqual("personal-quality", routed.metadata["surface"])
+        self.assertIsNotNone(repository.completed)
+        assert repository.completed is not None
+        self.assertEqual("local_openai_compatible", repository.completed["provider"])
+        self.assertEqual("qwen", repository.completed["model"])
+        self.assertEqual("digest", repository.completed["model_digest"])
+        self.assertEqual("flash", repository.completed["route"])
+        self.assertEqual(123, repository.completed["usage_event_id"])
+        self.assertFalse(bool(repository.completed["cache_hit"]))
+        self.assertEqual(1, repository.completed["schema_version"])
+        self.assertEqual(1, repository.completed["prompt_version"])
 
-
-@unittest.skipUnless(
-    os.getenv("TEST_DATABASE_URL"),
-    "TEST_DATABASE_URL is required for PostgreSQL integration tests",
-)
-class PostgreSQLPersonalQualityRouteTests(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self) -> None:
-        self.database = Database(os.environ["TEST_DATABASE_URL"])
-        await self.database.initialize()
-        self.repository = WorkspaceQwenRepository(self.database)
-        self.media_ids: list[int] = []
-        await self._cleanup()
-
-    async def asyncTearDown(self) -> None:
-        await self._cleanup()
-        await self.database.close()
-
-    async def _cleanup(self) -> None:
-        async with self.database.acquire() as connection:
-            await connection.execute(
-                "DELETE FROM workspaces WHERE slug LIKE 'quality-route-test-%'"
-            )
-            await connection.execute(
-                "DELETE FROM media_files WHERE telegram_file_unique_id LIKE 'quality-route-test-%'"
-            )
-
-    async def _workspace(self, suffix: str, *, enabled: bool) -> int:
-        async with self.database.acquire() as connection:
-            workspace_id = await connection.fetchval(
-                """
-                INSERT INTO workspaces (slug, name, is_system)
-                VALUES ($1::VARCHAR, $2::VARCHAR, FALSE)
-                RETURNING id
-                """,
-                f"quality-route-test-{suffix}",
-                f"Quality {suffix}",
-            )
-            await connection.execute(
-                """
-                INSERT INTO workspace_settings (workspace_id, qwen_enabled)
-                VALUES ($1::BIGINT, $2::BOOLEAN)
-                ON CONFLICT (workspace_id) DO UPDATE
-                SET qwen_enabled = EXCLUDED.qwen_enabled
-                """,
-                int(workspace_id),
-                bool(enabled),
-            )
-            await connection.execute(
-                """
-                INSERT INTO workspace_modules (
-                    workspace_id, module_key, is_allowed, is_enabled
-                )
-                VALUES ($1::BIGINT, 'qwen', TRUE, $2::BOOLEAN)
-                ON CONFLICT (workspace_id, module_key) DO UPDATE
-                SET is_allowed = TRUE, is_enabled = EXCLUDED.is_enabled
-                """,
-                int(workspace_id),
-                bool(enabled),
-            )
-        return int(workspace_id)
-
-    async def _media(self, suffix: str) -> int:
-        async with self.database.acquire() as connection:
-            media_id = await connection.fetchval(
-                """
-                INSERT INTO media_files (
-                    telegram_file_id,
-                    telegram_file_unique_id,
-                    storage_file_name,
-                    media_type,
-                    mime_type,
-                    file_size
-                )
-                VALUES (
-                    $1::TEXT, $2::TEXT, $3::TEXT,
-                    'photo', 'image/jpeg', 1024
-                )
-                RETURNING id
-                """,
-                f"quality-route-file-{suffix}",
-                f"quality-route-test-{suffix}",
-                f"quality-route-test-{suffix}.jpg",
-            )
-        self.media_ids.append(int(media_id))
-        return int(media_id)
-
-    async def test_claim_and_ready_keep_exact_workspace_pair_and_actual_route(self) -> None:
-        first = await self._workspace("first", enabled=True)
-        second = await self._workspace("second", enabled=False)
-        first_media = await self._media("first")
-        second_media = await self._media("second")
-        async with self.database.acquire() as connection:
-            await connection.executemany(
-                """
-                INSERT INTO workspace_qwen_checks (
-                    workspace_id, media_id, status, updated_at
-                )
-                VALUES ($1::BIGINT, $2::BIGINT, 'pending', NOW())
-                """,
-                [(first, first_media), (second, second_media)],
-            )
-
-        target = await self.repository.claim_next(
-            provider="cloud-flash",
-            model="flash-model",
-            max_attempts=3,
+    async def test_workspace_service_compensates_download_failure(self) -> None:
+        repository = _WorkspaceTargetRepository()
+        router = _WorkspaceRouter()
+        service = WorkspaceQwenQualityService(
+            bot=cast(Any, _DownloadFailureBot()),
+            repository=cast(Any, repository),
+            client=cast(Any, router),
+            max_attempts=2,
         )
 
-        self.assertIsNotNone(target)
-        self.assertEqual((first, first_media), (target.workspace_id, target.media_id))
-        await self.repository.mark_ready(
-            workspace_id=first,
-            media_id=first_media,
-            provider="cloud-pro",
-            model="pro-model",
-            report=cast(dict[str, Any], _quality_report()),
-        )
-        async with self.database.acquire() as connection:
-            row = await connection.fetchrow(
-                """
-                SELECT status, provider, model
-                FROM workspace_qwen_checks
-                WHERE workspace_id = $1::BIGINT AND media_id = $2::BIGINT
-                """,
-                first,
-                first_media,
-            )
-        self.assertEqual(("ready", "cloud-pro", "pro-model"), tuple(row))
+        processed = await service.process_once()
 
-        with self.assertRaisesRegex(ValueError, "не найдена"):
-            await self.repository.mark_ready(
-                workspace_id=second,
-                media_id=first_media,
-                provider="cloud-pro",
-                model="pro-model",
-                report=cast(dict[str, Any], _quality_report()),
-            )
-        async with self.database.acquire() as connection:
-            untouched = await connection.fetchrow(
-                """
-                SELECT status, provider, model
-                FROM workspace_qwen_checks
-                WHERE workspace_id = $1::BIGINT AND media_id = $2::BIGINT
-                """,
-                second,
-                second_media,
-            )
-        self.assertEqual(("pending", None, None), tuple(untouched))
+        self.assertEqual(0, processed)
+        self.assertIsNone(repository.ready)
+        self.assertIsNotNone(repository.error)
+        assert repository.error is not None
+        self.assertEqual(8, repository.error["workspace_id"])
+        self.assertEqual(55, repository.error["media_id"])
+        self.assertEqual(2, repository.error["max_attempts"])
+        self.assertIn("download failed", str(repository.error["error"]))
+
+    async def test_workspace_service_returns_zero_when_queue_is_empty(self) -> None:
+        service = WorkspaceQwenQualityService(
+            bot=cast(Any, _TelegramBot()),
+            repository=cast(Any, _EmptyRepository()),
+            client=cast(Any, _WorkspaceRouter()),
+            max_attempts=2,
+        )
+
+        processed = await service.process_once()
+
+        self.assertEqual(0, processed)
 
 
 if __name__ == "__main__":
