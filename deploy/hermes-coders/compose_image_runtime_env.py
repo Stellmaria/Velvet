@@ -42,6 +42,8 @@ def parse_env(path: Path) -> dict[str, str]:
             line = line[7:].lstrip()
         key, value = line.split("=", 1)
         key = key.strip()
+        if key not in _ALLOWED_KEYS:
+            continue
         if key in values:
             raise ImageRuntimeEnvError(f"duplicate operator env key: {key}")
         values[key] = value.strip().strip('"').strip("'")
