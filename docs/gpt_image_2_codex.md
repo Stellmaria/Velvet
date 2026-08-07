@@ -1,75 +1,130 @@
-# GPT Image 2: Codex-first и Byesu по параметрам
+# GPT Image 2: Codex-first, live limit gate и двухключевой Byesu fallback
 
 Функция добавляет в Ауф модель `GPT Image 2` с пользовательским выбором
 GPT-5.6 Sol/Terra/Luna, reasoning effort, качества и пропорции.
 
-## Ограничения запроса
+## Базовый контракт
 
 - режим `Только текст`: 0 референсов;
 - режим `Фото + текст`: от 1 до 6 референсов;
 - один референс: JPG, PNG или WEBP до 8 МБ;
-- пользовательский промт: до 8000 символов, максимум два сообщения;
-- ровно одна фактическая генерация;
-- автоматическая перегенерация после начала инструмента запрещена.
+- пользовательский промт: до 8000 символов;
+- Codex всегда является первым маршрутом для 1K, 2K и 4K;
+- Byesu допускается только при явно подтверждённом `subscription_limit` Codex;
+- после начала creative tool execution автоматическая смена провайдера запрещена;
+- Byesu использует два разных физических API key: один для анализа, второй для генерации.
 
-Публичная документация OpenAI не закрепляет отдельный контракт «ровно 10
-референсов» для Codex/ImageGen: допустимое количество зависит от размера файлов
-и сопутствующего текста. Velvet использует строгий общий предел 6, потому что
-максимальный резервный генератор Byesu принимает не больше шести изображений.
-Так любой разрешённый запрос имеет определённый платный маршрут, а интерфейс не
-обещает fallback, который потом внезапно обнаруживает седьмую фотографию.
+## Маршрутизация
 
-## Маршрутизация качества
+### Шаг 1. Live preflight Codex до генерации
 
-### 1K
+Перед creative generation runtime читает свежие окна подписки через Codex
+app-server. Проверка выполняется для любого выбранного качества: 1K, 2K или 4K.
 
-1. Перед генерацией runtime читает свежие окна подписки через Codex app-server.
-2. Если ответ явно сообщает активное исчерпание, Codex generation не запускается:
-   запрос сразу идёт в подходящий Byesu-route.
-3. Если лимит не исчерпан либо preflight недоступен/неоднозначен, запускается
-   Codex Plus.
-4. Выбранный Sol/Terra/Luna и reasoning effort анализируют пользовательский
-   промт и все референсы внутри Codex.
-5. Если Codex вызывает `image_gen`, любой последующий сбой завершает задачу без
-   второго генерационного запроса.
-6. Если Codex возвращает подтверждённый `subscription_limit` до первого tool
-   execution, выполняется один fallback Byesu.
-7. Byesu автоматически выбирает самый дешёвый совместимый генератор:
-   - 0–3 референса: `gpt-image-2`, 1K, $0.01 за изображение;
-   - 4–6 референсов: `firefly-gpt-image-2`, 1K, $0.04 за изображение.
-
-Lifecycle-события `thread.started` и `turn.started` не считаются tool execution.
-Command/file/MCP/dynamic tool execution, существующий artifact или неизвестный
-результат генерационного запроса блокируют fallback.
-
-### Что считается исчерпанным лимитом на preflight
-
-Preflight переключает на Byesu только при одном из явных сигналов:
+Codex считается явно исчерпанным только при одном из подтверждённых сигналов:
 
 - `rate_limit_reached_type` содержит активный тип достигнутого окна;
 - окно `primary` или `secondary` имеет `used_percent >= 100`, а `resets_at`
   отсутствует либо находится в будущем.
 
-Значение ниже 100%, уже прошедшее время сброса, неизвестный JSON, timeout или
-недоступный app-server не включают платный маршрут. Такой результат работает
-fail-open: задача всё равно пробует Codex, а прежний error-driven fallback
-остаётся страховкой от гонки между проверкой и фактическим запуском.
+Если snapshot неизвестен, timeout-ится, возвращает нераспознанный JSON или окно
+меньше 100%, preflight работает fail-open и задача пробует Codex. Это сохраняет
+Codex-first семантику и не превращает кратковременную проблему limit probe в
+платную генерацию.
 
-Это чтение выполняется напрямую через `account/rateLimits/read`, а не из
-долгоживущего кеша. Нормальный probe обычно короче запуска Codex-задачи; его
-операционный timeout ограничен, чтобы проблема app-server не задерживала каждую
-генерацию бесконечностью, любимым значением распределённых систем.
+### Шаг 2A. Codex доступен
 
-### 2K и 4K
+Если активное исчерпание не подтверждено:
 
-Codex пропускается, потому что текущий контракт Velvet не может честно обещать
-от него выбранное нативное разрешение. Запрос сразу идёт в Byesu:
+1. выбранный Sol/Terra/Luna получает пользовательский промт и все референсы;
+2. Codex вызывает встроенный `image_gen` ровно один раз для creative generation;
+3. если выбран 1K, полученный artifact является финальным;
+4. если выбран 2K или 4K, запускается **второй Codex/GPT pass уже после creative generation**;
+5. второй pass не вызывает `image_gen`, не создаёт новую сцену и не меняет визуальный замысел;
+6. второй pass запускает подготовленный локальный Pillow export и проверяет точный размер итогового файла;
+7. пользователю выдаётся artifact только после успешного high-resolution export.
 
-1. выбранный Sol/Terra/Luna анализирует промт и все референсы;
-2. `firefly-gpt-image-2` получает итоговый prompt и те же референсы;
-3. создаётся ровно одно изображение в выбранном 2K или 4K.
+Целевые размеры high-resolution export используют длинную сторону:
 
-## Автовыбор генератора Byesu
+- 2K: 2048 px;
+- 4K: 3840 px.
+
+Вторая сторона вычисляется из выбранной пропорции и приводится к чётному числу
+пикселей. Например, 2K 16:9 даёт 2048×1152, а 4K 16:9 даёт 3840×2160.
+
+Второй pass является export pass, а не второй creative generation. Это важно:
+пользователь получает одну сгенерированную фотографию, а не вторую интерпретацию
+того же промта с привычным модельным сюрпризом в лице, одежде или композиции.
+
+### Шаг 2B. Codex явно исчерпан
+
+Если live preflight подтверждает активный subscription limit, Codex creative
+run не запускается. Запрос сразу идёт в Byesu fallback.
+
+Если preflight был неубедителен, но сам Codex возвращает подтверждённый
+`subscription_limit` **до первого tool execution**, разрешается один такой же
+Byesu fallback. Lifecycle-события `thread.started` и `turn.started` не считаются
+tool execution. Command/file/MCP/dynamic tool execution, существующий artifact
+или неизвестный результат creative request блокируют fallback.
+
+## Два Byesu ключа
+
+### Hermes-Codex key
+
+Переменная:
+
+```env
+BYESU_HERMES_CODEX_API_KEY=...
+```
+
+Этот физический API key используется для:
+
+- Hermes / Kael / coder provider fallback после лимита Codex;
+- Sol/Terra/Luna анализа GPT Image 2 при Byesu image fallback;
+- `/v1/responses` image analysis.
+
+Основной Hermes пока также читает legacy-переменную `OPENAI_API_KEY`, поэтому в
+production обе переменные должны содержать **одно и то же физическое значение**:
+
+```env
+OPENAI_API_KEY=<Hermes-Codex key>
+BYESU_HERMES_CODEX_API_KEY=<тот же Hermes-Codex key>
+```
+
+Это два env alias, но один физический ключ.
+
+### Media Gen key
+
+Переменная:
+
+```env
+BYESU_MEDIA_GEN_API_KEY=...
+```
+
+Это второй, отдельный физический API key. Он используется только для платных
+image endpoints Byesu:
+
+- `/v1/images/generations`;
+- `/v1/images/edits`.
+
+Runtime fail-closed проверяет, что Hermes-Codex и Media Gen keys различаются.
+Media key помещается в отдельный `velvet-media.env` и подключается только к
+`hermes-coder-velvet`. Max этот секрет не получает. Несекретный Compose wrapper
+не проецирует ни один API key.
+
+## Capability gate Byesu
+
+Перед платной fallback generation runtime делает две независимые проверки
+`GET /v1/models`:
+
+- Hermes-Codex key должен видеть выбранный `gpt-5.6-sol`, `gpt-5.6-terra` или `gpt-5.6-luna`;
+- Media Gen key должен видеть выбранный `gpt-image-2` или `firefly-gpt-image-2`.
+
+Один ключ больше не обязан видеть одновременно текстовые и image-модели.
+Именно это разделение устраняет прежний ложный blocker, при котором Media key
+пытались использовать как общий Hermes credential или наоборот.
+
+## Выбор Byesu generator после Codex limit
 
 | Качество | Референсы | Генератор |
 |---|---:|---|
@@ -78,80 +133,60 @@ Codex пропускается, потому что текущий контра�
 | 2K | 0–6 | `firefly-gpt-image-2` |
 | 4K | 0–6 | `firefly-gpt-image-2` |
 
-Если нарушено хотя бы одно условие дешёвой модели, выбирается расширенная:
-качество выше 1K или больше трёх референсов автоматически переводит запрос на
-`firefly-gpt-image-2`.
+Эта таблица применяется **только после решения перейти на Byesu из-за Codex
+subscription limit**. Качество 2K/4K само по себе никогда не выбирает провайдера.
 
-## Промт и анализ внешности
+## Byesu analysis → generation
 
-Лимит 8000 символов относится к исходному пользовательскому тексту. Полный
-процесс не складывает механически:
-
-```text
-пользовательские 8000 символов + отдельный отчёт Sol + ещё одна копия промта
-```
-
-В Byesu-route анализатор получает исходный промт и изображения, после чего
-возвращает **один новый финальный generation prompt**. Он должен:
+При fallback выбранный Sol/Terra/Luna на Hermes-Codex key анализирует исходный
+промт и все референсы и возвращает один финальный generation prompt. Он должен:
 
 - сохранить сцену, действие, стиль и ограничения пользователя;
-- добавить только устойчивые признаки внешности и разрешение противоречий между
-  референсами;
+- добавить устойчивые признаки внешности и разрешить противоречия референсов;
 - не содержать рассуждения, варианты и отчёт об анализе;
 - целиться максимум в 6500 символов;
 - никогда не превышать 8000 символов.
 
-Если анализатор всё же возвращает больше 8000 символов, генерация не запускается
-и медиасписание не производится. Silent truncation не используется, поскольку
-обрезание хвоста может удалить запреты, детали внешности или композицию.
+После этого Media Gen key выполняет ровно одну image generation/edit операцию.
+Если анализатор возвращает больше 8000 символов, generation не запускается.
 
-Перевод всего промта на китайский ради меньшего числа символов запрещён. Число
-Unicode-символов и число токенов не равны друг другу, китайский текст не даёт
-гарантированного двукратного выигрыша по токенам, а перевод способен изменить
-смысл и приоритеты. Анализатор сохраняет язык пользователя и сжимает повторы,
-а не устраивает лингвистическую оптимизацию бухгалтерии.
-
-## Ключ и capability gate
-
-Provider-route использует существующий `BYESU_HERMES_CODEX_API_KEY` внутри
-Hermes. Перед анализом и генерацией `GET /v1/models` должен подтвердить:
-
-- выбранный `gpt-5.6-sol`, `gpt-5.6-terra` или `gpt-5.6-luna`;
-- автоматически выбранный `gpt-image-2` или `firefly-gpt-image-2`.
-
-Для media endpoint обычно требуется token group `media / media-gen`. Если ключ
-не видит нужную модель, маршрут завершается fail closed до платной генерации.
-
-## Конфигурация Hermes
+## Production-конфигурация
 
 ```env
-BYESU_HERMES_CODEX_API_KEY=<existing Byesu token>
+# Один физический Hermes-Codex key в двух совместимых alias:
+OPENAI_API_KEY=<Hermes-Codex key>
+BYESU_HERMES_CODEX_API_KEY=<тот же Hermes-Codex key>
+
+# Второй физический ключ только для image generation:
+BYESU_MEDIA_GEN_API_KEY=<Media Gen key>
+
 CODEX_IMAGE_LIMIT_PREFLIGHT_ENABLED=true
 CODEX_IMAGE_LIMIT_PREFLIGHT_TIMEOUT_SECONDS=3
-CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true
+CODEX_IMAGE_BYESU_FALLBACK_ENABLED=false
 CODEX_IMAGE_BYESU_BASE_URL=https://byesu.com/v1
 CODEX_IMAGE_BYESU_TIMEOUT_SECONDS=600
 ```
 
-Модель генерации в env больше не задаётся: runtime выбирает одну из двух
-разрешённых моделей по качеству и числу референсов.
+Fallback остаётся выключенным до успешного live capability smoke обоих ключей.
+После этого оператор явно включает `CODEX_IMAGE_BYESU_FALLBACK_ENABLED=true` и
+штатно reconciles coder runtime.
 
-## Развёртывание и smoke
+## Обязательные live smoke после rollout
 
-После обновления нужно перезапустить Hermes coder runtime и Velvet Bot. До
-production включения обязательны:
+1. Codex preflight ниже 100% продолжает Codex route для 1K, 2K и 4K.
+2. Активные 100% пропускают Codex creative launch и выбирают Byesu.
+3. Недоступный preflight fail-open пробует Codex.
+4. Clean `subscription_limit` до tool execution разрешает ровно один fallback.
+5. После любого creative tool execution Byesu fallback блокируется.
+6. Codex 1K выполняет одну creative generation без high-res pass.
+7. Codex 2K выполняет одну creative generation + отдельный non-creative GPT export pass и выдаёт фактические 2K pixels.
+8. Codex 4K выполняет одну creative generation + отдельный non-creative GPT export pass и выдаёт фактические 4K pixels.
+9. Hermes-Codex key видит Sol/Terra/Luna, Media Gen key видит обе image-модели.
+10. Два физических Byesu key различаются.
+11. Byesu fallback 1K проверяется с 0, 3, 4 и 6 референсами.
+12. Byesu fallback 2K/4K проверяется как единая generation без Codex post-export.
+13. Preview, оригинал и фактические пиксели сверяются после каждого high-res smoke.
 
-1. 1K через доступный Codex Plus;
-2. preflight с 99% должен продолжить Codex-route;
-3. preflight с активными 100% должен пропустить запуск Codex;
-4. недоступный preflight должен fail-open в Codex;
-5. clean `subscription_limit` до tool execution после неубедительного preflight;
-6. fallback 1K с 0, 3, 4 и 6 референсами;
-7. прямые Byesu 2K и 4K;
-8. Sol/Terra/Luna со всеми разрешёнными reasoning effort;
-9. capability mismatch без generation charge;
-10. блокировка fallback после synthetic tool execution;
-11. проверка preview, оригинала и фактических пикселей.
-
-CI не подтверждает доступность подписки, token group, реальную цену или возврат
-провайдера; это остаётся live-smoke контрактом.
+CI может проверить routing, secret boundaries, exact export dimensions и lifecycle,
+но не может доказать живой баланс подписки или provider model availability. Эти
+пункты остаются production smoke-контрактом.
