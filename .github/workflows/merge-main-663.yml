@@ -1,0 +1,115 @@
+name: Merge current main into PR 663
+
+on:
+  push:
+    branches:
+      - feat/byesu-image-fallback-quality
+    paths:
+      - .github/workflows/merge-main-663.yml
+
+permissions:
+  contents: write
+
+jobs:
+  merge-main:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Merge main and resolve the reviewed composition conflict
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin main
+
+          set +e
+          git merge --no-ff --no-commit origin/main
+          merge_rc=$?
+          set -e
+
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          if [[ "$merge_rc" -ne 0 ]]; then
+            test "$conflicts" = "velvet_bot/app/composition.py"
+          else
+            test -z "$conflicts"
+          fi
+
+          if [[ -n "$conflicts" ]]; then
+            git checkout --theirs -- velvet_bot/app/composition.py
+            python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("velvet_bot/app/composition.py")
+          text = path.read_text(encoding="utf-8")
+
+          import_anchor = "from velvet_bot.app.auf_gpt_image_2_install import install_auf_gpt_image_2\n"
+          quality_import = (
+              "from velvet_bot.app.auf_gpt_image_2_quality_install import (\n"
+              "    install_auf_gpt_image_2_quality,\n"
+              ")\n"
+          )
+          if import_anchor not in text:
+              raise SystemExit("GPT Image 2 import anchor missing after main-side resolution")
+          text = text.replace(import_anchor, import_anchor + quality_import, 1)
+
+          helper_anchor = (
+              "    def install_generation_receipts_with_owner_cost_privacy() -> None:\n"
+              "        install_auf_generation_receipts()\n"
+              "        install_auf_owner_cost_privacy()\n\n"
+              "    return (\n"
+          )
+          helper_replacement = (
+              "    def install_generation_receipts_with_owner_cost_privacy() -> None:\n"
+              "        install_auf_generation_receipts()\n"
+              "        install_auf_owner_cost_privacy()\n\n"
+              "    def install_gpt_image_with_byesu_quality() -> None:\n"
+              "        install_auf_gpt_image_2()\n"
+              "        install_auf_gpt_image_2_quality()\n\n"
+              "    return (\n"
+          )
+          if helper_anchor not in text:
+              raise SystemExit("composition helper anchor missing")
+          text = text.replace(helper_anchor, helper_replacement, 1)
+
+          stage_anchor = '        CompositionStage("install_auf_gpt_image_2", install_auf_gpt_image_2),\n'
+          stage_replacement = (
+              "        # GPT Image 2 extends the final Auf controller contract. The Byesu\n"
+              "        # quality patch belongs to the same bounded stage and does not add a new\n"
+              "        # installer-order surface. Branding remains last.\n"
+              "        CompositionStage(\n"
+              '            "install_auf_gpt_image_2",\n'
+              "            install_gpt_image_with_byesu_quality,\n"
+              "        ),\n"
+          )
+          if stage_anchor not in text:
+              raise SystemExit("GPT Image 2 stage anchor missing")
+          text = text.replace(stage_anchor, stage_replacement, 1)
+
+          retired = (
+              "install_original_image_delivery_hotfix",
+              "install_original_video_delivery_hotfix",
+              "install_auf_result_delivery_recovery",
+              "install_auf_active_delivery_fix",
+          )
+          for token in retired:
+              if token in text:
+                  raise SystemExit(f"retired delivery stage resurfaced: {token}")
+
+          path.write_text(text, encoding="utf-8")
+          PY
+            git add velvet_bot/app/composition.py
+          fi
+
+          test -z "$(git diff --name-only --diff-filter=U)"
+          python3 -m py_compile velvet_bot/app/composition.py
+          git diff --check
+          git status --short
+          git commit -m "Merge main into feat/byesu-image-fallback-quality"
+          git push origin HEAD:feat/byesu-image-fallback-quality
