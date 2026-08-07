@@ -5,6 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+_DEFAULT_REPORT_CHAT_ID = -1004459280894
+_DEFAULT_REPORT_THREAD_ID = 2478
+
+
 def _required(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
@@ -41,6 +45,20 @@ def _parse_optional_int(name: str) -> int | None:
     if parsed == 0:
         raise ValueError(f"{name} cannot be zero.")
     return parsed
+
+
+def _report_destination() -> tuple[int, int]:
+    chat_id = (
+        _parse_optional_int("ARTHUR_REPORT_CHAT_ID")
+        or _parse_optional_int("TELEGRAM_STORAGE_CHAT_ID")
+        or _DEFAULT_REPORT_CHAT_ID
+    )
+    thread_id = (
+        _parse_optional_int("ARTHUR_REPORT_THREAD_ID")
+        or _parse_optional_int("STORAGE_THREAD_ANALYSIS")
+        or _DEFAULT_REPORT_THREAD_ID
+    )
+    return chat_id, thread_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +108,7 @@ class ArthurSettings:
         heartbeat_path = Path(
             os.getenv("ARTHUR_HEARTBEAT_PATH", "/tmp/arthur-heartbeat")
         )
+        report_chat_id, report_thread_id = _report_destination()
         return cls(
             bot_token=bot_token,
             database_url=_required("DATABASE_URL"),
@@ -101,8 +120,8 @@ class ArthurSettings:
                 "http://arthur-storage-gateway:8786",
             ).strip().rstrip("/"),
             storage_gateway_api_key=api_key,
-            report_chat_id=_parse_optional_int("ARTHUR_REPORT_CHAT_ID"),
-            report_thread_id=_parse_optional_int("ARTHUR_REPORT_THREAD_ID"),
+            report_chat_id=report_chat_id,
+            report_thread_id=report_thread_id,
             heartbeat_path=heartbeat_path,
         )
 

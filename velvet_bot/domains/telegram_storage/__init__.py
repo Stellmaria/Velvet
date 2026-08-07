@@ -14,7 +14,7 @@ from velvet_bot.domains.telegram_storage.models import (
 # codec-independent backup implementation.
 _repository_module.TelegramStorageRepository = TelegramStorageRepository
 
-from velvet_bot.domains.telegram_storage.service import (  # noqa: E402
+from velvet_bot.domains.telegram_storage.integrity_service import (  # noqa: E402
     TelegramStorageMigrationService,
 )
 
