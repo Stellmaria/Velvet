@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from byesu_image_credentials import install_byesu_dual_credentials
 from byesu_image_fallback import install_byesu_image_fallback
 from byesu_image_routing_policy import install_byesu_image_routing_policy
 from codex_first_safe_runner import primary_execution_started
@@ -109,6 +110,7 @@ class ContextLauncherTierProviderManager(
 
 
 def build_manager() -> AuditedTierProviderManager:
+    install_byesu_dual_credentials()
     install_byesu_image_fallback()
     install_byesu_image_routing_policy()
     install_codex_image_limit_preflight()
